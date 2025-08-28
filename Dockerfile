@@ -1,28 +1,33 @@
-# ---- Base image Node.js
+# Base image
 FROM node:20-slim
 
-# ---- System deps: ffmpeg & yt-dlp
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg python3 python3-pip \
-    && pip3 install --no-cache-dir yt-dlp \
-    && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=noninteractive
 
-# ---- App setup
+# System deps: ffmpeg + python + pip
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ffmpeg \
+      python3 \
+      python3-pip \
+      ca-certificates \
+ && pip3 install --no-cache-dir --break-system-packages yt-dlp \
+ && rm -rf /var/lib/apt/lists/*
+
+# App
 WORKDIR /app
 
-# Salin hanya package files dulu (biar cache npm bagus)
+# NPM deps dulu (biar cache bagus)
 COPY package*.json ./
 RUN npm ci || npm i
 
-# Salin sisa source (index.js, dll)
+# Source
 COPY . .
 
-# Folder untuk hasil unduhan
+# Folder output
 RUN mkdir -p public/jobs
 
-# Render akan set $PORT sendiri, JANGAN hardcode
+# Render inject PORT; jangan hardcode 3000
 ENV PORT=10000
 EXPOSE 10000
 
-# Start server
-CMD ["node", "index.js"]
+CMD ["node","index.js"]
