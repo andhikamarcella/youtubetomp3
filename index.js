@@ -57,80 +57,89 @@ app.post('/api/convert', async (req, res) => {
       return res.status(400).json({ error: 'URL tidak valid' });
     }
 
-    const [hasYtDlp, hasFfmpeg] = await Promise.all([checkTool(YTDLP), checkTool(FFMPEG)]);
-    if (!hasYtDlp || !hasFfmpeg) {
-      return res.status(500).json({ error: 'yt-dlp/ffmpeg tidak ditemukan di server' });
+    const hasYtDlp = await checkTool(YTDLP);
+    const hasFfmpeg = await checkTool(FFMPEG);
+    if (!hasYtDlp) {
+      return res.status(500).json({ error: 'yt-dlp tidak ditemukan di server' });
     }
 
     const id = nanoid(10);
     const jobDir = join(JOBS_DIR, id);
     mkdirSync(jobDir, { recursive: true });
 
-    // 1) Download bestaudio -> audio.<ext>
-    const ytdlpArgs = [
-      '--no-warnings',
-      '--no-playlist',
-      '--geo-bypass',
-      '-N', '2',
-      '-f', 'bestaudio/best',
-      '-o', join(jobDir, 'audio.%(ext)s'),
-      url
-    ];
+    // ===== MODE A: ffmpeg ADA → hasil MP3 CBR (64–320 kbps)
+    if (hasFfmpeg) {
+      const tmpOut = join(jobDir, 'audio.%(ext)s');
+      const outFile = join(jobDir, 'output.mp3');
 
-    try {
-      await run(YTDLP, ytdlpArgs, { env: { ...process.env, PYTHONNOUSERSITE: '1' } });
-    } catch (e) {
-      const tail = String(e.message || '').split('\n').slice(-15).join('\n');
-      throw new Error(`yt-dlp gagal.\n${tail}`);
-    }
+      // 1) Ambil bestaudio
+      await run(YTDLP, [
+        '--no-warnings','--no-playlist','--geo-bypass','-N','2',
+        '-f','bestaudio/best','-o', tmpOut, url
+      ]);
 
-    const inputs = readdirSync(jobDir)
-      .filter(f => f.startsWith('audio.') && f !== 'audio.m3u8')
-      .map(f => join(jobDir, f));
+      // 2) Re-encode ke MP3 CBR target
+      const inputs = readdirSync(jobDir).filter(f => f.startsWith('audio.'));
+      if (inputs.length === 0) return res.status(500).json({ error: 'Audio tidak ditemukan' });
+      const bestAudio = join(jobDir, inputs[0]);
 
-    if (inputs.length === 0) {
-      return res.status(500).json({ error: 'File audio tidak ditemukan setelah download' });
-    }
-    const bestAudio = inputs[0];
-
-    // 2) Konversi ke MP3 (bitrate konsisten)
-    const outFile = join(jobDir, 'output.mp3');
-    const ffArgs = ['-hide_banner', '-y'];
-
-    if (trim?.start && !trim?.end) ffArgs.push('-ss', trim.start);
-    ffArgs.push('-i', bestAudio);
-    if (trim?.end) ffArgs.push('-to', trim.end);
-    if (normalize) ffArgs.push('-af', 'dynaudnorm');
-
-    ffArgs.push('-vn', '-codec:a', 'libmp3lame', '-b:a', `${quality}k`, outFile);
-
-    try {
+      const ffArgs = ['-hide_banner','-y'];
+      if (trim?.start && !trim?.end) ffArgs.push('-ss', trim.start);
+      ffArgs.push('-i', bestAudio);
+      if (trim?.end) ffArgs.push('-to', trim.end);
+      if (normalize) ffArgs.push('-af', 'dynaudnorm');
+      ffArgs.push('-vn','-codec:a','libmp3lame','-b:a', `${quality}k`, outFile);
       await run(FFMPEG, ffArgs);
-    } catch (e) {
-      const tail = String(e.message || '').split('\n').slice(-20).join('\n');
-      throw new Error(`ffmpeg gagal.\n${tail}`);
+
+      // 3) ID3 opsional
+      if (id3?.title || id3?.artist) {
+        const tagged = join(jobDir, 'output.tagged.mp3');
+        const meta = [];
+        if (id3.title)  meta.push('-metadata', `title=${id3.title}`);
+        if (id3.artist) meta.push('-metadata', `artist=${id3.artist}`);
+        await run(FFMPEG, ['-y','-i', outFile, ...meta, '-codec:a','copy', tagged]);
+        renameSync(tagged, outFile);
+      }
+
+      const safeTitle = (id3?.title || 'audio').replace(/[^\w\- ]+/g, '').trim() || 'audio';
+      return res.json({
+        mode: 'mp3',
+        filename: `${safeTitle}-${quality}kbps.mp3`,
+        downloadUrl: `/jobs/${id}/output.mp3`
+      });
     }
 
-    // 3) ID3 opsional
-    if (id3?.title || id3?.artist) {
-      const tagged = join(jobDir, 'output.tagged.mp3');
-      const meta = [];
-      if (id3.title)  meta.push('-metadata', `title=${id3.title}`);
-      if (id3.artist) meta.push('-metadata', `artist=${id3.artist}`);
-      await run(FFMPEG, ['-y', '-i', outFile, ...meta, '-codec:a', 'copy', tagged]);
-      renameSync(tagged, outFile);
-    }
+    // ===== MODE B: ffmpeg TIDAK ADA → unduh audio ASLI (tanpa konversi)
+    // pilih m4a kalau ada, kalau tidak ya webm/opus
+    const outPattern = join(jobDir, 'audio.%(ext)s');
+    await run(YTDLP, [
+      '--no-warnings','--no-playlist','--geo-bypass','-N','2',
+      '-f','bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio',
+      '-o', outPattern, url
+    ]);
 
-    const safeTitle = (id3?.title || 'audio').replace(/[^\w\- ]+/g, '').trim() || 'audio';
-    const filename = `${safeTitle}-${quality}kbps.mp3`;
-    const downloadUrl = `/jobs/${id}/output.mp3`;
+    const files = readdirSync(jobDir).filter(f => f.startsWith('audio.'));
+    if (files.length === 0) return res.status(500).json({ error: 'Audio tidak ditemukan' });
 
-    res.json({ filename, downloadUrl });
+    const downloaded = files[0];                      // ex: audio.m4a / audio.webm
+    const ext = downloaded.split('.').pop();
+    const finalPath = join(jobDir, `output.${ext}`);
+    renameSync(join(jobDir, downloaded), finalPath);
+
+    return res.json({
+      mode: 'original',
+      // beri nama “(ORIGINAL)” agar user paham ini bukan MP3 jika ext ≠ mp3
+      filename: `audio (ORIGINAL).${ext}`,
+      downloadUrl: `/jobs/${id}/output.${ext}`,
+      note: 'ffmpeg tidak tersedia: dikirim audio asli tanpa konversi'
+    });
+
   } catch (e) {
     console.error('[convert:error]', e?.message);
     res.status(500).json({ error: e?.message || 'Server error' });
   }
 });
+
 
 // Diagnostik cepat
 app.get('/diag', async (_req, res) => {
