@@ -39,18 +39,28 @@ async function check(cmd, flags) {
   try { await run(cmd, flags); return true; } catch { return false; }
 }
 
-// Cari Python yang bisa jalan di container/Windows
+// di dekat atas file
 const PY_CANDIDATES = process.platform === 'win32'
   ? ['py', 'python', 'python3']
   : ['python3', 'python'];
 
 async function pickPython() {
+  // 1) kalau diset dari Dockerfile, pakai itu
+  if (process.env.YT_PY) return process.env.YT_PY;
+  // 2) fallback cari yang tersedia
   for (const cand of PY_CANDIDATES) {
-    if (await check(cand, ['--version'])) return cand;
-    if (await check(cand, ['-V']))       return cand;
+    try {
+      await run(cand, ['--version']);
+      return cand;
+    } catch {}
+    try {
+      await run(cand, ['-V']);
+      return cand;
+    } catch {}
   }
   throw new Error('Python tidak ditemukan');
 }
+
 
 // Cek ffmpeg (optional)
 async function haveFfmpeg() {
