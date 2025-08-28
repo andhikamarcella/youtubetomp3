@@ -1,8 +1,9 @@
-// index.js — Node memanggil yt-dlp via Python module
+// index.js — Node memanggil yt-dlp via Python module + cookies + fallback
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, mkdirSync, readdirSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import { nanoid } from 'nanoid';
 import express from 'express';
 import cors from 'cors';
@@ -39,32 +40,32 @@ async function check(cmd, flags) {
   try { await run(cmd, flags); return true; } catch { return false; }
 }
 
-// di dekat atas file
+// Pilih Python (utamakan dari ENV YT_PY — diset di Dockerfile venv)
 const PY_CANDIDATES = process.platform === 'win32'
   ? ['py', 'python', 'python3']
   : ['python3', 'python'];
 
 async function pickPython() {
-  // 1) kalau diset dari Dockerfile, pakai itu
   if (process.env.YT_PY) return process.env.YT_PY;
-  // 2) fallback cari yang tersedia
   for (const cand of PY_CANDIDATES) {
-    try {
-      await run(cand, ['--version']);
-      return cand;
-    } catch {}
-    try {
-      await run(cand, ['-V']);
-      return cand;
-    } catch {}
+    if (await check(cand, ['--version'])) return cand;
+    if (await check(cand, ['-V'])) return cand;
   }
   throw new Error('Python tidak ditemukan');
 }
 
-
-// Cek ffmpeg (optional)
+// Cek ffmpeg (opsional)
 async function haveFfmpeg() {
-  return (await check('ffmpeg', ['-version'])) || (await check('/usr/bin/ffmpeg', ['-version'])) || (await check('/usr/local/bin/ffmpeg', ['-version']));
+  return (await check('ffmpeg', ['-version'])) ||
+         (await check('/usr/bin/ffmpeg', ['-version'])) ||
+         (await check('/usr/local/bin/ffmpeg', ['-version']));
+}
+
+// ==== Cookies handling (ENV -> file sementara) ====
+const cookiesFile = join(os.tmpdir(), 'cookies.txt');
+if (process.env.YT_COOKIES) {
+  try { writeFileSync(cookiesFile, process.env.YT_COOKIES, 'utf8'); }
+  catch (_) { /* abaikan */ }
 }
 
 // ============ API ============
@@ -73,17 +74,18 @@ app.post('/api/convert', async (req, res) => {
     const { url, quality = 128, id3, trim, normalize } = req.body || {};
     if (!url || !/^https?:\/\//.test(url)) return res.status(400).json({ error: 'URL tidak valid' });
 
-    const PY = await pickPython();                 // ← Python launcher
-    const hasFfmpeg = await haveFfmpeg();          // ← opsional
+    const PY = await pickPython();
+    const hasFfmpeg = await haveFfmpeg();
 
     const id = nanoid(10);
     const jobDir = join(JOBS_DIR, id);
     mkdirSync(jobDir, { recursive: true });
 
-    // Helper download via Python module yt_dlp
+    // Helper yt-dlp via Python module (auto pakai cookies kalau ada)
     async function ytdlp(args) {
-      // tambahkan -m yt_dlp
-      return run(PY, ['-m', 'yt_dlp', ...args], { env: { ...process.env, PYTHONNOUSERSITE: '1' }});
+      const base = [];
+      if (process.env.YT_COOKIES) base.push('--cookies', cookiesFile);
+      return run(PY, ['-m', 'yt_dlp', ...base, ...args], { env: { ...process.env, PYTHONNOUSERSITE: '1' } });
     }
 
     if (hasFfmpeg) {
@@ -91,7 +93,8 @@ app.post('/api/convert', async (req, res) => {
       const tmpOut  = join(jobDir, 'audio.%(ext)s');
       const outFile = join(jobDir, 'output.mp3');
 
-      await ytdlp(['--no-warnings','--no-playlist','--geo-bypass','-N','2','-f','bestaudio/best','-o', tmpOut, url]);
+      await ytdlp(['--no-warnings','--no-playlist','--geo-bypass','-N','2',
+                   '-f','bestaudio/best','-o', tmpOut, url]);
 
       const inputs = readdirSync(jobDir).filter(f => f.startsWith('audio.'));
       if (!inputs.length) return res.status(500).json({ error: 'Audio tidak ditemukan' });
@@ -147,14 +150,11 @@ app.post('/api/convert', async (req, res) => {
 
 // Diagnostik
 app.get('/diag', async (_req, res) => {
-  let py = null, ytVer = null, ffVer = null, hasFfmpeg = false;
-  try {
-    py = await pickPython();
-    ytVer = await run(py, ['-m','yt_dlp','--version']);
-  } catch {}
-  hasFfmpeg = await haveFfmpeg();
-  if (hasFfmpeg) { try { ffVer = (await run('ffmpeg',['-version'])).split('\n')[0]; } catch {} }
-  res.json({ python: py, yt_dlp_version: ytVer, ffmpeg: hasFfmpeg ? ffVer : null });
+  let py = null, ytVer = null, ffVer = null, hasF = false;
+  try { py = await pickPython(); ytVer = await run(py, ['-m','yt_dlp','--version']); } catch {}
+  hasF = await haveFfmpeg();
+  if (hasF) { try { ffVer = (await run('ffmpeg',['-version'])).split('\n')[0]; } catch {} }
+  res.json({ python: py, yt_dlp_version: ytVer, ffmpeg: hasF ? ffVer : null, cookies: !!process.env.YT_COOKIES });
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
