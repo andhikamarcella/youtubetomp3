@@ -1,8 +1,11 @@
-// index.js — Node memanggil yt-dlp via Python module + cookies + fallback
+// index.js — Node memanggil yt-dlp via Python module + cookies runtime (tanpa redeploy) + fallback ENV
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { existsSync, mkdirSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  existsSync, mkdirSync, readdirSync, renameSync, writeFileSync, statSync, writeFileSync as writeFile
+} from 'node:fs';
+import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import { nanoid } from 'nanoid';
 import express from 'express';
@@ -61,12 +64,46 @@ async function haveFfmpeg() {
          (await check('/usr/local/bin/ffmpeg', ['-version']));
 }
 
-// ==== Cookies handling (ENV -> file sementara) ====
-const cookiesFile = join(os.tmpdir(), 'cookies.txt');
-if (process.env.YT_COOKIES) {
-  try { writeFileSync(cookiesFile, process.env.YT_COOKIES, 'utf8'); }
-  catch (_) { /* abaikan */ }
+// ==== Cookies runtime (/tmp) + fallback ENV ====
+const RUNTIME_COOKIE_PATH = join(os.tmpdir(), 'cookies.txt');
+
+// Inisialisasi: kalau ada YT_COOKIES (ENV) dan file runtime belum dibuat, tulis sekali
+if (process.env.YT_COOKIES && !existsSync(RUNTIME_COOKIE_PATH)) {
+  try { writeFileSync(RUNTIME_COOKIE_PATH, process.env.YT_COOKIES, 'utf8'); } catch {}
 }
+
+// Helper untuk mengetahui apakah file cookies runtime ada
+function haveRuntimeCookies() {
+  try { return statSync(RUNTIME_COOKIE_PATH).size > 0; } catch { return false; }
+}
+
+// ============ ADMIN (upload cookies tanpa redeploy) ============
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+
+app.use('/admin', (req, res, next) => {
+  // Bearer <token>
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!ADMIN_TOKEN || token === ADMIN_TOKEN) return next();
+  return res.status(401).json({ error: 'unauthorized' });
+});
+
+// accept text/plain OR any (form-data raw). Limit 1MB
+app.post('/admin/upload-cookies', express.text({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  const body = req.body || '';
+  if (!body.trim()) return res.status(400).json({ error: 'empty body' });
+  await fsp.writeFile(RUNTIME_COOKIE_PATH, body, 'utf8');
+  const st = await fsp.stat(RUNTIME_COOKIE_PATH);
+  res.json({ ok: true, path: RUNTIME_COOKIE_PATH, bytes: st.size, mtime: st.mtime });
+});
+
+app.get('/admin/cookies-status', async (_req, res) => {
+  try {
+    const st = await fsp.stat(RUNTIME_COOKIE_PATH);
+    return res.json({ exists: true, bytes: st.size, mtime: st.mtime });
+  } catch {
+    return res.json({ exists: false });
+  }
+});
 
 // ============ API ============
 app.post('/api/convert', async (req, res) => {
@@ -81,10 +118,10 @@ app.post('/api/convert', async (req, res) => {
     const jobDir = join(JOBS_DIR, id);
     mkdirSync(jobDir, { recursive: true });
 
-    // Helper yt-dlp via Python module (auto pakai cookies kalau ada)
+    // Helper yt-dlp via Python module (auto pakai cookies runtime kalau ada; fallback ENV sdh ditulis ke file saat start)
     async function ytdlp(args) {
       const base = [];
-      if (process.env.YT_COOKIES) base.push('--cookies', cookiesFile);
+      if (haveRuntimeCookies()) base.push('--cookies', RUNTIME_COOKIE_PATH);
       return run(PY, ['-m', 'yt_dlp', ...base, ...args], { env: { ...process.env, PYTHONNOUSERSITE: '1' } });
     }
 
@@ -154,7 +191,12 @@ app.get('/diag', async (_req, res) => {
   try { py = await pickPython(); ytVer = await run(py, ['-m','yt_dlp','--version']); } catch {}
   hasF = await haveFfmpeg();
   if (hasF) { try { ffVer = (await run('ffmpeg',['-version'])).split('\n')[0]; } catch {} }
-  res.json({ python: py, yt_dlp_version: ytVer, ffmpeg: hasF ? ffVer : null, cookies: !!process.env.YT_COOKIES });
+  res.json({
+    python: py,
+    yt_dlp_version: ytVer,
+    ffmpeg: hasF ? ffVer : null,
+    cookies: { runtime: haveRuntimeCookies(), from_env_on_boot: !!process.env.YT_COOKIES }
+  });
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
