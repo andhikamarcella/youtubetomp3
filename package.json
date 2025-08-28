@@ -7,6 +7,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "nanoid": "^5.1.5"
+    "nanoid": "^5.1.5",
+    "yt-dlp-exec": "^2.0.0",
+  "fluent-ffmpeg": "^2.1.2"
   }
 }
