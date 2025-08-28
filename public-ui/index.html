@@ -18,10 +18,7 @@
       text-align: center;
       transition: background-color .15s, border-color .15s;
     }
-    .dropzone.dragover {
-      background: rgba(13,110,253,.05);
-      border-color: var(--bs-primary);
-    }
+    .dropzone.dragover { background: rgba(13,110,253,.05); border-color: var(--bs-primary); }
     .thumbnail { width: 100%; border-radius: .8rem; object-fit: cover; }
     .quality-badge { cursor: pointer; }
     .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; padding: .1rem .4rem; border: 1px solid var(--bs-border-color); border-radius: .3rem; background: var(--bs-tertiary-bg); }
@@ -242,14 +239,13 @@
       </div>
     </section>
 
-    <!-- API Spec -->
+    <!-- API Spec (singkat) -->
     <section class="mt-5" id="apiSpec">
       <div class="row justify-content-center">
         <div class="col-lg-10">
           <div class="card">
             <div class="card-body">
               <h2 class="h5 mb-3"><i class="bi bi-plug me-2"></i>Spesifikasi Backend API (contoh)</h2>
-              <p class="small text-secondary">Implementasi di server Anda. Contoh respons agar halaman ini bekerja:</p>
               <pre class="bg-body-tertiary p-3 rounded small mb-3"><code>POST /api/convert
 Content-Type: application/json
 {
@@ -261,11 +257,10 @@ Content-Type: application/json
 }
 ↳ 200 OK
 {
-  "filename": "Video Title - Channel (128kbps).mp3",
-  "downloadUrl": "https://your-domain.example/jobs/abc123/output.mp3"
+  "filename": "Video Title (128kbps).mp3",
+  "downloadUrl": "/jobs/abc123/output.mp3"
 }
 </code></pre>
-              <p class="small mb-0">Opsional: gunakan <code>text/event-stream</code> di <code>/api/progress?id=abc123</code> untuk progress real‑time (0–100).</p>
             </div>
           </div>
         </div>
@@ -301,51 +296,35 @@ Content-Type: application/json
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // === Config untuk pemakaian via file:// ===
-    // Jika kamu membuka HTML langsung (file://), set API_BASE ke alamat backend kamu.
-    // Contoh default backend lokal:
-    const API_BASE = window.location.origin; // UI & API satu domain (Render)
+    // === Konfigurasi ===
+    const API_BASE = window.location.origin; // UI & API satu domain
+
     // ===== Utilities =====
-    function makeAbsolute(u){
-      if (!u) return u;
-      if (/^https?:/i.test(u)) return u;
-      return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`;
-    }
+    function makeAbsolute(u){ if (!u) return u; if (/^https?:/i.test(u)) return u; return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`; }
     const $ = (sel, parent=document) => parent.querySelector(sel);
     const $$ = (sel, parent=document) => Array.from(parent.querySelectorAll(sel));
 
-    const state = {
-      current: null, // { url, id, title, author, thumbnail }
-      queue: [],     // items like current + quality
-      history: JSON.parse(localStorage.getItem('ytmp3-history')||'[]')
-    };
-
-    const yearEl = $('#year'); yearEl.textContent = new Date().getFullYear();
-
-    function setTheme(dark) {
-      document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
-      localStorage.setItem('ytmp3-theme', dark ? 'dark' : 'light');
-      $('#themeToggle').checked = dark;
-    }
-    setTheme(localStorage.getItem('ytmp3-theme') === 'dark');
-
-    $('#themeToggle').addEventListener('change', (e)=> setTheme(e.target.checked));
-
-    function parseYouTubeId(url) {
-      try {
+    // Bersihkan URL (hapus ?si= dkk, ubah youtu.be → watch?v=ID)
+    function cleanYoutubeUrl(url){
+      try{
         const u = new URL(url);
-        if (/youtu\.be$/.test(u.hostname)) return u.pathname.slice(1);
-        if (/youtube\.com$/.test(u.hostname)) return u.searchParams.get('v');
-      } catch (e) { return null; }
-      return null;
+        if (u.hostname === 'youtu.be' && u.pathname.length > 1) {
+          return `https://www.youtube.com/watch?v=${u.pathname.slice(1)}`;
+        }
+        ['si','feature','pp','t'].forEach(p => u.searchParams.delete(p));
+        return u.origin + u.pathname + (u.searchParams.toString() ? `?${u.searchParams}` : '');
+      }catch{ return url; }
     }
 
-    function mmssToSeconds(mmss) {
-      if (!mmss) return null;
-      const m = mmss.trim().match(/^(\d{1,2}):(\d{2})$/);
-      if (!m) return null;
-      return parseInt(m[1],10)*60 + parseInt(m[2],10);
-    }
+    const state = { current: null, queue: [], history: JSON.parse(localStorage.getItem('ytmp3-history')||'[]') };
+    $('#year').textContent = new Date().getFullYear();
+
+    function setTheme(dark){ document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light'); localStorage.setItem('ytmp3-theme', dark ? 'dark' : 'light'); $('#themeToggle').checked = dark; }
+    setTheme(localStorage.getItem('ytmp3-theme') === 'dark');
+    $('#themeToggle').addEventListener('change', e=> setTheme(e.target.checked));
+
+    function parseYouTubeId(url){ try{ const u = new URL(url); if (/youtu\.be$/.test(u.hostname)) return u.pathname.slice(1); if (/youtube\.com$/.test(u.hostname)) return u.searchParams.get('v'); }catch{ return null; } return null; }
+    function mmssToSeconds(mmss){ if (!mmss) return null; const m = mmss.trim().match(/^(\d{1,2}):(\d{2})$/); if (!m) return null; return parseInt(m[1],10)*60 + parseInt(m[2],10); }
 
     // ===== UI Bindings =====
     const urlInput = $('#urlInput');
@@ -364,85 +343,41 @@ Content-Type: application/json
     const warnArea = $('#warnArea');
     const warnText = $('#warnText');
 
-    pasteBtn.addEventListener('click', async ()=>{
-      try {
-        const text = await navigator.clipboard.readText();
-        urlInput.value = text.trim();
-      } catch(e) { toast('Gagal membaca clipboard'); }
-    });
+    pasteBtn.addEventListener('click', async ()=>{ try{ const text = await navigator.clipboard.readText(); urlInput.value = text.trim(); }catch{ toast('Gagal membaca clipboard'); } });
+    document.addEventListener('paste', e=>{ if (document.activeElement !== urlInput) { const text = e.clipboardData.getData('text'); if (text) urlInput.value = text.trim(); } });
 
-    document.addEventListener('paste', (e)=>{
-      if (document.activeElement !== urlInput) {
-        const text = e.clipboardData.getData('text');
-        if (text) urlInput.value = text.trim();
-      }
-    });
-
-    dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e)=>{
-      e.preventDefault(); dropzone.classList.remove('dragover');
-      const text = e.dataTransfer.getData('text');
-      if (text) urlInput.value = text.trim();
-    });
-
+    dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.classList.remove('dragover'); const text = e.dataTransfer.getData('text'); if (text) urlInput.value = text.trim(); });
     dropzone.addEventListener('click', ()=> urlInput.focus());
 
     fetchBtn.addEventListener('click', fetchMeta);
 
-    async function fetchMeta() {
+    async function fetchMeta(){
       resetWarning();
       const url = urlInput.value.trim();
       const id = parseYouTubeId(url);
       if (!id) return showWarning('URL YouTube tidak valid.');
-      try {
-        // oEmbed endpoint (tanpa API key). CORS biasanya diizinkan.
+      try{
         const oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
         const res = await fetch(oembed);
         if (!res.ok) throw new Error('Gagal mengambil metadata');
         const data = await res.json();
-        state.current = {
-          url,
-          id,
-          title: data.title,
-          author: data.author_name,
-          thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`
-        };
+        state.current = { url, id, title: data.title, author: data.author_name, thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg` };
         renderMeta();
-      } catch (e) {
-        showWarning('Tidak bisa mengambil info video. Pastikan video publik dan URL benar.');
-      }
+      }catch{ showWarning('Tidak bisa mengambil info video. Pastikan video publik dan URL benar.'); }
     }
 
-    function renderMeta() {
-      if (!state.current) return;
-      titleEl.textContent = state.current.title;
-      authorEl.textContent = state.current.author;
-      thumbEl.src = state.current.thumbnail;
-      openVideo.href = state.current.url;
-      $('#id3Title').value = state.current.title;
-      $('#id3Artist').value = state.current.author;
-      metaCard.classList.remove('d-none');
-    }
+    function renderMeta(){ if (!state.current) return; titleEl.textContent = state.current.title; authorEl.textContent = state.current.author; thumbEl.src = state.current.thumbnail; openVideo.href = state.current.url; $('#id3Title').value = state.current.title; $('#id3Artist').value = state.current.author; metaCard.classList.remove('d-none'); }
 
-    function showWarning(msg){
-      warnText.textContent = msg;
-      warnArea.classList.remove('d-none');
-    }
+    function showWarning(msg){ warnText.textContent = msg; warnArea.classList.remove('d-none'); }
     function resetWarning(){ warnArea.classList.add('d-none'); }
-
-    function selectedQuality(){
-      const q = document.querySelector('input[name="quality"]:checked');
-      return q ? parseInt(q.value,10) : 128;
-    }
+    function selectedQuality(){ const q = document.querySelector('input[name="quality"]:checked'); return q ? parseInt(q.value,10) : 128; }
 
     convertBtn.addEventListener('click', ()=> doConvert(state.current));
     queueBtn.addEventListener('click', ()=> { if (state.current) addToQueue(state.current, selectedQuality()); });
 
-    function addToQueue(item, quality){
-      state.queue.push({ ...item, quality });
-      renderQueue();
-    }
+    function addToQueue(item, quality){ state.queue.push({ ...item, quality }); renderQueue(); }
 
     function renderQueue(){
       const tbody = $('#queueTable tbody');
@@ -460,60 +395,25 @@ Content-Type: application/json
       });
     }
 
-    $('#queueTable').addEventListener('click', (e)=>{
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      const idx = parseInt(btn.dataset.idx,10);
-      const act = btn.dataset.act;
-      if (act === 'remove') { state.queue.splice(idx,1); renderQueue(); return; }
-      if (act === 'convert') { doConvert(state.queue[idx]); }
+    $('#queueTable').addEventListener('click', e=>{
+      const btn = e.target.closest('button'); if (!btn) return; const idx = parseInt(btn.dataset.idx,10); const act = btn.dataset.act; if (act === 'remove') { state.queue.splice(idx,1); renderQueue(); return; } if (act === 'convert') { doConvert(state.queue[idx]); }
     });
 
     $('#clearQueue').addEventListener('click', ()=>{ state.queue = []; renderQueue(); });
-    $('#processQueue').addEventListener('click', async ()=>{
-      for (let i=0;i<state.queue.length;i++) { await doConvert(state.queue[i]); }
-    });
+    $('#processQueue').addEventListener('click', async ()=>{ for (let i=0;i<state.queue.length;i++) { await doConvert(state.queue[i]); } });
 
-    function pushHistory(entry){
-      state.history.unshift(entry);
-      state.history = state.history.slice(0,100);
-      localStorage.setItem('ytmp3-history', JSON.stringify(state.history));
-      renderHistory();
-    }
+    function pushHistory(entry){ state.history.unshift(entry); state.history = state.history.slice(0,100); localStorage.setItem('ytmp3-history', JSON.stringify(state.history)); renderHistory(); }
 
-    function renderHistory(){
-      const list = $('#historyList');
-      list.innerHTML = '';
-      if (!state.history.length) { list.innerHTML = '<div class="text-secondary">Belum ada riwayat.</div>'; return; }
-      state.history.forEach(h=>{
-        const a = document.createElement('a');
-        a.className = 'list-group-item list-group-item-action d-flex align-items-center gap-3';
-        a.href = h.downloadUrl || '#';
-        a.target = '_blank'; a.rel = 'noopener';
-        a.innerHTML = `<img class="history-cover" src="${h.thumbnail}" alt="thumb">
+    function renderHistory(){ const list = $('#historyList'); list.innerHTML = ''; if (!state.history.length) { list.innerHTML = '<div class="text-secondary">Belum ada riwayat.</div>'; return; } state.history.forEach(h=>{ const a = document.createElement('a'); a.className = 'list-group-item list-group-item-action d-flex align-items-center gap-3'; a.href = h.downloadUrl || '#'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = `<img class="history-cover" src="${h.thumbnail}" alt="thumb">
           <div class="flex-grow-1">
             <div class="fw-semibold text-truncate">${h.title}</div>
             <div class="small text-secondary text-truncate">${h.author} · ${h.quality}kbps</div>
           </div>
-          <i class="bi bi-download"></i>`;
-        list.appendChild(a);
-      });
-    }
+          <i class="bi bi-download"></i>`; list.appendChild(a); }); }
     renderHistory();
 
-    $('#clearHistory').addEventListener('click', ()=>{
-      if (confirm('Hapus semua riwayat?')){
-        state.history = []; localStorage.removeItem('ytmp3-history'); renderHistory();
-      }
-    });
-
-    $('#exportHistory').addEventListener('click', ()=>{
-      const blob = new Blob([JSON.stringify(state.history, null, 2)], {type:'application/json'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'ytmp3-history.json'; a.click();
-      URL.revokeObjectURL(a.href);
-    });
+    $('#clearHistory').addEventListener('click', ()=>{ if (confirm('Hapus semua riwayat?')){ state.history = []; localStorage.removeItem('ytmp3-history'); renderHistory(); } });
+    $('#exportHistory').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(state.history, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ytmp3-history.json'; a.click(); URL.revokeObjectURL(a.href); });
 
     // ===== Conversion =====
     async function doConvert(item){
@@ -523,332 +423,48 @@ Content-Type: application/json
       setProgress(5);
       try {
         const payload = {
-          url: item.url,
+          url: cleanYoutubeUrl(item.url),
           quality: parseInt(document.querySelector('input[name="quality"]:checked')?.value || item.quality || 128,10),
           id3: { title: $('#id3Title').value, artist: $('#id3Artist').value },
           trim: { start: $('#trimStart').value || null, end: $('#trimEnd').value || null },
           normalize: $('#normalize').checked
         };
-        const res = await fetch(`${API_BASE}/api/convert`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+
+        const resp = await fetch(`${API_BASE}/api/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         setProgress(50);
-        if (!res.ok) throw new Error('Konversi gagal');
-        const data = await res.json();
-        setProgress(90);
-        if (data.downloadUrl) {
-          forceDownload(makeAbsolute(data.downloadUrl), data.filename || 'audio.mp3');
-          pushHistory({ ...item, quality: payload.quality, downloadUrl: data.downloadUrl });
-        } else if (data.blobBase64) {
-          const a = document.createElement('a');
-          a.href = `data:audio/mpeg;base64,${data.blobBase64}`; a.download = data.filename || 'audio.mp3'; a.click();
-          pushHistory({ ...item, quality: payload.quality, downloadUrl: null });
-        } else {
-          throw new Error('Respons API tidak valid');
-        }
+
+        const raw = await resp.text();
+        let data = null; try { data = JSON.parse(raw); } catch {}
+        if (!resp.ok) { const msg = (data && data.error) || raw || `HTTP ${resp.status}`; throw new Error(msg); }
+
+        // Sukses → unduh file
+        const dlUrl = makeAbsolute(data.downloadUrl);
+        forceDownload(dlUrl, data.filename || 'audio.mp3');
+        pushHistory({
+          title: $('#id3Title').value || item.title,
+          author: $('#id3Artist').value || item.author,
+          thumbnail: item.thumbnail,
+          quality: payload.quality,
+          downloadUrl: dlUrl
+        });
+
         setProgress(100);
-        setTimeout(()=> progressWrap.classList.add('d-none'), 800);
       } catch (e) {
         showWarning(e.message || 'Terjadi kesalahan saat konversi');
-        progressWrap.classList.add('d-none');
+      } finally {
+        setTimeout(()=> progressWrap.classList.add('d-none'), 800);
       }
     }
 
-    function setProgress(v){
-      v = Math.max(0, Math.min(100, v));
-      progressBar.style.width = v + '%';
-      progressBar.textContent = v + '%';
-    }
+    function setProgress(v){ v = Math.max(0, Math.min(100, v)); progressBar.style.width = v + '%'; progressBar.textContent = v + '%'; }
 
-    function forceDownload(url, filename){
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
+    function forceDownload(url, filename){ const a = document.createElement('a'); a.href = url; a.download = filename; a.rel = 'noopener'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 
-    // Simple toast using alert (can be improved with Toast component)
-    function toast(msg){
-      const div = document.createElement('div');
-      div.className = 'position-fixed bottom-0 end-0 p-3';
-      div.innerHTML = `<div class="toast align-items-center show text-bg-dark" role="alert"><div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
-      document.body.appendChild(div);
-      setTimeout(()=> div.remove(), 2500);
-    }
+    function toast(msg){ const div = document.createElement('div'); div.className = 'position-fixed bottom-0 end-0 p-3'; div.innerHTML = `<div class="toast align-items-center show text-bg-dark" role="alert"><div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`; document.body.appendChild(div); setTimeout(()=> div.remove(), 2500); }
   </script>
-    <!-- Backend (Node.js + Express) -->
-    <section class="mt-5" id="backend">
-      <div class="row justify-content-center">
-        <div class="col-lg-10">
-          <div class="card">
-            <div class="card-body">
-              <h2 class="h5 mb-3"><i class="bi bi-hammer me-2"></i>Fix "Failed to fetch" — Siapkan Backend</h2>
-              <p class="small">Error <code>Failed to fetch</code> muncul karena endpoint <code>/api/convert</code> belum tersedia atau terblokir CORS/HTTPS. Ikuti panduan singkat ini.</p>
-
-              <ol class="small">
-                <li><strong>Jalankan server backend</strong> di domain/port yang sama dengan frontend, atau aktifkan CORS.</li>
-                <li><strong>Pastikan HTTPS cocok</strong>: jika halaman dibuka lewat <code>https://</code>, backend juga harus <code>https://</code> (hindari mixed content).</li>
-                <li><strong>Periksa path</strong>: UI memanggil <code>POST /api/convert</code>. Jika backend di subpath lain, ubah URL di JS.</li>
-                <li><strong>Periksa log</strong> di DevTools (F12 → Network) untuk status, CORS header, dan pesan error.</li>
-              </ol>
-
-              <hr/>
-              <h3 class="h6">Contoh Backend: Node.js + Express (+ yt-dlp + FFmpeg)</h3>
-              <p class="small">Contoh ini mengonversi audio YouTube ke MP3 (untuk konten yang Anda miliki/diizinkan). Simpan file di folder <code>server/</code>.</p>
-
-              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code>// server/package.json
-{
-  
-  "name": "ytmp3-backend",
-  "type": "module",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "nanoid": "^5.0.7"
-  }
-}
-
-// server/.env (opsional)
-PORT=3000
-
-// server/index.js
-import express from 'express';
-import cors from 'cors';
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import { nanoid } from 'nanoid';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const app = express();
-app.use(express.json({ limit: '1mb' }));
-app.use(cors()); // jika frontend beda origin. Jika satu origin, Anda boleh hapus ini.
-
-// Sediakan folder publik untuk hasil unduhan
-const PUBLIC_DIR = join(__dirname, 'public');
-const JOBS_DIR = join(PUBLIC_DIR, 'jobs');
-if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR);
-if (!existsSync(JOBS_DIR)) mkdirSync(JOBS_DIR);
-app.use('/jobs', express.static(JOBS_DIR, { fallthrough: false }));
-
-// Cek ketersediaan yt-dlp & ffmpeg di PATH
-function checkTool(cmd) {
-  return new Promise((resolve) => {
-    const p = spawn(cmd, ['-version']);
-    p.on('error', () => resolve(false));
-    p.on('close', (code) => resolve(code === 0));
-  });
-}
-
-app.post('/api/convert', async (req, res) => {
-  try {
-    const { url, quality = 128, id3, trim, normalize } = req.body || {};
-    if (!url) return res.status(400).json({ error: 'Missing url' });
-
-    const hasYtDlp = await checkTool('yt-dlp');
-    const hasFfmpeg = await checkTool('ffmpeg');
-    if (!hasYtDlp || !hasFfmpeg) {
-      return res.status(500).json({ error: 'yt-dlp/ffmpeg tidak ditemukan di server' });
-    }
-
-    const id = nanoid(10);
-    const jobDir = join(JOBS_DIR, id);
-    mkdirSync(jobDir);
-
-    // 1) Ambil audio terbaik (m4a/webm) dari YouTube
-    const bestAudio = join(jobDir, 'audio.m4a');
-    const ytdlpArgs = [
-      '-f', 'bestaudio/best',
-      '-o', bestAudio,
-      url
-    ];
-
-    await new Promise((resolve, reject) => {
-      const y = spawn('yt-dlp', ytdlpArgs);
-      y.on('error', reject);
-      y.stderr.on('data', d => process.stderr.write(d));
-      y.on('close', code => code === 0 ? resolve() : reject(new Error('yt-dlp gagal')));
-    });
-
-    // 2) Konversi ke MP3 sesuai kualitas + opsi trim/normalize
-    const outFile = join(jobDir, 'output.mp3');
-    const ffArgs = ['-y', '-i', bestAudio];
-
-    if (trim?.start) ffArgs.unshift('-ss', trim.start);
-    if (trim?.end) ffArgs.push('-to', trim.end);
-
-    if (normalize) {
-      // filter loudness dasar
-      ffArgs.push('-af', 'dynaudnorm');
-    }
-
-    ffArgs.push('-vn', '-codec:a', 'libmp3lame', '-b:a', `${quality}k`, outFile);
-
-    await new Promise((resolve, reject) => {
-      const f = spawn('ffmpeg', ffArgs);
-      f.on('error', reject);
-      f.stderr.on('data', d => process.stderr.write(d));
-      f.on('close', code => code === 0 ? resolve() : reject(new Error('ffmpeg gagal')));
-    });
-
-    // 3) (Opsional) tulis ID3 dengan ffmpeg -metadata
-    if (id3?.title || id3?.artist) {
-      const tagged = join(jobDir, 'output.tagged.mp3');
-      const meta = [];
-      if (id3.title) meta.push('-metadata', `title=${id3.title}`);
-      if (id3.artist) meta.push('-metadata', `artist=${id3.artist}`);
-      await new Promise((resolve, reject) => {
-        const f2 = spawn('ffmpeg', ['-y', '-i', outFile, ...meta, '-codec:a', 'copy', tagged]);
-        f2.on('error', reject);
-        f2.on('close', code => code === 0 ? resolve() : reject(new Error('penulisan ID3 gagal')));
-      });
-      // ganti file
-      await new Promise((resolve, reject) => {
-        const f3 = spawn(process.platform === 'win32' ? 'cmd' : 'bash', process.platform === 'win32' ? ['/c', 'move', '/y', tagged, outFile] : ['-lc', `mv -f "${tagged}" "${outFile}"`]);
-        f3.on('error', reject);
-        f3.on('close', () => resolve());
-      });
-    }
-
-    const filename = `${(id3?.title || 'audio')}-${quality}kbps.mp3`;
-    const downloadUrl = `/jobs/${id}/output.mp3`;
-    res.json({ filename, downloadUrl });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message || 'Server error' });
-  }
-});
-
-// (Opsional) layani file frontend statis jika ditempatkan di ../public-ui
-// app.use(express.static(join(__dirname, '../public-ui')))
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log('Backend listening on :' + port));
-</code></pre>
-
-              <h4 class="h6">Instalasi Cepat</h4>
-              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code># 1) Siapkan tool sistem
-# Windows: winget install Gyan.FFmpeg; choco install yt-dlp
-# macOS: brew install ffmpeg yt-dlp
-# Linux: sudo apt-get install -y ffmpeg && pipx install yt-dlp
-
-# 2) Jalankan backend
-cd server
-npm i
-npm start
-
-# 3) Pastikan frontend memanggil origin yang sama
-# Jika UI Anda di http://localhost:3000, taruh file HTML ini lewat Express static
-# atau ubah fetch('/api/convert') menjadi fetch('http://localhost:3000/api/convert').
-</code></pre>
-
-              <h4 class="h6">Checklist CORS/HTTPS</h4>
-              <ul class="small">
-                <li>Jika UI di <code>file://</code> atau domain berbeda, aktifkan <code>cors()</code> di Express.</li>
-                <li>Jangan campur <code>https</code> (UI) dengan <code>http</code> (backend). Gunakan reverse proxy (Nginx) atau deploy di satu domain.</li>
-                <li>Uji dengan <em>Postman</em>/<em>curl</em> ke <code>POST /api/convert</code> untuk memastikan server OK.</li>
-              </ul>
-
-              <div class="alert alert-info small mb-0"><strong>Catatan legal:</strong> Gunakan hanya untuk materi yang Anda miliki haknya atau telah diizinkan oleh pemilik. Hormati ToS platform.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Deploy ke Railway -->
-    <section class="mt-5" id="railway">
-      <div class="row justify-content-center">
-        <div class="col-lg-10">
-          <div class="card">
-            <div class="card-body">
-              <h2 class="h5 mb-3"><i class="bi bi-train-front me-2"></i>Deploy Backend di Railway (dengan FFmpeg & yt‑dlp)</h2>
-              <p class="small">Railway cocok buat backend Node/Express kita. Kita pakai <strong>Dockerfile</strong> biar FFmpeg & yt-dlp tersedia.</p>
-
-              <h3 class="h6">1) Struktur repo</h3>
-              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code>your-repo/
-├─ server/
-│  ├─ index.js        # backend (sudah ada di canvas)
-│  ├─ package.json    # sudah ada di canvas
-├─ Dockerfile
-├─ railway.toml
-</code></pre>
-
-              <h3 class="h6">2) Dockerfile</h3>
-              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code># Dockerfile
-FROM node:20-slim
-
-# Install ffmpeg & python3-pip untuk yt-dlp
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg python3-pip \
-    && pip3 install --no-cache-dir yt-dlp \
-    && rm -rf /var/lib/apt/lists/*
-
-# App files
-WORKDIR /app
-COPY server ./server
-WORKDIR /app/server
-RUN npm ci || npm i
-
-# Expose port dari Railway
-ENV PORT=8080
-
-# Buat folder untuk file hasil
-RUN mkdir -p public/jobs
-
-# Start
-CMD ["node", "index.js"]
-</code></pre>
-
-              <h3 class="h6">3) railway.toml (Volume untuk hasil unduhan)</h3>
-              <p class="small">Kita pakai volume agar folder <code>public/jobs</code> persisten.</p>
-              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code># railway.toml
-[build]
-builder = "DOCKERFILE"
-
-[[volumes]]
-name = "jobs"
-mountPath = "/app/server/public/jobs"
-</code></pre>
-
-              <h3 class="h6">4) Deploy</h3>
-              <ol class="small">
-                <li>Push repo ke GitHub (isi: <code>server/index.js</code>, <code>server/package.json</code>, <code>Dockerfile</code>, <code>railway.toml</code>).</li>
-                <li>Buka <strong>Railway</strong> → <em>New Project</em> → <em>Deploy from GitHub</em> → pilih repo kamu.</li>
-                <li>Tunggu build selesai. Service akan jalan di port <code>$PORT</code> (Railway berikan otomatis).</li>
-                <li>Di tab <em>Settings → Domains</em>, aktifkan domain public (mis. <code>https://ytmp3-yourapp.up.railway.app</code>).</li>
-              </ol>
-
-              <h3 class="h6">5) CORS & HTTPS</h3>
-              <ul class="small">
-                <li>Backend contoh sudah pakai <code>cors()</code>. Jika perlu batasi, isi origin dengan domain InfinityFree kamu.</li>
-                <li>Railway domain sudah <strong>HTTPS</strong> → aman untuk dipanggil dari situs InfinityFree (yang juga HTTPS).</li>
-              </ul>
-
-              <h3 class="h6">6) Hubungkan Frontend (InfinityFree atau file://)</h3>
-              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code>// Di HTML (sudah ada variabel ini):
-const API_BASE = 'https://ytmp3-yourapp.up.railway.app';
-</code></pre>
-
-              <h3 class="h6">7) Debug</h3>
-              <ul class="small">
-                <li><strong>Logs</strong>: Railway → Service → Logs (cek error yt-dlp/ffmpeg).</li>
-                <li><strong>Failed to fetch</strong>: cek mixed content (frontend https, backend https), dan CORS.</li>
-                <li><strong>File tidak terunduh</strong>: pastikan link <code>/jobs/&lt;id&gt;/output.mp3</code> diakses dan volume ter-mount.</li>
-              </ul>
-
-              <div class="alert alert-info small mb-0">Tip: Jika mau <em>scale to zero</em> hemat biaya, gunakan plan gratis dan aktifkan <em>sleep</em>. Pertanyaan? Kasih domain Railway kamu, nanti aku set <code>API_BASE</code> di file HTML kamu 😉</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
 </body>
 </html>
