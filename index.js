@@ -1,9 +1,9 @@
-// index.js — PyTube + ffmpeg backend (oEmbed-first metadata), better errors
+// index.js — annie (lux) + ffmpeg, oEmbed-first metadata, better errors
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import {
-  existsSync, mkdirSync, readdirSync, statSync, createReadStream
+  existsSync, mkdirSync, readdirSync, statSync
 } from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import { nanoid } from 'nanoid';
@@ -14,17 +14,30 @@ import adminRouter from './admin.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
-// ==== small utils ====
-function run(cmd, args = [], opts = {}) {
+const app = express();
+app.use(express.json({ limit: '1mb' }));
+app.use(cors());
+
+// ==== Static dirs (kompatibel project kamu) ====
+const UI_DIR     = join(__dirname, 'public-ui');
+const PUBLIC_DIR = join(__dirname, 'public');
+const JOBS_DIR   = join(PUBLIC_DIR, 'jobs');
+if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
+if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
+if (existsSync(UI_DIR)) app.use(express.static(UI_DIR));
+app.use('/jobs', express.static(JOBS_DIR, { fallthrough: false })); // :contentReference[oaicite:3]{index=3}
+
+// ==== Util proses dengan error yang jelas ====
+function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
     const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opts });
     let out = '', err = '';
-    p.stdout.on('data', d => out += d.toString());
-    p.stderr.on('data', d => err += d.toString());
+    p.stdout.on('data', d => (out += d.toString()));
+    p.stderr.on('data', d => (err += d.toString()));
     p.on('error', reject);
     p.on('close', code => {
       if (code === 0) return resolve(out.trim());
-      const msg = (err + '\\n' + out).trim() || `exit ${code}`;
+      const msg = (err + '\n' + out).trim() || `exit ${code}`;
       reject(new Error(msg));
     });
   });
@@ -33,136 +46,184 @@ function run(cmd, args = [], opts = {}) {
 async function have(cmd, flags = ['--version']) {
   try { await run(cmd, flags); return true; } catch { return false; }
 }
-
 async function ensureDeps() {
-  const okPy     = await have('python3', ['--version']);
-  const okFfmpeg = await have('ffmpeg',  ['-version']);
-  if (!okPy)     throw new Error('python3 tidak ditemukan');
+  const okAnnie  = await have('annie', ['-v']);       // lux yang di-rename jadi "annie" di Dockerfile
+  const okFfmpeg = await have('ffmpeg', ['-version']);
+  if (!okAnnie)  throw new Error('annie (lux) tidak ditemukan');
   if (!okFfmpeg) throw new Error('ffmpeg tidak ditemukan');
 }
 
-// ==== metadata (oEmbed-first) ====
-async function fetchOEmbed(url) {
-  // try noembed first (works for many sites incl. YouTube)
-  const targets = [
-    `https://noembed.com/embed?url=${encodeURIComponent(url)}`,
-    `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`
-  ];
-  for (const t of targets) {
+// ==== Helper path job ====
+function jobDir(jobId) {
+  const dir = join(JOBS_DIR, jobId);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+// ==== Metadata: pakai oEmbed dulu, fallback ke annie -j ====
+async function fetchInfoOEmbed(url) {
+  // Node 20 sudah ada global fetch
+  const o = new URL('https://www.youtube.com/oembed');
+  o.searchParams.set('url', url);
+  o.searchParams.set('format', 'json');
+  const r = await fetch(o, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  if (!r.ok) throw new Error(`oEmbed HTTP ${r.status}`);
+  const j = await r.json();
+  // oEmbed returns: title, author_name, thumbnail_url
+  return {
+    title: j.title || 'Unknown Title',
+    author: j.author_name || 'Unknown',
+    thumb: j.thumbnail_url || '',
+    site: 'YouTube',
+    raw: j
+  };
+}
+
+async function fetchInfoAnnie(url) {
+  const raw = await run('annie', ['-j', url]); // ini lux (binary renamed)
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  for (const line of lines) {
     try {
-      const r = await fetch(t, { headers: { 'user-agent': 'Mozilla/5.0' } });
-      if (!r.ok) continue;
-      const j = await r.json();
-      // normalize keys we care about
+      const d = JSON.parse(line);
       return {
-        title: j.title || null,
-        author: j.author_name || j.author || null,
-        thumbnail: j.thumbnail_url || null,
-        provider: j.provider_name || null
+        title: d.title || d.Title || 'Unknown Title',
+        author: d.author || d.Uploader || d.site || 'Unknown',
+        thumb: d.cover || d.pic || d.thumbnail || '',
+        site: d.site || 'YouTube',
+        raw: d
       };
     } catch {}
   }
-  return { title: null, author: null, thumbnail: null, provider: null };
+  throw new Error('Gagal parsing metadata dari annie');
 }
 
-// ==== PyTube downloader (calls helper python) ====
-async function downloadWithPyTube(url, outDir, outBasename) {
-  const py = 'python3';
-  const helper = join(__dirname, 'download_audio.py');
-  const stdout = await run(py, [helper, url, outDir, outBasename], { cwd: __dirname });
-  const p = stdout.trim();
-  try { statSync(p); } catch { throw new Error('File hasil PyTube tidak ditemukan'); }
-  return p;
+async function fetchInfo(url) {
+  try {
+    return await fetchInfoOEmbed(url); // cepat & stabil
+  } catch (_e) {
+    // fallback ke annie
+    return await fetchInfoAnnie(url);
+  }
 }
 
-// ==== ffmpeg transcode to mp3 ====
-async function toMp3(inputPath, outPath, kbps = 192) {
-  // ensure parent dir
-  mkdirSync(dirname(outPath), { recursive: true });
+// ==== Unduh via annie ====
+async function downloadWithAnnie(url, outDir, outBasename) {
+  // threads biar cepat; no-caption menghindari subtitle
+  await run('annie', [
+  '-o', outDir,
+  '-O', outBasename,
+  '--audio-only',      // download audio only
+  '--multi-thread',    // aktifkan multi-thread
+  '-n', '8',           // jumlah thread
+  url
+]);
+
+
+  // Cari file hasil download yang paling baru & match prefix
+  const files = readdirSync(outDir).map(f => join(outDir, f));
+  const cand = files
+    .filter(f => basename(f).startsWith(outBasename))
+    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+  if (!cand.length) throw new Error('Unduhan annie tidak ditemukan');
+  return cand[0];
+}
+
+// ==== Konversi ke MP3 via ffmpeg ====
+async function convertToMp3(inputFile, outputFile, kbps = 320, id3 = {}) {
+  const {
+    title = '', artist = '', album = '', comment = ''
+  } = id3;
+
   const args = [
-    '-y', '-i', inputPath,
+    '-y',
+    '-i', inputFile,
     '-vn',
-    '-ac', '2',
-    '-ar', '44100',
+    '-map', 'a:0',
+    '-c:a', 'libmp3lame',
     '-b:a', `${kbps}k`,
-    outPath
+    '-metadata', `title=${title}`,
+    '-metadata', `artist=${artist}`,
+    '-metadata', `album=${album}`,
+    '-metadata', `comment=${comment}`,
+    outputFile,
   ];
   await run('ffmpeg', args);
-  return outPath;
 }
 
-// ==== express app ====
-const app = express();
-app.use(express.json({ limit: '1mb' }));
-app.use(cors());
-
-// static hosting for jobs
-const PUBLIC_DIR = join(__dirname, 'public');
-const JOBS_DIR   = join(PUBLIC_DIR, 'jobs');
-if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
-if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
-app.use('/jobs', express.static(JOBS_DIR, { maxAge: '7d', fallthrough: true }));
-
-app.get('/', (_req, res) => res.type('text').send('ytmp3 backend ok'));
-
-app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
-
-// metadata endpoint (optional, used by your frontend)
-app.get('/api/oembed', async (req, res) => {
-  const url = String(req.query.url || '');
-  if (!url) return res.status(400).json({ error: 'url required' });
+// ==== API ====
+app.post('/api/fetch', async (req, res) => {
   try {
-    const meta = await fetchOEmbed(url);
-    res.json({ ok: true, meta });
+    const { url } = req.body || {};
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ error: 'URL tidak valid' });
+    }
+    await ensureDeps();
+    const meta = await fetchInfo(url);
+    return res.json({ ok: true, meta });
   } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
+    // kirim pesan error yang jelas
+    return res.status(500).json({ error: String(e.message || e) });
   }
 });
 
-// convert endpoint
 app.post('/api/convert', async (req, res) => {
-  const url  = String(req.body?.url || '');
-  const kbps = Math.max(64, Math.min(320, Number(req.body?.kbps || 192)));
-  if (!url) return res.status(400).json({ error: 'url required' });
-
-  const jobId = nanoid(10);
-  const dir   = join(JOBS_DIR, jobId);
-  const base  = 'audio';
-  mkdirSync(dir, { recursive: true });
-
+  const startedAt = Date.now();
   try {
+    const {
+      url,
+      kbps = 320,
+      id3 = {},
+      jobId = nanoid(10)
+    } = req.body || {};
+
+    if (!url || !/^https?:\/\//i.test(url)) {
+      return res.status(400).json({ error: 'URL tidak valid' });
+    }
+    if (![64, 96, 128, 160, 192, 256, 320].includes(Number(kbps))) {
+      return res.status(400).json({ error: 'kbps harus salah satu dari 64,96,128,160,192,256,320' });
+    }
     await ensureDeps();
 
-    // 1) metadata (non-blocking for pipeline, but we await to return together)
-    const metaPromise = fetchOEmbed(url);
+    const dir = jobDir(jobId);
+    const base = 'source';
+    const srcPath = await downloadWithAnnie(url, dir, base);
 
-    // 2) download via pytube → returns actual file path (e.g., audio.webm/m4a)
-    const inputPath = await downloadWithPyTube(url, dir, base);
+    // Ambil meta (toleran error)
+    let meta = {};
+    try {
+      const m = await fetchInfo(url);
+      meta.title   = id3.title  ?? m.title;
+      meta.artist  = id3.artist ?? m.author;
+      meta.album   = id3.album  ?? m.site ?? 'Downloaded';
+      meta.comment = id3.comment?? 'Converted by annie+ffmpeg';
+    } catch {
+      meta = { ...id3 };
+    }
 
-    // 3) transcode → MP3
-    const mp3Path = join(dir, `${base}.mp3`);
-    await toMp3(inputPath, mp3Path, kbps);
+    const outName = 'audio.mp3';
+    const outPath = join(dir, outName);
+    await convertToMp3(srcPath, outPath, Number(kbps), meta);
 
-    // 4) prepare response
-    const meta = await metaPromise;
-    const publicUrl = `/jobs/${jobId}/${basename(mp3Path)}`;
-
+    const elapsed = Math.round((Date.now() - startedAt) / 1000);
     return res.json({
       ok: true,
-      id: jobId,
-      mp3: publicUrl,
-      meta,
-      kbps
+      jobId,
+      files: {
+        source: `/jobs/${jobId}/${basename(srcPath)}`,
+        mp3:    `/jobs/${jobId}/${outName}`
+      },
+      elapsed_s: elapsed
     });
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) });
   }
 });
 
-// admin router (cookies upload/status still available, though pytube normally doesn't need it)
-app.use('/admin', adminRouter);
+// Health & Admin
+app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
+app.use('/admin', adminRouter); // :contentReference[oaicite:4]{index=4}
 
-// start
+// Start
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log('server listening on', PORT);
