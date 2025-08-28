@@ -1,23 +1,28 @@
+# Gunakan Node.js image
 FROM node:20-slim
 
-# Install ffmpeg + curl, ambil yt-dlp binary (tanpa pip)
+# Install dependencies untuk ffmpeg + yt-dlp
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
- && update-ca-certificates \
- && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-      -o /usr/local/bin/yt-dlp \
- && chmod a+rx /usr/local/bin/yt-dlp \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends ffmpeg python3 python3-pip \
+    && pip3 install --no-cache-dir yt-dlp \
+    && rm -rf /var/lib/apt/lists/*
 
+# Set working dir
 WORKDIR /app
 
-# lebih cepat: install deps dulu baru copy source
-COPY package*.json ./
+# Copy file backend
+COPY server ./server
+WORKDIR /app/server
+
+# Install deps nodejs
 RUN npm ci || npm i
 
-COPY . .
-
-ENV PORT=8080
+# Buat folder untuk hasil download
 RUN mkdir -p public/jobs
 
-CMD ["node","index.js"]
+# Port untuk Render (wajib dari env $PORT)
+ENV PORT=10000
+EXPOSE 10000
+
+# Start backend
+CMD ["node", "index.js"]
