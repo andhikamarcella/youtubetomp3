@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  existsSync, mkdirSync, readdirSync, renameSync, writeFileSync, statSync, writeFileSync as writeFile
+  existsSync, mkdirSync, readdirSync, renameSync, writeFileSync, statSync
 } from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
@@ -77,6 +77,38 @@ function haveRuntimeCookies() {
   try { return statSync(RUNTIME_COOKIE_PATH).size > 0; } catch { return false; }
 }
 
+// ==== Helper yt-dlp: coba no-cookie dulu, kalau gagal & cookies ada → fallback ====
+function ytCommonFlags() {
+  return [
+    '--no-warnings',
+    '--no-check-certificates',
+    '--no-playlist',
+    '--geo-bypass',
+    '--force-ipv4',
+    '--retries', '6',
+    '--retry-sleep', '2',
+    '--extractor-args', 'youtube:player_client=ios'
+  ];
+}
+
+/**
+ * Jalankan yt-dlp dengan strategi:
+ * 1) tanpa cookies (pakai ytCommonFlags)
+ * 2) kalau error & cookies runtime ada → ulangi dengan --cookies <path>
+ */
+async function runYtDlpNoCookieFirst(PY, args, opts = {}) {
+  const baseArgs = ['-m', 'yt_dlp', ...ytCommonFlags(), ...args];
+  try {
+    return await run(PY, baseArgs, { env: { ...process.env, PYTHONNOUSERSITE: '1' }, ...opts });
+  } catch (e1) {
+    if (haveRuntimeCookies()) {
+      const withCookies = ['-m', 'yt_dlp', '--cookies', RUNTIME_COOKIE_PATH, ...ytCommonFlags(), ...args];
+      return await run(PY, withCookies, { env: { ...process.env, PYTHONNOUSERSITE: '1' }, ...opts });
+    }
+    throw e1;
+  }
+}
+
 // ============ ADMIN (upload cookies tanpa redeploy) ============
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 
@@ -118,20 +150,17 @@ app.post('/api/convert', async (req, res) => {
     const jobDir = join(JOBS_DIR, id);
     mkdirSync(jobDir, { recursive: true });
 
-    // Helper yt-dlp via Python module (auto pakai cookies runtime kalau ada; fallback ENV sdh ditulis ke file saat start)
-    async function ytdlp(args) {
-      const base = [];
-      if (haveRuntimeCookies()) base.push('--cookies', RUNTIME_COOKIE_PATH);
-      return run(PY, ['-m', 'yt_dlp', ...base, ...args], { env: { ...process.env, PYTHONNOUSERSITE: '1' } });
-    }
-
     if (hasFfmpeg) {
-      // MODE A — ffmpeg tersedia → hasil MP3 CBR
+      // MODE A — ffmpeg tersedia → download bestaudio, lalu konversi ke MP3 CBR
       const tmpOut  = join(jobDir, 'audio.%(ext)s');
       const outFile = join(jobDir, 'output.mp3');
 
-      await ytdlp(['--no-warnings','--no-playlist','--geo-bypass','-N','2',
-                   '-f','bestaudio/best','-o', tmpOut, url]);
+      // NO-COOKIE FIRST → fallback cookies bila perlu
+      await runYtDlpNoCookieFirst(PY, [
+        '-f','bestaudio/best',
+        '-o', tmpOut,
+        url
+      ]);
 
       const inputs = readdirSync(jobDir).filter(f => f.startsWith('audio.'));
       if (!inputs.length) return res.status(500).json({ error: 'Audio tidak ditemukan' });
@@ -160,9 +189,13 @@ app.post('/api/convert', async (req, res) => {
 
     // MODE B — ffmpeg TIDAK ada → kirim audio asli (m4a/webm)
     const outPattern = join(jobDir, 'audio.%(ext)s');
-    await ytdlp(['--no-warnings','--no-playlist','--geo-bypass','-N','2',
-                 '-f','bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio',
-                 '-o', outPattern, url]);
+
+    // NO-COOKIE FIRST → fallback cookies bila perlu
+    await runYtDlpNoCookieFirst(PY, [
+      '-f','bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio',
+      '-o', outPattern,
+      url
+    ]);
 
     const files = readdirSync(jobDir).filter(f => f.startsWith('audio.'));
     if (!files.length) return res.status(500).json({ error: 'Audio tidak ditemukan' });
