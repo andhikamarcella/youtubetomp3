@@ -1,11 +1,11 @@
-// index.js — lengkap
+// index.js — lengkap & siap Render/host lain
 
 import express from 'express';
 import cors from 'cors';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync, mkdirSync, renameSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, renameSync } from 'fs';
 import { nanoid } from 'nanoid';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,11 +13,11 @@ const __dirname = dirname(__filename);
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
-app.use(cors()); // izinkan CORS (UI beda domain pun aman)
+app.use(cors()); // biarin aktif biar aman kalau UI beda domain
 
 // ====== Serve UI statis (satu domain) ======
 const UI_DIR = join(__dirname, 'public-ui');
-app.use(express.static(UI_DIR)); // jika ada public-ui/index.html, akan jadi homepage
+app.use(express.static(UI_DIR)); // kalau ada public-ui/index.html → jadi homepage
 
 // ====== Folder publik untuk hasil unduhan ======
 const PUBLIC_DIR = join(__dirname, 'public');
@@ -35,13 +35,13 @@ function checkTool(cmd) {
   });
 }
 
-// ====== POST /api/convert ======
-// Body:
+// ====== API: convert YouTube → MP3 ======
+// Body JSON:
 // {
 //   "url": "https://www.youtube.com/watch?v=...",
-//   "quality": 128,                          // kbps (default 128)
+//   "quality": 128,                        // kbps (default 128)
 //   "trim": { "start": "00:00:10", "end": "00:01:23" }, // opsional
-//   "normalize": true,                       // opsional (dynaudnorm)
+//   "normalize": true,                     // opsional (dynaudnorm)
 //   "id3": { "title": "Judul", "artist": "Artis" }      // opsional
 // }
 app.post('/api/convert', async (req, res) => {
@@ -62,10 +62,14 @@ app.post('/api/convert', async (req, res) => {
     const jobDir = join(JOBS_DIR, id);
     mkdirSync(jobDir, { recursive: true });
 
-    // 1) Download bestaudio (m4a/webm) via yt-dlp
-    const bestAudio = join(jobDir, 'audio.m4a'); // yt-dlp akan menimpa sesuai format
-    const ytdlpArgs = ['-f', 'bestaudio/best', '-o', bestAudio, url];
-
+    // 1) Download bestaudio tanpa memaksa ekstensi
+    //    Hasil: /jobs/<id>/audio.<ext> (m4a/webm/opus/…)
+    const ytdlpArgs = [
+      '-f', 'bestaudio/best',
+      '--no-playlist',
+      '-o', join(jobDir, 'audio.%(ext)s'),
+      url
+    ];
     await new Promise((resolve, reject) => {
       const y = spawn('yt-dlp', ytdlpArgs);
       y.on('error', reject);
@@ -74,17 +78,23 @@ app.post('/api/convert', async (req, res) => {
       y.on('close', code => (code === 0 ? resolve() : reject(new Error('yt-dlp gagal'))));
     });
 
-    // 2) Convert ke MP3 (quality kbps) + optional trim/normalize
+    // Temukan file audio yang terunduh (apa pun ekstensinya)
+    const inputs = readdirSync(jobDir)
+      .filter(f => f.startsWith('audio.') && f !== 'audio.m3u8')
+      .map(f => join(jobDir, f));
+    if (inputs.length === 0) {
+      return res.status(500).json({ error: 'File audio tidak ditemukan setelah download' });
+    }
+    const bestAudio = inputs[0];
+
+    // 2) Konversi ke MP3 (quality kbps) + opsi trim/normalize
     const outFile = join(jobDir, 'output.mp3');
     const ffArgs = ['-y'];
 
-    // trim start lebih baik sebelum -i: gunakan -ss sebelum input jika hanya start
-    if (trim?.start && !trim?.end) {
-      ffArgs.push('-ss', trim.start);
-    }
+    // trim start sebelum input (lebih akurat)
+    if (trim?.start && !trim?.end) ffArgs.push('-ss', trim.start);
 
     ffArgs.push('-i', bestAudio);
-
     if (trim?.end) ffArgs.push('-to', trim.end);
     if (normalize) ffArgs.push('-af', 'dynaudnorm');
 
@@ -98,21 +108,18 @@ app.post('/api/convert', async (req, res) => {
       f.on('close', code => (code === 0 ? resolve() : reject(new Error('ffmpeg gagal'))));
     });
 
-    // 3) (Opsional) Tulis ID3 (title/artist) tanpa re-encode
+    // 3) (Opsional) Tulis ID3 tanpa re-encode
     if (id3?.title || id3?.artist) {
       const tagged = join(jobDir, 'output.tagged.mp3');
       const meta = [];
-      if (id3.title) meta.push('-metadata', `title=${id3.title}`);
+      if (id3.title)  meta.push('-metadata', `title=${id3.title}`);
       if (id3.artist) meta.push('-metadata', `artist=${id3.artist}`);
-
       await new Promise((resolve, reject) => {
         const f2 = spawn('ffmpeg', ['-y', '-i', outFile, ...meta, '-codec:a', 'copy', tagged]);
         f2.on('error', reject);
         f2.stderr.on('data', d => process.stderr.write(d));
         f2.on('close', code => (code === 0 ? resolve() : reject(new Error('penulisan ID3 gagal'))));
       });
-
-      // replace file
       renameSync(tagged, outFile);
     }
 
@@ -131,8 +138,9 @@ app.post('/api/convert', async (req, res) => {
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/', (_req, res) => {
-  // kalau tidak ada index.html di public-ui, tampilkan info text
-  res.sendFile(join(UI_DIR, 'index.html'), err => {
+  // kalau tidak ada index.html di public-ui, tampilkan info sederhana
+  const indexPath = join(UI_DIR, 'index.html');
+  res.sendFile(indexPath, err => {
     if (err) res.send('ytmp3 backend OK — gunakan POST /api/convert atau taruh UI di /public-ui/index.html');
   });
 });
