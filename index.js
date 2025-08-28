@@ -109,7 +109,15 @@ async function fetchInfo(url) {
 // ==== Unduh via annie ====
 async function downloadWithAnnie(url, outDir, outBasename) {
   // threads biar cepat; no-caption menghindari subtitle
-  await run('annie', ['-o', outDir, '-O', outBasename, '--threads', '8', '--no-caption', url]);
+  await run('annie', [
+  '-o', outDir,
+  '-O', outBasename,
+  '--audio-only',      // download audio only
+  '--multi-thread',    // aktifkan multi-thread
+  '-n', '8',           // jumlah thread
+  url
+]);
+
 
   // Cari file hasil download yang paling baru & match prefix
   const files = readdirSync(outDir).map(f => join(outDir, f));
