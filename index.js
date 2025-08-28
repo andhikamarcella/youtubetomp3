@@ -1,4 +1,4 @@
-// index.js — fixed for Render + Docker (yt-dlp & ffmpeg binary)
+// index.js — fixed for Render + Docker (yt-dlp + ffmpeg)
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -14,18 +14,17 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(cors());
 
-// ====== CONFIG ======
-const UI_DIR = join(__dirname, 'public-ui');
-const PUBLIC_DIR = join(__dirname, 'public');
-const JOBS_DIR = join(PUBLIC_DIR, 'jobs');
-
-// Jalur binary (biar eksplisit di container). Bisa di-override via ENV kalau perlu.
-const YTDLP = process.env.YTDLP_PATH || '/usr/local/bin/yt-dlp';
+// ====== PATH BINARY (ekspisit) ======
+const YTDLP  = process.env.YTDLP_PATH  || '/usr/local/bin/yt-dlp';
 const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
 
-// ====== STATIC ======
+// ====== DIRS ======
+const UI_DIR     = join(__dirname, 'public-ui');
+const PUBLIC_DIR = join(__dirname, 'public');
+const JOBS_DIR   = join(PUBLIC_DIR, 'jobs');
+
 if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
-if (!existsSync(JOBS_DIR)) mkdirSync(JOBS_DIR, { recursive: true });
+if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
 
 app.use(express.static(UI_DIR));
 app.use('/jobs', express.static(JOBS_DIR, { fallthrough: false }));
@@ -38,15 +37,16 @@ function run(cmd, args, opts = {}) {
     p.stdout.on('data', d => (out += d.toString()));
     p.stderr.on('data', d => (err += d.toString()));
     p.on('error', reject);
-    p.on('close', code => {
-      if (code === 0) return resolve(out.trim());
-      reject(new Error(err || `Process ${cmd} exited with ${code}`));
-    });
+    p.on('close', code => (code === 0 ? resolve(out.trim()) : reject(new Error(err || `exit ${code}`))));
   });
 }
 
-async function have(cmd, vflag = '-version') {
-  try { await run(cmd, [vflag]); return true; } catch { return false; }
+async function checkTool(cmd) {
+  // yt-dlp pakai --version; ffmpeg pakai -version. Coba keduanya.
+  try { await run(cmd, ['--version']); return true; } catch {}
+  try { await run(cmd, ['-version']);  return true; } catch {}
+  try { await run(cmd, ['-h']);        return true; } catch {}
+  return false;
 }
 
 // ====== API ======
@@ -57,7 +57,7 @@ app.post('/api/convert', async (req, res) => {
       return res.status(400).json({ error: 'URL tidak valid' });
     }
 
-    const [hasYtDlp, hasFfmpeg] = await Promise.all([have(YTDLP), have(FFMPEG)]);
+    const [hasYtDlp, hasFfmpeg] = await Promise.all([checkTool(YTDLP), checkTool(FFMPEG)]);
     if (!hasYtDlp || !hasFfmpeg) {
       return res.status(500).json({ error: 'yt-dlp/ffmpeg tidak ditemukan di server' });
     }
@@ -66,7 +66,7 @@ app.post('/api/convert', async (req, res) => {
     const jobDir = join(JOBS_DIR, id);
     mkdirSync(jobDir, { recursive: true });
 
-    // 1) Download bestaudio → simpan sebagai audio.<ext>
+    // 1) Download bestaudio -> audio.<ext>
     const ytdlpArgs = [
       '--no-warnings',
       '--no-playlist',
@@ -77,20 +77,17 @@ app.post('/api/convert', async (req, res) => {
       url
     ];
 
-    let dlErr = '';
     try {
       await run(YTDLP, ytdlpArgs, { env: { ...process.env, PYTHONNOUSERSITE: '1' } });
     } catch (e) {
-      dlErr = String(e.message || '');
-      // Ambil 15 baris terakhir supaya jelas di UI
-      const tail = dlErr.split('\n').slice(-15).join('\n');
+      const tail = String(e.message || '').split('\n').slice(-15).join('\n');
       throw new Error(`yt-dlp gagal.\n${tail}`);
     }
 
     const inputs = readdirSync(jobDir)
       .filter(f => f.startsWith('audio.') && f !== 'audio.m3u8')
-      .map(f => join(jobDir, f))
-      .sort((a, b) => b.localeCompare(a)); // deterministik
+      .map(f => join(jobDir, f));
+
     if (inputs.length === 0) {
       return res.status(500).json({ error: 'File audio tidak ditemukan setelah download' });
     }
@@ -135,15 +132,20 @@ app.post('/api/convert', async (req, res) => {
   }
 });
 
-// ====== HEALTH & UI ======
-app.get('/health', (_req, res) => res.json({ ok: true }));
+// Diagnostik cepat
+app.get('/diag', async (_req, res) => {
+  const hasY = await checkTool(YTDLP);
+  const hasF = await checkTool(FFMPEG);
+  res.json({ yt_dlp_path: YTDLP, ffmpeg_path: FFMPEG, has_yt_dlp: hasY, has_ffmpeg: hasF });
+});
 
+// Health & UI
+app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/', (_req, res) => {
   res.sendFile(join(UI_DIR, 'index.html'), err => {
-    if (err) res.send('ytmp3 backend OK — taruh UI di /public-ui/index.html atau pakai POST /api/convert');
+    if (err) res.send('ytmp3 backend OK — gunakan POST /api/convert atau taruh UI di /public-ui/index.html');
   });
 });
 
-// ====== START ======
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('Backend listening on :' + port));
