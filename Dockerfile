@@ -1,39 +1,21 @@
 FROM node:20-slim
 
-# 1) Install ffmpeg + tools dasar
+# Python + pip + ffmpeg
 RUN set -eux; \
   apt-get update; \
-  apt-get install -y --no-install-recommends \
-    ffmpeg \
-    ca-certificates \
-    curl \
-    python3 \
-    python3-pip \
-    wget; \
+  apt-get install -y --no-install-recommends python3 python3-pip ffmpeg ca-certificates curl; \
   rm -rf /var/lib/apt/lists/*
 
-# 2) Install yt-dlp dengan metode yang lebih reliable
-RUN set -eux; \
-  # Install via pip untuk mendapatkan versi terbaru
-  pip3 install --no-cache-dir yt-dlp; \
-  # Buat symlink jika diperlukan
-  ln -sf /usr/local/bin/yt-dlp /usr/bin/yt-dlp; \
-  # Verifikasi instalasi
-  yt-dlp --version
+# yt-dlp sebagai modul Python
+RUN pip3 install --no-cache-dir yt-dlp
 
-# 3) Debug: print versi di log build
-RUN which ffmpeg && ffmpeg -version | head -n 1 && which yt-dlp && yt-dlp --version
+# (opsional) bukti saat build
+RUN python3 -m yt_dlp --version && ffmpeg -version | head -n 1
 
-# 4) App
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY . .
-
-# 5) Environment variables
 ENV NODE_ENV=production
-ENV YTDLP_PATH=/usr/local/bin/yt-dlp
-ENV FFMPEG_PATH=/usr/bin/ffmpeg
-
 EXPOSE 3000
 CMD ["npm","start"]
