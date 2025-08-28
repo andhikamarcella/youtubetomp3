@@ -1,29 +1,26 @@
-FROM node:20-slim
+# ---- build annie (static binary) ----
+FROM golang:1.22-alpine AS annie-builder
+RUN apk add --no-cache git
+RUN go install github.com/iawia002/annie@latest
 
-# 1) Python + venv + ffmpeg
-RUN set -eux; \
-  apt-get update; \
-  apt-get install -y --no-install-recommends python3 python3-venv ffmpeg ca-certificates curl; \
-  rm -rf /var/lib/apt/lists/*
+# ---- runtime ----
+FROM node:20-alpine
 
-# 2) Buat virtualenv khusus yt-dlp dan install di situ (hindari PEP 668)
-RUN set -eux; \
-  python3 -m venv /opt/ytvenv; \
-  /opt/ytvenv/bin/pip install --upgrade pip; \
-  /opt/ytvenv/bin/pip install --no-cache-dir yt-dlp
+# dependensi runtime
+RUN apk add --no-cache ffmpeg ca-certificates && update-ca-certificates
 
-# 3) Tunjukkan versi (buat verifikasi di build log)
-RUN /opt/ytvenv/bin/python -m yt_dlp --version && ffmpeg -version | head -n 1
+# copy annie binary
+COPY --from=annie-builder /go/bin/annie /usr/local/bin/annie
 
-# 4) App
+# app files
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 COPY . .
 
-# Python dari venv kita jadikan default untuk app (dipakai index.js)
-ENV YT_PY=/opt/ytvenv/bin/python
+# env optional (ADMIN_TOKEN untuk admin.js, dll)
 ENV NODE_ENV=production
+ENV PORT=8080
 
-EXPOSE 3000
-CMD ["npm","start"]
+EXPOSE 8080
+CMD ["npm", "start"]
