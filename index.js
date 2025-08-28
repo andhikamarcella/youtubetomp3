@@ -1,4 +1,4 @@
-// index.js — Node memanggil yt-dlp via Python module + cookies runtime (tanpa redeploy) + fallback ENV
+// index.js — Node memanggil yt-dlp via Python module + no-cookie-first (ios→android→web) + fallback cookies runtime + STRICT_NO_COOKIE
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -77,8 +77,11 @@ function haveRuntimeCookies() {
   try { return statSync(RUNTIME_COOKIE_PATH).size > 0; } catch { return false; }
 }
 
-// ==== Helper yt-dlp: coba no-cookie dulu, kalau gagal & cookies ada → fallback ====
-function ytCommonFlags() {
+// ==== Helper yt-dlp: coba no-cookie dulu (ios→android→web), kalau gagal & cookies ada → fallback ====
+// STRICT_NO_COOKIE=1 → TIDAK akan fallback cookies walaupun tersedia
+const STRICT_NO_COOKIE = process.env.STRICT_NO_COOKIE === '1';
+
+function ytCommonFlags(client = 'ios') {
   return [
     '--no-warnings',
     '--no-check-certificates',
@@ -87,26 +90,37 @@ function ytCommonFlags() {
     '--force-ipv4',
     '--retries', '6',
     '--retry-sleep', '2',
-    '--extractor-args', 'youtube:player_client=ios'
+    '--extractor-args', `youtube:player_client=${client}`,
   ];
 }
 
+async function runOnce(PY, args, client) {
+  return run(
+    PY,
+    ['-m', 'yt_dlp', ...ytCommonFlags(client), ...args],
+    { env: { ...process.env, PYTHONNOUSERSITE: '1' } }
+  );
+}
+
 /**
- * Jalankan yt-dlp dengan strategi:
- * 1) tanpa cookies (pakai ytCommonFlags)
- * 2) kalau error & cookies runtime ada → ulangi dengan --cookies <path>
+ * Strategi:
+ * 1) tanpa cookies dgn klien berurutan: ios → android → web
+ * 2) jika tetap gagal dan !STRICT_NO_COOKIE serta cookies runtime ada → ulangi dgn --cookies
  */
 async function runYtDlpNoCookieFirst(PY, args, opts = {}) {
-  const baseArgs = ['-m', 'yt_dlp', ...ytCommonFlags(), ...args];
-  try {
-    return await run(PY, baseArgs, { env: { ...process.env, PYTHONNOUSERSITE: '1' }, ...opts });
-  } catch (e1) {
-    if (haveRuntimeCookies()) {
-      const withCookies = ['-m', 'yt_dlp', '--cookies', RUNTIME_COOKIE_PATH, ...ytCommonFlags(), ...args];
-      return await run(PY, withCookies, { env: { ...process.env, PYTHONNOUSERSITE: '1' }, ...opts });
-    }
-    throw e1;
+  const clients = ['ios', 'android', 'web'];
+  let lastErr = null;
+
+  for (const c of clients) {
+    try { return await runOnce(PY, args, c); }
+    catch (e) { lastErr = e; }
   }
+
+  if (!STRICT_NO_COOKIE && haveRuntimeCookies()) {
+    const withCookies = ['-m', 'yt_dlp', '--cookies', RUNTIME_COOKIE_PATH, ...ytCommonFlags('ios'), ...args];
+    return await run(PY, withCookies, { env: { ...process.env, PYTHONNOUSERSITE: '1' } });
+  }
+  throw lastErr;
 }
 
 // ============ ADMIN (upload cookies tanpa redeploy) ============
@@ -155,7 +169,6 @@ app.post('/api/convert', async (req, res) => {
       const tmpOut  = join(jobDir, 'audio.%(ext)s');
       const outFile = join(jobDir, 'output.mp3');
 
-      // NO-COOKIE FIRST → fallback cookies bila perlu
       await runYtDlpNoCookieFirst(PY, [
         '-f','bestaudio/best',
         '-o', tmpOut,
@@ -190,7 +203,6 @@ app.post('/api/convert', async (req, res) => {
     // MODE B — ffmpeg TIDAK ada → kirim audio asli (m4a/webm)
     const outPattern = join(jobDir, 'audio.%(ext)s');
 
-    // NO-COOKIE FIRST → fallback cookies bila perlu
     await runYtDlpNoCookieFirst(PY, [
       '-f','bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio',
       '-o', outPattern,
@@ -228,7 +240,8 @@ app.get('/diag', async (_req, res) => {
     python: py,
     yt_dlp_version: ytVer,
     ffmpeg: hasF ? ffVer : null,
-    cookies: { runtime: haveRuntimeCookies(), from_env_on_boot: !!process.env.YT_COOKIES }
+    cookies: { runtime: haveRuntimeCookies(), from_env_on_boot: !!process.env.YT_COOKIES },
+    strict_no_cookie: STRICT_NO_COOKIE
   });
 });
 
