@@ -1,11 +1,15 @@
-# ---- runtime: Node + Python + ffmpeg ----
 FROM node:20-alpine
 
-# system deps
-RUN apk add --no-cache python3 py3-pip ffmpeg ca-certificates && update-ca-certificates \
- && pip3 install --no-cache-dir pytube
+# install deps
+RUN apk add --no-cache python3 py3-pip ffmpeg ca-certificates && update-ca-certificates
 
-# app files
+# bikin virtualenv untuk python packages
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# install PyTube ke virtualenv
+RUN pip install --no-cache-dir pytube
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
