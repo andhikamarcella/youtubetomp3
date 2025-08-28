@@ -1,0 +1,12 @@
+{
+  "name": "ytmp3-backend",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "nanoid": "^5.1.5"
+  }
+}
