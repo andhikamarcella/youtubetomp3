@@ -1,22 +1,12 @@
-FROM node:20-alpine
-
-# install deps
-RUN apk add --no-cache python3 py3-pip ffmpeg ca-certificates && update-ca-certificates
-
-# bikin virtualenv untuk python packages
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# install PyTube ke virtualenv
-RUN pip install --no-cache-dir pytube
-
+FROM node:20-bookworm
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg python3 python3-pip ca-certificates && \
+    pip3 install --no-cache-dir -U yt-dlp && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --production
 COPY . .
-
-ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
-
-CMD ["npm", "start"]
+CMD ["npm","start"]
