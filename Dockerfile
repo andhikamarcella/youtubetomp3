@@ -1,7 +1,7 @@
-# Node + ffmpeg + yt-dlp (binary) — compatible di Render
-FROM node:20-bookworm-slim
+# Node + ffmpeg + yt-dlp (binary) — untuk Render
+FROM node:20-bullseye-slim
 
-# Install dependencies yang dibutuhkan yt-dlp binary
+# Install python3, curl, ffmpeg
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       python3 \
@@ -10,11 +10,12 @@ RUN apt-get update && \
       ffmpeg && \
     rm -rf /var/lib/apt/lists/*
 
-# Ambil yt-dlp binary release (tanpa pip)
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-      -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp && \
-    python3 --version && yt-dlp --version
+# Ambil yt-dlp binary
+ADD https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp /usr/local/bin/yt-dlp
+RUN chmod a+rx /usr/local/bin/yt-dlp
+
+# Cek versi (opsional, bisa dihapus kalau suka error)
+# RUN python3 --version && yt-dlp --version
 
 WORKDIR /app
 COPY package*.json ./
@@ -23,4 +24,4 @@ COPY . .
 
 ENV PORT=8080
 EXPOSE 8080
-CMD ["npm","start"]
+CMD ["npm", "start"]
