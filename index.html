@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="id" data-bs-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YouTube → MP3 Converter | Bootstrap SPA</title>
+  <meta name="description" content="Konversi video YouTube menjadi MP3 dengan pilihan kualitas 64–320 kbps. Antarmuka modern berbasis Bootstrap 5." />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    :root { --radius: 1.2rem; }
+    .card { border-radius: var(--radius); }
+    .dropzone {
+      border: 2px dashed var(--bs-border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      transition: background-color .15s, border-color .15s;
+    }
+    .dropzone.dragover { background: rgba(13,110,253,.05); border-color: var(--bs-primary); }
+    .thumbnail { width: 100%; border-radius: .8rem; object-fit: cover; }
+    .quality-badge { cursor: pointer; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; padding: .1rem .4rem; border: 1px solid var(--bs-border-color); border-radius: .3rem; background: var(--bs-tertiary-bg); }
+    .history-cover { width: 56px; height: 40px; object-fit: cover; border-radius: .4rem; }
+    .w-64 { width: 64px; }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary border-bottom">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"><span class="navbar-toggler-icon"></span></button>
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link active" href="#converter">Converter</a></li>
+          <li class="nav-item"><a class="nav-link" href="#riwayat">Riwayat</a></li>
+          <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+        </ul>
+        <div class="d-flex align-items-center gap-2">
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="themeToggle" />
+            <label class="form-check-label" for="themeToggle"><i class="bi bi-moon-stars"></i></label>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#disclaimerModal"><i class="bi bi-shield-check me-1"></i> Licensing</button>
+          <a class="btn btn-primary btn-sm" href="#apiSpec"><i class="bi bi-plug me-1"></i> API Spec</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="py-4 bg-body-secondary border-bottom">
+    <div class="container d-lg-flex align-items-center justify-content-between gap-4">
+      <div class="flex-grow-1">
+        <h1 class="h3 mb-2">Unduh audio MP3 dari YouTube</h1>
+        <p class="text-secondary mb-0">Pilih kualitas 64–320 kbps, isi tag ID3, dan unduh langsung. <span class="d-none d-md-inline">Seret & lepas URL, atau tempel dari clipboard.</span></p>
+      </div>
+      <div class="text-nowrap small text-secondary">Shortcut: <span class="kbd">Ctrl/⌘</span> + <span class="kbd">V</span> untuk tempel URL</div>
+    </div>
+  </header>
+
+  <!-- Converter Section -->
+  <main class="container my-4" id="converter">
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="h5 mb-3"><i class="bi bi-link-45deg me-2"></i>Masukkan tautan video YouTube</h2>
+            <div class="mb-3">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-youtube"></i></span>
+                <input type="url" class="form-control" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" />
+                <button class="btn btn-outline-secondary" id="pasteBtn" title="Tempel dari clipboard"><i class="bi bi-clipboard-plus"></i></button>
+                <button class="btn btn-primary" id="fetchBtn"><i class="bi bi-search me-1"></i> Ambil Info</button>
+              </div>
+              <div class="form-text">Hanya untuk konten yang Anda miliki atau diizinkan untuk diunduh.</div>
+            </div>
+
+            <!-- Dropzone -->
+            <div class="dropzone mb-3" id="dropzone">
+              <i class="bi bi-box-arrow-in-down fs-4 d-block mb-2"></i>
+              Seret & lepas URL video di sini, atau klik untuk fokus kolom di atas.
+            </div>
+
+            <!-- Video Preview / Metadata -->
+            <div id="metaCard" class="d-none">
+              <div class="row g-3 align-items-center">
+                <div class="col-sm-4">
+                  <img id="thumb" class="thumbnail" src="" alt="Thumbnail" />
+                </div>
+                <div class="col-sm-8">
+                  <div class="d-flex align-items-start justify-content-between gap-2">
+                    <div>
+                      <h3 class="h6 mb-1" id="title">Judul Video</h3>
+                      <div class="text-secondary small" id="author">Channel</div>
+                    </div>
+                    <a class="btn btn-outline-secondary btn-sm" id="openVideo" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i></a>
+                  </div>
+
+                  <hr class="my-2" />
+
+                  <!-- Quality selection -->
+                  <div class="mb-2">
+                    <div class="fw-semibold small mb-1">Kualitas MP3</div>
+                    <div class="d-flex flex-wrap gap-2">
+                      <input class="btn-check" type="radio" name="quality" id="q64" value="64" autocomplete="off">
+                      <label class="btn btn-outline-secondary btn-sm quality-badge" for="q64">64 kbps</label>
+                      <input class="btn-check" type="radio" name="quality" id="q128" value="128" autocomplete="off" checked>
+                      <label class="btn btn-outline-secondary btn-sm quality-badge" for="q128">128 kbps</label>
+                      <input class="btn-check" type="radio" name="quality" id="q192" value="192" autocomplete="off">
+                      <label class="btn btn-outline-secondary btn-sm quality-badge" for="q192">192 kbps</label>
+                      <input class="btn-check" type="radio" name="quality" id="q256" value="256" autocomplete="off">
+                      <label class="btn btn-outline-secondary btn-sm quality-badge" for="q256">256 kbps</label>
+                      <input class="btn-check" type="radio" name="quality" id="q320" value="320" autocomplete="off">
+                      <label class="btn btn-outline-secondary btn-sm quality-badge" for="q320">320 kbps</label>
+                    </div>
+                  </div>
+
+                  <div class="collapse" id="advOptions">
+                    <div class="row g-2">
+                      <div class="col-md-6">
+                        <label class="form-label small">Judul (ID3)</label>
+                        <input class="form-control form-control-sm" id="id3Title" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small">Artist (ID3)</label>
+                        <input class="form-control form-control-sm" id="id3Artist" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small">Mulai (mm:ss)</label>
+                        <input class="form-control form-control-sm" id="trimStart" placeholder="00:00" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label small">Selesai (mm:ss)</label>
+                        <input class="form-control form-control-sm" id="trimEnd" placeholder="" />
+                      </div>
+                      <div class="col-12">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="normalize" />
+                          <label class="form-check-label" for="normalize">Normalisasi audio (loudness)</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#advOptions" aria-expanded="false"><i class="bi bi-sliders me-1"></i> Opsi Lanjutan</button>
+                    <button class="btn btn-success" id="convertBtn"><i class="bi bi-arrow-down-circle me-1"></i> Konversi & Unduh</button>
+                    <button class="btn btn-outline-primary" id="queueBtn"><i class="bi bi-plus-circle me-1"></i> Tambah ke Antrian</button>
+                  </div>
+
+                  <div class="progress mt-3 d-none" id="progressWrap" role="progressbar" aria-label="Progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width:0%">0%</div>
+                  </div>
+
+                  <div class="alert alert-warning d-flex align-items-center gap-2 mt-3 d-none" id="warnArea">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <div id="warnText">Pesan peringatan…</div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Queue Card -->
+        <div class="card mt-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h3 class="h6 mb-0"><i class="bi bi-list-check me-2"></i>Antrian</h3>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-danger btn-sm" id="clearQueue"><i class="bi bi-trash3"></i> Kosongkan</button>
+                <button class="btn btn-primary btn-sm" id="processQueue"><i class="bi bi-play-circle"></i> Proses Semua</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle mb-0" id="queueTable">
+                <thead>
+                  <tr><th class="w-64"></th><th>Judul</th><th class="text-center">Kualitas</th><th class="text-end">Aksi</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar: History -->
+      <div class="col-lg-4">
+        <div class="card" id="riwayat">
+          <div class="card-body">
+            <h3 class="h6 mb-3"><i class="bi bi-clock-history me-2"></i>Riwayat Unduhan</h3>
+            <div class="list-group small" id="historyList"></div>
+            <div class="d-flex gap-2 mt-3">
+              <button class="btn btn-outline-secondary btn-sm" id="exportHistory"><i class="bi bi-download"></i> Ekspor</button>
+              <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash"></i> Hapus</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card mt-4">
+          <div class="card-body">
+            <h3 class="h6 mb-2"><i class="bi bi-lightbulb me-2"></i>Tips</h3>
+            <ul class="small text-secondary mb-0 ps-3">
+              <li>Tempel URL pakai <span class="kbd">Ctrl/⌘</span> + <span class="kbd">V</span>.</li>
+              <li>Tambahkan banyak video ke antrian, lalu tekan <em>Proses Semua</em>.</li>
+              <li>Aktifkan mode gelap dari toggle di kanan atas.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <section class="mt-5" id="faq">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <div class="card">
+            <div class="card-body">
+              <h2 class="h5 mb-3">FAQ</h2>
+              <div class="accordion" id="faqAcc">
+                <div class="accordion-item">
+                  <h2 class="accordion-header"><button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#f1">Apakah ini langsung mengunduh dari YouTube?</button></h2>
+                  <div id="f1" class="accordion-collapse collapse show" data-bs-parent="#faqAcc"><div class="accordion-body small">Halaman ini adalah <strong>frontend</strong>. Anda perlu menyiapkan <em>backend</em> sendiri (lihat spesifikasi API di bawah) untuk mematuhi kebijakan dan hukum yang berlaku. Gunakan hanya untuk konten yang Anda miliki izin unduhnya.</div></div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#f2">Kualitas apa saja yang tersedia?</button></h2>
+                  <div id="f2" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body small">64, 128, 192, 256, dan 320 kbps (CBR) – dikontrol oleh parameter API <code>quality</code>.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API Spec (singkat) -->
+    <section class="mt-5" id="apiSpec">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <div class="card">
+            <div class="card-body">
+              <h2 class="h5 mb-3"><i class="bi bi-plug me-2"></i>Spesifikasi Backend API (contoh)</h2>
+              <pre class="bg-body-tertiary p-3 rounded small mb-3"><code>POST /api/convert
+Content-Type: application/json
+{
+  "url": "https://www.youtube.com/watch?v=...",
+  "quality": 128,
+  "id3": {"title":"...","artist":"..."},
+  "trim": {"start":"00:10","end":"02:45"},
+  "normalize": true
+}
+↳ 200 OK
+{
+  "filename": "Video Title (128kbps).mp3",
+  "downloadUrl": "/jobs/abc123/output.mp3"
+}
+</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-top py-4 mt-5">
+    <div class="container small text-secondary d-flex flex-wrap justify-content-between gap-2">
+      <div>© <span id="year"></span> YT → MP3 UI. Hanya untuk penggunaan yang memiliki izin.</div>
+      <div>Made with Bootstrap 5 · <a href="#" data-bs-toggle="modal" data-bs-target="#disclaimerModal">Kebijakan</a></div>
+    </div>
+  </footer>
+
+  <!-- Disclaimer Modal -->
+  <div class="modal fade" id="disclaimerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-6"><i class="bi bi-shield-lock me-2"></i>Lisensi & Kepatuhan</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body small">
+          <p>Alat ini dimaksudkan untuk mengonversi konten yang Anda miliki atau yang secara tegas diizinkan oleh pemilik hak cipta. Mengunduh atau mendistribusikan konten tanpa izin dapat melanggar hukum dan ketentuan layanan platform. Anda bertanggung jawab penuh atas penggunaan Anda.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" data-bs-dismiss="modal">Saya Mengerti</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // === Konfigurasi ===
+    const API_BASE = window.location.origin; // UI & API satu domain
+
+    // ===== Utilities =====
+    function makeAbsolute(u){ if (!u) return u; if (/^https?:/i.test(u)) return u; return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`; }
+    const $ = (sel, parent=document) => parent.querySelector(sel);
+    const $$ = (sel, parent=document) => Array.from(parent.querySelectorAll(sel));
+
+    // Bersihkan URL (hapus ?si= dkk, ubah youtu.be → watch?v=ID)
+    function cleanYoutubeUrl(url){
+      try{
+        const u = new URL(url);
+        if (u.hostname === 'youtu.be' && u.pathname.length > 1) {
+          return `https://www.youtube.com/watch?v=${u.pathname.slice(1)}`;
+        }
+        ['si','feature','pp','t'].forEach(p => u.searchParams.delete(p));
+        return u.origin + u.pathname + (u.searchParams.toString() ? `?${u.searchParams}` : '');
+      }catch{ return url; }
+    }
+
+    const state = { current: null, queue: [], history: JSON.parse(localStorage.getItem('ytmp3-history')||'[]') };
+    $('#year').textContent = new Date().getFullYear();
+
+    function setTheme(dark){ document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light'); localStorage.setItem('ytmp3-theme', dark ? 'dark' : 'light'); $('#themeToggle').checked = dark; }
+    setTheme(localStorage.getItem('ytmp3-theme') === 'dark');
+    $('#themeToggle').addEventListener('change', e=> setTheme(e.target.checked));
+
+    function parseYouTubeId(url){ try{ const u = new URL(url); if (/youtu\.be$/.test(u.hostname)) return u.pathname.slice(1); if (/youtube\.com$/.test(u.hostname)) return u.searchParams.get('v'); }catch{ return null; } return null; }
+    function mmssToSeconds(mmss){ if (!mmss) return null; const m = mmss.trim().match(/^(\d{1,2}):(\d{2})$/); if (!m) return null; return parseInt(m[1],10)*60 + parseInt(m[2],10); }
+
+    // ===== UI Bindings =====
+    const urlInput = $('#urlInput');
+    const pasteBtn = $('#pasteBtn');
+    const fetchBtn = $('#fetchBtn');
+    const dropzone = $('#dropzone');
+    const metaCard = $('#metaCard');
+    const titleEl = $('#title');
+    const authorEl = $('#author');
+    const thumbEl = $('#thumb');
+    const openVideo = $('#openVideo');
+    const convertBtn = $('#convertBtn');
+    const queueBtn = $('#queueBtn');
+    const progressWrap = $('#progressWrap');
+    const progressBar = $('#progressBar');
+    const warnArea = $('#warnArea');
+    const warnText = $('#warnText');
+
+    pasteBtn.addEventListener('click', async ()=>{ try{ const text = await navigator.clipboard.readText(); urlInput.value = text.trim(); }catch{ toast('Gagal membaca clipboard'); } });
+    document.addEventListener('paste', e=>{ if (document.activeElement !== urlInput) { const text = e.clipboardData.getData('text'); if (text) urlInput.value = text.trim(); } });
+
+    dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.classList.remove('dragover'); const text = e.dataTransfer.getData('text'); if (text) urlInput.value = text.trim(); });
+    dropzone.addEventListener('click', ()=> urlInput.focus());
+
+    fetchBtn.addEventListener('click', fetchMeta);
+
+    async function fetchMeta(){
+      resetWarning();
+      const url = urlInput.value.trim();
+      const id = parseYouTubeId(url);
+      if (!id) return showWarning('URL YouTube tidak valid.');
+      try{
+        const oembed = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+        const res = await fetch(oembed);
+        if (!res.ok) throw new Error('Gagal mengambil metadata');
+        const data = await res.json();
+        state.current = { url, id, title: data.title, author: data.author_name, thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg` };
+        renderMeta();
+      }catch{ showWarning('Tidak bisa mengambil info video. Pastikan video publik dan URL benar.'); }
+    }
+
+    function renderMeta(){ if (!state.current) return; titleEl.textContent = state.current.title; authorEl.textContent = state.current.author; thumbEl.src = state.current.thumbnail; openVideo.href = state.current.url; $('#id3Title').value = state.current.title; $('#id3Artist').value = state.current.author; metaCard.classList.remove('d-none'); }
+
+    function showWarning(msg){ warnText.textContent = msg; warnArea.classList.remove('d-none'); }
+    function resetWarning(){ warnArea.classList.add('d-none'); }
+    function selectedQuality(){ const q = document.querySelector('input[name="quality"]:checked'); return q ? parseInt(q.value,10) : 128; }
+
+    convertBtn.addEventListener('click', ()=> doConvert(state.current));
+    queueBtn.addEventListener('click', ()=> { if (state.current) addToQueue(state.current, selectedQuality()); });
+
+    function addToQueue(item, quality){ state.queue.push({ ...item, quality }); renderQueue(); }
+
+    function renderQueue(){
+      const tbody = $('#queueTable tbody');
+      tbody.innerHTML = '';
+      state.queue.forEach((it, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><img class="history-cover" src="${it.thumbnail}" alt="thumb"></td>
+          <td><div class="fw-semibold">${it.title}</div><div class="text-secondary small">${it.author}</div></td>
+          <td class="text-center">${it.quality} kbps</td>
+          <td class="text-end">
+            <button class="btn btn-outline-primary btn-sm me-2" data-idx="${idx}" data-act="convert"><i class="bi bi-arrow-down-circle"></i></button>
+            <button class="btn btn-outline-danger btn-sm" data-idx="${idx}" data-act="remove"><i class="bi bi-x-lg"></i></button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    $('#queueTable').addEventListener('click', e=>{
+      const btn = e.target.closest('button'); if (!btn) return; const idx = parseInt(btn.dataset.idx,10); const act = btn.dataset.act; if (act === 'remove') { state.queue.splice(idx,1); renderQueue(); return; } if (act === 'convert') { doConvert(state.queue[idx]); }
+    });
+
+    $('#clearQueue').addEventListener('click', ()=>{ state.queue = []; renderQueue(); });
+    $('#processQueue').addEventListener('click', async ()=>{ for (let i=0;i<state.queue.length;i++) { await doConvert(state.queue[i]); } });
+
+    function pushHistory(entry){ state.history.unshift(entry); state.history = state.history.slice(0,100); localStorage.setItem('ytmp3-history', JSON.stringify(state.history)); renderHistory(); }
+
+    function renderHistory(){ const list = $('#historyList'); list.innerHTML = ''; if (!state.history.length) { list.innerHTML = '<div class="text-secondary">Belum ada riwayat.</div>'; return; } state.history.forEach(h=>{ const a = document.createElement('a'); a.className = 'list-group-item list-group-item-action d-flex align-items-center gap-3'; a.href = h.downloadUrl || '#'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = `<img class="history-cover" src="${h.thumbnail}" alt="thumb">
+          <div class="flex-grow-1">
+            <div class="fw-semibold text-truncate">${h.title}</div>
+            <div class="small text-secondary text-truncate">${h.author} · ${h.quality}kbps</div>
+          </div>
+          <i class="bi bi-download"></i>`; list.appendChild(a); }); }
+    renderHistory();
+
+    $('#clearHistory').addEventListener('click', ()=>{ if (confirm('Hapus semua riwayat?')){ state.history = []; localStorage.removeItem('ytmp3-history'); renderHistory(); } });
+    $('#exportHistory').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(state.history, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ytmp3-history.json'; a.click(); URL.revokeObjectURL(a.href); });
+
+    // ===== Conversion =====
+    async function doConvert(item){
+      if (!item) return showWarning('Tidak ada video yang dipilih.');
+      resetWarning();
+      progressWrap.classList.remove('d-none');
+      setProgress(5);
+      try {
+        const payload = {
+          url: cleanYoutubeUrl(item.url),
+          quality: parseInt(document.querySelector('input[name="quality"]:checked')?.value || item.quality || 128,10),
+          id3: { title: $('#id3Title').value, artist: $('#id3Artist').value },
+          trim: { start: $('#trimStart').value || null, end: $('#trimEnd').value || null },
+          normalize: $('#normalize').checked
+        };
+
+        const resp = await fetch(`${API_BASE}/api/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        setProgress(50);
+
+        const raw = await resp.text();
+        let data = null; try { data = JSON.parse(raw); } catch {}
+        if (!resp.ok) { const msg = (data && data.error) || raw || `HTTP ${resp.status}`; throw new Error(msg); }
+
+        // Sukses → unduh file
+        const dlUrl = makeAbsolute(data.downloadUrl);
+        forceDownload(dlUrl, data.filename || 'audio.mp3');
+        pushHistory({
+          title: $('#id3Title').value || item.title,
+          author: $('#id3Artist').value || item.author,
+          thumbnail: item.thumbnail,
+          quality: payload.quality,
+          downloadUrl: dlUrl
+        });
+
+        setProgress(100);
+      } catch (e) {
+        showWarning(e.message || 'Terjadi kesalahan saat konversi');
+      } finally {
+        setTimeout(()=> progressWrap.classList.add('d-none'), 800);
+      }
+    }
+
+    function setProgress(v){ v = Math.max(0, Math.min(100, v)); progressBar.style.width = v + '%'; progressBar.textContent = v + '%'; }
+
+    function forceDownload(url, filename){ const a = document.createElement('a'); a.href = url; a.download = filename; a.rel = 'noopener'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+
+    function toast(msg){ const div = document.createElement('div'); div.className = 'position-fixed bottom-0 end-0 p-3'; div.innerHTML = `<div class="toast align-items-center show text-bg-dark" role="alert"><div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`; document.body.appendChild(div); setTimeout(()=> div.remove(), 2500); }
+  </script>
+</body>
+</html>
