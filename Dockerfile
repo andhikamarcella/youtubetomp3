@@ -1,16 +1,20 @@
-# Node + ffmpeg + yt-dlp (binary)
+# Node + ffmpeg + yt-dlp (binary) — compatible di Render
 FROM node:20-bookworm-slim
 
-# ffmpeg & tools
+# Install dependencies yang dibutuhkan yt-dlp binary
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg ca-certificates curl && \
+    apt-get install -y --no-install-recommends \
+      python3 \
+      ca-certificates \
+      curl \
+      ffmpeg && \
     rm -rf /var/lib/apt/lists/*
 
-# yt-dlp binary (tanpa pip) — stabil & cepat
+# Ambil yt-dlp binary release (tanpa pip)
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
       -o /usr/local/bin/yt-dlp && \
     chmod a+rx /usr/local/bin/yt-dlp && \
-    yt-dlp --version
+    python3 --version && yt-dlp --version
 
 WORKDIR /app
 COPY package*.json ./
