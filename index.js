@@ -140,6 +140,8 @@ app.post("/api/convert", async (req, res) => {
     proc.stderr.on("data", (d) => (logs += d.toString()));
 
     const runPyTubeFallback = (errMsg, baseLogs = "") => {
+      let pyLogs = "";
+      let pyOut  = "";
       try {
         const py = spawn("python3", [
           join(__dirname, "download_audio.py"),
@@ -148,14 +150,18 @@ app.post("/api/convert", async (req, res) => {
           id,
         ], { stdio: ["ignore", "pipe", "pipe"] });
 
-        let pyLogs = "";
-        let pyOut  = "";
         py.stdout.on("data", (d) => {
           const s = d.toString();
           pyLogs += s;
           pyOut  += s;
         });
         py.stderr.on("data", (d) => (pyLogs += d.toString()));
+
+        py.on("error", (err) => {
+          if (!res.headersSent) {
+            res.status(500).json({ error: errMsg, logs: baseLogs + pyLogs, detail: err.message });
+          }
+        });
 
         py.on("close", async (code) => {
           if (code !== 0) {
