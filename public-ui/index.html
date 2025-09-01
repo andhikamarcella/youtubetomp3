@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="id" data-bs-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YouTube → MP3/M4A | Converter UI</title>
+  <meta name="description" content="Konversi video YouTube ke MP3/M4A dengan UI cantik berbasis Bootstrap 5, dukung dark-mode, riwayat, dan log proses." />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    :root { --radius: 1.2rem; }
+    body { min-height: 100dvh; background-image: radial-gradient(60rem 40rem at 120% -10%, rgba(99,102,241,.15), transparent), radial-gradient(40rem 30rem at -10% 120%, rgba(16,185,129,.12), transparent); }
+    .card { border-radius: var(--radius); }
+    .form-control, .form-select, .btn { border-radius: .9rem; }
+    .brand-badge { letter-spacing:.08em; }
+    .log-box { max-height: 240px; overflow:auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .history-link { word-break: break-all; }
+    .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
+    .dropzone.dragover { background: rgba(0,0,0,.03); border-color: var(--bs-primary); }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
+    <div class="container">
+      <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
+      <div class="d-flex gap-2 ms-auto">
+        <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
+        <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4 py-md-5">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card shadow-sm">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span class="badge rounded-pill text-bg-primary brand-badge">Converter</span>
+              <span class="ms-2 text-secondary">Cepat & sederhana</span>
+            </div>
+
+            <div class="mb-3">
+              <label for="url" class="form-label">URL YouTube</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                <input id="url" type="url" class="form-control" placeholder="Tempel URL YouTube (https://...)" autocomplete="off" required>
+                <button class="btn btn-outline-secondary" id="pasteBtn" type="button"><i class="bi bi-clipboard2"></i></button>
+                <button class="btn btn-outline-secondary" id="sampleBtn" type="button">Contoh</button>
+              </div>
+              <div id="urlHelp" class="form-text">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <label class="form-label">Format</label>
+                <select id="format" class="form-select">
+                  <option value="mp3">MP3 (re-encode, fleksibel)</option>
+                  <option value="m4a" selected>M4A (super cepat)</option>
+                </select>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label">Kualitas (MP3)</label>
+                <select id="abr" class="form-select">
+                  <option value="320">320 kbps</option>
+                  <option value="256">256 kbps</option>
+                  <option value="192" selected>192 kbps</option>
+                  <option value="128">128 kbps</option>
+                  <option value="64">64 kbps</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="noPlaylist" checked>
+                  <label class="form-check-label" for="noPlaylist">Abaikan playlist</label>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="showLog" checked>
+                  <label class="form-check-label" for="showLog">Tampilkan log proses</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="dropzone mb-3" id="dropzone">
+              <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
+              <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
+              <input type="file" id="cookieFile" accept=".txt" hidden>
+              <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="pickCookie">Pilih cookies.txt</button></div>
+            </div>
+
+            <div class="d-grid d-sm-flex gap-2 align-items-center">
+              <button id="convertBtn" class="btn btn-primary btn-lg"><i class="bi bi-magic"></i> Convert</button>
+              <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
+            </div>
+
+            <div class="mt-3" id="statusWrap" hidden>
+              <div class="d-flex align-items-center gap-2">
+                <div class="spinner-border spinner-border-sm" role="status" id="loadingSpinner" aria-hidden="true"></div>
+                <div id="status" class="fw-medium">Memproses…</div>
+                <span class="badge text-bg-secondary" id="backendBadge" title="Target backend"></span>
+              </div>
+            </div>
+
+            <div class="mt-3" id="resultWrap" hidden>
+              <div class="alert alert-success d-flex align-items-center" role="alert">
+                <i class="bi bi-check-circle me-2"></i>
+                <div>
+                  Selesai! <a id="downloadLink" class="alert-link" href="#" download>Download hasil</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3" id="logWrap" hidden>
+              <div class="card border-0 bg-body-tertiary">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Log</strong>
+                    <button class="btn btn-sm btn-outline-secondary" id="copyLog"><i class="bi bi-clipboard-check"></i> Salin</button>
+                  </div>
+                  <pre class="log-box" id="logs" aria-live="polite"></pre>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card shadow-sm mb-4">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-clock-history me-2"></i>
+              <h5 class="mb-0">Riwayat</h5>
+            </div>
+            <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
+            <ul class="list-group list-group-flush" id="historyList"></ul>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-lightbulb me-2"></i>
+              <h5 class="mb-0">Tips kecepatan</h5>
+            </div>
+            <ul class="small ps-3 mb-0">
+              <li>Pakai <strong>M4A</strong> untuk proses tercepat (tanpa re‑encode).</li>
+              <li>Centang <strong>Abaikan playlist</strong> agar hanya 1 video diproses.</li>
+              <li>Pastikan <code>ffmpeg</code> & <code>yt-dlp</code> versi terbaru di server.</li>
+              <li>Jika muncul age‑gate, unggah <code>cookies.txt</code> valid.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Offcanvas Settings -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasSettings">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-gear me-2"></i>Pengaturan</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="mb-3">
+        <label class="form-label">Backend URL</label>
+        <input id="backendUrl" type="url" class="form-control" placeholder="Contoh: https://mis-ytmp3-backend.onrender.com">
+        <div class="form-text">Kosongkan untuk pakai origin yang sama (relative path).</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Admin Bearer (upload cookies)</label>
+        <input id="adminBearer" type="text" class="form-control" placeholder="Mis: dhika_sayang123">
+        <div class="form-text">Hanya dipakai saat upload cookies.txt.</div>
+      </div>
+      <div class="d-grid gap-2">
+        <button class="btn btn-success" id="saveSettings"><i class="bi bi-save2"></i> Simpan</button>
+        <button class="btn btn-outline-danger" id="resetSettings"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+      </div>
+
+      <hr class="my-4">
+      <h6>Admin: Upload cookies.txt</h6>
+      <div class="d-grid gap-2">
+        <button class="btn btn-outline-primary" id="adminUpload"><i class="bi bi-cloud-upload"></i> Upload sekarang</button>
+        <button class="btn btn-outline-secondary" id="checkCookie"><i class="bi bi-shield-check"></i> Cek status cookies</button>
+        <div id="cookieStatus" class="small text-secondary"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080">
+    <div id="toast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastText">Hello!</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // ===== Utilities =====
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => document.querySelectorAll(sel);
+  const toast = new bootstrap.Toast($('#toast'));
+  const setToast = (msg) => { $('#toastText').textContent = msg; toast.show(); };
+
+  const storage = {
+    get k(){ return 'ytmp3.settings.v1'; },
+    load(){ try { return JSON.parse(localStorage.getItem(this.k)) || {}; } catch { return {}; } },
+    save(v){ localStorage.setItem(this.k, JSON.stringify(v||{})); }
+  };
+
+  const state = {
+    backendUrl: '',
+    adminBearer: ''
+  };
+
+  const getBackend = () => (state.backendUrl || '').trim();
+  const api = (path) => {
+    const b = getBackend();
+    return b ? b.replace(/\/$/, '') + path : path; // relative fallback
+  };
+
+  const updateBackendBadge = () => {
+    const badge = $('#backendBadge');
+    const b = getBackend();
+    badge.textContent = b ? new URL(b).host : location.host;
+  };
+
+  // ===== Theme Toggle =====
+  const themeToggle = $('#themeToggle');
+  const applyTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
+  const themeKey = 'ytmp3.theme';
+  const initTheme = () => {
+    const t = localStorage.getItem(themeKey) || 'light';
+    applyTheme(t);
+    themeToggle.innerHTML = t === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
+  };
+  themeToggle.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-bs-theme') || 'light';
+    const nxt = cur === 'light' ? 'dark' : 'light';
+    applyTheme(nxt); localStorage.setItem(themeKey, nxt);
+    themeToggle.innerHTML = nxt === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
+  });
+
+  // ===== History =====
+  const historyKey = 'ytmp3.history.v1';
+  const pushHistory = (entry) => {
+    const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    list.unshift({ ...entry, at: Date.now() });
+    localStorage.setItem(historyKey, JSON.stringify(list.slice(0, 10)));
+    renderHistory();
+  };
+  const renderHistory = () => {
+    const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    const ul = $('#historyList'); ul.innerHTML = '';
+    $('#historyEmpty').style.display = list.length ? 'none' : '';
+    list.forEach((it) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex align-items-start gap-2';
+      li.innerHTML = `
+        <i class="bi bi-file-music mt-1"></i>
+        <div class="flex-grow-1">
+          <div class="small">${new Date(it.at).toLocaleString()}</div>
+          <a class="history-link" href="${it.downloadUrl}" target="_blank">${it.downloadUrl}</a>
+          <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="${it.downloadUrl}" download><i class="bi bi-download"></i></a>`;
+      ul.appendChild(li);
+    });
+  };
+
+  // ===== Settings (offcanvas) =====
+  const loadSettings = () => {
+    const s = storage.load();
+    state.backendUrl = s.backendUrl || '';
+    state.adminBearer = s.adminBearer || '';
+    $('#backendUrl').value = state.backendUrl;
+    $('#adminBearer').value = state.adminBearer;
+    updateBackendBadge();
+  };
+
+  $('#saveSettings').addEventListener('click', () => {
+    state.backendUrl = $('#backendUrl').value.trim();
+    state.adminBearer = $('#adminBearer').value.trim();
+    storage.save(state);
+    updateBackendBadge();
+    setToast('Pengaturan disimpan');
+  });
+  $('#resetSettings').addEventListener('click', () => {
+    storage.save({}); loadSettings(); setToast('Pengaturan direset');
+  });
+
+  // ===== URL helpers =====
+  $('#pasteBtn').addEventListener('click', async () => {
+    try { $('#url').value = (await navigator.clipboard.readText() || '').trim(); } catch {}
+    $('#url').focus();
+  });
+  $('#sampleBtn').addEventListener('click', () => {
+    $('#url').value = 'https://www.youtube.com/watch?v=7UecFm_bSTU';
+  });
+
+  // ===== Drag & drop cookies.txt =====
+  const dz = $('#dropzone');
+  const cookieFile = $('#cookieFile');
+  $('#pickCookie').addEventListener('click', ()=> cookieFile.click());
+  ;['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+  ;['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+  dz.addEventListener('drop', (e)=> handleCookieFile(e.dataTransfer.files?.[0]));
+  cookieFile.addEventListener('change', ()=> handleCookieFile(cookieFile.files?.[0]));
+
+  async function handleCookieFile(file){
+    if(!file) return;
+    if(!/\.txt$/i.test(file.name)) return setToast('Pilih file .txt hasil export cookies');
+    const text = await file.text();
+    await uploadCookies(text);
+  }
+
+  async function uploadCookies(text){
+    const bearer = state.adminBearer || $('#adminBearer').value.trim();
+    if(!bearer){ setToast('Isi Admin Bearer terlebih dahulu di Pengaturan'); return; }
+    try{
+      const resp = await fetch(api('/admin/upload-cookies'), {
+        method:'POST', headers:{ 'Authorization': `Bearer ${bearer}`, 'Content-Type':'text/plain' }, body:text
+      });
+      const data = await resp.json().catch(()=>({}));
+      if(!resp.ok) throw new Error(data.error || 'Upload gagal');
+      setToast('cookies.txt terunggah ✔');
+      $('#cookieStatus').textContent = `OK · ${data.bytes||0} bytes → ${data.path||'/tmp/cookies.txt'}`;
+    }catch(err){ setToast('Gagal upload cookies: '+err.message); }
+  }
+
+  $('#adminUpload').addEventListener('click', async ()=>{
+    const text = await (await fetch('./cookies.txt')).text().catch(()=>null);
+    if(!text){ setToast('Siapkan cookies.txt (atau seret ke dropzone)'); return; }
+    uploadCookies(text);
+  });
+
+  $('#checkCookie').addEventListener('click', async ()=>{
+    try{
+      const resp = await fetch(api('/admin/cookies-status'));
+      const data = await resp.json();
+      if(data.exists){ $('#cookieStatus').textContent = `Ada · ${data.bytes||0} bytes · ${data.path}`; }
+      else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
+    }catch{ $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
+  });
+
+  // ===== Convert handler =====
+  $('#convertBtn').addEventListener('click', doConvert);
+  $('#clearBtn').addEventListener('click', () => { $('#url').value=''; $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent=''; });
+  $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(); });
+
+  async function doConvert(){
+    const url = $('#url').value.trim();
+    if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
+    const body = {
+      url,
+      format: $('#format').value,
+      abr: Number($('#abr').value),
+      noPlaylist: $('#noPlaylist').checked
+    };
+
+    $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
+    $('#loadingSpinner').style.display = '';
+    $('#status').textContent = 'Memproses…';
+
+    try{
+      const resp = await fetch(api('/api/convert'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      const data = await resp.json();
+      if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
+
+      $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download','');
+      $('#resultWrap').hidden = false;
+      $('#status').textContent = 'Selesai';
+      $('#loadingSpinner').style.display = 'none';
+      if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
+      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr });
+      setToast('Berhasil diproses');
+    }catch(err){
+      $('#status').textContent = 'Error: ' + err.message;
+      $('#loadingSpinner').style.display = 'none';
+      $('#resultWrap').hidden = true;
+      $('#logWrap').hidden = false;
+      $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
+      setToast('Terjadi error: '+err.message);
+    }
+  }
+
+  // ===== Copy log =====
+  $('#copyLog').addEventListener('click', async ()=>{
+    try { await navigator.clipboard.writeText($('#logs').textContent || ''); setToast('Log tersalin'); } catch { setToast('Tidak bisa menyalin'); }
+  });
+
+  // ===== Init =====
+  (function init(){
+    initTheme();
+    loadSettings();
+    renderHistory();
+    updateBackendBadge();
+  })();
+  </script>
+</body>
+</html>
