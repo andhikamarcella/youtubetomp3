@@ -139,8 +139,7 @@ app.post("/api/convert", async (req, res) => {
     proc.stdout.on("data", (d) => (logs += d.toString()));
     proc.stderr.on("data", (d) => (logs += d.toString()));
 
-    proc.on("error", (e) => {
-      // Fallback ke PyTube jika yt-dlp tidak tersedia
+    const runPyTubeFallback = (errMsg, baseLogs = "") => {
       try {
         const py = spawn("python3", [
           join(__dirname, "download_audio.py"),
@@ -161,7 +160,7 @@ app.post("/api/convert", async (req, res) => {
         py.on("close", async (code) => {
           if (code !== 0) {
             if (!res.headersSent) {
-              res.status(500).json({ error: "yt-dlp tidak bisa dijalankan", detail: e.message, logs: pyLogs });
+              res.status(500).json({ error: errMsg, logs: baseLogs + pyLogs });
             }
             return;
           }
@@ -183,24 +182,26 @@ app.post("/api/convert", async (req, res) => {
 
             const downloadUrl = `/public/jobs/${filename}`;
             if (!res.headersSent) {
-              res.json({ ok: true, id, format: format === "mp3" ? "mp3" : ext, downloadUrl, logs: pyLogs.slice(-8000) });
+              res.json({ ok: true, id, format: format === "mp3" ? "mp3" : ext, downloadUrl, logs: (baseLogs + pyLogs).slice(-8000) });
             }
           } catch (err) {
             if (!res.headersSent) {
-              res.status(500).json({ error: "ffmpeg gagal", logs: pyLogs + err.message });
+              res.status(500).json({ error: "ffmpeg gagal", logs: baseLogs + pyLogs + err.message });
             }
           }
         });
-      } catch {
+      } catch (e) {
         if (!res.headersSent) {
-          res.status(500).json({ error: "yt-dlp tidak bisa dijalankan", detail: e.message });
+          res.status(500).json({ error: errMsg, logs: baseLogs, detail: e.message });
         }
       }
-    });
+    };
+
+    proc.on("error", () => runPyTubeFallback("yt-dlp tidak bisa dijalankan", logs));
 
     proc.on("close", async (code) => {
       if (code !== 0) {
-        return res.status(500).json({ error: "yt-dlp gagal", logs });
+        return runPyTubeFallback("yt-dlp gagal", logs);
       }
       // Cari file hasil (id.*)
       const files = readdirSync(JOBS_DIR).filter(f => f.startsWith(id + "."));
