@@ -1,6 +1,18 @@
 # download_audio.py — helper for PyTube audio download
-import sys, os
-from pytube import YouTube
+import sys, os, subprocess
+
+# Ensure PyTube is available even if not pre-installed
+try:
+    from pytube import YouTube
+except ModuleNotFoundError:
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet", "pytube"]
+        )
+        from pytube import YouTube
+    except Exception as e:
+        print(f"failed to install pytube: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def main():
     if len(sys.argv) < 4:
