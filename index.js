@@ -126,7 +126,13 @@ app.post('/api/convert', async (req,res)=>{
 
     const dlUrl = `/jobs/${jobId}/${basename(outPath)}`;
     const st = await fsp.stat(outPath);
-    res.json({ ok:true, job:{ id:jobId, kbps, url, file:basename(outPath), size:st.size }, download_url: dlUrl, absolute_url: dlUrl });
+    const filename = basename(outPath);
+    res.json({
+      ok: true,
+      downloadUrl: dlUrl,
+      filename,
+      job: { id: jobId, kbps, url, file: filename, size: st.size }
+    });
   } catch(e) {
     res.status(500).json({ error: String(e.message||e), hint:'Unggah cookies YouTube di /admin/upload-cookies jika kena age/robot check.' });
   }
