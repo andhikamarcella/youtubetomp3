@@ -1,11 +1,13 @@
 import express from "express";
 import cors from "cors";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { promises as fsp } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
+// Tambahan untuk ffmpeg portable:
+import ffmpegPath from "ffmpeg-static";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -21,9 +23,6 @@ if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
 
 // ==== Util ====
-const safe = (s) => s.replace(/[^\w\-]+/g, "_").slice(0, 60);
-
-// Map ABR (kbps) ke --audio-quality (0=best, 9=worst)
 const abrToQ = (abr) => {
   const n = Number(abr) || 128;
   if (n >= 320) return "0";
@@ -53,7 +52,14 @@ app.post("/api/convert", async (req, res) => {
 
     const id = nanoid(10);
     const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
+
+    // Argumen dasar yt-dlp
     const args = ["--newline", "--no-progress"];
+
+    // Pakai ffmpeg portable kalau ada
+    if (ffmpegPath) {
+      args.push("--ffmpeg-location", ffmpegPath);
+    }
 
     // Cookies kalau ada (buat age gate / bot check)
     if (existsSync(COOKIES_PATH)) {
@@ -99,7 +105,8 @@ app.post("/api/convert", async (req, res) => {
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
 const BEARER = process.env.ADMIN_BEARER || "dhika_sayang123!";
-app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
+
+app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
   try {
     const auth = req.get("Authorization") || "";
     if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
@@ -112,10 +119,11 @@ app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), a
   }
 });
 
+// Status cookies — ESM-friendly (tanpa require)
 app.get("/admin/cookies-status", (req, res) => {
   try {
     if (!existsSync(COOKIES_PATH)) return res.json({ exists: false });
-    const size = require("fs").statSync(COOKIES_PATH).size;
+    const size = statSync(COOKIES_PATH).size;
     return res.json({ exists: true, path: COOKIES_PATH, bytes: size });
   } catch (e) {
     return res.status(500).json({ error: e.message });
