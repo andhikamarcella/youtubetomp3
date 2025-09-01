@@ -88,12 +88,18 @@ app.post("/api/convert", async (req, res) => {
 
     let trimOpt = null;
     if (trim && (trim.start !== undefined || trim.end !== undefined)) {
-      const start = Number(trim.start) || 0;
-      const end = Number(trim.end);
-      if (Number.isNaN(end) || end < start) {
+      const hasStart = trim.start !== undefined;
+      const hasEnd = trim.end !== undefined;
+      const start = hasStart ? Number(trim.start) : 0;
+      const end = hasEnd ? Number(trim.end) : undefined;
+      if ((hasStart && Number.isNaN(start)) ||
+          (hasEnd && Number.isNaN(end)) ||
+          (hasStart && hasEnd && end < start)) {
         return res.status(400).json({ error: "trim tidak valid" });
       }
-      trimOpt = { start, end };
+      trimOpt = {};
+      if (hasStart) trimOpt.start = start;
+      if (hasEnd) trimOpt.end = end;
     }
 
     const id = nanoid(10);
