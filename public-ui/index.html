@@ -301,11 +301,17 @@
     localStorage.setItem(historyKey, JSON.stringify(list.slice(0, 10)));
     renderHistory();
   };
+  const removeHistory = (idx) => {
+    const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    list.splice(idx, 1);
+    localStorage.setItem(historyKey, JSON.stringify(list));
+    renderHistory();
+  };
   const renderHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
     const ul = $('#historyList'); ul.innerHTML = '';
     $('#historyEmpty').style.display = list.length ? 'none' : '';
-    list.forEach((it) => {
+    list.forEach((it, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex align-items-start gap-2';
       li.innerHTML = `
@@ -315,8 +321,21 @@
           <a class="history-link" href="${it.downloadUrl}" download="${it.fileName || ''}" target="_blank">${it.fileName || it.downloadUrl}</a>
           <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
         </div>
-        <a class="btn btn-sm btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}"><i class="bi bi-download"></i></a>`;
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
+          <button class="btn btn-outline-secondary copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
+          <button class="btn btn-outline-danger delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
+        </div>`;
       ul.appendChild(li);
+    });
+    ul.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(btn.dataset.url); setToast('Link disalin'); }
+        catch { setToast('Tidak bisa menyalin'); }
+      });
+    });
+    ul.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
     });
   };
 
@@ -429,6 +448,7 @@
     $('#url').value='';
     $('#trimStart').value='';
     $('#trimEnd').value='';
+    $('#fileName').value='';
     $('#id3Title').value='';
     $('#id3Artist').value='';
     $('#id3Album').value='';
