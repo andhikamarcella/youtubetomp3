@@ -36,6 +36,37 @@ const abrToQ = (abr) => {
   return "8";
 };
 
+const ffmpegToMp3 = (input, output, opts = {}) => {
+  const { abr = 192, id3 = {}, trim = {}, normalize = false } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !isNaN(start);
+    const hasEnd = typeof end === "number" && !isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    if (normalize) args.push("-af", "loudnorm");
+    for (const [k, v] of Object.entries(id3 || {})) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        args.push("-metadata", `${k}=${v}`);
+      }
+    }
+    args.push("-vn", "-codec:a", "libmp3lame", "-b:a", `${abr}k`, output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
 const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
 
 // ==== Serve static UI & hasil unduhan ====
@@ -45,9 +76,19 @@ app.use("/public", express.static(PUBLIC_DIR));
 // ==== API convert ====
 app.post("/api/convert", async (req, res) => {
   try {
-    const { url, format = "mp3", abr = 192, noPlaylist = true } = req.body || {};
+    const { url, format = "mp3", abr = 192, noPlaylist = true, id3 = {}, trim, normalize = false } = req.body || {};
     if (!url || !/^https?:\/\//.test(url)) {
       return res.status(400).json({ error: "URL tidak valid" });
+    }
+
+    let trimOpt = null;
+    if (trim && (trim.start !== undefined || trim.end !== undefined)) {
+      const start = Number(trim.start) || 0;
+      const end = Number(trim.end);
+      if (Number.isNaN(end) || end < start) {
+        return res.status(400).json({ error: "trim tidak valid" });
+      }
+      trimOpt = { start, end };
     }
 
     const id = nanoid(10);
@@ -95,6 +136,19 @@ app.post("/api/convert", async (req, res) => {
       if (!files.length) return res.status(500).json({ error: "Output tidak ditemukan", logs });
 
       const filename   = files[0];
+      const fullPath   = join(JOBS_DIR, filename);
+
+      if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length)) {
+        try {
+          const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
+          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize });
+          await fsp.unlink(fullPath);
+          await fsp.rename(tmpOut, fullPath);
+        } catch (e) {
+          return res.status(500).json({ error: "ffmpeg gagal", logs: logs + e.message });
+        }
+      }
+
       const downloadUrl = `/public/jobs/${filename}`;
       return res.json({ ok: true, id, format, downloadUrl, logs: logs.slice(-8000) });
     });
