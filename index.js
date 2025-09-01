@@ -39,7 +39,7 @@ const abrToQ = (abr) => {
 const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
 
 // ==== Serve static UI & hasil unduhan ====
-app.use("/", express.static(join(__dirname, "public-ui")));
+app.use("/", express.static(join(__dirname, "public-ui"), { maxAge: "1h" }));
 app.use("/public", express.static(PUBLIC_DIR));
 
 // ==== API convert ====
