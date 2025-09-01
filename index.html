@@ -52,15 +52,28 @@
               <div id="urlHelp" class="form-text">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
             </div>
 
+            <div class="mb-3" id="previewWrap" hidden>
+              <div class="ratio ratio-16x9 mb-2">
+                <img id="thumb" class="rounded object-fit-cover" alt="Thumbnail" />
+              </div>
+              <div id="videoTitle" class="fw-semibold"></div>
+            </div>
+
+            <div class="mb-3">
+              <label for="playlist" class="form-label">Playlist / Antrian</label>
+              <textarea id="playlist" class="form-control" rows="3" placeholder="Satu URL YouTube per baris"></textarea>
+              <div class="form-text">Setiap URL akan diproses bergiliran.</div>
+            </div>
+
             <div class="row g-3 mb-3">
-              <div class="col-sm-6">
+              <div class="col-md-4">
                 <label class="form-label">Format</label>
                 <select id="format" class="form-select">
                   <option value="mp3">MP3 (re-encode, fleksibel)</option>
                   <option value="m4a" selected>M4A (super cepat)</option>
                 </select>
               </div>
-              <div class="col-sm-6">
+              <div class="col-md-4">
                 <label class="form-label">Kualitas (MP3)</label>
                 <select id="abr" class="form-select">
                   <option value="320">320 kbps</option>
@@ -68,6 +81,13 @@
                   <option value="192" selected>192 kbps</option>
                   <option value="128">128 kbps</option>
                   <option value="64">64 kbps</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Sample Rate</label>
+                <select id="sampleRate" class="form-select">
+                  <option value="44100" selected>44.1 kHz</option>
+                  <option value="48000">48 kHz</option>
                 </select>
               </div>
             </div>
@@ -87,6 +107,34 @@
               </div>
             </div>
 
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <label class="form-label">Trim Mulai</label>
+                <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label">Trim Selesai</label>
+                <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Nama file</label>
+              <input id="fileName" type="text" class="form-control" placeholder="Nama file output" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Metadata ID3</label>
+              <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
+              <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
+              <input id="id3Album" type="text" class="form-control" placeholder="Album" />
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="normalize" />
+              <label class="form-check-label" for="normalize">Normalisasi audio</label>
+            </div>
+
             <div class="dropzone mb-3" id="dropzone">
               <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
               <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
@@ -96,6 +144,7 @@
 
             <div class="d-grid d-sm-flex gap-2 align-items-center">
               <button id="convertBtn" class="btn btn-primary btn-lg"><i class="bi bi-magic"></i> Convert</button>
+              <button id="convertQueueBtn" class="btn btn-outline-primary"><i class="bi bi-list"></i> Convert Antrian</button>
               <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
             </div>
 
@@ -189,7 +238,30 @@
       <div class="d-grid gap-2">
         <button class="btn btn-outline-primary" id="adminUpload"><i class="bi bi-cloud-upload"></i> Upload sekarang</button>
         <button class="btn btn-outline-secondary" id="checkCookie"><i class="bi bi-shield-check"></i> Cek status cookies</button>
-        <div id="cookieStatus" class="small text-secondary"></div>
+    <div id="cookieStatus" class="small text-secondary"></div>
+  </div>
+  </div>
+  </div>
+
+  <!-- Tutorial Modal -->
+  <div class="modal fade" id="tutorialModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Tutorial Singkat</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <ol class="mb-0">
+            <li>Tempel URL YouTube.</li>
+            <li>Pilih format, kualitas, dan opsi lain.</li>
+            <li>Klik <strong>Convert</strong> atau <strong>Convert Antrian</strong>.</li>
+            <li>Unduh hasilnya.</li>
+          </ol>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
+        </div>
       </div>
     </div>
   </div>
@@ -239,6 +311,7 @@
   const themeToggle = $('#themeToggle');
   const applyTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
   const themeKey = 'ytmp3.theme';
+  const tutorialKey = 'ytmp3.tutorial.v1';
   const initTheme = () => {
     const t = localStorage.getItem(themeKey) || 'light';
     applyTheme(t);
@@ -259,22 +332,41 @@
     localStorage.setItem(historyKey, JSON.stringify(list.slice(0, 10)));
     renderHistory();
   };
+  const removeHistory = (idx) => {
+    const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    list.splice(idx, 1);
+    localStorage.setItem(historyKey, JSON.stringify(list));
+    renderHistory();
+  };
   const renderHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
     const ul = $('#historyList'); ul.innerHTML = '';
     $('#historyEmpty').style.display = list.length ? 'none' : '';
-    list.forEach((it) => {
+    list.forEach((it, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex align-items-start gap-2';
       li.innerHTML = `
         <i class="bi bi-file-music mt-1"></i>
         <div class="flex-grow-1">
           <div class="small">${new Date(it.at).toLocaleString()}</div>
-          <a class="history-link" href="${it.downloadUrl}" target="_blank">${it.downloadUrl}</a>
+          <a class="history-link" href="${it.downloadUrl}" download="${it.fileName || ''}" target="_blank">${it.fileName || it.downloadUrl}</a>
           <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
         </div>
-        <a class="btn btn-sm btn-outline-primary" href="${it.downloadUrl}" download><i class="bi bi-download"></i></a>`;
+        <div class="btn-group btn-group-sm">
+          <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
+          <button class="btn btn-outline-secondary copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
+          <button class="btn btn-outline-danger delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
+        </div>`;
       ul.appendChild(li);
+    });
+    ul.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(btn.dataset.url); setToast('Link disalin'); }
+        catch { setToast('Tidak bisa menyalin'); }
+      });
+    });
+    ul.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
     });
   };
 
@@ -300,13 +392,41 @@
   });
 
   // ===== URL helpers =====
+  function parseTime(str){
+    if(!str) return null;
+    if(/^\d+(?::\d+)*$/.test(str)){
+      return str.split(':').reduce((acc,v)=>acc*60+Number(v),0);
+    }
+    const n = Number(str);
+    return Number.isNaN(n) ? null : n;
+  }
+
+  function sanitizeFileName(str){
+    return str.replace(/[\\/:*?"<>|\r\n]+/g,'').replace(/\s+/g,' ').trim();
+  }
+
+  async function updatePreview(){
+    const url = $('#url').value.trim();
+    if(!/^https?:\/\//i.test(url)){ $('#previewWrap').hidden = true; return; }
+    try{
+      const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      const data = await resp.json();
+      $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = data.title;
+      $('#previewWrap').hidden = false;
+      if(!$('#id3Title').value) $('#id3Title').value = data.title;
+      if(!$('#fileName').value) $('#fileName').value = sanitizeFileName(data.title);
+    }catch{ $('#previewWrap').hidden = true; }
+  }
   $('#pasteBtn').addEventListener('click', async () => {
     try { $('#url').value = (await navigator.clipboard.readText() || '').trim(); } catch {}
     $('#url').focus();
+    updatePreview();
   });
   $('#sampleBtn').addEventListener('click', () => {
     $('#url').value = 'https://www.youtube.com/watch?v=7UecFm_bSTU';
+    updatePreview();
   });
+  $('#url').addEventListener('change', updatePreview);
 
   // ===== Drag & drop cookies.txt =====
   const dz = $('#dropzone');
@@ -355,18 +475,50 @@
 
   // ===== Convert handler =====
   $('#convertBtn').addEventListener('click', doConvert);
-  $('#clearBtn').addEventListener('click', () => { $('#url').value=''; $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent=''; });
+  $('#convertQueueBtn').addEventListener('click', doConvertQueue);
+  $('#clearBtn').addEventListener('click', () => {
+    $('#url').value='';
+    $('#playlist').value='';
+    $('#trimStart').value='';
+    $('#trimEnd').value='';
+    $('#fileName').value='';
+    $('#id3Title').value='';
+    $('#id3Artist').value='';
+    $('#id3Album').value='';
+    $('#normalize').checked=false;
+    $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
+    $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
+  });
   $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(); });
 
-  async function doConvert(){
-    const url = $('#url').value.trim();
+  async function doConvert(urlOverride){
+    const url = (urlOverride || $('#url').value).trim();
     if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
     const body = {
       url,
       format: $('#format').value,
       abr: Number($('#abr').value),
+      sampleRate: Number($('#sampleRate').value),
+      fileName: sanitizeFileName($('#fileName').value.trim()),
       noPlaylist: $('#noPlaylist').checked
     };
+
+    const id3 = {
+      title: $('#id3Title').value.trim(),
+      artist: $('#id3Artist').value.trim(),
+      album: $('#id3Album').value.trim()
+    };
+    Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
+    if(Object.keys(id3).length) body.id3 = id3;
+
+    const trim = {};
+    const s = parseTime($('#trimStart').value.trim());
+    const e = parseTime($('#trimEnd').value.trim());
+    if(s !== null) trim.start = s;
+    if(e !== null) trim.end = e;
+    if(Object.keys(trim).length) body.trim = trim;
+
+    body.normalize = $('#normalize').checked;
 
     $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
@@ -377,12 +529,12 @@
       const data = await resp.json();
       if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
 
-      $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download','');
+      $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
       $('#status').textContent = 'Selesai';
       $('#loadingSpinner').style.display = 'none';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
-      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr });
+      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
       setToast('Berhasil diproses');
     }catch(err){
       $('#status').textContent = 'Error: ' + err.message;
@@ -392,6 +544,18 @@
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
       setToast('Terjadi error: '+err.message);
     }
+  }
+
+  async function doConvertQueue(){
+    const urls = $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
+    if(!urls.length){ setToast('Isi playlist dengan URL valid'); return; }
+    for(let i=0;i<urls.length;i++){
+      $('#url').value = urls[i];
+      await updatePreview();
+      setToast(`Memproses ${i+1}/${urls.length}`);
+      await doConvert(urls[i]);
+    }
+    setToast('Semua antrian selesai');
   }
 
   // ===== Copy log =====
@@ -405,6 +569,12 @@
     loadSettings();
     renderHistory();
     updateBackendBadge();
+    updatePreview();
+    if(!localStorage.getItem(tutorialKey)){
+      const m = new bootstrap.Modal($('#tutorialModal'));
+      m.show();
+      $('#tutorialModal').addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
+    }
   })();
   </script>
 </body>

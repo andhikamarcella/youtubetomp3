@@ -6,8 +6,13 @@ import { promises as fsp } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
-// Tambahan untuk ffmpeg portable:
-import ffmpegPath from "ffmpeg-static";
+// Tambahan untuk ffmpeg portable (opsional)
+let ffmpegPath = null;
+try {
+  ffmpegPath = (await import("ffmpeg-static")).default;
+} catch {
+  ffmpegPath = null;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -36,6 +41,45 @@ const abrToQ = (abr) => {
   return "8";
 };
 
+const sanitizeFileName = (name = "") =>
+  name
+    .replace(/[\\/:*?"<>|\r\n]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const ffmpegToMp3 = (input, output, opts = {}) => {
+  const { abr = 192, id3 = {}, trim = {}, normalize = false, sampleRate } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !isNaN(start);
+    const hasEnd = typeof end === "number" && !isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    if (normalize) args.push("-af", "loudnorm");
+    for (const [k, v] of Object.entries(id3 || {})) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        args.push("-metadata", `${k}=${v}`);
+      }
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    args.push("-vn", "-codec:a", "libmp3lame", "-b:a", `${abr}k`, output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => reject(err));
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
 const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
 
 // ==== Serve static UI & hasil unduhan ====
@@ -45,13 +89,30 @@ app.use("/public", express.static(PUBLIC_DIR));
 // ==== API convert ====
 app.post("/api/convert", async (req, res) => {
   try {
-    const { url, format = "mp3", abr = 192, noPlaylist = true } = req.body || {};
+    const { url, format = "mp3", abr = 192, sampleRate, fileName, noPlaylist = true, id3 = {}, trim, normalize = false } = req.body || {};
     if (!url || !/^https?:\/\//.test(url)) {
       return res.status(400).json({ error: "URL tidak valid" });
     }
 
+    let trimOpt = null;
+    if (trim && (trim.start !== undefined || trim.end !== undefined)) {
+      const hasStart = trim.start !== undefined;
+      const hasEnd = trim.end !== undefined;
+      const start = hasStart ? Number(trim.start) : 0;
+      const end = hasEnd ? Number(trim.end) : undefined;
+      if ((hasStart && Number.isNaN(start)) ||
+          (hasEnd && Number.isNaN(end)) ||
+          (hasStart && hasEnd && end < start)) {
+        return res.status(400).json({ error: "trim tidak valid" });
+      }
+      trimOpt = {};
+      if (hasStart) trimOpt.start = start;
+      if (hasEnd) trimOpt.end = end;
+    }
+
     const id = nanoid(10);
     const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
+    const baseName = sanitizeFileName(fileName || id3.title || id) || id;
 
     // Argumen dasar yt-dlp
     const args = ["--newline", "--no-progress"];
@@ -86,17 +147,111 @@ app.post("/api/convert", async (req, res) => {
     proc.stdout.on("data", (d) => (logs += d.toString()));
     proc.stderr.on("data", (d) => (logs += d.toString()));
 
+    const runPyTubeFallback = (errMsg, baseLogs = "") => {
+      let pyLogs = "";
+      let pyOut  = "";
+      try {
+        const py = spawn("python3", [
+          join(__dirname, "download_audio.py"),
+          url,
+          JOBS_DIR,
+          id,
+        ], { stdio: ["ignore", "pipe", "pipe"] });
+
+        py.stdout.on("data", (d) => {
+          const s = d.toString();
+          pyLogs += s;
+          pyOut  += s;
+        });
+        py.stderr.on("data", (d) => (pyLogs += d.toString()));
+
+        py.on("error", (err) => {
+          if (!res.headersSent) {
+            res.status(500).json({
+              error: `${errMsg} & PyTube tidak bisa dijalankan`,
+              logs: baseLogs + pyLogs,
+              detail: err.message,
+            });
+          }
+        });
+
+        py.on("close", async (code) => {
+          if (code !== 0) {
+            if (!res.headersSent) {
+              res.status(500).json({
+                error: `${errMsg} & PyTube gagal`,
+                logs: baseLogs + pyLogs,
+              });
+            }
+            return;
+          }
+          try {
+            const dlPath = pyOut.trim().split("\n").pop().trim();
+            const ext = dlPath.split(".").pop();
+            const filename = `${id}.${ext}`;
+            const fullPath = join(JOBS_DIR, filename);
+            if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
+
+            if (format === "mp3") {
+              if (normalize || trimOpt || Object.keys(id3).length || ext !== "mp3") {
+                const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
+                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
+                await fsp.unlink(fullPath);
+                await fsp.rename(tmpOut, fullPath);
+              }
+            }
+
+            const downloadUrl = `/public/jobs/${filename}`;
+            const finalExt = format === "mp3" ? "mp3" : ext;
+            const downloadFileName = `${baseName}.${finalExt}`;
+            if (!res.headersSent) {
+              res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: (baseLogs + pyLogs).slice(-8000) });
+            }
+          } catch (err) {
+            if (!res.headersSent) {
+              res.status(500).json({ error: "ffmpeg gagal", logs: baseLogs + pyLogs + err.message });
+            }
+          }
+        });
+      } catch (e) {
+        if (!res.headersSent) {
+          res.status(500).json({
+            error: `${errMsg} & PyTube tidak tersedia`,
+            logs: baseLogs,
+            detail: e.message,
+          });
+        }
+      }
+    };
+
+    proc.on("error", () => runPyTubeFallback("yt-dlp tidak bisa dijalankan", logs));
+
     proc.on("close", async (code) => {
       if (code !== 0) {
-        return res.status(500).json({ error: "yt-dlp gagal", logs });
+        return runPyTubeFallback("yt-dlp gagal", logs);
       }
       // Cari file hasil (id.*)
       const files = readdirSync(JOBS_DIR).filter(f => f.startsWith(id + "."));
       if (!files.length) return res.status(500).json({ error: "Output tidak ditemukan", logs });
 
       const filename   = files[0];
+      const fullPath   = join(JOBS_DIR, filename);
+
+      if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length)) {
+        try {
+          const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
+          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
+          await fsp.unlink(fullPath);
+          await fsp.rename(tmpOut, fullPath);
+        } catch (e) {
+          return res.status(500).json({ error: "ffmpeg gagal", logs: logs + e.message });
+        }
+      }
+
       const downloadUrl = `/public/jobs/${filename}`;
-      return res.json({ ok: true, id, format, downloadUrl, logs: logs.slice(-8000) });
+      const finalExt = format;
+      const downloadFileName = `${baseName}.${finalExt}`;
+      return res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: logs.slice(-8000) });
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });
