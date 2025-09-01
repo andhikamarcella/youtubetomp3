@@ -63,6 +63,12 @@
               <label for="playlist" class="form-label">Playlist / Antrian</label>
               <textarea id="playlist" class="form-control" rows="3" placeholder="Satu URL YouTube per baris"></textarea>
               <div class="form-text">Setiap URL akan diproses bergiliran.</div>
+
+              <div class="input-group mt-2">
+                <input id="queueUrl" type="url" class="form-control" placeholder="Tambahkan URL ke antrian" />
+                <button class="btn btn-outline-secondary" id="addQueueBtn" type="button"><i class="bi bi-plus-lg"></i> Tambah</button>
+              </div>
+              <ul class="list-group mt-2" id="queueList"></ul>
             </div>
 
             <div class="row g-3 mb-3">
@@ -144,7 +150,7 @@
 
             <div class="d-grid d-sm-flex gap-2 align-items-center">
               <button id="convertBtn" class="btn btn-primary btn-lg"><i class="bi bi-magic"></i> Convert</button>
-              <button id="convertQueueBtn" class="btn btn-outline-primary"><i class="bi bi-list"></i> Convert Antrian</button>
+              <button id="downloadAllBtn" class="btn btn-outline-primary"><i class="bi bi-download"></i> Download Semua</button>
               <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
             </div>
 
@@ -306,6 +312,37 @@
     const b = getBackend();
     badge.textContent = b ? new URL(b).host : location.host;
   };
+
+  // ===== Queue =====
+  const queue = [];
+  function renderQueue(){
+    const ul = $('#queueList');
+    if(!ul) return;
+    ul.innerHTML = '';
+    queue.forEach((url, idx) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      li.innerHTML = `<span class="small text-break me-2 flex-grow-1">${url}</span><button class="btn btn-sm btn-outline-danger" data-idx="${idx}"><i class="bi bi-x"></i></button>`;
+      ul.appendChild(li);
+    });
+    const textarea = $('#playlist');
+    if(textarea) textarea.value = queue.join('\n');
+  }
+
+  $('#queueList')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-idx]');
+    if(!btn) return;
+    queue.splice(Number(btn.getAttribute('data-idx')),1);
+    renderQueue();
+  });
+
+  $('#addQueueBtn')?.addEventListener('click', () => {
+    const url = $('#queueUrl').value.trim();
+    if(!/^https?:\/\//i.test(url)){ setToast('URL tidak valid'); return; }
+    queue.push(url);
+    $('#queueUrl').value = '';
+    renderQueue();
+  });
 
   // ===== Theme Toggle =====
   const themeToggle = $('#themeToggle');
@@ -475,10 +512,11 @@
 
   // ===== Convert handler =====
   $('#convertBtn').addEventListener('click', doConvert);
-  $('#convertQueueBtn').addEventListener('click', doConvertQueue);
+  $('#downloadAllBtn').addEventListener('click', doConvertQueue);
   $('#clearBtn').addEventListener('click', () => {
     $('#url').value='';
     $('#playlist').value='';
+    queue.length = 0; renderQueue();
     $('#trimStart').value='';
     $('#trimEnd').value='';
     $('#fileName').value='';
@@ -491,7 +529,7 @@
   });
   $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(); });
 
-  async function doConvert(urlOverride){
+  async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
     if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
     const body = {
@@ -534,6 +572,7 @@
       $('#status').textContent = 'Selesai';
       $('#loadingSpinner').style.display = 'none';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
+      if(autoDownload) $('#downloadLink').click();
       pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
       setToast('Berhasil diproses');
     }catch(err){
@@ -547,13 +586,14 @@
   }
 
   async function doConvertQueue(){
-    const urls = $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
-    if(!urls.length){ setToast('Isi playlist dengan URL valid'); return; }
+    const urls = queue.length ? [...queue] : $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
+    if(!urls.length){ setToast('Antrian kosong'); return; }
     for(let i=0;i<urls.length;i++){
       $('#url').value = urls[i];
       await updatePreview();
       setToast(`Memproses ${i+1}/${urls.length}`);
-      await doConvert(urls[i]);
+      await doConvert(urls[i], true);
+      if(queue.length){ queue.shift(); renderQueue(); }
     }
     setToast('Semua antrian selesai');
   }
@@ -568,6 +608,7 @@
     initTheme();
     loadSettings();
     renderHistory();
+    renderQueue();
     updateBackendBadge();
     updatePreview();
     if(!localStorage.getItem(tutorialKey)){
