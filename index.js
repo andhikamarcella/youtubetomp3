@@ -6,8 +6,13 @@ import { promises as fsp } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
-// Tambahan untuk ffmpeg portable:
-import ffmpegPath from "ffmpeg-static";
+// Tambahan untuk ffmpeg portable (opsional)
+let ffmpegPath = null;
+try {
+  ffmpegPath = (await import("ffmpeg-static")).default;
+} catch {
+  ffmpegPath = null;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
