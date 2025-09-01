@@ -41,8 +41,14 @@ const abrToQ = (abr) => {
   return "8";
 };
 
+const sanitizeFileName = (name = "") =>
+  name
+    .replace(/[\\/:*?"<>|\r\n]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const ffmpegToMp3 = (input, output, opts = {}) => {
-  const { abr = 192, id3 = {}, trim = {}, normalize = false } = opts;
+  const { abr = 192, id3 = {}, trim = {}, normalize = false, sampleRate } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -60,6 +66,7 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
         args.push("-metadata", `${k}=${v}`);
       }
     }
+    if (sampleRate) args.push("-ar", String(sampleRate));
     args.push("-vn", "-codec:a", "libmp3lame", "-b:a", `${abr}k`, output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
@@ -82,7 +89,7 @@ app.use("/public", express.static(PUBLIC_DIR));
 // ==== API convert ====
 app.post("/api/convert", async (req, res) => {
   try {
-    const { url, format = "mp3", abr = 192, noPlaylist = true, id3 = {}, trim, normalize = false } = req.body || {};
+    const { url, format = "mp3", abr = 192, sampleRate, fileName, noPlaylist = true, id3 = {}, trim, normalize = false } = req.body || {};
     if (!url || !/^https?:\/\//.test(url)) {
       return res.status(400).json({ error: "URL tidak valid" });
     }
@@ -105,6 +112,7 @@ app.post("/api/convert", async (req, res) => {
 
     const id = nanoid(10);
     const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
+    const baseName = sanitizeFileName(fileName || id3.title || id) || id;
 
     // Argumen dasar yt-dlp
     const args = ["--newline", "--no-progress"];
@@ -187,15 +195,17 @@ app.post("/api/convert", async (req, res) => {
             if (format === "mp3") {
               if (normalize || trimOpt || Object.keys(id3).length || ext !== "mp3") {
                 const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize });
+                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
                 await fsp.unlink(fullPath);
                 await fsp.rename(tmpOut, fullPath);
               }
             }
 
             const downloadUrl = `/public/jobs/${filename}`;
+            const finalExt = format === "mp3" ? "mp3" : ext;
+            const downloadFileName = `${baseName}.${finalExt}`;
             if (!res.headersSent) {
-              res.json({ ok: true, id, format: format === "mp3" ? "mp3" : ext, downloadUrl, logs: (baseLogs + pyLogs).slice(-8000) });
+              res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: (baseLogs + pyLogs).slice(-8000) });
             }
           } catch (err) {
             if (!res.headersSent) {
@@ -230,7 +240,7 @@ app.post("/api/convert", async (req, res) => {
       if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length)) {
         try {
           const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize });
+          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
           await fsp.unlink(fullPath);
           await fsp.rename(tmpOut, fullPath);
         } catch (e) {
@@ -239,7 +249,9 @@ app.post("/api/convert", async (req, res) => {
       }
 
       const downloadUrl = `/public/jobs/${filename}`;
-      return res.json({ ok: true, id, format, downloadUrl, logs: logs.slice(-8000) });
+      const finalExt = format;
+      const downloadFileName = `${baseName}.${finalExt}`;
+      return res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: logs.slice(-8000) });
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });

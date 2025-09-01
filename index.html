@@ -60,14 +60,14 @@
             </div>
 
             <div class="row g-3 mb-3">
-              <div class="col-sm-6">
+              <div class="col-md-4">
                 <label class="form-label">Format</label>
                 <select id="format" class="form-select">
                   <option value="mp3">MP3 (re-encode, fleksibel)</option>
                   <option value="m4a" selected>M4A (super cepat)</option>
                 </select>
               </div>
-              <div class="col-sm-6">
+              <div class="col-md-4">
                 <label class="form-label">Kualitas (MP3)</label>
                 <select id="abr" class="form-select">
                   <option value="320">320 kbps</option>
@@ -75,6 +75,13 @@
                   <option value="192" selected>192 kbps</option>
                   <option value="128">128 kbps</option>
                   <option value="64">64 kbps</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Sample Rate</label>
+                <select id="sampleRate" class="form-select">
+                  <option value="44100" selected>44.1 kHz</option>
+                  <option value="48000">48 kHz</option>
                 </select>
               </div>
             </div>
@@ -103,6 +110,11 @@
                 <label class="form-label">Trim Selesai</label>
                 <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
               </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Nama file</label>
+              <input id="fileName" type="text" class="form-control" placeholder="Nama file output" />
             </div>
 
             <div class="mb-3">
@@ -300,10 +312,10 @@
         <i class="bi bi-file-music mt-1"></i>
         <div class="flex-grow-1">
           <div class="small">${new Date(it.at).toLocaleString()}</div>
-          <a class="history-link" href="${it.downloadUrl}" target="_blank">${it.downloadUrl}</a>
+          <a class="history-link" href="${it.downloadUrl}" download="${it.fileName || ''}" target="_blank">${it.fileName || it.downloadUrl}</a>
           <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
         </div>
-        <a class="btn btn-sm btn-outline-primary" href="${it.downloadUrl}" download><i class="bi bi-download"></i></a>`;
+        <a class="btn btn-sm btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}"><i class="bi bi-download"></i></a>`;
       ul.appendChild(li);
     });
   };
@@ -339,6 +351,10 @@
     return Number.isNaN(n) ? null : n;
   }
 
+  function sanitizeFileName(str){
+    return str.replace(/[\\/:*?"<>|\r\n]+/g,'').replace(/\s+/g,' ').trim();
+  }
+
   async function updatePreview(){
     const url = $('#url').value.trim();
     if(!/^https?:\/\//i.test(url)){ $('#previewWrap').hidden = true; return; }
@@ -348,6 +364,7 @@
       $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = data.title;
       $('#previewWrap').hidden = false;
       if(!$('#id3Title').value) $('#id3Title').value = data.title;
+      if(!$('#fileName').value) $('#fileName').value = sanitizeFileName(data.title);
     }catch{ $('#previewWrap').hidden = true; }
   }
   $('#pasteBtn').addEventListener('click', async () => {
@@ -428,6 +445,8 @@
       url,
       format: $('#format').value,
       abr: Number($('#abr').value),
+      sampleRate: Number($('#sampleRate').value),
+      fileName: sanitizeFileName($('#fileName').value.trim()),
       noPlaylist: $('#noPlaylist').checked
     };
 
@@ -457,12 +476,12 @@
       const data = await resp.json();
       if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
 
-      $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download','');
+      $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
       $('#status').textContent = 'Selesai';
       $('#loadingSpinner').style.display = 'none';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
-      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr });
+      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
       setToast('Berhasil diproses');
     }catch(err){
       $('#status').textContent = 'Error: ' + err.message;
