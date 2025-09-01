@@ -140,8 +140,61 @@ app.post("/api/convert", async (req, res) => {
     proc.stderr.on("data", (d) => (logs += d.toString()));
 
     proc.on("error", (e) => {
-      if (!res.headersSent) {
-        res.status(500).json({ error: "yt-dlp tidak bisa dijalankan", detail: e.message });
+      // Fallback ke PyTube jika yt-dlp tidak tersedia
+      try {
+        const py = spawn("python3", [
+          join(__dirname, "download_audio.py"),
+          url,
+          JOBS_DIR,
+          id,
+        ], { stdio: ["ignore", "pipe", "pipe"] });
+
+        let pyLogs = "";
+        let pyOut  = "";
+        py.stdout.on("data", (d) => {
+          const s = d.toString();
+          pyLogs += s;
+          pyOut  += s;
+        });
+        py.stderr.on("data", (d) => (pyLogs += d.toString()));
+
+        py.on("close", async (code) => {
+          if (code !== 0) {
+            if (!res.headersSent) {
+              res.status(500).json({ error: "yt-dlp tidak bisa dijalankan", detail: e.message, logs: pyLogs });
+            }
+            return;
+          }
+          try {
+            const dlPath = pyOut.trim().split("\n").pop().trim();
+            const ext = dlPath.split(".").pop();
+            const filename = `${id}.${ext}`;
+            const fullPath = join(JOBS_DIR, filename);
+            if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
+
+            if (format === "mp3") {
+              if (normalize || trimOpt || Object.keys(id3).length || ext !== "mp3") {
+                const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
+                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize });
+                await fsp.unlink(fullPath);
+                await fsp.rename(tmpOut, fullPath);
+              }
+            }
+
+            const downloadUrl = `/public/jobs/${filename}`;
+            if (!res.headersSent) {
+              res.json({ ok: true, id, format: format === "mp3" ? "mp3" : ext, downloadUrl, logs: pyLogs.slice(-8000) });
+            }
+          } catch (err) {
+            if (!res.headersSent) {
+              res.status(500).json({ error: "ffmpeg gagal", logs: pyLogs + err.message });
+            }
+          }
+        });
+      } catch {
+        if (!res.headersSent) {
+          res.status(500).json({ error: "yt-dlp tidak bisa dijalankan", detail: e.message });
+        }
       }
     });
 
