@@ -52,6 +52,13 @@
               <div id="urlHelp" class="form-text">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
             </div>
 
+            <div class="mb-3" id="previewWrap" hidden>
+              <div class="ratio ratio-16x9 mb-2">
+                <img id="thumb" class="rounded object-fit-cover" alt="Thumbnail" />
+              </div>
+              <div id="videoTitle" class="fw-semibold"></div>
+            </div>
+
             <div class="row g-3 mb-3">
               <div class="col-sm-6">
                 <label class="form-label">Format</label>
@@ -85,6 +92,29 @@
                   <label class="form-check-label" for="showLog">Tampilkan log proses</label>
                 </div>
               </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <label class="form-label">Trim Mulai</label>
+                <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label">Trim Selesai</label>
+                <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Metadata ID3</label>
+              <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
+              <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
+              <input id="id3Album" type="text" class="form-control" placeholder="Album" />
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="normalize" />
+              <label class="form-check-label" for="normalize">Normalisasi audio</label>
             </div>
 
             <div class="dropzone mb-3" id="dropzone">
@@ -300,13 +330,36 @@
   });
 
   // ===== URL helpers =====
+  function parseTime(str){
+    if(!str) return null;
+    if(/^\d+(?::\d+)*$/.test(str)){
+      return str.split(':').reduce((acc,v)=>acc*60+Number(v),0);
+    }
+    const n = Number(str);
+    return Number.isNaN(n) ? null : n;
+  }
+
+  async function updatePreview(){
+    const url = $('#url').value.trim();
+    if(!/^https?:\/\//i.test(url)){ $('#previewWrap').hidden = true; return; }
+    try{
+      const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      const data = await resp.json();
+      $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = data.title;
+      $('#previewWrap').hidden = false;
+      if(!$('#id3Title').value) $('#id3Title').value = data.title;
+    }catch{ $('#previewWrap').hidden = true; }
+  }
   $('#pasteBtn').addEventListener('click', async () => {
     try { $('#url').value = (await navigator.clipboard.readText() || '').trim(); } catch {}
     $('#url').focus();
+    updatePreview();
   });
   $('#sampleBtn').addEventListener('click', () => {
     $('#url').value = 'https://www.youtube.com/watch?v=7UecFm_bSTU';
+    updatePreview();
   });
+  $('#url').addEventListener('change', updatePreview);
 
   // ===== Drag & drop cookies.txt =====
   const dz = $('#dropzone');
@@ -355,7 +408,17 @@
 
   // ===== Convert handler =====
   $('#convertBtn').addEventListener('click', doConvert);
-  $('#clearBtn').addEventListener('click', () => { $('#url').value=''; $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent=''; });
+  $('#clearBtn').addEventListener('click', () => {
+    $('#url').value='';
+    $('#trimStart').value='';
+    $('#trimEnd').value='';
+    $('#id3Title').value='';
+    $('#id3Artist').value='';
+    $('#id3Album').value='';
+    $('#normalize').checked=false;
+    $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
+    $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
+  });
   $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(); });
 
   async function doConvert(){
@@ -367,6 +430,23 @@
       abr: Number($('#abr').value),
       noPlaylist: $('#noPlaylist').checked
     };
+
+    const id3 = {
+      title: $('#id3Title').value.trim(),
+      artist: $('#id3Artist').value.trim(),
+      album: $('#id3Album').value.trim()
+    };
+    Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
+    if(Object.keys(id3).length) body.id3 = id3;
+
+    const trim = {};
+    const s = parseTime($('#trimStart').value.trim());
+    const e = parseTime($('#trimEnd').value.trim());
+    if(s !== null) trim.start = s;
+    if(e !== null) trim.end = e;
+    if(Object.keys(trim).length) body.trim = trim;
+
+    body.normalize = $('#normalize').checked;
 
     $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
@@ -405,6 +485,7 @@
     loadSettings();
     renderHistory();
     updateBackendBadge();
+    updatePreview();
   })();
   </script>
 </body>
