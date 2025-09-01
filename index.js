@@ -1,136 +1,126 @@
-// index.js — yt-dlp + ffmpeg backend (SaveFrom-like flow)
-// - /api/oembed  : ambil judul/thumb via oEmbed (noembed/youtube)
-// - /api/convert : unduh bestaudio pakai yt-dlp, convert ke MP3 via ffmpeg (64..320 kbps)
-// - /jobs/*      : file hasil siap unduh
-// - /admin/*     : upload & cek cookies (router tetap punyamu)
-
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { dirname, join, basename } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
-import { promises as fsp } from 'node:fs';
-import express from 'express';
-import cors from 'cors';
-import { nanoid } from 'nanoid';
-import adminRouter from './admin.js';
+import express from "express";
+import cors from "cors";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { promises as fsp } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { nanoid } from "nanoid";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
-function sh(cmd, args = [], opts = {}) {
-  return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opts });
-    let out = '', err = '';
-    p.stdout.on('data', d => out += d.toString());
-    p.stderr.on('data', d => err += d.toString());
-    p.on('error', reject);
-    p.on('close', code => code === 0 ? resolve(out.trim()) : reject(new Error((err + '\n' + out).trim() || `exit ${code}`)));
-  });
-}
-async function have(cmd, flags=['--version']) { try { await sh(cmd, flags); return true; } catch { return false; } }
-function safe(name='') {
-  return (name || 'audio').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0,80) || 'audio';
-}
-
-const PUBLIC_DIR = join(__dirname, 'public');
-const JOBS_DIR   = join(PUBLIC_DIR, 'jobs');
-if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive:true });
-if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive:true });
-
-const COOKIE_PATH = '/tmp/cookies.txt'; // diisi via /admin/upload-cookies
-
-async function fetchOEmbed(url) {
-  const targets = [
-    `https://noembed.com/embed?url=${encodeURIComponent(url)}`,
-    `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`
-  ];
-  for (const t of targets) {
-    try {
-      const r = await fetch(t, { headers: { 'user-agent': 'Mozilla/5.0' } });
-      if (!r.ok) continue;
-      const j = await r.json();
-      return { ok:true, title:j.title||null, author:j.author_name||j.author||null, thumbnail:j.thumbnail_url||null, provider:j.provider_name||null };
-    } catch {}
-  }
-  return { ok:false };
-}
-
-async function ytdlpDownload(url, tmpDir) {
-  const args = ['-f','bestaudio/best','--no-playlist','-o', join(tmpDir, '%(title).80s.%(id)s.%(ext)s')];
-  if (existsSync(COOKIE_PATH)) args.push('--cookies', COOKIE_PATH);
-  args.push(url);
-  await sh('yt-dlp', args);
-
-  const files = await fsp.readdir(tmpDir);
-  let latest=null, latestSt=null;
-  for (const f of files) {
-    const p = join(tmpDir,f), st = await fsp.stat(p);
-    if (!latest || st.mtimeMs > latestSt.mtimeMs) { latest=p; latestSt=st; }
-  }
-  if (!latest) throw new Error('File hasil yt-dlp tidak ditemukan');
-  return latest;
-}
-
-async function ffmpegToMp3(inputPath, outPath, kbps=192) {
-  mkdirSync(dirname(outPath), { recursive:true });
-  const args = ['-y','-i',inputPath,'-vn','-ac','2','-ar','44100','-b:a',`${kbps}k`, outPath];
-  await sh('ffmpeg', args);
-  return outPath;
-}
-
 const app = express();
-app.use(express.json({ limit:'2mb' }));
+app.use(express.json({ limit: "1mb" }));
 app.use(cors());
 
-app.use('/admin', adminRouter);
-app.use('/jobs', express.static(JOBS_DIR, { maxAge:'7d' }));
-app.use('/', express.static(__dirname, { maxAge:'1h', fallthrough:true }));
+// ==== Direktori publik & jobs ====
+const PUBLIC_DIR = join(__dirname, "public");
+const JOBS_DIR   = join(PUBLIC_DIR, "jobs");
+if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
+if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
 
-app.get('/', (_req,res)=>res.sendFile(join(__dirname,'index.html')));
-app.get('/health', async (_req,res)=>{
-  const okY = await have('yt-dlp'); const okF = await have('ffmpeg');
-  res.json({ ok: okY && okF, yt_dlp: okY, ffmpeg: okF, ts: Date.now() });
-});
+// ==== Util ====
+const safe = (s) => s.replace(/[^\w\-]+/g, "_").slice(0, 60);
 
-app.get('/api/oembed', async (req,res)=>{
-  const url = String(req.query.url||'');
-  if (!url) return res.status(400).json({ error:'url required' });
+// Map ABR (kbps) ke --audio-quality (0=best, 9=worst)
+const abrToQ = (abr) => {
+  const n = Number(abr) || 128;
+  if (n >= 320) return "0";
+  if (n >= 256) return "1";
+  if (n >= 192) return "2";
+  if (n >= 160) return "3";
+  if (n >= 128) return "4";
+  if (n >= 96)  return "5";
+  if (n >= 80)  return "6";
+  if (n >= 64)  return "7";
+  return "8";
+};
+
+const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
+
+// ==== Serve static UI & hasil unduhan ====
+app.use("/", express.static(join(__dirname, "public-ui")));
+app.use("/public", express.static(PUBLIC_DIR));
+
+// ==== API convert ====
+app.post("/api/convert", async (req, res) => {
   try {
-    const meta = await fetchOEmbed(url);
-    res.json(meta.ok ? { ok:true, meta } : { ok:false });
-  } catch(e){ res.status(500).json({ error: String(e.message||e) }); }
-});
+    const { url, format = "mp3", abr = 192, noPlaylist = true } = req.body || {};
+    if (!url || !/^https?:\/\//.test(url)) {
+      return res.status(400).json({ error: "URL tidak valid" });
+    }
 
-// body: { url, kbps(64..320), filename? }
-app.post('/api/convert', async (req,res)=>{
-  const url  = String(req.body?.url||'');
-  const kbps = Math.max(64, Math.min(320, Number(req.body?.kbps||192)));
-  const fname= safe(String(req.body?.filename||''));
-  if (!url) return res.status(400).json({ error:'url required' });
+    const id = nanoid(10);
+    const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
+    const args = ["--newline", "--no-progress"];
 
-  const okY = await have('yt-dlp'); if (!okY) return res.status(500).json({ error:'yt-dlp tidak ditemukan di server' });
-  const okF = await have('ffmpeg'); if (!okF) return res.status(500).json({ error:'ffmpeg tidak ditemukan di server' });
+    // Cookies kalau ada (buat age gate / bot check)
+    if (existsSync(COOKIES_PATH)) {
+      args.push("--cookies", COOKIES_PATH);
+    }
 
-  const jobId = nanoid(8), jobDir = join(JOBS_DIR, jobId);
-  await fsp.mkdir(jobDir, { recursive:true });
+    if (noPlaylist) args.push("--no-playlist");
 
-  try {
-    const tmpDir = join(jobDir, 'tmp'); await fsp.mkdir(tmpDir, { recursive:true });
-    const srcPath = await ytdlpDownload(url, tmpDir);
+    // Mode cepat: m4a tanpa re-encode (paling ngebut)
+    if (format === "m4a") {
+      args.push("-f", "bestaudio[ext=m4a]/bestaudio");
+      args.push("-o", outTpl);
+      args.push(url);
+    } else {
+      // MP3 (re-encode, sedikit lebih lama)
+      args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(abr));
+      args.push("-o", outTpl);
+      args.push(url);
+    }
 
-    const base = fname || basename(srcPath).replace(/\.[^.]+$/, '');
-    const outPath = join(jobDir, base + '.mp3');
-    await ffmpegToMp3(srcPath, outPath, kbps);
+    const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
 
-    await fsp.rm(tmpDir, { recursive:true, force:true });
+    let logs = "";
+    proc.stdout.on("data", (d) => (logs += d.toString()));
+    proc.stderr.on("data", (d) => (logs += d.toString()));
 
-    const dlUrl = `/jobs/${jobId}/${basename(outPath)}`;
-    const st = await fsp.stat(outPath);
-    res.json({ ok:true, job:{ id:jobId, kbps, url, file:basename(outPath), size:st.size }, download_url: dlUrl, absolute_url: dlUrl });
-  } catch(e) {
-    res.status(500).json({ error: String(e.message||e), hint:'Unggah cookies YouTube di /admin/upload-cookies jika kena age/robot check.' });
+    proc.on("close", async (code) => {
+      if (code !== 0) {
+        return res.status(500).json({ error: "yt-dlp gagal", logs });
+      }
+      // Cari file hasil (id.*)
+      const files = readdirSync(JOBS_DIR).filter(f => f.startsWith(id + "."));
+      if (!files.length) return res.status(500).json({ error: "Output tidak ditemukan", logs });
+
+      const filename   = files[0];
+      const downloadUrl = `/public/jobs/${filename}`;
+      return res.json({ ok: true, id, format, downloadUrl, logs: logs.slice(-8000) });
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, ()=> console.log(`[server] listening on :${PORT}`));
+// ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
+const BEARER = process.env.ADMIN_BEARER || "dhika_sayang123!";
+app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
+  try {
+    const auth = req.get("Authorization") || "";
+    if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
+
+    await fsp.writeFile(COOKIES_PATH, req.body, "utf8");
+    const stat = await fsp.stat(COOKIES_PATH);
+    return res.json({ ok: true, path: COOKIES_PATH, bytes: stat.size, mtime: stat.mtime });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/admin/cookies-status", (req, res) => {
+  try {
+    if (!existsSync(COOKIES_PATH)) return res.json({ exists: false });
+    const size = require("fs").statSync(COOKIES_PATH).size;
+    return res.json({ exists: true, path: COOKIES_PATH, bytes: size });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server jalan di :${PORT}`));
