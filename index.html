@@ -21,6 +21,7 @@
   </style>
 </head>
 <body>
+  <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
     <div class="container">
       <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
@@ -31,7 +32,7 @@
     </div>
   </nav>
 
-  <main class="container py-4 py-md-5">
+  <main id="mainContent" class="container py-4 py-md-5">
     <div class="row g-4">
       <div class="col-lg-7">
         <div class="card shadow-sm">
@@ -115,6 +116,21 @@
 
             <div class="row g-3 mb-3">
               <div class="col-sm-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="autoDownload" checked>
+                  <label class="form-check-label" for="autoDownload">Auto-download</label>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="autoClear">
+                  <label class="form-check-label" for="autoClear">Auto-bersihkan</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
                 <label class="form-label">Trim Mulai</label>
                 <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
               </div>
@@ -162,6 +178,8 @@
               </div>
             </div>
 
+            <progress id="queueProgress" class="w-100 mt-2" value="0" max="100" hidden aria-label="Progress antrian"></progress>
+
             <div class="mt-3" id="resultWrap" hidden>
               <div class="alert alert-success d-flex align-items-center" role="alert">
                 <i class="bi bi-check-circle me-2"></i>
@@ -196,6 +214,9 @@
             </div>
             <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
             <ul class="list-group list-group-flush" id="historyList"></ul>
+            <div class="d-grid mt-3">
+              <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
+            </div>
           </div>
         </div>
 
@@ -322,7 +343,7 @@
     queue.forEach((url, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
-      li.innerHTML = `<span class="small text-break me-2 flex-grow-1">${url}</span><button class="btn btn-sm btn-outline-danger" data-idx="${idx}"><i class="bi bi-x"></i></button>`;
+      li.innerHTML = `<span class="small text-break me-2 flex-grow-1">${url}</span><button class="btn btn-sm btn-outline-danger" data-idx="${idx}" aria-label="Hapus dari antrian"><i class="bi bi-x"></i></button>`;
       ul.appendChild(li);
     });
     const textarea = $('#playlist');
@@ -406,6 +427,12 @@
       btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
     });
   };
+
+  $('#clearHistory')?.addEventListener('click', () => {
+    localStorage.removeItem(historyKey);
+    renderHistory();
+    setToast('Riwayat dibersihkan');
+  });
 
   // ===== Settings (offcanvas) =====
   const loadSettings = () => {
@@ -511,7 +538,7 @@
   });
 
   // ===== Convert handler =====
-  $('#convertBtn').addEventListener('click', doConvert);
+  $('#convertBtn').addEventListener('click', () => doConvert(null, $('#autoDownload').checked));
   $('#downloadAllBtn').addEventListener('click', doConvertQueue);
   $('#clearBtn').addEventListener('click', () => {
     $('#url').value='';
@@ -527,7 +554,7 @@
     $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
     $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
   });
-  $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(); });
+  $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(null, $('#autoDownload').checked); });
 
   async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
@@ -575,6 +602,7 @@
       if(autoDownload) $('#downloadLink').click();
       pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
       setToast('Berhasil diproses');
+      if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
     }catch(err){
       $('#status').textContent = 'Error: ' + err.message;
       $('#loadingSpinner').style.display = 'none';
@@ -588,13 +616,17 @@
   async function doConvertQueue(){
     const urls = queue.length ? [...queue] : $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
     if(!urls.length){ setToast('Antrian kosong'); return; }
+    const progress = $('#queueProgress');
+    progress.hidden = false; progress.max = urls.length; progress.value = 0;
     for(let i=0;i<urls.length;i++){
       $('#url').value = urls[i];
       await updatePreview();
       setToast(`Memproses ${i+1}/${urls.length}`);
       await doConvert(urls[i], true);
+       progress.value = i+1;
       if(queue.length){ queue.shift(); renderQueue(); }
     }
+    progress.hidden = true;
     setToast('Semua antrian selesai');
   }
 
