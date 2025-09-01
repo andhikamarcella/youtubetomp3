@@ -65,6 +65,7 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
     ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => reject(err));
     ff.on("close", (code) => {
       if (code === 0) resolve(logs);
       else reject(new Error(logs));
@@ -137,6 +138,12 @@ app.post("/api/convert", async (req, res) => {
     let logs = "";
     proc.stdout.on("data", (d) => (logs += d.toString()));
     proc.stderr.on("data", (d) => (logs += d.toString()));
+
+    proc.on("error", (e) => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: "yt-dlp tidak bisa dijalankan", detail: e.message });
+      }
+    });
 
     proc.on("close", async (code) => {
       if (code !== 0) {
