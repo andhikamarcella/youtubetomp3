@@ -235,6 +235,22 @@
     badge.textContent = b ? new URL(b).host : location.host;
   };
 
+  async function fetchMeta(url){
+    try{
+      const resp = await fetch(api('/api/oembed?url=' + encodeURIComponent(url)));
+      const data = await resp.json().catch(()=>({}));
+      if(!resp.ok || !data.ok){
+        const msg = data.error || 'Gagal mengambil metadata';
+        const hint = data.hint ? ' (' + data.hint + ')' : '';
+        throw new Error(msg + hint);
+      }
+      return data.meta;
+    }catch(err){
+      setToast('Gagal ambil metadata: ' + err.message);
+      throw err;
+    }
+  }
+
   // ===== Theme Toggle =====
   const themeToggle = $('#themeToggle');
   const applyTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
