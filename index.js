@@ -131,6 +131,9 @@ app.post('/api/convert', async (req,res)=>{
       ok: true,
       downloadUrl: dlUrl,
       filename,
+      // backward compatibility
+      download_url: dlUrl,
+      absolute_url: dlUrl,
       job: { id: jobId, kbps, url, file: filename, size: st.size }
     });
   } catch(e) {
