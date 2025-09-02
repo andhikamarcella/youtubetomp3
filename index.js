@@ -388,8 +388,10 @@ app.post("/api/convert", async (req, res) => {
       if (code !== 0) {
         return runPyTubeFallback("yt-dlp gagal", logs);
       }
-      // Cari file hasil (id.*)
-      const files = readdirSync(JOBS_DIR).filter(f => f.startsWith(id + "."));
+      // Cari file hasil (id.*) tapi abaikan file cover
+      const files = readdirSync(JOBS_DIR).filter(
+        f => f.startsWith(id + ".") && !f.endsWith(".cover.jpg")
+      );
       if (!files.length) return res.status(500).json({ error: "Output tidak ditemukan", logs });
 
       let filename   = files[0];
