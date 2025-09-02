@@ -4,7 +4,8 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 
 ## Fitur Utama
 - Unduh audio dari tautan YouTube secara langsung.
-- Tentukan nama berkas output dan laju sampel (44.1 kHz atau 48 kHz).
+- Tentukan nama berkas output dan laju sampel (44.1 kHz, 48 kHz, atau 96 kHz).
+- Opsi FLAC lossless (Hi-Res) untuk kualitas maksimal.
 - Pemangkasan awal/akhir audio serta penyematan metadata ID3 (judul, artis, album).
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.
 - Riwayat unduhan dengan tombol salin, unduh ulang, dan hapus setiap entri.

@@ -79,6 +79,38 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
     });
   });
 };
+const ffmpegToFlac = (input, output, opts = {}) => {
+  const { id3 = {}, trim = {}, normalize = false, sampleRate } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !isNaN(start);
+    const hasEnd   = typeof end === "number" && !isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    if (normalize) args.push("-af", "loudnorm");
+    for (const [k, v] of Object.entries(id3 || {})) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        args.push("-metadata", `${k}=${v}`);
+      }
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    args.push("-vn", "-codec:a", "flac", "-compression_level", "12", output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => reject(err));
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
 
 const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
 
@@ -134,6 +166,10 @@ app.post("/api/convert", async (req, res) => {
       args.push("-f", "bestaudio[ext=m4a]/bestaudio");
       args.push("-o", outTpl);
       args.push(url);
+    } else if (format === "flac") {
+      args.push("-x", "--audio-format", "flac");
+      args.push("-o", outTpl);
+      args.push(url);
     } else {
       // MP3 (re-encode, sedikit lebih lama)
       args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(abr));
@@ -186,24 +222,36 @@ app.post("/api/convert", async (req, res) => {
             return;
           }
           try {
-            const dlPath = pyOut.trim().split("\n").pop().trim();
-            const ext = dlPath.split(".").pop();
-            const filename = `${id}.${ext}`;
-            const fullPath = join(JOBS_DIR, filename);
-            if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
+              const dlPath = pyOut.trim().split("\n").pop().trim();
+              let ext = dlPath.split(".").pop();
+              let filename = `${id}.${ext}`;
+              let fullPath = join(JOBS_DIR, filename);
+              if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
 
-            if (format === "mp3") {
-              if (normalize || trimOpt || Object.keys(id3).length || ext !== "mp3") {
-                const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
+              if (format === "mp3") {
+                const needConvert = normalize || trimOpt || Object.keys(id3).length || ext !== "mp3";
+                if (needConvert) {
+                  const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
+                  await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
+                  await fsp.unlink(fullPath);
+                  filename = `${id}.mp3`;
+                  fullPath = join(JOBS_DIR, filename);
+                  await fsp.rename(tmpOut, fullPath);
+                  ext = "mp3";
+                }
+              } else if (format === "flac") {
+                const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
+                await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate });
                 await fsp.unlink(fullPath);
+                filename = `${id}.flac`;
+                fullPath = join(JOBS_DIR, filename);
                 await fsp.rename(tmpOut, fullPath);
+                ext = "flac";
               }
-            }
 
-            const downloadUrl = `/public/jobs/${filename}`;
-            const finalExt = format === "mp3" ? "mp3" : ext;
-            const downloadFileName = `${baseName}.${finalExt}`;
+              const downloadUrl = `/public/jobs/${filename}`;
+              const finalExt = ext;
+              const downloadFileName = `${baseName}.${finalExt}`;
             if (!res.headersSent) {
               res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: (baseLogs + pyLogs).slice(-8000) });
             }
@@ -237,16 +285,25 @@ app.post("/api/convert", async (req, res) => {
       const filename   = files[0];
       const fullPath   = join(JOBS_DIR, filename);
 
-      if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length)) {
-        try {
-          const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
-          await fsp.unlink(fullPath);
-          await fsp.rename(tmpOut, fullPath);
-        } catch (e) {
-          return res.status(500).json({ error: "ffmpeg gagal", logs: logs + e.message });
+        if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length)) {
+          try {
+            const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
+            await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate });
+            await fsp.unlink(fullPath);
+            await fsp.rename(tmpOut, fullPath);
+          } catch (e) {
+            return res.status(500).json({ error: "ffmpeg gagal", logs: logs + e.message });
+          }
+        } else if (format === "flac" && (normalize || trimOpt || Object.keys(id3).length)) {
+          try {
+            const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
+            await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate });
+            await fsp.unlink(fullPath);
+            await fsp.rename(tmpOut, fullPath);
+          } catch (e) {
+            return res.status(500).json({ error: "ffmpeg gagal", logs: logs + e.message });
+          }
         }
-      }
 
       const downloadUrl = `/public/jobs/${filename}`;
       const finalExt = format;
