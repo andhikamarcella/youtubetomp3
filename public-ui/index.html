@@ -36,6 +36,15 @@
   </nav>
 
   <main id="mainContent" class="container py-4 py-md-5">
+    <div id="welcomeCard" class="card shadow-sm mb-4" hidden>
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <h5 class="mb-1">Selamat datang!</h5>
+          <p class="mb-0 small text-secondary">Gunakan form di bawah untuk mengonversi video YouTube menjadi audio dan jelajahi fitur seperti trim, metadata, serta antrian.</p>
+        </div>
+        <button type="button" class="btn-close ms-2" id="dismissWelcome" aria-label="Tutup"></button>
+      </div>
+    </div>
     <div class="row g-4">
       <div class="col-lg-7">
         <div class="card shadow-sm">
@@ -283,12 +292,21 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <ol class="mb-0">
+          <p>Ikuti langkah berikut untuk memulai:</p>
+          <ol>
             <li>Tempel URL YouTube.</li>
-            <li>Pilih format, kualitas, dan opsi lain.</li>
-            <li>Klik <strong>Convert</strong> atau <strong>Convert Antrian</strong>.</li>
+            <li>Pilih format, kualitas, dan opsi lainnya.</li>
+            <li>Klik <strong>Convert</strong> atau <strong>Download Semua</strong>.</li>
             <li>Unduh hasilnya.</li>
           </ol>
+          <hr>
+          <p class="mb-0">Fitur utama:</p>
+          <ul class="mb-0">
+            <li><strong>Trim</strong> untuk memotong durasi.</li>
+            <li><strong>ID3</strong> menulis judul, artis, dan album.</li>
+            <li><strong>Normalisasi</strong> menyamakan volume.</li>
+            <li><strong>Antrian</strong> memproses banyak URL sekaligus.</li>
+          </ul>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
@@ -344,14 +362,19 @@
     const ul = $('#queueList');
     if(!ul) return;
     ul.innerHTML = '';
-    queue.forEach((url, idx) => {
+    queue.forEach((item, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex justify-content-between align-items-center';
-      li.innerHTML = `<span class="small text-break me-2 flex-grow-1">${url}</span><button class="btn btn-sm btn-outline-danger" data-idx="${idx}" aria-label="Hapus dari antrian"><i class="bi bi-x"></i></button>`;
+      li.innerHTML = `
+        <div class="me-2 flex-grow-1 text-break">
+          <div class="small fw-semibold">${item.title || 'Memuat judul...'}</div>
+          <div class="small text-secondary">${item.url}</div>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" data-idx="${idx}" aria-label="Hapus dari antrian"><i class="bi bi-x"></i></button>`;
       ul.appendChild(li);
     });
     const textarea = $('#playlist');
-    if(textarea) textarea.value = queue.join('\n');
+    if(textarea) textarea.value = queue.map(q=>q.url).join('\n');
     const clearBtn = $('#clearQueueBtn');
     if(clearBtn) clearBtn.disabled = queue.length === 0;
   }
@@ -363,12 +386,41 @@ $('#queueList')?.addEventListener('click', (e) => {
     renderQueue();
   });
 
-  $('#addQueueBtn')?.addEventListener('click', () => {
+  $('#addQueueBtn')?.addEventListener('click', async () => {
     const url = $('#queueUrl').value.trim();
     if(!/^https?:\/\//i.test(url)){ setToast('URL tidak valid'); return; }
-    queue.push(url);
+    const item = { url, title: '' };
+    queue.push(item);
     $('#queueUrl').value = '';
     renderQueue();
+    try{
+      const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+      const data = await resp.json();
+      item.title = data.title;
+      renderQueue();
+    }catch{
+      item.title = url;
+      renderQueue();
+    }
+  });
+
+  $('#playlist')?.addEventListener('change', async () => {
+    queue.length = 0;
+    const lines = $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
+    for(const url of lines){
+      const item = { url, title: '' };
+      queue.push(item);
+      renderQueue();
+      try{
+        const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+        const data = await resp.json();
+        item.title = data.title;
+        renderQueue();
+      }catch{
+        item.title = url;
+        renderQueue();
+      }
+    }
   });
 
   $('#clearQueueBtn')?.addEventListener('click', () => { queue.length = 0; renderQueue(); });
@@ -378,6 +430,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   const applyTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
   const themeKey = 'ytmp3.theme';
   const tutorialKey = 'ytmp3.tutorial.v1';
+  const welcomeKey = 'ytmp3.welcome.v1';
   const initTheme = () => {
     const stored = localStorage.getItem(themeKey);
     const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -391,6 +444,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     applyTheme(nxt); localStorage.setItem(themeKey, nxt);
     themeToggle.innerHTML = nxt === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
   });
+
+  function initWelcome(){
+    const card = $('#welcomeCard');
+    if(!card) return;
+    if(localStorage.getItem(welcomeKey)) { card.remove(); return; }
+    card.hidden = false;
+    $('#dismissWelcome')?.addEventListener('click', () => {
+      localStorage.setItem(welcomeKey,'1');
+      card.remove();
+    });
+  }
 
   // ===== History =====
   const historyKey = 'ytmp3.history.v1';
@@ -624,16 +688,20 @@ $('#queueList')?.addEventListener('click', (e) => {
   }
 
   async function doConvertQueue(){
-    const urls = queue.length ? [...queue] : $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
+    const urls = queue.length ? queue.map(q=>q.url) : $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
     if(!urls.length){ setToast('Antrian kosong'); return; }
     const progress = $('#queueProgress');
     progress.hidden = false; progress.max = urls.length; progress.value = 0;
     for(let i=0;i<urls.length;i++){
       $('#url').value = urls[i];
+      $('#id3Title').value='';
+      $('#id3Artist').value='';
+      $('#id3Album').value='';
+      $('#fileName').value='';
       await updatePreview();
       setToast(`Memproses ${i+1}/${urls.length}`);
       await doConvert(urls[i], true);
-       progress.value = i+1;
+      progress.value = i+1;
       if(queue.length){ queue.shift(); renderQueue(); }
     }
     progress.hidden = true;
@@ -648,6 +716,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   // ===== Init =====
   (function init(){
     initTheme();
+    initWelcome();
     loadSettings();
     renderHistory();
     renderQueue();
