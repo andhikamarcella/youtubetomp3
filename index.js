@@ -367,7 +367,7 @@ app.post("/api/convert", async (req, res) => {
             if (coverPath) try { await fsp.unlink(coverPath); } catch {}
           } catch (err) {
             if (!res.headersSent) {
-              res.status(500).json({ error: "ffmpeg gagal", logs: baseLogs + pyLogs + err.message });
+              res.status(500).json({ error: err.message || "ffmpeg gagal", logs: baseLogs + pyLogs + err.message });
             }
           }
         });
@@ -424,7 +424,7 @@ app.post("/api/convert", async (req, res) => {
         }
       } catch (e) {
         if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-        return res.status(500).json({ error: "ffmpeg gagal", logs: logs + e.message });
+        return res.status(500).json({ error: e.message || "ffmpeg gagal", logs: logs + e.message });
       }
 
       if (coverPath) try { await fsp.unlink(coverPath); } catch {}
