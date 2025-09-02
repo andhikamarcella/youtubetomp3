@@ -183,6 +183,11 @@
               <label class="form-check-label" for="normalize">Normalisasi audio</label>
             </div>
 
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="atmos" />
+              <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
+            </div>
+
             <div class="dropzone mb-3" id="dropzone">
               <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
               <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
@@ -202,6 +207,10 @@
                 <div id="status" class="fw-medium">Memproses…</div>
                 <span class="badge text-bg-secondary" id="backendBadge" title="Target backend"></span>
               </div>
+            </div>
+
+            <div class="progress w-100 mt-2" id="convertProgWrap" hidden>
+              <div class="progress-bar" id="convertProgress" role="progressbar" style="width:0%">0%</div>
             </div>
 
             <progress id="queueProgress" class="w-100 mt-2" value="0" max="100" hidden aria-label="Progress antrian"></progress>
@@ -566,6 +575,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = data.title;
       $('#previewWrap').hidden = false;
       $('#id3Title').value = data.title;
+      $('#id3Artist').value = data.author_name || '';
+      $('#id3Album').value = data.title;
       $('#fileName').value = sanitizeFileName(data.title);
     }catch{ $('#previewWrap').hidden = true; }
   }
@@ -639,8 +650,10 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#id3Artist').value='';
     $('#id3Album').value='';
     $('#normalize').checked=false;
+    $('#atmos').checked=false;
     $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
     $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
+    $('#convertProgWrap').hidden=true;
   });
   $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(null, $('#autoDownload').checked); });
 
@@ -653,7 +666,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       abr: Number($('#abr').value),
       sampleRate: Number($('#sampleRate').value),
       fileName: sanitizeFileName($('#fileName').value.trim()),
-      noPlaylist: $('#noPlaylist').checked
+      noPlaylist: $('#noPlaylist').checked,
+      atmos: $('#atmos').checked
     };
 
     const id3 = {
@@ -672,10 +686,18 @@ $('#queueList')?.addEventListener('click', (e) => {
     if(Object.keys(trim).length) body.trim = trim;
 
     body.normalize = $('#normalize').checked;
+    if($('#thumb').src) body.coverUrl = $('#thumb').src;
 
     $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
     $('#status').textContent = 'Memproses…';
+    const progWrap = $('#convertProgWrap');
+    const progBar = $('#convertProgress');
+    progWrap.hidden = false; progBar.style.width='0%'; progBar.textContent='0%';
+    let fake = 0;
+    const timer = setInterval(()=>{
+      if(fake < 90){ fake = Math.min(90, fake + Math.random()*10); progBar.style.width = fake+'%'; progBar.textContent = Math.round(fake)+'%'; }
+    },500);
 
     try{
       const resp = await fetch(api('/api/convert'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
@@ -686,6 +708,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#resultWrap').hidden = false;
       $('#status').textContent = 'Selesai';
       $('#loadingSpinner').style.display = 'none';
+      fake = 100; progBar.style.width='100%'; progBar.textContent='100%';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
       if(autoDownload) $('#downloadLink').click();
       pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
@@ -698,6 +721,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#logWrap').hidden = false;
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
       setToast('Terjadi error: '+err.message);
+    } finally {
+      clearInterval(timer);
+      setTimeout(()=>{ progWrap.hidden = true; }, 500);
     }
   }
 

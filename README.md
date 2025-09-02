@@ -7,10 +7,12 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Tentukan nama berkas output dan laju sampel (44.1 kHz, 48 kHz, atau 96 kHz).
 - Opsi FLAC lossless (Hi-Res) untuk kualitas maksimal.
 - Pemangkasan awal/akhir audio serta penyematan metadata ID3 (judul, artis, album).
+- Thumbnail video otomatis dijadikan gambar album; artis diisi dari nama channel, album mengikuti judul video.
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.
 - Riwayat unduhan dengan tombol salin, unduh ulang, dan hapus setiap entri.
 - Tutorial singkat otomatis saat pertama kali membuka aplikasi.
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
+- Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
