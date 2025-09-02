@@ -563,8 +563,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       const data = await resp.json();
       $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = data.title;
       $('#previewWrap').hidden = false;
-      if(!$('#id3Title').value) $('#id3Title').value = data.title;
-      if(!$('#fileName').value) $('#fileName').value = sanitizeFileName(data.title);
+      $('#id3Title').value = data.title;
+      $('#fileName').value = sanitizeFileName(data.title);
     }catch{ $('#previewWrap').hidden = true; }
   }
   $('#pasteBtn').addEventListener('click', async () => {
