@@ -85,7 +85,10 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
     ff.stderr.on("data", (d) => (logs += d.toString()));
-    ff.on("error", (err) => reject(err));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
     ff.on("close", (code) => {
       if (code === 0) resolve(logs);
       else reject(new Error(logs));
@@ -130,7 +133,10 @@ const ffmpegToFlac = (input, output, opts = {}) => {
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
     ff.stderr.on("data", (d) => (logs += d.toString()));
-    ff.on("error", (err) => reject(err));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
     ff.on("close", (code) => {
       if (code === 0) resolve(logs);
       else reject(new Error(logs));
@@ -175,7 +181,10 @@ const ffmpegToM4a = (input, output, opts = {}) => {
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
     ff.stderr.on("data", (d) => (logs += d.toString()));
-    ff.on("error", (err) => reject(err));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
     ff.on("close", (code) => {
       if (code === 0) resolve(logs);
       else reject(new Error(logs));
@@ -195,6 +204,14 @@ app.post("/api/convert", async (req, res) => {
     const { url, format = "mp3", abr = 192, sampleRate, fileName, noPlaylist = true, id3 = {}, trim, normalize = false, coverUrl, atmos = false } = req.body || {};
     if (!url || !/^https?:\/\//.test(url)) {
       return res.status(400).json({ error: "URL tidak valid" });
+    }
+
+    let sr;
+    if (sampleRate !== undefined) {
+      sr = Number(sampleRate);
+      if (Number.isNaN(sr) || sr <= 0) {
+        return res.status(400).json({ error: "sampleRate tidak valid" });
+      }
     }
 
     let trimOpt = null;
@@ -313,10 +330,10 @@ app.post("/api/convert", async (req, res) => {
               if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
 
               if (format === "mp3") {
-                const needConvert = normalize || trimOpt || Object.keys(id3).length || ext !== "mp3" || coverPath;
+                const needConvert = normalize || trimOpt || Object.keys(id3).length || ext !== "mp3" || coverPath || sr;
                 if (needConvert) {
                   const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-                  await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate, cover: coverPath });
+                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
                   await fsp.unlink(fullPath);
                   filename = `${id}.mp3`;
                   fullPath = join(JOBS_DIR, filename);
@@ -325,7 +342,7 @@ app.post("/api/convert", async (req, res) => {
                 }
               } else if (format === "flac") {
                 const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
-                await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate, cover: coverPath });
+                await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
                 await fsp.unlink(fullPath);
                 filename = `${id}.flac`;
                 fullPath = join(JOBS_DIR, filename);
@@ -333,7 +350,7 @@ app.post("/api/convert", async (req, res) => {
                 ext = "flac";
               } else if (format === "m4a") {
                 const tmpOut = join(JOBS_DIR, `${id}.tmp.m4a`);
-                await ffmpegToM4a(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate, cover: coverPath });
+                await ffmpegToM4a(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
                 await fsp.unlink(fullPath);
                 filename = `${id}.m4a`;
                 fullPath = join(JOBS_DIR, filename);
@@ -380,25 +397,25 @@ app.post("/api/convert", async (req, res) => {
       let ext = filename.split(".").pop();
 
       try {
-        if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length || coverPath)) {
+        if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
           const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate, cover: coverPath });
+          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
           await fsp.unlink(fullPath);
           filename = `${id}.mp3`;
           fullPath = join(JOBS_DIR, filename);
           await fsp.rename(tmpOut, fullPath);
           ext = "mp3";
-        } else if (format === "flac" && (normalize || trimOpt || Object.keys(id3).length || coverPath)) {
+        } else if (format === "flac" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
           const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
-          await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate, cover: coverPath });
+          await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
           await fsp.unlink(fullPath);
           filename = `${id}.flac`;
           fullPath = join(JOBS_DIR, filename);
           await fsp.rename(tmpOut, fullPath);
           ext = "flac";
-        } else if (format === "m4a" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sampleRate)) {
+        } else if (format === "m4a" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
           const tmpOut = join(JOBS_DIR, `${id}.tmp.m4a`);
-          await ffmpegToM4a(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate, cover: coverPath });
+          await ffmpegToM4a(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
           await fsp.unlink(fullPath);
           filename = `${id}.m4a`;
           fullPath = join(JOBS_DIR, filename);
