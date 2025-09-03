@@ -12,6 +12,8 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.
 - Riwayat unduhan dengan tombol salin, unduh ulang, dan hapus setiap entri.
 - Tutorial interaktif berbasis popup yang bisa dibuka kapan saja.
+- Pencarian riwayat secara real-time untuk menemukan unduhan lebih cepat.
+- Toggle mode gelap/terang yang tersimpan di perangkat.
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
 - Sumber Atmos yang dikonversi ke MP3 otomatis di-downmix ke stereo agar tidak gagal.

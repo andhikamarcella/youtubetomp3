@@ -245,15 +245,19 @@
       <div class="col-lg-5">
         <div class="card shadow-sm mb-4">
           <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-clock-history me-2"></i>
-              <h5 class="mb-0">Riwayat</h5>
-            </div>
-            <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
-            <ul class="list-group list-group-flush" id="historyList"></ul>
-            <div class="d-grid mt-3">
-              <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
-            </div>
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-clock-history me-2"></i>
+          <h5 class="mb-0">Riwayat</h5>
+        </div>
+        <div class="input-group mb-3">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input id="historySearch" type="search" class="form-control" placeholder="Cari riwayat" autocomplete="off">
+        </div>
+        <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
+        <ul class="list-group list-group-flush" id="historyList"></ul>
+        <div class="d-grid mt-3">
+          <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
+        </div>
           </div>
         </div>
 
@@ -426,10 +430,12 @@
 
   // ===== Tutorial =====
   const tutorialSteps = [
-    { title: 'Langkah 1', body: 'Tempel URL YouTube pada kolom <strong>URL YouTube</strong>.' },
-    { title: 'Langkah 2', body: 'Pilih format, sample rate, dan opsi lain sesuai kebutuhan.' },
-    { title: 'Langkah 3', body: 'Klik <strong>Convert</strong> untuk memulai proses.' },
-    { title: 'Selesai', body: 'Unduh hasilnya. Jika mengalami error, lihat FAQ atau email <a href="mailto:andhikamarcella546@gmail.com">andhikamarcella546@gmail.com</a>.' }
+    { title: 'Langkah 1', body: 'Masukkan tautan di kolom <strong>URL YouTube</strong>.' },
+    { title: 'Langkah 2', body: 'Atur <strong>Format</strong>, <strong>Kualitas</strong>, dan <strong>Sample Rate</strong>.' },
+    { title: 'Langkah 3', body: 'Tambahkan video ke <strong>Antrian</strong> atau seret <code>cookies.txt</code> ke area bertanda.' },
+    { title: 'Langkah 4', body: 'Klik <strong>Convert</strong> dan ikuti <strong>progress bar</strong> sampai selesai.' },
+    { title: 'Langkah 5', body: 'Gunakan <strong>Riwayat</strong> untuk mengunduh ulang dan cari cepat dengan kotak pencarian.' },
+    { title: 'Selesai', body: 'Ganti <strong>tema</strong> sesuai selera dan unduh hasilnya. Jika error, cek FAQ atau email <a href="mailto:andhikamarcella546@gmail.com">andhikamarcella546@gmail.com</a>.' }
   ];
   let tutorialIdx = 0;
   const tutorialModalEl = document.getElementById('tutorialModal');
@@ -456,6 +462,7 @@
       showTutorialStep(tutorialIdx);
     }
   });
+  tutorialModalEl.addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
 
   // ===== Queue =====
   const queue = [];
@@ -601,7 +608,18 @@ $('#queueList')?.addEventListener('click', (e) => {
     ul.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
     });
+    filterHistory($('#historySearch')?.value || '');
   };
+
+  function filterHistory(term){
+    const items = $('#historyList')?.querySelectorAll('li') || [];
+    const t = term.toLowerCase();
+    items.forEach(li=>{
+      li.style.display = li.innerText.toLowerCase().includes(t) ? '' : 'none';
+    });
+  }
+
+  $('#historySearch')?.addEventListener('input', e => filterHistory(e.target.value));
 
   $('#clearHistory')?.addEventListener('click', () => {
     localStorage.removeItem(historyKey);
@@ -855,9 +873,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     updateBackendBadge();
     updatePreview();
     if(!localStorage.getItem(tutorialKey)){
-      const m = new bootstrap.Modal($('#tutorialModal'));
-      m.show();
-      $('#tutorialModal').addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
+      showTutorialStep(0);
+      tutorialModal.show();
     }
   })();
   });
