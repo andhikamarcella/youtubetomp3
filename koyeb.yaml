@@ -1,6 +1,8 @@
 services:
   - name: youtubetomp3
     type: web
+    routes:
+      - src: /
     ports:
       - port: 3000
         protocol: http
