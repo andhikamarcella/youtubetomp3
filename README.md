@@ -21,5 +21,12 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 4. Klik **Convert** dan tunggu hingga proses selesai, lalu unduh MP3 hasil konversi.
 5. Untuk banyak video, tempelkan beberapa URL di kolom *Playlist* dan gunakan **Convert Antrian**.
 
+## Deployment
+Aplikasi dapat dideploy di beberapa platform menggunakan Dockerfile yang sama:
+
+- Render
+- Railway
+- Koyeb (dengan konfigurasi `koyeb.yaml`)
+
 ## Lisensi
 Proyek ini dirilis di bawah lisensi MIT.

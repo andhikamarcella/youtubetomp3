@@ -1,0 +1,11 @@
+services:
+  - name: youtubetomp3
+    type: web
+    ports:
+      - port: 3000
+        protocol: http
+    env:
+      - key: PORT
+        value: "3000"
+    build:
+      dockerfile: Dockerfile
