@@ -41,6 +41,15 @@ const abrToQ = (abr) => {
   return "8";
 };
 
+const flacLevelFromAbr = (abr) => {
+  const n = Number(abr) || 0;
+  if (n >= 320) return 5;
+  if (n >= 256) return 6;
+  if (n >= 192) return 8;
+  if (n >= 128) return 10;
+  return 12;
+};
+
 const sanitizeFileName = (name = "") =>
   name
     .replace(/[\\/:*?"<>|\r\n]+/g, "")
@@ -48,7 +57,7 @@ const sanitizeFileName = (name = "") =>
     .trim();
 
 const ffmpegToMp3 = (input, output, opts = {}) => {
-  const { abr = 192, id3 = {}, trim = {}, normalize = false, sampleRate, cover } = opts;
+  const { abr = 192, id3 = {}, trim = {}, normalize = false, sampleRate, cover, channels } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -71,6 +80,7 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
       const sr = Math.min(Number(sampleRate), 48000);
       args.push("-ar", String(sr));
     }
+    if (channels) args.push("-ac", String(channels));
     if (cover) {
       args.push(
         "-map","0:a","-map","1:v",
@@ -100,7 +110,7 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
 };
 
 const ffmpegToFlac = (input, output, opts = {}) => {
-  const { id3 = {}, trim = {}, normalize = false, sampleRate, cover } = opts;
+  const { abr, id3 = {}, trim = {}, normalize = false, sampleRate, cover } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -131,7 +141,8 @@ const ffmpegToFlac = (input, output, opts = {}) => {
     } else {
       args.push("-map","0:a","-vn");
     }
-    args.push("-codec:a","flac","-compression_level","12", output);
+    const level = abr !== undefined ? flacLevelFromAbr(abr) : 12;
+    args.push("-codec:a","flac","-compression_level", String(level), output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
@@ -266,19 +277,21 @@ app.post("/api/convert", async (req, res) => {
     }
 
     if (noPlaylist) args.push("--no-playlist");
-    if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
 
     // Mode cepat: m4a tanpa re-encode (paling ngebut)
     if (format === "m4a") {
-      args.push("-f", "bestaudio[ext=m4a]/bestaudio");
+      if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
+      else args.push("-f", "bestaudio[ext=m4a]/bestaudio");
       args.push("-o", outTpl);
       args.push(url);
     } else if (format === "flac") {
-      args.push("-x", "--audio-format", "flac");
+      if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
+      else args.push("-f", "bestaudio");
       args.push("-o", outTpl);
       args.push(url);
     } else {
       // MP3 (re-encode, sedikit lebih lama)
+      if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
       args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(abr));
       args.push("-o", outTpl);
       args.push(url);
@@ -336,10 +349,10 @@ app.post("/api/convert", async (req, res) => {
               if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
 
               if (format === "mp3") {
-                const needConvert = normalize || trimOpt || Object.keys(id3).length || ext !== "mp3" || coverPath || sr;
+                const needConvert = normalize || trimOpt || Object.keys(id3).length || ext !== "mp3" || coverPath || sr || atmos;
                 if (needConvert) {
                   const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
+                  await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath, channels: atmos ? 2 : undefined });
                   await fsp.unlink(fullPath);
                   filename = `${id}.mp3`;
                   fullPath = join(JOBS_DIR, filename);
@@ -348,7 +361,7 @@ app.post("/api/convert", async (req, res) => {
                 }
               } else if (format === "flac") {
                 const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
-                await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
+                await ffmpegToFlac(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
                 await fsp.unlink(fullPath);
                 filename = `${id}.flac`;
                 fullPath = join(JOBS_DIR, filename);
@@ -405,9 +418,9 @@ app.post("/api/convert", async (req, res) => {
       let ext = filename.split(".").pop();
 
       try {
-        if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
+        if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr || atmos)) {
           const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
+          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath, channels: atmos ? 2 : undefined });
           await fsp.unlink(fullPath);
           filename = `${id}.mp3`;
           fullPath = join(JOBS_DIR, filename);
@@ -415,7 +428,7 @@ app.post("/api/convert", async (req, res) => {
           ext = "mp3";
         } else if (format === "flac" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
           const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
-          await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
+          await ffmpegToFlac(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
           await fsp.unlink(fullPath);
           filename = `${id}.flac`;
           fullPath = join(JOBS_DIR, filename);
