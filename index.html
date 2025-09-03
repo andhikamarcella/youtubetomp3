@@ -700,8 +700,12 @@ $('#queueList')?.addEventListener('click', (e) => {
     },500);
 
     try{
-      const resp = await fetch(api('/api/convert'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-      const data = await resp.json();
+      const resp = await fetch(api('/api/convert'), {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await resp.json().catch(()=>({}));
       if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
 
       $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
