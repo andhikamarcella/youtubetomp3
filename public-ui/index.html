@@ -705,8 +705,13 @@ $('#queueList')?.addEventListener('click', (e) => {
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify(body)
       });
-      const data = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
+      const text = await resp.text();
+      let data;
+      try{ data = JSON.parse(text); } catch { data = {}; }
+      if(!resp.ok){
+        const msg = data.error || text || `HTTP ${resp.status}`;
+        throw new Error(msg);
+      }
 
       $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
