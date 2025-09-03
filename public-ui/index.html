@@ -426,6 +426,19 @@
     return b ? b.replace(/\/$/, '') + path : path; // relative fallback
   };
 
+  const fetchJson = async (url, opts) => {
+    const resp = await fetch(url, opts);
+    const text = await resp.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = null; }
+    if (!resp.ok || !data) {
+      const err = new Error((data && data.error) || text || `HTTP ${resp.status}`);
+      err.data = data;
+      throw err;
+    }
+    return data;
+  };
+
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
     const b = getBackend();
@@ -730,11 +743,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     const bearer = state.adminBearer || $('#adminBearer').value.trim();
     if(!bearer){ setToast('Isi Admin Bearer terlebih dahulu di Pengaturan'); return; }
     try{
-      const resp = await fetch(api('/admin/upload-cookies'), {
+      const data = await fetchJson(api('/admin/upload-cookies'), {
         method:'POST', headers:{ 'Authorization': `Bearer ${bearer}`, 'Content-Type':'text/plain' }, body:text
       });
-      const data = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(data.error || 'Upload gagal');
       setToast('cookies.txt terunggah ✔');
       $('#cookieStatus').textContent = `OK · ${data.bytes||0} bytes → ${data.path||'/tmp/cookies.txt'}`;
     }catch(err){ setToast('Gagal upload cookies: '+err.message); }
@@ -748,8 +759,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   $('#checkCookie').addEventListener('click', async ()=>{
     try{
-      const resp = await fetch(api('/admin/cookies-status'));
-      const data = await resp.json();
+      const data = await fetchJson(api('/admin/cookies-status'));
       if(data.exists){ $('#cookieStatus').textContent = `Ada · ${data.bytes||0} bytes · ${data.path}`; }
       else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
     }catch{ $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
@@ -819,23 +829,11 @@ $('#queueList')?.addEventListener('click', (e) => {
     },500);
 
     try{
-      const resp = await fetch(api('/api/convert'), {
+      const data = await fetchJson(api('/api/convert'), {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify(body)
       });
-      let data = {};
-      let text = '';
-      const ct = resp.headers.get('content-type') || '';
-      if(ct.includes('application/json')){
-        data = await resp.json().catch(()=>({}));
-      } else {
-        text = await resp.text();
-      }
-      if(!resp.ok || !ct.includes('application/json')){
-        const msg = data.error || text || `HTTP ${resp.status}`;
-        throw new Error(msg);
-      }
 
       $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
@@ -852,7 +850,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#loadingSpinner').style.display = 'none';
       $('#resultWrap').hidden = true;
       $('#logWrap').hidden = false;
-      $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
+      $('#logs').textContent = err.data?.logs || ((err && err.stack) ? err.stack : String(err));
       setToast('Terjadi error: '+err.message+' — jika berlanjut, email andhikamarcella546@gmail.com');
     } finally {
       clearInterval(timer);
