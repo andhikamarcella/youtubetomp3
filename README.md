@@ -11,11 +11,12 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Thumbnail video otomatis dijadikan gambar album; artis diisi dari nama channel, album mengikuti judul video.
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.
 - Riwayat unduhan dengan tombol salin, unduh ulang, dan hapus setiap entri.
-- Tutorial singkat otomatis saat pertama kali membuka aplikasi.
+- Tutorial interaktif berbasis popup yang bisa dibuka kapan saja.
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
 - Sumber Atmos yang dikonversi ke MP3 otomatis di-downmix ke stereo agar tidak gagal.
 - Permintaan MP3 dengan sample rate di atas 48 kHz akan ditolak untuk menghindari error.
+- FAQ error yt-dlp beserta solusi dan kontak email dukungan.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).

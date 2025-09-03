@@ -41,6 +41,7 @@
       <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
       <div class="d-flex gap-2 ms-auto">
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
+        <button class="btn btn-outline-info" id="tutorialBtn" type="button" aria-label="Buka tutorial"><i class="bi bi-question-circle"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
     </div>
@@ -270,6 +271,54 @@
             </ul>
           </div>
         </div>
+
+        <div class="card shadow-sm mt-4">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-question-circle me-2"></i>
+              <h5 class="mb-0">FAQ & Error yt-dlp</h5>
+            </div>
+            <div class="accordion" id="faqAccordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faqOneHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqOne" aria-expanded="false" aria-controls="faqOne">
+                    ERROR: Sign in to confirm your age
+                  </button>
+                </h2>
+                <div id="faqOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Unggah <code>cookies.txt</code> valid pada Pengaturan untuk melewati age‑gate.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faqTwoHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwo" aria-expanded="false" aria-controls="faqTwo">
+                    ERROR: unable to download video data: HTTP Error 429
+                  </button>
+                </h2>
+                <div id="faqTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Terlalu banyak permintaan. Coba ulangi beberapa menit lagi atau gunakan proxy.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faqThreeHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqThree" aria-expanded="false" aria-controls="faqThree">
+                    ERROR: ffmpeg not found
+                  </button>
+                </h2>
+                <div id="faqThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Pastikan <code>ffmpeg</code> terinstal di server dan tersedia di PATH.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 small">Masalah lain? Email <a href="mailto:andhikamarcella546@gmail.com">andhikamarcella546@gmail.com</a></div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -311,28 +360,12 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="tutorialModalLabel">Tutorial Singkat</h5>
+          <h5 class="modal-title" id="tutorialModalLabel">Tutorial</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <p>Ikuti langkah berikut untuk memulai:</p>
-          <ol>
-            <li>Tempel URL YouTube.</li>
-            <li>Pilih format, kualitas, dan opsi lainnya.</li>
-            <li>Klik <strong>Convert</strong> atau <strong>Download Semua</strong>.</li>
-            <li>Unduh hasilnya.</li>
-          </ol>
-          <hr>
-          <p class="mb-0">Fitur utama:</p>
-          <ul class="mb-0">
-            <li><strong>Trim</strong> untuk memotong durasi.</li>
-            <li><strong>ID3</strong> menulis judul, artis, dan album.</li>
-            <li><strong>Normalisasi</strong> menyamakan volume.</li>
-            <li><strong>Antrian</strong> memproses banyak URL sekaligus.</li>
-          </ul>
-        </div>
+        <div class="modal-body" id="tutorialBody"></div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
+          <button type="button" class="btn btn-primary" id="tutorialNext">Lanjut</button>
         </div>
       </div>
     </div>
@@ -390,6 +423,39 @@
     const b = getBackend();
     badge.textContent = b ? new URL(b).host : location.host;
   };
+
+  // ===== Tutorial =====
+  const tutorialSteps = [
+    { title: 'Langkah 1', body: 'Tempel URL YouTube pada kolom <strong>URL YouTube</strong>.' },
+    { title: 'Langkah 2', body: 'Pilih format, sample rate, dan opsi lain sesuai kebutuhan.' },
+    { title: 'Langkah 3', body: 'Klik <strong>Convert</strong> untuk memulai proses.' },
+    { title: 'Selesai', body: 'Unduh hasilnya. Jika mengalami error, lihat FAQ atau email <a href="mailto:andhikamarcella546@gmail.com">andhikamarcella546@gmail.com</a>.' }
+  ];
+  let tutorialIdx = 0;
+  const tutorialModalEl = document.getElementById('tutorialModal');
+  const tutorialModal = new bootstrap.Modal(tutorialModalEl);
+  const tutorialTitle = $('#tutorialModalLabel');
+  const tutorialBody = $('#tutorialBody');
+  const tutorialNext = $('#tutorialNext');
+  function showTutorialStep(i){
+    const step = tutorialSteps[i];
+    tutorialTitle.textContent = step.title;
+    tutorialBody.innerHTML = step.body;
+    tutorialNext.textContent = i >= tutorialSteps.length - 1 ? 'Selesai' : 'Lanjut';
+  }
+  $('#tutorialBtn')?.addEventListener('click', () => {
+    tutorialIdx = 0;
+    showTutorialStep(tutorialIdx);
+    tutorialModal.show();
+  });
+  tutorialNext?.addEventListener('click', () => {
+    tutorialIdx++;
+    if(tutorialIdx >= tutorialSteps.length){
+      tutorialModal.hide();
+    } else {
+      showTutorialStep(tutorialIdx);
+    }
+  });
 
   // ===== Queue =====
   const queue = [];
@@ -746,7 +812,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#resultWrap').hidden = true;
       $('#logWrap').hidden = false;
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
-      setToast('Terjadi error: '+err.message);
+      setToast('Terjadi error: '+err.message+' — jika berlanjut, email andhikamarcella546@gmail.com');
     } finally {
       clearInterval(timer);
       setTimeout(()=>{ progWrap.hidden = true; }, 500);
