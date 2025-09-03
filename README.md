@@ -11,6 +11,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Thumbnail video otomatis dijadikan gambar album; artis diisi dari nama channel, album mengikuti judul video.
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.
 - Riwayat unduhan dengan tombol salin, unduh ulang, dan hapus setiap entri.
+- Tandai entri riwayat sebagai favorit dan tampilkan hanya favorit.
 - Tutorial interaktif berbasis popup yang bisa dibuka kapan saja.
 - Pencarian riwayat secara real-time untuk menemukan unduhan lebih cepat.
 - Toggle mode gelap/terang yang tersimpan di perangkat.

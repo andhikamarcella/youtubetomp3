@@ -253,6 +253,10 @@
           <span class="input-group-text"><i class="bi bi-search"></i></span>
           <input id="historySearch" type="search" class="form-control" placeholder="Cari riwayat" autocomplete="off">
         </div>
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="favOnly">
+          <label class="form-check-label small" for="favOnly"><i class="bi bi-star-fill text-warning"></i> Favorit saja</label>
+        </div>
         <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
         <ul class="list-group list-group-flush" id="historyList"></ul>
         <div class="d-grid mt-3">
@@ -566,6 +570,15 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   // ===== History =====
   const historyKey = 'ytmp3.history.v1';
+  const favKey = 'ytmp3.favs.v1';
+  const loadFavs = () => JSON.parse(localStorage.getItem(favKey) || '[]');
+  const saveFavs = favs => localStorage.setItem(favKey, JSON.stringify(favs));
+  const toggleFav = (id) => {
+    const favs = loadFavs();
+    const i = favs.indexOf(id);
+    if (i >= 0) favs.splice(i,1); else favs.push(id);
+    saveFavs(favs);
+  };
   const pushHistory = (entry) => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
     list.unshift({ ...entry, at: Date.now() });
@@ -580,11 +593,16 @@ $('#queueList')?.addEventListener('click', (e) => {
   };
   const renderHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    const favs = loadFavs();
+    const showFavOnly = $('#favOnly')?.checked;
     const ul = $('#historyList'); ul.innerHTML = '';
-    $('#historyEmpty').style.display = list.length ? 'none' : '';
-    list.forEach((it, idx) => {
+    const displayList = showFavOnly ? list.filter(it => favs.includes(it.id)) : list;
+    $('#historyEmpty').style.display = displayList.length ? 'none' : '';
+    displayList.forEach((it, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex align-items-start gap-2';
+      const starred = favs.includes(it.id);
+      const favBtn = it.id ? `<button class="btn btn-outline-warning fav-btn" data-id="${it.id}" title="Favorit"><i class="bi ${starred?'bi-star-fill':'bi-star'}"></i></button>` : '';
       li.innerHTML = `
         <i class="bi bi-file-music mt-1"></i>
         <div class="flex-grow-1">
@@ -593,6 +611,7 @@ $('#queueList')?.addEventListener('click', (e) => {
           <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
         </div>
         <div class="btn-group btn-group-sm">
+          ${favBtn}
           <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
           <button class="btn btn-outline-secondary copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
           <button class="btn btn-outline-danger delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
@@ -604,6 +623,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         try { await navigator.clipboard.writeText(btn.dataset.url); setToast('Link disalin'); }
         catch { setToast('Tidak bisa menyalin'); }
       });
+    });
+    ul.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.addEventListener('click', () => { toggleFav(btn.dataset.id); renderHistory(); });
     });
     ul.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
@@ -620,6 +642,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   }
 
   $('#historySearch')?.addEventListener('input', e => filterHistory(e.target.value));
+  $('#favOnly')?.addEventListener('change', renderHistory);
 
   $('#clearHistory')?.addEventListener('click', () => {
     localStorage.removeItem(historyKey);
@@ -821,7 +844,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       fake = 100; progBar.style.width='100%'; progBar.textContent='100%';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
       if(autoDownload) $('#downloadLink').click();
-      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
+      pushHistory({ id: data.id, downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
       setToast('Berhasil diproses');
       if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
     }catch(err){
