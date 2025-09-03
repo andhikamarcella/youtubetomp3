@@ -705,10 +705,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify(body)
       });
-      const text = await resp.text();
-      let data;
-      try{ data = JSON.parse(text); } catch { data = {}; }
-      if(!resp.ok){
+      let data = {};
+      let text = '';
+      const ct = resp.headers.get('content-type') || '';
+      if(ct.includes('application/json')){
+        data = await resp.json().catch(()=>({}));
+      } else {
+        text = await resp.text();
+      }
+      if(!resp.ok || !ct.includes('application/json')){
         const msg = data.error || text || `HTTP ${resp.status}`;
         throw new Error(msg);
       }

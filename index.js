@@ -475,4 +475,13 @@ app.get("/admin/cookies-status", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message || "Internal Server Error" });
+});
+
 app.listen(PORT, () => console.log(`Server jalan di :${PORT}`));
