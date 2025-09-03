@@ -227,7 +227,7 @@ app.post("/api/convert", async (req, res) => {
         return res.status(400).json({ error: "sampleRate tidak valid" });
       }
       if (format === "mp3" && sr > 48000) {
-        sr = 48000;
+        return res.status(400).json({ error: "MP3 tidak mendukung sample rate di atas 48 kHz" });
       }
     }
 

@@ -4,7 +4,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 
 ## Fitur Utama
 - Unduh audio dari tautan YouTube secara langsung.
-- Tentukan nama berkas output dan laju sampel (44.1 kHz, 48 kHz, atau 96 kHz).
+- Tentukan nama berkas output dan laju sampel (44.1 kHz atau 48 kHz untuk MP3; FLAC mendukung hingga 96 kHz).
 - Opsi FLAC lossless (Hi-Res) untuk kualitas maksimal.
 - Dukungan FLAC hingga 96 kHz dan preservasi multi-channel.
 - Pemangkasan awal/akhir audio serta penyematan metadata ID3 (judul, artis, album).
@@ -15,6 +15,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
 - Sumber Atmos yang dikonversi ke MP3 otomatis di-downmix ke stereo agar tidak gagal.
+- Permintaan MP3 dengan sample rate di atas 48 kHz akan ditolak untuk menghindari error.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).

@@ -122,6 +122,7 @@
                   <option value="48000">48 kHz</option>
                   <option value="96000">96 kHz (Hi-Res)</option>
                 </select>
+                <div class="form-text">MP3 maksimal 48 kHz; pilih FLAC untuk 96 kHz.</div>
               </div>
             </div>
 
@@ -368,6 +369,17 @@
   };
 
   const getBackend = () => (state.backendUrl || '').trim();
+  const formatSel = $('#format');
+  const sampleSel = $('#sampleRate');
+  const handleFormat = () => {
+    const isMp3 = formatSel.value === 'mp3';
+    [...sampleSel.options].forEach(o => {
+      o.disabled = isMp3 && Number(o.value) > 48000;
+    });
+    if (isMp3 && Number(sampleSel.value) > 48000) sampleSel.value = '48000';
+  };
+  formatSel.addEventListener('change', handleFormat);
+  handleFormat();
   const api = (path) => {
     const b = getBackend();
     return b ? b.replace(/\/$/, '') + path : path; // relative fallback
