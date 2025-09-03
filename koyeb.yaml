@@ -1,0 +1,12 @@
+name: youtubetomp3
+services:
+  - name: web
+    type: web
+    env:
+      NODE_ENV: production
+    ports:
+      - 3000
+    src:
+      dockerfile: Dockerfile
+    routes:
+      - path: /
