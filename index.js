@@ -67,7 +67,10 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
         args.push("-metadata", `${k}=${v}`);
       }
     }
-    if (sampleRate) args.push("-ar", String(sampleRate));
+    if (sampleRate) {
+      const sr = Math.min(Number(sampleRate), 48000);
+      args.push("-ar", String(sr));
+    }
     if (cover) {
       args.push(
         "-map","0:a","-map","1:v",
@@ -211,6 +214,9 @@ app.post("/api/convert", async (req, res) => {
       sr = Number(sampleRate);
       if (Number.isNaN(sr) || sr <= 0) {
         return res.status(400).json({ error: "sampleRate tidak valid" });
+      }
+      if (format === "mp3" && sr > 48000) {
+        sr = 48000;
       }
     }
 
