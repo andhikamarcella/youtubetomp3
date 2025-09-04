@@ -20,6 +20,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Sumber Atmos yang dikonversi ke MP3 otomatis di-downmix ke stereo agar tidak gagal.
 - Permintaan MP3 atau M4A dengan sample rate di atas 48 kHz akan ditolak untuk menghindari error.
 - FAQ error yt-dlp beserta solusi dan kontak email dukungan.
+- Penanganan respons backend non-JSON agar tidak memunculkan error `Unexpected token <`.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).

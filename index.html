@@ -429,8 +429,11 @@
   const fetchJson = async (url, opts) => {
     const resp = await fetch(url, opts);
     const text = await resp.text();
-    let data;
-    try { data = JSON.parse(text); } catch { data = null; }
+    let data = null;
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      try { data = JSON.parse(text); } catch {}
+    }
     if (!resp.ok || !data) {
       const err = new Error((data && data.error) || text || `HTTP ${resp.status}`);
       err.data = data;
