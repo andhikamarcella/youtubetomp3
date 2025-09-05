@@ -41,6 +41,7 @@
       <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
       <div class="d-flex gap-2 ms-auto">
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
+        <button class="btn btn-outline-info" id="tutorialBtn" type="button" aria-label="Buka tutorial"><i class="bi bi-question-circle"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
     </div>
@@ -122,6 +123,7 @@
                   <option value="48000">48 kHz</option>
                   <option value="96000">96 kHz (Hi-Res)</option>
                 </select>
+                <div class="form-text">MP3/M4A maksimal 48 kHz; pilih FLAC untuk 96 kHz.</div>
               </div>
             </div>
 
@@ -243,15 +245,23 @@
       <div class="col-lg-5">
         <div class="card shadow-sm mb-4">
           <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-clock-history me-2"></i>
-              <h5 class="mb-0">Riwayat</h5>
-            </div>
-            <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
-            <ul class="list-group list-group-flush" id="historyList"></ul>
-            <div class="d-grid mt-3">
-              <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
-            </div>
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-clock-history me-2"></i>
+          <h5 class="mb-0">Riwayat</h5>
+        </div>
+        <div class="input-group mb-3">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input id="historySearch" type="search" class="form-control" placeholder="Cari riwayat" autocomplete="off">
+        </div>
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="favOnly">
+          <label class="form-check-label small" for="favOnly"><i class="bi bi-star-fill text-warning"></i> Favorit saja</label>
+        </div>
+        <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
+        <ul class="list-group list-group-flush" id="historyList"></ul>
+        <div class="d-grid mt-3">
+          <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
+        </div>
           </div>
         </div>
 
@@ -267,6 +277,54 @@
               <li>Pastikan <code>ffmpeg</code> & <code>yt-dlp</code> versi terbaru di server.</li>
               <li>Jika muncul age‑gate, unggah <code>cookies.txt</code> valid.</li>
             </ul>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-question-circle me-2"></i>
+              <h5 class="mb-0">FAQ & Error yt-dlp</h5>
+            </div>
+            <div class="accordion" id="faqAccordion">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faqOneHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqOne" aria-expanded="false" aria-controls="faqOne">
+                    ERROR: Sign in to confirm your age
+                  </button>
+                </h2>
+                <div id="faqOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Unggah <code>cookies.txt</code> valid pada Pengaturan untuk melewati age‑gate.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faqTwoHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwo" aria-expanded="false" aria-controls="faqTwo">
+                    ERROR: unable to download video data: HTTP Error 429
+                  </button>
+                </h2>
+                <div id="faqTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Terlalu banyak permintaan. Coba ulangi beberapa menit lagi atau gunakan proxy.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="faqThreeHeading">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqThree" aria-expanded="false" aria-controls="faqThree">
+                    ERROR: ffmpeg not found
+                  </button>
+                </h2>
+                <div id="faqThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body">
+                    Pastikan <code>ffmpeg</code> terinstal di server dan tersedia di PATH.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 small">Masalah lain? Email <a href="mailto:andhikamarcella546@gmail.com">andhikamarcella546@gmail.com</a></div>
           </div>
         </div>
       </div>
@@ -310,28 +368,12 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="tutorialModalLabel">Tutorial Singkat</h5>
+          <h5 class="modal-title" id="tutorialModalLabel">Tutorial</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <p>Ikuti langkah berikut untuk memulai:</p>
-          <ol>
-            <li>Tempel URL YouTube.</li>
-            <li>Pilih format, kualitas, dan opsi lainnya.</li>
-            <li>Klik <strong>Convert</strong> atau <strong>Download Semua</strong>.</li>
-            <li>Unduh hasilnya.</li>
-          </ol>
-          <hr>
-          <p class="mb-0">Fitur utama:</p>
-          <ul class="mb-0">
-            <li><strong>Trim</strong> untuk memotong durasi.</li>
-            <li><strong>ID3</strong> menulis judul, artis, dan album.</li>
-            <li><strong>Normalisasi</strong> menyamakan volume.</li>
-            <li><strong>Antrian</strong> memproses banyak URL sekaligus.</li>
-          </ul>
-        </div>
+        <div class="modal-body" id="tutorialBody"></div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
+          <button type="button" class="btn btn-primary" id="tutorialNext">Lanjut</button>
         </div>
       </div>
     </div>
@@ -368,9 +410,36 @@
   };
 
   const getBackend = () => (state.backendUrl || '').trim();
+  const formatSel = $('#format');
+  const sampleSel = $('#sampleRate');
+  const handleFormat = () => {
+    const allowHiRes = formatSel.value === 'flac';
+    [...sampleSel.options].forEach(o => {
+      o.disabled = !allowHiRes && Number(o.value) > 48000;
+    });
+    if (!allowHiRes && Number(sampleSel.value) > 48000) sampleSel.value = '48000';
+  };
+  formatSel.addEventListener('change', handleFormat);
+  handleFormat();
   const api = (path) => {
     const b = getBackend();
     return b ? b.replace(/\/$/, '') + path : path; // relative fallback
+  };
+
+  const fetchJson = async (url, opts) => {
+    const resp = await fetch(url, opts);
+    const text = await resp.text();
+    let data = null;
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      try { data = JSON.parse(text); } catch {}
+    }
+    if (!resp.ok || !data) {
+      const err = new Error((data && data.error) || text || `HTTP ${resp.status}`);
+      err.data = data;
+      throw err;
+    }
+    return data;
   };
 
   const updateBackendBadge = () => {
@@ -378,6 +447,42 @@
     const b = getBackend();
     badge.textContent = b ? new URL(b).host : location.host;
   };
+
+  // ===== Tutorial =====
+  const tutorialSteps = [
+    { title: 'Langkah 1', body: 'Masukkan tautan di kolom <strong>URL YouTube</strong>.' },
+    { title: 'Langkah 2', body: 'Atur <strong>Format</strong>, <strong>Kualitas</strong>, dan <strong>Sample Rate</strong>.' },
+    { title: 'Langkah 3', body: 'Tambahkan video ke <strong>Antrian</strong> atau seret <code>cookies.txt</code> ke area bertanda.' },
+    { title: 'Langkah 4', body: 'Klik <strong>Convert</strong> dan ikuti <strong>progress bar</strong> sampai selesai.' },
+    { title: 'Langkah 5', body: 'Gunakan <strong>Riwayat</strong> untuk mengunduh ulang dan cari cepat dengan kotak pencarian.' },
+    { title: 'Selesai', body: 'Ganti <strong>tema</strong> sesuai selera dan unduh hasilnya. Jika error, cek FAQ atau email <a href="mailto:andhikamarcella546@gmail.com">andhikamarcella546@gmail.com</a>.' }
+  ];
+  let tutorialIdx = 0;
+  const tutorialModalEl = document.getElementById('tutorialModal');
+  const tutorialModal = new bootstrap.Modal(tutorialModalEl);
+  const tutorialTitle = $('#tutorialModalLabel');
+  const tutorialBody = $('#tutorialBody');
+  const tutorialNext = $('#tutorialNext');
+  function showTutorialStep(i){
+    const step = tutorialSteps[i];
+    tutorialTitle.textContent = step.title;
+    tutorialBody.innerHTML = step.body;
+    tutorialNext.textContent = i >= tutorialSteps.length - 1 ? 'Selesai' : 'Lanjut';
+  }
+  $('#tutorialBtn')?.addEventListener('click', () => {
+    tutorialIdx = 0;
+    showTutorialStep(tutorialIdx);
+    tutorialModal.show();
+  });
+  tutorialNext?.addEventListener('click', () => {
+    tutorialIdx++;
+    if(tutorialIdx >= tutorialSteps.length){
+      tutorialModal.hide();
+    } else {
+      showTutorialStep(tutorialIdx);
+    }
+  });
+  tutorialModalEl.addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
 
   // ===== Queue =====
   const queue = [];
@@ -481,6 +586,15 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   // ===== History =====
   const historyKey = 'ytmp3.history.v1';
+  const favKey = 'ytmp3.favs.v1';
+  const loadFavs = () => JSON.parse(localStorage.getItem(favKey) || '[]');
+  const saveFavs = favs => localStorage.setItem(favKey, JSON.stringify(favs));
+  const toggleFav = (id) => {
+    const favs = loadFavs();
+    const i = favs.indexOf(id);
+    if (i >= 0) favs.splice(i,1); else favs.push(id);
+    saveFavs(favs);
+  };
   const pushHistory = (entry) => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
     list.unshift({ ...entry, at: Date.now() });
@@ -495,11 +609,16 @@ $('#queueList')?.addEventListener('click', (e) => {
   };
   const renderHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    const favs = loadFavs();
+    const showFavOnly = $('#favOnly')?.checked;
     const ul = $('#historyList'); ul.innerHTML = '';
-    $('#historyEmpty').style.display = list.length ? 'none' : '';
-    list.forEach((it, idx) => {
+    const displayList = showFavOnly ? list.filter(it => favs.includes(it.id)) : list;
+    $('#historyEmpty').style.display = displayList.length ? 'none' : '';
+    displayList.forEach((it, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex align-items-start gap-2';
+      const starred = favs.includes(it.id);
+      const favBtn = it.id ? `<button class="btn btn-outline-warning fav-btn" data-id="${it.id}" title="Favorit"><i class="bi ${starred?'bi-star-fill':'bi-star'}"></i></button>` : '';
       li.innerHTML = `
         <i class="bi bi-file-music mt-1"></i>
         <div class="flex-grow-1">
@@ -508,6 +627,7 @@ $('#queueList')?.addEventListener('click', (e) => {
           <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
         </div>
         <div class="btn-group btn-group-sm">
+          ${favBtn}
           <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
           <button class="btn btn-outline-secondary copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
           <button class="btn btn-outline-danger delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
@@ -520,10 +640,25 @@ $('#queueList')?.addEventListener('click', (e) => {
         catch { setToast('Tidak bisa menyalin'); }
       });
     });
+    ul.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.addEventListener('click', () => { toggleFav(btn.dataset.id); renderHistory(); });
+    });
     ul.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
     });
+    filterHistory($('#historySearch')?.value || '');
   };
+
+  function filterHistory(term){
+    const items = $('#historyList')?.querySelectorAll('li') || [];
+    const t = term.toLowerCase();
+    items.forEach(li=>{
+      li.style.display = li.innerText.toLowerCase().includes(t) ? '' : 'none';
+    });
+  }
+
+  $('#historySearch')?.addEventListener('input', e => filterHistory(e.target.value));
+  $('#favOnly')?.addEventListener('change', renderHistory);
 
   $('#clearHistory')?.addEventListener('click', () => {
     localStorage.removeItem(historyKey);
@@ -611,11 +746,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     const bearer = state.adminBearer || $('#adminBearer').value.trim();
     if(!bearer){ setToast('Isi Admin Bearer terlebih dahulu di Pengaturan'); return; }
     try{
-      const resp = await fetch(api('/admin/upload-cookies'), {
+      const data = await fetchJson(api('/admin/upload-cookies'), {
         method:'POST', headers:{ 'Authorization': `Bearer ${bearer}`, 'Content-Type':'text/plain' }, body:text
       });
-      const data = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(data.error || 'Upload gagal');
       setToast('cookies.txt terunggah ✔');
       $('#cookieStatus').textContent = `OK · ${data.bytes||0} bytes → ${data.path||'/tmp/cookies.txt'}`;
     }catch(err){ setToast('Gagal upload cookies: '+err.message); }
@@ -629,8 +762,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   $('#checkCookie').addEventListener('click', async ()=>{
     try{
-      const resp = await fetch(api('/admin/cookies-status'));
-      const data = await resp.json();
+      const data = await fetchJson(api('/admin/cookies-status'));
       if(data.exists){ $('#cookieStatus').textContent = `Ada · ${data.bytes||0} bytes · ${data.path}`; }
       else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
     }catch{ $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
@@ -700,9 +832,11 @@ $('#queueList')?.addEventListener('click', (e) => {
     },500);
 
     try{
-      const resp = await fetch(api('/api/convert'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-      const data = await resp.json();
-      if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
+      const data = await fetchJson(api('/api/convert'), {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(body)
+      });
 
       $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
@@ -711,7 +845,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       fake = 100; progBar.style.width='100%'; progBar.textContent='100%';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
       if(autoDownload) $('#downloadLink').click();
-      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
+      pushHistory({ id: data.id, downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
       setToast('Berhasil diproses');
       if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
     }catch(err){
@@ -719,8 +853,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#loadingSpinner').style.display = 'none';
       $('#resultWrap').hidden = true;
       $('#logWrap').hidden = false;
-      $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
-      setToast('Terjadi error: '+err.message);
+      $('#logs').textContent = err.data?.logs || ((err && err.stack) ? err.stack : String(err));
+      setToast('Terjadi error: '+err.message+' — jika berlanjut, email andhikamarcella546@gmail.com');
     } finally {
       clearInterval(timer);
       setTimeout(()=>{ progWrap.hidden = true; }, 500);
@@ -763,9 +897,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     updateBackendBadge();
     updatePreview();
     if(!localStorage.getItem(tutorialKey)){
-      const m = new bootstrap.Modal($('#tutorialModal'));
-      m.show();
-      $('#tutorialModal').addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
+      showTutorialStep(0);
+      tutorialModal.show();
     }
   })();
   });

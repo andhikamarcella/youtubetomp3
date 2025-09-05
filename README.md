@@ -4,15 +4,23 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 
 ## Fitur Utama
 - Unduh audio dari tautan YouTube secara langsung.
-- Tentukan nama berkas output dan laju sampel (44.1 kHz, 48 kHz, atau 96 kHz).
+- Tentukan nama berkas output dan laju sampel (44.1 kHz atau 48 kHz untuk MP3/M4A; FLAC mendukung hingga 96 kHz).
 - Opsi FLAC lossless (Hi-Res) untuk kualitas maksimal.
+- Dukungan FLAC hingga 96 kHz dan preservasi multi-channel.
 - Pemangkasan awal/akhir audio serta penyematan metadata ID3 (judul, artis, album).
 - Thumbnail video otomatis dijadikan gambar album; artis diisi dari nama channel, album mengikuti judul video.
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.
 - Riwayat unduhan dengan tombol salin, unduh ulang, dan hapus setiap entri.
-- Tutorial singkat otomatis saat pertama kali membuka aplikasi.
+- Tandai entri riwayat sebagai favorit dan tampilkan hanya favorit.
+- Tutorial interaktif berbasis popup yang bisa dibuka kapan saja.
+- Pencarian riwayat secara real-time untuk menemukan unduhan lebih cepat.
+- Toggle mode gelap/terang yang tersimpan di perangkat.
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
+- Sumber Atmos yang dikonversi ke MP3 otomatis di-downmix ke stereo agar tidak gagal.
+- Permintaan MP3 atau M4A dengan sample rate di atas 48 kHz akan ditolak untuk menghindari error.
+- FAQ error yt-dlp beserta solusi dan kontak email dukungan.
+- Penanganan respons backend non-JSON agar tidak memunculkan error `Unexpected token <`.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
@@ -20,6 +28,13 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 3. Pilih kualitas, atur nama file, dan lengkapi metadata jika diperlukan.
 4. Klik **Convert** dan tunggu hingga proses selesai, lalu unduh MP3 hasil konversi.
 5. Untuk banyak video, tempelkan beberapa URL di kolom *Playlist* dan gunakan **Convert Antrian**.
+
+## Deployment
+Aplikasi dapat dideploy di beberapa platform menggunakan Dockerfile yang sama:
+
+- Render
+- Railway
+- Koyeb (dengan konfigurasi `koyeb.yaml`)
 
 ## Lisensi
 Proyek ini dirilis di bawah lisensi MIT.
