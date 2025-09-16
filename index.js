@@ -47,8 +47,30 @@ const sanitizeFileName = (name = "") =>
     .replace(/\s+/g, " ")
     .trim();
 
+const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
+const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
+
+const buildAudioFilters = ({ normalize = false, speedMode = "normal" } = {}) => {
+  const filters = [];
+  if (speedMode && speedMode !== "normal") {
+    if (speedMode === "nightcore") {
+      filters.push("asetrate=sample_rate*1.25", "aresample=sample_rate");
+    } else if (speedMode === "slow_reverb") {
+      filters.push("atempo=0.85", "aecho=0.6:0.6:1000:0.25");
+    }
+  }
+  if (normalize) filters.push("loudnorm");
+  return filters;
+};
+
+const applyAudioFilters = (args, filters = []) => {
+  if (filters && filters.length) {
+    args.push("-filter:a", filters.join(","));
+  }
+};
+
 const ffmpegToMp3 = (input, output, opts = {}) => {
-  const { abr = 192, id3 = {}, trim = {}, normalize = false, sampleRate, cover } = opts;
+  const { abr = 192, id3 = {}, trim = {}, sampleRate, cover, filters = [] } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -61,7 +83,7 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
       if (hasStart) args.push("-t", String(end - start));
       else args.push("-to", String(end));
     }
-    if (normalize) args.push("-af", "loudnorm");
+    applyAudioFilters(args, filters);
     for (const [k, v] of Object.entries(id3 || {})) {
       if (v !== undefined && v !== null && String(v).trim() !== "") {
         args.push("-metadata", `${k}=${v}`);
@@ -97,7 +119,7 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
 };
 
 const ffmpegToFlac = (input, output, opts = {}) => {
-  const { id3 = {}, trim = {}, normalize = false, sampleRate, cover } = opts;
+  const { id3 = {}, trim = {}, sampleRate, cover, filters = [] } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -110,7 +132,7 @@ const ffmpegToFlac = (input, output, opts = {}) => {
       if (hasStart) args.push("-t", String(end - start));
       else args.push("-to", String(end));
     }
-    if (normalize) args.push("-af", "loudnorm");
+    applyAudioFilters(args, filters);
     for (const [k, v] of Object.entries(id3 || {})) {
       if (v !== undefined && v !== null && String(v).trim() !== "") {
         args.push("-metadata", `${k}=${v}`);
@@ -145,7 +167,7 @@ const ffmpegToFlac = (input, output, opts = {}) => {
 };
 
 const ffmpegToM4a = (input, output, opts = {}) => {
-  const { id3 = {}, trim = {}, normalize = false, sampleRate, cover } = opts;
+  const { id3 = {}, trim = {}, sampleRate, cover, filters = [] } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -158,7 +180,7 @@ const ffmpegToM4a = (input, output, opts = {}) => {
       if (hasStart) args.push("-t", String(end - start));
       else args.push("-to", String(end));
     }
-    if (normalize) args.push("-af", "loudnorm");
+    applyAudioFilters(args, filters);
     for (const [k, v] of Object.entries(id3 || {})) {
       if (v !== undefined && v !== null && String(v).trim() !== "") {
         args.push("-metadata", `${k}=${v}`);
@@ -192,7 +214,335 @@ const ffmpegToM4a = (input, output, opts = {}) => {
   });
 };
 
+const ffmpegToWav = (input, output, opts = {}) => {
+  const { trim = {}, sampleRate, filters = [] } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !isNaN(start);
+    const hasEnd = typeof end === "number" && !isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    applyAudioFilters(args, filters);
+    args.push("-map", "0:a", "-vn", "-codec:a", "pcm_s16le", output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
+const ffmpegToOgg = (input, output, opts = {}) => {
+  const { trim = {}, sampleRate, filters = [] } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !isNaN(start);
+    const hasEnd = typeof end === "number" && !isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    applyAudioFilters(args, filters);
+    args.push("-map", "0:a", "-vn", "-codec:a", "libvorbis", "-qscale:a", "5", output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
 const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
+
+const runYtDlpDownload = ({ args, id }) =>
+  new Promise((resolve, reject) => {
+    const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    proc.stdout.on("data", (d) => (logs += d.toString()));
+    proc.stderr.on("data", (d) => (logs += d.toString()));
+    proc.on("error", (err) => {
+      const error = new Error("yt-dlp tidak bisa dijalankan");
+      error.cause = err;
+      error.logs = logs;
+      reject(error);
+    });
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        const error = new Error("yt-dlp gagal");
+        error.logs = logs;
+        return reject(error);
+      }
+      const files = readdirSync(JOBS_DIR).filter(
+        (f) => f.startsWith(`${id}.`) && !f.endsWith(".cover.jpg")
+      );
+      if (!files.length) {
+        const error = new Error("Output tidak ditemukan");
+        error.logs = logs;
+        return reject(error);
+      }
+      const filename = files[0];
+      const fullPath = join(JOBS_DIR, filename);
+      const ext = filename.split(".").pop();
+      resolve({ filename, fullPath, ext, logs });
+    });
+  });
+
+const runPyTubeDownload = ({ url, id, baseLogs = "" }) =>
+  new Promise((resolve, reject) => {
+    let pyLogs = "";
+    let pyOut = "";
+    const py = spawn("python3", [
+      join(__dirname, "download_audio.py"),
+      url,
+      JOBS_DIR,
+      id,
+    ], { stdio: ["ignore", "pipe", "pipe"] });
+
+    py.stdout.on("data", (d) => {
+      const s = d.toString();
+      pyLogs += s;
+      pyOut += s;
+    });
+    py.stderr.on("data", (d) => (pyLogs += d.toString()));
+
+    py.on("error", (err) => {
+      const error = new Error("PyTube tidak bisa dijalankan");
+      error.cause = err;
+      error.logs = baseLogs + pyLogs;
+      reject(error);
+    });
+
+    py.on("close", async (code) => {
+      if (code !== 0) {
+        const error = new Error("PyTube gagal");
+        error.logs = baseLogs + pyLogs;
+        return reject(error);
+      }
+      try {
+        const dlPath = pyOut.trim().split("\n").pop().trim();
+        let ext = dlPath.split(".").pop();
+        let filename = `${id}.${ext}`;
+        let fullPath = join(JOBS_DIR, filename);
+        if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
+        resolve({ filename, fullPath, ext, logs: baseLogs + pyLogs });
+      } catch (err) {
+        const error = new Error(err.message || "PyTube output tidak valid");
+        error.logs = baseLogs + pyLogs;
+        reject(error);
+      }
+    });
+  });
+
+const convertSingle = async (payload = {}) => {
+  const {
+    url,
+    format = "mp3",
+    abr = 192,
+    sampleRate,
+    fileName,
+    noPlaylist = true,
+    id3 = {},
+    trim,
+    normalize = false,
+    coverUrl,
+    atmos = false,
+    speedMode = "normal",
+  } = payload;
+
+  if (!url || !/^https?:\/\//.test(url)) {
+    throw new Error("URL tidak valid");
+  }
+  const fmt = String(format || "").toLowerCase();
+  if (!SUPPORTED_FORMATS.has(fmt)) {
+    throw new Error("Format tidak didukung");
+  }
+  if (!VALID_SPEED_MODES.has(speedMode || "normal")) {
+    throw new Error("Mode kecepatan tidak dikenali");
+  }
+
+  let sr;
+  if (sampleRate !== undefined) {
+    sr = Number(sampleRate);
+    if (Number.isNaN(sr) || sr <= 0) {
+      throw new Error("sampleRate tidak valid");
+    }
+  }
+
+  let trimOpt = null;
+  if (trim && (trim.start !== undefined || trim.end !== undefined)) {
+    const hasStart = trim.start !== undefined;
+    const hasEnd = trim.end !== undefined;
+    const start = hasStart ? Number(trim.start) : 0;
+    const end = hasEnd ? Number(trim.end) : undefined;
+    if ((hasStart && Number.isNaN(start)) ||
+        (hasEnd && Number.isNaN(end)) ||
+        (hasStart && hasEnd && end < start)) {
+      throw new Error("trim tidak valid");
+    }
+    trimOpt = {};
+    if (hasStart) trimOpt.start = start;
+    if (hasEnd) trimOpt.end = end;
+  }
+
+  const id = nanoid(10);
+  const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
+  const baseName = sanitizeFileName(fileName || id3.title || id) || id;
+
+  let coverPath = null;
+  if (coverUrl && /^https?:\/\//.test(coverUrl) && ["mp3", "m4a", "flac"].includes(fmt)) {
+    try {
+      const imgResp = await fetch(coverUrl);
+      if (imgResp.ok) {
+        const buf = Buffer.from(await imgResp.arrayBuffer());
+        coverPath = join(JOBS_DIR, `${id}.cover.jpg`);
+        await fsp.writeFile(coverPath, buf);
+      }
+    } catch {}
+  }
+
+  const filters = buildAudioFilters({ normalize, speedMode });
+
+  const args = ["--newline", "--no-progress"];
+  if (ffmpegPath) {
+    args.push("--ffmpeg-location", ffmpegPath);
+  }
+  if (existsSync(COOKIES_PATH)) {
+    args.push("--cookies", COOKIES_PATH);
+  }
+  if (noPlaylist) args.push("--no-playlist");
+  if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
+  args.push("-o", outTpl);
+
+  if (fmt === "m4a") {
+    args.push("-f", "bestaudio[ext=m4a]/bestaudio");
+  } else if (fmt === "flac") {
+    args.push("-x", "--audio-format", "flac");
+  } else if (fmt === "mp3") {
+    args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(abr));
+  } else if (fmt === "wav") {
+    args.push("-x", "--audio-format", "wav");
+  } else if (fmt === "ogg") {
+    args.push("-x", "--audio-format", "ogg");
+  }
+  args.push(url);
+
+  let logs = "";
+  let downloadResult;
+
+  try {
+    downloadResult = await runYtDlpDownload({ args, id });
+    logs = downloadResult.logs || "";
+  } catch (err) {
+    const baseLogs = err.logs || "";
+    try {
+      downloadResult = await runPyTubeDownload({ url, id, baseLogs });
+      logs = downloadResult.logs || baseLogs;
+    } catch (pyErr) {
+      if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+      const finalError = new Error(pyErr.message || err.message || "Gagal mengunduh");
+      finalError.logs = (pyErr.logs || baseLogs || "").slice(-8000);
+      throw finalError;
+    }
+  }
+
+  let { filename, fullPath, ext } = downloadResult;
+  logs = downloadResult.logs || logs;
+
+  const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
+    if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
+    return acc;
+  }, {});
+  const hasId3 = Object.keys(id3Clean).length > 0;
+  const hasTrim = !!trimOpt && Object.keys(trimOpt).length > 0;
+  const hasFilters = filters.length > 0;
+  const hasCover = !!coverPath;
+  const needSampleRate = sr !== undefined;
+
+  const finalize = async (targetExt, converter, extraOpts = {}) => {
+    const tmpOut = join(JOBS_DIR, `${id}.tmp.${targetExt}`);
+    await converter(fullPath, tmpOut, { ...extraOpts, trim: trimOpt || {}, sampleRate: sr, filters });
+    await fsp.unlink(fullPath);
+    filename = `${id}.${targetExt}`;
+    fullPath = join(JOBS_DIR, filename);
+    await fsp.rename(tmpOut, fullPath);
+    ext = targetExt;
+  };
+
+  try {
+    if (fmt === "mp3") {
+      const needConvert = ext !== "mp3" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+      if (needConvert) {
+        await finalize("mp3", ffmpegToMp3, { abr, id3: id3Clean, cover: coverPath });
+      }
+    } else if (fmt === "flac") {
+      const needConvert = ext !== "flac" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+      if (needConvert) {
+        await finalize("flac", ffmpegToFlac, { id3: id3Clean, cover: coverPath });
+      }
+    } else if (fmt === "m4a") {
+      const needConvert = ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+      if (needConvert) {
+        await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath });
+      }
+    } else if (fmt === "wav") {
+      const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
+      if (needConvert) {
+        await finalize("wav", ffmpegToWav, {});
+      }
+    } else if (fmt === "ogg") {
+      const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
+      if (needConvert) {
+        await finalize("ogg", ffmpegToOgg, {});
+      }
+    }
+  } catch (err) {
+    if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+    const error = new Error(err.message || "ffmpeg gagal");
+    error.logs = (logs + (err.logs || "")).slice(-8000);
+    throw error;
+  }
+
+  if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+
+  const downloadUrl = `/public/jobs/${filename}`;
+  const finalExt = ext;
+  const downloadFileName = `${baseName}.${finalExt}`;
+  return {
+    ok: true,
+    id,
+    format: finalExt,
+    downloadUrl,
+    fileName: downloadFileName,
+    logs: (logs || "").slice(-8000),
+    baseName,
+    fullPath,
+    ext: finalExt,
+  };
+};
 
 // ==== Serve static UI & hasil unduhan ====
 app.use("/", express.static(join(__dirname, "public-ui")));
@@ -201,243 +551,116 @@ app.use("/public", express.static(PUBLIC_DIR));
 // ==== API convert ====
 app.post("/api/convert", async (req, res) => {
   try {
-    const { url, format = "mp3", abr = 192, sampleRate, fileName, noPlaylist = true, id3 = {}, trim, normalize = false, coverUrl, atmos = false } = req.body || {};
-    if (!url || !/^https?:\/\//.test(url)) {
-      return res.status(400).json({ error: "URL tidak valid" });
+    const result = await convertSingle(req.body || {});
+    return res.json(result);
+  } catch (e) {
+    const msg = e?.message || "Gagal memproses";
+    const status = /tidak valid|tidak dikenali/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ error: msg, logs: e?.logs });
+  }
+});
+
+// ==== API convert playlist (ZIP) ====
+app.post("/api/convert-playlist", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const rawItems = Array.isArray(body.items)
+      ? body.items
+      : Array.isArray(body.urls)
+        ? body.urls.map((url) => ({ url }))
+        : [];
+    if (!rawItems.length) {
+      return res.status(400).json({ error: "Daftar URL kosong" });
     }
 
-    let sr;
-    if (sampleRate !== undefined) {
-      sr = Number(sampleRate);
-      if (Number.isNaN(sr) || sr <= 0) {
-        return res.status(400).json({ error: "sampleRate tidak valid" });
-      }
-    }
-
-    let trimOpt = null;
-    if (trim && (trim.start !== undefined || trim.end !== undefined)) {
-      const hasStart = trim.start !== undefined;
-      const hasEnd = trim.end !== undefined;
-      const start = hasStart ? Number(trim.start) : 0;
-      const end = hasEnd ? Number(trim.end) : undefined;
-      if ((hasStart && Number.isNaN(start)) ||
-          (hasEnd && Number.isNaN(end)) ||
-          (hasStart && hasEnd && end < start)) {
-        return res.status(400).json({ error: "trim tidak valid" });
-      }
-      trimOpt = {};
-      if (hasStart) trimOpt.start = start;
-      if (hasEnd) trimOpt.end = end;
-    }
-
-    const id = nanoid(10);
-    const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
-    const baseName = sanitizeFileName(fileName || id3.title || id) || id;
-
-    let coverPath = null;
-    if (coverUrl && /^https?:\/\//.test(coverUrl)) {
-      try {
-        const imgResp = await fetch(coverUrl);
-        if (imgResp.ok) {
-          const buf = Buffer.from(await imgResp.arrayBuffer());
-          coverPath = join(JOBS_DIR, `${id}.cover.jpg`);
-          await fsp.writeFile(coverPath, buf);
-        }
-      } catch {}
-    }
-
-    // Argumen dasar yt-dlp
-    const args = ["--newline", "--no-progress"];
-
-    // Pakai ffmpeg portable kalau ada
-    if (ffmpegPath) {
-      args.push("--ffmpeg-location", ffmpegPath);
-    }
-
-    // Cookies kalau ada (buat age gate / bot check)
-    if (existsSync(COOKIES_PATH)) {
-      args.push("--cookies", COOKIES_PATH);
-    }
-
-    if (noPlaylist) args.push("--no-playlist");
-    if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
-
-    // Mode cepat: m4a tanpa re-encode (paling ngebut)
-    if (format === "m4a") {
-      args.push("-f", "bestaudio[ext=m4a]/bestaudio");
-      args.push("-o", outTpl);
-      args.push(url);
-    } else if (format === "flac") {
-      args.push("-x", "--audio-format", "flac");
-      args.push("-o", outTpl);
-      args.push(url);
-    } else {
-      // MP3 (re-encode, sedikit lebih lama)
-      args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(abr));
-      args.push("-o", outTpl);
-      args.push(url);
-    }
-
-    const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
-
-    let logs = "";
-    proc.stdout.on("data", (d) => (logs += d.toString()));
-    proc.stderr.on("data", (d) => (logs += d.toString()));
-
-    const runPyTubeFallback = (errMsg, baseLogs = "") => {
-      let pyLogs = "";
-      let pyOut  = "";
-      try {
-        const py = spawn("python3", [
-          join(__dirname, "download_audio.py"),
-          url,
-          JOBS_DIR,
-          id,
-        ], { stdio: ["ignore", "pipe", "pipe"] });
-
-        py.stdout.on("data", (d) => {
-          const s = d.toString();
-          pyLogs += s;
-          pyOut  += s;
-        });
-        py.stderr.on("data", (d) => (pyLogs += d.toString()));
-
-        py.on("error", (err) => {
-          if (!res.headersSent) {
-            res.status(500).json({
-              error: `${errMsg} & PyTube tidak bisa dijalankan`,
-              logs: baseLogs + pyLogs,
-              detail: err.message,
-            });
-          }
-        });
-
-        py.on("close", async (code) => {
-          if (code !== 0) {
-            if (!res.headersSent) {
-              res.status(500).json({
-                error: `${errMsg} & PyTube gagal`,
-                logs: baseLogs + pyLogs,
-              });
-            }
-            return;
-          }
-          try {
-              const dlPath = pyOut.trim().split("\n").pop().trim();
-              let ext = dlPath.split(".").pop();
-              let filename = `${id}.${ext}`;
-              let fullPath = join(JOBS_DIR, filename);
-              if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
-
-              if (format === "mp3") {
-                const needConvert = normalize || trimOpt || Object.keys(id3).length || ext !== "mp3" || coverPath || sr;
-                if (needConvert) {
-                  const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-                await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
-                  await fsp.unlink(fullPath);
-                  filename = `${id}.mp3`;
-                  fullPath = join(JOBS_DIR, filename);
-                  await fsp.rename(tmpOut, fullPath);
-                  ext = "mp3";
-                }
-              } else if (format === "flac") {
-                const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
-                await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
-                await fsp.unlink(fullPath);
-                filename = `${id}.flac`;
-                fullPath = join(JOBS_DIR, filename);
-                await fsp.rename(tmpOut, fullPath);
-                ext = "flac";
-              } else if (format === "m4a") {
-                const tmpOut = join(JOBS_DIR, `${id}.tmp.m4a`);
-                await ffmpegToM4a(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
-                await fsp.unlink(fullPath);
-                filename = `${id}.m4a`;
-                fullPath = join(JOBS_DIR, filename);
-                await fsp.rename(tmpOut, fullPath);
-                ext = "m4a";
-              }
-
-              const downloadUrl = `/public/jobs/${filename}`;
-              const finalExt = ext;
-              const downloadFileName = `${baseName}.${finalExt}`;
-            if (!res.headersSent) {
-              res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: (baseLogs + pyLogs).slice(-8000) });
-            }
-            if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-          } catch (err) {
-            if (!res.headersSent) {
-              res.status(500).json({ error: err.message || "ffmpeg gagal", logs: baseLogs + pyLogs + err.message });
-            }
-          }
-        });
-      } catch (e) {
-        if (!res.headersSent) {
-          res.status(500).json({
-            error: `${errMsg} & PyTube tidak tersedia`,
-            logs: baseLogs,
-            detail: e.message,
-          });
-        }
-      }
+    const commonOpts = {
+      format: body.format,
+      abr: body.abr,
+      sampleRate: body.sampleRate,
+      noPlaylist: true,
+      normalize: body.normalize,
+      trim: body.trim,
+      coverUrl: body.coverUrl,
+      atmos: body.atmos,
+      speedMode: body.speedMode,
     };
 
-    proc.on("error", () => runPyTubeFallback("yt-dlp tidak bisa dijalankan", logs));
-
-    proc.on("close", async (code) => {
-      if (code !== 0) {
-        return runPyTubeFallback("yt-dlp gagal", logs);
+    const results = [];
+    for (let i = 0; i < rawItems.length; i += 1) {
+      const item = rawItems[i];
+      const url = typeof item === "string" ? item : item?.url;
+      if (!url || !/^https?:\/\//.test(url)) {
+        return res.status(400).json({ error: `URL tidak valid pada entri ${i + 1}` });
       }
-      // Cari file hasil (id.*) tapi abaikan file cover
-      const files = readdirSync(JOBS_DIR).filter(
-        f => f.startsWith(id + ".") && !f.endsWith(".cover.jpg")
-      );
-      if (!files.length) return res.status(500).json({ error: "Output tidak ditemukan", logs });
+      const perId3 = (item && typeof item.id3 === "object") ? item.id3 : body.id3;
+      const perFileName = sanitizeFileName(item?.fileName || item?.title || "");
+      const singleResult = await convertSingle({
+        ...commonOpts,
+        url,
+        id3: perId3,
+        fileName: perFileName,
+      });
+      results.push({ ...singleResult, sourceUrl: url, providedName: perFileName });
+    }
 
-      let filename   = files[0];
-      let fullPath   = join(JOBS_DIR, filename);
-      let ext = filename.split(".").pop();
+    const zipId = nanoid(10);
+    const safeBase = sanitizeFileName(body.zipName || `playlist-${zipId}`) || `playlist-${zipId}`;
+    const zipFileName = `${safeBase}.zip`;
+    const zipPath = join(JOBS_DIR, zipFileName);
 
-      try {
-        if (format === "mp3" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
-          const tmpOut = join(JOBS_DIR, `${id}.tmp.mp3`);
-          await ffmpegToMp3(fullPath, tmpOut, { abr, id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
-          await fsp.unlink(fullPath);
-          filename = `${id}.mp3`;
-          fullPath = join(JOBS_DIR, filename);
-          await fsp.rename(tmpOut, fullPath);
-          ext = "mp3";
-        } else if (format === "flac" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
-          const tmpOut = join(JOBS_DIR, `${id}.tmp.flac`);
-          await ffmpegToFlac(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
-          await fsp.unlink(fullPath);
-          filename = `${id}.flac`;
-          fullPath = join(JOBS_DIR, filename);
-          await fsp.rename(tmpOut, fullPath);
-          ext = "flac";
-        } else if (format === "m4a" && (normalize || trimOpt || Object.keys(id3).length || coverPath || sr)) {
-          const tmpOut = join(JOBS_DIR, `${id}.tmp.m4a`);
-          await ffmpegToM4a(fullPath, tmpOut, { id3, trim: trimOpt || {}, normalize, sampleRate: sr, cover: coverPath });
-          await fsp.unlink(fullPath);
-          filename = `${id}.m4a`;
-          fullPath = join(JOBS_DIR, filename);
-          await fsp.rename(tmpOut, fullPath);
-          ext = "m4a";
-        }
-      } catch (e) {
-        if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-        return res.status(500).json({ error: e.message || "ffmpeg gagal", logs: logs + e.message });
-      }
+    const width = String(results.length).length;
+    const tempDir = join(JOBS_DIR, `${zipId}_tmp`);
+    await fsp.mkdir(tempDir, { recursive: true });
 
-      if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+    const entryNames = [];
+    for (let idx = 0; idx < results.length; idx += 1) {
+      const item = results[idx];
+      const trackNo = String(idx + 1).padStart(width, "0");
+      const base = sanitizeFileName(item.baseName) || item.providedName || `Track ${idx + 1}`;
+      const entryName = `${trackNo} - ${base}.${item.ext}`;
+      entryNames.push(entryName);
+      await fsp.copyFile(item.fullPath, join(tempDir, entryName));
+    }
 
-      const downloadUrl = `/public/jobs/${filename}`;
-      const finalExt = ext;
-      const downloadFileName = `${baseName}.${finalExt}`;
-      return res.json({ ok: true, id, format: finalExt, downloadUrl, fileName: downloadFileName, logs: logs.slice(-8000) });
+    try {
+      await new Promise((resolve, reject) => {
+        const zipProc = spawn("zip", ["-q", "-j", zipPath, ...entryNames], { cwd: tempDir });
+        let zipLogs = "";
+        zipProc.stdout.on("data", (d) => (zipLogs += d.toString()));
+        zipProc.stderr.on("data", (d) => (zipLogs += d.toString()));
+        zipProc.on("error", (err) => {
+          const error = new Error("zip command gagal dijalankan");
+          error.logs = zipLogs;
+          reject(error);
+        });
+        zipProc.on("close", (code) => {
+          if (code === 0) resolve();
+          else {
+            const error = new Error(`zip keluar dengan kode ${code}`);
+            error.logs = zipLogs;
+            reject(error);
+          }
+        });
+      });
+    } finally {
+      try { await fsp.rm(tempDir, { recursive: true, force: true }); } catch {}
+    }
+
+    return res.json({
+      ok: true,
+      id: zipId,
+      count: results.length,
+      downloadUrl: `/public/jobs/${zipFileName}`,
+      fileName: zipFileName,
+      entries: results.map((item, idx) => ({
+        url: item.sourceUrl,
+        fileName: `${String(idx + 1).padStart(width, "0")} - ${(sanitizeFileName(item.baseName) || item.providedName || `Track ${idx + 1}`)}.${item.ext}`,
+        format: item.format,
+      })),
     });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    const msg = e?.message || "Gagal memproses playlist";
+    return res.status(500).json({ error: msg });
   }
 });
 

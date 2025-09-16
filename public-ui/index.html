@@ -32,6 +32,23 @@
     .history-link { word-break: break-all; }
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
     .dropzone.dragover { background: rgba(0,0,0,.03); border-color: var(--bs-primary); }
+    .preview-card audio { border-radius: .8rem; background: var(--bs-body-bg); }
+    #qrWrap, #playlistQrWrap { min-width: 150px; }
+    #qrWrap canvas, #playlistQrWrap canvas { width: 100%; height: auto; max-width: 160px; }
+    #playlistShareCard { margin-top: .75rem; }
+    #urlDropOverlay { position: fixed; inset: 0; background: rgba(13,110,253,.1); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600; color: var(--bs-primary); z-index: 1090; backdrop-filter: blur(2px); padding: 1rem; text-align:center; }
+    #urlDropOverlay[hidden] { display: none !important; }
+    @media (max-width: 576px) {
+      body { padding-bottom: 5rem; }
+      .btn { padding: .75rem 1rem; font-size: 1.05rem; }
+      .input-group { flex-wrap: wrap; gap: .5rem; }
+      .input-group .form-control, .input-group .form-select { flex: 1 1 100%; }
+      .input-group .input-group-text { width: 100%; justify-content: center; border-radius: .9rem; }
+      .input-group > .btn { width: 100%; }
+      .d-sm-flex > .btn { flex: 1 1 auto; }
+      .form-check-input { transform: scale(1.2); margin-right: .5rem; }
+      #qrWrap, #playlistQrWrap { min-width: 120px; }
+    }
   </style>
 </head>
 <body>
@@ -97,15 +114,17 @@
             </div>
 
             <div class="row g-3 mb-3">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="format" class="form-label">Format</label>
                 <select id="format" class="form-select">
                   <option value="mp3">MP3 (re-encode, fleksibel)</option>
                   <option value="m4a" selected>M4A (super cepat)</option>
                   <option value="flac">FLAC (Hi-Res lossless)</option>
+                  <option value="wav">WAV (PCM lossless)</option>
+                  <option value="ogg">OGG Vorbis</option>
                 </select>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="abr" class="form-label">Kualitas (MP3)</label>
                 <select id="abr" class="form-select">
                   <option value="320">320 kbps</option>
@@ -115,12 +134,20 @@
                   <option value="64">64 kbps</option>
                 </select>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="sampleRate" class="form-label">Sample Rate</label>
                 <select id="sampleRate" class="form-select">
                   <option value="44100" selected>44.1 kHz</option>
                   <option value="48000">48 kHz</option>
                   <option value="96000">96 kHz (Hi-Res)</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="speedMode" class="form-label">Mode Kecepatan</label>
+                <select id="speedMode" class="form-select">
+                  <option value="normal" selected>Normal</option>
+                  <option value="nightcore">Nightcore ⚡</option>
+                  <option value="slow_reverb">Slowed + Reverb</option>
                 </select>
               </div>
             </div>
@@ -198,6 +225,7 @@
             <div class="d-grid d-sm-flex gap-2 align-items-center">
               <button id="convertBtn" class="btn btn-primary btn-lg"><i class="bi bi-magic"></i> Convert</button>
               <button id="downloadAllBtn" class="btn btn-outline-primary"><i class="bi bi-download"></i> Download Semua</button>
+              <button id="downloadZipBtn" class="btn btn-success"><i class="bi bi-collection"></i> Download ZIP</button>
               <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
             </div>
 
@@ -220,6 +248,43 @@
                 <i class="bi bi-check-circle me-2"></i>
                 <div>
                   Selesai! <a id="downloadLink" class="alert-link" href="#" download>Download hasil</a>
+                </div>
+              </div>
+              <div class="card border-0 bg-body-tertiary preview-card" id="previewCard" hidden>
+                <div class="card-body d-flex flex-column flex-md-row align-items-start gap-3">
+                  <div class="flex-grow-1 w-100">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-play-circle-fill text-primary"></i>
+                      <strong>Preview Audio</strong>
+                    </div>
+                    <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"></audio>
+                  </div>
+                  <div id="qrWrap" class="text-center" hidden>
+                    <canvas id="downloadQr" width="156" height="156" class="border rounded bg-body"></canvas>
+                    <div class="small text-secondary mt-2"><i class="bi bi-qr-code"></i> Scan untuk unduh</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3" id="playlistResultWrap" hidden>
+              <div class="alert alert-info d-flex align-items-center" role="alert">
+                <i class="bi bi-collection-play me-2"></i>
+                <div>
+                  Playlist ZIP siap! <a id="playlistDownloadLink" class="alert-link" href="#" download>Download ZIP</a>
+                  <div class="small text-secondary" id="playlistInfo"></div>
+                </div>
+              </div>
+              <div class="card border-0 bg-body-tertiary" id="playlistShareCard" hidden>
+                <div class="card-body d-flex flex-column flex-md-row align-items-start gap-3">
+                  <div class="flex-grow-1">
+                    <strong>Bagikan playlist</strong>
+                    <p class="small text-secondary mb-0">Scan kode QR untuk unduh ZIP di perangkat lain.</p>
+                  </div>
+                  <div id="playlistQrWrap" class="text-center" hidden>
+                    <canvas id="playlistQr" width="156" height="156" class="border rounded bg-body"></canvas>
+                    <div class="small text-secondary mt-2">Scan untuk unduh ZIP</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -347,7 +412,14 @@
     </div>
   </div>
 
+  <div id="urlDropOverlay" hidden>
+    <div class="text-center">
+      <i class="bi bi-link-45deg me-2"></i>Lepas URL YouTube untuk diisi otomatis
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
   // ===== Utilities =====
@@ -355,6 +427,18 @@
   const $$ = (sel) => document.querySelectorAll(sel);
   const toast = new bootstrap.Toast($('#toast'));
   const setToast = (msg) => { $('#toastText').textContent = msg; toast.show(); };
+
+  const previewCard = $('#previewCard');
+  const previewPlayer = $('#previewPlayer');
+  const qrCanvas = $('#downloadQr');
+  const qrWrap = $('#qrWrap');
+  const playlistResultWrap = $('#playlistResultWrap');
+  const playlistDownloadLink = $('#playlistDownloadLink');
+  const playlistInfo = $('#playlistInfo');
+  const playlistShareCard = $('#playlistShareCard');
+  const playlistQrCanvas = $('#playlistQr');
+  const playlistQrWrap = $('#playlistQrWrap');
+  const urlDropOverlay = $('#urlDropOverlay');
 
   const storage = {
     get k(){ return 'ytmp3.settings.v1'; },
@@ -377,6 +461,66 @@
     const badge = $('#backendBadge');
     const b = getBackend();
     badge.textContent = b ? new URL(b).host : location.host;
+  };
+
+  const renderQr = (canvas, wrap, url) => {
+    if (!canvas || !wrap) return;
+    const ctx = canvas.getContext('2d');
+    if (!url) {
+      wrap.hidden = true;
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    wrap.hidden = false;
+    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+      window.QRCode.toCanvas(canvas, url, { width: canvas.width || 156, margin: 1 }, (err) => {
+        if (err) console.error(err);
+      });
+    } else if (ctx) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('QR', 10, 24);
+    }
+  };
+
+  const resetAudioPreview = () => {
+    if (previewPlayer) {
+      try { previewPlayer.pause(); } catch {}
+      previewPlayer.removeAttribute('src');
+      previewPlayer.load();
+    }
+    if (previewCard) previewCard.hidden = true;
+    renderQr(qrCanvas, qrWrap, null);
+  };
+
+  const showAudioPreview = (url) => {
+    if (!previewPlayer || !previewCard || !url) return;
+    const cacheBuster = url.includes('?') ? '&' : '?';
+    previewPlayer.src = `${url}${cacheBuster}preview=${Date.now()}`;
+    previewCard.hidden = false;
+    renderQr(qrCanvas, qrWrap, url);
+  };
+
+  const resetPlaylistPreview = () => {
+    if (playlistResultWrap) playlistResultWrap.hidden = true;
+    if (playlistShareCard) playlistShareCard.hidden = true;
+    renderQr(playlistQrCanvas, playlistQrWrap, null);
+  };
+
+  const showPlaylistResult = (data, count) => {
+    if (!playlistResultWrap || !data) return;
+    playlistResultWrap.hidden = false;
+    if (playlistDownloadLink) {
+      playlistDownloadLink.href = data.downloadUrl;
+      playlistDownloadLink.setAttribute('download', data.fileName || 'playlist.zip');
+    }
+    if (playlistInfo) {
+      playlistInfo.textContent = `${count} file siap diunduh`;
+    }
+    if (playlistShareCard) playlistShareCard.hidden = false;
+    renderQr(playlistQrCanvas, playlistQrWrap, data.downloadUrl);
   };
 
   // ===== Queue =====
@@ -639,6 +783,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   // ===== Convert handler =====
   $('#convertBtn').addEventListener('click', () => doConvert(null, $('#autoDownload').checked));
   $('#downloadAllBtn').addEventListener('click', doConvertQueue);
+  $('#downloadZipBtn').addEventListener('click', downloadPlaylistZip);
   $('#clearBtn').addEventListener('click', () => {
     $('#url').value='';
     $('#playlist').value='';
@@ -652,6 +797,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#normalize').checked=false;
     $('#atmos').checked=false;
     $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
+    resetAudioPreview();
+    resetPlaylistPreview();
     $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
     $('#convertProgWrap').hidden=true;
   });
@@ -660,6 +807,8 @@ $('#queueList')?.addEventListener('click', (e) => {
   async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
     if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
+    resetAudioPreview();
+    if(!urlOverride) resetPlaylistPreview();
     const body = {
       url,
       format: $('#format').value,
@@ -667,7 +816,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       sampleRate: Number($('#sampleRate').value),
       fileName: sanitizeFileName($('#fileName').value.trim()),
       noPlaylist: $('#noPlaylist').checked,
-      atmos: $('#atmos').checked
+      atmos: $('#atmos').checked,
+      speedMode: $('#speedMode').value
     };
 
     const id3 = {
@@ -712,6 +862,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
       if(autoDownload) $('#downloadLink').click();
       pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
+      showAudioPreview(data.downloadUrl);
       setToast('Berhasil diproses');
       if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
     }catch(err){
@@ -720,6 +871,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#resultWrap').hidden = true;
       $('#logWrap').hidden = false;
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
+      resetAudioPreview();
       setToast('Terjadi error: '+err.message);
     } finally {
       clearInterval(timer);
@@ -747,6 +899,101 @@ $('#queueList')?.addEventListener('click', (e) => {
     progress.hidden = true;
     setToast('Semua antrian selesai');
   }
+
+  async function downloadPlaylistZip(){
+    const itemsSrc = queue.length ? [...queue] : $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u)).map(url => ({ url, title: '' }));
+    if(!itemsSrc.length){ setToast('Antrian kosong'); return; }
+    resetPlaylistPreview();
+    $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = true; $('#logs').textContent = '';
+    $('#loadingSpinner').style.display = '';
+    $('#status').textContent = 'Menyiapkan ZIP…';
+
+    const trim = {};
+    const s = parseTime($('#trimStart').value.trim());
+    const e = parseTime($('#trimEnd').value.trim());
+    if(s !== null) trim.start = s;
+    if(e !== null) trim.end = e;
+
+    const id3 = {
+      title: $('#id3Title').value.trim(),
+      artist: $('#id3Artist').value.trim(),
+      album: $('#id3Album').value.trim()
+    };
+    Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
+
+    const items = itemsSrc.map(item => ({
+      url: item.url || item,
+      fileName: sanitizeFileName(item.title || item.url || ''),
+    }));
+
+    const body = {
+      items,
+      format: $('#format').value,
+      abr: Number($('#abr').value),
+      sampleRate: Number($('#sampleRate').value),
+      normalize: $('#normalize').checked,
+      coverUrl: $('#thumb').src || undefined,
+      atmos: $('#atmos').checked,
+      speedMode: $('#speedMode').value,
+      zipName: sanitizeFileName($('#fileName').value.trim()) || undefined,
+    };
+    if(Object.keys(trim).length) body.trim = trim;
+    if(Object.keys(id3).length) body.id3 = id3;
+
+    try {
+      const resp = await fetch(api('/api/convert-playlist'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      const data = await resp.json();
+      if(!resp.ok) throw new Error(data.error || 'Gagal membuat ZIP');
+      $('#loadingSpinner').style.display = 'none';
+      $('#status').textContent = 'ZIP selesai';
+      showPlaylistResult(data, items.length);
+      setToast(`Playlist ZIP siap (${items.length} file)`);
+      pushHistory({ downloadUrl: data.downloadUrl, format: 'zip', abr: body.abr, fileName: data.fileName });
+      if($('#autoDownload').checked && playlistDownloadLink){ playlistDownloadLink.click(); }
+      if($('#autoClear').checked){ queue.length = 0; renderQueue(); $('#playlist').value=''; }
+    } catch(err){
+      $('#status').textContent = 'Error: ' + err.message;
+      $('#loadingSpinner').style.display = 'none';
+      $('#logWrap').hidden = false;
+      $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
+      setToast('Terjadi error: '+err.message);
+    }
+  }
+
+  let urlDragDepth = 0;
+  const isUrlDrag = (e) => {
+    const dt = e.dataTransfer;
+    if(!dt) return false;
+    if(dt.types && Array.from(dt.types).includes('Files')) return false;
+    return true;
+  };
+
+  ['dragenter', 'dragleave'].forEach(ev => {
+    document.addEventListener(ev, (e) => {
+      if(!isUrlDrag(e)) return;
+      if(ev === 'dragenter'){ urlDragDepth += 1; if(urlDropOverlay) urlDropOverlay.hidden = false; }
+      else { urlDragDepth = Math.max(0, urlDragDepth - 1); if(urlDragDepth === 0 && urlDropOverlay) urlDropOverlay.hidden = true; }
+      e.preventDefault();
+    });
+  });
+
+  document.addEventListener('dragover', (e) => {
+    if(!isUrlDrag(e)) return;
+    e.preventDefault();
+  });
+
+  document.addEventListener('drop', (e) => {
+    if(!isUrlDrag(e)) return;
+    e.preventDefault();
+    urlDragDepth = 0;
+    if(urlDropOverlay) urlDropOverlay.hidden = true;
+    const data = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if(data){
+      $('#url').value = data.trim();
+      updatePreview();
+      setToast('URL ditempel dari drag & drop');
+    }
+  });
 
   // ===== Copy log =====
   $('#copyLog').addEventListener('click', async ()=>{
