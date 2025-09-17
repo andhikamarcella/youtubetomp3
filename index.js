@@ -350,6 +350,173 @@ const buildAiPitch = ({
   };
 };
 
+const pickAudiophileProfile = (tags = {}) => {
+  const genre = (tags.genre || "").toLowerCase();
+  const mood = (tags.mood || "").toLowerCase();
+
+  if (/(hip[- ]?hop|trap|edm|house|dance|dubstep|electro|bass|club)/.test(genre) || /(energetic|hype|club)/.test(mood)) {
+    return {
+      focus: "Bass Impact & Groove",
+      summary: "{{TRACK}}: Fokus pada sub-bass rapat tanpa mengorbankan vokal utama.",
+      eq: [
+        "Low-shelf +3 dB di ~60 Hz (Q ≈ 1.0) untuk dorongan sub-bass.",
+        "Potong -1.5 dB di 250 Hz (Q ≈ 1.2) agar low-mid tidak muddy.",
+        "High-shelf +1 dB mulai 9 kHz supaya hi-hat tetap berkilau.",
+      ],
+      playback: [
+        "Gunakan headphone closed-back dengan seal rapat atau speaker + sub aktif.",
+        "Jaga level master sekitar -6 dBFS sebelum limiter agar transien kick tetap utuh.",
+      ],
+      enhancements: [
+        "Periksa fase L/R di bawah 80 Hz agar bass tetap terpusat.",
+      ],
+    };
+  }
+
+  if (/(jazz|acoustic|folk|classical|ambient|lo[- ]?fi|lofi|blues|soul|ballad|r\u0026b|r&b)/.test(genre) || /(calm|chill|midnight|melancholy)/.test(mood)) {
+    return {
+      focus: "Detail & Stage Depth",
+      summary: "{{TRACK}}: Prioritaskan midrange alami dan ruang ambience yang luas.",
+      eq: [
+        "High-pass lembut di 28 Hz (Q ≈ 0.7) untuk membersihkan rumble.",
+        "Angkat +2 dB di 3 kHz (Q ≈ 1.1) demi artikulasi vokal/instrumen utama.",
+        "Air boost +1.5 dB di 12 kHz dengan shelf lebar untuk nuansa udara.",
+      ],
+      playback: [
+        "Monitor memakai headphone open-back atau nearfield dengan tweeter halus untuk imaging akurat.",
+        "Posisikan diri membentuk segitiga sama sisi dengan speaker untuk kedalaman panggung terbaik.",
+      ],
+      enhancements: [
+        "Tambahkan reverb kamar <1.2s seperlunya agar kedalaman bertambah tanpa menutup detail.",
+      ],
+    };
+  }
+
+  if (/(rock|metal|punk|indie|alternative)/.test(genre) || /(epic)/.test(mood)) {
+    return {
+      focus: "Midrange Punch & Presence",
+      summary: "{{TRACK}}: Jaga serangan gitar dan vokal tanpa menusuk telinga.",
+      eq: [
+        "Cut -2 dB di 3.5 kHz (Q ≈ 2) bila gitar terlalu tajam.",
+        "Boost +2 dB di 120 Hz (Q ≈ 1.0) untuk menambah bobot kick & bass.",
+        "Shelf +1 dB di 8 kHz supaya cymbal tetap hidup.",
+      ],
+      playback: [
+        "Gunakan monitor dengan respon cepat atau headphone semi-open untuk mengecek distorsi.",
+        "Periksa kompatibilitas mono agar gitar ganda tidak saling membatalkan.",
+      ],
+      enhancements: [
+        "Kompresi bus 2–3 dB cukup untuk menjaga energi tanpa meratakan dinamika.",
+      ],
+    };
+  }
+
+  return {
+    focus: "Balanced Clarity",
+    summary: "{{TRACK}}: Pertahankan keseimbangan frekuensi yang nyaman di berbagai perangkat.",
+    eq: [
+      "High-pass 25 Hz untuk membuang subsonik yang tidak terdengar.",
+      "Tambahkan +1.5 dB di 2.5 kHz (Q ≈ 1.0) guna meningkatkan intelligibility.",
+      "High-shelf lembut +1 dB di 10 kHz agar udara tetap hadir.",
+    ],
+    playback: [
+      "Cross-check di speaker kecil atau earbuds supaya mid tetap jelas.",
+      "Kalibrasi level monitoring sekitar 79 dB SPL agar telinga tidak cepat lelah.",
+    ],
+    enhancements: [
+      "Aktifkan dither saat downsample untuk menjaga detail halus.",
+    ],
+  };
+};
+
+const buildAiAudiophileGuide = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  mood,
+  format = "",
+  sampleRate,
+  speedMode = "normal",
+  enhancer = "none",
+  denoise = false,
+  volumeBoost = 0,
+  normalize = false,
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  if (mood && typeof mood === "string" && mood.trim()) tags.mood = mood.trim();
+
+  const profile = pickAudiophileProfile(tags);
+  const eq = [...(profile.eq || [])];
+  const playback = [...(profile.playback || [])];
+  const enhancements = [...(profile.enhancements || [])];
+
+  const trackTitle = tags.title || title || "Track";
+  const artist = tags.artist || channel || "Artist";
+  const summary = (profile.summary || "{{TRACK}}").replace(/\{\{TRACK\}\}/g, `${trackTitle} — ${artist}`);
+
+  const fmt = (format || "").toLowerCase();
+  const sr = Number(sampleRate);
+  let sampleAdvice;
+  if (fmt === "flac" || fmt === "wav") {
+    if (Number.isFinite(sr) && sr >= 96000) {
+      sampleAdvice = "Pertahankan 96 kHz lossless untuk headroom mixing dan arsip.";
+    } else {
+      sampleAdvice = "Render lossless minimal 48 kHz; gunakan 96 kHz bila sumber dan perangkat mendukung.";
+    }
+  } else if (fmt === "m4a") {
+    sampleAdvice = "Gunakan 44.1 kHz AAC agar encoder paling efisien dan kompatibel.";
+  } else if (fmt === "mp3") {
+    sampleAdvice = "Kunci di 48 kHz maksimum — MP3 tidak stabil di atas 48 kHz.";
+  } else if (Number.isFinite(sr) && sr > 0) {
+    sampleAdvice = `Jaga ${Math.round(sr)} Hz dan aktifkan dither saat downsample supaya detail terpelihara.`;
+  } else {
+    sampleAdvice = "Pertahankan minimal 48 kHz agar detail high-end tidak hilang di berbagai player.";
+  }
+
+  const durationLabel = formatDurationLabel(duration);
+  if (durationLabel) {
+    playback.push(`Durasi konten ${durationLabel} — cek konsistensi gain sepanjang track.`);
+  }
+  if (tags.mood) playback.push(`Mood terdeteksi: ${tags.mood}. Sesuaikan ambience ruangan agar nuansanya tersampaikan.`);
+  if (tags.energy) playback.push(`Level energi: ${tags.energy}. Atur volume playback supaya tidak melelahkan telinga.`);
+
+  if (speedMode === "nightcore") {
+    eq.push("Tambahkan low-shelf +1 dB di 120 Hz untuk mengisi tubuh setelah pitch-up nightcore.");
+    enhancements.push("Gunakan low-pass halus di 17 kHz bila terdengar aliasing akibat percepatan.");
+  } else if (speedMode === "slow_reverb") {
+    eq.push("High-shelf +1.5 dB di 10 kHz menjaga kilau setelah slowed + reverb.");
+    enhancements.push("High-pass 30 Hz pasca reverb untuk mencegah build-up frekuensi rendah.");
+  }
+
+  const boostVal = Number(volumeBoost);
+  if (Number.isFinite(boostVal) && boostVal > 0) {
+    enhancements.push(`Boost +${boostVal} dB telah diterapkan — sisakan headroom minimal 1 dBTP agar tidak clip.`);
+  }
+  if (normalize) enhancements.push("Normalisasi aktif — targetkan -14 LUFS untuk streaming atau -9 LUFS untuk club set.");
+  if (denoise) enhancements.push("Denoise aktif — setel threshold ringan agar high-hat tidak ikut hilang.");
+
+  if (enhancer && enhancer !== "none") {
+    const enhancerNotes = {
+      clarity: "Mode Clarity menonjolkan vokal & hi-hat — cocok untuk fokus detail.",
+      warm: "Mode Warm menambah harmonik mid, ideal untuk rekaman analog atau vokal mellow.",
+      club: "Mode Club menaikkan low-mid; awasi limiter agar punch tidak pecah.",
+    };
+    enhancements.push(enhancerNotes[enhancer] || `Gunakan enhancer ${enhancer} seperlunya.`);
+  }
+
+  return {
+    focus: profile.focus,
+    summary,
+    sampleRate: sampleAdvice,
+    eq,
+    playback,
+    enhancements,
+    tags,
+  };
+};
+
 const validateConvertPayload = (payload = {}) => {
   if (!payload || typeof payload !== "object") {
     throw new Error("Payload tidak valid");
@@ -1719,6 +1886,18 @@ const downloadSubtitle = async (payload = {}) => {
     await fsp.writeFile(srtPath, result.srt, "utf8");
 
     const plain = srtToPlainText(result.srt);
+    const lines = plain
+      ? plain
+          .split(/\n+/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+      : [];
+    const words = plain
+      ? plain
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+      : [];
     const preview = buildSubtitlePreview(plain);
     finalTxtName = `${finalStem}.txt`;
     const txtPath = join(JOBS_DIR, finalTxtName);
@@ -1734,6 +1913,9 @@ const downloadSubtitle = async (payload = {}) => {
       txtUrl: `/public/jobs/${finalTxtName}`,
       txtFileName: `${downloadBase}.${safeLang}.txt`,
       preview,
+      text: plain,
+      lineCount: lines.length,
+      wordCount: words.length,
     };
   } catch (err) {
     if (finalSrtName) {
@@ -1846,6 +2028,30 @@ app.post("/api/ai-pitch", (req, res) => {
     });
   } catch (e) {
     const msg = e?.message || "Gagal membuat pitch";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-audiophile", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiAudiophileGuide({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      mood: body.mood,
+      format: body.format,
+      sampleRate: body.sampleRate,
+      speedMode: body.speedMode,
+      enhancer: body.enhancer,
+      denoise: body.denoise,
+      volumeBoost: body.volumeBoost,
+      normalize: body.normalize,
+    });
+    return res.json({ ok: true, guide: result });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat panduan audiophile";
     return res.status(400).json({ error: msg });
   }
 });

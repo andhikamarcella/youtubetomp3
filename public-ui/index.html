@@ -50,9 +50,52 @@
     .eq-slider .eq-value { font-size: .7rem; font-weight: 600; background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text); border-radius: .65rem; padding: .2rem .45rem; min-width: 3.4rem; text-align: center; }
     html[data-bs-theme='dark'] .eq-slider .eq-value { background: color-mix(in srgb, var(--bs-primary) 22%, transparent); color: var(--bs-body-color); }
     #shareWrap .input-group-text { border-radius: .75rem 0 0 .75rem; }
-    #subtitleResult pre { max-height: 160px; overflow:auto; background: var(--bs-body-bg); border-radius: .75rem; padding: .75rem; }
+    #subtitleResult pre {
+      max-height: 160px;
+      overflow: auto;
+      background: var(--bs-body-bg);
+      border-radius: .75rem;
+      padding: .75rem;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
     #subtitleResult .btn { border-radius: .75rem; }
     #subtitleResult .badge { border-radius: .75rem; }
+    .faq-item {
+      background: var(--bs-body-bg);
+      border-radius: .9rem;
+      padding: .75rem 1rem;
+      border: 1px solid color-mix(in srgb, var(--bs-border-color) 80%, transparent);
+    }
+    .faq-item + .faq-item { margin-top: .5rem; }
+    .faq-item summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+    }
+    .faq-item summary::marker,
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      font-family: "bootstrap-icons";
+      content: "\f282";
+      font-size: .9rem;
+      color: var(--bs-secondary);
+      transition: transform .2s ease, color .2s ease;
+    }
+    .faq-item[open] summary { color: var(--bs-primary); }
+    .faq-item[open] summary::after {
+      transform: rotate(180deg);
+      color: var(--bs-primary);
+    }
+    .faq-item p {
+      margin: .75rem 0 0;
+      font-size: .9rem;
+      color: var(--bs-secondary);
+    }
     .mini-player { position: fixed; left: 0; right: 0; bottom: 1rem; display: flex; justify-content: center; pointer-events: none; z-index: 1090; }
     .mini-player-card { pointer-events: auto; border-radius: 1rem; width: min(420px, calc(100% - 2.5rem)); }
     .mini-player-body { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
@@ -322,6 +365,7 @@
                   <button class="btn btn-outline-primary flex-grow-1" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
                   <button class="btn btn-outline-secondary flex-grow-1" id="aiCaptionBtn" type="button"><i class="bi bi-megaphone"></i> AI Caption Sosial</button>
                   <button class="btn btn-outline-success flex-grow-1" id="aiPitchBtn" type="button"><i class="bi bi-broadcast"></i> AI Playlist Pitch</button>
+                  <button class="btn btn-outline-warning flex-grow-1" id="aiAudiophileBtn" type="button"><i class="bi bi-soundwave"></i> AI Audiophile Guide</button>
                 </div>
                 <div class="mt-3" id="aiCaptionWrap" hidden>
                   <label for="aiCaptionText" class="form-label small text-uppercase text-secondary">Caption &amp; Hashtag</label>
@@ -339,6 +383,14 @@
                   </div>
                   <div class="small text-secondary mt-2" id="aiPitchHook"></div>
                   <div class="small text-secondary" id="aiPitchPlaylists"></div>
+                </div>
+                <div class="mt-3" id="aiAudiophileWrap" hidden>
+                  <label for="aiAudiophileText" class="form-label small text-uppercase text-secondary">Panduan Audiophile</label>
+                  <div class="input-group input-group-sm">
+                    <textarea id="aiAudiophileText" class="form-control" rows="5" readonly spellcheck="false"></textarea>
+                    <button class="btn btn-outline-secondary" id="aiAudiophileCopy" type="button" aria-label="Salin panduan audiophile"><i class="bi bi-clipboard"></i></button>
+                  </div>
+                  <div class="small text-secondary mt-2" id="aiAudiophileMeta"></div>
                 </div>
                 <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
               </div>
@@ -549,6 +601,29 @@
             </ul>
           </div>
         </div>
+
+        <div class="card shadow-sm mt-4">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-question-circle me-2"></i>
+              <h5 class="mb-0">FAQ</h5>
+            </div>
+            <div class="d-grid gap-2">
+              <details class="faq-item" open>
+                <summary>Apakah subtitle yang diunduh lengkap?</summary>
+                <p>Ya. Tombol <strong>Ambil subtitle</strong> sekarang menarik transkrip penuh dari YouTube, menyimpan berkas <code>.srt</code>, <code>.txt</code>, serta menampilkan teks lengkap yang bisa Anda salin langsung.</p>
+              </details>
+              <details class="faq-item">
+                <summary>Bagaimana AI Studio membantu audiophile?</summary>
+                <p>Gunakan <strong>AI Audiophile Guide</strong> untuk mendapatkan rekomendasi EQ, saran sample rate, dan tips monitoring yang disesuaikan dengan genre, mood, dan pengaturan convert Anda.</p>
+              </details>
+              <details class="faq-item">
+                <summary>Bagaimana cara berbagi hasil ke perangkat lain?</summary>
+                <p>Setelah convert, buka kartu preview dan pilih tombol QR. Kode tersebut dapat dipindai dari ponsel sehingga file bisa diunduh tanpa perlu menyalin tautan secara manual.</p>
+              </details>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -717,6 +792,11 @@
   const aiPitchCopy = $('#aiPitchCopy');
   const aiPitchHook = $('#aiPitchHook');
   const aiPitchPlaylists = $('#aiPitchPlaylists');
+  const aiAudiophileBtn = $('#aiAudiophileBtn');
+  const aiAudiophileWrap = $('#aiAudiophileWrap');
+  const aiAudiophileText = $('#aiAudiophileText');
+  const aiAudiophileCopy = $('#aiAudiophileCopy');
+  const aiAudiophileMeta = $('#aiAudiophileMeta');
   const playlistResultWrap = $('#playlistResultWrap');
   const playlistDownloadLink = $('#playlistDownloadLink');
   const playlistInfo = $('#playlistInfo');
@@ -880,6 +960,7 @@
   let currentShareUrl = '';
   let miniSeeking = false;
   let subtitleShareUrl = '';
+  let subtitleFullText = '';
   let lastPreviewTitle = '';
   let lastPreviewMeta = {};
   let lastResult = null;
@@ -946,6 +1027,12 @@
     if (aiPitchText) aiPitchText.value = '';
     if (aiPitchHook) aiPitchHook.textContent = '';
     if (aiPitchPlaylists) aiPitchPlaylists.textContent = '';
+  };
+
+  const resetAiAudiophile = () => {
+    if (aiAudiophileWrap) aiAudiophileWrap.hidden = true;
+    if (aiAudiophileText) aiAudiophileText.value = '';
+    if (aiAudiophileMeta) aiAudiophileMeta.textContent = '';
   };
 
   const updateBackendBadge = () => {
@@ -1056,11 +1143,13 @@
     currentDownloadName = '';
     currentShareUrl = '';
     subtitleShareUrl = '';
+    subtitleFullText = '';
     lastResult = null;
     lastPreviewMeta = {};
     updateAiStatus('');
     resetAiCaption();
     resetAiPitch();
+    resetAiAudiophile();
     if (equalizerWrap) equalizerWrap.hidden = true;
     if (eqBass) eqBass.value = 0;
     if (eqMid) eqMid.value = 0;
@@ -1902,12 +1991,91 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
   });
 
+  if (aiAudiophileBtn) aiAudiophileBtn.addEventListener('click', async () => {
+    const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
+    if (!title) { setToast('Isi judul terlebih dahulu'); return; }
+    updateAiStatus('Menganalisis karakter audio…', 'info');
+    resetAiAudiophile();
+    try {
+      const payload = {
+        title,
+        channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+        duration: Number(previewPlayer?.duration || 0) || undefined,
+        genre: id3Genre ? (id3Genre.value.trim() || undefined) : undefined,
+        format: $('#format').value,
+        sampleRate: Number(sampleRateSelect?.value || 0) || undefined,
+        speedMode: $('#speedMode').value,
+        denoise: denoiseInput?.checked || false,
+        volumeBoost: Number(volumeBoost?.value || 0) || 0,
+        enhancer: enhancerSelect?.value || 'none',
+        normalize: $('#normalize').checked,
+      };
+      const resp = await fetch(api('/api/ai-audiophile'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal membuat panduan');
+      const guide = data.guide || {};
+      const lines = [];
+      const summary = (guide.summary || '').trim();
+      const sampleAdvice = (guide.sampleRate || '').trim();
+      if (summary) lines.push(summary);
+      if (sampleAdvice) lines.push('', `Sample rate: ${sampleAdvice}`);
+      if (Array.isArray(guide.eq) && guide.eq.length) {
+        lines.push('', 'Rekomendasi EQ:');
+        guide.eq.filter(Boolean).forEach((item) => lines.push(`- ${item}`));
+      }
+      if (Array.isArray(guide.playback) && guide.playback.length) {
+        lines.push('', 'Monitoring & playback:');
+        guide.playback.filter(Boolean).forEach((item) => lines.push(`- ${item}`));
+      }
+      if (Array.isArray(guide.enhancements) && guide.enhancements.length) {
+        lines.push('', 'Catatan tambahan:');
+        guide.enhancements.filter(Boolean).forEach((item) => lines.push(`- ${item}`));
+      }
+      const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      if (aiAudiophileText) {
+        aiAudiophileText.value = text;
+        const lineCount = text ? text.split(/\n/).length : 5;
+        aiAudiophileText.rows = Math.min(12, Math.max(5, lineCount));
+      }
+      if (aiAudiophileMeta) {
+        const metaParts = [];
+        if (guide.focus) metaParts.push(`Fokus: ${guide.focus}`);
+        if (guide.tags?.genre) metaParts.push(`Genre: ${guide.tags.genre}`);
+        if (guide.tags?.mood) metaParts.push(`Mood: ${guide.tags.mood}`);
+        if (guide.tags?.energy) metaParts.push(`Energi: ${guide.tags.energy}`);
+        aiAudiophileMeta.textContent = metaParts.join(' · ');
+      }
+      if (aiAudiophileWrap) aiAudiophileWrap.hidden = false;
+      updateAiStatus('Panduan audiophile siap digunakan 🎧', 'success');
+      setToast('Panduan audiophile siap disalin');
+    } catch (err) {
+      resetAiAudiophile();
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal AI audiophile: ' + err.message);
+    }
+  });
+
   if (aiPitchCopy) aiPitchCopy.addEventListener('click', async () => {
     const text = aiPitchText?.value?.trim();
     if (!text) { setToast('Belum ada pitch untuk disalin'); return; }
     try {
       await navigator.clipboard.writeText(text);
       setToast('Pitch disalin ke clipboard');
+    } catch {
+      setToast('Clipboard tidak tersedia');
+    }
+  });
+
+  if (aiAudiophileCopy) aiAudiophileCopy.addEventListener('click', async () => {
+    const text = aiAudiophileText?.value?.trim();
+    if (!text) { setToast('Belum ada panduan audiophile untuk disalin'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast('Panduan audiophile disalin');
     } catch {
       setToast('Clipboard tidak tersedia');
     }
@@ -1989,13 +2157,14 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (subtitlePreview) subtitlePreview.textContent = '';
     if (subtitleAutoBadge) subtitleAutoBadge.hidden = true;
     subtitleShareUrl = '';
+    subtitleFullText = '';
     $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
     $('#convertProgWrap').hidden=true;
   });
   $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(null, $('#autoDownload').checked); });
 
   if (subtitleCopyBtn) subtitleCopyBtn.addEventListener('click', async () => {
-    const text = (subtitlePreview?.textContent || '').trim();
+    const text = (subtitleFullText || subtitlePreview?.textContent || '').trim();
     if (!text){ setToast('Belum ada teks subtitle'); return; }
     try {
       await navigator.clipboard.writeText(text);
@@ -2246,12 +2415,25 @@ $('#queueList')?.addEventListener('click', (e) => {
         subtitleTxtLink.href = data.txtUrl || '#';
         if (data.txtFileName) subtitleTxtLink.setAttribute('download', data.txtFileName);
       }
-      if (subtitlePreview) subtitlePreview.textContent = data.preview || '(Tidak ada preview tersedia)';
-      if (subtitleStatus) subtitleStatus.textContent = 'Subtitle siap diunduh';
+      const rawText = (data.text || data.preview || '').trim();
+      subtitleFullText = rawText;
+      if (subtitlePreview) {
+        subtitlePreview.textContent = rawText || '(Tidak ada teks tersedia)';
+        subtitlePreview.scrollTop = 0;
+      }
+      if (subtitleStatus) {
+        const lineCount = Number(data.lineCount);
+        const wordCount = Number(data.wordCount);
+        const metaParts = [];
+        if (Number.isFinite(lineCount) && lineCount > 0) metaParts.push(`${lineCount} baris`);
+        if (Number.isFinite(wordCount) && wordCount > 0) metaParts.push(`${wordCount} kata`);
+        subtitleStatus.textContent = metaParts.length ? `Subtitle lengkap (${metaParts.join(' · ')})` : 'Subtitle siap diunduh';
+      }
       subtitleShareUrl = data.txtUrl ? new URL(data.txtUrl, window.location.origin).href : (data.srtUrl ? new URL(data.srtUrl, window.location.origin).href : '');
       if (subtitleResult) subtitleResult.hidden = false;
-      setToast('Subtitle siap diunduh');
+      setToast('Subtitle lengkap siap diunduh');
     } catch(err){
+      subtitleFullText = '';
       if (subtitleStatus) subtitleStatus.textContent = 'Gagal mengambil subtitle';
       if (subtitlePreview) subtitlePreview.textContent = err.message || 'Terjadi kesalahan';
       if (subtitleResult) subtitleResult.hidden = false;
