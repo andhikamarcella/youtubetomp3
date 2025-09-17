@@ -68,6 +68,10 @@
         <button class="btn btn-outline-light" id="shareBtn" type="button"><i class="bi bi-share me-1"></i>Bagikan</button>
         <button class="btn btn-outline-light" id="copyBtn" type="button"><i class="bi bi-clipboard"></i></button>
       </div>
+      <div class="mt-4 text-center" id="shareQrWrap" hidden>
+        <canvas id="shareQr" width="156" height="156" class="border rounded bg-body"></canvas>
+        <div class="small muted mt-2"><i class="bi bi-qr-code"></i> Scan untuk membuka halaman ini di perangkat lain.</div>
+      </div>
     </div>
   </div>
 
@@ -86,6 +90,8 @@
     const downloadBtn = document.getElementById('downloadBtn');
     const shareBtn = document.getElementById('shareBtn');
     const copyBtn = document.getElementById('copyBtn');
+    const qrWrap = document.getElementById('shareQrWrap');
+    const qrCanvas = document.getElementById('shareQr');
     const eqInputs = {
       bass: document.getElementById('eqShareBass'),
       mid: document.getElementById('eqShareMid'),
@@ -98,6 +104,7 @@
     let audioCtx = null;
     let sourceNode = null;
     let filters = [];
+    let qrLibPromise = null;
 
     const formatGain = (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v)} dB`;
     const updateEqStatus = () => {
@@ -175,10 +182,80 @@
       catch { setAlert(location.href, 'info'); }
     };
 
+    const ensureQrLib = () => {
+      if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+        return Promise.resolve(window.QRCode);
+      }
+      if (qrLibPromise) return qrLibPromise;
+      qrLibPromise = new Promise((resolve, reject) => {
+        const onReady = () => {
+          if (window.QRCode && typeof window.QRCode.toCanvas === 'function') resolve(window.QRCode);
+          else reject(new Error('QR library belum siap'));
+        };
+        const onError = () => reject(new Error('Gagal memuat library QR'));
+        const existing = document.querySelector('script[src*="qrcode.min.js"]');
+        if (existing) {
+          existing.addEventListener('load', onReady, { once: true });
+          existing.addEventListener('error', onError, { once: true });
+        } else {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+          script.defer = true;
+          script.addEventListener('load', onReady, { once: true });
+          script.addEventListener('error', onError, { once: true });
+          document.head.appendChild(script);
+        }
+      }).catch((err) => {
+        qrLibPromise = null;
+        throw err;
+      });
+      return qrLibPromise;
+    };
+
+    const renderQr = (url) => {
+      if (!qrCanvas || !qrWrap) return;
+      const ctx = qrCanvas.getContext('2d');
+      if (!url) {
+        qrWrap.hidden = true;
+        if (ctx) ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+        return;
+      }
+      qrWrap.hidden = false;
+      ensureQrLib().then((lib) => {
+        if (ctx) {
+          const styles = getComputedStyle(document.body);
+          const bg = (styles.getPropertyValue('--bs-body-bg') || '#121212').trim() || '#121212';
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, qrCanvas.width, qrCanvas.height);
+        }
+        const theme = document.documentElement.getAttribute('data-bs-theme') || 'dark';
+        const light = theme === 'dark' ? '#0d1117' : '#ffffff';
+        const dark = theme === 'dark' ? '#ffffff' : '#0d0d0d';
+        lib.toCanvas(qrCanvas, url, { width: qrCanvas.width || 156, margin: 1, color: { dark, light } }, (err) => {
+          if (err && ctx) {
+            ctx.fillStyle = '#dc3545';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('QR gagal', qrCanvas.width / 2, qrCanvas.height / 2);
+          }
+        });
+      }).catch(() => {
+        if (!ctx) return;
+        ctx.fillStyle = '#dc3545';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('QR gagal dimuat', qrCanvas.width / 2, qrCanvas.height / 2);
+        qrWrap.hidden = false;
+      });
+    };
+
     if (!audioSrc){
       setAlert('Parameter src tidak ditemukan. Buka halaman ini dari hasil konversi.', 'warning');
       if (titleEl) titleEl.textContent = 'Link tidak valid';
       if (audioEl) audioEl.controls = false;
+      renderQr(location.href);
       return;
     }
 
@@ -201,14 +278,15 @@
       metaParts.push('Streaming siap');
       metaEl.textContent = metaParts.join(' · ');
     }
+    renderQr(location.href);
     if (downloadBtn){
       downloadBtn.href = resolvedSrc;
       downloadBtn.download = trackName ? `${trackName}.${fmt || 'mp3'}` : '';
     }
     if (shareBtn) shareBtn.addEventListener('click', shareLink);
     if (copyBtn) copyBtn.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(resolvedSrc); setAlert('Link file audio tersalin', 'success'); }
-      catch { setAlert(resolvedSrc, 'info'); }
+      try { await navigator.clipboard.writeText(location.href); setAlert('Link mini player tersalin', 'success'); }
+      catch { setAlert(location.href, 'info'); }
     });
 
     updateEqStatus();

@@ -3,7 +3,7 @@ import cors from "cors";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { promises as fsp } from "node:fs";
-import { join, dirname, basename, resolve as pathResolve } from "node:path";
+import { join, dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
 // Tambahan untuk ffmpeg portable (opsional)
@@ -669,6 +669,396 @@ const vttToSrt = (input = "") => {
   return lines.join("\n").trim();
 };
 
+const decodeHtmlEntities = (input = "") =>
+  (input || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = Number.parseInt(dec, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    });
+
+const stripHtml = (input = "") =>
+  decodeHtmlEntities((input || "").replace(/<br\s*\/?>(?=\s*\n?)/gi, "\n").replace(/<[^>]+>/g, "")).replace(/\s+$/gm, "");
+
+const msToSrtTime = (value) => {
+  const ms = Math.max(0, Math.round(Number(value) || 0));
+  const totalSeconds = Math.floor(ms / 1000);
+  const milli = ms % 1000;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (num, len = 2) => String(num).padStart(len, "0");
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)},${pad(milli, 3)}`;
+};
+
+const parseClockTime = (value) => {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  if (/^\d+(?:\.\d+)?ms$/i.test(trimmed)) return Number.parseFloat(trimmed) || 0;
+  if (/^\d+(?:\.\d+)?s$/i.test(trimmed)) return (Number.parseFloat(trimmed) || 0) * 1000;
+  if (/^\d+(?:\.\d+)?m$/i.test(trimmed)) return (Number.parseFloat(trimmed) || 0) * 60 * 1000;
+  if (/^\d+(?:\.\d+)?h$/i.test(trimmed)) return (Number.parseFloat(trimmed) || 0) * 3600 * 1000;
+  if (/^\d{1,2}:\d{2}:\d{2}(?:\.\d+)?$/.test(trimmed)) {
+    const [h, m, s] = trimmed.split(":");
+    const seconds = Number.parseFloat(s) || 0;
+    return ((Number(h) || 0) * 3600 + (Number(m) || 0) * 60 + seconds) * 1000;
+  }
+  return null;
+};
+
+const convertSrvXmlToSrt = (xml = "") => {
+  const entries = [];
+  const regex = /<p\b([^>]*)>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = regex.exec(xml))) {
+    const attrs = match[1] || "";
+    const text = stripHtml(match[2] || "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const startMatch = attrs.match(/\bt="([^"]+)"/i) || attrs.match(/\bbegin="([^"]+)"/i);
+    const durMatch = attrs.match(/\bd="([^"]+)"/i) || attrs.match(/\bdur="([^"]+)"/i);
+    const endMatch = attrs.match(/\bend="([^"]+)"/i);
+    const startRaw = startMatch ? Number.parseFloat(startMatch[1]) : null;
+    const durRaw = durMatch ? Number.parseFloat(durMatch[1]) : null;
+    const endRaw = endMatch ? Number.parseFloat(endMatch[1]) : null;
+    const start = Number.isFinite(startRaw) ? startRaw : parseClockTime(startMatch?.[1]) || 0;
+    let end = Number.isFinite(endRaw) ? endRaw : parseClockTime(endMatch?.[1]);
+    let dur = Number.isFinite(durRaw) ? durRaw : parseClockTime(durMatch?.[1]);
+    entries.push({
+      start,
+      dur,
+      end,
+      text,
+    });
+  }
+  entries.sort((a, b) => (a.start || 0) - (b.start || 0));
+  if (!entries.length) return "";
+  for (let i = 0; i < entries.length; i += 1) {
+    const item = entries[i];
+    if (!Number.isFinite(item.end)) {
+      if (Number.isFinite(item.dur)) item.end = (item.start || 0) + item.dur;
+      else if (entries[i + 1]) item.end = entries[i + 1].start;
+    }
+    if (!Number.isFinite(item.end)) item.end = (item.start || 0) + 2000;
+  }
+  const lines = [];
+  let idx = 1;
+  for (const item of entries) {
+    const start = msToSrtTime(item.start || 0);
+    const end = msToSrtTime(item.end || ((item.start || 0) + 2000));
+    lines.push(String(idx));
+    lines.push(`${start} --> ${end}`);
+    lines.push(...item.text.split(/\n+/).map((line) => line.trim()).filter(Boolean));
+    lines.push("");
+    idx += 1;
+  }
+  return lines.join("\n").trim();
+};
+
+const convertTtmlToSrt = (xml = "") => {
+  const entries = [];
+  const regex = /<p\b([^>]*)>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = regex.exec(xml))) {
+    const attrs = match[1] || "";
+    const text = stripHtml(match[2] || "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    const beginMatch = attrs.match(/\bbegin="([^"]+)"/i);
+    const endMatch = attrs.match(/\bend="([^"]+)"/i);
+    const durMatch = attrs.match(/\bdur="([^"]+)"/i);
+    const start = parseClockTime(beginMatch?.[1]) || 0;
+    let end = parseClockTime(endMatch?.[1]);
+    const dur = parseClockTime(durMatch?.[1]);
+    entries.push({ start, end, dur, text });
+  }
+  entries.sort((a, b) => (a.start || 0) - (b.start || 0));
+  if (!entries.length) return "";
+  for (let i = 0; i < entries.length; i += 1) {
+    const item = entries[i];
+    if (!Number.isFinite(item.end)) {
+      if (Number.isFinite(item.dur)) item.end = (item.start || 0) + item.dur;
+      else if (entries[i + 1]) item.end = entries[i + 1].start;
+    }
+    if (!Number.isFinite(item.end)) item.end = (item.start || 0) + 2000;
+  }
+  const lines = [];
+  let idx = 1;
+  for (const item of entries) {
+    const start = msToSrtTime(item.start || 0);
+    const end = msToSrtTime(item.end || ((item.start || 0) + 2000));
+    lines.push(String(idx));
+    lines.push(`${start} --> ${end}`);
+    lines.push(...item.text.split(/\n+/).map((line) => line.trim()).filter(Boolean));
+    lines.push("");
+    idx += 1;
+  }
+  return lines.join("\n").trim();
+};
+
+const convertJson3ToSrt = (jsonText = "") => {
+  try {
+    const data = JSON.parse(jsonText || "{}");
+    const events = Array.isArray(data.events) ? data.events : [];
+    const entries = [];
+    for (const event of events) {
+      const start = Number(event.tStartMs || event.tstartMs || 0);
+      const dur = Number(event.dDurationMs || event.dur || 0);
+      let text = "";
+      if (Array.isArray(event.segs)) {
+        text = event.segs.map((seg) => (typeof seg?.utf8 === "string" ? seg.utf8 : "")).join("");
+      } else if (typeof event.utf8 === "string") {
+        text = event.utf8;
+      }
+      text = stripHtml(text).replace(/\s+/g, " ").trim();
+      if (!text) continue;
+      entries.push({ start, dur, text });
+    }
+    if (!entries.length) return "";
+    entries.sort((a, b) => (a.start || 0) - (b.start || 0));
+    for (let i = 0; i < entries.length; i += 1) {
+      const item = entries[i];
+      if (!item.dur && entries[i + 1]) item.dur = entries[i + 1].start - item.start;
+      if (!item.dur || item.dur <= 0) item.dur = 2000;
+    }
+    const lines = [];
+    let idx = 1;
+    for (const item of entries) {
+      lines.push(String(idx));
+      lines.push(`${msToSrtTime(item.start || 0)} --> ${msToSrtTime((item.start || 0) + item.dur)}`);
+      lines.push(...item.text.split(/\n+/).map((line) => line.trim()).filter(Boolean));
+      lines.push("");
+      idx += 1;
+    }
+    return lines.join("\n").trim();
+  } catch {
+    return "";
+  }
+};
+
+const normalizeSrt = (text = "") => {
+  const normalized = (text || "").replace(/\r/g, "").trim();
+  if (!normalized) return "";
+  return normalized.endsWith("\n") ? normalized : `${normalized}\n`;
+};
+
+const convertSubtitleToSrt = (content = "", ext = "") => {
+  const lower = String(ext || "").toLowerCase();
+  if (lower === "srt") return normalizeSrt(content);
+  if (lower === "vtt" || lower === "webvtt") return normalizeSrt(vttToSrt(content));
+  if (lower === "ttml" || lower === "dfxp" || lower === "xml") return normalizeSrt(convertTtmlToSrt(content));
+  if (lower === "srv3" || lower === "srv2" || lower === "srv1") return normalizeSrt(convertSrvXmlToSrt(content));
+  if (lower === "json3") return normalizeSrt(convertJson3ToSrt(content));
+  const converted = vttToSrt(content);
+  if (converted) return normalizeSrt(converted);
+  throw new Error(`Format subtitle ${ext || ""} tidak didukung`);
+};
+
+const parseLangPreferences = (input) =>
+  String(input || "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+const wildcardToRegex = (pattern) => {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${escaped.replace(/\\\*/g, ".*")}$`, "i");
+};
+
+const SUPPORTED_SUB_EXTS = ["srt", "vtt", "webvtt", "ttml", "dfxp", "srv3", "srv2", "srv1", "json3"];
+
+const pickSourceFromCatalog = (catalog = {}, patterns = []) => {
+  const entries = Object.entries(catalog || {})
+    .map(([lang, sources]) => {
+      const list = Array.isArray(sources) ? sources : [sources];
+      const filtered = list
+        .map((item) => (item && item.url ? { ...item, ext: String(item.ext || "").toLowerCase() } : null))
+        .filter(Boolean);
+      return filtered.length ? { lang, sources: filtered } : null;
+    })
+    .filter(Boolean);
+  if (!entries.length) return null;
+
+  const pickByPattern = (pattern) => {
+    const rx = wildcardToRegex(pattern);
+    const match = entries.find((entry) => rx.test(entry.lang));
+    if (!match) return null;
+    for (const ext of SUPPORTED_SUB_EXTS) {
+      const src = match.sources.find((item) => item.ext === ext);
+      if (src) return { lang: match.lang, source: src };
+    }
+    return { lang: match.lang, source: match.sources[0] };
+  };
+
+  for (const pattern of patterns) {
+    const picked = pickByPattern(pattern);
+    if (picked) return picked;
+  }
+
+  const english = pickByPattern("en.*") || pickByPattern("en");
+  if (english) return english;
+
+  const fallback = entries[0];
+  for (const ext of SUPPORTED_SUB_EXTS) {
+    const src = fallback.sources.find((item) => item.ext === ext);
+    if (src) return { lang: fallback.lang, source: src };
+  }
+  return { lang: fallback.lang, source: fallback.sources[0] };
+};
+
+const sanitizeLangKey = (lang, auto) => {
+  const clean = String(lang || (auto ? "auto" : "subtitle"))
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (clean) return clean;
+  return auto ? "auto" : "subtitle";
+};
+
+const selectSubtitleTrack = (info, { patterns = [], preferAuto = true } = {}) => {
+  const entries = Array.isArray(info?.entries) ? info.entries : [info];
+  for (const entry of entries) {
+    if (!entry) continue;
+    const manual = pickSourceFromCatalog(entry.subtitles, patterns);
+    const auto = pickSourceFromCatalog(entry.automatic_captions, patterns);
+    if (manual && !preferAuto) {
+      return { ...manual.source, lang: manual.lang, auto: false };
+    }
+    if (preferAuto && auto) {
+      return { ...auto.source, lang: auto.lang, auto: true };
+    }
+    if (manual) {
+      return { ...manual.source, lang: manual.lang, auto: false };
+    }
+    if (auto) {
+      return { ...auto.source, lang: auto.lang, auto: true };
+    }
+  }
+  return null;
+};
+
+const fetchWithTimeout = async (url, { timeout = 15000, headers = {} } = {}) => {
+  if (typeof fetch !== "function") {
+    throw new Error("Lingkungan tidak mendukung fetch untuk subtitle");
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1000, timeout));
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+        "accept-language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+        ...headers,
+      },
+    });
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const fetchSubtitleViaYtDlp = async ({ url, langOpt, preferAuto }) => {
+  const args = ["--dump-single-json", "--no-progress", "--skip-download", "--no-warnings"];
+  if (ffmpegPath) args.push("--ffmpeg-location", ffmpegPath);
+  if (existsSync(COOKIES_PATH)) args.push("--cookies", COOKIES_PATH);
+  args.push(url);
+
+  let stdout = "";
+  let stderr = "";
+  const logs = [`yt-dlp ${args.join(" ")}`];
+
+  try {
+    await new Promise((resolve, reject) => {
+      const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
+      proc.stdout.on("data", (d) => {
+        const chunk = d.toString();
+        stdout += chunk;
+      });
+      proc.stderr.on("data", (d) => {
+        const chunk = d.toString();
+        stderr += chunk;
+      });
+      proc.on("error", (err) => {
+        const error = new Error("yt-dlp tidak bisa dijalankan");
+        error.cause = err;
+        reject(error);
+      });
+      proc.on("close", (code) => {
+        if (code !== 0) {
+          const error = new Error("yt-dlp gagal mengambil metadata subtitle");
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    const error = new Error(err.message || "yt-dlp gagal");
+    error.logs = [...logs, stdout, stderr].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  const patterns = parseLangPreferences(langOpt);
+  let info;
+  try {
+    info = JSON.parse(stdout || "{}");
+  } catch (err) {
+    const error = new Error("Respons yt-dlp tidak valid");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  const track = selectSubtitleTrack(info, { patterns, preferAuto });
+  if (!track || !track.url) {
+    const error = new Error("Subtitle tidak ditemukan");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  let body;
+  try {
+    const response = await fetchWithTimeout(track.url, {});
+    if (!response.ok) {
+      const error = new Error(`Gagal mengunduh subtitle (${response.status})`);
+      error.logs = [...logs, stderr, stdout, `HTTP ${response.status}`].filter(Boolean).join("\n");
+      throw error;
+    }
+    body = await response.text();
+  } catch (err) {
+    if (err.logs) throw err;
+    const error = new Error(err.message || "Gagal mengambil subtitle");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  let srt;
+  try {
+    srt = convertSubtitleToSrt(body, track.ext);
+  } catch (err) {
+    const error = new Error(err.message || "Gagal mengonversi subtitle");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  const safeLang = sanitizeLangKey(track.lang, track.auto);
+  return {
+    srt,
+    safeLang,
+    auto: Boolean(track.auto),
+    logs: [...logs, stderr].filter(Boolean).join("\n").slice(-8000),
+  };
+};
+
 const srtToPlainText = (input = "") => {
   const normalized = (input || "").replace(/\r/g, "");
   const blocks = normalized.split(/\n\n+/);
@@ -1241,116 +1631,41 @@ const downloadSubtitle = async (payload = {}) => {
   const downloadBase = baseOutput || "subtitle";
 
   const id = nanoid(10);
-  const outputTpl = join(JOBS_DIR, `${id}.%(ext)s`);
-
-  const args = ["--skip-download", "--no-progress", "--newline"];
-  if (ffmpegPath) args.push("--ffmpeg-location", ffmpegPath);
-  if (existsSync(COOKIES_PATH)) args.push("--cookies", COOKIES_PATH);
-  args.push("--write-sub");
-  if (preferAuto) args.push("--write-auto-sub");
-  args.push("--sub-format", "srt/best");
-  args.push("--convert-subs", "srt");
-  args.push("--sub-langs", langOpt);
-  args.push("-o", outputTpl);
-  args.push(url);
-
   let logs = "";
+  let finalSrtName = "";
+  let finalTxtName = "";
   try {
-    await new Promise((resolve, reject) => {
-      const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
-      proc.stdout.on("data", (d) => (logs += d.toString()));
-      proc.stderr.on("data", (d) => (logs += d.toString()));
-      proc.on("error", (err) => {
-        const error = new Error("yt-dlp tidak bisa dijalankan");
-        error.cause = err;
-        error.logs = logs;
-        reject(error);
-      });
-      proc.on("close", (code) => {
-        if (code !== 0) {
-          const error = new Error("yt-dlp gagal mengambil subtitle");
-          error.logs = logs;
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
-    });
+    const result = await fetchSubtitleViaYtDlp({ url, langOpt, preferAuto });
+    logs = result.logs || "";
+    const finalStem = `${id}.${result.safeLang}`;
+    finalSrtName = `${finalStem}.srt`;
+    const srtPath = join(JOBS_DIR, finalSrtName);
+    await fsp.writeFile(srtPath, result.srt, "utf8");
 
-    const files = readdirSync(JOBS_DIR).filter((f) => f.startsWith(`${id}.`));
-    const candidates = files.filter((f) => f.endsWith(".srt") || f.endsWith(".vtt"));
-    if (!candidates.length) {
-      const error = new Error("Subtitle tidak ditemukan");
-      error.logs = logs;
-      throw error;
-    }
-
-    const autoCandidate = candidates.find((f) => /\.auto\./i.test(f));
-    const manualCandidate = candidates.find((f) => !/\.auto\./i.test(f));
-    let chosen = manualCandidate || candidates[0];
-    if (preferAuto && autoCandidate) chosen = autoCandidate;
-
-    const suffix = chosen.replace(`${id}.`, "");
-    const parts = suffix.split(".");
-    const ext = parts.pop();
-    let langKey = parts.join(".");
-    let autoDetected = /\.auto$/i.test(langKey) || /-auto$/i.test(langKey) || /\.auto\./i.test(chosen);
-    langKey = langKey.replace(/\.auto/gi, "-auto");
-    if (!langKey) langKey = autoDetected ? "auto" : "subtitle";
-    const safeLang = langKey.replace(/[^a-z0-9_-]+/gi, "-");
-    autoDetected = autoDetected || /-auto$/i.test(safeLang);
-
-    const chosenPath = join(JOBS_DIR, chosen);
-    const finalStem = `${id}.${safeLang}`;
-    const finalSrtName = `${finalStem}.srt`;
-    let srtPath = join(JOBS_DIR, finalSrtName);
-
-    if (ext === "vtt") {
-      const vttContent = await fsp.readFile(chosenPath, "utf8");
-      const srtContent = vttToSrt(vttContent);
-      if (!srtContent) {
-        const error = new Error("Subtitle VTT tidak bisa dikonversi");
-        error.logs = logs;
-        throw error;
-      }
-      await fsp.writeFile(srtPath, `${srtContent}\n`, "utf8");
-      try { await fsp.unlink(chosenPath); } catch {}
-    } else {
-      if (basename(chosenPath) !== finalSrtName) {
-        await fsp.rename(chosenPath, srtPath);
-      }
-    }
-
-    const srtContent = await fsp.readFile(srtPath, "utf8");
-    const plain = srtToPlainText(srtContent);
+    const plain = srtToPlainText(result.srt);
     const preview = buildSubtitlePreview(plain);
-    const finalTxtName = `${finalStem}.txt`;
+    finalTxtName = `${finalStem}.txt`;
     const txtPath = join(JOBS_DIR, finalTxtName);
     await fsp.writeFile(txtPath, `${plain}\n`, "utf8");
 
-    for (const file of files) {
-      if (file === finalSrtName || file === finalTxtName) continue;
-      try { await fsp.unlink(join(JOBS_DIR, file)); } catch {}
-    }
-
     return {
       ok: true,
-      logs: (logs || "").slice(-8000),
-      lang: safeLang,
-      auto: autoDetected,
+      logs,
+      lang: result.safeLang,
+      auto: Boolean(result.auto),
       srtUrl: `/public/jobs/${finalSrtName}`,
-      srtFileName: `${downloadBase}.${safeLang}.srt`,
+      srtFileName: `${downloadBase}.${result.safeLang}.srt`,
       txtUrl: `/public/jobs/${finalTxtName}`,
-      txtFileName: `${downloadBase}.${safeLang}.txt`,
+      txtFileName: `${downloadBase}.${result.safeLang}.txt`,
       preview,
     };
   } catch (err) {
-    try {
-      const leftovers = readdirSync(JOBS_DIR).filter((f) => f.startsWith(`${id}.`));
-      for (const file of leftovers) {
-        try { await fsp.unlink(join(JOBS_DIR, file)); } catch {}
-      }
-    } catch {}
+    if (finalSrtName) {
+      try { await fsp.unlink(join(JOBS_DIR, finalSrtName)); } catch {}
+    }
+    if (finalTxtName) {
+      try { await fsp.unlink(join(JOBS_DIR, finalTxtName)); } catch {}
+    }
     const error = new Error(err.message || "Gagal mengambil subtitle");
     error.logs = (logs + (err.logs || "")).slice(-8000);
     throw error;
