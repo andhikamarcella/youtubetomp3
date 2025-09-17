@@ -3,6 +3,8 @@ import cors from "cors";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { promises as fsp } from "node:fs";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
@@ -20,6 +22,179 @@ try {
 } catch {
   ffprobePath = null;
 }
+
+const normalizeHeaderInit = (input) => {
+  if (!input) return {};
+  if (Array.isArray(input)) {
+    return input.reduce((acc, [key, value]) => {
+      if (key) acc[String(key).toLowerCase()] = String(value);
+      return acc;
+    }, {});
+  }
+  if (typeof input?.forEach === "function" && typeof input?.entries === "function") {
+    const acc = {};
+    input.forEach((value, key) => {
+      if (key != null && value != null) acc[String(key).toLowerCase()] = String(value);
+    });
+    return acc;
+  }
+  if (typeof input === "object") {
+    return Object.entries(input).reduce((acc, [key, value]) => {
+      if (key != null && value != null) acc[String(key).toLowerCase()] = String(value);
+      return acc;
+    }, {});
+  }
+  return {};
+};
+
+const createResponseObject = (urlStr, statusCode, statusMessage, headersObj, bodyBuffer) => {
+  const headerMap = new Map();
+  for (const [key, value] of Object.entries(headersObj || {})) {
+    if (Array.isArray(value)) {
+      headerMap.set(String(key).toLowerCase(), value.join(", "));
+    } else if (value != null) {
+      headerMap.set(String(key).toLowerCase(), String(value));
+    }
+  }
+  const baseBuffer = Buffer.from(bodyBuffer || Buffer.alloc(0));
+  const arrayBuf = baseBuffer.buffer.slice(
+    baseBuffer.byteOffset,
+    baseBuffer.byteOffset + baseBuffer.byteLength,
+  );
+  const textCache = baseBuffer.toString("utf8");
+
+  return {
+    ok: statusCode >= 200 && statusCode < 300,
+    status: statusCode || 0,
+    statusText: statusMessage || "",
+    url: urlStr,
+    headers: {
+      get: (name) => headerMap.get(String(name).toLowerCase()) ?? null,
+      has: (name) => headerMap.has(String(name).toLowerCase()),
+      entries: () => headerMap.entries(),
+    },
+    text: async () => textCache,
+    json: async () => {
+      if (!textCache) return null;
+      try {
+        return JSON.parse(textCache);
+      } catch (err) {
+        const parseErr = new Error("Response JSON tidak valid");
+        parseErr.cause = err;
+        throw parseErr;
+      }
+    },
+    arrayBuffer: async () => arrayBuf,
+    clone: () => createResponseObject(urlStr, statusCode, statusMessage, headersObj, Buffer.from(baseBuffer)),
+  };
+};
+
+const createFetchFallback = () => {
+  const fetchFallback = (input, init = {}, redirectCount = 0) => new Promise((resolve, reject) => {
+    try {
+      const target = input instanceof URL ? input : new URL(String(input));
+      const method = (init.method || "GET").toUpperCase();
+      const headers = normalizeHeaderInit(init.headers);
+      if (!headers["accept-encoding"]) headers["accept-encoding"] = "identity";
+
+      const requestFn = target.protocol === "http:" ? httpRequest
+        : target.protocol === "https:" ? httpsRequest
+        : null;
+      if (!requestFn) {
+        reject(new Error(`Protocol tidak didukung: ${target.protocol}`));
+        return;
+      }
+
+      let settled = false;
+      const settle = (handler) => {
+        if (settled) return;
+        settled = true;
+        if (abortHandler && init.signal) {
+          init.signal.removeEventListener("abort", abortHandler);
+        }
+        handler();
+      };
+
+      let abortHandler;
+      const req = requestFn({
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port || (target.protocol === "http:" ? 80 : 443),
+        path: `${target.pathname}${target.search}` || "/",
+        method,
+        headers,
+      }, (res) => {
+        const statusCode = res.statusCode || 0;
+        const statusMessage = res.statusMessage || "";
+        const location = res.headers?.location;
+        if (location && [301, 302, 303, 307, 308].includes(statusCode) && init.redirect !== "manual" && redirectCount < 5) {
+          const nextUrl = new URL(location, target);
+          res.resume();
+          settle(() => resolve(fetchFallback(nextUrl, init, redirectCount + 1)));
+          return;
+        }
+
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        res.on("end", () => {
+          const body = Buffer.concat(chunks);
+          settle(() => resolve(createResponseObject(target.toString(), statusCode, statusMessage, res.headers, body)));
+        });
+        res.on("error", (err) => settle(() => reject(err)));
+      });
+
+      req.on("error", (err) => settle(() => reject(err)));
+
+      if (init.signal) {
+        abortHandler = () => {
+          req.destroy(new Error("aborted"));
+          const abortErr = new Error("The operation was aborted");
+          abortErr.name = "AbortError";
+          settle(() => reject(abortErr));
+        };
+        if (init.signal.aborted) {
+          abortHandler();
+          return;
+        }
+        init.signal.addEventListener("abort", abortHandler, { once: true });
+      }
+
+      if (init.body) {
+        if (Buffer.isBuffer(init.body)) {
+          req.write(init.body);
+        } else if (init.body instanceof ArrayBuffer) {
+          req.write(Buffer.from(init.body));
+        } else if (typeof init.body === "string") {
+          req.write(init.body);
+        } else {
+          req.write(JSON.stringify(init.body));
+        }
+      }
+
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  return fetchFallback;
+};
+
+let fetchImpl = globalThis.fetch;
+if (!fetchImpl) {
+  try {
+    fetchImpl = (await import("node-fetch")).default;
+  } catch {
+    fetchImpl = createFetchFallback();
+  }
+}
+
+const safeFetch = async (...args) => {
+  if (!fetchImpl) {
+    throw new Error("fetch API tidak tersedia di lingkungan ini");
+  }
+  return fetchImpl(...args);
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -1620,13 +1795,13 @@ const extractYouTubeVideoId = (input = "") => {
 };
 
 const fetchWithTimeout = async (url, { timeout = 15000, headers = {} } = {}) => {
-  if (typeof fetch !== "function") {
+  if (!fetchImpl) {
     throw new Error("Lingkungan tidak mendukung fetch untuk subtitle");
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), Math.max(1000, timeout));
   try {
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       signal: controller.signal,
       redirect: "follow",
       headers: {
@@ -2306,7 +2481,7 @@ const convertSingle = async (payload = {}) => {
   let coverPath = null;
   if (coverUrl && /^https?:\/\//.test(coverUrl) && ["mp3", "m4a", "flac"].includes(fmt)) {
     try {
-      const imgResp = await fetch(coverUrl);
+      const imgResp = await safeFetch(coverUrl);
       if (imgResp.ok) {
         const buf = Buffer.from(await imgResp.arrayBuffer());
         coverPath = join(JOBS_DIR, `${id}.cover.jpg`);
