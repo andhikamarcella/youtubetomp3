@@ -3,7 +3,7 @@ import cors from "cors";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { promises as fsp } from "node:fs";
-import { join, dirname, basename } from "node:path";
+import { join, dirname, basename, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
 // Tambahan untuk ffmpeg portable (opsional)
@@ -27,6 +27,23 @@ const JOBS_DIR   = join(PUBLIC_DIR, "jobs");
 if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
 
+const PUBLIC_ROOT = pathResolve(PUBLIC_DIR);
+const THUMB_DIR = join(PUBLIC_ROOT, "thumbnails");
+const CLOUD_DIR = join(PUBLIC_ROOT, "cloud");
+const CLOUD_TARGETS = {
+  drive: { label: "Google Drive", dir: join(CLOUD_DIR, "drive") },
+  dropbox: { label: "Dropbox", dir: join(CLOUD_DIR, "dropbox") },
+  onedrive: { label: "OneDrive", dir: join(CLOUD_DIR, "onedrive") },
+};
+
+for (const dir of [THUMB_DIR, CLOUD_DIR, ...Object.values(CLOUD_TARGETS).map((t) => t.dir)]) {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+const backgroundJobs = new Map();
+const backgroundQueue = [];
+let backgroundProcessing = false;
+
 // ==== Util ====
 const abrToQ = (abr) => {
   const n = Number(abr) || 128;
@@ -47,16 +64,442 @@ const sanitizeFileName = (name = "") =>
     .replace(/\s+/g, " ")
     .trim();
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const escapeDrawText = (input = "") =>
+  (input || "")
+    .replace(/[\\:'\[\]]/g, (match) => `\\${match}`)
+    .replace(/\n/g, "\\n");
+
+const normalizeHex = (hex, fallback = "#0d6efd") => {
+  if (typeof hex !== "string") return fallback;
+  const clean = hex.trim();
+  return /^#?[0-9a-fA-F]{6}$/.test(clean)
+    ? (clean.startsWith("#") ? clean : `#${clean}`)
+    : fallback;
+};
+
+const hexToFfmpegColor = (hex) => `0x${hex.replace(/^#/, "").toUpperCase()}`;
+
+const findFontPath = () => {
+  const candidates = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+  ];
+  for (const font of candidates) {
+    if (existsSync(font)) return font;
+  }
+  return null;
+};
+
+const DEFAULT_FONT = findFontPath();
+
+const resolvePublicPath = (urlPath = "") => {
+  if (typeof urlPath !== "string") return null;
+  const cleaned = urlPath.replace(/\\/g, "/").trim();
+  if (!cleaned.startsWith("/public/")) return null;
+  const relative = cleaned.slice("/public/".length);
+  const fullPath = pathResolve(PUBLIC_ROOT, relative);
+  if (!fullPath.startsWith(PUBLIC_ROOT)) return null;
+  return fullPath;
+};
+
+const ensureUniqueFileName = (dir, fileName) => {
+  const clean = fileName || "file";
+  const dot = clean.lastIndexOf(".");
+  const base = dot > 0 ? clean.slice(0, dot) : clean;
+  const ext = dot > 0 ? clean.slice(dot) : "";
+  let candidate = clean;
+  let counter = 1;
+  while (existsSync(join(dir, candidate))) {
+    candidate = `${base} (${counter})${ext}`;
+    counter += 1;
+  }
+  return candidate;
+};
+
+const GENRE_KEYWORDS = [
+  { rx: /(lo[-\s]?fi|study|chillhop|coffee shop)/i, value: "Lo-Fi" },
+  { rx: /(hip\s?hop|rap)/i, value: "Hip-Hop" },
+  { rx: /(trap|808|drill)/i, value: "Trap" },
+  { rx: /(edm|electro|dance|club|festival)/i, value: "EDM" },
+  { rx: /(rock|guitar|band)/i, value: "Rock" },
+  { rx: /(metal|screamo|hardcore)/i, value: "Metal" },
+  { rx: /(jazz|swing|sax)/i, value: "Jazz" },
+  { rx: /(lofi|sleep|relax|ambient|meditation)/i, value: "Ambient" },
+  { rx: /(piano|violin|orchestra|symphony)/i, value: "Classical" },
+  { rx: /(k\-?pop|kpop)/i, value: "K-Pop" },
+  { rx: /(dangdut|koplo)/i, value: "Dangdut" },
+];
+
+const MOOD_KEYWORDS = [
+  { rx: /(happy|joy|summer|sunshine)/i, value: "Happy" },
+  { rx: /(sad|heartbreak|galau|melancholy|cry)/i, value: "Melancholy" },
+  { rx: /(relax|calm|sleep|study|focus)/i, value: "Chill" },
+  { rx: /(epic|cinematic|battle|orchestra)/i, value: "Epic" },
+  { rx: /(rain|night|midnight|lofi)/i, value: "Midnight" },
+  { rx: /(pump|gym|workout|power)/i, value: "Hype" },
+];
+
+const ENERGY_KEYWORDS = [
+  { rx: /(sleep|ambient|relax|asmr)/i, value: "Low" },
+  { rx: /(lofi|study|chill|coffee)/i, value: "Medium" },
+  { rx: /(edm|nightcore|dance|club|hard|festival|live)/i, value: "High" },
+];
+
+const pickFromKeywords = (text, rules, fallback) => {
+  for (const rule of rules) {
+    if (rule.rx.test(text)) return rule.value;
+  }
+  return fallback;
+};
+
+const buildAiTags = ({ title = "", description = "", channel = "", duration } = {}) => {
+  const combined = `${title}\n${description}\n${channel}`;
+  const genre = pickFromKeywords(combined, GENRE_KEYWORDS, "Pop");
+  const mood = pickFromKeywords(combined, MOOD_KEYWORDS, duration && duration > 360 ? "Calm" : "Energetic");
+  let energy = pickFromKeywords(combined, ENERGY_KEYWORDS, duration && duration > 420 ? "Medium" : "High");
+  if (/acoustic|piano|ambient/i.test(combined)) energy = "Low";
+  const yearMatch = /(20\d{2}|19\d{2})/.exec(description) || /(20\d{2}|19\d{2})/.exec(title);
+  const year = yearMatch ? yearMatch[1] : undefined;
+
+  const cleanTitle = title.replace(/\[[^\]]+\]/g, "").replace(/\([^)]*official[^)]*\)/ig, "").trim();
+  const suggestedTitle = cleanTitle || title;
+  const suggestedAlbum = suggestedTitle;
+  const suggestedArtist = channel?.trim() || undefined;
+
+  const tags = {
+    title: suggestedTitle,
+    artist: suggestedArtist,
+    album: suggestedAlbum,
+    genre,
+    mood,
+    energy,
+  };
+  if (year) tags.year = year;
+  tags.comment = `AI tags · ${genre} · ${mood}${year ? ` · ${year}` : ""}`;
+  return tags;
+};
+
+const createStemsForSource = async (inputPath, baseName = "Audio") => {
+  if (!inputPath) throw new Error("Sumber audio tidak ditemukan");
+  const safeBase = sanitizeFileName(baseName) || "Audio";
+  const stemId = nanoid(10);
+  const vocalsFile = `${stemId}.vocals.mp3`;
+  const instrumentalFile = `${stemId}.instrumental.mp3`;
+  const zipFile = `${stemId}.stems.zip`;
+  const vocalsPath = join(JOBS_DIR, vocalsFile);
+  const instrumentalPath = join(JOBS_DIR, instrumentalFile);
+  const zipPath = join(JOBS_DIR, zipFile);
+
+  let vocalsLogs = "";
+  let instrumentalLogs = "";
+  try {
+    vocalsLogs = await runFfmpeg([
+      "-y",
+      "-i", inputPath,
+      "-filter:a", "pan=stereo|c0=c0+c1|c1=c0+c1,alimiter=limit=0.9",
+      "-codec:a", "libmp3lame",
+      "-qscale:a", "2",
+      vocalsPath,
+    ]);
+    instrumentalLogs = await runFfmpeg([
+      "-y",
+      "-i", inputPath,
+      "-filter:a", "pan=stereo|c0=c0-c1|c1=c1-c0,alimiter=limit=0.9",
+      "-codec:a", "libmp3lame",
+      "-qscale:a", "2",
+      instrumentalPath,
+    ]);
+
+    await new Promise((resolve, reject) => {
+      const zipProc = spawn("zip", ["-q", zipFile, vocalsFile, instrumentalFile], { cwd: JOBS_DIR });
+      let zipLogs = "";
+      zipProc.stdout.on("data", (d) => (zipLogs += d.toString()));
+      zipProc.stderr.on("data", (d) => (zipLogs += d.toString()));
+      zipProc.on("error", (err) => {
+        const error = new Error("zip command gagal dijalankan");
+        error.logs = zipLogs;
+        reject(error);
+      });
+      zipProc.on("close", (code) => {
+        if (code === 0) resolve();
+        else {
+          const error = new Error(`zip keluar dengan kode ${code}`);
+          error.logs = zipLogs;
+          reject(error);
+        }
+      });
+    });
+  } catch (err) {
+    try { await fsp.unlink(vocalsPath); } catch {}
+    try { await fsp.unlink(instrumentalPath); } catch {}
+    try { await fsp.unlink(zipPath); } catch {}
+    throw err;
+  }
+
+  const response = {
+    ok: true,
+    id: stemId,
+    baseName: safeBase,
+    vocals: {
+      downloadUrl: `/public/jobs/${vocalsFile}`,
+      fileName: `${safeBase} - Vocals.mp3`,
+      logs: vocalsLogs.slice(-6000),
+    },
+    instrumental: {
+      downloadUrl: `/public/jobs/${instrumentalFile}`,
+      fileName: `${safeBase} - Instrumental.mp3`,
+      logs: instrumentalLogs.slice(-6000),
+    },
+    zip: {
+      downloadUrl: `/public/jobs/${zipFile}`,
+      fileName: `${safeBase} - STEMS.zip`,
+    },
+  };
+  return response;
+};
+
+const generateThumbnailArt = async ({
+  imageUrl,
+  title,
+  subtitle,
+  accent = "#0d6efd",
+  style = "modern",
+}) => {
+  if (!imageUrl || !/^https?:\/\//i.test(imageUrl)) {
+    throw new Error("URL gambar tidak valid");
+  }
+  if (!DEFAULT_FONT) {
+    throw new Error("Font default tidak ditemukan untuk drawtext");
+  }
+
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Gagal mengambil gambar (${response.status})`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const thumbId = nanoid(10);
+  const inputPath = join(THUMB_DIR, `${thumbId}.src`);
+  const outputName = `${thumbId}.jpg`;
+  const outputPath = join(THUMB_DIR, outputName);
+
+  await fsp.writeFile(inputPath, buffer);
+
+  const accentHex = normalizeHex(accent);
+  const baseFilter = [
+    "scale=1280:720:force_original_aspect_ratio=decrease",
+    `pad=1280:720:(ow-iw)/2:(oh-ih)/2:${hexToFfmpegColor("#10121a")}`,
+    "format=rgba",
+  ];
+
+  if (style === "vibrant") {
+    baseFilter.push("eq=saturation=1.35:contrast=1.05");
+  } else if (style === "mono") {
+    baseFilter.push("hue=s=0");
+  }
+
+  baseFilter.push(`drawbox=x=0:y=h-220:w=iw:h=220:color=${accentHex}@0.75:t=fill`);
+
+  const titleText = escapeDrawText(title || "AI Generated Cover");
+  baseFilter.push(
+    `drawtext=fontfile='${DEFAULT_FONT}':text='${titleText}':fontsize=58:fontcolor=white:shadowx=2:shadowy=2:x=(w-text_w)/2:y=h-150`
+  );
+
+  if (subtitle && subtitle.trim()) {
+    const subText = escapeDrawText(subtitle.trim());
+    baseFilter.push(
+      `drawtext=fontfile='${DEFAULT_FONT}':text='${subText}':fontsize=34:fontcolor=white@0.9:shadowx=1:shadowy=1:x=(w-text_w)/2:y=h-80`
+    );
+  }
+
+  const filter = baseFilter.join(",");
+
+  try {
+    await runFfmpeg([
+      "-y",
+      "-i", inputPath,
+      "-vf", filter,
+      "-q:v", "2",
+      outputPath,
+    ]);
+  } finally {
+    try { await fsp.unlink(inputPath); } catch {}
+  }
+
+  return {
+    ok: true,
+    url: `/public/thumbnails/${outputName}`,
+    fileName: `${sanitizeFileName(title || "cover") || "cover"}.jpg`,
+  };
+};
+
+const validateConvertPayload = (payload = {}) => {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Payload tidak valid");
+  }
+  const url = typeof payload.url === "string" ? payload.url.trim() : "";
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error("URL tidak valid");
+  }
+  const format = String(payload.format || "mp3").toLowerCase();
+  if (!SUPPORTED_FORMATS.has(format)) {
+    throw new Error("Format tidak didukung");
+  }
+  const speedMode = payload.speedMode || "normal";
+  if (!VALID_SPEED_MODES.has(speedMode)) {
+    throw new Error("Mode kecepatan tidak dikenali");
+  }
+  if (payload.sampleRate !== undefined) {
+    const sr = Number(payload.sampleRate);
+    if (!Number.isFinite(sr) || sr <= 0) {
+      throw new Error("sampleRate tidak valid");
+    }
+  }
+  if (payload.trim && typeof payload.trim === "object") {
+    const { start, end } = payload.trim;
+    if (start !== undefined) {
+      const s = Number(start);
+      if (!Number.isFinite(s) || s < 0) throw new Error("trim.start tidak valid");
+    }
+    if (end !== undefined) {
+      const e = Number(end);
+      if (!Number.isFinite(e) || e < 0) throw new Error("trim.end tidak valid");
+    }
+    if (start !== undefined && end !== undefined) {
+      if (Number(end) < Number(start)) throw new Error("trim.end harus >= trim.start");
+    }
+  }
+  if (payload.volumeBoost !== undefined) {
+    const boost = Number(payload.volumeBoost);
+    if (!Number.isFinite(boost) || boost < -24 || boost > 24) {
+      throw new Error("volumeBoost di luar batas");
+    }
+  }
+  return {
+    ...payload,
+    url,
+    format,
+    speedMode,
+  };
+};
+
+const enqueueBackgroundJob = (payload = {}) => {
+  const normalized = validateConvertPayload(payload);
+  const id = nanoid(12);
+  const job = {
+    id,
+    status: "queued",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    payload: normalized,
+    logs: "",
+  };
+  backgroundJobs.set(id, job);
+  backgroundQueue.push(id);
+  job.queuePosition = backgroundQueue.length;
+  processBackgroundQueue().catch(() => {});
+  return job;
+};
+
+const processBackgroundQueue = async () => {
+  if (backgroundProcessing) return;
+  backgroundProcessing = true;
+  while (backgroundQueue.length) {
+    const jobId = backgroundQueue.shift();
+    const job = backgroundJobs.get(jobId);
+    if (!job) continue;
+    job.queuePosition = 0;
+    job.status = "processing";
+    job.startedAt = Date.now();
+    job.updatedAt = Date.now();
+    try {
+      const result = await convertSingle({ ...job.payload, noPlaylist: true });
+      job.status = "done";
+      job.completedAt = Date.now();
+      job.result = {
+        downloadUrl: result.downloadUrl,
+        fileName: result.fileName,
+        format: result.format,
+        baseName: result.baseName,
+        ext: result.ext,
+      };
+      if (result.fullPath) job.result.fullPath = result.fullPath;
+      job.logs = (result.logs || "").slice(-8000);
+    } catch (err) {
+      job.status = "error";
+      job.completedAt = Date.now();
+      job.error = err.message || "Gagal memproses";
+      job.logs = (err.logs || "").slice(-8000);
+    }
+    job.updatedAt = Date.now();
+  }
+  backgroundProcessing = false;
+};
+
+const serializeJob = (job) => {
+  if (!job) return null;
+  const data = {
+    id: job.id,
+    status: job.status,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    startedAt: job.startedAt,
+    completedAt: job.completedAt,
+    queuePosition: job.queuePosition,
+  };
+  if (job.error) data.error = job.error;
+  if (job.logs) data.logs = job.logs;
+  if (job.result) {
+    data.result = {
+      downloadUrl: job.result.downloadUrl,
+      fileName: job.result.fileName,
+      format: job.result.format,
+      baseName: job.result.baseName,
+      ext: job.result.ext,
+    };
+  }
+  return data;
+};
+
+const resolveJobFilePath = (job) => {
+  if (!job) return null;
+  if (job.result?.fullPath) return job.result.fullPath;
+  if (job.result?.downloadUrl) return resolvePublicPath(job.result.downloadUrl);
+  return null;
+};
+
 const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
 const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
 
-const buildAudioFilters = ({ normalize = false, speedMode = "normal" } = {}) => {
+const buildAudioFilters = ({
+  normalize = false,
+  speedMode = "normal",
+  denoise = false,
+  volumeBoost = 0,
+  enhancer = "none",
+} = {}) => {
   const filters = [];
   if (speedMode && speedMode !== "normal") {
     if (speedMode === "nightcore") {
       filters.push("asetrate=sample_rate*1.25", "aresample=sample_rate");
     } else if (speedMode === "slow_reverb") {
       filters.push("atempo=0.85", "aecho=0.6:0.6:1000:0.25");
+    }
+  }
+  if (denoise) filters.push("afftdn");
+  const boost = Number(volumeBoost);
+  if (!Number.isNaN(boost) && boost !== 0) {
+    filters.push(`volume=${clamp(boost, -20, 20)}dB`);
+  }
+  if (enhancer && typeof enhancer === "string" && enhancer !== "none") {
+    if (enhancer === "clarity") {
+      filters.push("acompressor=threshold=-18dB:ratio=2:attack=5:release=50", "equalizer=f=3200:t=h:w=2:g=3");
+    } else if (enhancer === "warm") {
+      filters.push("equalizer=f=160:t=h:w=2:g=4", "equalizer=f=6400:t=h:w=2:g=-3");
+    } else if (enhancer === "club") {
+      filters.push("acompressor=threshold=-16dB:ratio=3:attack=8:release=80", "equalizer=f=90:t=h:w=2:g=5", "equalizer=f=8500:t=h:w=2:g=2");
     }
   }
   if (normalize) filters.push("loudnorm");
@@ -68,6 +511,26 @@ const applyAudioFilters = (args, filters = []) => {
     args.push("-filter:a", filters.join(","));
   }
 };
+
+const runFfmpeg = (args) => new Promise((resolve, reject) => {
+  const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+  let logs = "";
+  ff.stdout.on("data", (d) => (logs += d.toString()));
+  ff.stderr.on("data", (d) => (logs += d.toString()));
+  ff.on("error", (err) => {
+    const error = new Error(err.code === "ENOENT" ? "ffmpeg tidak ditemukan" : err.message || "ffmpeg gagal");
+    error.logs = logs;
+    reject(error);
+  });
+  ff.on("close", (code) => {
+    if (code === 0) resolve(logs);
+    else {
+      const error = new Error(`ffmpeg exit ${code}`);
+      error.logs = logs;
+      reject(error);
+    }
+  });
+});
 
 const vttToSrt = (input = "") => {
   const clean = (input || "").replace(/^WEBVTT.*\n+/i, "").replace(/\r/g, "");
@@ -430,6 +893,9 @@ const convertSingle = async (payload = {}) => {
     coverUrl,
     atmos = false,
     speedMode = "normal",
+    denoise = false,
+    volumeBoost = 0,
+    enhancer = "none",
   } = payload;
 
   if (!url || !/^https?:\/\//.test(url)) {
@@ -442,6 +908,18 @@ const convertSingle = async (payload = {}) => {
   if (!VALID_SPEED_MODES.has(speedMode || "normal")) {
     throw new Error("Mode kecepatan tidak dikenali");
   }
+
+  const denoiseEnabled = typeof denoise === "string"
+    ? ["1", "true", "yes", "on"].includes(denoise.toLowerCase())
+    : !!denoise;
+
+  let boostValue = Number(volumeBoost);
+  if (Number.isNaN(boostValue)) boostValue = 0;
+  boostValue = clamp(boostValue, -20, 20);
+
+  const enhancerKey = typeof enhancer === "string" ? enhancer.trim().toLowerCase() : "none";
+  const VALID_ENHANCERS = new Set(["none", "clarity", "warm", "club"]);
+  const enhancerMode = VALID_ENHANCERS.has(enhancerKey) ? enhancerKey : "none";
 
   let sr;
   if (sampleRate !== undefined) {
@@ -483,7 +961,13 @@ const convertSingle = async (payload = {}) => {
     } catch {}
   }
 
-  const filters = buildAudioFilters({ normalize, speedMode });
+  const filters = buildAudioFilters({
+    normalize,
+    speedMode,
+    denoise: denoiseEnabled,
+    volumeBoost: boostValue,
+    enhancer: enhancerMode,
+  });
 
   const args = ["--newline", "--no-progress"];
   if (ffmpegPath) {
@@ -743,6 +1227,147 @@ app.post("/api/convert", async (req, res) => {
   } catch (e) {
     const msg = e?.message || "Gagal memproses";
     const status = /tidak valid|tidak dikenali/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ error: msg, logs: e?.logs });
+  }
+});
+
+app.post("/api/background", (req, res) => {
+  try {
+    const job = enqueueBackgroundJob(req.body || {});
+    return res.json({ ok: true, job: serializeJob(job) });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat job";
+    const status = /tidak valid|tidak dikenali|batas/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ error: msg });
+  }
+});
+
+app.get("/api/background", (req, res) => {
+  const jobs = Array.from(backgroundJobs.values())
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, 25)
+    .map(serializeJob);
+  return res.json({ ok: true, jobs });
+});
+
+app.get("/api/background/:id", (req, res) => {
+  const job = backgroundJobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: "Job tidak ditemukan" });
+  return res.json({ ok: true, job: serializeJob(job) });
+});
+
+app.post("/api/ai-tags", (req, res) => {
+  try {
+    const body = req.body || {};
+    const tags = buildAiTags({
+      title: body.title,
+      description: body.description,
+      channel: body.channel,
+      duration: body.duration,
+    });
+    return res.json({ ok: true, tags });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat tag";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/thumbnail", async (req, res) => {
+  try {
+    const result = await generateThumbnailArt(req.body || {});
+    return res.json(result);
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat thumbnail";
+    const status = /tidak valid|tidak ditemukan/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ error: msg, logs: e?.logs });
+  }
+});
+
+app.post("/api/stems", async (req, res) => {
+  try {
+    const body = req.body || {};
+    let sourcePath = null;
+    let baseName = body.baseName;
+    if (body.downloadUrl) {
+      sourcePath = resolvePublicPath(body.downloadUrl);
+      if (!sourcePath) throw new Error("downloadUrl tidak valid");
+      baseName = baseName || basename(sourcePath).replace(/\.[^.]+$/, "");
+    } else if (body.jobId) {
+      const job = backgroundJobs.get(body.jobId);
+      if (!job || job.status !== "done") throw new Error("Job belum selesai");
+      sourcePath = resolveJobFilePath(job);
+      if (!sourcePath) throw new Error("File job tidak ditemukan");
+      baseName = baseName || job.result?.baseName || job.result?.fileName;
+    } else if (body.url) {
+      const convertPayload = { ...body };
+      delete convertPayload.jobId;
+      delete convertPayload.downloadUrl;
+      delete convertPayload.baseName;
+      const convertResult = await convertSingle({ ...convertPayload, format: body.format || "wav", noPlaylist: true });
+      sourcePath = convertResult.fullPath;
+      baseName = baseName || convertResult.baseName || convertResult.fileName;
+    } else {
+      return res.status(400).json({ error: "Perlu url, jobId, atau downloadUrl" });
+    }
+    if (!sourcePath) throw new Error("Sumber audio tidak ditemukan");
+    const result = await createStemsForSource(sourcePath, baseName);
+    if (!result.source && sourcePath.startsWith(JOBS_DIR)) {
+      const diskName = basename(sourcePath);
+      result.source = {
+        downloadUrl: `/public/jobs/${diskName}`,
+        fileName: `${sanitizeFileName(baseName || "Audio") || "Audio"}.${diskName.split(".").pop()}`,
+      };
+    }
+    return res.json(result);
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat stems";
+    const status = /tidak valid|belum|perlu|tidak ditemukan/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ error: msg, logs: e?.logs });
+  }
+});
+
+app.post("/api/cloud/save", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const targetKey = typeof body.target === "string" ? body.target.toLowerCase() : "drive";
+    const target = CLOUD_TARGETS[targetKey];
+    if (!target) return res.status(400).json({ error: "Target cloud tidak dikenali" });
+
+    let sourcePath = null;
+    let fileName = typeof body.fileName === "string" && body.fileName.trim()
+      ? sanitizeFileName(body.fileName.trim())
+      : null;
+
+    if (body.jobId) {
+      const job = backgroundJobs.get(body.jobId);
+      if (!job || job.status !== "done") throw new Error("Job belum selesai");
+      sourcePath = resolveJobFilePath(job);
+      if (!sourcePath) throw new Error("File job tidak ditemukan");
+      if (!fileName) fileName = job.result?.fileName || job.result?.baseName;
+    } else if (body.downloadUrl) {
+      sourcePath = resolvePublicPath(body.downloadUrl);
+      if (!sourcePath) throw new Error("downloadUrl tidak valid");
+      if (!fileName) fileName = basename(sourcePath);
+    } else {
+      return res.status(400).json({ error: "Perlu jobId atau downloadUrl" });
+    }
+
+    if (!sourcePath) throw new Error("Sumber file tidak ditemukan");
+
+    const finalName = ensureUniqueFileName(target.dir, sanitizeFileName(fileName) || basename(sourcePath));
+    const destPath = join(target.dir, finalName);
+    await fsp.copyFile(sourcePath, destPath);
+
+    return res.json({
+      ok: true,
+      target: targetKey,
+      label: target.label,
+      downloadUrl: `/public/cloud/${targetKey}/${finalName}`,
+      fileName: finalName,
+    });
+  } catch (e) {
+    const msg = e?.message || "Gagal menyimpan ke cloud";
+    const status = /tidak valid|perlu|belum|tidak ditemukan/i.test(msg) ? 400 : 500;
     return res.status(status).json({ error: msg, logs: e?.logs });
   }
 });

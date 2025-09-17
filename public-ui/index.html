@@ -233,6 +233,31 @@
               <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
             </div>
 
+            <div class="row g-3 mb-3 align-items-end">
+              <div class="col-md-4">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="denoise">
+                  <label class="form-check-label" for="denoise">AI Noise Cleaner</label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label d-flex justify-content-between align-items-center" for="volumeBoost">
+                  <span>Volume Booster</span>
+                  <span class="badge text-bg-secondary" id="volumeBoostLabel">0 dB</span>
+                </label>
+                <input type="range" class="form-range" id="volumeBoost" min="0" max="12" step="1" value="0">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="enhancer">AI Enhancer</label>
+                <select id="enhancer" class="form-select">
+                  <option value="none" selected>Off</option>
+                  <option value="clarity">Vocal Clarity</option>
+                  <option value="warm">Warm Glow</option>
+                  <option value="club">Club Lift</option>
+                </select>
+              </div>
+            </div>
+
             <div class="dropzone mb-3" id="dropzone">
               <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
               <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
@@ -245,6 +270,46 @@
               <button id="downloadAllBtn" class="btn btn-outline-primary"><i class="bi bi-download"></i> Download Semua</button>
               <button id="downloadZipBtn" class="btn btn-success"><i class="bi bi-collection"></i> Download ZIP</button>
               <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
+            </div>
+
+            <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
+              <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                  <strong class="me-auto">AI Studio & Cloud</strong>
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" id="backgroundMode">
+                    <label class="form-check-label small" for="backgroundMode">Background mode</label>
+                  </div>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-outline-primary" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
+                      <button class="btn btn-outline-secondary" id="thumbnailBtn" type="button"><i class="bi bi-image"></i> AI Thumbnail</button>
+                      <button class="btn btn-outline-success" id="stemBtn" type="button"><i class="bi bi-mic-fill"></i> Voice ↔ Instrumental</button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-outline-primary" id="cloudDriveBtn" type="button"><i class="bi bi-cloud-arrow-up"></i> Save to Drive</button>
+                      <button class="btn btn-outline-primary" id="cloudDropboxBtn" type="button"><i class="bi bi-cloud-upload"></i> Save to Dropbox</button>
+                      <button class="btn btn-outline-primary" id="cloudOnedriveBtn" type="button"><i class="bi bi-cloud"></i> Save to OneDrive</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
+                <div class="mt-3" id="stemResult" hidden>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <strong>Stems siap</strong>
+                    <button class="btn btn-sm btn-outline-secondary" id="stemClearBtn" type="button"><i class="bi bi-x"></i> Tutup</button>
+                  </div>
+                  <div class="d-flex flex-wrap gap-2">
+                    <a id="stemVocalsLink" class="btn btn-sm btn-primary" href="#" download>Vocals</a>
+                    <a id="stemInstrumentalLink" class="btn btn-sm btn-outline-primary" href="#" download>Instrumental</a>
+                    <a id="stemZipLink" class="btn btn-sm btn-outline-secondary" href="#" download>ZIP</a>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="card border-0 bg-body-tertiary mt-4" id="subtitleCard">
@@ -417,6 +482,17 @@
       </div>
 
       <div class="col-lg-5">
+        <div class="card shadow-sm mb-4" id="backgroundCard">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-cloud-check me-2"></i>
+              <h5 class="mb-0">Background Jobs</h5>
+            </div>
+            <div class="small text-secondary" id="backgroundEmpty">Belum ada job latar.</div>
+            <ul class="list-group list-group-flush" id="backgroundList"></ul>
+          </div>
+        </div>
+
         <div class="card shadow-sm mb-4">
           <div class="card-body p-4">
             <div class="d-flex align-items-center mb-2">
@@ -582,12 +658,31 @@
   const eqPresetFlat = $('#eqPresetFlat');
   const eqPresetPodcast = $('#eqPresetPodcast');
   const eqPresetBass = $('#eqPresetBass');
+  const denoiseInput = $('#denoise');
+  const volumeBoost = $('#volumeBoost');
+  const volumeBoostLabel = $('#volumeBoostLabel');
+  const enhancerSelect = $('#enhancer');
+  const backgroundMode = $('#backgroundMode');
+  const aiStatus = $('#aiStatus');
+  const autoTagBtn = $('#autoTagBtn');
+  const thumbnailBtn = $('#thumbnailBtn');
+  const stemBtn = $('#stemBtn');
+  const stemResult = $('#stemResult');
+  const stemVocalsLink = $('#stemVocalsLink');
+  const stemInstrumentalLink = $('#stemInstrumentalLink');
+  const stemZipLink = $('#stemZipLink');
+  const stemClearBtn = $('#stemClearBtn');
+  const cloudDriveBtn = $('#cloudDriveBtn');
+  const cloudDropboxBtn = $('#cloudDropboxBtn');
+  const cloudOnedriveBtn = $('#cloudOnedriveBtn');
   const playlistResultWrap = $('#playlistResultWrap');
   const playlistDownloadLink = $('#playlistDownloadLink');
   const playlistInfo = $('#playlistInfo');
   const playlistShareCard = $('#playlistShareCard');
   const playlistQrCanvas = $('#playlistQr');
   const playlistQrWrap = $('#playlistQrWrap');
+  const backgroundList = $('#backgroundList');
+  const backgroundEmpty = $('#backgroundEmpty');
   const urlDropOverlay = $('#urlDropOverlay');
   const miniPlayerEl = $('#miniPlayer');
   const miniPlayBtn = $('#miniPlayBtn');
@@ -633,6 +728,11 @@
   let miniSeeking = false;
   let subtitleShareUrl = '';
   let lastPreviewTitle = '';
+  let lastResult = null;
+  let lastVideoMeta = {};
+  const backgroundJobsState = new Map();
+  const backgroundTimers = new Map();
+  const BACKGROUND_STORE_KEY = 'ytmp3.background.jobs.v1';
 
   const getBackend = () => (state.backendUrl || '').trim();
 
@@ -648,10 +748,48 @@
     return b ? b.replace(/\/$/, '') + path : path; // relative fallback
   };
 
+  const toRelativePublic = (link) => {
+    if (!link) return '';
+    try {
+      const parsed = new URL(link);
+      return parsed.pathname;
+    } catch {
+      return link.startsWith('/public/') ? link : '';
+    }
+  };
+
+  const absoluteFromRelative = (path) => {
+    if (!path) return '';
+    const base = getBackend() || window.location.origin;
+    try {
+      return new URL(path, base).href;
+    } catch {
+      return path;
+    }
+  };
+
+  const updateAiStatus = (message, type = 'info') => {
+    if (!aiStatus) return;
+    if (!message) {
+      aiStatus.hidden = true;
+      aiStatus.textContent = '';
+      return;
+    }
+    aiStatus.hidden = false;
+    aiStatus.className = `alert alert-${type} mt-3 small`;
+    aiStatus.innerHTML = message;
+  };
+
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
     const b = getBackend();
     badge.textContent = b ? new URL(b).host : location.host;
+  };
+
+  const updateBoostLabel = () => {
+    if (!volumeBoost || !volumeBoostLabel) return;
+    const val = Number(volumeBoost.value || 0);
+    volumeBoostLabel.textContent = `${val >= 0 ? '+' : ''}${val} dB`;
   };
 
   const renderQr = (canvas, wrap, url) => {
@@ -690,6 +828,8 @@
     currentDownloadName = '';
     currentShareUrl = '';
     subtitleShareUrl = '';
+    lastResult = null;
+    updateAiStatus('');
     resetWaveform();
     if (equalizerWrap) equalizerWrap.hidden = true;
     if (miniPlayerEl) miniPlayerEl.hidden = true;
@@ -711,6 +851,12 @@
     if (meta.fileName) shareUrl.searchParams.set('name', meta.fileName);
     if (meta.format) shareUrl.searchParams.set('fmt', meta.format);
     currentShareUrl = shareUrl.toString();
+    lastResult = {
+      downloadUrl: absoluteUrl,
+      fileName: meta.fileName || '',
+      format: meta.format || '',
+      jobId: meta.jobId || null,
+    };
     if (shareWrap) shareWrap.hidden = false;
     if (shareLinkInput) shareLinkInput.value = currentShareUrl;
     if (shareInfo) shareInfo.textContent = 'Bagikan link atau scan QR untuk membuka mini player.';
@@ -1280,7 +1426,156 @@ $('#queueList')?.addEventListener('click', (e) => {
     applyEqFromInputs();
     setToast('Bass+ diterapkan');
   });
+  if (volumeBoost) {
+    volumeBoost.addEventListener('input', updateBoostLabel);
+    updateBoostLabel();
+  }
   updateEqStatus();
+
+  const persistBackgroundJobs = () => {
+    try {
+      const ids = Array.from(backgroundJobsState.keys()).slice(0, 20);
+      localStorage.setItem(BACKGROUND_STORE_KEY, JSON.stringify(ids));
+    } catch {}
+  };
+
+  const notifyJob = (job, isError = false) => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    const title = isError ? 'Konversi gagal' : 'Konversi selesai';
+    const body = job?.result?.fileName || job?.error || job?.id || 'Job selesai';
+    try { new Notification(title, { body }); } catch {}
+  };
+
+  const renderBackgroundJobs = () => {
+    if (!backgroundList || !backgroundEmpty) return;
+    backgroundList.innerHTML = '';
+    const jobs = Array.from(backgroundJobsState.values())
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    if (!jobs.length) {
+      backgroundEmpty.hidden = false;
+      return;
+    }
+    backgroundEmpty.hidden = true;
+    jobs.slice(0, 12).forEach((job) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item small';
+      const status = job.status || 'queued';
+      const badge = status === 'done' ? 'success' : status === 'error' ? 'danger' : 'secondary';
+      const label = job?.result?.fileName || job?.payload?.fileName || job?.payload?.title || job?.payload?.url || `Job ${job.id}`;
+      const actions = [];
+      if (job.result?.downloadUrl) {
+        const href = absoluteFromRelative(job.result.downloadUrl);
+        actions.push(`<a class="btn btn-sm btn-outline-primary" href="${href}" download="${job.result.fileName || ''}"><i class="bi bi-download"></i> Unduh</a>`);
+      }
+      if (status === 'done') {
+        actions.push(`<button class="btn btn-sm btn-outline-secondary" data-cloud="drive" data-job="${job.id}" title="Simpan ke cloud"><i class="bi bi-cloud-arrow-up"></i></button>`);
+      }
+      if (status !== 'done' && status !== 'error') {
+        actions.push('<span class="text-secondary">Diproses…</span>');
+      }
+      li.innerHTML = `
+        <div class="d-flex flex-column gap-1">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold text-truncate" title="${label}">${label}</span>
+            <span class="badge text-bg-${badge} text-uppercase">${status}</span>
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-secondary">#${job.id.slice(-6)}</span>
+            ${actions.join(' ')}
+          </div>
+        </div>`;
+      backgroundList.appendChild(li);
+    });
+  };
+
+  const updateBackgroundJob = (job) => {
+    if (!job || !job.id) return;
+    const previous = backgroundJobsState.get(job.id);
+    backgroundJobsState.set(job.id, job);
+    renderBackgroundJobs();
+    persistBackgroundJobs();
+    if (job.status === 'done' && previous?.status !== 'done') {
+      setToast(`Job selesai: ${job.result?.fileName || job.id}`);
+      notifyJob(job, false);
+      updateAiStatus(`Job selesai: ${job.result?.fileName || job.id}`, 'success');
+      if (job.result?.downloadUrl) {
+        lastResult = {
+          downloadUrl: absoluteFromRelative(job.result.downloadUrl),
+          fileName: job.result.fileName || '',
+          format: job.result.format || '',
+          jobId: job.id,
+        };
+      }
+    } else if (job.status === 'error' && previous?.status !== 'error') {
+      setToast(`Job gagal: ${job.error || job.id}`);
+      notifyJob(job, true);
+      updateAiStatus(`Job gagal: ${job.error || job.id}`, 'danger');
+    }
+  };
+
+  const scheduleJobPoll = (id, delay = 3500) => {
+    if (!id) return;
+    if (backgroundTimers.has(id)) {
+      clearTimeout(backgroundTimers.get(id));
+    }
+    const timer = setTimeout(() => pollBackgroundJob(id), delay);
+    backgroundTimers.set(id, timer);
+  };
+
+  const pollBackgroundJob = async (id) => {
+    backgroundTimers.delete(id);
+    try {
+      const resp = await fetch(api(`/api/background/${id}`));
+      if (!resp.ok) {
+        if (resp.status === 404) {
+          backgroundJobsState.delete(id);
+          renderBackgroundJobs();
+          persistBackgroundJobs();
+        }
+        return;
+      }
+      const data = await resp.json();
+      if (data?.job) {
+        updateBackgroundJob(data.job);
+        if (data.job.status !== 'done' && data.job.status !== 'error') {
+          scheduleJobPoll(id, 4000);
+        }
+      }
+    } catch {
+      scheduleJobPoll(id, 6000);
+    }
+  };
+
+  const refreshBackgroundJobs = async () => {
+    try {
+      const resp = await fetch(api('/api/background'));
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (Array.isArray(data?.jobs)) {
+        backgroundJobsState.clear();
+        data.jobs.forEach((job) => {
+          if (job && job.id) backgroundJobsState.set(job.id, job);
+        });
+        renderBackgroundJobs();
+        persistBackgroundJobs();
+        data.jobs.forEach((job) => {
+          if (job.status !== 'done' && job.status !== 'error') scheduleJobPoll(job.id, 2000);
+        });
+      }
+    } catch {}
+  };
+
+  const loadStoredJobs = () => {
+    try {
+      const raw = localStorage.getItem(BACKGROUND_STORE_KEY);
+      if (!raw) return;
+      const ids = JSON.parse(raw);
+      if (Array.isArray(ids)) {
+        ids.slice(0, 20).forEach((id) => scheduleJobPoll(id, 500));
+      }
+    } catch {}
+  };
 
   const shareLink = async (link) => {
     if (!link) { setToast('Belum ada link untuk dibagikan'); return; }
@@ -1398,7 +1693,15 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#id3Artist').value = data.author_name || '';
       $('#id3Album').value = data.title;
       $('#fileName').value = sanitizeFileName(data.title);
-    }catch{ $('#previewWrap').hidden = true; }
+      lastVideoMeta = {
+        title: data.title,
+        author: data.author_name || '',
+        thumbnail: data.thumbnail_url,
+      };
+    }catch{
+      $('#previewWrap').hidden = true;
+      lastVideoMeta = {};
+    }
   }
   $('#pasteBtn').addEventListener('click', async () => {
     try { $('#url').value = (await navigator.clipboard.readText() || '').trim(); } catch {}
@@ -1412,6 +1715,128 @@ $('#queueList')?.addEventListener('click', (e) => {
   $('#url').addEventListener('change', updatePreview);
   $('#trimStart').addEventListener('change', syncWaveformFromInputs);
   $('#trimEnd').addEventListener('change', syncWaveformFromInputs);
+
+  if (autoTagBtn) autoTagBtn.addEventListener('click', async () => {
+    const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
+    if (!title) { setToast('Isi judul terlebih dahulu'); return; }
+    updateAiStatus('Menganalisis metadata…', 'info');
+    try {
+      const resp = await fetch(api('/api/ai-tags'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+          duration: Number(previewPlayer?.duration || 0) || undefined,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal menganalisis');
+      const tags = data.tags || {};
+      if (tags.title) $('#id3Title').value = tags.title;
+      if (tags.artist) $('#id3Artist').value = tags.artist;
+      if (tags.album) $('#id3Album').value = tags.album;
+      updateAiStatus(`Genre: <strong>${tags.genre || '-'}</strong> · Mood: <strong>${tags.mood || '-'}</strong>`, 'success');
+      setToast('Metadata diperbarui otomatis');
+    } catch (err) {
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal AI tags: ' + err.message);
+    }
+  });
+
+  if (thumbnailBtn) thumbnailBtn.addEventListener('click', async () => {
+    const baseImage = lastVideoMeta.thumbnail || $('#thumb').src;
+    if (!baseImage) { setToast('Thumbnail belum tersedia'); return; }
+    const baseTitle = $('#id3Title').value.trim() || lastVideoMeta.title || 'AI Cover';
+    const title = prompt('Judul cover', baseTitle);
+    if (title === null) return;
+    const subtitle = prompt('Subjudul (opsional)', lastVideoMeta.author || '');
+    const accent = prompt('Warna aksen (#RRGGBB)', '#0d6efd') || '#0d6efd';
+    const style = prompt('Style (modern/vibrant/mono)', 'modern') || 'modern';
+    updateAiStatus('Membuat thumbnail…', 'info');
+    try {
+      const resp = await fetch(api('/api/thumbnail'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: baseImage, title, subtitle, accent, style }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal membuat thumbnail');
+      if (data.url) {
+        const absolute = absoluteFromRelative(data.url);
+        $('#thumb').src = `${absolute}${absolute.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        updateAiStatus(`Thumbnail baru siap. <a href="${absolute}" target="_blank" rel="noopener">Lihat</a>`, 'success');
+        setToast('Thumbnail diperbarui');
+        lastVideoMeta.thumbnail = absolute;
+      }
+    } catch (err) {
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal membuat thumbnail: ' + err.message);
+    }
+  });
+
+  if (stemBtn) stemBtn.addEventListener('click', async () => {
+    const payload = {};
+    if (lastResult?.jobId) payload.jobId = lastResult.jobId;
+    else if (lastResult?.downloadUrl) payload.downloadUrl = toRelativePublic(lastResult.downloadUrl);
+    else if ($('#url').value.trim()) payload.url = $('#url').value.trim();
+    else { setToast('Belum ada audio untuk diproses'); return; }
+    updateAiStatus('Memisahkan vokal dan instrumen…', 'info');
+    try {
+      const resp = await fetch(api('/api/stems'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal memisahkan');
+      if (stemResult) {
+        stemResult.hidden = false;
+        if (stemVocalsLink && data.vocals?.downloadUrl) {
+          const href = absoluteFromRelative(data.vocals.downloadUrl);
+          stemVocalsLink.href = href;
+          stemVocalsLink.setAttribute('download', data.vocals.fileName || 'vocals.mp3');
+        }
+        if (stemInstrumentalLink && data.instrumental?.downloadUrl) {
+          const href = absoluteFromRelative(data.instrumental.downloadUrl);
+          stemInstrumentalLink.href = href;
+          stemInstrumentalLink.setAttribute('download', data.instrumental.fileName || 'instrumental.mp3');
+        }
+        if (stemZipLink && data.zip?.downloadUrl) {
+          const href = absoluteFromRelative(data.zip.downloadUrl);
+          stemZipLink.href = href;
+          stemZipLink.setAttribute('download', data.zip.fileName || 'stems.zip');
+        }
+      }
+      updateAiStatus('Stems siap diunduh', 'success');
+      setToast('Stems berhasil dibuat');
+    } catch (err) {
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal membuat stems: ' + err.message);
+    }
+  });
+
+  if (stemClearBtn) stemClearBtn.addEventListener('click', () => {
+    if (stemResult) stemResult.hidden = true;
+  });
+
+  if (cloudDriveBtn) cloudDriveBtn.addEventListener('click', () => saveToCloud('drive'));
+  if (cloudDropboxBtn) cloudDropboxBtn.addEventListener('click', () => saveToCloud('dropbox'));
+  if (cloudOnedriveBtn) cloudOnedriveBtn.addEventListener('click', () => saveToCloud('onedrive'));
+
+  if (backgroundList) backgroundList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-cloud][data-job]');
+    if (!btn) return;
+    const target = btn.getAttribute('data-cloud');
+    const jobId = btn.getAttribute('data-job');
+    if (target && jobId) saveToCloud(target, jobId);
+  });
+
+  if (backgroundMode) backgroundMode.addEventListener('change', async () => {
+    if (backgroundMode.checked && 'Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch {}
+    }
+  });
 
   // ===== Drag & drop cookies.txt =====
   const dz = $('#dropzone');
@@ -1532,6 +1957,14 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     body.normalize = $('#normalize').checked;
     if($('#thumb').src) body.coverUrl = $('#thumb').src;
+    if (denoiseInput) body.denoise = denoiseInput.checked;
+    if (volumeBoost) body.volumeBoost = Number(volumeBoost.value || 0);
+    if (enhancerSelect) body.enhancer = enhancerSelect.value || 'none';
+
+    if (backgroundMode?.checked) {
+      await submitBackgroundJob(body);
+      return;
+    }
 
     $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
@@ -1567,6 +2000,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       };
       showAudioPreview(absoluteDownload, previewMeta);
       setToast('Berhasil diproses');
+      updateAiStatus('Konversi selesai', 'success');
       if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
     }catch(err){
       $('#status').textContent = 'Error: ' + err.message;
@@ -1576,9 +2010,61 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
       resetAudioPreview();
       setToast('Terjadi error: '+err.message);
+      updateAiStatus(err.message, 'danger');
     } finally {
       clearInterval(timer);
       setTimeout(()=>{ progWrap.hidden = true; }, 500);
+    }
+  }
+
+  async function submitBackgroundJob(body){
+    try {
+      updateAiStatus('Mengirim ke background…', 'info');
+      const resp = await fetch(api('/api/background'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal membuat job');
+      if (data.job) {
+        updateBackgroundJob(data.job);
+        setToast('Job diproses di latar');
+        updateAiStatus(`Job #${data.job.id.slice(-5)} masuk antrian.`, 'info');
+        scheduleJobPoll(data.job.id, 1500);
+      }
+    } catch (err) {
+      updateAiStatus(err.message || 'Gagal membuat job', 'danger');
+      setToast('Gagal membuat job: ' + err.message);
+    }
+  }
+
+  async function saveToCloud(target, jobIdOverride){
+    const payload = { target };
+    const jobId = jobIdOverride || lastResult?.jobId;
+    if (jobId) {
+      payload.jobId = jobId;
+    } else {
+      const rel = toRelativePublic(lastResult?.downloadUrl);
+      if (!rel) { setToast('Belum ada hasil untuk disimpan'); return; }
+      payload.downloadUrl = rel;
+      if (lastResult?.fileName) payload.fileName = lastResult.fileName;
+    }
+    try {
+      updateAiStatus(`Menyimpan ke ${target}…`, 'info');
+      const resp = await fetch(api('/api/cloud/save'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal menyimpan');
+      const href = absoluteFromRelative(data.downloadUrl);
+      updateAiStatus(`Tersimpan di ${data.label}. <a href="${href}" target="_blank" rel="noopener">Buka file</a>`, 'success');
+      setToast(`Tersimpan di ${data.label}`);
+    } catch (err) {
+      updateAiStatus(err.message || 'Gagal menyimpan', 'danger');
+      setToast('Gagal menyimpan: ' + err.message);
     }
   }
 
@@ -1769,6 +2255,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     renderQueue();
     updateBackendBadge();
     updatePreview();
+    renderBackgroundJobs();
+    loadStoredJobs();
+    refreshBackgroundJobs();
     if(!localStorage.getItem(tutorialKey)){
       const m = new bootstrap.Modal($('#tutorialModal'));
       m.show();
