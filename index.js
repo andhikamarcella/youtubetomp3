@@ -1054,9 +1054,68 @@ const fetchSubtitleViaYtDlp = async ({ url, langOpt, preferAuto }) => {
   return {
     srt,
     safeLang,
+    lang: track.lang || safeLang,
     auto: Boolean(track.auto),
     logs: [...logs, stderr].filter(Boolean).join("\n").slice(-8000),
   };
+};
+
+const fetchSubtitleViaPyTube = async ({ url, langOpt, preferAuto }) => {
+  const args = [
+    join(__dirname, "download_subtitle.py"),
+    url,
+    langOpt || "",
+    preferAuto ? "1" : "0",
+  ];
+  let stdout = "";
+  let stderr = "";
+  const logs = [`python3 ${args.map((arg) => (arg.includes(" ") ? `"${arg}"` : arg)).join(" ")}`];
+  try {
+    await new Promise((resolve, reject) => {
+      const proc = spawn("python3", args, { stdio: ["ignore", "pipe", "pipe"] });
+      proc.stdout.on("data", (d) => {
+        stdout += d.toString();
+      });
+      proc.stderr.on("data", (d) => {
+        stderr += d.toString();
+      });
+      proc.on("error", (err) => {
+        const error = new Error("PyTube tidak bisa dijalankan");
+        error.cause = err;
+        reject(error);
+      });
+      proc.on("close", (code) => {
+        if (code !== 0) {
+          const error = new Error("PyTube gagal mengambil subtitle");
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    const error = new Error(err.message || "PyTube gagal mengambil subtitle");
+    error.logs = [...logs, stderr].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  try {
+    const parsed = JSON.parse(stdout || "{}");
+    if (!parsed.srt) {
+      throw new Error("Subtitle kosong");
+    }
+    return {
+      srt: parsed.srt,
+      lang: parsed.lang,
+      safeLang: sanitizeLangKey(parsed.lang, parsed.auto),
+      auto: Boolean(parsed.auto),
+      logs: [...logs, stderr].filter(Boolean).join("\n").slice(-8000),
+    };
+  } catch (err) {
+    const error = new Error(err.message || "PyTube menghasilkan data tidak valid");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
 };
 
 const srtToPlainText = (input = "") => {
@@ -1634,10 +1693,27 @@ const downloadSubtitle = async (payload = {}) => {
   let logs = "";
   let finalSrtName = "";
   let finalTxtName = "";
+  let fetchError = null;
+  let result;
   try {
-    const result = await fetchSubtitleViaYtDlp({ url, langOpt, preferAuto });
+    result = await fetchSubtitleViaYtDlp({ url, langOpt, preferAuto });
     logs = result.logs || "";
-    const finalStem = `${id}.${result.safeLang}`;
+  } catch (err) {
+    fetchError = err;
+    logs = err.logs || "";
+    try {
+      result = await fetchSubtitleViaPyTube({ url, langOpt, preferAuto });
+      logs = [logs, result.logs || ""].filter(Boolean).join("\n").slice(-8000);
+    } catch (pyErr) {
+      const error = new Error(pyErr.message || err.message || "Gagal mengambil subtitle");
+      error.logs = [logs, pyErr.logs || ""].filter(Boolean).join("\n").slice(-8000);
+      throw error;
+    }
+  }
+
+  try {
+    const safeLang = result.safeLang || sanitizeLangKey(result.lang, result.auto);
+    const finalStem = `${id}.${safeLang}`;
     finalSrtName = `${finalStem}.srt`;
     const srtPath = join(JOBS_DIR, finalSrtName);
     await fsp.writeFile(srtPath, result.srt, "utf8");
@@ -1651,12 +1727,12 @@ const downloadSubtitle = async (payload = {}) => {
     return {
       ok: true,
       logs,
-      lang: result.safeLang,
+      lang: safeLang,
       auto: Boolean(result.auto),
       srtUrl: `/public/jobs/${finalSrtName}`,
-      srtFileName: `${downloadBase}.${result.safeLang}.srt`,
+      srtFileName: `${downloadBase}.${safeLang}.srt`,
       txtUrl: `/public/jobs/${finalTxtName}`,
-      txtFileName: `${downloadBase}.${result.safeLang}.txt`,
+      txtFileName: `${downloadBase}.${safeLang}.txt`,
       preview,
     };
   } catch (err) {
@@ -1666,8 +1742,9 @@ const downloadSubtitle = async (payload = {}) => {
     if (finalTxtName) {
       try { await fsp.unlink(join(JOBS_DIR, finalTxtName)); } catch {}
     }
-    const error = new Error(err.message || "Gagal mengambil subtitle");
-    error.logs = (logs + (err.logs || "")).slice(-8000);
+    const message = err.message || fetchError?.message || "Gagal mengambil subtitle";
+    const error = new Error(message);
+    error.logs = [logs, err.logs || ""].filter(Boolean).join("\n").slice(-8000);
     throw error;
   }
 };
