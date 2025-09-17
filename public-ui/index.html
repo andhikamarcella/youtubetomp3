@@ -37,8 +37,25 @@
     .brand-badge { letter-spacing:.08em; }
     .log-box { max-height: 240px; overflow:auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
     .history-link { word-break: break-all; }
-    .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
+    .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; position: relative; }
     .dropzone.dragover { background: rgba(0,0,0,.03); border-color: var(--bs-primary); }
+    .dropzone.requires-login { opacity: .6; cursor: not-allowed; }
+    .dropzone.requires-login::after { content: "\1f512"; position: absolute; top: .75rem; right: .75rem; font-size: 1.5rem; opacity: .4; }
+    .dropzone-status { font-size: .85rem; }
+    body.access-high-contrast { background-color: #000 !important; color: #fff !important; }
+    body.access-high-contrast .card,
+    body.access-high-contrast .offcanvas,
+    body.access-high-contrast .modal-content { background-color: #000 !important; color: #fff !important; border-color: rgba(255,255,255,.65) !important; }
+    body.access-high-contrast .btn { box-shadow: none !important; }
+    body.access-high-contrast a { color: #64b5ff; }
+    body.access-high-contrast .form-control,
+    body.access-high-contrast .form-select { background-color: rgba(0,0,0,.85); color: #fff; border-color: rgba(255,255,255,.5); }
+    body.access-large-text { font-size: 1.05rem; }
+    body.access-large-text .small { font-size: .95rem !important; }
+    body.access-large-text .form-text { font-size: .95rem; }
+    body.access-reduce-motion *,
+    body.access-reduce-motion *::before,
+    body.access-reduce-motion *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
     #convertProgWrap { position: relative; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--bs-secondary-bg) 75%, transparent); height: 1.1rem; box-shadow: inset 0 1px 2px rgba(0,0,0,.12), 0 6px 16px rgba(13,110,253,.15); transition: box-shadow .3s ease, transform .3s ease; }
     #convertProgWrap[data-state="running"] { transform: translateY(0); box-shadow: inset 0 1px 2px rgba(0,0,0,.15), 0 10px 24px rgba(13,110,253,.22); }
     #convertProgress { position: relative; display: flex; align-items: center; justify-content: center; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: .7rem; border-radius: 999px; transition: width .35s ease-out, filter .35s ease-out; background: linear-gradient(120deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 50%, rgba(32,201,151,1) 100%); background-size: 200% auto; animation: progressShimmer 1.4s linear infinite; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
@@ -404,11 +421,15 @@
               </div>
             </div>
 
-            <div class="dropzone mb-3" id="dropzone">
+            <div class="dropzone mb-3" id="dropzone" role="region" aria-label="Upload cookies.txt">
               <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
               <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
               <input type="file" id="cookieFile" accept=".txt" hidden>
-              <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="pickCookie">Pilih cookies.txt</button></div>
+              <div class="mt-2 d-flex flex-wrap justify-content-center gap-2">
+                <button class="btn btn-sm btn-outline-primary" id="pickCookie" type="button">Pilih cookies.txt</button>
+                <button class="btn btn-sm btn-outline-secondary" id="openLoginBtn" type="button"><i class="bi bi-shield-lock"></i> Login admin</button>
+              </div>
+              <div class="dropzone-status small text-secondary mt-2" id="dropzoneStatus">Login admin diperlukan sebelum upload cookies.</div>
             </div>
 
             <div class="d-grid d-sm-flex gap-2 align-items-center">
@@ -794,27 +815,56 @@
     </div>
     <div class="offcanvas-body">
       <div class="mb-3">
-        <label class="form-label">Backend URL</label>
+        <label class="form-label" for="backendUrl">Backend URL</label>
         <input id="backendUrl" type="url" class="form-control" placeholder="Contoh: https://mis-ytmp3-backend.onrender.com">
         <div class="form-text">Kosongkan untuk pakai origin yang sama (relative path).</div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Admin Bearer (upload cookies)</label>
-        <input id="adminBearer" type="text" class="form-control" placeholder="Mis: dhika_sayang123">
-        <div class="form-text">Hanya dipakai saat upload cookies.txt.</div>
-      </div>
-      <div class="d-grid gap-2">
-        <button class="btn btn-success" id="saveSettings"><i class="bi bi-save2"></i> Simpan</button>
-        <button class="btn btn-outline-danger" id="resetSettings"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+      <div class="d-grid gap-2 mb-4">
+        <button class="btn btn-success" id="saveSettings" type="button"><i class="bi bi-save2"></i> Simpan</button>
+        <button class="btn btn-outline-danger" id="resetSettings" type="button"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
       </div>
 
       <hr class="my-4">
-      <h6>Admin: Upload cookies.txt</h6>
-      <div class="d-grid gap-2">
-        <button class="btn btn-outline-primary" id="adminUpload"><i class="bi bi-cloud-upload"></i> Upload sekarang</button>
-        <button class="btn btn-outline-secondary" id="checkCookie"><i class="bi bi-shield-check"></i> Cek status cookies</button>
-    <div id="cookieStatus" class="small text-secondary"></div>
-  </div>
+      <h6 class="mb-3">Login Admin</h6>
+      <form id="adminLoginForm" autocomplete="off" novalidate>
+        <div class="mb-3">
+          <label class="form-label" for="adminUser">Username</label>
+          <input id="adminUser" type="text" class="form-control" autocomplete="username" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="adminPass">Password</label>
+          <input id="adminPass" type="password" class="form-control" autocomplete="current-password" required>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-door-open"></i> Masuk</button>
+          <button class="btn btn-outline-secondary" type="button" id="adminLogoutBtn" hidden><i class="bi bi-box-arrow-right"></i> Keluar</button>
+          <span class="badge text-bg-secondary ms-auto" id="adminStatus">Belum login</span>
+        </div>
+        <div class="form-text mt-2" id="adminLoginHelp">Login diperlukan untuk mengunggah cookies.txt melalui dropzone.</div>
+      </form>
+
+      <hr class="my-4">
+      <h6 class="mb-2">Aksesibilitas</h6>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" id="accessHighContrast">
+        <label class="form-check-label" for="accessHighContrast">Mode kontras tinggi</label>
+      </div>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" id="accessLargeText">
+        <label class="form-check-label" for="accessLargeText">Teks lebih besar</label>
+      </div>
+      <div class="form-check form-switch mb-4">
+        <input class="form-check-input" type="checkbox" id="accessReduceMotion">
+        <label class="form-check-label" for="accessReduceMotion">Kurangi animasi / motion</label>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="mb-2">Status cookies</h6>
+      <div class="d-grid gap-2 mb-2">
+        <button class="btn btn-outline-secondary" id="checkCookie" type="button"><i class="bi bi-shield-check"></i> Cek status cookies</button>
+      </div>
+      <div id="cookieStatus" class="small text-secondary" role="status" aria-live="polite"></div>
+    </div>
   </div>
   </div>
 
@@ -986,6 +1036,18 @@
   const sampleRateLabel = document.querySelector('label[for="sampleRate"]');
   const speedLabel = document.querySelector('label[for="speedMode"]');
   const id3Genre = $('#id3Genre');
+  const adminLoginForm = $('#adminLoginForm');
+  const adminUserInput = $('#adminUser');
+  const adminPassInput = $('#adminPass');
+  const adminLogoutBtn = $('#adminLogoutBtn');
+  const adminStatusBadge = $('#adminStatus');
+  const dropzoneStatus = $('#dropzoneStatus');
+  const openLoginBtn = $('#openLoginBtn');
+  const accessHighContrast = $('#accessHighContrast');
+  const accessLargeText = $('#accessLargeText');
+  const accessReduceMotion = $('#accessReduceMotion');
+  const settingsOffcanvasEl = document.getElementById('offcanvasSettings');
+  const settingsOffcanvas = settingsOffcanvasEl ? bootstrap.Offcanvas.getOrCreateInstance(settingsOffcanvasEl) : null;
 
   const storage = {
     get k(){ return 'ytmp3.settings.v1'; },
@@ -993,9 +1055,20 @@
     save(v){ localStorage.setItem(this.k, JSON.stringify(v||{})); }
   };
 
+  const defaultAccessibility = { highContrast: false, largeText: false, reduceMotion: false };
+
   const state = {
     backendUrl: '',
-    adminBearer: ''
+    adminBearer: '',
+    accessibility: { ...defaultAccessibility }
+  };
+
+  const persistState = () => {
+    storage.save({
+      backendUrl: state.backendUrl,
+      adminBearer: state.adminBearer,
+      accessibility: state.accessibility
+    });
   };
 
   const createProgressAnimator = (wrap, bar, label) => {
@@ -1406,6 +1479,51 @@
     });
   }
 
+  const isAdminLoggedIn = () => Boolean((state.adminBearer || '').trim());
+
+  const setDropzoneMessage = (message, tone = 'info') => {
+    if (!dropzoneStatus) return;
+    dropzoneStatus.textContent = message;
+    dropzoneStatus.classList.remove('text-secondary', 'text-success', 'text-danger');
+    if (tone === 'success') dropzoneStatus.classList.add('text-success');
+    else if (tone === 'error') dropzoneStatus.classList.add('text-danger');
+    else dropzoneStatus.classList.add('text-secondary');
+  };
+
+  const applyAccessibility = () => {
+    const body = document.body;
+    if (!body) return;
+    body.classList.toggle('access-high-contrast', !!state.accessibility.highContrast);
+    body.classList.toggle('access-large-text', !!state.accessibility.largeText);
+    body.classList.toggle('access-reduce-motion', !!state.accessibility.reduceMotion);
+  };
+
+  const updateAccessibilityControls = () => {
+    if (accessHighContrast) accessHighContrast.checked = !!state.accessibility.highContrast;
+    if (accessLargeText) accessLargeText.checked = !!state.accessibility.largeText;
+    if (accessReduceMotion) accessReduceMotion.checked = !!state.accessibility.reduceMotion;
+  };
+
+  const updateAdminUi = () => {
+    const loggedIn = isAdminLoggedIn();
+    if (adminStatusBadge) {
+      adminStatusBadge.textContent = loggedIn ? 'Login aktif' : 'Belum login';
+      adminStatusBadge.classList.toggle('text-bg-success', loggedIn);
+      adminStatusBadge.classList.toggle('text-bg-secondary', !loggedIn);
+    }
+    if (adminLogoutBtn) adminLogoutBtn.hidden = !loggedIn;
+    const dzEl = document.getElementById('dropzone');
+    if (dzEl) {
+      dzEl.classList.toggle('requires-login', !loggedIn);
+      dzEl.setAttribute('aria-disabled', String(!loggedIn));
+    }
+    if (loggedIn) {
+      setDropzoneMessage('Login admin aktif. Siap mengunggah cookies.txt.', 'info');
+    } else {
+      setDropzoneMessage('Login admin diperlukan sebelum upload cookies.', 'info');
+    }
+  };
+
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
     const b = getBackend();
@@ -1763,21 +1881,36 @@ $('#queueList')?.addEventListener('click', (e) => {
     const s = storage.load();
     state.backendUrl = s.backendUrl || '';
     state.adminBearer = s.adminBearer || '';
+    state.accessibility = { ...defaultAccessibility, ...(s.accessibility || {}) };
     $('#backendUrl').value = state.backendUrl;
-    $('#adminBearer').value = state.adminBearer;
+    updateAccessibilityControls();
+    applyAccessibility();
+    updateAdminUi();
     updateBackendBadge();
   };
 
   $('#saveSettings').addEventListener('click', () => {
     state.backendUrl = $('#backendUrl').value.trim();
-    state.adminBearer = $('#adminBearer').value.trim();
-    storage.save(state);
+    persistState();
     updateBackendBadge();
     setToast('Pengaturan disimpan');
   });
   $('#resetSettings').addEventListener('click', () => {
     storage.save({}); loadSettings(); setToast('Pengaturan direset');
   });
+
+  const bindAccessibilityToggle = (key, el) => {
+    if (!el) return;
+    el.addEventListener('change', () => {
+      state.accessibility = { ...state.accessibility, [key]: !!el.checked };
+      applyAccessibility();
+      persistState();
+    });
+  };
+
+  bindAccessibilityToggle('highContrast', accessHighContrast);
+  bindAccessibilityToggle('largeText', accessLargeText);
+  bindAccessibilityToggle('reduceMotion', accessReduceMotion);
 
   // ===== URL helpers =====
   function parseTime(str){
@@ -2743,41 +2876,135 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
   });
 
+  // ===== Admin login =====
+  if (adminLoginForm) {
+    adminLoginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = adminUserInput?.value?.trim() || '';
+      const password = adminPassInput?.value || '';
+      if (!username || !password) {
+        setToast('Isi username dan password admin');
+        return;
+      }
+      const submitBtn = adminLoginForm.querySelector('button[type="submit"]');
+      try {
+        if (submitBtn) submitBtn.disabled = true;
+        const resp = await fetch(api('/admin/login'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data?.token) throw new Error(data.error || 'Login gagal');
+        state.adminBearer = data.token;
+        persistState();
+        if (adminPassInput) adminPassInput.value = '';
+        setToast('Login admin berhasil');
+        updateAdminUi();
+        setDropzoneMessage('Login admin aktif. Siap mengunggah cookies.txt.', 'success');
+      } catch (err) {
+        setDropzoneMessage(`Login gagal: ${err.message}`, 'error');
+        setToast('Login gagal: ' + err.message);
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  if (adminLogoutBtn) {
+    adminLogoutBtn.addEventListener('click', () => {
+      state.adminBearer = '';
+      persistState();
+      updateAdminUi();
+      setToast('Logout admin berhasil');
+    });
+  }
+
   // ===== Drag & drop cookies.txt =====
   const dz = $('#dropzone');
   const cookieFile = $('#cookieFile');
-  $('#pickCookie').addEventListener('click', ()=> cookieFile.click());
-  ;['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
-  ;['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
-  dz.addEventListener('drop', (e)=> handleCookieFile(e.dataTransfer.files?.[0]));
-  cookieFile.addEventListener('change', ()=> handleCookieFile(cookieFile.files?.[0]));
+  const pickCookieBtn = $('#pickCookie');
+
+  if (openLoginBtn) {
+    openLoginBtn.addEventListener('click', () => {
+      if (settingsOffcanvas) {
+        settingsOffcanvas.show();
+        setTimeout(() => adminUserInput?.focus(), 250);
+      }
+    });
+  }
+
+  if (pickCookieBtn && cookieFile) {
+    pickCookieBtn.addEventListener('click', () => {
+      if (!isAdminLoggedIn()) {
+        setToast('Login admin terlebih dahulu untuk upload cookies');
+        if (settingsOffcanvas) {
+          settingsOffcanvas.show();
+          setTimeout(() => adminUserInput?.focus(), 250);
+        }
+        return;
+      }
+      cookieFile.click();
+    });
+  }
+
+  if (dz) {
+    ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault();
+      if (!isAdminLoggedIn()) return;
+      dz.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dz.classList.remove('dragover');
+    }));
+    dz.addEventListener('drop', (e) => {
+      if (!isAdminLoggedIn()) {
+        setToast('Login admin terlebih dahulu untuk upload cookies');
+        return;
+      }
+      const file = e.dataTransfer?.files?.[0];
+      if (file) handleCookieFile(file);
+    });
+  }
+
+  if (cookieFile) {
+    cookieFile.addEventListener('change', () => {
+      if (!cookieFile.files?.length) return;
+      const [file] = cookieFile.files;
+      if (file) handleCookieFile(file);
+    });
+  }
 
   async function handleCookieFile(file){
     if(!file) return;
-    if(!/\.txt$/i.test(file.name)) return setToast('Pilih file .txt hasil export cookies');
+    if(!/\.txt$/i.test(file.name)){ setToast('Pilih file .txt hasil export cookies'); return; }
     const text = await file.text();
     await uploadCookies(text);
   }
 
   async function uploadCookies(text){
-    const bearer = state.adminBearer || $('#adminBearer').value.trim();
-    if(!bearer){ setToast('Isi Admin Bearer terlebih dahulu di Pengaturan'); return; }
+    const bearer = (state.adminBearer || '').trim();
+    if(!bearer){
+      setToast('Login admin terlebih dahulu untuk upload cookies');
+      setDropzoneMessage('Login admin diperlukan sebelum upload cookies.', 'info');
+      return;
+    }
     try{
+      setDropzoneMessage('Mengunggah cookies.txt…', 'info');
       const resp = await fetch(api('/admin/upload-cookies'), {
         method:'POST', headers:{ 'Authorization': `Bearer ${bearer}`, 'Content-Type':'text/plain' }, body:text
       });
       const data = await resp.json().catch(()=>({}));
       if(!resp.ok) throw new Error(data.error || 'Upload gagal');
       setToast('cookies.txt terunggah ✔');
+      setDropzoneMessage('cookies.txt terunggah ✔', 'success');
       $('#cookieStatus').textContent = `OK · ${data.bytes||0} bytes → ${data.path||'/tmp/cookies.txt'}`;
-    }catch(err){ setToast('Gagal upload cookies: '+err.message); }
+    }catch(err){
+      setDropzoneMessage(`Gagal upload cookies: ${err.message}`, 'error');
+      setToast('Gagal upload cookies: '+err.message);
+    }
   }
-
-  $('#adminUpload').addEventListener('click', async ()=>{
-    const text = await (await fetch('./cookies.txt')).text().catch(()=>null);
-    if(!text){ setToast('Siapkan cookies.txt (atau seret ke dropzone)'); return; }
-    uploadCookies(text);
-  });
 
   $('#checkCookie').addEventListener('click', async ()=>{
     try{

@@ -7,6 +7,7 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
@@ -3062,6 +3063,35 @@ app.post("/api/convert-playlist", async (req, res) => {
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
 const BEARER = process.env.ADMIN_BEARER || "dhika_sayang123!";
+const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || "03be2f61c7e05a997da38f9d365a0d948df08b44fcd7acb5c3d94ba31cef78f2";
+const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || "d5a500a4b29869a056a0b5a5e7b26bd295a4b264560b66a16a9dccf9bad7ef45";
+
+const hashText = (value) => createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
+
+const safeCompare = (left, right) => {
+  const a = Buffer.from(String(left ?? ""), "utf8");
+  const b = Buffer.from(String(right ?? ""), "utf8");
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+};
+
+app.post("/admin/login", (req, res) => {
+  try {
+    const { username = "", password = "" } = req.body || {};
+    const validUser = safeCompare(hashText(username), ADMIN_USER_HASH);
+    const validPass = safeCompare(hashText(password), ADMIN_PASS_HASH);
+    if (!validUser || !validPass) {
+      return res.status(401).json({ error: "invalid credentials" });
+    }
+    return res.json({ ok: true, token: BEARER });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
 
 app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
   try {
