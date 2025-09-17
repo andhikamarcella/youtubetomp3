@@ -40,10 +40,19 @@
     #urlDropOverlay[hidden] { display: none !important; }
     #waveformWrap, #equalizerWrap, #shareWrap { background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 1rem; }
     #waveformCanvas { width: 100%; height: 140px; display: block; border-radius: .85rem; background: var(--bs-body-bg); cursor: crosshair; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
+    #waveformCanvas::selection { background: transparent; }
     #waveformCanvas[data-loading="1"] { opacity: .55; }
     #waveformMeta { font-size: .85rem; }
     .eq-slider label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary); }
-    .eq-slider .form-range { height: 1.4rem; }
+    .eq-slider .form-range { height: 1.6rem; appearance: none; background: linear-gradient(90deg, rgba(220,53,69,.2) 0%, rgba(13,110,253,.25) 100%); border-radius: 999px; transition: background .2s ease; }
+    .eq-slider .form-range:focus { outline: none; box-shadow: none; }
+    .eq-slider .form-range::-webkit-slider-runnable-track { height: .55rem; border-radius: 999px; background: transparent; }
+    .eq-slider .form-range::-moz-range-track { height: .55rem; border-radius: 999px; background: transparent; }
+    .eq-slider .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid var(--bs-body-bg); box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .15s ease, background .2s ease; margin-top: -6.5px; }
+    .eq-slider .form-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid var(--bs-body-bg); box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .15s ease, background .2s ease; }
+    .eq-slider .form-range:active::-webkit-slider-thumb, .eq-slider .form-range:active::-moz-range-thumb { transform: scale(1.1); }
+    .eq-slider .eq-value { font-size: .7rem; font-weight: 600; background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text); border-radius: .65rem; padding: .2rem .45rem; min-width: 3.4rem; text-align: center; }
+    html[data-bs-theme='dark'] .eq-slider .eq-value { background: color-mix(in srgb, var(--bs-primary) 22%, transparent); color: var(--bs-body-color); }
     #shareWrap .input-group-text { border-radius: .75rem 0 0 .75rem; }
     #subtitleResult pre { max-height: 160px; overflow:auto; background: var(--bs-body-bg); border-radius: .75rem; padding: .75rem; }
     #subtitleResult .btn { border-radius: .75rem; }
@@ -52,6 +61,10 @@
     .mini-player-card { pointer-events: auto; border-radius: 1rem; width: min(420px, calc(100% - 2.5rem)); }
     .mini-player .btn { border-radius: 50%; }
     .mini-player .form-range { height: 1rem; }
+    .mini-player-card { background: radial-gradient(circle at top left, rgba(13,110,253,.12), transparent 60%), radial-gradient(circle at bottom right, rgba(220,53,69,.12), transparent 55%), var(--bs-body-bg); backdrop-filter: blur(6px); }
+    .mini-player-title { font-size: .85rem; letter-spacing: .01em; }
+    .mini-player-subtitle { font-size: .7rem; color: var(--bs-secondary); margin-top: .1rem; }
+    html[data-bs-theme='dark'] .mini-player-subtitle { color: rgba(255,255,255,.6); }
     #miniPlayer[hidden] { display: none !important; }
     @media (max-width: 576px) {
       body { padding-bottom: 5rem; }
@@ -418,18 +431,27 @@
                           <button class="btn btn-outline-secondary" id="eqPresetBass" type="button">Bass+</button>
                         </div>
                       </div>
-                      <div class="row g-2 mt-2 eq-slider">
+                      <div class="row g-3 mt-2 eq-slider">
                         <div class="col-sm-4">
-                          <label class="form-label">Bass</label>
-                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqBass">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label mb-0" for="eqBass">Bass</label>
+                            <span class="eq-value" id="eqBassValue">0 dB</span>
+                          </div>
+                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqBass" aria-label="Atur gain bass">
                         </div>
                         <div class="col-sm-4">
-                          <label class="form-label">Mid</label>
-                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqMid">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label mb-0" for="eqMid">Mid</label>
+                            <span class="eq-value" id="eqMidValue">0 dB</span>
+                          </div>
+                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqMid" aria-label="Atur gain mid">
                         </div>
                         <div class="col-sm-4">
-                          <label class="form-label">Treble</label>
-                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqTreble">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label mb-0" for="eqTreble">Treble</label>
+                            <span class="eq-value" id="eqTrebleValue">0 dB</span>
+                          </div>
+                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqTreble" aria-label="Atur gain treble">
                         </div>
                       </div>
                       <div class="small text-secondary mt-2" id="eqStatus">Flat</div>
@@ -533,10 +555,11 @@
         </button>
         <div class="flex-grow-1">
           <div class="d-flex align-items-center justify-content-between gap-2">
-            <div class="fw-semibold small text-truncate" id="miniTitle">Audio Preview</div>
+            <div class="fw-semibold mini-player-title text-truncate" id="miniTitle">Audio Preview</div>
             <div class="small text-secondary" id="miniTime">00:00</div>
           </div>
-          <input type="range" class="form-range mt-1" id="miniSeek" min="0" max="1000" value="0" aria-label="Seek audio">
+          <div class="mini-player-subtitle text-truncate" id="miniSubtitle"></div>
+          <input type="range" class="form-range mt-2" id="miniSeek" min="0" max="1000" value="0" aria-label="Seek audio">
         </div>
         <button class="btn btn-outline-secondary btn-sm" id="miniShareBtn" type="button" aria-label="Bagikan mini player"><i class="bi bi-qr-code"></i></button>
         <button class="btn btn-outline-secondary btn-sm" id="miniCloseBtn" type="button" aria-label="Tutup mini player"><i class="bi bi-x-lg"></i></button>
@@ -654,6 +677,9 @@
   const eqBass = $('#eqBass');
   const eqMid = $('#eqMid');
   const eqTreble = $('#eqTreble');
+  const eqBassValue = $('#eqBassValue');
+  const eqMidValue = $('#eqMidValue');
+  const eqTrebleValue = $('#eqTrebleValue');
   const eqStatus = $('#eqStatus');
   const eqPresetFlat = $('#eqPresetFlat');
   const eqPresetPodcast = $('#eqPresetPodcast');
@@ -691,6 +717,7 @@
   const miniSeek = $('#miniSeek');
   const miniTime = $('#miniTime');
   const miniTitle = $('#miniTitle');
+  const miniSubtitle = $('#miniSubtitle');
   const subtitleBtn = $('#subtitleBtn');
   const subtitleLang = $('#subtitleLang');
   const subtitleAuto = $('#subtitleAuto');
@@ -728,11 +755,13 @@
   let miniSeeking = false;
   let subtitleShareUrl = '';
   let lastPreviewTitle = '';
+  let lastPreviewMeta = {};
   let lastResult = null;
   let lastVideoMeta = {};
   const backgroundJobsState = new Map();
   const backgroundTimers = new Map();
   const BACKGROUND_STORE_KEY = 'ytmp3.background.jobs.v1';
+  let qrLibPromise = null;
 
   const getBackend = () => (state.backendUrl || '').trim();
 
@@ -792,6 +821,47 @@
     volumeBoostLabel.textContent = `${val >= 0 ? '+' : ''}${val} dB`;
   };
 
+  const getThemeColor = (token, fallback) => {
+    const styles = getComputedStyle(document.body);
+    const raw = (styles.getPropertyValue(token) || '').trim();
+    return raw || fallback;
+  };
+
+  const ensureQrLib = () => {
+    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+      return Promise.resolve(window.QRCode);
+    }
+    if (qrLibPromise) return qrLibPromise;
+    qrLibPromise = new Promise((resolve, reject) => {
+      const onReady = () => {
+        if (window.QRCode && typeof window.QRCode.toCanvas === 'function') resolve(window.QRCode);
+        else reject(new Error('QR library belum siap'));
+      };
+      const onError = () => reject(new Error('Gagal memuat library QR'));
+      const existing = document.querySelector('script[src*="qrcode.min.js"]');
+      if (existing) {
+        existing.addEventListener('load', onReady, { once: true });
+        existing.addEventListener('error', onError, { once: true });
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+        script.defer = true;
+        script.addEventListener('load', onReady, { once: true });
+        script.addEventListener('error', onError, { once: true });
+        document.head.appendChild(script);
+      }
+      setTimeout(() => {
+        if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+          resolve(window.QRCode);
+        }
+      }, 0);
+    }).catch((err) => {
+      qrLibPromise = null;
+      throw err;
+    });
+    return qrLibPromise;
+  };
+
   const renderQr = (canvas, wrap, url) => {
     if (!canvas || !wrap) return;
     const ctx = canvas.getContext('2d');
@@ -801,17 +871,36 @@
       return;
     }
     wrap.hidden = false;
-    if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
-      window.QRCode.toCanvas(canvas, url, { width: canvas.width || 156, margin: 1 }, (err) => {
-        if (err) console.error(err);
-      });
-    } else if (ctx) {
-      ctx.fillStyle = '#fff';
+    if (ctx) {
+      const bg = getThemeColor('--bs-body-bg', '#ffffff');
+      const border = getThemeColor('--bs-border-color', '#ced4da');
+      ctx.fillStyle = bg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#000';
-      ctx.font = '16px sans-serif';
-      ctx.fillText('QR', 10, 24);
+      ctx.strokeStyle = border;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
     }
+    ensureQrLib().then((lib) => {
+      const theme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+      const light = theme === 'dark' ? '#0d1117' : '#ffffff';
+      const dark = theme === 'dark' ? '#ffffff' : '#0d0d0d';
+      lib.toCanvas(canvas, url, { width: canvas.width || 156, margin: 1, color: { dark, light } }, (err) => {
+        if (err && ctx) {
+          ctx.fillStyle = '#dc3545';
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('QR gagal', canvas.width / 2, canvas.height / 2);
+        }
+      });
+    }).catch(() => {
+      if (!ctx) return;
+      ctx.fillStyle = '#dc3545';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('QR gagal dimuat', canvas.width / 2, canvas.height / 2);
+    });
   };
 
   const resetAudioPreview = () => {
@@ -829,10 +918,16 @@
     currentShareUrl = '';
     subtitleShareUrl = '';
     lastResult = null;
+    lastPreviewMeta = {};
     updateAiStatus('');
     resetWaveform();
     if (equalizerWrap) equalizerWrap.hidden = true;
+    if (eqBass) eqBass.value = 0;
+    if (eqMid) eqMid.value = 0;
+    if (eqTreble) eqTreble.value = 0;
+    refreshEqUi();
     if (miniPlayerEl) miniPlayerEl.hidden = true;
+    updateMiniSubtitle();
     renderQr(qrCanvas, qrWrap, null);
   };
 
@@ -857,17 +952,24 @@
       format: meta.format || '',
       jobId: meta.jobId || null,
     };
+    lastPreviewMeta = {
+      format: meta.format || '',
+      fileName: meta.fileName || '',
+      baseName: meta.baseName || '',
+    };
     if (shareWrap) shareWrap.hidden = false;
     if (shareLinkInput) shareLinkInput.value = currentShareUrl;
     if (shareInfo) shareInfo.textContent = 'Bagikan link atau scan QR untuk membuka mini player.';
     renderQr(qrCanvas, qrWrap, currentShareUrl);
     loadWaveform(absoluteUrl);
     if (equalizerWrap) equalizerWrap.hidden = false;
+    refreshEqUi();
     if (miniPlayerEl) {
       miniPlayerEl.hidden = false;
       if (miniSeek) miniSeek.value = 0;
       if (miniTime) miniTime.textContent = '00:00';
       if (miniTitle) miniTitle.textContent = lastPreviewTitle || 'Audio Preview';
+      updateMiniSubtitle();
     }
   };
 
@@ -974,12 +1076,14 @@ $('#queueList')?.addEventListener('click', (e) => {
     const t = stored || prefers;
     applyTheme(t);
     themeToggle.innerHTML = t === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
+    refreshEqUi();
   };
   themeToggle.addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-bs-theme') || 'light';
     const nxt = cur === 'light' ? 'dark' : 'light';
     applyTheme(nxt); localStorage.setItem(themeKey, nxt);
     themeToggle.innerHTML = nxt === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
+    requestAnimationFrame(refreshEqUi);
   });
 
   function initWelcome(){
@@ -1177,10 +1281,10 @@ $('#queueList')?.addEventListener('click', (e) => {
     waveformCanvas.height = Math.max(1, Math.floor(height * ratio));
     ctx.save();
     ctx.scale(ratio, ratio);
-    const styles = getComputedStyle(document.body);
-    const bg = (styles.getPropertyValue('--bs-body-bg') || '#ffffff').trim() || '#ffffff';
-    const accent = (styles.getPropertyValue('--bs-primary') || '#0d6efd').trim() || '#0d6efd';
-    const border = (styles.getPropertyValue('--bs-border-color') || '#ced4da').trim() || '#ced4da';
+    const bg = getThemeColor('--bs-body-bg', '#ffffff');
+    const accent = getThemeColor('--bs-primary', '#0d6efd');
+    const border = getThemeColor('--bs-border-color', '#ced4da');
+    const danger = getThemeColor('--bs-danger', '#dc3545');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
     ctx.strokeStyle = border;
@@ -1193,7 +1297,10 @@ $('#queueList')?.addEventListener('click', (e) => {
     const peaks = waveformState.peaks || [];
     if (peaks.length){
       const columnWidth = width / peaks.length;
-      ctx.fillStyle = accent;
+      const gradient = ctx.createLinearGradient(0, 0, width, 0);
+      gradient.addColorStop(0, accent);
+      gradient.addColorStop(1, danger);
+      ctx.fillStyle = gradient;
       for (let i = 0; i < peaks.length; i += 1){
         const { min, max } = peaks[i];
         const x = i * columnWidth;
@@ -1207,15 +1314,33 @@ $('#queueList')?.addEventListener('click', (e) => {
       const { start, end } = waveformState.selection;
       const startX = (start / waveformState.duration) * width;
       const endX = (end / waveformState.duration) * width;
-      ctx.fillStyle = 'rgba(13,110,253,0.18)';
+      const selGradient = ctx.createLinearGradient(startX, 0, endX, 0);
+      selGradient.addColorStop(0, accent);
+      selGradient.addColorStop(1, danger);
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = selGradient;
       ctx.fillRect(startX, 0, Math.max(1, endX - startX), height);
+      ctx.restore();
       ctx.strokeStyle = accent;
       ctx.beginPath();
       ctx.moveTo(startX, 0);
       ctx.lineTo(startX, height);
+      ctx.stroke();
+      ctx.strokeStyle = danger;
+      ctx.beginPath();
       ctx.moveTo(endX, 0);
       ctx.lineTo(endX, height);
       ctx.stroke();
+      const radius = 5;
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.arc(Math.max(radius, startX), mid, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = danger;
+      ctx.beginPath();
+      ctx.arc(Math.min(width - radius, endX), mid, radius, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -1316,6 +1441,10 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (e && e.pointerId != null) waveformCanvas.releasePointerCapture(e.pointerId);
       dragging = false;
       updateWaveformMeta();
+      if (waveformState.selection){
+        $('#trimStart').value = secondsToInput(waveformState.selection.start);
+        $('#trimEnd').value = secondsToInput(waveformState.selection.end);
+      }
     };
     waveformCanvas.addEventListener('pointerup', stopDrag);
     waveformCanvas.addEventListener('pointercancel', stopDrag);
@@ -1354,12 +1483,54 @@ $('#queueList')?.addEventListener('click', (e) => {
   // ===== Equalizer helpers =====
   const formatGain = (value) => `${Number(value) >= 0 ? '+' : ''}${Number(value)} dB`;
 
+  const getEqValues = () => ({
+    bass: Number(eqBass?.value || 0),
+    mid: Number(eqMid?.value || 0),
+    treble: Number(eqTreble?.value || 0),
+  });
+
   const updateEqStatus = () => {
     if (!eqStatus) return;
-    const bassVal = Number(eqBass?.value || 0);
-    const midVal = Number(eqMid?.value || 0);
-    const trebleVal = Number(eqTreble?.value || 0);
-    eqStatus.textContent = `Bass ${formatGain(bassVal)} · Mid ${formatGain(midVal)} · Treble ${formatGain(trebleVal)}`;
+    const { bass, mid, treble } = getEqValues();
+    eqStatus.textContent = `Bass ${formatGain(bass)} · Mid ${formatGain(mid)} · Treble ${formatGain(treble)}`;
+  };
+
+  const setEqBadge = (input, badge) => {
+    if (!input || !badge) return;
+    badge.textContent = formatGain(input.value || 0);
+  };
+
+  const updateEqTrack = (input) => {
+    if (!input) return;
+    const min = Number(input.min || -12);
+    const max = Number(input.max || 12);
+    const val = Number(input.value || 0);
+    const range = max - min || 1;
+    const rawValuePercent = ((val - min) / range) * 100;
+    const rawZeroPercent = ((0 - min) / range) * 100;
+    const clampPct = (pct) => Math.min(100, Math.max(0, pct));
+    const valuePercent = clampPct(rawValuePercent);
+    const zeroPercent = clampPct(rawZeroPercent);
+    const accent = getThemeColor('--bs-primary', '#0d6efd');
+    const danger = getThemeColor('--bs-danger', '#dc3545');
+    const neutral = getThemeColor('--bs-border-color', '#ced4da');
+    let gradient;
+    if (valuePercent >= zeroPercent) {
+      gradient = `linear-gradient(90deg, ${danger} 0%, ${danger} ${zeroPercent}%, ${accent} ${zeroPercent}%, ${accent} ${valuePercent}%, ${neutral} ${valuePercent}%, ${neutral} 100%)`;
+    } else {
+      gradient = `linear-gradient(90deg, ${danger} 0%, ${danger} ${valuePercent}%, ${neutral} ${valuePercent}%, ${neutral} ${zeroPercent}%, ${accent} ${zeroPercent}%, ${accent} 100%)`;
+    }
+    input.style.background = gradient;
+  };
+
+  const refreshEqUi = () => {
+    updateEqTrack(eqBass);
+    updateEqTrack(eqMid);
+    updateEqTrack(eqTreble);
+    setEqBadge(eqBass, eqBassValue);
+    setEqBadge(eqMid, eqMidValue);
+    setEqBadge(eqTreble, eqTrebleValue);
+    updateEqStatus();
   };
 
   const ensureEqualizer = () => {
@@ -1399,7 +1570,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (eqFilters[0]) eqFilters[0].gain.value = bassVal;
     if (eqFilters[1]) eqFilters[1].gain.value = midVal;
     if (eqFilters[2]) eqFilters[2].gain.value = trebleVal;
-    updateEqStatus();
+    refreshEqUi();
   };
 
   if (eqBass) eqBass.addEventListener('input', applyEqFromInputs);
@@ -1611,6 +1782,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     window.open(currentShareUrl, '_blank', 'noopener');
   });
 
+  const updateMiniSubtitle = () => {
+    if (!miniSubtitle) return;
+    const parts = [];
+    if (lastPreviewMeta?.format) parts.push(String(lastPreviewMeta.format).toUpperCase());
+    const duration = previewPlayer?.duration;
+    if (duration && Number.isFinite(duration) && duration > 0) parts.push(secondsToClock(duration));
+    const name = lastPreviewMeta?.fileName || lastPreviewMeta?.baseName || currentDownloadName;
+    if (name) parts.push(name);
+    miniSubtitle.textContent = parts.join(' • ');
+  };
+
   const updateMiniPlayState = () => {
     if (!miniPlayBtn || !previewPlayer) return;
     if (previewPlayer.paused){
@@ -1657,6 +1839,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         miniSeek.value = 0;
       }
       if (miniTime) miniTime.textContent = previewPlayer.duration ? `00:00 / ${secondsToClock(previewPlayer.duration)}` : '00:00';
+      updateMiniSubtitle();
     });
     previewPlayer.addEventListener('play', async () => {
       const ctx = getAudioContext();
