@@ -217,6 +217,32 @@ const MOOD_EMOJIS = {
   Energetic: "🚀",
 };
 
+const MOOD_PLAYLIST_HINTS = {
+  Happy: ["Feel Good Hits", "Sunrise Drive"],
+  Chill: ["Focus Flow", "Coffee & Beats"],
+  Melancholy: ["Late Night Lyrics", "Deep Focus"],
+  Epic: ["Cinematic Adventure", "Boss Battle"],
+  Midnight: ["Midnight Lounge", "Night Riders"],
+  Hype: ["Beast Mode", "Workout Bangers"],
+  Calm: ["Peaceful Piano", "Sleep Tight"],
+  Energetic: ["Dance Party", "Cardio Boost"],
+};
+
+const GENRE_PLAYLIST_HINTS = {
+  "Lo-Fi": ["Lo-Fi Cafe", "Study Session"],
+  "Hip-Hop": ["Rap Radar"],
+  Trap: ["Trap Nation"],
+  EDM: ["Festival Bangers"],
+  Rock: ["Alternative Anthems"],
+  Metal: ["Heavy Rotation"],
+  Jazz: ["Late Night Jazz"],
+  Ambient: ["Deep Focus"],
+  Classical: ["Cinematic Scores"],
+  "K-Pop": ["K-Pop Now"],
+  Dangdut: ["Dangdut Hits"],
+  Pop: ["Today's Top Hits"],
+};
+
 const buildAiCaption = ({
   title = "",
   channel = "",
@@ -276,6 +302,52 @@ const buildAiCaption = ({
 
   const hashtagList = Array.from(hashtags).filter(Boolean).slice(0, 8);
   return { caption: captionLines.join("\n"), hashtags: hashtagList, tags };
+};
+
+const buildAiPitch = ({
+  title = "",
+  description = "",
+  channel = "",
+  duration,
+  genre,
+  mood,
+} = {}) => {
+  const tags = buildAiTags({ title, description, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  if (mood && typeof mood === "string" && mood.trim()) tags.mood = mood.trim();
+  const trackTitle = tags.title || title || "Track Baru";
+  const artist = tags.artist || channel || "Creator";
+  const descriptorParts = [tags.genre, tags.mood, tags.energy].filter(Boolean);
+  const descriptor = descriptorParts.length ? descriptorParts.join(" · ") : null;
+  const durationLabel = formatDurationLabel(duration);
+  const playlistHints = new Set();
+  if (tags.mood && MOOD_PLAYLIST_HINTS[tags.mood]) {
+    for (const item of MOOD_PLAYLIST_HINTS[tags.mood]) playlistHints.add(item);
+  }
+  if (tags.genre && GENRE_PLAYLIST_HINTS[tags.genre]) {
+    for (const item of GENRE_PLAYLIST_HINTS[tags.genre]) playlistHints.add(item);
+  }
+  const playlists = Array.from(playlistHints).slice(0, 4);
+  const hookMood = tags.mood ? tags.mood.toLowerCase() : "fresh";
+  const hookGenre = tags.genre ? `${tags.genre.toLowerCase()} groove` : "sonic palette";
+  const hook = `${trackTitle} menghadirkan nuansa ${hookMood} dengan ${hookGenre}${durationLabel ? ` dalam ${durationLabel}` : ""}.`;
+  const pitchLines = [];
+  if (descriptor) {
+    pitchLines.push(`${trackTitle} oleh ${artist} memadukan ${descriptor}${durationLabel ? ` sepanjang ${durationLabel}` : ""}.`);
+  } else {
+    pitchLines.push(`${trackTitle} oleh ${artist}${durationLabel ? ` (${durationLabel})` : ""}.`);
+  }
+  if (playlists.length) {
+    pitchLines.push(`Cocok untuk playlist ${playlists.join(", ")}.`);
+  } else {
+    pitchLines.push("Siap melengkapi daftar putar favoritmu.");
+  }
+  return {
+    pitch: pitchLines.join(" "),
+    hook,
+    playlists,
+    tags,
+  };
 };
 
 const validateConvertPayload = (payload = {}) => {
@@ -406,6 +478,7 @@ const serializeJob = (job) => {
     };
     if (job.result.sampleRate !== undefined) data.result.sampleRate = job.result.sampleRate;
     if (job.result.channels !== undefined) data.result.channels = job.result.channels;
+    if (job.result.speedMode) data.result.speedMode = job.result.speedMode;
   }
   return data;
 };
@@ -420,21 +493,83 @@ const resolveJobFilePath = (job) => {
 const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
 const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
 
-const FORMAT_PREFERRED_SAMPLE_RATES = {
-  mp3: 44100,
-  m4a: 44100,
-  flac: 48000,
-  wav: 48000,
-  ogg: 48000,
+const FORMAT_RULES = {
+  mp3: {
+    abr: [320, 256, 192, 128, 64],
+    sampleRates: [44100, 48000],
+    speedModes: ["normal", "nightcore", "slow_reverb"],
+  },
+  m4a: {
+    abr: [192],
+    sampleRates: [44100],
+    speedModes: ["normal"],
+  },
+  flac: {
+    abr: [320, 256, 192],
+    sampleRates: [96000],
+    speedModes: ["normal"],
+  },
+  wav: {
+    abr: [],
+    sampleRates: [48000, 44100, 96000],
+    speedModes: ["normal"],
+  },
+  ogg: {
+    abr: [256, 192, 160, 128],
+    sampleRates: [48000, 44100],
+    speedModes: ["normal", "nightcore"],
+  },
 };
 
-const pickFormatSampleRate = (fmt) => FORMAT_PREFERRED_SAMPLE_RATES[fmt] || 44100;
+const pickFormatSampleRate = (fmt) => {
+  const rule = FORMAT_RULES[fmt];
+  if (rule?.sampleRates?.length) return rule.sampleRates[0];
+  return 44100;
+};
+
+const sanitizeFormatOptions = (fmt, { abr, sampleRate, speedMode }) => {
+  const rule = FORMAT_RULES[fmt] || {};
+  let cleanedAbr = abr;
+  if (Array.isArray(rule.abr)) {
+    const abrNumber = Number(abr);
+    cleanedAbr = rule.abr.includes(abrNumber) ? abrNumber : (rule.abr[0] ?? null);
+    if (!rule.abr.length) cleanedAbr = null;
+  }
+
+  let cleanedSampleRate = undefined;
+  if (sampleRate !== undefined) {
+    const srNumber = parseSampleRate(sampleRate);
+    if (Array.isArray(rule.sampleRates) && rule.sampleRates.length) {
+      cleanedSampleRate = rule.sampleRates.includes(srNumber) ? srNumber : rule.sampleRates[0];
+    } else {
+      cleanedSampleRate = srNumber || undefined;
+    }
+  }
+
+  let cleanedSpeed = speedMode;
+  if (Array.isArray(rule.speedModes) && rule.speedModes.length) {
+    cleanedSpeed = rule.speedModes.includes(speedMode) ? speedMode : rule.speedModes[0];
+  }
+
+  return {
+    abr: cleanedAbr,
+    sampleRate: cleanedSampleRate,
+    speedMode: cleanedSpeed,
+  };
+};
 
 const deriveFilterSampleRate = (fmt, requested, detected) => {
   const requestedRate = parseSampleRate(requested);
-  if (requestedRate) return requestedRate;
+  const rule = FORMAT_RULES[fmt];
+  if (requestedRate) {
+    if (!rule?.sampleRates?.length || rule.sampleRates.includes(requestedRate)) return requestedRate;
+    return rule.sampleRates[0];
+  }
   const detectedRate = parseSampleRate(detected);
-  if (detectedRate) return detectedRate;
+  if (detectedRate && (!rule?.sampleRates?.length || rule.sampleRates.includes(detectedRate))) {
+    return detectedRate;
+  }
+  if (rule?.sampleRates?.length) return rule.sampleRates[0];
   return pickFormatSampleRate(fmt);
 };
 
@@ -662,7 +797,7 @@ const ffmpegToFlac = (input, output, opts = {}) => {
 };
 
 const ffmpegToM4a = (input, output, opts = {}) => {
-  const { id3 = {}, trim = {}, sampleRate, cover, filters = [] } = opts;
+  const { id3 = {}, trim = {}, sampleRate, cover, filters = [], abr = 192 } = opts;
   return new Promise((resolve, reject) => {
     const args = ["-y"];
     const { start, end } = trim || {};
@@ -693,7 +828,8 @@ const ffmpegToM4a = (input, output, opts = {}) => {
     } else {
       args.push("-map","0:a","-vn");
     }
-    args.push("-codec:a","aac","-b:a","192k", output);
+    const targetAbr = Number(abr) || 192;
+    args.push("-codec:a","aac","-b:a",`${targetAbr}k`, output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
@@ -902,6 +1038,11 @@ const convertSingle = async (payload = {}) => {
     }
   }
 
+  const sanitizedOptions = sanitizeFormatOptions(fmt, { abr, sampleRate: sr, speedMode });
+  const effectiveSpeedMode = sanitizedOptions.speedMode || "normal";
+  const targetAbr = sanitizedOptions.abr != null ? sanitizedOptions.abr : (fmt === "mp3" ? Number(abr) || 192 : null);
+  sr = sanitizedOptions.sampleRate !== undefined ? sanitizedOptions.sampleRate : sr;
+
   let trimOpt = null;
   if (trim && (trim.start !== undefined || trim.end !== undefined)) {
     const hasStart = trim.start !== undefined;
@@ -945,12 +1086,14 @@ const convertSingle = async (payload = {}) => {
   if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
   args.push("-o", outTpl);
 
+  const sanitizedAbrForDownload = targetAbr || Number(abr) || undefined;
+
   if (fmt === "m4a") {
     args.push("-f", "bestaudio[ext=m4a]/bestaudio");
   } else if (fmt === "flac") {
     args.push("-x", "--audio-format", "flac");
   } else if (fmt === "mp3") {
-    args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(abr));
+    args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(sanitizedAbrForDownload));
   } else if (fmt === "wav") {
     args.push("-x", "--audio-format", "wav");
   } else if (fmt === "ogg") {
@@ -985,7 +1128,7 @@ const convertSingle = async (payload = {}) => {
   const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
   const filters = buildAudioFilters({
     normalize,
-    speedMode,
+    speedMode: effectiveSpeedMode,
     denoise: denoiseEnabled,
     volumeBoost: boostValue,
     enhancer: enhancerMode,
@@ -997,15 +1140,30 @@ const convertSingle = async (payload = {}) => {
     if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
     return acc;
   }, {});
+  if (!id3Clean.genre) {
+    const autoGenre = buildAiTags({
+      title: id3Clean.title || baseName,
+      channel: id3Clean.artist || "",
+    }).genre;
+    if (autoGenre) id3Clean.genre = autoGenre;
+  }
   const hasId3 = Object.keys(id3Clean).length > 0;
   const hasTrim = !!trimOpt && Object.keys(trimOpt).length > 0;
   const hasFilters = filters.length > 0;
   const hasCover = !!coverPath;
-  const needSampleRate = sr !== undefined;
+  const rule = FORMAT_RULES[fmt];
+  const detectedRate = parseSampleRate(detectedSampleRate);
+  const needSampleRate = sr !== undefined || (!!rule?.sampleRates?.length && !rule.sampleRates.includes(detectedRate));
+  const finalSamplePreference = sr !== undefined ? sr : (needSampleRate ? filterSampleRate : undefined);
 
   const finalize = async (targetExt, converter, extraOpts = {}) => {
     const tmpOut = join(JOBS_DIR, `${id}.tmp.${targetExt}`);
-    await converter(fullPath, tmpOut, { ...extraOpts, trim: trimOpt || {}, sampleRate: sr, filters });
+    await converter(fullPath, tmpOut, {
+      ...extraOpts,
+      trim: trimOpt || {},
+      sampleRate: finalSamplePreference,
+      filters,
+    });
     await fsp.unlink(fullPath);
     filename = `${id}.${targetExt}`;
     fullPath = join(JOBS_DIR, filename);
@@ -1017,7 +1175,7 @@ const convertSingle = async (payload = {}) => {
     if (fmt === "mp3") {
       const needConvert = ext !== "mp3" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
       if (needConvert) {
-        await finalize("mp3", ffmpegToMp3, { abr, id3: id3Clean, cover: coverPath });
+        await finalize("mp3", ffmpegToMp3, { abr: targetAbr || 192, id3: id3Clean, cover: coverPath });
       }
     } else if (fmt === "flac") {
       const needConvert = ext !== "flac" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
@@ -1027,7 +1185,7 @@ const convertSingle = async (payload = {}) => {
     } else if (fmt === "m4a") {
       const needConvert = ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
       if (needConvert) {
-        await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath });
+        await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath, abr: targetAbr || 192 });
       }
     } else if (fmt === "wav") {
       const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
@@ -1052,8 +1210,8 @@ const convertSingle = async (payload = {}) => {
   const downloadUrl = `/public/jobs/${filename}`;
   const finalExt = ext;
   const downloadFileName = `${baseName}.${finalExt}`;
-  const finalSampleRate = sr
-    ? Math.round(sr)
+  const finalSampleRate = finalSamplePreference
+    ? Math.round(finalSamplePreference)
     : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
   return {
     ok: true,
@@ -1067,6 +1225,7 @@ const convertSingle = async (payload = {}) => {
     ext: finalExt,
     sampleRate: finalSampleRate,
     channels: audioProbe?.channels || null,
+    speedMode: effectiveSpeedMode,
   };
 };
 
@@ -1271,6 +1430,30 @@ app.post("/api/ai-caption", (req, res) => {
     return res.json({ ok: true, caption: result.caption, hashtags: result.hashtags, tags: result.tags });
   } catch (e) {
     const msg = e?.message || "Gagal membuat caption";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-pitch", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiPitch({
+      title: body.title,
+      description: body.description,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      mood: body.mood,
+    });
+    return res.json({
+      ok: true,
+      pitch: result.pitch,
+      hook: result.hook,
+      playlists: result.playlists,
+      tags: result.tags,
+    });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat pitch";
     return res.status(400).json({ error: msg });
   }
 });
