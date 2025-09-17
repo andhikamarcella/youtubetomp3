@@ -1388,7 +1388,7 @@
     lastAiPlanData = null;
   };
 
-  const attachRangeControls = () => {
+  function attachRangeControls() {
     document.querySelectorAll('[data-range-wrapper]').forEach((wrap) => {
       const input = wrap.querySelector('input[type="range"]');
       if (!input) return;
@@ -1404,7 +1404,7 @@
         });
       });
     });
-  };
+  }
 
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
