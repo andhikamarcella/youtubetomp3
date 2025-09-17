@@ -1355,8 +1355,30 @@ const parseLangPreferences = (input) =>
     .filter(Boolean);
 
 const wildcardToRegex = (pattern) => {
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`^${escaped.replace(/\\\*/g, ".*")}$`, "i");
+  if (!pattern) return /^$/i;
+  let regex = "";
+  for (let i = 0; i < pattern.length; i += 1) {
+    const char = pattern[i];
+    if (char === "*") {
+      regex += ".*";
+      continue;
+    }
+    if (char === "." && pattern[i + 1] === "*") {
+      regex += "(?:[._-].*)?";
+      i += 1;
+      continue;
+    }
+    if (char === "?") {
+      regex += ".";
+      continue;
+    }
+    if (/[[\]{}()+?.,\\^$|#\s]/.test(char)) {
+      regex += `\\${char}`;
+    } else {
+      regex += char;
+    }
+  }
+  return new RegExp(`^${regex}$`, "i");
 };
 
 const SUPPORTED_SUB_EXTS = ["srt", "vtt", "webvtt", "ttml", "dfxp", "srv3", "srv2", "srv1", "json3"];
@@ -1429,6 +1451,172 @@ const selectSubtitleTrack = (info, { patterns = [], preferAuto = true } = {}) =>
     }
   }
   return null;
+};
+
+const extractJsonFromSource = (source = "", marker = "") => {
+  if (!source || !marker) return null;
+  const index = source.indexOf(marker);
+  if (index === -1) return null;
+  let start = index + marker.length;
+  while (start < source.length && source[start] !== "{" && source[start] !== "[") {
+    start += 1;
+  }
+  if (start >= source.length) return null;
+  const openChar = source[start];
+  const closeChar = openChar === "[" ? "]" : "}";
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < source.length; i += 1) {
+    const char = source[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (char === "\\") {
+        escape = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+    if (char === openChar) depth += 1;
+    else if (char === closeChar) {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+};
+
+const parseWatchPlayerResponse = (html = "") => {
+  const markers = [
+    "ytInitialPlayerResponse = ",
+    "ytInitialPlayerResponse=",
+    "window[\"ytInitialPlayerResponse\"] = ",
+    "window['ytInitialPlayerResponse'] = ",
+  ];
+  for (const marker of markers) {
+    const jsonText = extractJsonFromSource(html, marker);
+    if (!jsonText) continue;
+    try {
+      return JSON.parse(jsonText);
+    } catch {
+      // ignore and try next marker
+    }
+  }
+  return null;
+};
+
+const parseLangFromVssId = (vssId = "") => {
+  const value = String(vssId || "").trim();
+  if (!value) return "";
+  if (value.startsWith("a.")) return value.slice(2);
+  if (value.startsWith(".")) return value.slice(1);
+  return value;
+};
+
+const ensureCaptionUrl = (baseUrl = "", { translateTo } = {}) => {
+  if (!baseUrl) return null;
+  let url;
+  try {
+    url = new URL(baseUrl, "https://www.youtube.com");
+  } catch {
+    return null;
+  }
+  if (!url.searchParams.get("fmt")) {
+    url.searchParams.set("fmt", "srv3");
+  }
+  const fmt = url.searchParams.get("fmt") || "srv3";
+  if (translateTo) {
+    url.searchParams.set("tlang", translateTo);
+  } else {
+    url.searchParams.delete("tlang");
+  }
+  return { url: url.toString(), ext: fmt.toLowerCase() };
+};
+
+const pushCaptionEntry = (catalog, lang, entry) => {
+  const key = String(lang || (entry?.auto ? "auto" : "subtitle"))
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!key) return;
+  if (!catalog[key]) catalog[key] = [];
+  catalog[key].push(entry);
+};
+
+const buildCaptionCatalogFromTracks = (tracks = []) => {
+  const manual = {};
+  const auto = {};
+  for (const track of tracks) {
+    if (!track?.baseUrl) continue;
+    const langCode = (track.languageCode || parseLangFromVssId(track.vssId) || "subtitle").toLowerCase();
+    const isAuto = track.kind === "asr" || /^a\./i.test(track.vssId || "");
+    const base = ensureCaptionUrl(track.baseUrl);
+    if (!base) continue;
+    const name =
+      track.name?.simpleText ||
+      (Array.isArray(track.name?.runs) ? track.name.runs.map((run) => run?.text || "").join("") : "");
+    const common = {
+      url: base.url,
+      ext: base.ext,
+      name,
+      auto: isAuto,
+      trackKind: track.kind,
+      originalLang: langCode,
+    };
+    const target = isAuto ? auto : manual;
+    pushCaptionEntry(target, langCode, common);
+
+    const translations = Array.isArray(track.translationLanguages)
+      ? track.translationLanguages.map((item) => item?.languageCode).filter(Boolean)
+      : [];
+    for (const translation of translations) {
+      const translatedLang = String(translation || "").toLowerCase();
+      if (!translatedLang || translatedLang === langCode) continue;
+      const translated = ensureCaptionUrl(track.baseUrl, { translateTo: translatedLang });
+      if (!translated) continue;
+      pushCaptionEntry(target, translatedLang, {
+        ...common,
+        url: translated.url,
+        ext: translated.ext,
+        translated: true,
+        translatedFrom: langCode,
+      });
+    }
+  }
+  return { subtitles: manual, automatic_captions: auto };
+};
+
+const extractYouTubeVideoId = (input = "") => {
+  const value = String(input || "").trim();
+  if (!value) return null;
+  if (/^[a-zA-Z0-9_-]{11}$/.test(value)) return value;
+  try {
+    const url = new URL(value);
+    if (/youtu\.be$/i.test(url.hostname)) {
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts[0] && /^[a-zA-Z0-9_-]{11}$/.test(parts[0])) return parts[0];
+    }
+    if (/youtube\.com$/i.test(url.hostname)) {
+      const v = url.searchParams.get("v");
+      if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+      const shorts = url.pathname.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+      if (shorts) return shorts[1];
+      const embed = url.pathname.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+      if (embed) return embed[1];
+    }
+  } catch {
+    // ignore
+  }
+  const match = value.match(/([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
 };
 
 const fetchWithTimeout = async (url, { timeout = 15000, headers = {} } = {}) => {
@@ -1544,6 +1732,122 @@ const fetchSubtitleViaYtDlp = async ({ url, langOpt, preferAuto }) => {
     lang: track.lang || safeLang,
     auto: Boolean(track.auto),
     logs: [...logs, stderr].filter(Boolean).join("\n").slice(-8000),
+  };
+};
+
+const fetchSubtitleViaWatch = async ({ url, langOpt, preferAuto }) => {
+  const logs = [];
+  const appendLog = (value) => {
+    if (!value) return;
+    logs.push(value);
+  };
+
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) {
+    const error = new Error("ID video YouTube tidak dikenali");
+    error.logs = logs.join("\n");
+    throw error;
+  }
+
+  const watchUrl = new URL("https://www.youtube.com/watch");
+  watchUrl.searchParams.set("v", videoId);
+  watchUrl.searchParams.set("hl", "en");
+  watchUrl.searchParams.set("bpctr", "9999999999");
+  watchUrl.searchParams.set("has_verified", "1");
+  appendLog(`fetch ${watchUrl.toString()}`);
+
+  let html;
+  try {
+    const response = await fetchWithTimeout(watchUrl.toString(), {
+      headers: {
+        accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9,id;q=0.8",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+      },
+    });
+    appendLog(`watch status ${response.status}`);
+    if (!response.ok) {
+      const error = new Error(`Gagal membuka halaman YouTube (HTTP ${response.status})`);
+      error.logs = logs.join("\n");
+      throw error;
+    }
+    html = await response.text();
+  } catch (err) {
+    if (err?.logs) throw err;
+    const error = new Error(err.message || "Gagal membuka halaman YouTube");
+    error.logs = logs.join("\n");
+    throw error;
+  }
+
+  const playerResponse = parseWatchPlayerResponse(html);
+  if (!playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks?.length) {
+    const error = new Error("Subtitle tidak ditemukan di halaman YouTube");
+    error.logs = logs.join("\n");
+    throw error;
+  }
+
+  const catalog = buildCaptionCatalogFromTracks(
+    playerResponse.captions.playerCaptionsTracklistRenderer.captionTracks,
+  );
+
+  const patterns = parseLangPreferences(langOpt);
+  const track = selectSubtitleTrack({ entries: [{ ...catalog }] }, { patterns, preferAuto });
+  if (!track || !track.url) {
+    const error = new Error("Subtitle tidak ditemukan");
+    error.logs = logs.join("\n");
+    throw error;
+  }
+
+  appendLog(
+    `pilih track ${track.lang || track.originalLang || "unknown"} (${track.ext || "srv3"})${
+      track.translated ? " · translate" : ""
+    }${track.auto ? " · auto" : ""}`,
+  );
+
+  let body;
+  try {
+    const response = await fetchWithTimeout(track.url, {
+      headers: {
+        "accept-language": "en-US,en;q=0.9,id;q=0.8",
+        "user-agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
+      },
+    });
+    appendLog(`subtitle status ${response.status}`);
+    if (!response.ok) {
+      const error = new Error(`Gagal mengunduh subtitle (HTTP ${response.status})`);
+      error.logs = logs.join("\n");
+      throw error;
+    }
+    body = await response.text();
+  } catch (err) {
+    if (err?.logs) throw err;
+    const error = new Error(err.message || "Gagal mengambil subtitle");
+    error.logs = logs.join("\n");
+    throw error;
+  }
+
+  let srt;
+  try {
+    srt = convertSubtitleToSrt(body, track.ext);
+  } catch (err) {
+    const error = new Error(err.message || "Gagal mengonversi subtitle");
+    error.logs = logs.join("\n");
+    throw error;
+  }
+
+  const safeLang = sanitizeLangKey(track.lang, track.auto);
+  return {
+    srt,
+    safeLang,
+    lang: track.lang || safeLang,
+    auto: Boolean(track.auto),
+    translated: Boolean(track.translated),
+    translatedFrom: track.translatedFrom || track.originalLang || null,
+    originalLang: track.originalLang || null,
+    logs: logs.join("\n").slice(-8000),
   };
 };
 
@@ -2180,23 +2484,38 @@ const downloadSubtitle = async (payload = {}) => {
   let logs = "";
   let finalSrtName = "";
   let finalTxtName = "";
-  let fetchError = null;
-  let result;
-  try {
-    result = await fetchSubtitleViaYtDlp({ url, langOpt, preferAuto });
-    logs = result.logs || "";
-  } catch (err) {
-    fetchError = err;
-    logs = err.logs || "";
+  const errors = [];
+  const appendLogs = (value) => {
+    logs = [logs, value].filter(Boolean).join("\n").slice(-8000);
+  };
+  const attempt = async (fn) => {
     try {
-      result = await fetchSubtitleViaPyTube({ url, langOpt, preferAuto });
-      logs = [logs, result.logs || ""].filter(Boolean).join("\n").slice(-8000);
-    } catch (pyErr) {
-      const error = new Error(pyErr.message || err.message || "Gagal mengambil subtitle");
-      error.logs = [logs, pyErr.logs || ""].filter(Boolean).join("\n").slice(-8000);
-      throw error;
+      const output = await fn();
+      appendLogs(output?.logs);
+      return output;
+    } catch (err) {
+      errors.push(err);
+      appendLogs(err?.logs);
+      return null;
     }
+  };
+
+  let result = await attempt(() => fetchSubtitleViaYtDlp({ url, langOpt, preferAuto }));
+  if (!result) {
+    result = await attempt(() => fetchSubtitleViaWatch({ url, langOpt, preferAuto }));
   }
+  if (!result) {
+    result = await attempt(() => fetchSubtitleViaPyTube({ url, langOpt, preferAuto }));
+  }
+  if (!result) {
+    const message =
+      errors[errors.length - 1]?.message || errors[0]?.message || "Gagal mengambil subtitle";
+    const error = new Error(message);
+    error.logs = logs;
+    throw error;
+  }
+
+  const fetchError = errors[0] || null;
 
   try {
     const safeLang = result.safeLang || sanitizeLangKey(result.lang, result.auto);
@@ -2236,6 +2555,9 @@ const downloadSubtitle = async (payload = {}) => {
       text: plain,
       lineCount: lines.length,
       wordCount: words.length,
+      translated: Boolean(result.translated),
+      translatedFrom: result.translatedFrom || null,
+      originalLang: result.originalLang || null,
     };
   } catch (err) {
     if (finalSrtName) {

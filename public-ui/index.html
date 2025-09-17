@@ -3090,6 +3090,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         const lineCount = Number(data.lineCount);
         const wordCount = Number(data.wordCount);
         const metaParts = [];
+        const langBadge = String(data.lang || '').toLowerCase();
+        const originalLang = String(data.originalLang || '').trim().toLowerCase();
+        const translatedFrom = String(data.translatedFrom || '').trim().toLowerCase();
+        if (data.translated) {
+          const fromLabel = (translatedFrom || originalLang || '')?.toUpperCase();
+          metaParts.push(fromLabel ? `Terjemahan dari ${fromLabel}` : 'Terjemahan');
+        } else if (originalLang && originalLang !== langBadge) {
+          metaParts.push(`Bahasa asli ${originalLang.toUpperCase()}`);
+        }
         if (Number.isFinite(lineCount) && lineCount > 0) metaParts.push(`${lineCount} baris`);
         if (Number.isFinite(wordCount) && wordCount > 0) metaParts.push(`${wordCount} kata`);
         subtitleStatus.textContent = metaParts.length ? `Subtitle lengkap (${metaParts.join(' · ')})` : 'Subtitle siap diunduh';
