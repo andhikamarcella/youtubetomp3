@@ -8,20 +8,10 @@ import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
-const ffprobeEnv = process.env.FFPROBE_PATH || null;
-let ffprobePath = ffprobeEnv;
 try {
   ffmpegPath = (await import("ffmpeg-static")).default;
 } catch {
   ffmpegPath = null;
-}
-if (!ffprobePath) {
-  try {
-    const probeMod = await import("ffprobe-static");
-    ffprobePath = probeMod?.path || probeMod?.default?.path || null;
-  } catch {
-    ffprobePath = null;
-  }
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,17 +28,7 @@ if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
 
 const PUBLIC_ROOT = pathResolve(PUBLIC_DIR);
-const THUMB_DIR = join(PUBLIC_ROOT, "thumbnails");
-const CLOUD_DIR = join(PUBLIC_ROOT, "cloud");
-const CLOUD_TARGETS = {
-  drive: { label: "Google Drive", dir: join(CLOUD_DIR, "drive") },
-  dropbox: { label: "Dropbox", dir: join(CLOUD_DIR, "dropbox") },
-  onedrive: { label: "OneDrive", dir: join(CLOUD_DIR, "onedrive") },
-};
-
-for (const dir of [THUMB_DIR, CLOUD_DIR, ...Object.values(CLOUD_TARGETS).map((t) => t.dir)]) {
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
+// direktori tambahan seperti thumbnail/cloud sudah dihapus
 
 const backgroundJobs = new Map();
 const backgroundQueue = [];
@@ -76,35 +56,6 @@ const sanitizeFileName = (name = "") =>
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-const escapeDrawText = (input = "") =>
-  (input || "")
-    .replace(/[\\:'\[\]]/g, (match) => `\\${match}`)
-    .replace(/\n/g, "\\n");
-
-const normalizeHex = (hex, fallback = "#0d6efd") => {
-  if (typeof hex !== "string") return fallback;
-  const clean = hex.trim();
-  return /^#?[0-9a-fA-F]{6}$/.test(clean)
-    ? (clean.startsWith("#") ? clean : `#${clean}`)
-    : fallback;
-};
-
-const hexToFfmpegColor = (hex) => `0x${hex.replace(/^#/, "").toUpperCase()}`;
-
-const findFontPath = () => {
-  const candidates = [
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-    "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
-  ];
-  for (const font of candidates) {
-    if (existsSync(font)) return font;
-  }
-  return null;
-};
-
-const DEFAULT_FONT = findFontPath();
-
 const resolvePublicPath = (urlPath = "") => {
   if (typeof urlPath !== "string") return null;
   const cleaned = urlPath.replace(/\\/g, "/").trim();
@@ -113,20 +64,6 @@ const resolvePublicPath = (urlPath = "") => {
   const fullPath = pathResolve(PUBLIC_ROOT, relative);
   if (!fullPath.startsWith(PUBLIC_ROOT)) return null;
   return fullPath;
-};
-
-const ensureUniqueFileName = (dir, fileName) => {
-  const clean = fileName || "file";
-  const dot = clean.lastIndexOf(".");
-  const base = dot > 0 ? clean.slice(0, dot) : clean;
-  const ext = dot > 0 ? clean.slice(dot) : "";
-  let candidate = clean;
-  let counter = 1;
-  while (existsSync(join(dir, candidate))) {
-    candidate = `${base} (${counter})${ext}`;
-    counter += 1;
-  }
-  return candidate;
 };
 
 const GENRE_KEYWORDS = [
@@ -190,244 +127,6 @@ const buildAiTags = ({ title = "", description = "", channel = "", duration } = 
   if (year) tags.year = year;
   tags.comment = `AI tags · ${genre} · ${mood}${year ? ` · ${year}` : ""}`;
   return tags;
-};
-
-const createStemsForSource = async (inputPath, baseName = "Audio") => {
-  if (!inputPath) throw new Error("Sumber audio tidak ditemukan");
-  const safeBase = sanitizeFileName(baseName) || "Audio";
-  const stemId = nanoid(10);
-  const vocalsFile = `${stemId}.vocals.mp3`;
-  const instrumentalFile = `${stemId}.instrumental.mp3`;
-  const zipFile = `${stemId}.stems.zip`;
-  const vocalsPath = join(JOBS_DIR, vocalsFile);
-  const instrumentalPath = join(JOBS_DIR, instrumentalFile);
-  const zipPath = join(JOBS_DIR, zipFile);
-
-  const audioInfo = await probeAudioStream(inputPath);
-  const channelCount = Number(audioInfo?.channels) || 0;
-  const channelLayout = audioInfo?.channelLayout || null;
-  const isStereo = channelCount >= 2;
-  const strategy = isStereo ? "stereo_mid_side" : "mono_adaptive";
-
-  const vocalsFilterParts = [];
-  const instrumentalFilterParts = [];
-
-  if (isStereo) {
-    vocalsFilterParts.push("pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1");
-    vocalsFilterParts.push("alimiter=limit=0.9");
-    instrumentalFilterParts.push("pan=stereo|c0=c0-c1|c1=c1-c0");
-    instrumentalFilterParts.push("alimiter=limit=0.9");
-  } else {
-    vocalsFilterParts.push("pan=stereo|c0=c0|c1=c0");
-    vocalsFilterParts.push("highpass=f=120");
-    vocalsFilterParts.push("lowpass=f=7600");
-    vocalsFilterParts.push("acompressor=threshold=-20dB:ratio=2:attack=12:release=120");
-    vocalsFilterParts.push("alimiter=limit=0.9");
-
-    instrumentalFilterParts.push("pan=stereo|c0=c0|c1=c0");
-    instrumentalFilterParts.push("lowpass=f=180");
-    instrumentalFilterParts.push("equalizer=f=320:t=h:w=2.5:g=4");
-    instrumentalFilterParts.push("equalizer=f=1100:t=h:w=2.5:g=-6");
-    instrumentalFilterParts.push("equalizer=f=3500:t=h:w=2.5:g=-9");
-    instrumentalFilterParts.push("alimiter=limit=0.9");
-  }
-
-  const vocalsFilters = vocalsFilterParts.join(",");
-  const instrumentalFilters = instrumentalFilterParts.join(",");
-
-  let vocalsLogs = "";
-  let instrumentalLogs = "";
-  try {
-    const vocalsArgs = ["-y", "-i", inputPath];
-    if (vocalsFilters) vocalsArgs.push("-filter:a", vocalsFilters);
-    vocalsArgs.push("-ac", "2", "-codec:a", "libmp3lame", "-qscale:a", "2", vocalsPath);
-    vocalsLogs = await runFfmpeg(vocalsArgs);
-
-    const instrumentalArgs = ["-y", "-i", inputPath];
-    if (instrumentalFilters) instrumentalArgs.push("-filter:a", instrumentalFilters);
-    instrumentalArgs.push("-ac", "2", "-codec:a", "libmp3lame", "-qscale:a", "2", instrumentalPath);
-    instrumentalLogs = await runFfmpeg(instrumentalArgs);
-
-    await new Promise((resolve, reject) => {
-      const zipProc = spawn("zip", ["-q", zipFile, vocalsFile, instrumentalFile], { cwd: JOBS_DIR });
-      let zipLogs = "";
-      zipProc.stdout.on("data", (d) => (zipLogs += d.toString()));
-      zipProc.stderr.on("data", (d) => (zipLogs += d.toString()));
-      zipProc.on("error", (err) => {
-        const error = new Error("zip command gagal dijalankan");
-        error.logs = zipLogs;
-        reject(error);
-      });
-      zipProc.on("close", (code) => {
-        if (code === 0) resolve();
-        else {
-          const error = new Error(`zip keluar dengan kode ${code}`);
-          error.logs = zipLogs;
-          reject(error);
-        }
-      });
-    });
-  } catch (err) {
-    try { await fsp.unlink(vocalsPath); } catch {}
-    try { await fsp.unlink(instrumentalPath); } catch {}
-    try { await fsp.unlink(zipPath); } catch {}
-    throw err;
-  }
-
-  const response = {
-    ok: true,
-    id: stemId,
-    baseName: safeBase,
-    vocals: {
-      downloadUrl: `/public/jobs/${vocalsFile}`,
-      fileName: `${safeBase} - Vocals.mp3`,
-      logs: vocalsLogs.slice(-6000),
-    },
-    instrumental: {
-      downloadUrl: `/public/jobs/${instrumentalFile}`,
-      fileName: `${safeBase} - Instrumental.mp3`,
-      logs: instrumentalLogs.slice(-6000),
-    },
-    zip: {
-      downloadUrl: `/public/jobs/${zipFile}`,
-      fileName: `${safeBase} - STEMS.zip`,
-    },
-    meta: {
-      channels: channelCount,
-      channelLayout,
-      strategy,
-    },
-  };
-  return response;
-};
-
-const SUPPORTED_THUMBNAIL_STYLES = new Set(["modern", "vibrant", "mono"]);
-
-const readImageBuffer = async (imageUrl) => {
-  if (!imageUrl || typeof imageUrl !== "string") {
-    const err = new Error("URL gambar tidak valid");
-    err.statusCode = 400;
-    throw err;
-  }
-
-  const trimmed = imageUrl.trim();
-  if (trimmed.startsWith("data:")) {
-    const match = /^data:(image\/[^;]+);base64,(.+)$/i.exec(trimmed);
-    if (!match) {
-      const err = new Error("Data URL gambar tidak valid");
-      err.statusCode = 400;
-      throw err;
-    }
-    return Buffer.from(match[2], "base64");
-  }
-
-  if (!/^https?:\/\//i.test(trimmed)) {
-    const err = new Error("URL gambar harus http/https");
-    err.statusCode = 400;
-    throw err;
-  }
-
-  let response;
-  try {
-    response = await fetch(trimmed, {
-      headers: {
-        "user-agent": "Mozilla/5.0 (compatible; ytmp3/1.0; +https://github.com/)",
-        accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-      },
-    });
-  } catch (cause) {
-    const err = new Error("Tidak bisa mengunduh gambar sumber. Periksa koneksi jaringan atau coba URL lain.");
-    err.statusCode = 502;
-    err.cause = cause;
-    throw err;
-  }
-
-  if (!response.ok) {
-    const err = new Error(`Gagal mengambil gambar (status ${response.status})`);
-    err.statusCode = response.status >= 400 && response.status < 500 ? 400 : 502;
-    throw err;
-  }
-
-  const contentType = response.headers.get("content-type") || "";
-  if (!/image\//i.test(contentType)) {
-    const err = new Error("Respons bukan file gambar");
-    err.statusCode = 400;
-    throw err;
-  }
-
-  return Buffer.from(await response.arrayBuffer());
-};
-
-const generateThumbnailArt = async ({
-  imageUrl,
-  title,
-  subtitle,
-  accent = "#0d6efd",
-  style = "modern",
-}) => {
-  if (!DEFAULT_FONT) {
-    const err = new Error("Font default tidak ditemukan untuk drawtext");
-    err.statusCode = 500;
-    throw err;
-  }
-
-  const buffer = await readImageBuffer(imageUrl);
-  const thumbId = nanoid(10);
-  const inputPath = join(THUMB_DIR, `${thumbId}.src`);
-  const outputName = `${thumbId}.jpg`;
-  const outputPath = join(THUMB_DIR, outputName);
-
-  await fsp.writeFile(inputPath, buffer);
-
-  const accentHex = normalizeHex(accent);
-  const styleKey = SUPPORTED_THUMBNAIL_STYLES.has((style || "").toLowerCase())
-    ? (style || "").toLowerCase()
-    : "modern";
-  const baseFilter = [
-    "scale=1280:720:force_original_aspect_ratio=decrease",
-    `pad=1280:720:(ow-iw)/2:(oh-ih)/2:${hexToFfmpegColor("#10121a")}`,
-    "format=rgba",
-  ];
-
-  if (styleKey === "vibrant") {
-    baseFilter.push("eq=saturation=1.35:contrast=1.05");
-  } else if (styleKey === "mono") {
-    baseFilter.push("hue=s=0");
-  }
-
-  baseFilter.push(`drawbox=x=0:y=h-220:w=iw:h=220:color=${accentHex}@0.75:t=fill`);
-
-  const titleText = escapeDrawText(title || "AI Generated Cover");
-  baseFilter.push(
-    `drawtext=fontfile='${DEFAULT_FONT}':text='${titleText}':fontsize=58:fontcolor=white:shadowx=2:shadowy=2:x=(w-text_w)/2:y=h-150`
-  );
-
-  if (subtitle && subtitle.trim()) {
-    const subText = escapeDrawText(subtitle.trim());
-    baseFilter.push(
-      `drawtext=fontfile='${DEFAULT_FONT}':text='${subText}':fontsize=34:fontcolor=white@0.9:shadowx=1:shadowy=1:x=(w-text_w)/2:y=h-80`
-    );
-  }
-
-  const filter = baseFilter.join(",");
-
-  try {
-    await runFfmpeg([
-      "-y",
-      "-i", inputPath,
-      "-vf", filter,
-      "-q:v", "2",
-      outputPath,
-    ]);
-  } finally {
-    try { await fsp.unlink(inputPath); } catch {}
-  }
-
-  return {
-    ok: true,
-    url: `/public/thumbnails/${outputName}`,
-    fileName: `${sanitizeFileName(title || "cover") || "cover"}.jpg`,
-  };
 };
 
 const validateConvertPayload = (payload = {}) => {
@@ -630,51 +329,6 @@ const runFfmpeg = (args) => new Promise((resolve, reject) => {
     }
   });
 });
-
-const runFfprobe = (args) => new Promise((resolve, reject) => {
-  const ff = spawn(ffprobePath || "ffprobe", args, { stdio: ["ignore", "pipe", "pipe"] });
-  let stdout = "";
-  let stderr = "";
-  ff.stdout.on("data", (d) => (stdout += d.toString()));
-  ff.stderr.on("data", (d) => (stderr += d.toString()));
-  ff.on("error", (err) => {
-    const error = new Error(err.code === "ENOENT" ? "ffprobe tidak ditemukan" : err.message || "ffprobe gagal");
-    error.logs = stderr;
-    reject(error);
-  });
-  ff.on("close", (code) => {
-    if (code === 0) resolve(stdout);
-    else {
-      const error = new Error(`ffprobe exit ${code}`);
-      error.logs = stderr;
-      reject(error);
-    }
-  });
-});
-
-const probeAudioStream = async (inputPath) => {
-  try {
-    const output = await runFfprobe([
-      "-v",
-      "error",
-      "-select_streams",
-      "a:0",
-      "-show_entries",
-      "stream=channels,channel_layout",
-      "-of",
-      "json",
-      inputPath,
-    ]);
-    const data = JSON.parse(output || "{}") || {};
-    const stream = Array.isArray(data.streams) ? data.streams[0] : data.stream || {};
-    const channels = Number(stream?.channels) || 0;
-    const channelLayout = typeof stream?.channel_layout === "string" ? stream.channel_layout : null;
-    return { channels, channelLayout };
-  } catch (err) {
-    console.warn("ffprobe gagal membaca informasi audio", err?.message || err);
-    return { channels: 0, channelLayout: null };
-  }
-};
 
 const vttToSrt = (input = "") => {
   const clean = (input || "").replace(/^WEBVTT.*\n+/i, "").replace(/\r/g, "");
@@ -1414,110 +1068,6 @@ app.post("/api/ai-tags", (req, res) => {
   } catch (e) {
     const msg = e?.message || "Gagal membuat tag";
     return res.status(400).json({ error: msg });
-  }
-});
-
-app.post("/api/thumbnail", async (req, res) => {
-  try {
-    const result = await generateThumbnailArt(req.body || {});
-    return res.json(result);
-  } catch (e) {
-    const msg = e?.message || "Gagal membuat thumbnail";
-    const status = Number.isInteger(e?.statusCode)
-      ? e.statusCode
-      : /tidak valid|tidak ditemukan/i.test(msg)
-        ? 400
-        : 500;
-    return res.status(status).json({ error: msg, logs: e?.logs });
-  }
-});
-
-app.post("/api/stems", async (req, res) => {
-  try {
-    const body = req.body || {};
-    let sourcePath = null;
-    let baseName = body.baseName;
-    if (body.downloadUrl) {
-      sourcePath = resolvePublicPath(body.downloadUrl);
-      if (!sourcePath) throw new Error("downloadUrl tidak valid");
-      baseName = baseName || basename(sourcePath).replace(/\.[^.]+$/, "");
-    } else if (body.jobId) {
-      const job = backgroundJobs.get(body.jobId);
-      if (!job || job.status !== "done") throw new Error("Job belum selesai");
-      sourcePath = resolveJobFilePath(job);
-      if (!sourcePath) throw new Error("File job tidak ditemukan");
-      baseName = baseName || job.result?.baseName || job.result?.fileName;
-    } else if (body.url) {
-      const convertPayload = { ...body };
-      delete convertPayload.jobId;
-      delete convertPayload.downloadUrl;
-      delete convertPayload.baseName;
-      const convertResult = await convertSingle({ ...convertPayload, format: body.format || "wav", noPlaylist: true });
-      sourcePath = convertResult.fullPath;
-      baseName = baseName || convertResult.baseName || convertResult.fileName;
-    } else {
-      return res.status(400).json({ error: "Perlu url, jobId, atau downloadUrl" });
-    }
-    if (!sourcePath) throw new Error("Sumber audio tidak ditemukan");
-    const result = await createStemsForSource(sourcePath, baseName);
-    if (!result.source && sourcePath.startsWith(JOBS_DIR)) {
-      const diskName = basename(sourcePath);
-      result.source = {
-        downloadUrl: `/public/jobs/${diskName}`,
-        fileName: `${sanitizeFileName(baseName || "Audio") || "Audio"}.${diskName.split(".").pop()}`,
-      };
-    }
-    return res.json(result);
-  } catch (e) {
-    const msg = e?.message || "Gagal membuat stems";
-    const status = /tidak valid|belum|perlu|tidak ditemukan/i.test(msg) ? 400 : 500;
-    return res.status(status).json({ error: msg, logs: e?.logs });
-  }
-});
-
-app.post("/api/cloud/save", async (req, res) => {
-  try {
-    const body = req.body || {};
-    const targetKey = typeof body.target === "string" ? body.target.toLowerCase() : "drive";
-    const target = CLOUD_TARGETS[targetKey];
-    if (!target) return res.status(400).json({ error: "Target cloud tidak dikenali" });
-
-    let sourcePath = null;
-    let fileName = typeof body.fileName === "string" && body.fileName.trim()
-      ? sanitizeFileName(body.fileName.trim())
-      : null;
-
-    if (body.jobId) {
-      const job = backgroundJobs.get(body.jobId);
-      if (!job || job.status !== "done") throw new Error("Job belum selesai");
-      sourcePath = resolveJobFilePath(job);
-      if (!sourcePath) throw new Error("File job tidak ditemukan");
-      if (!fileName) fileName = job.result?.fileName || job.result?.baseName;
-    } else if (body.downloadUrl) {
-      sourcePath = resolvePublicPath(body.downloadUrl);
-      if (!sourcePath) throw new Error("downloadUrl tidak valid");
-      if (!fileName) fileName = basename(sourcePath);
-    } else {
-      return res.status(400).json({ error: "Perlu jobId atau downloadUrl" });
-    }
-
-    if (!sourcePath) throw new Error("Sumber file tidak ditemukan");
-
-    const finalName = ensureUniqueFileName(target.dir, sanitizeFileName(fileName) || basename(sourcePath));
-    const destPath = join(target.dir, finalName);
-    await fsp.copyFile(sourcePath, destPath);
-
-    return res.json({
-      ok: true,
-      target: targetKey,
-      label: target.label,
-      downloadUrl: `/public/cloud/${targetKey}/${finalName}`,
-      fileName: finalName,
-    });
-  } catch (e) {
-    const msg = e?.message || "Gagal menyimpan ke cloud";
-    const status = /tidak valid|perlu|belum|tidak ditemukan/i.test(msg) ? 400 : 500;
-    return res.status(status).json({ error: msg, logs: e?.logs });
   }
 });
 

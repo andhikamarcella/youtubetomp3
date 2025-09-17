@@ -38,37 +38,28 @@
     #playlistShareCard { margin-top: .75rem; }
     #urlDropOverlay { position: fixed; inset: 0; background: rgba(13,110,253,.1); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600; color: var(--bs-primary); z-index: 1090; backdrop-filter: blur(2px); padding: 1rem; text-align:center; }
     #urlDropOverlay[hidden] { display: none !important; }
-    #waveformWrap, #equalizerWrap, #shareWrap { background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 1rem; }
-    #waveformCanvas { width: 100%; height: 140px; display: block; border-radius: .85rem; background: var(--bs-body-bg); cursor: crosshair; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
-    #waveformCanvas::selection { background: transparent; }
-    #waveformCanvas[data-loading="1"] { opacity: .55; }
-    #waveformMeta { font-size: .85rem; }
+    #equalizerWrap, #shareWrap { background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 1rem; box-shadow: 0 12px 32px rgba(13,110,253,.08); }
     .eq-slider label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary); }
-    .eq-slider .form-range { height: 1.6rem; appearance: none; background: linear-gradient(90deg, rgba(220,53,69,.2) 0%, rgba(13,110,253,.25) 100%); border-radius: 999px; transition: background .2s ease; }
-    .eq-slider .form-range:focus { outline: none; box-shadow: none; }
+    .eq-slider .form-range { height: 1.6rem; appearance: none; background: linear-gradient(90deg, rgba(13,110,253,.28) 0%, rgba(111,66,193,.38) 55%, rgba(220,53,69,.32) 100%); border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 6px 18px rgba(13,110,253,.15); transition: box-shadow .2s ease, background .2s ease; }
+    .eq-slider .form-range:focus-visible { outline: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 0 0 .35rem rgba(13,110,253,.25); }
     .eq-slider .form-range::-webkit-slider-runnable-track { height: .55rem; border-radius: 999px; background: transparent; }
     .eq-slider .form-range::-moz-range-track { height: .55rem; border-radius: 999px; background: transparent; }
-    .eq-slider .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid var(--bs-body-bg); box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .15s ease, background .2s ease; margin-top: -6.5px; }
-    .eq-slider .form-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid var(--bs-body-bg); box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .15s ease, background .2s ease; }
-    .eq-slider .form-range:active::-webkit-slider-thumb, .eq-slider .form-range:active::-moz-range-thumb { transform: scale(1.1); }
+    .eq-slider .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255,255,255,.65) 40%, rgba(13,110,253,1) 100%); border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 12px rgba(13,110,253,.55), 0 4px 10px rgba(0,0,0,.25); transition: transform .15s ease, box-shadow .2s ease; margin-top: -7px; }
+    .eq-slider .form-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255,255,255,.65) 40%, rgba(13,110,253,1) 100%); border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 12px rgba(13,110,253,.55), 0 4px 10px rgba(0,0,0,.25); transition: transform .15s ease, box-shadow .2s ease; }
+    .eq-slider .form-range:active::-webkit-slider-thumb, .eq-slider .form-range:active::-moz-range-thumb { transform: scale(1.08); box-shadow: 0 0 18px rgba(111,66,193,.55), 0 6px 14px rgba(0,0,0,.3); }
     .eq-slider .eq-value { font-size: .7rem; font-weight: 600; background: var(--bs-primary-bg-subtle); color: var(--bs-primary-text); border-radius: .65rem; padding: .2rem .45rem; min-width: 3.4rem; text-align: center; }
     html[data-bs-theme='dark'] .eq-slider .eq-value { background: color-mix(in srgb, var(--bs-primary) 22%, transparent); color: var(--bs-body-color); }
     #shareWrap .input-group-text { border-radius: .75rem 0 0 .75rem; }
     #subtitleResult pre { max-height: 160px; overflow:auto; background: var(--bs-body-bg); border-radius: .75rem; padding: .75rem; }
     #subtitleResult .btn { border-radius: .75rem; }
     #subtitleResult .badge { border-radius: .75rem; }
-    #stemResultCard { background: color-mix(in srgb, var(--bs-body-bg) 90%, rgba(13,110,253,.05)); border: 1px solid color-mix(in srgb, var(--bs-primary) 12%, transparent); border-radius: 1.15rem; padding: 1.25rem; box-shadow: 0 12px 32px rgba(13,110,253,.06); }
-    .stem-preview { background: var(--bs-secondary-bg); border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); padding: 1rem; display: flex; flex-direction: column; gap: .75rem; height: 100%; }
-    .stem-preview audio { width: 100%; border-radius: .85rem; background: var(--bs-body-bg); }
-    .stem-preview .btn { border-radius: .75rem; }
-    #stemMeta { font-size: .75rem; color: var(--bs-secondary); }
-    #stemLoading { font-size: .8rem; color: var(--bs-secondary); }
-    html[data-bs-theme='dark'] #stemResultCard { background: color-mix(in srgb, var(--bs-body-bg) 75%, rgba(13,110,253,.08)); border-color: color-mix(in srgb, var(--bs-primary) 20%, transparent); box-shadow: 0 12px 32px rgba(13,110,253,.12); }
-    html[data-bs-theme='dark'] .stem-preview { background: color-mix(in srgb, var(--bs-secondary-bg) 80%, rgba(255,255,255,.04)); border-color: color-mix(in srgb, rgba(255,255,255,.08) 40%, transparent); }
     .mini-player { position: fixed; left: 0; right: 0; bottom: 1rem; display: flex; justify-content: center; pointer-events: none; z-index: 1090; }
     .mini-player-card { pointer-events: auto; border-radius: 1rem; width: min(420px, calc(100% - 2.5rem)); }
     .mini-player .btn { border-radius: 50%; }
-    .mini-player .form-range { height: 1rem; }
+    .mini-player .form-range { height: 1rem; appearance: none; background: linear-gradient(90deg, rgba(13,110,253,.35) 0%, rgba(32,201,151,.35) 50%, rgba(220,53,69,.35) 100%); border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 4px 14px rgba(13,110,253,.18); }
+    .mini-player .form-range::-webkit-slider-runnable-track, .mini-player .form-range::-moz-range-track { height: .45rem; border-radius: 999px; background: transparent; }
+    .mini-player .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,.6) 45%, rgba(32,201,151,1) 100%); border: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 10px rgba(32,201,151,.6), 0 2px 6px rgba(0,0,0,.25); margin-top: -6px; }
+    .mini-player .form-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,.6) 45%, rgba(32,201,151,1) 100%); border: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 10px rgba(32,201,151,.6), 0 2px 6px rgba(0,0,0,.25); }
     .mini-player-card { background: radial-gradient(circle at top left, rgba(13,110,253,.12), transparent 60%), radial-gradient(circle at bottom right, rgba(220,53,69,.12), transparent 55%), var(--bs-body-bg); backdrop-filter: blur(6px); }
     .mini-player-title { font-size: .85rem; letter-spacing: .01em; }
     .mini-player-subtitle { font-size: .7rem; color: var(--bs-secondary); margin-top: .1rem; }
@@ -86,7 +77,6 @@
       #qrWrap, #playlistQrWrap { min-width: 120px; }
       .mini-player { bottom: .75rem; }
       .mini-player-card { width: calc(100% - 1.5rem); }
-      #waveformCanvas { height: 110px; }
     }
   </style>
 </head>
@@ -296,70 +286,17 @@
             <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
               <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                  <strong class="me-auto">AI Studio & Cloud</strong>
+                  <strong class="me-auto">AI Studio</strong>
                   <div class="form-check form-switch m-0">
                     <input class="form-check-input" type="checkbox" id="backgroundMode">
                     <label class="form-check-label small" for="backgroundMode">Background mode</label>
                   </div>
                 </div>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <div class="d-grid gap-2">
-                      <button class="btn btn-outline-primary" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
-                      <button class="btn btn-outline-secondary" id="thumbnailBtn" type="button"><i class="bi bi-image"></i> AI Thumbnail</button>
-                      <button class="btn btn-outline-success" id="stemBtn" type="button"><i class="bi bi-mic-fill"></i> Voice ↔ Instrumental</button>
-                    </div>
-                  </div>
-                  <div class="col-md-6">
-                    <div class="d-grid gap-2">
-                      <button class="btn btn-outline-primary" id="cloudDriveBtn" type="button"><i class="bi bi-cloud-arrow-up"></i> Save to Drive</button>
-                      <button class="btn btn-outline-primary" id="cloudDropboxBtn" type="button"><i class="bi bi-cloud-upload"></i> Save to Dropbox</button>
-                      <button class="btn btn-outline-primary" id="cloudOnedriveBtn" type="button"><i class="bi bi-cloud"></i> Save to OneDrive</button>
-                    </div>
-                  </div>
+                <p class="text-secondary small mb-3">Gunakan Auto Music Tags untuk mengisi metadata secara instan sekaligus menyimpan job ke background queue bila diperlukan.</p>
+                <div class="d-grid d-sm-flex gap-2">
+                  <button class="btn btn-outline-primary flex-grow-1" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
                 </div>
                 <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
-                <div class="mt-3" id="stemResult" hidden>
-                  <div id="stemResultCard">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                      <div class="d-flex align-items-center gap-2">
-                        <span class="badge rounded-pill text-bg-primary"><i class="bi bi-sliders"></i></span>
-                        <strong>Stems siap</strong>
-                      </div>
-                      <span class="badge rounded-pill bg-body-tertiary text-secondary" id="stemMeta" hidden></span>
-                      <button class="btn btn-sm btn-outline-secondary ms-auto" id="stemClearBtn" type="button"><i class="bi bi-x"></i> Tutup</button>
-                    </div>
-                    <div class="row g-3 align-items-stretch" id="stemPreviewWrap">
-                      <div class="col-12 col-lg-6">
-                        <div class="stem-preview">
-                          <div class="d-flex align-items-center gap-2">
-                            <span class="badge rounded-pill text-bg-primary"><i class="bi bi-mic-fill"></i> Vocals</span>
-                            <a id="stemVocalsLink" class="btn btn-sm btn-primary ms-auto" href="#" download><i class="bi bi-download"></i> Download</a>
-                          </div>
-                          <audio id="stemVocalsPlayer" controls preload="none"></audio>
-                        </div>
-                      </div>
-                      <div class="col-12 col-lg-6">
-                        <div class="stem-preview">
-                          <div class="d-flex align-items-center gap-2">
-                            <span class="badge rounded-pill text-bg-info text-dark"><i class="bi bi-music-note-beamed"></i> Instrumental</span>
-                            <a id="stemInstrumentalLink" class="btn btn-sm btn-outline-primary ms-auto" href="#" download><i class="bi bi-download"></i> Download</a>
-                          </div>
-                          <audio id="stemInstrumentalPlayer" controls preload="none"></audio>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-                      <a id="stemZipLink" class="btn btn-outline-secondary" href="#" download><i class="bi bi-file-earmark-zip"></i> Unduh ZIP</a>
-                      <div class="ms-auto" id="stemLoading" hidden>
-                        <div class="d-inline-flex align-items-center gap-2 small text-secondary">
-                          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          <span>Sedang memproses…</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -445,19 +382,6 @@
                         <button class="btn btn-outline-secondary" id="openShareBtn" type="button" aria-label="Buka link share"><i class="bi bi-arrow-up-right-square"></i></button>
                       </div>
                       <div class="small text-secondary mt-2" id="shareInfo"></div>
-                    </div>
-
-                    <div id="waveformWrap" class="mt-3" hidden>
-                      <div class="d-flex flex-wrap align-items-center gap-2">
-                        <strong class="me-auto">Editor Trim</strong>
-                        <span id="waveformMeta" class="text-secondary"></span>
-                        <div class="btn-group btn-group-sm" role="group">
-                          <button class="btn btn-outline-secondary" id="waveformClear" type="button"><i class="bi bi-eraser"></i> Reset</button>
-                          <button class="btn btn-outline-secondary" id="waveformUseSelection" type="button"><i class="bi bi-scissors"></i> Pakai seleksi</button>
-                        </div>
-                      </div>
-                      <canvas id="waveformCanvas" class="mt-2"></canvas>
-                      <div class="small text-secondary mt-2" id="waveformHint">Seret pada waveform untuk memilih bagian audio, kolom trim akan terisi otomatis.</div>
                     </div>
 
                     <div id="equalizerWrap" class="mt-3" hidden>
@@ -705,12 +629,6 @@
   const shareBtn = $('#shareBtn');
   const copyShareBtn = $('#copyShareBtn');
   const openShareBtn = $('#openShareBtn');
-  const waveformWrap = $('#waveformWrap');
-  const waveformCanvas = $('#waveformCanvas');
-  const waveformMeta = $('#waveformMeta');
-  const waveformHint = $('#waveformHint');
-  const waveformClearBtn = $('#waveformClear');
-  const waveformUseSelectionBtn = $('#waveformUseSelection');
   const equalizerWrap = $('#equalizerWrap');
   const eqBass = $('#eqBass');
   const eqMid = $('#eqMid');
@@ -729,61 +647,6 @@
   const backgroundMode = $('#backgroundMode');
   const aiStatus = $('#aiStatus');
   const autoTagBtn = $('#autoTagBtn');
-  const thumbnailBtn = $('#thumbnailBtn');
-  const stemBtn = $('#stemBtn');
-  const stemResult = $('#stemResult');
-  const stemVocalsLink = $('#stemVocalsLink');
-  const stemInstrumentalLink = $('#stemInstrumentalLink');
-  const stemZipLink = $('#stemZipLink');
-  const stemClearBtn = $('#stemClearBtn');
-  const stemVocalsPlayer = $('#stemVocalsPlayer');
-  const stemInstrumentalPlayer = $('#stemInstrumentalPlayer');
-  const stemMeta = $('#stemMeta');
-  const stemLoading = $('#stemLoading');
-
-  const bustCache = (href) => {
-    if (!href || typeof href !== 'string') return href;
-    const [base, hash] = href.split('#');
-    const timed = `${base}${base.includes('?') ? '&' : '?'}t=${Date.now()}`;
-    return hash ? `${timed}#${hash}` : timed;
-  };
-
-  const applyStemMeta = (meta) => {
-    if (!stemMeta) return;
-    if (!meta) { stemMeta.textContent = ''; stemMeta.hidden = true; return; }
-    const bits = [];
-    if (meta.strategy === 'stereo_mid_side') bits.push('Stereo split');
-    else if (meta.strategy === 'mono_adaptive') bits.push('Mono adaptif');
-    else if (typeof meta.strategy === 'string' && meta.strategy.trim()) bits.push(meta.strategy);
-    const channelCount = Number(meta.channels);
-    if (Number.isFinite(channelCount) && channelCount > 0) {
-      const layout = typeof meta.channelLayout === 'string' && meta.channelLayout.trim() ? ` (${meta.channelLayout})` : '';
-      bits.push(`${channelCount} ch${layout}`);
-    } else if (typeof meta.channelLayout === 'string' && meta.channelLayout.trim()) {
-      bits.push(meta.channelLayout);
-    }
-    stemMeta.textContent = bits.join(' · ');
-    stemMeta.hidden = !stemMeta.textContent.trim();
-  };
-
-  const pauseStemPlayers = () => {
-    [stemVocalsPlayer, stemInstrumentalPlayer].forEach((player) => {
-      if (!player) return;
-      try { player.pause(); } catch {}
-    });
-  };
-
-  const clearStemPlayers = () => {
-    [stemVocalsPlayer, stemInstrumentalPlayer].forEach((player) => {
-      if (!player) return;
-      try { player.pause(); } catch {}
-      player.removeAttribute('src');
-      try { player.load(); } catch {}
-    });
-  };
-  const cloudDriveBtn = $('#cloudDriveBtn');
-  const cloudDropboxBtn = $('#cloudDropboxBtn');
-  const cloudOnedriveBtn = $('#cloudOnedriveBtn');
   const playlistResultWrap = $('#playlistResultWrap');
   const playlistDownloadLink = $('#playlistDownloadLink');
   const playlistInfo = $('#playlistInfo');
@@ -833,8 +696,6 @@
   let currentDownloadUrl = '';
   let currentDownloadName = '';
   let currentShareUrl = '';
-  let waveformState = { url: '', duration: 0, peaks: [], selection: null };
-  let waveformAbort = null;
   let miniSeeking = false;
   let subtitleShareUrl = '';
   let lastPreviewTitle = '';
@@ -1003,7 +864,6 @@
     lastResult = null;
     lastPreviewMeta = {};
     updateAiStatus('');
-    resetWaveform();
     if (equalizerWrap) equalizerWrap.hidden = true;
     if (eqBass) eqBass.value = 0;
     if (eqMid) eqMid.value = 0;
@@ -1044,7 +904,6 @@
     if (shareLinkInput) shareLinkInput.value = currentShareUrl;
     if (shareInfo) shareInfo.textContent = 'Bagikan link atau scan QR untuk membuka mini player.';
     renderQr(qrCanvas, qrWrap, currentShareUrl);
-    loadWaveform(absoluteUrl);
     if (equalizerWrap) equalizerWrap.hidden = false;
     refreshEqUi();
     if (miniPlayerEl) {
@@ -1296,273 +1155,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     return str.replace(/[\\/:*?"<>|\r\n]+/g,'').replace(/\s+/g,' ').trim();
   }
 
-  // ===== Waveform helpers =====
-  function resetWaveform(clearSelection = true){
-    if (waveformAbort) {
-      waveformAbort.abort();
-      waveformAbort = null;
-    }
-    if (clearSelection) waveformState.selection = null;
-    waveformState.url = '';
-    waveformState.duration = 0;
-    waveformState.peaks = [];
-    if (waveformCanvas) {
-      const ctx = waveformCanvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, waveformCanvas.width || 0, waveformCanvas.height || 0);
-      }
-      waveformCanvas.removeAttribute('data-loading');
-    }
-    if (waveformWrap) waveformWrap.hidden = true;
-    if (waveformMeta) waveformMeta.textContent = '';
-    if (waveformHint) waveformHint.textContent = 'Waveform akan muncul setelah audio siap.';
-  }
-
-  function buildWaveformPeaks(channelData, target = 900){
-    const peaks = [];
-    if (!channelData || !channelData.length) return peaks;
-    const len = channelData.length;
-    const step = Math.max(1, Math.floor(len / target));
-    for (let i = 0; i < target; i += 1){
-      const start = i * step;
-      if (start >= len) break;
-      const end = Math.min(len, start + step);
-      let min = 1;
-      let max = -1;
-      for (let j = start; j < end; j += 1){
-        const value = channelData[j];
-        if (value > max) max = value;
-        if (value < min) min = value;
-      }
-      peaks.push({ min, max });
-    }
-    return peaks;
-  }
-
-  function updateWaveformMeta(){
-    if (!waveformMeta) return;
-    if (!waveformState.duration){
-      waveformMeta.textContent = '';
-      return;
-    }
-    if (waveformState.selection && waveformState.selection.end > waveformState.selection.start){
-      const { start, end } = waveformState.selection;
-      waveformMeta.textContent = `${secondsToClock(start)} → ${secondsToClock(end)} · ${secondsToClock(end - start)}`;
-    } else {
-      waveformMeta.textContent = `Durasi ${secondsToClock(waveformState.duration)}`;
-    }
-  }
-
-  function drawWaveform(){
-    if (!waveformCanvas) return;
-    const ctx = waveformCanvas.getContext('2d');
-    if (!ctx) return;
-    const width = waveformCanvas.clientWidth || waveformCanvas.offsetWidth || 480;
-    const height = waveformCanvas.clientHeight || 120;
-    const ratio = window.devicePixelRatio || 1;
-    waveformCanvas.width = Math.max(1, Math.floor(width * ratio));
-    waveformCanvas.height = Math.max(1, Math.floor(height * ratio));
-    ctx.save();
-    ctx.scale(ratio, ratio);
-    const bg = getThemeColor('--bs-body-bg', '#ffffff');
-    const accent = getThemeColor('--bs-primary', '#0d6efd');
-    const border = getThemeColor('--bs-border-color', '#ced4da');
-    const danger = getThemeColor('--bs-danger', '#dc3545');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, width, height);
-    ctx.strokeStyle = border;
-    ctx.lineWidth = 1;
-    const mid = height / 2;
-    ctx.beginPath();
-    ctx.moveTo(0, mid);
-    ctx.lineTo(width, mid);
-    ctx.stroke();
-    const peaks = waveformState.peaks || [];
-    if (peaks.length){
-      const columnWidth = width / peaks.length;
-      const gradient = ctx.createLinearGradient(0, 0, width, 0);
-      gradient.addColorStop(0, accent);
-      gradient.addColorStop(1, danger);
-      ctx.fillStyle = gradient;
-      for (let i = 0; i < peaks.length; i += 1){
-        const { min, max } = peaks[i];
-        const x = i * columnWidth;
-        const top = mid + (min * mid);
-        const bottom = mid + (max * mid);
-        const h = bottom - top;
-        ctx.fillRect(x, top, Math.max(1, columnWidth * 0.9), h || 1);
-      }
-    }
-    if (waveformState.selection && waveformState.duration && waveformState.selection.end > waveformState.selection.start){
-      const { start, end } = waveformState.selection;
-      const startX = (start / waveformState.duration) * width;
-      const endX = (end / waveformState.duration) * width;
-      const selGradient = ctx.createLinearGradient(startX, 0, endX, 0);
-      selGradient.addColorStop(0, accent);
-      selGradient.addColorStop(1, danger);
-      ctx.save();
-      ctx.globalAlpha = 0.3;
-      ctx.fillStyle = selGradient;
-      ctx.fillRect(startX, 0, Math.max(1, endX - startX), height);
-      ctx.restore();
-      ctx.strokeStyle = accent;
-      ctx.beginPath();
-      ctx.moveTo(startX, 0);
-      ctx.lineTo(startX, height);
-      ctx.stroke();
-      ctx.strokeStyle = danger;
-      ctx.beginPath();
-      ctx.moveTo(endX, 0);
-      ctx.lineTo(endX, height);
-      ctx.stroke();
-      const radius = 5;
-      ctx.fillStyle = accent;
-      ctx.beginPath();
-      ctx.arc(Math.max(radius, startX), mid, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = danger;
-      ctx.beginPath();
-      ctx.arc(Math.min(width - radius, endX), mid, radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function getWaveformTime(evt){
-    if (!waveformCanvas || !waveformState.duration) return 0;
-    const rect = waveformCanvas.getBoundingClientRect();
-    const x = clamp(evt.clientX - rect.left, 0, rect.width || 1);
-    const ratio = rect.width ? x / rect.width : 0;
-    return ratio * waveformState.duration;
-  }
-
-  function syncWaveformFromInputs(){
-    if (!waveformState.duration) return;
-    const sVal = parseTime($('#trimStart').value.trim());
-    const eVal = parseTime($('#trimEnd').value.trim());
-    if (sVal === null && eVal === null){
-      waveformState.selection = null;
-      drawWaveform();
-      updateWaveformMeta();
-      return;
-    }
-    const start = sVal === null ? 0 : clamp(sVal, 0, waveformState.duration);
-    const end = eVal === null ? waveformState.duration : clamp(eVal, 0, waveformState.duration);
-    if (end <= start){
-      waveformState.selection = null;
-    } else {
-      waveformState.selection = { start, end };
-    }
-    drawWaveform();
-    updateWaveformMeta();
-  }
-
-  async function loadWaveform(url){
-    if (!waveformCanvas || !url) return;
-    const ctx = getAudioContext();
-    if (!ctx){
-      if (waveformWrap) waveformWrap.hidden = true;
-      if (waveformHint) waveformHint.textContent = 'Browser tidak mendukung Web Audio API.';
-      return;
-    }
-    if (waveformAbort) waveformAbort.abort();
-    waveformAbort = new AbortController();
-    waveformCanvas.dataset.loading = '1';
-    if (waveformHint) waveformHint.textContent = 'Memuat waveform…';
-    try {
-      const resp = await fetch(`${url}${url.includes('?') ? '&' : '?'}waveform=${Date.now()}`, { signal: waveformAbort.signal, cache: 'no-store' });
-      if (!resp.ok) throw new Error('Gagal memuat audio');
-      const arr = await resp.arrayBuffer();
-      const audioBuffer = await ctx.decodeAudioData(arr);
-      const peaks = buildWaveformPeaks(audioBuffer.getChannelData(0), Math.min(1400, Math.ceil(audioBuffer.duration * 80)));
-      waveformState.url = url;
-      waveformState.duration = audioBuffer.duration;
-      waveformState.peaks = peaks;
-      waveformWrap.hidden = false;
-      drawWaveform();
-      updateWaveformMeta();
-      if (waveformHint) waveformHint.textContent = 'Seret area untuk memilih bagian audio.';
-      syncWaveformFromInputs();
-    } catch (err){
-      if (err.name === 'AbortError') return;
-      console.error(err);
-      if (waveformHint) waveformHint.textContent = 'Waveform tidak bisa dimuat';
-      waveformWrap.hidden = true;
-    } finally {
-      waveformCanvas.removeAttribute('data-loading');
-    }
-  }
-
-  if (waveformCanvas){
-    let dragging = false;
-    let dragStart = 0;
-    waveformCanvas.addEventListener('pointerdown', (e) => {
-      if (!waveformState.duration) return;
-      dragging = true;
-      waveformCanvas.setPointerCapture(e.pointerId);
-      const time = getWaveformTime(e);
-      dragStart = time;
-      waveformState.selection = { start: time, end: time };
-      drawWaveform();
-      updateWaveformMeta();
-    });
-    waveformCanvas.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      const time = getWaveformTime(e);
-      const start = Math.min(dragStart, time);
-      const end = Math.max(dragStart, time);
-      waveformState.selection = end > start ? { start, end } : null;
-      drawWaveform();
-      updateWaveformMeta();
-      if (waveformState.selection){
-        $('#trimStart').value = secondsToInput(start);
-        $('#trimEnd').value = secondsToInput(end);
-      }
-    });
-    const stopDrag = (e) => {
-      if (!dragging) return;
-      if (e && e.pointerId != null) waveformCanvas.releasePointerCapture(e.pointerId);
-      dragging = false;
-      updateWaveformMeta();
-      if (waveformState.selection){
-        $('#trimStart').value = secondsToInput(waveformState.selection.start);
-        $('#trimEnd').value = secondsToInput(waveformState.selection.end);
-      }
-    };
-    waveformCanvas.addEventListener('pointerup', stopDrag);
-    waveformCanvas.addEventListener('pointercancel', stopDrag);
-    waveformCanvas.addEventListener('pointerleave', stopDrag);
-    waveformCanvas.addEventListener('dblclick', () => {
-      waveformState.selection = null;
-      drawWaveform();
-      updateWaveformMeta();
-      $('#trimStart').value = '';
-      $('#trimEnd').value = '';
-    });
-  }
-
-  if (waveformClearBtn){
-    waveformClearBtn.addEventListener('click', () => {
-      waveformState.selection = null;
-      drawWaveform();
-      updateWaveformMeta();
-      $('#trimStart').value = '';
-      $('#trimEnd').value = '';
-    });
-  }
-
-  if (waveformUseSelectionBtn){
-    waveformUseSelectionBtn.addEventListener('click', () => {
-      if (!waveformState.selection){
-        setToast('Pilih bagian audio di waveform terlebih dahulu');
-        return;
-      }
-      $('#trimStart').value = secondsToInput(waveformState.selection.start);
-      $('#trimEnd').value = secondsToInput(waveformState.selection.end);
-      setToast('Trim diperbarui dari waveform');
-    });
-  }
-
   // ===== Equalizer helpers =====
   const formatGain = (value) => `${Number(value) >= 0 ? '+' : ''}${Number(value)} dB`;
 
@@ -1721,9 +1313,6 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (job.result?.downloadUrl) {
         const href = absoluteFromRelative(job.result.downloadUrl);
         actions.push(`<a class="btn btn-sm btn-outline-primary" href="${href}" download="${job.result.fileName || ''}"><i class="bi bi-download"></i> Unduh</a>`);
-      }
-      if (status === 'done') {
-        actions.push(`<button class="btn btn-sm btn-outline-secondary" data-cloud="drive" data-job="${job.id}" title="Simpan ke cloud"><i class="bi bi-cloud-arrow-up"></i></button>`);
       }
       if (status !== 'done' && status !== 'error') {
         actions.push('<span class="text-secondary">Diproses…</span>');
@@ -1979,9 +1568,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     updatePreview();
   });
   $('#url').addEventListener('change', updatePreview);
-  $('#trimStart').addEventListener('change', syncWaveformFromInputs);
-  $('#trimEnd').addEventListener('change', syncWaveformFromInputs);
-
   if (autoTagBtn) autoTagBtn.addEventListener('click', async () => {
     const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
     if (!title) { setToast('Isi judul terlebih dahulu'); return; }
@@ -2008,128 +1594,6 @@ $('#queueList')?.addEventListener('click', (e) => {
       updateAiStatus(err.message, 'danger');
       setToast('Gagal AI tags: ' + err.message);
     }
-  });
-
-  if (thumbnailBtn) thumbnailBtn.addEventListener('click', async () => {
-    const baseImage = lastVideoMeta.thumbnail || $('#thumb').src;
-    if (!baseImage) { setToast('Thumbnail belum tersedia'); return; }
-    const baseTitle = $('#id3Title').value.trim() || lastVideoMeta.title || 'AI Cover';
-    const title = prompt('Judul cover', baseTitle);
-    if (title === null) return;
-    const subtitle = prompt('Subjudul (opsional)', lastVideoMeta.author || '');
-    const accent = prompt('Warna aksen (#RRGGBB)', '#0d6efd') || '#0d6efd';
-    const style = prompt('Style (modern/vibrant/mono)', 'modern') || 'modern';
-    updateAiStatus('Membuat thumbnail…', 'info');
-    try {
-      const resp = await fetch(api('/api/thumbnail'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: baseImage, title, subtitle, accent, style }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat thumbnail');
-      if (data.url) {
-        const absolute = absoluteFromRelative(data.url);
-        $('#thumb').src = `${absolute}${absolute.includes('?') ? '&' : '?'}t=${Date.now()}`;
-        updateAiStatus(`Thumbnail baru siap. <a href="${absolute}" target="_blank" rel="noopener">Lihat</a>`, 'success');
-        setToast('Thumbnail diperbarui');
-        lastVideoMeta.thumbnail = absolute;
-      }
-    } catch (err) {
-      updateAiStatus(err.message, 'danger');
-      setToast('Gagal membuat thumbnail: ' + err.message);
-    }
-  });
-
-  if (stemBtn) stemBtn.addEventListener('click', async () => {
-    if (stemBtn.disabled) return;
-    const payload = {};
-    if (lastResult?.jobId) payload.jobId = lastResult.jobId;
-    else if (lastResult?.downloadUrl) payload.downloadUrl = toRelativePublic(lastResult.downloadUrl);
-    else if ($('#url').value.trim()) payload.url = $('#url').value.trim();
-    else { setToast('Belum ada audio untuk diproses'); return; }
-    updateAiStatus('Memisahkan vokal dan instrumen…', 'info');
-    stemBtn.disabled = true;
-    stemBtn.setAttribute('aria-busy', 'true');
-    if (stemLoading) stemLoading.hidden = false;
-    if (stemResult) stemResult.hidden = false;
-    pauseStemPlayers();
-    try {
-      const resp = await fetch(api('/api/stems'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal memisahkan');
-      if (stemResult) {
-        stemResult.hidden = false;
-        if (stemVocalsLink && data.vocals?.downloadUrl) {
-          const href = absoluteFromRelative(data.vocals.downloadUrl);
-          stemVocalsLink.href = href;
-          stemVocalsLink.setAttribute('download', data.vocals.fileName || 'vocals.mp3');
-          if (stemVocalsPlayer) {
-            stemVocalsPlayer.src = bustCache(href);
-            try { stemVocalsPlayer.load(); } catch {}
-          }
-        }
-        if (stemInstrumentalLink && data.instrumental?.downloadUrl) {
-          const href = absoluteFromRelative(data.instrumental.downloadUrl);
-          stemInstrumentalLink.href = href;
-          stemInstrumentalLink.setAttribute('download', data.instrumental.fileName || 'instrumental.mp3');
-          if (stemInstrumentalPlayer) {
-            stemInstrumentalPlayer.src = bustCache(href);
-            try { stemInstrumentalPlayer.load(); } catch {}
-          }
-        }
-        if (stemZipLink && data.zip?.downloadUrl) {
-          const href = absoluteFromRelative(data.zip.downloadUrl);
-          stemZipLink.href = href;
-          stemZipLink.setAttribute('download', data.zip.fileName || 'stems.zip');
-        }
-        applyStemMeta(data.meta);
-      }
-      updateAiStatus('Stems siap diunduh', 'success');
-      setToast('Stems berhasil dibuat');
-    } catch (err) {
-      updateAiStatus(err.message, 'danger');
-      setToast('Gagal membuat stems: ' + err.message);
-    } finally {
-      if (stemLoading) stemLoading.hidden = true;
-      stemBtn.disabled = false;
-      stemBtn.removeAttribute('aria-busy');
-    }
-  });
-
-  if (stemClearBtn) stemClearBtn.addEventListener('click', () => {
-    clearStemPlayers();
-    applyStemMeta(null);
-    if (stemVocalsLink) {
-      stemVocalsLink.removeAttribute('href');
-      stemVocalsLink.removeAttribute('download');
-    }
-    if (stemInstrumentalLink) {
-      stemInstrumentalLink.removeAttribute('href');
-      stemInstrumentalLink.removeAttribute('download');
-    }
-    if (stemZipLink) {
-      stemZipLink.removeAttribute('href');
-      stemZipLink.removeAttribute('download');
-    }
-    if (stemLoading) stemLoading.hidden = true;
-    if (stemResult) stemResult.hidden = true;
-  });
-
-  if (cloudDriveBtn) cloudDriveBtn.addEventListener('click', () => saveToCloud('drive'));
-  if (cloudDropboxBtn) cloudDropboxBtn.addEventListener('click', () => saveToCloud('dropbox'));
-  if (cloudOnedriveBtn) cloudOnedriveBtn.addEventListener('click', () => saveToCloud('onedrive'));
-
-  if (backgroundList) backgroundList.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-cloud][data-job]');
-    if (!btn) return;
-    const target = btn.getAttribute('data-cloud');
-    const jobId = btn.getAttribute('data-job');
-    if (target && jobId) saveToCloud(target, jobId);
   });
 
   if (backgroundMode) backgroundMode.addEventListener('change', async () => {
@@ -2336,35 +1800,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     } catch (err) {
       updateAiStatus(err.message || 'Gagal membuat job', 'danger');
       setToast('Gagal membuat job: ' + err.message);
-    }
-  }
-
-  async function saveToCloud(target, jobIdOverride){
-    const payload = { target };
-    const jobId = jobIdOverride || lastResult?.jobId;
-    if (jobId) {
-      payload.jobId = jobId;
-    } else {
-      const rel = toRelativePublic(lastResult?.downloadUrl);
-      if (!rel) { setToast('Belum ada hasil untuk disimpan'); return; }
-      payload.downloadUrl = rel;
-      if (lastResult?.fileName) payload.fileName = lastResult.fileName;
-    }
-    try {
-      updateAiStatus(`Menyimpan ke ${target}…`, 'info');
-      const resp = await fetch(api('/api/cloud/save'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal menyimpan');
-      const href = absoluteFromRelative(data.downloadUrl);
-      updateAiStatus(`Tersimpan di ${data.label}. <a href="${href}" target="_blank" rel="noopener">Buka file</a>`, 'success');
-      setToast(`Tersimpan di ${data.label}`);
-    } catch (err) {
-      updateAiStatus(err.message || 'Gagal menyimpan', 'danger');
-      setToast('Gagal menyimpan: ' + err.message);
     }
   }
 
