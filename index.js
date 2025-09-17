@@ -1932,6 +1932,11 @@ const downloadSubtitle = async (payload = {}) => {
 };
 
 // ==== Serve static UI & hasil unduhan ====
+app.get("/manifest.webmanifest", (req, res) => {
+  res.setHeader("Content-Type", "application/manifest+json");
+  res.sendFile(join(__dirname, "public-ui", "manifest.webmanifest"));
+});
+
 app.use("/", express.static(join(__dirname, "public-ui")));
 app.use("/public", express.static(PUBLIC_DIR));
 
