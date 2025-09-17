@@ -2357,7 +2357,7 @@ const runYtDlpDownload = ({ args, id }) =>
     });
   });
 
-const runPyTubeDownload = ({ url, id, baseLogs = "" }) =>
+const runPythonDownload = ({ url, id, baseLogs = "" }) =>
   new Promise((resolve, reject) => {
     let pyLogs = "";
     let pyOut = "";
@@ -2376,7 +2376,7 @@ const runPyTubeDownload = ({ url, id, baseLogs = "" }) =>
     py.stderr.on("data", (d) => (pyLogs += d.toString()));
 
     py.on("error", (err) => {
-      const error = new Error("PyTube tidak bisa dijalankan");
+      const error = new Error("Downloader helper tidak bisa dijalankan");
       error.cause = err;
       error.logs = baseLogs + pyLogs;
       reject(error);
@@ -2384,7 +2384,7 @@ const runPyTubeDownload = ({ url, id, baseLogs = "" }) =>
 
     py.on("close", async (code) => {
       if (code !== 0) {
-        const error = new Error("PyTube gagal");
+        const error = new Error("Downloader helper gagal");
         error.logs = baseLogs + pyLogs;
         return reject(error);
       }
@@ -2396,7 +2396,7 @@ const runPyTubeDownload = ({ url, id, baseLogs = "" }) =>
         if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
         resolve({ filename, fullPath, ext, logs: baseLogs + pyLogs });
       } catch (err) {
-        const error = new Error(err.message || "PyTube output tidak valid");
+        const error = new Error(err.message || "Downloader helper output tidak valid");
         error.logs = baseLogs + pyLogs;
         reject(error);
       }
@@ -2525,7 +2525,7 @@ const convertSingle = async (payload = {}) => {
   } catch (err) {
     const baseLogs = err.logs || "";
     try {
-      downloadResult = await runPyTubeDownload({ url, id, baseLogs });
+      downloadResult = await runPythonDownload({ url, id, baseLogs });
       logs = downloadResult.logs || baseLogs;
     } catch (pyErr) {
       if (coverPath) try { await fsp.unlink(coverPath); } catch {}
