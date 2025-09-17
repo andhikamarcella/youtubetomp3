@@ -55,7 +55,19 @@
     #subtitleResult .badge { border-radius: .75rem; }
     .mini-player { position: fixed; left: 0; right: 0; bottom: 1rem; display: flex; justify-content: center; pointer-events: none; z-index: 1090; }
     .mini-player-card { pointer-events: auto; border-radius: 1rem; width: min(420px, calc(100% - 2.5rem)); }
-    .mini-player .btn { border-radius: 50%; }
+    .mini-player-body { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+    .mini-player-main { flex: 1 1 220px; min-width: 0; }
+    .mini-player .mini-btn { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; border: none; font-size: 1.35rem; transition: transform .15s ease, box-shadow .2s ease, background .2s ease; box-shadow: 0 12px 30px rgba(13,110,253,.18), 0 2px 10px rgba(0,0,0,.25); }
+    .mini-player .mini-btn i { font-size: 1.2rem; }
+    .mini-player .mini-btn:focus-visible { outline: 3px solid rgba(13,110,253,.4); outline-offset: 3px; }
+    .mini-player .mini-btn:hover { transform: translateY(-1px); box-shadow: 0 16px 36px rgba(13,110,253,.22), 0 6px 14px rgba(0,0,0,.25); }
+    .mini-player .mini-btn:active { transform: translateY(0); box-shadow: 0 10px 22px rgba(13,110,253,.18), 0 3px 10px rgba(0,0,0,.24); }
+    .mini-player .mini-btn-play { background: var(--bs-primary); background: linear-gradient(135deg, rgba(13,110,253,1) 0%, rgba(111,66,193,1) 100%); color: #fff; }
+    .mini-player .mini-btn-ghost { background: var(--bs-secondary-bg); background: color-mix(in srgb, var(--bs-secondary-bg) 82%, transparent); color: var(--bs-body-color); border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); box-shadow: 0 8px 20px rgba(13,110,253,.08), 0 2px 6px rgba(0,0,0,.15); }
+    .mini-player .mini-btn-ghost:hover { background: var(--bs-secondary-bg); background: color-mix(in srgb, var(--bs-secondary-bg) 92%, var(--bs-primary) 12%); }
+    .mini-player .mini-actions { display: flex; flex-direction: column; gap: .55rem; align-items: center; justify-content: center; min-width: 62px; }
+    .mini-player .mini-action { display: flex; flex-direction: column; align-items: center; gap: .2rem; }
+    .mini-player .mini-action-label { font-size: .65rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary); }
     .mini-player .form-range { height: 1rem; appearance: none; background: linear-gradient(90deg, rgba(13,110,253,.35) 0%, rgba(32,201,151,.35) 50%, rgba(220,53,69,.35) 100%); border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 4px 14px rgba(13,110,253,.18); }
     .mini-player .form-range::-webkit-slider-runnable-track, .mini-player .form-range::-moz-range-track { height: .45rem; border-radius: 999px; background: transparent; }
     .mini-player .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff 0%, rgba(255,255,255,.6) 45%, rgba(32,201,151,1) 100%); border: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 10px rgba(32,201,151,.6), 0 2px 6px rgba(0,0,0,.25); margin-top: -6px; }
@@ -63,8 +75,14 @@
     .mini-player-card { background: radial-gradient(circle at top left, rgba(13,110,253,.12), transparent 60%), radial-gradient(circle at bottom right, rgba(220,53,69,.12), transparent 55%), var(--bs-body-bg); backdrop-filter: blur(6px); }
     .mini-player-title { font-size: .85rem; letter-spacing: .01em; }
     .mini-player-subtitle { font-size: .7rem; color: var(--bs-secondary); margin-top: .1rem; }
+    html[data-bs-theme='dark'] .mini-player .mini-btn-play { box-shadow: 0 16px 32px rgba(13,110,253,.28), 0 6px 18px rgba(0,0,0,.45); }
+    html[data-bs-theme='dark'] .mini-player .mini-btn-ghost { background: rgba(255,255,255,.08); background: color-mix(in srgb, rgba(255,255,255,.12) 80%, transparent); border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.85); box-shadow: 0 10px 24px rgba(13,110,253,.16), 0 4px 10px rgba(0,0,0,.45); }
+    html[data-bs-theme='dark'] .mini-player .mini-action-label { color: rgba(255,255,255,.6); }
     html[data-bs-theme='dark'] .mini-player-subtitle { color: rgba(255,255,255,.6); }
     #miniPlayer[hidden] { display: none !important; }
+    @media (min-width: 577px) {
+      .mini-player-body { flex-wrap: nowrap; }
+    }
     @media (max-width: 576px) {
       body { padding-bottom: 5rem; }
       .btn { padding: .75rem 1rem; font-size: 1.05rem; }
@@ -77,6 +95,9 @@
       #qrWrap, #playlistQrWrap { min-width: 120px; }
       .mini-player { bottom: .75rem; }
       .mini-player-card { width: calc(100% - 1.5rem); }
+      .mini-player-body { gap: 1rem; }
+      .mini-player .mini-actions { flex-direction: row; min-width: 100%; justify-content: space-evenly; }
+      .mini-player .mini-action-label { font-size: .6rem; }
     }
   </style>
 </head>
@@ -534,11 +555,12 @@
 
   <div id="miniPlayer" class="mini-player" hidden>
     <div class="mini-player-card card shadow-lg border-0">
-      <div class="card-body py-3 d-flex align-items-center gap-3">
-        <button class="btn btn-primary btn-sm" id="miniPlayBtn" type="button" aria-label="Putar / jeda">
-          <i class="bi bi-play-fill"></i>
+      <div class="card-body mini-player-body py-3">
+        <button class="mini-btn mini-btn-play" id="miniPlayBtn" type="button" aria-label="Putar / jeda" title="Putar / jeda">
+          <i class="bi bi-play-fill" aria-hidden="true"></i>
+          <span class="visually-hidden mini-btn-label">Putar</span>
         </button>
-        <div class="flex-grow-1">
+        <div class="mini-player-main">
           <div class="d-flex align-items-center justify-content-between gap-2">
             <div class="fw-semibold mini-player-title text-truncate" id="miniTitle">Audio Preview</div>
             <div class="small text-secondary" id="miniTime">00:00</div>
@@ -546,8 +568,22 @@
           <div class="mini-player-subtitle text-truncate" id="miniSubtitle"></div>
           <input type="range" class="form-range mt-2" id="miniSeek" min="0" max="1000" value="0" aria-label="Seek audio">
         </div>
-        <button class="btn btn-outline-secondary btn-sm" id="miniShareBtn" type="button" aria-label="Bagikan mini player"><i class="bi bi-qr-code"></i></button>
-        <button class="btn btn-outline-secondary btn-sm" id="miniCloseBtn" type="button" aria-label="Tutup mini player"><i class="bi bi-x-lg"></i></button>
+        <div class="mini-actions">
+          <div class="mini-action">
+            <button class="mini-btn mini-btn-ghost" id="miniShareBtn" type="button" aria-label="Bagikan mini player" title="Bagikan mini player">
+              <i class="bi bi-qr-code" aria-hidden="true"></i>
+              <span class="visually-hidden">Bagikan mini player</span>
+            </button>
+            <span class="mini-action-label">QR</span>
+          </div>
+          <div class="mini-action">
+            <button class="mini-btn mini-btn-ghost" id="miniCloseBtn" type="button" aria-label="Tutup mini player" title="Tutup mini player">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+              <span class="visually-hidden">Tutup mini player</span>
+            </button>
+            <span class="mini-action-label">Tutup</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -692,6 +728,8 @@
   const urlDropOverlay = $('#urlDropOverlay');
   const miniPlayerEl = $('#miniPlayer');
   const miniPlayBtn = $('#miniPlayBtn');
+  const miniPlayIcon = miniPlayBtn ? miniPlayBtn.querySelector('i') : null;
+  const miniPlayLabel = miniPlayBtn ? miniPlayBtn.querySelector('.mini-btn-label') : null;
   const miniCloseBtn = $('#miniCloseBtn');
   const miniShareBtn = $('#miniShareBtn');
   const miniSeek = $('#miniSeek');
@@ -1643,13 +1681,10 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   const updateMiniPlayState = () => {
     if (!miniPlayBtn || !previewPlayer) return;
-    if (previewPlayer.paused){
-      miniPlayBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-      miniPlayBtn.setAttribute('aria-label', 'Putar');
-    } else {
-      miniPlayBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-      miniPlayBtn.setAttribute('aria-label', 'Jeda');
-    }
+    const paused = previewPlayer.paused;
+    if (miniPlayIcon) miniPlayIcon.className = paused ? 'bi bi-play-fill' : 'bi bi-pause-fill';
+    if (miniPlayLabel) miniPlayLabel.textContent = paused ? 'Putar' : 'Jeda';
+    miniPlayBtn.setAttribute('aria-label', paused ? 'Putar' : 'Jeda');
   };
 
   if (miniPlayBtn) miniPlayBtn.addEventListener('click', () => {
