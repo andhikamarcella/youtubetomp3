@@ -8,10 +8,20 @@ import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
+const ffprobeEnv = process.env.FFPROBE_PATH || null;
+let ffprobePath = ffprobeEnv;
 try {
   ffmpegPath = (await import("ffmpeg-static")).default;
 } catch {
   ffmpegPath = null;
+}
+if (!ffprobePath) {
+  try {
+    const probeMod = await import("ffprobe-static");
+    ffprobePath = probeMod?.path || probeMod?.default?.path || null;
+  } catch {
+    ffprobePath = null;
+  }
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -193,25 +203,50 @@ const createStemsForSource = async (inputPath, baseName = "Audio") => {
   const instrumentalPath = join(JOBS_DIR, instrumentalFile);
   const zipPath = join(JOBS_DIR, zipFile);
 
+  const audioInfo = await probeAudioStream(inputPath);
+  const channelCount = Number(audioInfo?.channels) || 0;
+  const channelLayout = audioInfo?.channelLayout || null;
+  const isStereo = channelCount >= 2;
+  const strategy = isStereo ? "stereo_mid_side" : "mono_adaptive";
+
+  const vocalsFilterParts = [];
+  const instrumentalFilterParts = [];
+
+  if (isStereo) {
+    vocalsFilterParts.push("pan=stereo|c0=0.5*c0+0.5*c1|c1=0.5*c0+0.5*c1");
+    vocalsFilterParts.push("alimiter=limit=0.9");
+    instrumentalFilterParts.push("pan=stereo|c0=c0-c1|c1=c1-c0");
+    instrumentalFilterParts.push("alimiter=limit=0.9");
+  } else {
+    vocalsFilterParts.push("pan=stereo|c0=c0|c1=c0");
+    vocalsFilterParts.push("highpass=f=120");
+    vocalsFilterParts.push("lowpass=f=7600");
+    vocalsFilterParts.push("acompressor=threshold=-20dB:ratio=2:attack=12:release=120");
+    vocalsFilterParts.push("alimiter=limit=0.9");
+
+    instrumentalFilterParts.push("pan=stereo|c0=c0|c1=c0");
+    instrumentalFilterParts.push("lowpass=f=180");
+    instrumentalFilterParts.push("equalizer=f=320:t=h:w=2.5:g=4");
+    instrumentalFilterParts.push("equalizer=f=1100:t=h:w=2.5:g=-6");
+    instrumentalFilterParts.push("equalizer=f=3500:t=h:w=2.5:g=-9");
+    instrumentalFilterParts.push("alimiter=limit=0.9");
+  }
+
+  const vocalsFilters = vocalsFilterParts.join(",");
+  const instrumentalFilters = instrumentalFilterParts.join(",");
+
   let vocalsLogs = "";
   let instrumentalLogs = "";
   try {
-    vocalsLogs = await runFfmpeg([
-      "-y",
-      "-i", inputPath,
-      "-filter:a", "pan=stereo|c0=c0+c1|c1=c0+c1,alimiter=limit=0.9",
-      "-codec:a", "libmp3lame",
-      "-qscale:a", "2",
-      vocalsPath,
-    ]);
-    instrumentalLogs = await runFfmpeg([
-      "-y",
-      "-i", inputPath,
-      "-filter:a", "pan=stereo|c0=c0-c1|c1=c1-c0,alimiter=limit=0.9",
-      "-codec:a", "libmp3lame",
-      "-qscale:a", "2",
-      instrumentalPath,
-    ]);
+    const vocalsArgs = ["-y", "-i", inputPath];
+    if (vocalsFilters) vocalsArgs.push("-filter:a", vocalsFilters);
+    vocalsArgs.push("-ac", "2", "-codec:a", "libmp3lame", "-qscale:a", "2", vocalsPath);
+    vocalsLogs = await runFfmpeg(vocalsArgs);
+
+    const instrumentalArgs = ["-y", "-i", inputPath];
+    if (instrumentalFilters) instrumentalArgs.push("-filter:a", instrumentalFilters);
+    instrumentalArgs.push("-ac", "2", "-codec:a", "libmp3lame", "-qscale:a", "2", instrumentalPath);
+    instrumentalLogs = await runFfmpeg(instrumentalArgs);
 
     await new Promise((resolve, reject) => {
       const zipProc = spawn("zip", ["-q", zipFile, vocalsFile, instrumentalFile], { cwd: JOBS_DIR });
@@ -256,6 +291,11 @@ const createStemsForSource = async (inputPath, baseName = "Audio") => {
     zip: {
       downloadUrl: `/public/jobs/${zipFile}`,
       fileName: `${safeBase} - STEMS.zip`,
+    },
+    meta: {
+      channels: channelCount,
+      channelLayout,
+      strategy,
     },
   };
   return response;
@@ -590,6 +630,51 @@ const runFfmpeg = (args) => new Promise((resolve, reject) => {
     }
   });
 });
+
+const runFfprobe = (args) => new Promise((resolve, reject) => {
+  const ff = spawn(ffprobePath || "ffprobe", args, { stdio: ["ignore", "pipe", "pipe"] });
+  let stdout = "";
+  let stderr = "";
+  ff.stdout.on("data", (d) => (stdout += d.toString()));
+  ff.stderr.on("data", (d) => (stderr += d.toString()));
+  ff.on("error", (err) => {
+    const error = new Error(err.code === "ENOENT" ? "ffprobe tidak ditemukan" : err.message || "ffprobe gagal");
+    error.logs = stderr;
+    reject(error);
+  });
+  ff.on("close", (code) => {
+    if (code === 0) resolve(stdout);
+    else {
+      const error = new Error(`ffprobe exit ${code}`);
+      error.logs = stderr;
+      reject(error);
+    }
+  });
+});
+
+const probeAudioStream = async (inputPath) => {
+  try {
+    const output = await runFfprobe([
+      "-v",
+      "error",
+      "-select_streams",
+      "a:0",
+      "-show_entries",
+      "stream=channels,channel_layout",
+      "-of",
+      "json",
+      inputPath,
+    ]);
+    const data = JSON.parse(output || "{}") || {};
+    const stream = Array.isArray(data.streams) ? data.streams[0] : data.stream || {};
+    const channels = Number(stream?.channels) || 0;
+    const channelLayout = typeof stream?.channel_layout === "string" ? stream.channel_layout : null;
+    return { channels, channelLayout };
+  } catch (err) {
+    console.warn("ffprobe gagal membaca informasi audio", err?.message || err);
+    return { channels: 0, channelLayout: null };
+  }
+};
 
 const vttToSrt = (input = "") => {
   const clean = (input || "").replace(/^WEBVTT.*\n+/i, "").replace(/\r/g, "");

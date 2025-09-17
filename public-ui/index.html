@@ -57,6 +57,14 @@
     #subtitleResult pre { max-height: 160px; overflow:auto; background: var(--bs-body-bg); border-radius: .75rem; padding: .75rem; }
     #subtitleResult .btn { border-radius: .75rem; }
     #subtitleResult .badge { border-radius: .75rem; }
+    #stemResultCard { background: color-mix(in srgb, var(--bs-body-bg) 90%, rgba(13,110,253,.05)); border: 1px solid color-mix(in srgb, var(--bs-primary) 12%, transparent); border-radius: 1.15rem; padding: 1.25rem; box-shadow: 0 12px 32px rgba(13,110,253,.06); }
+    .stem-preview { background: var(--bs-secondary-bg); border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); padding: 1rem; display: flex; flex-direction: column; gap: .75rem; height: 100%; }
+    .stem-preview audio { width: 100%; border-radius: .85rem; background: var(--bs-body-bg); }
+    .stem-preview .btn { border-radius: .75rem; }
+    #stemMeta { font-size: .75rem; color: var(--bs-secondary); }
+    #stemLoading { font-size: .8rem; color: var(--bs-secondary); }
+    html[data-bs-theme='dark'] #stemResultCard { background: color-mix(in srgb, var(--bs-body-bg) 75%, rgba(13,110,253,.08)); border-color: color-mix(in srgb, var(--bs-primary) 20%, transparent); box-shadow: 0 12px 32px rgba(13,110,253,.12); }
+    html[data-bs-theme='dark'] .stem-preview { background: color-mix(in srgb, var(--bs-secondary-bg) 80%, rgba(255,255,255,.04)); border-color: color-mix(in srgb, rgba(255,255,255,.08) 40%, transparent); }
     .mini-player { position: fixed; left: 0; right: 0; bottom: 1rem; display: flex; justify-content: center; pointer-events: none; z-index: 1090; }
     .mini-player-card { pointer-events: auto; border-radius: 1rem; width: min(420px, calc(100% - 2.5rem)); }
     .mini-player .btn { border-radius: 50%; }
@@ -312,14 +320,44 @@
                 </div>
                 <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
                 <div class="mt-3" id="stemResult" hidden>
-                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <strong>Stems siap</strong>
-                    <button class="btn btn-sm btn-outline-secondary" id="stemClearBtn" type="button"><i class="bi bi-x"></i> Tutup</button>
-                  </div>
-                  <div class="d-flex flex-wrap gap-2">
-                    <a id="stemVocalsLink" class="btn btn-sm btn-primary" href="#" download>Vocals</a>
-                    <a id="stemInstrumentalLink" class="btn btn-sm btn-outline-primary" href="#" download>Instrumental</a>
-                    <a id="stemZipLink" class="btn btn-sm btn-outline-secondary" href="#" download>ZIP</a>
+                  <div id="stemResultCard">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge rounded-pill text-bg-primary"><i class="bi bi-sliders"></i></span>
+                        <strong>Stems siap</strong>
+                      </div>
+                      <span class="badge rounded-pill bg-body-tertiary text-secondary" id="stemMeta" hidden></span>
+                      <button class="btn btn-sm btn-outline-secondary ms-auto" id="stemClearBtn" type="button"><i class="bi bi-x"></i> Tutup</button>
+                    </div>
+                    <div class="row g-3 align-items-stretch" id="stemPreviewWrap">
+                      <div class="col-12 col-lg-6">
+                        <div class="stem-preview">
+                          <div class="d-flex align-items-center gap-2">
+                            <span class="badge rounded-pill text-bg-primary"><i class="bi bi-mic-fill"></i> Vocals</span>
+                            <a id="stemVocalsLink" class="btn btn-sm btn-primary ms-auto" href="#" download><i class="bi bi-download"></i> Download</a>
+                          </div>
+                          <audio id="stemVocalsPlayer" controls preload="none"></audio>
+                        </div>
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <div class="stem-preview">
+                          <div class="d-flex align-items-center gap-2">
+                            <span class="badge rounded-pill text-bg-info text-dark"><i class="bi bi-music-note-beamed"></i> Instrumental</span>
+                            <a id="stemInstrumentalLink" class="btn btn-sm btn-outline-primary ms-auto" href="#" download><i class="bi bi-download"></i> Download</a>
+                          </div>
+                          <audio id="stemInstrumentalPlayer" controls preload="none"></audio>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                      <a id="stemZipLink" class="btn btn-outline-secondary" href="#" download><i class="bi bi-file-earmark-zip"></i> Unduh ZIP</a>
+                      <div class="ms-auto" id="stemLoading" hidden>
+                        <div class="d-inline-flex align-items-center gap-2 small text-secondary">
+                          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                          <span>Sedang memproses…</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -698,6 +736,51 @@
   const stemInstrumentalLink = $('#stemInstrumentalLink');
   const stemZipLink = $('#stemZipLink');
   const stemClearBtn = $('#stemClearBtn');
+  const stemVocalsPlayer = $('#stemVocalsPlayer');
+  const stemInstrumentalPlayer = $('#stemInstrumentalPlayer');
+  const stemMeta = $('#stemMeta');
+  const stemLoading = $('#stemLoading');
+
+  const bustCache = (href) => {
+    if (!href || typeof href !== 'string') return href;
+    const [base, hash] = href.split('#');
+    const timed = `${base}${base.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    return hash ? `${timed}#${hash}` : timed;
+  };
+
+  const applyStemMeta = (meta) => {
+    if (!stemMeta) return;
+    if (!meta) { stemMeta.textContent = ''; stemMeta.hidden = true; return; }
+    const bits = [];
+    if (meta.strategy === 'stereo_mid_side') bits.push('Stereo split');
+    else if (meta.strategy === 'mono_adaptive') bits.push('Mono adaptif');
+    else if (typeof meta.strategy === 'string' && meta.strategy.trim()) bits.push(meta.strategy);
+    const channelCount = Number(meta.channels);
+    if (Number.isFinite(channelCount) && channelCount > 0) {
+      const layout = typeof meta.channelLayout === 'string' && meta.channelLayout.trim() ? ` (${meta.channelLayout})` : '';
+      bits.push(`${channelCount} ch${layout}`);
+    } else if (typeof meta.channelLayout === 'string' && meta.channelLayout.trim()) {
+      bits.push(meta.channelLayout);
+    }
+    stemMeta.textContent = bits.join(' · ');
+    stemMeta.hidden = !stemMeta.textContent.trim();
+  };
+
+  const pauseStemPlayers = () => {
+    [stemVocalsPlayer, stemInstrumentalPlayer].forEach((player) => {
+      if (!player) return;
+      try { player.pause(); } catch {}
+    });
+  };
+
+  const clearStemPlayers = () => {
+    [stemVocalsPlayer, stemInstrumentalPlayer].forEach((player) => {
+      if (!player) return;
+      try { player.pause(); } catch {}
+      player.removeAttribute('src');
+      try { player.load(); } catch {}
+    });
+  };
   const cloudDriveBtn = $('#cloudDriveBtn');
   const cloudDropboxBtn = $('#cloudDropboxBtn');
   const cloudOnedriveBtn = $('#cloudOnedriveBtn');
@@ -1959,12 +2042,18 @@ $('#queueList')?.addEventListener('click', (e) => {
   });
 
   if (stemBtn) stemBtn.addEventListener('click', async () => {
+    if (stemBtn.disabled) return;
     const payload = {};
     if (lastResult?.jobId) payload.jobId = lastResult.jobId;
     else if (lastResult?.downloadUrl) payload.downloadUrl = toRelativePublic(lastResult.downloadUrl);
     else if ($('#url').value.trim()) payload.url = $('#url').value.trim();
     else { setToast('Belum ada audio untuk diproses'); return; }
     updateAiStatus('Memisahkan vokal dan instrumen…', 'info');
+    stemBtn.disabled = true;
+    stemBtn.setAttribute('aria-busy', 'true');
+    if (stemLoading) stemLoading.hidden = false;
+    if (stemResult) stemResult.hidden = false;
+    pauseStemPlayers();
     try {
       const resp = await fetch(api('/api/stems'), {
         method: 'POST',
@@ -1979,27 +2068,55 @@ $('#queueList')?.addEventListener('click', (e) => {
           const href = absoluteFromRelative(data.vocals.downloadUrl);
           stemVocalsLink.href = href;
           stemVocalsLink.setAttribute('download', data.vocals.fileName || 'vocals.mp3');
+          if (stemVocalsPlayer) {
+            stemVocalsPlayer.src = bustCache(href);
+            try { stemVocalsPlayer.load(); } catch {}
+          }
         }
         if (stemInstrumentalLink && data.instrumental?.downloadUrl) {
           const href = absoluteFromRelative(data.instrumental.downloadUrl);
           stemInstrumentalLink.href = href;
           stemInstrumentalLink.setAttribute('download', data.instrumental.fileName || 'instrumental.mp3');
+          if (stemInstrumentalPlayer) {
+            stemInstrumentalPlayer.src = bustCache(href);
+            try { stemInstrumentalPlayer.load(); } catch {}
+          }
         }
         if (stemZipLink && data.zip?.downloadUrl) {
           const href = absoluteFromRelative(data.zip.downloadUrl);
           stemZipLink.href = href;
           stemZipLink.setAttribute('download', data.zip.fileName || 'stems.zip');
         }
+        applyStemMeta(data.meta);
       }
       updateAiStatus('Stems siap diunduh', 'success');
       setToast('Stems berhasil dibuat');
     } catch (err) {
       updateAiStatus(err.message, 'danger');
       setToast('Gagal membuat stems: ' + err.message);
+    } finally {
+      if (stemLoading) stemLoading.hidden = true;
+      stemBtn.disabled = false;
+      stemBtn.removeAttribute('aria-busy');
     }
   });
 
   if (stemClearBtn) stemClearBtn.addEventListener('click', () => {
+    clearStemPlayers();
+    applyStemMeta(null);
+    if (stemVocalsLink) {
+      stemVocalsLink.removeAttribute('href');
+      stemVocalsLink.removeAttribute('download');
+    }
+    if (stemInstrumentalLink) {
+      stemInstrumentalLink.removeAttribute('href');
+      stemInstrumentalLink.removeAttribute('download');
+    }
+    if (stemZipLink) {
+      stemZipLink.removeAttribute('href');
+      stemZipLink.removeAttribute('download');
+    }
+    if (stemLoading) stemLoading.hidden = true;
     if (stemResult) stemResult.hidden = true;
   });
 
