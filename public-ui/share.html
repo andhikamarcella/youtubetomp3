@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="id" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini Player · Share Audio</title>
+  <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+  </noscript>
+  <style>
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at top, rgba(13,110,253,.35), transparent 55%), radial-gradient(circle at bottom, rgba(25,135,84,.35), transparent 55%); padding: 1.5rem; }
+    .player-card { max-width: 540px; border-radius: 1.25rem; overflow: hidden; }
+    .eq-slider label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary); }
+    .eq-slider .form-range { height: 1.25rem; }
+    .muted { color: var(--bs-secondary); }
+  </style>
+</head>
+<body>
+  <div class="card shadow-lg player-card bg-body">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-center mb-3">
+        <i class="bi bi-soundwave text-primary me-2 fs-4"></i>
+        <div>
+          <div class="fw-semibold" id="trackTitle">Memuat…</div>
+          <div class="small muted" id="trackMeta">Mini player siap diputar.</div>
+        </div>
+      </div>
+      <audio id="shareAudio" class="w-100 mb-3" controls preload="auto"></audio>
+      <div class="alert alert-info d-flex flex-wrap align-items-center gap-2" role="status" id="statusAlert" hidden></div>
+      <div class="border rounded p-3 mb-3 bg-body-secondary">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <strong>Equalizer</strong>
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-light" id="eqShareFlat">Flat</button>
+            <button class="btn btn-outline-light" id="eqShareWarm">Warm</button>
+            <button class="btn btn-outline-light" id="eqShareBright">Bright</button>
+          </div>
+        </div>
+        <div class="row g-2 eq-slider">
+          <div class="col-4">
+            <label class="form-label">Bass</label>
+            <input type="range" class="form-range" id="eqShareBass" min="-12" max="12" step="1" value="0">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Mid</label>
+            <input type="range" class="form-range" id="eqShareMid" min="-12" max="12" step="1" value="0">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Treble</label>
+            <input type="range" class="form-range" id="eqShareTreble" min="-12" max="12" step="1" value="0">
+          </div>
+        </div>
+        <div class="small muted mt-2" id="eqShareStatus">Flat</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary flex-grow-1" id="downloadBtn" href="#" download>
+          <i class="bi bi-download me-1"></i>Download
+        </a>
+        <button class="btn btn-outline-light" id="shareBtn" type="button"><i class="bi bi-share me-1"></i>Bagikan</button>
+        <button class="btn btn-outline-light" id="copyBtn" type="button"><i class="bi bi-clipboard"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const params = new URLSearchParams(location.search);
+    const audioSrc = params.get('src');
+    const trackName = params.get('name') || params.get('title') || 'Audio hasil convert';
+    const fmt = params.get('fmt') || '';
+    const audioEl = document.getElementById('shareAudio');
+    const titleEl = document.getElementById('trackTitle');
+    const metaEl = document.getElementById('trackMeta');
+    const alertEl = document.getElementById('statusAlert');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const eqInputs = {
+      bass: document.getElementById('eqShareBass'),
+      mid: document.getElementById('eqShareMid'),
+      treble: document.getElementById('eqShareTreble'),
+    };
+    const eqStatus = document.getElementById('eqShareStatus');
+    const eqPresetFlat = document.getElementById('eqShareFlat');
+    const eqPresetWarm = document.getElementById('eqShareWarm');
+    const eqPresetBright = document.getElementById('eqShareBright');
+    let audioCtx = null;
+    let sourceNode = null;
+    let filters = [];
+
+    const formatGain = (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v)} dB`;
+    const updateEqStatus = () => {
+      if (!eqStatus) return;
+      eqStatus.textContent = `Bass ${formatGain(eqInputs.bass.value)} · Mid ${formatGain(eqInputs.mid.value)} · Treble ${formatGain(eqInputs.treble.value)}`;
+    };
+
+    const ensureContext = () => {
+      if (audioCtx) return audioCtx;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
+      return audioCtx;
+    };
+
+    const ensureFilters = () => {
+      const ctx = ensureContext();
+      if (!ctx || !audioEl) return false;
+      if (!sourceNode){
+        sourceNode = ctx.createMediaElementSource(audioEl);
+        const bass = ctx.createBiquadFilter();
+        bass.type = 'lowshelf';
+        bass.frequency.value = 200;
+        const mid = ctx.createBiquadFilter();
+        mid.type = 'peaking';
+        mid.frequency.value = 1000;
+        mid.Q.value = 1;
+        const treble = ctx.createBiquadFilter();
+        treble.type = 'highshelf';
+        treble.frequency.value = 4000;
+        filters = [bass, mid, treble];
+        sourceNode.connect(bass);
+        bass.connect(mid);
+        mid.connect(treble);
+        treble.connect(ctx.destination);
+      }
+      return true;
+    };
+
+    const applyEq = () => {
+      const ctx = ensureContext();
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+      if (!ensureFilters()) return;
+      filters[0].gain.value = Number(eqInputs.bass.value || 0);
+      filters[1].gain.value = Number(eqInputs.mid.value || 0);
+      filters[2].gain.value = Number(eqInputs.treble.value || 0);
+      updateEqStatus();
+    };
+
+    Object.values(eqInputs).forEach((input) => input && input.addEventListener('input', applyEq));
+    if (eqPresetFlat) eqPresetFlat.addEventListener('click', () => {
+      eqInputs.bass.value = 0; eqInputs.mid.value = 0; eqInputs.treble.value = 0; applyEq();
+    });
+    if (eqPresetWarm) eqPresetWarm.addEventListener('click', () => {
+      eqInputs.bass.value = 3; eqInputs.mid.value = 1; eqInputs.treble.value = -2; applyEq();
+    });
+    if (eqPresetBright) eqPresetBright.addEventListener('click', () => {
+      eqInputs.bass.value = -1; eqInputs.mid.value = 0; eqInputs.treble.value = 4; applyEq();
+    });
+
+    const setAlert = (msg, variant = 'info') => {
+      if (!alertEl) return;
+      alertEl.hidden = !msg;
+      alertEl.className = `alert alert-${variant} d-flex align-items-center gap-2`;
+      alertEl.textContent = msg || '';
+    };
+
+    const shareLink = async () => {
+      if (!audioSrc) { setAlert('Tidak ada sumber audio untuk dibagikan', 'warning'); return; }
+      if (navigator.share){
+        try { await navigator.share({ title: trackName, url: location.href }); return; }
+        catch (err){ if (err && err.name === 'AbortError') return; }
+      }
+      try { await navigator.clipboard.writeText(location.href); setAlert('Link player tersalin ke clipboard', 'success'); }
+      catch { setAlert(location.href, 'info'); }
+    };
+
+    if (!audioSrc){
+      setAlert('Parameter src tidak ditemukan. Buka halaman ini dari hasil konversi.', 'warning');
+      if (titleEl) titleEl.textContent = 'Link tidak valid';
+      if (audioEl) audioEl.controls = false;
+      return;
+    }
+
+    const resolvedSrc = new URL(audioSrc, location.origin).href;
+    if (audioEl){
+      audioEl.src = resolvedSrc;
+      audioEl.addEventListener('play', () => { ensureFilters(); applyEq(); });
+    }
+    if (titleEl) titleEl.textContent = trackName;
+    if (metaEl) metaEl.textContent = fmt ? `Format ${fmt.toUpperCase()} · Streaming siap` : 'Streaming siap';
+    if (downloadBtn){
+      downloadBtn.href = resolvedSrc;
+      downloadBtn.download = trackName ? `${trackName}.${fmt || 'mp3'}` : '';
+    }
+    if (shareBtn) shareBtn.addEventListener('click', shareLink);
+    if (copyBtn) copyBtn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(resolvedSrc); setAlert('Link file audio tersalin', 'success'); }
+      catch { setAlert(resolvedSrc, 'info'); }
+    });
+
+    updateEqStatus();
+  })();
+  </script>
+</body>
+</html>

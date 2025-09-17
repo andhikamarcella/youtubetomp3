@@ -38,6 +38,21 @@
     #playlistShareCard { margin-top: .75rem; }
     #urlDropOverlay { position: fixed; inset: 0; background: rgba(13,110,253,.1); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600; color: var(--bs-primary); z-index: 1090; backdrop-filter: blur(2px); padding: 1rem; text-align:center; }
     #urlDropOverlay[hidden] { display: none !important; }
+    #waveformWrap, #equalizerWrap, #shareWrap { background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 1rem; }
+    #waveformCanvas { width: 100%; height: 140px; display: block; border-radius: .85rem; background: var(--bs-body-bg); cursor: crosshair; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
+    #waveformCanvas[data-loading="1"] { opacity: .55; }
+    #waveformMeta { font-size: .85rem; }
+    .eq-slider label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary); }
+    .eq-slider .form-range { height: 1.4rem; }
+    #shareWrap .input-group-text { border-radius: .75rem 0 0 .75rem; }
+    #subtitleResult pre { max-height: 160px; overflow:auto; background: var(--bs-body-bg); border-radius: .75rem; padding: .75rem; }
+    #subtitleResult .btn { border-radius: .75rem; }
+    #subtitleResult .badge { border-radius: .75rem; }
+    .mini-player { position: fixed; left: 0; right: 0; bottom: 1rem; display: flex; justify-content: center; pointer-events: none; z-index: 1090; }
+    .mini-player-card { pointer-events: auto; border-radius: 1rem; width: min(420px, calc(100% - 2.5rem)); }
+    .mini-player .btn { border-radius: 50%; }
+    .mini-player .form-range { height: 1rem; }
+    #miniPlayer[hidden] { display: none !important; }
     @media (max-width: 576px) {
       body { padding-bottom: 5rem; }
       .btn { padding: .75rem 1rem; font-size: 1.05rem; }
@@ -48,6 +63,9 @@
       .d-sm-flex > .btn { flex: 1 1 auto; }
       .form-check-input { transform: scale(1.2); margin-right: .5rem; }
       #qrWrap, #playlistQrWrap { min-width: 120px; }
+      .mini-player { bottom: .75rem; }
+      .mini-player-card { width: calc(100% - 1.5rem); }
+      #waveformCanvas { height: 110px; }
     }
   </style>
 </head>
@@ -229,6 +247,44 @@
               <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
             </div>
 
+            <div class="card border-0 bg-body-tertiary mt-4" id="subtitleCard">
+              <div class="card-body">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
+                  <div class="flex-grow-1">
+                    <strong>Podcast Mode · Subtitle</strong>
+                    <div class="small text-secondary">Ambil subtitle otomatis atau manual dan simpan sebagai teks.</div>
+                  </div>
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <select id="subtitleLang" class="form-select form-select-sm" aria-label="Pilih bahasa subtitle">
+                      <option value="id.*,en.*,en" selected>Indonesia / Inggris</option>
+                      <option value="id.*,id">Indonesia saja</option>
+                      <option value="en.*,en">Inggris saja</option>
+                      <option value="all">Semua bahasa</option>
+                    </select>
+                    <div class="form-check form-switch m-0">
+                      <input class="form-check-input" type="checkbox" id="subtitleAuto" checked>
+                      <label class="form-check-label small" for="subtitleAuto">Gunakan auto caption</label>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" id="subtitleBtn" type="button"><i class="bi bi-text-left"></i> Ambil subtitle</button>
+                  </div>
+                </div>
+                <div class="alert alert-secondary mt-3" id="subtitleResult" hidden>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <strong id="subtitleStatus">Subtitle siap</strong>
+                    <span class="badge text-bg-primary" id="subtitleLangBadge"></span>
+                    <span class="badge text-bg-warning text-dark" id="subtitleAutoBadge" hidden>Auto</span>
+                    <button class="btn btn-sm btn-outline-secondary ms-lg-auto" id="subtitleCopyBtn" type="button"><i class="bi bi-clipboard"></i> Salin teks</button>
+                  </div>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <a id="subtitleSrtLink" class="btn btn-sm btn-primary" href="#" download><i class="bi bi-filetype-srt"></i> Download .srt</a>
+                    <a id="subtitleTxtLink" class="btn btn-sm btn-outline-primary" href="#" download><i class="bi bi-filetype-txt"></i> Download .txt</a>
+                    <button id="subtitleShareBtn" class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-share"></i> Share</button>
+                  </div>
+                  <pre class="mb-0 small" id="subtitlePreview"></pre>
+                </div>
+              </div>
+            </div>
+
             <div class="mt-3" id="statusWrap" hidden>
               <div class="d-flex align-items-center gap-2">
                 <div class="spinner-border spinner-border-sm" role="status" id="loadingSpinner" aria-hidden="true"></div>
@@ -258,10 +314,65 @@
                       <strong>Preview Audio</strong>
                     </div>
                     <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"></audio>
+
+                    <div id="shareWrap" class="mt-3" hidden>
+                      <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong class="me-auto">Bagikan</strong>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Bagikan hasil">
+                          <button class="btn btn-outline-primary" id="shareBtn" type="button"><i class="bi bi-share"></i> Share</button>
+                          <button class="btn btn-outline-secondary" id="copyShareBtn" type="button"><i class="bi bi-link-45deg"></i> Salin link</button>
+                        </div>
+                      </div>
+                      <div class="input-group input-group-sm mt-2">
+                        <span class="input-group-text"><i class="bi bi-box-arrow-up-right"></i></span>
+                        <input type="text" class="form-control" id="shareLinkInput" readonly>
+                        <button class="btn btn-outline-secondary" id="openShareBtn" type="button" aria-label="Buka link share"><i class="bi bi-arrow-up-right-square"></i></button>
+                      </div>
+                      <div class="small text-secondary mt-2" id="shareInfo"></div>
+                    </div>
+
+                    <div id="waveformWrap" class="mt-3" hidden>
+                      <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong class="me-auto">Editor Trim</strong>
+                        <span id="waveformMeta" class="text-secondary"></span>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary" id="waveformClear" type="button"><i class="bi bi-eraser"></i> Reset</button>
+                          <button class="btn btn-outline-secondary" id="waveformUseSelection" type="button"><i class="bi bi-scissors"></i> Pakai seleksi</button>
+                        </div>
+                      </div>
+                      <canvas id="waveformCanvas" class="mt-2"></canvas>
+                      <div class="small text-secondary mt-2" id="waveformHint">Seret pada waveform untuk memilih bagian audio, kolom trim akan terisi otomatis.</div>
+                    </div>
+
+                    <div id="equalizerWrap" class="mt-3" hidden>
+                      <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong class="me-auto">Equalizer</strong>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary" id="eqPresetFlat" type="button">Flat</button>
+                          <button class="btn btn-outline-secondary" id="eqPresetPodcast" type="button">Podcast</button>
+                          <button class="btn btn-outline-secondary" id="eqPresetBass" type="button">Bass+</button>
+                        </div>
+                      </div>
+                      <div class="row g-2 mt-2 eq-slider">
+                        <div class="col-sm-4">
+                          <label class="form-label">Bass</label>
+                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqBass">
+                        </div>
+                        <div class="col-sm-4">
+                          <label class="form-label">Mid</label>
+                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqMid">
+                        </div>
+                        <div class="col-sm-4">
+                          <label class="form-label">Treble</label>
+                          <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqTreble">
+                        </div>
+                      </div>
+                      <div class="small text-secondary mt-2" id="eqStatus">Flat</div>
+                    </div>
                   </div>
                   <div id="qrWrap" class="text-center" hidden>
                     <canvas id="downloadQr" width="156" height="156" class="border rounded bg-body"></canvas>
-                    <div class="small text-secondary mt-2"><i class="bi bi-qr-code"></i> Scan untuk unduh</div>
+                    <div class="small text-secondary mt-2"><i class="bi bi-qr-code"></i> Scan untuk mini player</div>
                   </div>
                 </div>
               </div>
@@ -337,6 +448,25 @@
       </div>
     </div>
   </main>
+
+  <div id="miniPlayer" class="mini-player" hidden>
+    <div class="mini-player-card card shadow-lg border-0">
+      <div class="card-body py-3 d-flex align-items-center gap-3">
+        <button class="btn btn-primary btn-sm" id="miniPlayBtn" type="button" aria-label="Putar / jeda">
+          <i class="bi bi-play-fill"></i>
+        </button>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center justify-content-between gap-2">
+            <div class="fw-semibold small text-truncate" id="miniTitle">Audio Preview</div>
+            <div class="small text-secondary" id="miniTime">00:00</div>
+          </div>
+          <input type="range" class="form-range mt-1" id="miniSeek" min="0" max="1000" value="0" aria-label="Seek audio">
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" id="miniShareBtn" type="button" aria-label="Bagikan mini player"><i class="bi bi-qr-code"></i></button>
+        <button class="btn btn-outline-secondary btn-sm" id="miniCloseBtn" type="button" aria-label="Tutup mini player"><i class="bi bi-x-lg"></i></button>
+      </div>
+    </div>
+  </div>
 
   <!-- Offcanvas Settings -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasSettings">
@@ -432,6 +562,26 @@
   const previewPlayer = $('#previewPlayer');
   const qrCanvas = $('#downloadQr');
   const qrWrap = $('#qrWrap');
+  const shareWrap = $('#shareWrap');
+  const shareInfo = $('#shareInfo');
+  const shareLinkInput = $('#shareLinkInput');
+  const shareBtn = $('#shareBtn');
+  const copyShareBtn = $('#copyShareBtn');
+  const openShareBtn = $('#openShareBtn');
+  const waveformWrap = $('#waveformWrap');
+  const waveformCanvas = $('#waveformCanvas');
+  const waveformMeta = $('#waveformMeta');
+  const waveformHint = $('#waveformHint');
+  const waveformClearBtn = $('#waveformClear');
+  const waveformUseSelectionBtn = $('#waveformUseSelection');
+  const equalizerWrap = $('#equalizerWrap');
+  const eqBass = $('#eqBass');
+  const eqMid = $('#eqMid');
+  const eqTreble = $('#eqTreble');
+  const eqStatus = $('#eqStatus');
+  const eqPresetFlat = $('#eqPresetFlat');
+  const eqPresetPodcast = $('#eqPresetPodcast');
+  const eqPresetBass = $('#eqPresetBass');
   const playlistResultWrap = $('#playlistResultWrap');
   const playlistDownloadLink = $('#playlistDownloadLink');
   const playlistInfo = $('#playlistInfo');
@@ -439,6 +589,26 @@
   const playlistQrCanvas = $('#playlistQr');
   const playlistQrWrap = $('#playlistQrWrap');
   const urlDropOverlay = $('#urlDropOverlay');
+  const miniPlayerEl = $('#miniPlayer');
+  const miniPlayBtn = $('#miniPlayBtn');
+  const miniCloseBtn = $('#miniCloseBtn');
+  const miniShareBtn = $('#miniShareBtn');
+  const miniSeek = $('#miniSeek');
+  const miniTime = $('#miniTime');
+  const miniTitle = $('#miniTitle');
+  const subtitleBtn = $('#subtitleBtn');
+  const subtitleLang = $('#subtitleLang');
+  const subtitleAuto = $('#subtitleAuto');
+  const subtitleResult = $('#subtitleResult');
+  const subtitleLangBadge = $('#subtitleLangBadge');
+  const subtitleAutoBadge = $('#subtitleAutoBadge');
+  const subtitleSrtLink = $('#subtitleSrtLink');
+  const subtitleTxtLink = $('#subtitleTxtLink');
+  const subtitlePreview = $('#subtitlePreview');
+  const subtitleCopyBtn = $('#subtitleCopyBtn');
+  const subtitleShareBtn = $('#subtitleShareBtn');
+  const subtitleStatus = $('#subtitleStatus');
+  const subtitleBtnDefault = subtitleBtn ? subtitleBtn.innerHTML : '';
 
   const storage = {
     get k(){ return 'ytmp3.settings.v1'; },
@@ -451,7 +621,28 @@
     adminBearer: ''
   };
 
+  let audioCtx = null;
+  let eqFilters = [];
+  let eqSource = null;
+  let eqReady = false;
+  let currentDownloadUrl = '';
+  let currentDownloadName = '';
+  let currentShareUrl = '';
+  let waveformState = { url: '', duration: 0, peaks: [], selection: null };
+  let waveformAbort = null;
+  let miniSeeking = false;
+  let subtitleShareUrl = '';
+  let lastPreviewTitle = '';
+
   const getBackend = () => (state.backendUrl || '').trim();
+
+  const getAudioContext = () => {
+    if (audioCtx) return audioCtx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = new Ctx();
+    return audioCtx;
+  };
   const api = (path) => {
     const b = getBackend();
     return b ? b.replace(/\/$/, '') + path : path; // relative fallback
@@ -492,15 +683,46 @@
       previewPlayer.load();
     }
     if (previewCard) previewCard.hidden = true;
+    if (shareWrap) shareWrap.hidden = true;
+    if (shareLinkInput) shareLinkInput.value = '';
+    if (shareInfo) shareInfo.textContent = '';
+    currentDownloadUrl = '';
+    currentDownloadName = '';
+    currentShareUrl = '';
+    subtitleShareUrl = '';
+    resetWaveform();
+    if (equalizerWrap) equalizerWrap.hidden = true;
+    if (miniPlayerEl) miniPlayerEl.hidden = true;
     renderQr(qrCanvas, qrWrap, null);
   };
 
-  const showAudioPreview = (url) => {
+  const showAudioPreview = (url, meta = {}) => {
     if (!previewPlayer || !previewCard || !url) return;
     const cacheBuster = url.includes('?') ? '&' : '?';
-    previewPlayer.src = `${url}${cacheBuster}preview=${Date.now()}`;
+    const backendBase = getBackend() || window.location.origin;
+    const absoluteUrl = new URL(url, backendBase).href;
+    previewPlayer.src = `${absoluteUrl}${absoluteUrl.includes('?') ? '&' : '?'}preview=${Date.now()}`;
     previewCard.hidden = false;
-    renderQr(qrCanvas, qrWrap, url);
+    currentDownloadUrl = absoluteUrl;
+    currentDownloadName = meta.fileName || meta.baseName || '';
+    lastPreviewTitle = meta.title || meta.fileName || lastPreviewTitle || 'Audio Preview';
+    const shareUrl = new URL('share.html', window.location.href);
+    shareUrl.searchParams.set('src', absoluteUrl);
+    if (meta.fileName) shareUrl.searchParams.set('name', meta.fileName);
+    if (meta.format) shareUrl.searchParams.set('fmt', meta.format);
+    currentShareUrl = shareUrl.toString();
+    if (shareWrap) shareWrap.hidden = false;
+    if (shareLinkInput) shareLinkInput.value = currentShareUrl;
+    if (shareInfo) shareInfo.textContent = 'Bagikan link atau scan QR untuk membuka mini player.';
+    renderQr(qrCanvas, qrWrap, currentShareUrl);
+    loadWaveform(absoluteUrl);
+    if (equalizerWrap) equalizerWrap.hidden = false;
+    if (miniPlayerEl) {
+      miniPlayerEl.hidden = false;
+      if (miniSeek) miniSeek.value = 0;
+      if (miniTime) miniTime.textContent = '00:00';
+      if (miniTitle) miniTitle.textContent = lastPreviewTitle || 'Audio Preview';
+    }
   };
 
   const resetPlaylistPreview = () => {
@@ -511,16 +733,18 @@
 
   const showPlaylistResult = (data, count) => {
     if (!playlistResultWrap || !data) return;
+    const base = getBackend() || window.location.origin;
+    const absolute = new URL(data.downloadUrl, base).href;
     playlistResultWrap.hidden = false;
     if (playlistDownloadLink) {
-      playlistDownloadLink.href = data.downloadUrl;
+      playlistDownloadLink.href = absolute;
       playlistDownloadLink.setAttribute('download', data.fileName || 'playlist.zip');
     }
     if (playlistInfo) {
       playlistInfo.textContent = `${count} file siap diunduh`;
     }
     if (playlistShareCard) playlistShareCard.hidden = false;
-    renderQr(playlistQrCanvas, playlistQrWrap, data.downloadUrl);
+    renderQr(playlistQrCanvas, playlistQrWrap, absolute);
   };
 
   // ===== Queue =====
@@ -706,8 +930,460 @@ $('#queueList')?.addEventListener('click', (e) => {
     return Number.isNaN(n) ? null : n;
   }
 
+  function secondsToClock(sec){
+    if(!Number.isFinite(sec)) return '00:00';
+    const base = Math.max(0, sec);
+    const h = Math.floor(base / 3600);
+    const m = Math.floor((base % 3600) / 60);
+    const s = Math.floor(base % 60);
+    if(h){
+      return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+    return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  }
+
+  function secondsToInput(sec){
+    if(!Number.isFinite(sec)) return '';
+    const base = Math.max(0, sec);
+    const h = Math.floor(base / 3600);
+    const m = Math.floor((base % 3600) / 60);
+    const s = Math.floor(base % 60);
+    if(h){
+      return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+    return `${m}:${s.toString().padStart(2,'0')}`;
+  }
+
+  function clamp(val, min, max){
+    if(!Number.isFinite(val)) return min;
+    return Math.min(Math.max(val, min), max);
+  }
+
   function sanitizeFileName(str){
     return str.replace(/[\\/:*?"<>|\r\n]+/g,'').replace(/\s+/g,' ').trim();
+  }
+
+  // ===== Waveform helpers =====
+  function resetWaveform(clearSelection = true){
+    if (waveformAbort) {
+      waveformAbort.abort();
+      waveformAbort = null;
+    }
+    if (clearSelection) waveformState.selection = null;
+    waveformState.url = '';
+    waveformState.duration = 0;
+    waveformState.peaks = [];
+    if (waveformCanvas) {
+      const ctx = waveformCanvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, waveformCanvas.width || 0, waveformCanvas.height || 0);
+      }
+      waveformCanvas.removeAttribute('data-loading');
+    }
+    if (waveformWrap) waveformWrap.hidden = true;
+    if (waveformMeta) waveformMeta.textContent = '';
+    if (waveformHint) waveformHint.textContent = 'Waveform akan muncul setelah audio siap.';
+  }
+
+  function buildWaveformPeaks(channelData, target = 900){
+    const peaks = [];
+    if (!channelData || !channelData.length) return peaks;
+    const len = channelData.length;
+    const step = Math.max(1, Math.floor(len / target));
+    for (let i = 0; i < target; i += 1){
+      const start = i * step;
+      if (start >= len) break;
+      const end = Math.min(len, start + step);
+      let min = 1;
+      let max = -1;
+      for (let j = start; j < end; j += 1){
+        const value = channelData[j];
+        if (value > max) max = value;
+        if (value < min) min = value;
+      }
+      peaks.push({ min, max });
+    }
+    return peaks;
+  }
+
+  function updateWaveformMeta(){
+    if (!waveformMeta) return;
+    if (!waveformState.duration){
+      waveformMeta.textContent = '';
+      return;
+    }
+    if (waveformState.selection && waveformState.selection.end > waveformState.selection.start){
+      const { start, end } = waveformState.selection;
+      waveformMeta.textContent = `${secondsToClock(start)} → ${secondsToClock(end)} · ${secondsToClock(end - start)}`;
+    } else {
+      waveformMeta.textContent = `Durasi ${secondsToClock(waveformState.duration)}`;
+    }
+  }
+
+  function drawWaveform(){
+    if (!waveformCanvas) return;
+    const ctx = waveformCanvas.getContext('2d');
+    if (!ctx) return;
+    const width = waveformCanvas.clientWidth || waveformCanvas.offsetWidth || 480;
+    const height = waveformCanvas.clientHeight || 120;
+    const ratio = window.devicePixelRatio || 1;
+    waveformCanvas.width = Math.max(1, Math.floor(width * ratio));
+    waveformCanvas.height = Math.max(1, Math.floor(height * ratio));
+    ctx.save();
+    ctx.scale(ratio, ratio);
+    const styles = getComputedStyle(document.body);
+    const bg = (styles.getPropertyValue('--bs-body-bg') || '#ffffff').trim() || '#ffffff';
+    const accent = (styles.getPropertyValue('--bs-primary') || '#0d6efd').trim() || '#0d6efd';
+    const border = (styles.getPropertyValue('--bs-border-color') || '#ced4da').trim() || '#ced4da';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    const mid = height / 2;
+    ctx.beginPath();
+    ctx.moveTo(0, mid);
+    ctx.lineTo(width, mid);
+    ctx.stroke();
+    const peaks = waveformState.peaks || [];
+    if (peaks.length){
+      const columnWidth = width / peaks.length;
+      ctx.fillStyle = accent;
+      for (let i = 0; i < peaks.length; i += 1){
+        const { min, max } = peaks[i];
+        const x = i * columnWidth;
+        const top = mid + (min * mid);
+        const bottom = mid + (max * mid);
+        const h = bottom - top;
+        ctx.fillRect(x, top, Math.max(1, columnWidth * 0.9), h || 1);
+      }
+    }
+    if (waveformState.selection && waveformState.duration && waveformState.selection.end > waveformState.selection.start){
+      const { start, end } = waveformState.selection;
+      const startX = (start / waveformState.duration) * width;
+      const endX = (end / waveformState.duration) * width;
+      ctx.fillStyle = 'rgba(13,110,253,0.18)';
+      ctx.fillRect(startX, 0, Math.max(1, endX - startX), height);
+      ctx.strokeStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(startX, 0);
+      ctx.lineTo(startX, height);
+      ctx.moveTo(endX, 0);
+      ctx.lineTo(endX, height);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function getWaveformTime(evt){
+    if (!waveformCanvas || !waveformState.duration) return 0;
+    const rect = waveformCanvas.getBoundingClientRect();
+    const x = clamp(evt.clientX - rect.left, 0, rect.width || 1);
+    const ratio = rect.width ? x / rect.width : 0;
+    return ratio * waveformState.duration;
+  }
+
+  function syncWaveformFromInputs(){
+    if (!waveformState.duration) return;
+    const sVal = parseTime($('#trimStart').value.trim());
+    const eVal = parseTime($('#trimEnd').value.trim());
+    if (sVal === null && eVal === null){
+      waveformState.selection = null;
+      drawWaveform();
+      updateWaveformMeta();
+      return;
+    }
+    const start = sVal === null ? 0 : clamp(sVal, 0, waveformState.duration);
+    const end = eVal === null ? waveformState.duration : clamp(eVal, 0, waveformState.duration);
+    if (end <= start){
+      waveformState.selection = null;
+    } else {
+      waveformState.selection = { start, end };
+    }
+    drawWaveform();
+    updateWaveformMeta();
+  }
+
+  async function loadWaveform(url){
+    if (!waveformCanvas || !url) return;
+    const ctx = getAudioContext();
+    if (!ctx){
+      if (waveformWrap) waveformWrap.hidden = true;
+      if (waveformHint) waveformHint.textContent = 'Browser tidak mendukung Web Audio API.';
+      return;
+    }
+    if (waveformAbort) waveformAbort.abort();
+    waveformAbort = new AbortController();
+    waveformCanvas.dataset.loading = '1';
+    if (waveformHint) waveformHint.textContent = 'Memuat waveform…';
+    try {
+      const resp = await fetch(`${url}${url.includes('?') ? '&' : '?'}waveform=${Date.now()}`, { signal: waveformAbort.signal, cache: 'no-store' });
+      if (!resp.ok) throw new Error('Gagal memuat audio');
+      const arr = await resp.arrayBuffer();
+      const audioBuffer = await ctx.decodeAudioData(arr);
+      const peaks = buildWaveformPeaks(audioBuffer.getChannelData(0), Math.min(1400, Math.ceil(audioBuffer.duration * 80)));
+      waveformState.url = url;
+      waveformState.duration = audioBuffer.duration;
+      waveformState.peaks = peaks;
+      waveformWrap.hidden = false;
+      drawWaveform();
+      updateWaveformMeta();
+      if (waveformHint) waveformHint.textContent = 'Seret area untuk memilih bagian audio.';
+      syncWaveformFromInputs();
+    } catch (err){
+      if (err.name === 'AbortError') return;
+      console.error(err);
+      if (waveformHint) waveformHint.textContent = 'Waveform tidak bisa dimuat';
+      waveformWrap.hidden = true;
+    } finally {
+      waveformCanvas.removeAttribute('data-loading');
+    }
+  }
+
+  if (waveformCanvas){
+    let dragging = false;
+    let dragStart = 0;
+    waveformCanvas.addEventListener('pointerdown', (e) => {
+      if (!waveformState.duration) return;
+      dragging = true;
+      waveformCanvas.setPointerCapture(e.pointerId);
+      const time = getWaveformTime(e);
+      dragStart = time;
+      waveformState.selection = { start: time, end: time };
+      drawWaveform();
+      updateWaveformMeta();
+    });
+    waveformCanvas.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const time = getWaveformTime(e);
+      const start = Math.min(dragStart, time);
+      const end = Math.max(dragStart, time);
+      waveformState.selection = end > start ? { start, end } : null;
+      drawWaveform();
+      updateWaveformMeta();
+      if (waveformState.selection){
+        $('#trimStart').value = secondsToInput(start);
+        $('#trimEnd').value = secondsToInput(end);
+      }
+    });
+    const stopDrag = (e) => {
+      if (!dragging) return;
+      if (e && e.pointerId != null) waveformCanvas.releasePointerCapture(e.pointerId);
+      dragging = false;
+      updateWaveformMeta();
+    };
+    waveformCanvas.addEventListener('pointerup', stopDrag);
+    waveformCanvas.addEventListener('pointercancel', stopDrag);
+    waveformCanvas.addEventListener('pointerleave', stopDrag);
+    waveformCanvas.addEventListener('dblclick', () => {
+      waveformState.selection = null;
+      drawWaveform();
+      updateWaveformMeta();
+      $('#trimStart').value = '';
+      $('#trimEnd').value = '';
+    });
+  }
+
+  if (waveformClearBtn){
+    waveformClearBtn.addEventListener('click', () => {
+      waveformState.selection = null;
+      drawWaveform();
+      updateWaveformMeta();
+      $('#trimStart').value = '';
+      $('#trimEnd').value = '';
+    });
+  }
+
+  if (waveformUseSelectionBtn){
+    waveformUseSelectionBtn.addEventListener('click', () => {
+      if (!waveformState.selection){
+        setToast('Pilih bagian audio di waveform terlebih dahulu');
+        return;
+      }
+      $('#trimStart').value = secondsToInput(waveformState.selection.start);
+      $('#trimEnd').value = secondsToInput(waveformState.selection.end);
+      setToast('Trim diperbarui dari waveform');
+    });
+  }
+
+  // ===== Equalizer helpers =====
+  const formatGain = (value) => `${Number(value) >= 0 ? '+' : ''}${Number(value)} dB`;
+
+  const updateEqStatus = () => {
+    if (!eqStatus) return;
+    const bassVal = Number(eqBass?.value || 0);
+    const midVal = Number(eqMid?.value || 0);
+    const trebleVal = Number(eqTreble?.value || 0);
+    eqStatus.textContent = `Bass ${formatGain(bassVal)} · Mid ${formatGain(midVal)} · Treble ${formatGain(trebleVal)}`;
+  };
+
+  const ensureEqualizer = () => {
+    if (!previewPlayer) return false;
+    const ctx = getAudioContext();
+    if (!ctx) return false;
+    if (eqReady) return true;
+    if (!eqSource) {
+      eqSource = ctx.createMediaElementSource(previewPlayer);
+      const bass = ctx.createBiquadFilter();
+      bass.type = 'lowshelf';
+      bass.frequency.value = 200;
+      const mid = ctx.createBiquadFilter();
+      mid.type = 'peaking';
+      mid.frequency.value = 1000;
+      mid.Q.value = 1;
+      const treble = ctx.createBiquadFilter();
+      treble.type = 'highshelf';
+      treble.frequency.value = 4000;
+      eqFilters = [bass, mid, treble];
+      eqSource.connect(bass);
+      bass.connect(mid);
+      mid.connect(treble);
+      treble.connect(ctx.destination);
+    }
+    eqReady = true;
+    return true;
+  };
+
+  const applyEqFromInputs = () => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+    if (!ensureEqualizer()) return;
+    const bassVal = Number(eqBass?.value || 0);
+    const midVal = Number(eqMid?.value || 0);
+    const trebleVal = Number(eqTreble?.value || 0);
+    if (eqFilters[0]) eqFilters[0].gain.value = bassVal;
+    if (eqFilters[1]) eqFilters[1].gain.value = midVal;
+    if (eqFilters[2]) eqFilters[2].gain.value = trebleVal;
+    updateEqStatus();
+  };
+
+  if (eqBass) eqBass.addEventListener('input', applyEqFromInputs);
+  if (eqMid) eqMid.addEventListener('input', applyEqFromInputs);
+  if (eqTreble) eqTreble.addEventListener('input', applyEqFromInputs);
+  if (eqPresetFlat) eqPresetFlat.addEventListener('click', () => {
+    if (eqBass) eqBass.value = 0;
+    if (eqMid) eqMid.value = 0;
+    if (eqTreble) eqTreble.value = 0;
+    applyEqFromInputs();
+    setToast('Equalizer direset ke mode Flat');
+  });
+  if (eqPresetPodcast) eqPresetPodcast.addEventListener('click', () => {
+    if (eqBass) eqBass.value = 2;
+    if (eqMid) eqMid.value = 3;
+    if (eqTreble) eqTreble.value = -1;
+    applyEqFromInputs();
+    setToast('Preset Podcast diterapkan');
+  });
+  if (eqPresetBass) eqPresetBass.addEventListener('click', () => {
+    if (eqBass) eqBass.value = 5;
+    if (eqMid) eqMid.value = 0;
+    if (eqTreble) eqTreble.value = 2;
+    applyEqFromInputs();
+    setToast('Bass+ diterapkan');
+  });
+  updateEqStatus();
+
+  const shareLink = async (link) => {
+    if (!link) { setToast('Belum ada link untuk dibagikan'); return; }
+    if (navigator.share){
+      try {
+        await navigator.share({ title: lastPreviewTitle || document.title, url: link });
+        return;
+      } catch (err){
+        if (err && err.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      setToast('Link share disalin');
+    } catch {
+      setToast(link);
+    }
+  };
+
+  if (shareBtn) shareBtn.addEventListener('click', () => shareLink(currentShareUrl));
+  if (miniShareBtn) miniShareBtn.addEventListener('click', () => shareLink(currentShareUrl));
+  if (copyShareBtn) copyShareBtn.addEventListener('click', async () => {
+    if (!currentShareUrl){ setToast('Belum ada link share'); return; }
+    try {
+      await navigator.clipboard.writeText(currentShareUrl);
+      setToast('Link share disalin');
+    } catch {
+      setToast(currentShareUrl);
+    }
+  });
+  if (openShareBtn) openShareBtn.addEventListener('click', () => {
+    if (!currentShareUrl){ setToast('Belum ada link share'); return; }
+    window.open(currentShareUrl, '_blank', 'noopener');
+  });
+
+  const updateMiniPlayState = () => {
+    if (!miniPlayBtn || !previewPlayer) return;
+    if (previewPlayer.paused){
+      miniPlayBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+      miniPlayBtn.setAttribute('aria-label', 'Putar');
+    } else {
+      miniPlayBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+      miniPlayBtn.setAttribute('aria-label', 'Jeda');
+    }
+  };
+
+  if (miniPlayBtn) miniPlayBtn.addEventListener('click', () => {
+    if (!previewPlayer) return;
+    if (previewPlayer.paused) previewPlayer.play().catch(()=>{});
+    else previewPlayer.pause();
+  });
+
+  if (miniCloseBtn) miniCloseBtn.addEventListener('click', () => {
+    if (miniPlayerEl) miniPlayerEl.hidden = true;
+  });
+
+  if (miniSeek){
+    miniSeek.addEventListener('input', (e) => {
+      if (!previewPlayer || !previewPlayer.duration) return;
+      miniSeeking = true;
+      const ratio = Number(e.target.value) / 1000;
+      if (miniTime) miniTime.textContent = `${secondsToClock(ratio * previewPlayer.duration)} / ${secondsToClock(previewPlayer.duration)}`;
+    });
+    const commitSeek = (e) => {
+      if (!previewPlayer || !previewPlayer.duration) { miniSeeking = false; return; }
+      const ratio = Number(e.target.value) / 1000;
+      previewPlayer.currentTime = clamp(ratio, 0, 1) * previewPlayer.duration;
+      miniSeeking = false;
+    };
+    miniSeek.addEventListener('change', commitSeek);
+    miniSeek.addEventListener('pointerup', (e) => commitSeek(e));
+  }
+
+  if (previewPlayer){
+    previewPlayer.addEventListener('loadedmetadata', () => {
+      updateMiniPlayState();
+      if (miniSeek) {
+        miniSeek.disabled = !previewPlayer.duration;
+        miniSeek.value = 0;
+      }
+      if (miniTime) miniTime.textContent = previewPlayer.duration ? `00:00 / ${secondsToClock(previewPlayer.duration)}` : '00:00';
+    });
+    previewPlayer.addEventListener('play', async () => {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        try { await ctx.resume(); } catch {}
+      }
+      ensureEqualizer();
+      applyEqFromInputs();
+      updateMiniPlayState();
+      if (miniPlayerEl) miniPlayerEl.hidden = false;
+    });
+    previewPlayer.addEventListener('pause', updateMiniPlayState);
+    previewPlayer.addEventListener('ended', updateMiniPlayState);
+    previewPlayer.addEventListener('timeupdate', () => {
+      if (!miniTime) return;
+      const dur = previewPlayer.duration || 0;
+      const cur = previewPlayer.currentTime || 0;
+      miniTime.textContent = dur ? `${secondsToClock(cur)} / ${secondsToClock(dur)}` : secondsToClock(cur);
+      if (miniSeek && !miniSeeking && dur){
+        miniSeek.value = Math.round((cur / dur) * 1000);
+      }
+    });
   }
 
   async function updatePreview(){
@@ -734,6 +1410,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     updatePreview();
   });
   $('#url').addEventListener('change', updatePreview);
+  $('#trimStart').addEventListener('change', syncWaveformFromInputs);
+  $('#trimEnd').addEventListener('change', syncWaveformFromInputs);
 
   // ===== Drag & drop cookies.txt =====
   const dz = $('#dropzone');
@@ -784,6 +1462,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   $('#convertBtn').addEventListener('click', () => doConvert(null, $('#autoDownload').checked));
   $('#downloadAllBtn').addEventListener('click', doConvertQueue);
   $('#downloadZipBtn').addEventListener('click', downloadPlaylistZip);
+  if (subtitleBtn) subtitleBtn.addEventListener('click', handleSubtitle);
   $('#clearBtn').addEventListener('click', () => {
     $('#url').value='';
     $('#playlist').value='';
@@ -799,10 +1478,26 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
     resetAudioPreview();
     resetPlaylistPreview();
+    if (subtitleResult) subtitleResult.hidden = true;
+    if (subtitlePreview) subtitlePreview.textContent = '';
+    if (subtitleAutoBadge) subtitleAutoBadge.hidden = true;
+    subtitleShareUrl = '';
     $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
     $('#convertProgWrap').hidden=true;
   });
   $('#url').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doConvert(null, $('#autoDownload').checked); });
+
+  if (subtitleCopyBtn) subtitleCopyBtn.addEventListener('click', async () => {
+    const text = (subtitlePreview?.textContent || '').trim();
+    if (!text){ setToast('Belum ada teks subtitle'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast('Teks subtitle tersalin');
+    } catch {
+      setToast('Tidak dapat menyalin teks subtitle');
+    }
+  });
+  if (subtitleShareBtn) subtitleShareBtn.addEventListener('click', () => shareLink(subtitleShareUrl));
 
   async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
@@ -854,15 +1549,23 @@ $('#queueList')?.addEventListener('click', (e) => {
       const data = await resp.json();
       if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
 
-      $('#downloadLink').href = data.downloadUrl; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
+      const backendBase = getBackend() || window.location.origin;
+      const absoluteDownload = new URL(data.downloadUrl, backendBase).href;
+      $('#downloadLink').href = absoluteDownload; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
       $('#status').textContent = 'Selesai';
       $('#loadingSpinner').style.display = 'none';
       fake = 100; progBar.style.width='100%'; progBar.textContent='100%';
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
       if(autoDownload) $('#downloadLink').click();
-      pushHistory({ downloadUrl: data.downloadUrl, format: data.format, abr: body.abr, fileName: data.fileName });
-      showAudioPreview(data.downloadUrl);
+      pushHistory({ downloadUrl: absoluteDownload, format: data.format, abr: body.abr, fileName: data.fileName });
+      const previewMeta = {
+        fileName: data.fileName || '',
+        baseName: data.baseName || '',
+        format: data.format,
+        title: $('#id3Title').value.trim() || $('#videoTitle').textContent.trim() || data.fileName || ''
+      };
+      showAudioPreview(absoluteDownload, previewMeta);
       setToast('Berhasil diproses');
       if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
     }catch(err){
@@ -948,7 +1651,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#status').textContent = 'ZIP selesai';
       showPlaylistResult(data, items.length);
       setToast(`Playlist ZIP siap (${items.length} file)`);
-      pushHistory({ downloadUrl: data.downloadUrl, format: 'zip', abr: body.abr, fileName: data.fileName });
+      const base = getBackend() || window.location.origin;
+      const absoluteZip = new URL(data.downloadUrl, base).href;
+      pushHistory({ downloadUrl: absoluteZip, format: 'zip', abr: body.abr, fileName: data.fileName });
       if($('#autoDownload').checked && playlistDownloadLink){ playlistDownloadLink.click(); }
       if($('#autoClear').checked){ queue.length = 0; renderQueue(); $('#playlist').value=''; }
     } catch(err){
@@ -957,6 +1662,61 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#logWrap').hidden = false;
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
       setToast('Terjadi error: '+err.message);
+    }
+  }
+
+  async function handleSubtitle(){
+    const url = $('#url').value.trim();
+    if(!/^https?:\/\//i.test(url)){
+      setToast('Masukkan URL YouTube yang valid terlebih dahulu');
+      $('#url').focus();
+      return;
+    }
+    if (subtitleResult) subtitleResult.hidden = true;
+    if (subtitlePreview) subtitlePreview.textContent = '';
+    if (subtitleAutoBadge) subtitleAutoBadge.hidden = true;
+    subtitleShareUrl = '';
+    if (subtitleBtn){
+      subtitleBtn.disabled = true;
+      subtitleBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Memuat';
+    }
+    try {
+      const langVal = subtitleLang?.value || 'id.*,en.*,en';
+      const body = {
+        url,
+        lang: langVal === 'all' ? 'all' : langVal,
+        preferAuto: subtitleAuto ? subtitleAuto.checked : true,
+        fileName: sanitizeFileName($('#fileName').value.trim()) || undefined,
+        title: $('#id3Title').value.trim() || $('#videoTitle').textContent.trim() || undefined,
+      };
+      const resp = await fetch(api('/api/subtitle'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      const data = await resp.json();
+      if(!resp.ok) throw new Error(data.error || 'Gagal mengambil subtitle');
+      if (subtitleLangBadge) subtitleLangBadge.textContent = (data.lang || '').toUpperCase() || 'TXT';
+      if (subtitleAutoBadge) subtitleAutoBadge.hidden = !data.auto;
+      if (subtitleSrtLink){
+        subtitleSrtLink.href = data.srtUrl || '#';
+        if (data.srtFileName) subtitleSrtLink.setAttribute('download', data.srtFileName);
+      }
+      if (subtitleTxtLink){
+        subtitleTxtLink.href = data.txtUrl || '#';
+        if (data.txtFileName) subtitleTxtLink.setAttribute('download', data.txtFileName);
+      }
+      if (subtitlePreview) subtitlePreview.textContent = data.preview || '(Tidak ada preview tersedia)';
+      if (subtitleStatus) subtitleStatus.textContent = 'Subtitle siap diunduh';
+      subtitleShareUrl = data.txtUrl ? new URL(data.txtUrl, window.location.origin).href : (data.srtUrl ? new URL(data.srtUrl, window.location.origin).href : '');
+      if (subtitleResult) subtitleResult.hidden = false;
+      setToast('Subtitle siap diunduh');
+    } catch(err){
+      if (subtitleStatus) subtitleStatus.textContent = 'Gagal mengambil subtitle';
+      if (subtitlePreview) subtitlePreview.textContent = err.message || 'Terjadi kesalahan';
+      if (subtitleResult) subtitleResult.hidden = false;
+      setToast('Subtitle gagal: '+ err.message);
+    } finally {
+      if (subtitleBtn){
+        subtitleBtn.disabled = false;
+        subtitleBtn.innerHTML = subtitleBtnDefault || '<i class="bi bi-text-left"></i> Ambil subtitle';
+      }
     }
   }
 
