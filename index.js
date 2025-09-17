@@ -534,11 +534,15 @@ const buildAudioFilters = ({
   denoise = false,
   volumeBoost = 0,
   enhancer = "none",
+  sampleRate,
 } = {}) => {
   const filters = [];
+  const srValue = Number(sampleRate);
+  const baseSampleRate = Number.isFinite(srValue) && srValue > 0 ? Math.round(srValue) : null;
   if (speedMode && speedMode !== "normal") {
     if (speedMode === "nightcore") {
-      filters.push("asetrate=sample_rate*1.25", "aresample=sample_rate");
+      const refSampleRate = baseSampleRate || 44100;
+      filters.push(`asetrate=${refSampleRate}*1.25`, `aresample=${refSampleRate}`);
     } else if (speedMode === "slow_reverb") {
       filters.push("atempo=0.85", "aecho=0.6:0.6:1000:0.25");
     }
@@ -1022,6 +1026,7 @@ const convertSingle = async (payload = {}) => {
     denoise: denoiseEnabled,
     volumeBoost: boostValue,
     enhancer: enhancerMode,
+    sampleRate: sr,
   });
 
   const args = ["--newline", "--no-progress"];
