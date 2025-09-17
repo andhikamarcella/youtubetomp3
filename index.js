@@ -243,6 +243,131 @@ const GENRE_PLAYLIST_HINTS = {
   Pop: ["Today's Top Hits"],
 };
 
+const HOOK_GENRE_EMOJI = {
+  EDM: "⚡️",
+  "Lo-Fi": "🌙",
+  "Hip-Hop": "🎤",
+  Trap: "🔥",
+  Rock: "🎸",
+  Pop: "🎶",
+  Jazz: "🎷",
+  Ambient: "🌧️",
+  Classical: "🎻",
+  Dangdut: "🥁",
+  "K-Pop": "💖",
+};
+
+const COVER_PRESETS = {
+  EDM: {
+    style: "Neon cyberpunk poster",
+    visuals: "laser beams, silhouette crowd, futuristic city skyline",
+    lighting: "Backlit neon glow",
+    texture: "Chromatic aberration + subtle grain",
+    vibe: "Festival energy",
+    palette: [
+      { hex: "#FF4ECD", label: "Magenta neon" },
+      { hex: "#09FBD3", label: "Aqua laser" },
+      { hex: "#08070B", label: "Deep midnight" },
+    ],
+  },
+  "Lo-Fi": {
+    style: "Cozy illustrated cassette cover",
+    visuals: "window view, rain-streaked glass, desk setup with headphones",
+    lighting: "Warm lamp light",
+    texture: "Paper grain + soft blur",
+    vibe: "Study & chill",
+    palette: [
+      { hex: "#D4A373", label: "Warm latte" },
+      { hex: "#264653", label: "Deep teal" },
+      { hex: "#2A9D8F", label: "Seafoam accent" },
+    ],
+  },
+  "Hip-Hop": {
+    style: "Bold street collage",
+    visuals: "boom box, graffiti backdrop, dynamic typography",
+    lighting: "High contrast spotlight",
+    texture: "Ripped paper + spray paint",
+    vibe: "Block party hype",
+    palette: [
+      { hex: "#FF8A00", label: "Amber pop" },
+      { hex: "#161616", label: "Concrete black" },
+      { hex: "#FFD60A", label: "Tape highlight" },
+    ],
+  },
+  Rock: {
+    style: "Gritty live stage poster",
+    visuals: "guitar silhouette, stage smoke, crowd hands",
+    lighting: "Crimson spotlight",
+    texture: "Distressed paper + halftone",
+    vibe: "Raw performance",
+    palette: [
+      { hex: "#F94144", label: "Stage red" },
+      { hex: "#1B1B1B", label: "Amp black" },
+      { hex: "#F3722C", label: "Amber flare" },
+    ],
+  },
+  Ambient: {
+    style: "Minimal gradient mist",
+    visuals: "soft fog layers, floating geometric shapes",
+    lighting: "Diffused dawn glow",
+    texture: "Bloom + smooth blur",
+    vibe: "Meditative soundscape",
+    palette: [
+      { hex: "#8ECAE6", label: "Sky blue" },
+      { hex: "#023047", label: "Deep ocean" },
+      { hex: "#CAD2C5", label: "Cloud mist" },
+    ],
+  },
+  Jazz: {
+    style: "Retro lounge poster",
+    visuals: "sax silhouette, vinyl curves, smoky gradients",
+    lighting: "Golden hour spotlight",
+    texture: "Soft grain + silk paper",
+    vibe: "Late night swing",
+    palette: [
+      { hex: "#F9C74F", label: "Brass gold" },
+      { hex: "#90BE6D", label: "Olive accent" },
+      { hex: "#577590", label: "Midnight blue" },
+    ],
+  },
+  Dangdut: {
+    style: "Festive batik fusion",
+    visuals: "dynamic dancer silhouette, batik-inspired patterns, stage lights",
+    lighting: "Vibrant spotlight sweep",
+    texture: "Foil shimmer + grain",
+    vibe: "Panggung hajatan",
+    palette: [
+      { hex: "#FF9F1C", label: "Sunset orange" },
+      { hex: "#FFBF69", label: "Champagne shimmer" },
+      { hex: "#2EC4B6", label: "Turquoise pop" },
+    ],
+  },
+  Pop: {
+    style: "Glossy pastel poster",
+    visuals: "floating shapes, bold sans-serif title, sparkles",
+    lighting: "Studio beauty light",
+    texture: "Soft gloss + tiny glitter",
+    vibe: "Chart-ready polish",
+    palette: [
+      { hex: "#FF80AB", label: "Candy pink" },
+      { hex: "#845EC2", label: "Violet depth" },
+      { hex: "#00C9A7", label: "Mint pop" },
+    ],
+  },
+  default: {
+    style: "Modern streaming cover",
+    visuals: "abstract gradients, floating typography, subtle motion blur",
+    lighting: "Soft rim light",
+    texture: "Fine grain + bloom",
+    vibe: "Clean digital aesthetic",
+    palette: [
+      { hex: "#FF6B6B", label: "Coral highlight" },
+      { hex: "#5F27CD", label: "Indigo depth" },
+      { hex: "#0B132B", label: "Night base" },
+    ],
+  },
+};
+
 const buildAiCaption = ({
   title = "",
   channel = "",
@@ -515,6 +640,201 @@ const buildAiAudiophileGuide = ({
     enhancements,
     tags,
   };
+};
+
+const buildAiHook = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  speedMode = "normal",
+  volumeBoost = 0,
+  enhancer = "none",
+  denoise = false,
+  eq = {},
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  const trackTitle = tags.title || title || "Track Baru";
+  const artist = tags.artist || channel || "Creator";
+  const emoji = HOOK_GENRE_EMOJI[tags.genre] || MOOD_EMOJIS[tags.mood] || "✨";
+  const moodLabel = tags.mood ? `${tags.mood.toLowerCase()} mood` : "fresh mood";
+  const energyLabel = tags.energy ? `${tags.energy.toLowerCase()} energy` : "dynamic energy";
+
+  const tweaks = [];
+  if (speedMode === "nightcore") tweaks.push("nightcore tempo");
+  else if (speedMode === "slow_reverb") tweaks.push("slowed + reverb feel");
+  const boostVal = Number(volumeBoost);
+  if (Number.isFinite(boostVal) && boostVal > 0) tweaks.push(`+${boostVal} dB boost`);
+  if (enhancer && enhancer !== "none") {
+    const enhancerLabels = {
+      clarity: "vocal clarity",
+      warm: "warm glow",
+      club: "club lift",
+    };
+    tweaks.push(enhancerLabels[enhancer] || `enhancer: ${enhancer}`);
+  }
+  if (denoise) tweaks.push("noise cleaned");
+
+  const eqHighlights = [];
+  const bassVal = Number(eq?.bass ?? 0);
+  const midVal = Number(eq?.mid ?? 0);
+  const trebleVal = Number(eq?.treble ?? 0);
+  if (bassVal > 2) eqHighlights.push("deep bass impact");
+  else if (bassVal < -2) eqHighlights.push("tight low-end");
+  if (midVal > 2) eqHighlights.push("forward mids for vocals");
+  if (trebleVal > 2) eqHighlights.push("sparkling high-end shimmer");
+
+  const studioLine = [...eqHighlights, ...tweaks].length
+    ? `Studio touch: ${[...eqHighlights, ...tweaks].join(', ')}.`
+    : null;
+
+  const hooks = [
+    `${emoji} ${trackTitle} by ${artist} menghadirkan ${moodLabel} dengan ${energyLabel}.`,
+  ];
+  if (studioLine) hooks.push(studioLine);
+  hooks.push("Tap & dengarkan sekarang — biar vibe-nya takeover harimu!");
+
+  const ctas = [
+    "🎧 Dengerin sekarang",
+    "💾 Save ke playlist favoritmu",
+  ];
+  if (tags.energy === "High" || tags.mood === "Hype") ctas.push("🔥 Share ke geng untuk boost semangat");
+  else ctas.push("✨ Jadikan soundtrack aktivitasmu");
+
+  const hashtags = new Set();
+  [tags.genre, tags.mood, tags.energy, artist].forEach((value) => {
+    const slug = slugifyTag(value);
+    if (slug) hashtags.add(`#${slug}`);
+  });
+  if (speedMode === "nightcore") hashtags.add("#nightcore");
+  if (speedMode === "slow_reverb") hashtags.add("#slowedreverb");
+
+  const focus = tags.genre && tags.mood ? `${tags.genre} · ${tags.mood}` : null;
+
+  return {
+    hooks: hooks.slice(0, 3),
+    ctas: ctas.slice(0, 3),
+    hashtags: Array.from(hashtags).slice(0, 5),
+    tone: `${tags.mood || 'Fresh'} ${tags.genre || ''}`.trim(),
+    emoji,
+    focus,
+  };
+};
+
+const buildAiCoverPrompt = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  format = "",
+  speedMode = "normal",
+  enhancer = "none",
+  volumeBoost = 0,
+  denoise = false,
+  normalize = false,
+  eq = {},
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  const trackTitle = tags.title || title || "Track Baru";
+  const artist = tags.artist || channel || "Creator";
+  const preset = COVER_PRESETS[tags.genre] || COVER_PRESETS.default;
+  const moodDescriptor = tags.mood ? `${tags.mood.toLowerCase()} mood` : "modern mood";
+  const energyDescriptor = tags.energy ? `${tags.energy.toLowerCase()} energy` : "smooth energy";
+
+  const eqHints = [];
+  if (Number(eq?.bass ?? 0) > 2) eqHints.push("visualize sub-bass waves at the bottom");
+  if (Number(eq?.mid ?? 0) > 2) eqHints.push("add warm vocal aura around the center");
+  if (Number(eq?.treble ?? 0) > 2) eqHints.push("sprinkle high-frequency particles around the title");
+  if (Number(eq?.treble ?? 0) < -2) eqHints.push("keep top area soft and clean");
+  if (enhancer === "clarity") eqHints.push("keep typography crisp and glossy");
+  if (enhancer === "warm") eqHints.push("use warm light bloom");
+  if (enhancer === "club") eqHints.push("accent with strobe reflections");
+  if (denoise) eqHints.push("avoid noisy background, use clean gradients");
+  if (normalize) eqHints.push("balanced overall contrast");
+
+  const promptParts = [
+    `Album cover for "${trackTitle}" by ${artist}.`,
+    `${preset.visuals} with ${moodDescriptor} and ${energyDescriptor}.`,
+    `${preset.style}, lighting ${preset.lighting}, texture ${preset.texture}.`,
+  ];
+  if (eqHints.length) promptParts.push(`Details: ${eqHints.join('; ')}.`);
+  promptParts.push('Square format 1:1, streaming-ready, high resolution, cinematic rendering.');
+
+  return {
+    prompt: promptParts.join(' '),
+    palette: preset.palette,
+    style: preset.style,
+    lighting: preset.lighting,
+    texture: preset.texture,
+    vibe: preset.vibe,
+  };
+};
+
+const buildAiReleasePlan = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  format = "",
+  speedMode = "normal",
+  backgroundMode = false,
+  autoDownload = false,
+  queueLength = 0,
+  hasPlaylist = false,
+  volumeBoost = 0,
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  const trackTitle = tags.title || title || "Track Baru";
+  const vibe = `${tags.genre || 'Multi-genre'} ${tags.mood || 'Fresh'}`.trim();
+
+  const plan = [
+    { timing: "-7 Hari", title: "Teaser visual", detail: `Rilis snippet 15 detik + WIP cover art untuk ${trackTitle} di Reels/Shorts.` },
+    { timing: "-3 Hari", title: "Hook blast", detail: "Gunakan AI Hook + caption untuk CTA, ajak pre-save dan buka diskusi vibe." },
+    { timing: "-1 Hari", title: "Komunitas & checklist", detail: "DM inner circle, siapin playlist pitch, aktifkan story countdown." },
+    { timing: "Release Day", title: "Launch & QR share", detail: "Drop track, bagikan QR mini player + link share, highlight fitur preview dan caption AI." },
+    { timing: "+2 Hari", title: "Konten lanjutan", detail: "Upload behind-the-scenes/lyric cut, ajak fans duet atau stitch vibe." },
+    { timing: "+5 Hari", title: "Playlist follow-up", detail: "Kirim AI Playlist Pitch ke curator dan update komunitas/Discord." },
+  ];
+
+  if (backgroundMode) {
+    plan.splice(2, 0, {
+      timing: "-2 Hari",
+      title: "Siapkan background job",
+      detail: "Aktifkan Background mode di web untuk monitor convert & deliver link early access.",
+    });
+  }
+
+  if (hasPlaylist || (Number(queueLength) || 0) > 1) {
+    plan.push({
+      timing: "+1 Minggu",
+      title: "Bundle playlist",
+      detail: "Rilis ZIP playlist/remix pack, gunakan Download ZIP & share QR ke subscriber.",
+    });
+  }
+
+  if (autoDownload) {
+    plan.push({
+      timing: "Automation",
+      title: "Auto-download siap",
+      detail: "Aktifkan Auto-download agar hasil langsung tersimpan dan siap dibagikan.",
+    });
+  }
+
+  if (Number(volumeBoost) > 6) {
+    plan.push({
+      timing: "+10 Hari",
+      title: "High-energy recap",
+      detail: "Potong video live reaction yang nunjukin boost energi +${volumeBoost} dB, ajak fans tag kamu.",
+    });
+  }
+
+  const summary = `Strategi 1 minggu: teaser → hook → launch → follow-up untuk ${vibe.toLowerCase()} audience.`;
+  const focus = `Fokus: ${tags.genre || 'Multi-genre'} · ${tags.mood || 'Fresh'} · ${tags.energy || 'Balanced'}`;
+
+  return { plan, summary, focus };
 };
 
 const validateConvertPayload = (payload = {}) => {
@@ -2057,6 +2377,73 @@ app.post("/api/ai-audiophile", (req, res) => {
     return res.json({ ok: true, guide: result });
   } catch (e) {
     const msg = e?.message || "Gagal membuat panduan audiophile";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-hook", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiHook({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      speedMode: body.speedMode,
+      volumeBoost: body.volumeBoost,
+      enhancer: body.enhancer,
+      denoise: body.denoise,
+      eq: body.eq,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat hook";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-cover", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiCoverPrompt({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      format: body.format,
+      speedMode: body.speedMode,
+      enhancer: body.enhancer,
+      volumeBoost: body.volumeBoost,
+      denoise: body.denoise,
+      normalize: body.normalize,
+      eq: body.eq,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat prompt cover";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-release", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiReleasePlan({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      format: body.format,
+      speedMode: body.speedMode,
+      backgroundMode: body.backgroundMode,
+      autoDownload: body.autoDownload,
+      queueLength: body.queueLength,
+      hasPlaylist: body.hasPlaylist,
+      volumeBoost: body.volumeBoost,
+    });
+    return res.json({ ok: true, plan: result.plan, summary: result.summary, focus: result.focus });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat timeline";
     return res.status(400).json({ error: msg });
   }
 });
