@@ -261,6 +261,63 @@ const createStemsForSource = async (inputPath, baseName = "Audio") => {
   return response;
 };
 
+const SUPPORTED_THUMBNAIL_STYLES = new Set(["modern", "vibrant", "mono"]);
+
+const readImageBuffer = async (imageUrl) => {
+  if (!imageUrl || typeof imageUrl !== "string") {
+    const err = new Error("URL gambar tidak valid");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const trimmed = imageUrl.trim();
+  if (trimmed.startsWith("data:")) {
+    const match = /^data:(image\/[^;]+);base64,(.+)$/i.exec(trimmed);
+    if (!match) {
+      const err = new Error("Data URL gambar tidak valid");
+      err.statusCode = 400;
+      throw err;
+    }
+    return Buffer.from(match[2], "base64");
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    const err = new Error("URL gambar harus http/https");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let response;
+  try {
+    response = await fetch(trimmed, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (compatible; ytmp3/1.0; +https://github.com/)",
+        accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      },
+    });
+  } catch (cause) {
+    const err = new Error("Tidak bisa mengunduh gambar sumber. Periksa koneksi jaringan atau coba URL lain.");
+    err.statusCode = 502;
+    err.cause = cause;
+    throw err;
+  }
+
+  if (!response.ok) {
+    const err = new Error(`Gagal mengambil gambar (status ${response.status})`);
+    err.statusCode = response.status >= 400 && response.status < 500 ? 400 : 502;
+    throw err;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!/image\//i.test(contentType)) {
+    const err = new Error("Respons bukan file gambar");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return Buffer.from(await response.arrayBuffer());
+};
+
 const generateThumbnailArt = async ({
   imageUrl,
   title,
@@ -268,18 +325,13 @@ const generateThumbnailArt = async ({
   accent = "#0d6efd",
   style = "modern",
 }) => {
-  if (!imageUrl || !/^https?:\/\//i.test(imageUrl)) {
-    throw new Error("URL gambar tidak valid");
-  }
   if (!DEFAULT_FONT) {
-    throw new Error("Font default tidak ditemukan untuk drawtext");
+    const err = new Error("Font default tidak ditemukan untuk drawtext");
+    err.statusCode = 500;
+    throw err;
   }
 
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error(`Gagal mengambil gambar (${response.status})`);
-  }
-  const buffer = Buffer.from(await response.arrayBuffer());
+  const buffer = await readImageBuffer(imageUrl);
   const thumbId = nanoid(10);
   const inputPath = join(THUMB_DIR, `${thumbId}.src`);
   const outputName = `${thumbId}.jpg`;
@@ -288,15 +340,18 @@ const generateThumbnailArt = async ({
   await fsp.writeFile(inputPath, buffer);
 
   const accentHex = normalizeHex(accent);
+  const styleKey = SUPPORTED_THUMBNAIL_STYLES.has((style || "").toLowerCase())
+    ? (style || "").toLowerCase()
+    : "modern";
   const baseFilter = [
     "scale=1280:720:force_original_aspect_ratio=decrease",
     `pad=1280:720:(ow-iw)/2:(oh-ih)/2:${hexToFfmpegColor("#10121a")}`,
     "format=rgba",
   ];
 
-  if (style === "vibrant") {
+  if (styleKey === "vibrant") {
     baseFilter.push("eq=saturation=1.35:contrast=1.05");
-  } else if (style === "mono") {
+  } else if (styleKey === "mono") {
     baseFilter.push("hue=s=0");
   }
 
@@ -1278,7 +1333,11 @@ app.post("/api/thumbnail", async (req, res) => {
     return res.json(result);
   } catch (e) {
     const msg = e?.message || "Gagal membuat thumbnail";
-    const status = /tidak valid|tidak ditemukan/i.test(msg) ? 400 : 500;
+    const status = Number.isInteger(e?.statusCode)
+      ? e.statusCode
+      : /tidak valid|tidak ditemukan/i.test(msg)
+        ? 400
+        : 500;
     return res.status(status).json({ error: msg, logs: e?.logs });
   }
 });
