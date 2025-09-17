@@ -14,6 +14,13 @@ try {
   ffmpegPath = null;
 }
 
+let ffprobePath = null;
+try {
+  ffprobePath = (await import("ffprobe-static")).path;
+} catch {
+  ffprobePath = null;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
@@ -56,6 +63,14 @@ const sanitizeFileName = (name = "") =>
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const toPositiveInt = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return Math.round(num);
+};
+
+const parseSampleRate = (value) => toPositiveInt(value);
+
 const resolvePublicPath = (urlPath = "") => {
   if (typeof urlPath !== "string") return null;
   const cleaned = urlPath.replace(/\\/g, "/").trim();
@@ -64,6 +79,43 @@ const resolvePublicPath = (urlPath = "") => {
   const fullPath = pathResolve(PUBLIC_ROOT, relative);
   if (!fullPath.startsWith(PUBLIC_ROOT)) return null;
   return fullPath;
+};
+
+const probeAudioStream = async (inputPath) => {
+  if (!inputPath) return null;
+  const args = [
+    "-v",
+    "error",
+    "-select_streams",
+    "a:0",
+    "-show_entries",
+    "stream=sample_rate,channels",
+    "-of",
+    "json",
+    inputPath,
+  ];
+  return await new Promise((resolve) => {
+    const ffprobeBin = ffprobePath || "ffprobe";
+    const proc = spawn(ffprobeBin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let output = "";
+    proc.stdout.on("data", (d) => {
+      output += d.toString();
+    });
+    proc.on("error", () => resolve(null));
+    proc.on("close", (code) => {
+      if (code !== 0) return resolve(null);
+      try {
+        const json = JSON.parse(output || "{}");
+        const stream = Array.isArray(json.streams) ? json.streams[0] : null;
+        if (!stream) return resolve(null);
+        const sampleRate = parseSampleRate(stream.sample_rate);
+        const channels = toPositiveInt(stream.channels);
+        resolve({ sampleRate, channels });
+      } catch {
+        resolve(null);
+      }
+    });
+  });
 };
 
 const GENRE_KEYWORDS = [
@@ -127,6 +179,103 @@ const buildAiTags = ({ title = "", description = "", channel = "", duration } = 
   if (year) tags.year = year;
   tags.comment = `AI tags · ${genre} · ${mood}${year ? ` · ${year}` : ""}`;
   return tags;
+};
+
+const formatDurationLabel = (seconds) => {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (value < 60) return `${Math.round(value)}s`;
+  const minutes = Math.floor(value / 60);
+  const secs = Math.round(value % 60);
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h${mins ? ` ${mins}m` : ""}`.trim();
+  }
+  return `${minutes}m${secs ? ` ${secs}s` : ""}`.trim();
+};
+
+const slugifyTag = (value) => {
+  if (!value) return null;
+  const slug = value
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+  return slug || null;
+};
+
+const MOOD_EMOJIS = {
+  Happy: "😊",
+  Chill: "😌",
+  Melancholy: "💜",
+  Epic: "🔥",
+  Midnight: "🌙",
+  Hype: "⚡️",
+  Calm: "🌿",
+  Energetic: "🚀",
+};
+
+const buildAiCaption = ({
+  title = "",
+  channel = "",
+  duration,
+  speedMode = "normal",
+  denoise = false,
+  volumeBoost = 0,
+  enhancer = "none",
+  format = "",
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  const trackTitle = tags.title || title || "Track Baru";
+  const artist = tags.artist || channel || "Creator";
+  const moodEmoji = MOOD_EMOJIS[tags.mood] || "🎧";
+  const detailParts = [];
+  if (tags.genre) detailParts.push(tags.genre);
+  if (tags.mood) detailParts.push(tags.mood);
+  if (tags.energy) detailParts.push(tags.energy);
+  const durationLabel = formatDurationLabel(duration);
+  if (durationLabel) detailParts.push(durationLabel);
+
+  const tweaks = [];
+  if (speedMode === "nightcore") tweaks.push("Nightcore tempo");
+  else if (speedMode === "slow_reverb") tweaks.push("Slowed + reverb vibes");
+  if (denoise) tweaks.push("Noise cleaned");
+  const boostVal = Number(volumeBoost);
+  if (Number.isFinite(boostVal) && boostVal > 0) tweaks.push(`+${boostVal} dB boost`);
+  if (enhancer && enhancer !== "none") {
+    const enhancerLabels = {
+      clarity: "Clarity enhancer",
+      warm: "Warm tone",
+      club: "Club lift",
+    };
+    tweaks.push(enhancerLabels[enhancer] || `Enhancer: ${enhancer}`);
+  }
+
+  const captionLines = [`${moodEmoji} ${trackTitle} — ${artist}`];
+  if (detailParts.length) captionLines.push(detailParts.join(" · "));
+  if (tweaks.length) captionLines.push(`Tweak: ${tweaks.join(", ")}`);
+  captionLines.push("Scan QR di web atau klik link buat dengar sekarang.");
+
+  const hashtags = new Set(["#music"]);
+  const pushTag = (value) => {
+    const slug = slugifyTag(value);
+    if (!slug) return;
+    hashtags.add(`#${slug}`);
+  };
+
+  [tags.genre, tags.mood, tags.energy, artist, format].forEach(pushTag);
+  if (speedMode === "nightcore") hashtags.add("#nightcore");
+  else if (speedMode === "slow_reverb") hashtags.add("#slowedreverb");
+  if (denoise) hashtags.add("#noiseclean");
+  if (boostVal > 0) hashtags.add("#volumeboost");
+
+  const titleParts = trackTitle.split(/\s+/).slice(0, 2);
+  titleParts.forEach(pushTag);
+
+  const hashtagList = Array.from(hashtags).filter(Boolean).slice(0, 8);
+  return { caption: captionLines.join("\n"), hashtags: hashtagList, tags };
 };
 
 const validateConvertPayload = (payload = {}) => {
@@ -218,6 +367,8 @@ const processBackgroundQueue = async () => {
         format: result.format,
         baseName: result.baseName,
         ext: result.ext,
+        sampleRate: result.sampleRate,
+        channels: result.channels,
       };
       if (result.fullPath) job.result.fullPath = result.fullPath;
       job.logs = (result.logs || "").slice(-8000);
@@ -253,6 +404,8 @@ const serializeJob = (job) => {
       baseName: job.result.baseName,
       ext: job.result.ext,
     };
+    if (job.result.sampleRate !== undefined) data.result.sampleRate = job.result.sampleRate;
+    if (job.result.channels !== undefined) data.result.channels = job.result.channels;
   }
   return data;
 };
@@ -267,6 +420,24 @@ const resolveJobFilePath = (job) => {
 const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
 const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
 
+const FORMAT_PREFERRED_SAMPLE_RATES = {
+  mp3: 44100,
+  m4a: 44100,
+  flac: 48000,
+  wav: 48000,
+  ogg: 48000,
+};
+
+const pickFormatSampleRate = (fmt) => FORMAT_PREFERRED_SAMPLE_RATES[fmt] || 44100;
+
+const deriveFilterSampleRate = (fmt, requested, detected) => {
+  const requestedRate = parseSampleRate(requested);
+  if (requestedRate) return requestedRate;
+  const detectedRate = parseSampleRate(detected);
+  if (detectedRate) return detectedRate;
+  return pickFormatSampleRate(fmt);
+};
+
 const buildAudioFilters = ({
   normalize = false,
   speedMode = "normal",
@@ -274,14 +445,18 @@ const buildAudioFilters = ({
   volumeBoost = 0,
   enhancer = "none",
   sampleRate,
+  sourceSampleRate,
 } = {}) => {
   const filters = [];
-  const srValue = Number(sampleRate);
-  const baseSampleRate = Number.isFinite(srValue) && srValue > 0 ? Math.round(srValue) : null;
+  const baseSampleRate =
+    parseSampleRate(sampleRate) ||
+    parseSampleRate(sourceSampleRate) ||
+    44100;
   if (speedMode && speedMode !== "normal") {
     if (speedMode === "nightcore") {
       const refSampleRate = baseSampleRate || 44100;
-      filters.push(`asetrate=${refSampleRate}*1.25`, `aresample=${refSampleRate}`);
+      const boosted = Math.max(8000, Math.round(refSampleRate * 1.25));
+      filters.push(`asetrate=${boosted}`, `aresample=${refSampleRate}`);
     } else if (speedMode === "slow_reverb") {
       filters.push("atempo=0.85", "aecho=0.6:0.6:1000:0.25");
     }
@@ -759,15 +934,6 @@ const convertSingle = async (payload = {}) => {
     } catch {}
   }
 
-  const filters = buildAudioFilters({
-    normalize,
-    speedMode,
-    denoise: denoiseEnabled,
-    volumeBoost: boostValue,
-    enhancer: enhancerMode,
-    sampleRate: sr,
-  });
-
   const args = ["--newline", "--no-progress"];
   if (ffmpegPath) {
     args.push("--ffmpeg-location", ffmpegPath);
@@ -813,6 +979,19 @@ const convertSingle = async (payload = {}) => {
 
   let { filename, fullPath, ext } = downloadResult;
   logs = downloadResult.logs || logs;
+
+  const audioProbe = await probeAudioStream(fullPath).catch(() => null);
+  const detectedSampleRate = audioProbe?.sampleRate;
+  const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
+  const filters = buildAudioFilters({
+    normalize,
+    speedMode,
+    denoise: denoiseEnabled,
+    volumeBoost: boostValue,
+    enhancer: enhancerMode,
+    sampleRate: filterSampleRate,
+    sourceSampleRate: detectedSampleRate,
+  });
 
   const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
     if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
@@ -873,6 +1052,9 @@ const convertSingle = async (payload = {}) => {
   const downloadUrl = `/public/jobs/${filename}`;
   const finalExt = ext;
   const downloadFileName = `${baseName}.${finalExt}`;
+  const finalSampleRate = sr
+    ? Math.round(sr)
+    : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
   return {
     ok: true,
     id,
@@ -883,6 +1065,8 @@ const convertSingle = async (payload = {}) => {
     baseName,
     fullPath,
     ext: finalExt,
+    sampleRate: finalSampleRate,
+    channels: audioProbe?.channels || null,
   };
 };
 
@@ -1067,6 +1251,26 @@ app.post("/api/ai-tags", (req, res) => {
     return res.json({ ok: true, tags });
   } catch (e) {
     const msg = e?.message || "Gagal membuat tag";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-caption", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiCaption({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      speedMode: body.speedMode,
+      denoise: body.denoise,
+      volumeBoost: body.volumeBoost,
+      enhancer: body.enhancer,
+      format: body.format,
+    });
+    return res.json({ ok: true, caption: result.caption, hashtags: result.hashtags, tags: result.tags });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat caption";
     return res.status(400).json({ error: msg });
   }
 });

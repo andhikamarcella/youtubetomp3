@@ -292,9 +292,18 @@
                     <label class="form-check-label small" for="backgroundMode">Background mode</label>
                   </div>
                 </div>
-                <p class="text-secondary small mb-3">Gunakan Auto Music Tags untuk mengisi metadata secara instan sekaligus menyimpan job ke background queue bila diperlukan.</p>
+                <p class="text-secondary small mb-3">Gunakan Auto Music Tags untuk mengisi metadata secara instan atau minta AI membuat caption promosi siap pakai.</p>
                 <div class="d-grid d-sm-flex gap-2">
                   <button class="btn btn-outline-primary flex-grow-1" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
+                  <button class="btn btn-outline-secondary flex-grow-1" id="aiCaptionBtn" type="button"><i class="bi bi-megaphone"></i> AI Caption Sosial</button>
+                </div>
+                <div class="mt-3" id="aiCaptionWrap" hidden>
+                  <label for="aiCaptionText" class="form-label small text-uppercase text-secondary">Caption &amp; Hashtag</label>
+                  <div class="input-group input-group-sm">
+                    <textarea id="aiCaptionText" class="form-control" rows="3" readonly spellcheck="false"></textarea>
+                    <button class="btn btn-outline-secondary" id="aiCaptionCopy" type="button" aria-label="Salin caption"><i class="bi bi-clipboard"></i></button>
+                  </div>
+                  <div class="small text-secondary mt-2" id="aiCaptionMeta"></div>
                 </div>
                 <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
               </div>
@@ -647,6 +656,11 @@
   const backgroundMode = $('#backgroundMode');
   const aiStatus = $('#aiStatus');
   const autoTagBtn = $('#autoTagBtn');
+  const aiCaptionBtn = $('#aiCaptionBtn');
+  const aiCaptionWrap = $('#aiCaptionWrap');
+  const aiCaptionText = $('#aiCaptionText');
+  const aiCaptionCopy = $('#aiCaptionCopy');
+  const aiCaptionMeta = $('#aiCaptionMeta');
   const playlistResultWrap = $('#playlistResultWrap');
   const playlistDownloadLink = $('#playlistDownloadLink');
   const playlistInfo = $('#playlistInfo');
@@ -751,6 +765,12 @@
     aiStatus.hidden = false;
     aiStatus.className = `alert alert-${type} mt-3 small`;
     aiStatus.innerHTML = message;
+  };
+
+  const resetAiCaption = () => {
+    if (aiCaptionWrap) aiCaptionWrap.hidden = true;
+    if (aiCaptionText) aiCaptionText.value = '';
+    if (aiCaptionMeta) aiCaptionMeta.textContent = '';
   };
 
   const updateBackendBadge = () => {
@@ -864,6 +884,7 @@
     lastResult = null;
     lastPreviewMeta = {};
     updateAiStatus('');
+    resetAiCaption();
     if (equalizerWrap) equalizerWrap.hidden = true;
     if (eqBass) eqBass.value = 0;
     if (eqMid) eqMid.value = 0;
@@ -888,17 +909,23 @@
     shareUrl.searchParams.set('src', absoluteUrl);
     if (meta.fileName) shareUrl.searchParams.set('name', meta.fileName);
     if (meta.format) shareUrl.searchParams.set('fmt', meta.format);
+    if (meta.sampleRate) shareUrl.searchParams.set('sr', String(meta.sampleRate));
+    if (meta.channels) shareUrl.searchParams.set('ch', String(meta.channels));
     currentShareUrl = shareUrl.toString();
     lastResult = {
       downloadUrl: absoluteUrl,
       fileName: meta.fileName || '',
       format: meta.format || '',
       jobId: meta.jobId || null,
+      sampleRate: meta.sampleRate || null,
+      channels: meta.channels || null,
     };
     lastPreviewMeta = {
       format: meta.format || '',
       fileName: meta.fileName || '',
       baseName: meta.baseName || '',
+      sampleRate: meta.sampleRate || null,
+      channels: meta.channels || null,
     };
     if (shareWrap) shareWrap.hidden = false;
     if (shareLinkInput) shareLinkInput.value = currentShareUrl;
@@ -1348,6 +1375,8 @@ $('#queueList')?.addEventListener('click', (e) => {
           fileName: job.result.fileName || '',
           format: job.result.format || '',
           jobId: job.id,
+          sampleRate: job.result.sampleRate || null,
+          channels: job.result.channels || null,
         };
       }
     } else if (job.status === 'error' && previous?.status !== 'error') {
@@ -1458,6 +1487,15 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (!miniSubtitle) return;
     const parts = [];
     if (lastPreviewMeta?.format) parts.push(String(lastPreviewMeta.format).toUpperCase());
+    const sr = Number(lastPreviewMeta?.sampleRate || 0);
+    if (Number.isFinite(sr) && sr > 0) {
+      const kHz = Math.round((sr / 1000) * 10) / 10;
+      parts.push(`${kHz % 1 === 0 ? kHz.toFixed(0) : kHz.toFixed(1)} kHz`);
+    }
+    const ch = Number(lastPreviewMeta?.channels || 0);
+    if (Number.isFinite(ch) && ch > 0) {
+      parts.push(ch === 1 ? 'Mono' : `${ch}-Ch`);
+    }
     const duration = previewPlayer?.duration;
     if (duration && Number.isFinite(duration) && duration > 0) parts.push(secondsToClock(duration));
     const name = lastPreviewMeta?.fileName || lastPreviewMeta?.baseName || currentDownloadName;
@@ -1593,6 +1631,60 @@ $('#queueList')?.addEventListener('click', (e) => {
     } catch (err) {
       updateAiStatus(err.message, 'danger');
       setToast('Gagal AI tags: ' + err.message);
+    }
+  });
+
+  if (aiCaptionBtn) aiCaptionBtn.addEventListener('click', async () => {
+    const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
+    if (!title) { setToast('Isi judul terlebih dahulu'); return; }
+    updateAiStatus('Menulis caption promosi…', 'info');
+    resetAiCaption();
+    try {
+      const payload = {
+        title,
+        channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+        duration: Number(previewPlayer?.duration || 0) || undefined,
+        speedMode: $('#speedMode').value,
+        denoise: denoiseInput?.checked || false,
+        volumeBoost: Number(volumeBoost?.value || 0) || 0,
+        enhancer: enhancerSelect?.value || 'none',
+        format: $('#format').value,
+      };
+      const resp = await fetch(api('/api/ai-caption'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal menulis caption');
+      const caption = (data.caption || '').trim();
+      const hashtags = Array.isArray(data.hashtags) ? data.hashtags.filter(Boolean) : [];
+      if (aiCaptionText) {
+        const combined = [caption, hashtags.join(' ')].filter(Boolean).join('\n');
+        aiCaptionText.value = combined;
+      }
+      if (aiCaptionMeta) {
+        aiCaptionMeta.textContent = hashtags.length
+          ? `Termasuk ${hashtags.length} hashtag: ${hashtags.join(' ')}`
+          : 'Tidak ada hashtag tambahan';
+      }
+      if (aiCaptionWrap) aiCaptionWrap.hidden = false;
+      updateAiStatus('Caption promosi siap digunakan ✨', 'success');
+      setToast('Caption siap disalin');
+    } catch (err) {
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal AI caption: ' + err.message);
+    }
+  });
+
+  if (aiCaptionCopy) aiCaptionCopy.addEventListener('click', async () => {
+    const text = aiCaptionText?.value?.trim();
+    if (!text) { setToast('Belum ada caption untuk disalin'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast('Caption disalin ke clipboard');
+    } catch {
+      setToast('Clipboard tidak tersedia');
     }
   });
 
@@ -1760,7 +1852,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         fileName: data.fileName || '',
         baseName: data.baseName || '',
         format: data.format,
-        title: $('#id3Title').value.trim() || $('#videoTitle').textContent.trim() || data.fileName || ''
+        title: $('#id3Title').value.trim() || $('#videoTitle').textContent.trim() || data.fileName || '',
+        sampleRate: data.sampleRate || null,
+        channels: data.channels || null,
       };
       showAudioPreview(absoluteDownload, previewMeta);
       setToast('Berhasil diproses');

@@ -77,6 +77,8 @@
     const audioSrc = params.get('src');
     const trackName = params.get('name') || params.get('title') || 'Audio hasil convert';
     const fmt = params.get('fmt') || '';
+    const srParam = Number(params.get('sr') || 0);
+    const chParam = Number(params.get('ch') || 0);
     const audioEl = document.getElementById('shareAudio');
     const titleEl = document.getElementById('trackTitle');
     const metaEl = document.getElementById('trackMeta');
@@ -186,7 +188,19 @@
       audioEl.addEventListener('play', () => { ensureFilters(); applyEq(); });
     }
     if (titleEl) titleEl.textContent = trackName;
-    if (metaEl) metaEl.textContent = fmt ? `Format ${fmt.toUpperCase()} · Streaming siap` : 'Streaming siap';
+    if (metaEl) {
+      const metaParts = [];
+      if (fmt) metaParts.push(`Format ${fmt.toUpperCase()}`);
+      if (Number.isFinite(srParam) && srParam > 0) {
+        const kHz = Math.round((srParam / 1000) * 10) / 10;
+        metaParts.push(`${kHz % 1 === 0 ? kHz.toFixed(0) : kHz.toFixed(1)} kHz`);
+      }
+      if (Number.isFinite(chParam) && chParam > 0) {
+        metaParts.push(chParam === 1 ? 'Mono' : `${chParam}-Ch`);
+      }
+      metaParts.push('Streaming siap');
+      metaEl.textContent = metaParts.join(' · ');
+    }
     if (downloadBtn){
       downloadBtn.href = resolvedSrc;
       downloadBtn.download = trackName ? `${trackName}.${fmt || 'mp3'}` : '';
