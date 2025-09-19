@@ -476,119 +476,596 @@
         <span class="ms-2">Menu fitur</span>
       </button>
     </header>
-    <section class="app-section is-active" data-section="converter" id="section-converter">
-      <div id="welcomeCard" class="card shadow-sm mb-4" hidden>
-        <div class="card-body d-flex justify-content-between align-items-start">
-          <div>
-            <h5 class="mb-1">Selamat datang!</h5>
-            <p class="mb-0 small text-secondary">Gunakan form di bawah untuk mengonversi video YouTube menjadi audio dan jelajahi fitur seperti trim, metadata, serta antrian.</p>
-          </div>
-          <button type="button" class="btn-close ms-2" id="dismissWelcome" aria-label="Tutup"></button>
-        </div>
+
+<section class="app-section is-active" data-section="converter" id="section-converter">
+  <div id="welcomeCard" class="card shadow-sm mb-4" hidden>
+    <div class="card-body d-flex justify-content-between align-items-start">
+      <div>
+        <h5 class="mb-1">Selamat datang!</h5>
+        <p class="mb-0 small text-secondary">Gunakan form di bawah untuk mengonversi video YouTube menjadi audio dan jelajahi fitur seperti trim, metadata, serta antrian.</p>
       </div>
-      <div class="row g-4">
-        <div class="col-lg-7">
-          <div class="card shadow-sm">
-            <div class="card-body p-4">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge rounded-pill text-bg-primary brand-badge">Converter</span>
-                <span class="text-secondary">Cepat & sederhana</span>
-              </div>
-              <button type="button" class="btn btn-outline-primary btn-sm walkthrough-trigger" id="walkthroughTrigger">
-                <i class="bi bi-stars me-1"></i> Walkthrough
-              </button>
+      <button type="button" class="btn-close ms-2" id="dismissWelcome" aria-label="Tutup"></button>
+    </div>
+  </div>
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge rounded-pill text-bg-primary brand-badge">Converter</span>
+              <span class="text-secondary">Cepat & sederhana</span>
             </div>
+            <button type="button" class="btn btn-outline-primary btn-sm walkthrough-trigger" id="walkthroughTrigger">
+              <i class="bi bi-stars me-1"></i> Walkthrough
+            </button>
+          </div>
 
-            <div class="mb-3">
-              <label for="url" class="form-label">URL YouTube</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
-                <input id="url" type="url" class="form-control" placeholder="Tempel URL YouTube (https://...)" autocomplete="off" required>
-                <button class="btn btn-outline-secondary" id="pasteBtn" type="button" aria-label="Tempel dari clipboard"><i class="bi bi-clipboard2"></i></button>
-                <button class="btn btn-outline-secondary" id="sampleBtn" type="button">Contoh</button>
-              </div>
-              <div id="urlHelp" class="form-text">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
+          <div class="mb-3">
+            <label for="url" class="form-label">URL YouTube</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+              <input id="url" type="url" class="form-control" placeholder="Tempel URL YouTube (https://...)" autocomplete="off" required>
+              <button class="btn btn-outline-secondary" id="pasteBtn" type="button" aria-label="Tempel dari clipboard"><i class="bi bi-clipboard2"></i></button>
+              <button class="btn btn-outline-secondary" id="sampleBtn" type="button">Contoh</button>
             </div>
+            <div id="urlHelp" class="form-text">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
+          </div>
 
-            <div class="mb-3" id="previewWrap" hidden>
-              <div class="ratio ratio-16x9 mb-2">
-                <img id="thumb" class="rounded object-fit-cover" alt="Thumbnail" loading="lazy" />
-              </div>
-              <div id="videoTitle" class="fw-semibold"></div>
+          <div class="mb-3" id="previewWrap" hidden>
+            <div class="ratio ratio-16x9 mb-2">
+              <img id="thumb" class="rounded object-fit-cover" alt="Thumbnail" loading="lazy" />
             </div>
+            <div id="videoTitle" class="fw-semibold"></div>
+          </div>
 
-            <div class="mb-3">
-              <label for="playlist" class="form-label">Playlist / Antrian</label>
-              <textarea id="playlist" class="form-control" rows="3" placeholder="Satu URL YouTube per baris"></textarea>
-              <div class="form-text">Setiap URL akan diproses bergiliran.</div>
+          <div class="mb-3">
+            <label for="playlist" class="form-label">Playlist / Antrian</label>
+            <textarea id="playlist" class="form-control" rows="3" placeholder="Satu URL YouTube per baris"></textarea>
+            <div class="form-text">Setiap URL akan diproses bergiliran.</div>
 
-              <div class="input-group mt-2">
-                <input id="queueUrl" type="url" class="form-control" placeholder="Tambahkan URL ke antrian" />
-                <button class="btn btn-outline-secondary" id="addQueueBtn" type="button"><i class="bi bi-plus-lg"></i> Tambah</button>
-                <button class="btn btn-outline-danger" id="clearQueueBtn" type="button" aria-label="Hapus antrian"><i class="bi bi-trash"></i></button>
-              </div>
-              <ul class="list-group mt-2" id="queueList"></ul>
+            <div class="input-group mt-2">
+              <input id="queueUrl" type="url" class="form-control" placeholder="Tambahkan URL ke antrian" />
+              <button class="btn btn-outline-secondary" id="addQueueBtn" type="button"><i class="bi bi-plus-lg"></i> Tambah</button>
+              <button class="btn btn-outline-danger" id="clearQueueBtn" type="button" aria-label="Hapus antrian"><i class="bi bi-trash"></i></button>
             </div>
+            <ul class="list-group mt-2" id="queueList"></ul>
+          </div>
 
-            <div class="row g-3 mb-3">
-              <div class="col-md-3">
-                <label for="format" class="form-label">Format</label>
-                <select id="format" class="form-select">
-                  <option value="mp3">MP3 (re-encode, fleksibel)</option>
-                  <option value="m4a" selected>M4A (super cepat)</option>
-                  <option value="flac">FLAC (Hi-Res lossless)</option>
-                  <option value="wav">WAV (PCM lossless)</option>
-                  <option value="ogg">OGG Vorbis</option>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label for="abr" class="form-label">Kualitas (MP3)</label>
-                <select id="abr" class="form-select">
-                  <option value="320">320 kbps</option>
-                  <option value="256">256 kbps</option>
-                  <option value="192" selected>192 kbps</option>
-                  <option value="128">128 kbps</option>
-                  <option value="64">64 kbps</option>
-                </select>
-                <div class="form-text" id="abrHelp">Pilih kualitas sesuai format.</div>
-              </div>
-              <div class="col-md-3">
-                <label for="sampleRate" class="form-label">Sample Rate</label>
-                <select id="sampleRate" class="form-select">
-                  <option value="44100" selected>44.1 kHz</option>
-                  <option value="48000">48 kHz</option>
-                  <option value="96000">96 kHz (Hi-Res)</option>
-                </select>
-                <div class="form-text" id="sampleRateHelp">Sesuaikan dengan kebutuhan.</div>
-              </div>
-              <div class="col-md-3">
-                <label for="speedMode" class="form-label">Mode Kecepatan</label>
-                <select id="speedMode" class="form-select">
-                  <option value="normal" selected>Normal</option>
-                  <option value="nightcore">Nightcore ⚡</option>
-                  <option value="slow_reverb">Slowed + Reverb</option>
-                </select>
-                <div class="form-text" id="speedHelp">Beberapa format mungkin membatasi pilihan.</div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label for="format" class="form-label">Format</label>
+              <select id="format" class="form-select">
+                <option value="mp3">MP3 (re-encode, fleksibel)</option>
+                <option value="m4a" selected>M4A (super cepat)</option>
+                <option value="flac">FLAC (Hi-Res lossless)</option>
+                <option value="wav">WAV (PCM lossless)</option>
+                <option value="ogg">OGG Vorbis</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label for="abr" class="form-label">Kualitas (MP3)</label>
+              <select id="abr" class="form-select">
+                <option value="320">320 kbps</option>
+                <option value="256">256 kbps</option>
+                <option value="192" selected>192 kbps</option>
+                <option value="128">128 kbps</option>
+                <option value="64">64 kbps</option>
+              </select>
+              <div class="form-text" id="abrHelp">Pilih kualitas sesuai format.</div>
+            </div>
+            <div class="col-md-3">
+              <label for="sampleRate" class="form-label">Sample Rate</label>
+              <select id="sampleRate" class="form-select">
+                <option value="44100" selected>44.1 kHz</option>
+                <option value="48000">48 kHz</option>
+                <option value="96000">96 kHz (Hi-Res)</option>
+              </select>
+              <div class="form-text" id="sampleRateHelp">Sesuaikan dengan kebutuhan.</div>
+            </div>
+            <div class="col-md-3">
+              <label for="speedMode" class="form-label">Mode Kecepatan</label>
+              <select id="speedMode" class="form-select">
+                <option value="normal" selected>Normal</option>
+                <option value="nightcore">Nightcore ⚡</option>
+                <option value="slow_reverb">Slowed + Reverb</option>
+              </select>
+              <div class="form-text" id="speedHelp">Beberapa format mungkin membatasi pilihan.</div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="noPlaylist" checked>
+                <label class="form-check-label" for="noPlaylist">Abaikan playlist</label>
               </div>
             </div>
+            <div class="col-sm-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="showLog" checked>
+                <label class="form-check-label" for="showLog">Tampilkan log proses</label>
+              </div>
+            </div>
+          </div>
 
-            <div class="row g-3 mb-3">
-              <div class="col-sm-6">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="noPlaylist" checked>
-                  <label class="form-check-label" for="noPlaylist">Abaikan playlist</label>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="autoDownload" checked>
+                <label class="form-check-label" for="autoDownload">Auto-download</label>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="autoClear">
+                <label class="form-check-label" for="autoClear">Auto-bersihkan</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="trimStart">Trim Mulai</label>
+              <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="trimEnd">Trim Selesai</label>
+              <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="fileName">Nama file</label>
+            <input id="fileName" type="text" class="form-control" placeholder="Nama file output" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Metadata ID3</label>
+            <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
+            <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
+            <input id="id3Album" type="text" class="form-control mb-2" placeholder="Album" />
+            <input id="id3Genre" type="text" class="form-control" placeholder="Genre" />
+          </div>
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="normalize" />
+            <label class="form-check-label" for="normalize">Normalisasi audio</label>
+          </div>
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="atmos" />
+            <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
+          </div>
+
+          <div class="row g-3 mb-3 align-items-end">
+            <div class="col-md-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="denoise">
+                <label class="form-check-label" for="denoise">AI Noise Cleaner</label>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label d-flex justify-content-between align-items-center" for="volumeBoost">
+                <span>Volume Booster</span>
+                <span class="badge text-bg-secondary" id="volumeBoostLabel">0 dB</span>
+              </label>
+              <div class="d-flex align-items-center gap-2" data-range-wrapper>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-range-step="-1" aria-label="Turunkan gain">−</button>
+                <input type="range" class="form-range flex-grow-1" id="volumeBoost" min="0" max="12" step="1" value="0">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-range-step="1" aria-label="Naikkan gain">+</button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="enhancer">AI Enhancer</label>
+              <select id="enhancer" class="form-select">
+                <option value="none" selected>Off</option>
+                <option value="clarity">Vocal Clarity</option>
+                <option value="warm">Warm Glow</option>
+                <option value="club">Club Lift</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="dropzone mb-3" id="dropzone">
+            <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
+            <div id="dropzoneStatus" class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
+            <input type="file" id="cookieFile" accept=".txt" hidden>
+            <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="pickCookie" type="button">Pilih cookies.txt</button></div>
+          </div>
+
+          <div class="d-grid d-sm-flex gap-2 align-items-center">
+            <button id="convertBtn" class="btn btn-primary btn-lg" type="button"><i class="bi bi-magic"></i> Convert</button>
+            <button id="downloadAllBtn" class="btn btn-outline-primary" type="button"><i class="bi bi-download"></i> Download Semua</button>
+            <button id="downloadZipBtn" class="btn btn-success" type="button"><i class="bi bi-collection"></i> Download ZIP</button>
+            <button id="clearBtn" class="btn btn-outline-secondary" type="button"><i class="bi bi-x-circle"></i> Bersihkan</button>
+          </div>
+
+          <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
+            <div class="card-body">
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <strong class="me-auto">AI Studio</strong>
+                <div class="form-check form-switch m-0">
+                  <input class="form-check-input" type="checkbox" id="backgroundMode">
+                  <label class="form-check-label small" for="backgroundMode">Background mode</label>
                 </div>
               </div>
-              <div class="col-sm-6">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="showLog" checked>
-                  <label class="form-check-label" for="showLog">Tampilkan log proses</label>
+              <p class="text-secondary small mb-3">Isi metadata otomatis, susun caption promosi, dan rancang konten pendukung hanya dengan sekali klik.</p>
+              <div class="d-grid d-md-flex flex-wrap gap-2">
+                <button class="btn btn-outline-primary flex-grow-1" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
+                <button class="btn btn-outline-secondary flex-grow-1" id="aiCaptionBtn" type="button"><i class="bi bi-megaphone"></i> AI Caption Sosial</button>
+                <button class="btn btn-outline-success flex-grow-1" id="aiPitchBtn" type="button"><i class="bi bi-broadcast"></i> AI Playlist Pitch</button>
+              </div>
+              <div class="d-grid d-md-flex flex-wrap gap-2 mt-2">
+                <button class="btn btn-outline-warning flex-grow-1" id="aiAudiophileBtn" type="button"><i class="bi bi-soundwave"></i> Audiophile Guide</button>
+                <button class="btn btn-outline-info flex-grow-1" id="aiHookBtn" type="button"><i class="bi bi-lightning-charge"></i> Promo Hook</button>
+                <button class="btn btn-outline-primary flex-grow-1" id="aiVisualBtn" type="button"><i class="bi bi-brush"></i> Cover Prompt</button>
+                <button class="btn btn-outline-dark flex-grow-1" id="aiReleaseBtn" type="button"><i class="bi bi-calendar-week"></i> Release Planner</button>
+              </div>
+              <div id="aiTagInsights" class="mt-3" hidden></div>
+
+              <div class="ai-output mt-3" id="aiCaptionWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-megaphone"></i><span>Caption &amp; Hashtag</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiCaptionCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <textarea id="aiCaptionText" class="form-control" rows="3" readonly spellcheck="false"></textarea>
+                <div class="small text-secondary mt-2" id="aiCaptionMeta"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiPitchWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-broadcast"></i><span>Playlist Pitch</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiPitchCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <textarea id="aiPitchText" class="form-control" rows="3" readonly spellcheck="false"></textarea>
+                <div class="small text-secondary mt-2" id="aiPitchHook"></div>
+                <div class="small text-secondary" id="aiPitchPlaylists"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiAudiophileWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-soundwave"></i><span>Panduan Audiophile</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiAudiophileCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <textarea id="aiAudiophileText" class="form-control" rows="6" readonly spellcheck="false"></textarea>
+                <div class="small text-secondary mt-2" id="aiAudiophileMeta"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiHookWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-lightning"></i><span>Promo Hook</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiHookCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <ul class="ai-hook-list" id="aiHookList"></ul>
+                <div class="ai-cta-pills" id="aiHookCtas"></div>
+                <div class="small text-secondary" id="aiHookMeta"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiVisualWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-brush"></i><span>Cover Art Prompt</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiVisualCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <textarea id="aiVisualPrompt" class="form-control" rows="3" readonly spellcheck="false"></textarea>
+                <div class="ai-color-palette" id="aiVisualPalette"></div>
+                <div class="small text-secondary" id="aiVisualMeta"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiPlanWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-calendar-week"></i><span>Timeline Rilis</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiPlanCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <ul class="ai-plan-list" id="aiPlanList"></ul>
+                <div class="small text-secondary" id="aiPlanSummary"></div>
+              </div>
+
+              <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
+            </div>
+          </div>
+
+          <div class="card border-0 bg-body-tertiary mt-4" id="subtitleCard">
+            <div class="card-body">
+              <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
+                <div class="flex-grow-1">
+                  <strong>Podcast Mode · Subtitle</strong>
+                  <div class="small text-secondary">Ambil subtitle otomatis atau manual dan simpan sebagai teks.</div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <select id="subtitleLang" class="form-select form-select-sm" aria-label="Pilih bahasa subtitle">
+                    <option value="id.*,en.*,en" selected>Indonesia / Inggris</option>
+                    <option value="id.*,id">Indonesia saja</option>
+                    <option value="en.*,en">Inggris saja</option>
+                    <option value="all">Semua bahasa</option>
+                  </select>
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" id="subtitleAuto" checked>
+                    <label class="form-check-label small" for="subtitleAuto">Gunakan auto caption</label>
+                  </div>
+                  <button class="btn btn-outline-primary btn-sm" id="subtitleBtn" type="button"><i class="bi bi-text-left"></i> Ambil subtitle</button>
+                </div>
+              </div>
+              <div class="alert alert-secondary mt-3" id="subtitleResult" hidden>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <strong id="subtitleStatus">Subtitle siap</strong>
+                  <span class="badge text-bg-primary" id="subtitleLangBadge"></span>
+                  <span class="badge text-bg-warning text-dark" id="subtitleAutoBadge" hidden>Auto</span>
+                  <button class="btn btn-sm btn-outline-secondary ms-lg-auto" id="subtitleCopyBtn" type="button"><i class="bi bi-clipboard"></i> Salin teks</button>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                  <a id="subtitleSrtLink" class="btn btn-sm btn-primary" href="#" download><i class="bi bi-filetype-srt"></i> Download .srt</a>
+                  <a id="subtitleTxtLink" class="btn btn-sm btn-outline-primary" href="#" download><i class="bi bi-filetype-txt"></i> Download .txt</a>
+                  <button id="subtitleShareBtn" class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-share"></i> Share</button>
+                </div>
+                <pre class="mb-0 small" id="subtitlePreview"></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3" id="statusWrap" hidden>
+            <div class="d-flex align-items-center gap-2">
+              <div class="spinner-border spinner-border-sm" role="status" id="loadingSpinner" aria-hidden="true"></div>
+              <div id="status" class="fw-medium">Memproses…</div>
+              <span class="badge text-bg-secondary" id="backendBadge" title="Target backend"></span>
+            </div>
+          </div>
+
+          <div class="progress w-100 mt-2" id="convertProgWrap" hidden>
+            <div class="progress-bar" id="convertProgress" role="progressbar" style="width:0%">
+              <span id="convertProgressLabel">0%</span>
+            </div>
+          </div>
+
+          <progress id="queueProgress" class="w-100 mt-2" value="0" max="100" hidden aria-label="Progress antrian"></progress>
+
+          <div class="mt-3" id="resultWrap" hidden>
+            <div class="alert alert-success d-flex align-items-center" role="alert">
+              <i class="bi bi-check-circle me-2"></i>
+              <div>
+                Selesai! <a id="downloadLink" class="alert-link" href="#" download>Download hasil</a>
+              </div>
+            </div>
+            <div class="card border-0 bg-body-tertiary preview-card" id="previewCard" hidden>
+              <div class="card-body d-flex flex-column flex-md-row align-items-start gap-3">
+                <div class="flex-grow-1 w-100">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-play-circle-fill text-primary"></i>
+                    <strong>Preview Audio</strong>
+                  </div>
+                  <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"></audio>
+
+                  <div id="shareWrap" class="mt-3" hidden>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <strong class="me-auto">Bagikan</strong>
+                      <div class="btn-group btn-group-sm" role="group" aria-label="Bagikan hasil">
+                        <button class="btn btn-outline-primary" id="shareBtn" type="button"><i class="bi bi-share"></i> Share</button>
+                        <button class="btn btn-outline-secondary" id="copyShareBtn" type="button"><i class="bi bi-link-45deg"></i> Salin link</button>
+                      </div>
+                    </div>
+                    <div class="input-group input-group-sm mt-2">
+                      <span class="input-group-text"><i class="bi bi-box-arrow-up-right"></i></span>
+                      <input type="text" class="form-control" id="shareLinkInput" readonly>
+                      <button class="btn btn-outline-secondary" id="openShareBtn" type="button" aria-label="Buka link share"><i class="bi bi-arrow-up-right-square"></i></button>
+                    </div>
+                    <div class="small text-secondary mt-2" id="shareInfo"></div>
+                  </div>
+
+                  <div id="equalizerWrap" class="mt-3" hidden>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <strong class="me-auto">Equalizer</strong>
+                      <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-secondary" id="eqPresetFlat" type="button">Flat</button>
+                        <button class="btn btn-outline-secondary" id="eqPresetPodcast" type="button">Podcast</button>
+                        <button class="btn btn-outline-secondary" id="eqPresetBass" type="button">Bass+</button>
+                      </div>
+                    </div>
+                    <div class="row g-3 mt-2 eq-slider">
+                      <div class="col-sm-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <label class="form-label mb-0" for="eqBass">Bass</label>
+                          <span class="eq-value" id="eqBassValue">0 dB</span>
+                        </div>
+                        <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqBass" aria-label="Atur gain bass">
+                      </div>
+                      <div class="col-sm-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <label class="form-label mb-0" for="eqMid">Mid</label>
+                          <span class="eq-value" id="eqMidValue">0 dB</span>
+                        </div>
+                        <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqMid" aria-label="Atur gain mid">
+                      </div>
+                      <div class="col-sm-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <label class="form-label mb-0" for="eqTreble">Treble</label>
+                          <span class="eq-value" id="eqTrebleValue">0 dB</span>
+                        </div>
+                        <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqTreble" aria-label="Atur gain treble">
+                      </div>
+                    </div>
+                    <div class="small text-secondary mt-2" id="eqStatus">Flat</div>
+                  </div>
+                </div>
+                <div id="qrWrap" class="text-center" hidden>
+                  <canvas id="downloadQr" width="156" height="156" class="border rounded bg-body"></canvas>
+                  <div class="small text-secondary mt-2"><i class="bi bi-qr-code"></i> Scan untuk mini player</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3" id="playlistResultWrap" hidden>
+            <div class="alert alert-info d-flex align-items-center" role="alert">
+              <i class="bi bi-collection-play me-2"></i>
+              <div>
+                Playlist ZIP siap! <a id="playlistDownloadLink" class="alert-link" href="#" download>Download ZIP</a>
+                <div class="small text-secondary" id="playlistInfo"></div>
+              </div>
+            </div>
+            <div class="card border-0 bg-body-tertiary" id="playlistShareCard" hidden>
+              <div class="card-body d-flex flex-column flex-md-row align-items-start gap-3">
+                <div class="flex-grow-1">
+                  <strong>Bagikan playlist</strong>
+                  <p class="small text-secondary mb-0">Scan kode QR untuk unduh ZIP di perangkat lain.</p>
+                </div>
+                <div id="playlistQrWrap" class="text-center" hidden>
+                  <canvas id="playlistQr" width="156" height="156" class="border rounded bg-body"></canvas>
+                  <div class="small text-secondary mt-2">Scan untuk unduh ZIP</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3" id="logWrap" hidden>
+            <div class="card border-0 bg-body-tertiary">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <strong>Log</strong>
+                  <button class="btn btn-sm btn-outline-secondary" id="copyLog" type="button"><i class="bi bi-clipboard-check"></i> Salin</button>
+                </div>
+                <pre class="log-box" id="logs" aria-live="polite"></pre>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
 
-    </section>
+    <div class="col-lg-5">
+      <div class="card shadow-sm mb-4" id="backgroundCard">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-cloud-check me-2"></i>
+            <h5 class="mb-0">Background Jobs</h5>
+          </div>
+          <div class="small text-secondary" id="backgroundEmpty">Belum ada job latar.</div>
+          <ul class="list-group list-group-flush" id="backgroundList"></ul>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-clock-history me-2"></i>
+            <h5 class="mb-0">Riwayat</h5>
+          </div>
+          <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
+          <ul class="list-group list-group-flush" id="historyList"></ul>
+          <div class="d-grid mt-3">
+            <button class="btn btn-outline-danger btn-sm" id="clearHistory" type="button"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-lightning-charge text-primary"></i>
+              <h5 class="mb-0">Tips Kecepatan</h5>
+            </div>
+            <span class="badge text-bg-primary">Interaktif</span>
+          </div>
+          <div class="d-grid gap-2" id="speedTips">
+            <button type="button" class="tip-pill" data-tip-id="format" data-tip-label="Pilih format cepat">
+              <span class="tip-title">Prioritas Format</span>
+              <span class="tip-desc">Gunakan <strong>M4A</strong> untuk proses tercepat tanpa re-encode.</span>
+            </button>
+            <button type="button" class="tip-pill" data-tip-id="playlist" data-tip-label="Abaikan playlist">
+              <span class="tip-title">Single Video</span>
+              <span class="tip-desc">Centang <strong>Abaikan playlist</strong> agar hanya 1 video diproses.</span>
+            </button>
+            <button type="button" class="tip-pill" data-tip-id="binary" data-tip-label="Perbarui yt-dlp">
+              <span class="tip-title">Binary Terbaru</span>
+              <span class="tip-desc">Pastikan <code>ffmpeg</code> &amp; <code>yt-dlp</code> terbaru di server untuk stabilitas.</span>
+            </button>
+            <button type="button" class="tip-pill" data-tip-id="cookies" data-tip-label="Upload cookies">
+              <span class="tip-title">Cookies Valid</span>
+              <span class="tip-desc">Jika muncul age-gate, unggah <code>cookies.txt</code> valid sebelum convert.</span>
+            </button>
+          </div>
+          <div class="small text-secondary mt-2" id="speedTipHint">Ketuk tips untuk menandai prioritasmu.</div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm donation-card mb-4" id="donationCard">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <h5 class="mb-1">Dukung Saweria</h5>
+              <div class="small text-secondary">XP bonus + server makin stabil.</div>
+            </div>
+            <span class="badge text-bg-dark">XP Boost</span>
+          </div>
+          <div class="donation-actions" id="donationButtons">
+            <button type="button" class="btn btn-donation" data-amount="5000">
+              <span>Starter</span>
+              <strong>Rp 5.000</strong>
+            </button>
+            <button type="button" class="btn btn-donation" data-amount="10000">
+              <span>Favorit</span>
+              <strong>Rp 10.000</strong>
+            </button>
+            <button type="button" class="btn btn-donation" data-amount="25000">
+              <span>Supporter</span>
+              <strong>Rp 25.000</strong>
+            </button>
+            <button type="button" class="btn btn-donation" data-amount="100000">
+              <span>Legend</span>
+              <strong>Rp 100.000</strong>
+            </button>
+          </div>
+          <a id="donationLink" class="btn btn-dark w-100 donation-link mt-3" target="_blank" rel="noopener" href="https://saweria.co/DhikaMarcella?amount=10000">
+            Buka Saweria
+            <small id="donationLinkHint">Rp 10.000 siap diisi otomatis</small>
+          </a>
+          <button type="button" class="btn btn-outline-dark w-100 mt-2" id="manualDonationBtn">Donasi manual Rp 5.000</button>
+          <div class="donation-status" id="donationStatus">Pop-up akan mencoba dibuka otomatis. Jika diblokir, gunakan tombol di atas.</div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-question-circle me-2"></i>
+            <h5 class="mb-0">FAQ</h5>
+          </div>
+          <div class="d-grid gap-2">
+            <details class="faq-item" open>
+              <summary>Apakah subtitle yang diunduh lengkap?</summary>
+              <p>Ya. Tombol <strong>Ambil subtitle</strong> menarik transkrip penuh dari YouTube, menyimpan berkas <code>.srt</code>, <code>.txt</code>, serta menampilkan teks lengkap yang bisa disalin.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Bagaimana cara mempercepat proses convert?</summary>
+              <p>Gunakan tips interaktif di atas: pilih <strong>M4A</strong>, abaikan playlist, dan pastikan binary terbaru. Aktifkan <em>Auto-download</em> agar hasil langsung tersimpan.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Bisakah hasilnya dibagikan ke perangkat lain?</summary>
+              <p>Setelah convert, buka kartu preview dan pilih tombol QR. Kode tersebut dapat dipindai dari ponsel sehingga file bisa diunduh tanpa menyalin tautan.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Mengapa perlu upload cookies.txt?</summary>
+              <p>Beberapa video dibatasi usia/login. Unggah <code>cookies.txt</code> valid melalui pengaturan agar proses tetap lancar.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
     <section class="app-section" data-section="experience" id="section-experience" hidden>
           <div class="card shadow-sm" id="experienceHub">
             <div class="card-body p-4">
