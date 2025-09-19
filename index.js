@@ -1013,6 +1013,242 @@ const buildAiReleasePlan = ({
   return { plan, summary, focus };
 };
 
+// ==== AI Assistant helper ====
+const DEFAULT_ASSISTANT_SUGGESTIONS = [
+  "Ketik /faq untuk membuka daftar pertanyaan cepat di tab Experience.",
+  "Gunakan /walkthrough bila ingin tur fitur langkah demi langkah.",
+  "Tekan ikon robot di kanan bawah kapan saja untuk memanggil AI Navigator.",
+];
+
+const normalizeAssistantPrompt = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const dedupeList = (items = []) => {
+  const seen = new Set();
+  const result = [];
+  for (const item of items) {
+    const text = typeof item === "string" ? item.trim() : "";
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    result.push(text);
+  }
+  return result;
+};
+
+const keywordScore = (text, keywords = []) => {
+  let score = 0;
+  for (const entry of keywords) {
+    if (!entry) continue;
+    if (typeof entry === "string") {
+      if (text.includes(entry)) score += Math.max(1, Math.min(4, Math.round(entry.length / 4)));
+    } else if (typeof entry === "object") {
+      const term = typeof entry.term === "string" ? entry.term : "";
+      if (!term) continue;
+      if (text.includes(term)) {
+        const weight = Number(entry.weight);
+        score += Number.isFinite(weight) ? weight : Math.max(1, Math.min(4, Math.round(term.length / 4)));
+      }
+    }
+  }
+  return score;
+};
+
+const assistantTopicReply = {
+  donation: () =>
+    "Untuk donasi tinggal klik tombol Buka Saweria. Nominal default otomatis Rp10.000 dan kamu bisa pilih Rp5.000, Rp10.000, Rp25.000, atau Rp100.000 langsung di kartu donasi neo-brutalisme. Kalau pop-up diblokir, pakai tombol manual supaya link https://saweria.co/DhikaMarcella terbuka.",
+  subtitle: () =>
+    "Subtitle diambil dari track Indonesia dan Inggris. Tekan Ambil Subtitle, kami ambil caption resmi, auto-generated, lalu fallback ke transkrip halaman watch bila perlu. File .srt dan .txt langsung siap di Riwayat unduhan.",
+  aiStudio: () =>
+    "AI Studio mencakup Hook Headline, Cover Art Prompt, dan Release Planner. Masukkan judul serta vibe lagu, nanti kami siapkan CTA, palet warna, hingga timeline rilis supaya tim kreatif bisa langsung eksekusi.",
+  music: () => {
+    const moodBadges = Object.entries(MOOD_EMOJIS)
+      .map(([mood, emoji]) => `${emoji} ${mood}`)
+      .slice(0, 6)
+      .join(", ");
+    return `Adaptive Background Music siap jalan. Pilih mood manual atau biarkan mode otomatis mengikuti waktu — varian yang tersedia: ${moodBadges}. Mini player tetap sinkron di setiap tab.`;
+  },
+  voice: () =>
+    "Voice Navigation dan Narrator ada di Pengaturan → Aksesibilitas. Aktifkan lalu tekan ikon mic untuk perintah seperti 'buka donasi', 'mainkan game', atau 'bacakan halaman'. Narrator akan membaca konten langsung di browser.",
+  offline: () =>
+    "Converter ini sudah PWA-ready. Tekan tombol 'Pasang aplikasi' di header untuk instal di HP/desktop, kemudian semua tab termasuk Experience Hub dan mini player bisa dipakai offline setelah sekali sinkron.",
+  game: () =>
+    "Neo Runner ada di tab Experience sebagai panel terpisah seperti mini player. Tekan Mulai, gunakan Space atau tap untuk lompat, dan coba kombinasi ↑↑↓↓←→←→BA buat membuka animasi easter egg.",
+  avatar: () =>
+    "Dynamic Avatar ada di Experience Hub. Klik avatar melayang untuk membuka profil, lihat level, serta daftar achievement. Aktivitas seperti convert, donasi, voice command, dan main game otomatis menambah poin.",
+  performance: () =>
+    "Supaya konversi lebih kencang, ikuti Tips Kecepatan: pilih format yang pas, aktifkan auto-download, dan gunakan Background Mode untuk antrean panjang. Volume booster dan EQ stepper sudah ramah sentuhan di desktop maupun mobile.",
+  accessibility: () =>
+    "Pengaturan menyediakan opsi aksesibilitas: tema kontras tinggi, teks besar, hingga pengurangan animasi. Kamu juga bisa menyesuaikan dashboard, tata letak mini player, dan preferensi font typewriter dari panel Customizable Dashboard.",
+  walkthrough: () =>
+    "Butuh tur singkat? Tekan tombol Mulai Walkthrough di Experience Hub. Ada indikator progres dan kamu bisa jalankan ulang kapan saja dari panel Pengaturan.",
+  issues: () =>
+    "Kalau tombol terasa tidak merespons, coba muat ulang sekali untuk menyegarkan service worker. Kamu juga bisa buka Pengaturan → Offline Mode untuk memaksa pembaruan cache lalu jalankan ulang fitur yang bermasalah.",
+};
+
+const ASSISTANT_TOPICS = [
+  {
+    key: "donation",
+    keywords: ["donasi", "donate", "saweria", "dukungan", "support", "tip", "100000", "100 ribu", "100k", "100rb"],
+    suggestions: [
+      "Gunakan tombol nominal cepat Rp5.000–Rp100.000 di kartu donasi.",
+      "Aktifkan animasi confetti dengan memilih tombol Rp100.000.",
+      "Izinkan pop-up browser supaya Saweria terbuka otomatis.",
+    ],
+  },
+  {
+    key: "subtitle",
+    keywords: ["subtitle", "subtitel", "transkrip", "transcript", "caption video", "captions", "teks video"],
+    suggestions: [
+      "Pilih prioritas bahasa di form subtitle bila ingin fokus Indonesia atau Inggris.",
+      "Unduh versi .srt atau .txt dari Riwayat unduhan setelah proses selesai.",
+      "Aktifkan Narrator Mode kalau ingin teks dibacakan langsung.",
+    ],
+  },
+  {
+    key: "aiStudio",
+    keywords: ["ai studio", "ai navigator", "ai hook", "hook headline", "cover art", "cover prompt", "release planner", "playlist pitch"],
+    suggestions: [
+      "Isi metadata lagu saat convert supaya Hook dan Cover lebih presisi.",
+      "Gunakan Release Planner untuk jadwal teaser sampai follow-up.",
+      "Bagikan hasil AI Studio lewat tombol salin ke clipboard.",
+    ],
+  },
+  {
+    key: "music",
+    keywords: ["musik", "lagu", "background", "bgm", "adaptive", "soundtrack"],
+    suggestions: [
+      "Buka Experience Hub → bagian Music untuk ganti mood secara manual.",
+      "Gunakan voice command 'musik chill' setelah mengaktifkan Voice Navigation.",
+      "Mini player bisa tetap memutar musik sambil kamu buka tab lain.",
+    ],
+  },
+  {
+    key: "voice",
+    keywords: ["voice", "narrator", "narator", "perintah suara", "mic", "microphone", "speech"],
+    suggestions: [
+      "Aktifkan Voice & Narrator dari Pengaturan → Aksesibilitas.",
+      "Ucapkan perintah seperti 'buka donasi' atau 'mainkan game' untuk navigasi cepat.",
+      "Gunakan narrator untuk membacakan FAQ panjang otomatis.",
+    ],
+  },
+  {
+    key: "offline",
+    keywords: ["offline", "pwa", "install", "pasang aplikasi", "app", "aplikasi"],
+    suggestions: [
+      "Tekan tombol Pasang aplikasi di header saat koneksi stabil.",
+      "Buka situs sekali saat online supaya cache offline terbarui.",
+      "Gunakan mini player offline untuk memutar hasil konversi terakhir.",
+    ],
+  },
+  {
+    key: "game",
+    keywords: ["game", "neo runner", "minigame", "mini game", "konami", "easter egg"],
+    suggestions: [
+      "Masuk ke tab Experience lalu buka panel Neo Runner.",
+      "Gunakan Space atau tap layar di mobile untuk melompat.",
+      "Coba kode ↑↑↓↓←→←→BA untuk animasi rahasia.",
+    ],
+  },
+  {
+    key: "avatar",
+    keywords: ["avatar", "profil", "profile", "achievement", "badge", "level", "poin"],
+    suggestions: [
+      "Klik avatar melayang untuk melihat profil dan pencapaian.",
+      "Selesaikan walkthrough dan main Neo Runner untuk lencana tambahan.",
+      "Aktifkan Reward System agar poin tersimpan di perangkatmu.",
+    ],
+  },
+  {
+    key: "performance",
+    keywords: ["cepat", "lambat", "lemot", "antri", "antrean", "background mode", "auto download", "konversi"],
+    suggestions: [
+      "Gunakan Tips Kecepatan di panel utama sebelum convert.",
+      "Aktifkan Background Mode untuk antrean panjang atau banyak link.",
+      "Pilih format yang sesuai supaya proses encoding lebih ringan.",
+    ],
+  },
+  {
+    key: "accessibility",
+    keywords: ["aksesibilitas", "accessibility", "kontras", "font besar", "tema", "layout", "custom", "dashboard"],
+    suggestions: [
+      "Toggle High Contrast dari Pengaturan → Aksesibilitas.",
+      "Aktifkan Reduced Motion bila ingin animasi lebih tenang.",
+      "Atur tata letak Experience Hub lewat panel Customizable Dashboard.",
+    ],
+  },
+  {
+    key: "walkthrough",
+    keywords: ["walkthrough", "tutorial", "panduan", "tour", "guide"],
+    suggestions: [
+      "Tekan tombol Mulai Walkthrough di Experience Hub.",
+      "Gunakan /walkthrough di chat ini untuk memicu tur otomatis.",
+      "Ikuti indikator progres agar tidak melewatkan langkah penting.",
+    ],
+  },
+  {
+    key: "issues",
+    keywords: ["error", "gagal", "tidak bisa", "bug", "masalah", "rusak"],
+    suggestions: [
+      "Refresh halaman untuk memuat ulang service worker terbaru.",
+      "Cek koneksi lalu coba ulang fitur setelah cache diperbarui.",
+      "Laporkan detail langkah ke tim bila masalah terus muncul.",
+    ],
+  },
+];
+
+const buildAssistantResponse = (prompt) => {
+  const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
+  if (!raw) {
+    return {
+      reply: "Aku siap bantu optimalkan converter ini. Tanyakan apa saja seputar donasi, subtitle, AI Studio, atau fitur lainnya.",
+      suggestions: DEFAULT_ASSISTANT_SUGGESTIONS,
+    };
+  }
+
+  const normalized = normalizeAssistantPrompt(raw);
+  const matches = ASSISTANT_TOPICS
+    .map((topic) => ({
+      topic,
+      score: keywordScore(normalized, topic.keywords),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const replySegments = [];
+  const suggestionPool = [];
+
+  if (matches.length) {
+    for (const { topic } of matches.slice(0, 2)) {
+      const builder = assistantTopicReply[topic.key];
+      if (typeof builder === "function") {
+        const segment = builder({ raw, normalized });
+        if (segment) replySegments.push(segment);
+      }
+      if (Array.isArray(topic.suggestions)) suggestionPool.push(...topic.suggestions);
+    }
+  }
+
+  if (!replySegments.length) {
+    replySegments.push(
+      "Aku siap bantu optimalkan converter ini. Bahas donasi, subtitle, AI Studio, musik latar, atau aktifkan walkthrough bila butuh panduan."
+    );
+  }
+
+  suggestionPool.push(...DEFAULT_ASSISTANT_SUGGESTIONS);
+  const suggestions = dedupeList(suggestionPool).slice(0, 5);
+
+  return {
+    reply: replySegments.join("\n\n"),
+    suggestions,
+  };
+};
+
 const validateConvertPayload = (payload = {}) => {
   if (!payload || typeof payload !== "object") {
     throw new Error("Payload tidak valid");
@@ -2758,6 +2994,21 @@ app.get("/manifest.webmanifest", (req, res) => {
 app.use("/", express.static(join(__dirname, "public-ui")));
 app.use("/public", express.static(PUBLIC_DIR));
 
+// ==== Assistant chat ====
+app.post("/api/assistant-chat", (req, res) => {
+  try {
+    const { prompt = "" } = req.body || {};
+    const trimmed = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
+    if (!trimmed) {
+      return res.status(400).json({ error: "Prompt wajib diisi" });
+    }
+    const result = buildAssistantResponse(trimmed);
+    return res.json(result);
+  } catch (e) {
+    return res.status(500).json({ error: e?.message || "Gagal memproses percakapan" });
+  }
+});
+
 // ==== API convert ====
 app.post("/api/convert", async (req, res) => {
   try {
@@ -3118,4 +3369,6 @@ app.get("/admin/cookies-status", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server jalan di :${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server jalan di :${PORT}`));
+
+export { app, server, buildAssistantResponse };

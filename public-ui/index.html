@@ -133,9 +133,20 @@
     }
     .exp-section { background: var(--bs-body-bg); border: 1px dashed color-mix(in srgb, var(--bs-border-color) 70%, transparent); border-radius: 1rem; padding: 1rem; height: 100%; display: flex; flex-direction: column; gap: .75rem; transition: border-color .3s ease, transform .3s ease; }
     .exp-section:hover { transform: translateY(-2px); border-color: var(--bs-primary); }
-    .dynamic-avatar { display: flex; align-items: center; justify-content: center; border-radius: 1rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.22)); min-height: 120px; position: relative; overflow: hidden; }
-    .dynamic-avatar span { font-size: 3.5rem; filter: drop-shadow(0 6px 12px rgba(0,0,0,.2)); transition: transform .4s ease; }
-    .dynamic-avatar.level-up span { transform: scale(1.12) rotate(-2deg); }
+    .dynamic-avatar { position: relative; display: flex; align-items: center; justify-content: center; border-radius: 1rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.22)); min-height: 120px; overflow: hidden; padding: .75rem; }
+    .dynamic-avatar .avatar-btn { border: none; background: transparent; color: inherit; display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: .9rem; transition: transform .35s ease, box-shadow .35s ease; position: relative; }
+    .dynamic-avatar .avatar-btn:focus-visible { outline: 3px solid rgba(13,110,253,.45); outline-offset: 4px; }
+    .dynamic-avatar .avatar-btn span { font-size: 3.4rem; filter: drop-shadow(0 6px 12px rgba(0,0,0,.2)); transition: transform .45s ease; }
+    .dynamic-avatar.level-up .avatar-btn span { transform: scale(1.12) rotate(-2deg); }
+    .dynamic-avatar .avatar-glow { position: absolute; inset: 12%; border-radius: inherit; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.45), transparent 65%); opacity: .35; pointer-events: none; transition: opacity .35s ease; }
+    .dynamic-avatar.dropdown.show .avatar-btn { transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 38px rgba(13,110,253,.25); }
+    .dynamic-avatar.dropdown.show .avatar-glow { opacity: .65; }
+    .avatar-menu { width: min(320px, 80vw); border-radius: 1rem; padding: .75rem; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); box-shadow: 0 22px 46px rgba(15,23,42,.25); }
+    .avatar-menu h6 { font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: .35rem; }
+    .avatar-menu .avatar-meta { display: flex; align-items: center; gap: .75rem; margin-bottom: .5rem; }
+    .avatar-menu .avatar-meta span { font-size: 2rem; filter: drop-shadow(0 4px 10px rgba(0,0,0,.3)); }
+    .avatar-menu .avatar-achievements { max-height: 220px; overflow-y: auto; display: grid; gap: .35rem; padding-right: .35rem; }
+    .avatar-menu .avatar-achievements .badge-chip { display: inline-flex; align-items: center; gap: .35rem; border-radius: .65rem; padding: .3rem .6rem; font-size: .75rem; font-weight: 600; letter-spacing: .04em; background: color-mix(in srgb, var(--bs-primary) 14%, transparent); border: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
     .avatar-status { font-size: .85rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
     .reward-meter { width: 100%; height: .8rem; border-radius: 999px; background: color-mix(in srgb, var(--bs-secondary-bg) 70%, transparent); overflow: hidden; }
     .reward-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(135deg, rgba(32,201,151,.85), rgba(111,66,193,.8)); transition: width .6s ease; }
@@ -182,9 +193,27 @@
     #customEndingOverlay .ending-card { max-width: 420px; border-radius: 1.2rem; padding: 1.5rem; background: rgba(32,201,151,.15); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 20px 35px rgba(0,0,0,.35); }
     #mascotAssistant { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1050; display: flex; align-items: flex-end; gap: .5rem; }
     #mascotAssistant[hidden] { display: none; }
-    .mascot-avatar { width: 58px; height: 58px; border-radius: 1.2rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(13,110,253,.8), rgba(111,66,193,.8)); color: #fff; font-size: 2rem; box-shadow: 0 12px 25px rgba(13,110,253,.35); animation: mascotBounce 3s ease-in-out infinite; }
-    .mascot-bubble { max-width: 220px; background: var(--bs-body-bg); border-radius: 1rem; padding: .75rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); font-size: .82rem; box-shadow: 0 10px 18px rgba(0,0,0,.12); }
+    .mascot-avatar { width: 58px; height: 58px; border-radius: 1.2rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(13,110,253,.8), rgba(111,66,193,.85)); color: #fff; font-size: 1.8rem; box-shadow: 0 12px 25px rgba(13,110,253,.35); animation: mascotBounce 3s ease-in-out infinite; }
+    .mascot-bubble { max-width: 220px; background: var(--bs-body-bg); border-radius: 1rem; padding: .75rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); font-size: .82rem; box-shadow: 0 12px 28px rgba(15,23,42,.25); }
     @keyframes mascotBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    .assistant-fab { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; }
+    .assistant-fab[hidden] { display: none !important; }
+    .ai-fab { width: 60px; height: 60px; border-radius: 1.5rem; display: inline-flex; align-items: center; justify-content: center; border: none; background: linear-gradient(135deg, rgba(13,110,253,.9), rgba(111,66,193,.92)); color: #fff; box-shadow: 0 18px 35px rgba(15,23,42,.35); position: relative; transition: transform .25s ease, box-shadow .25s ease; }
+    .ai-fab:focus-visible { outline: 3px solid rgba(255,255,255,.65); outline-offset: 3px; }
+    .ai-fab:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 22px 45px rgba(15,23,42,.38); }
+    .ai-fab i { font-size: 1.8rem; }
+    .ai-fab-indicator { position: absolute; inset: 6px; border-radius: inherit; border: 2px solid rgba(255,255,255,.7); opacity: 0; pointer-events: none; transition: opacity .3s ease; animation: pulseGlow 1.8s ease-in-out infinite; }
+    .ai-fab.has-update .ai-fab-indicator { opacity: 1; }
+    @keyframes pulseGlow { 0%,100% { transform: scale(.95); opacity: .4; } 50% { transform: scale(1.08); opacity: .9; } }
+    .assistant-panel { width: min(360px, 92vw); max-height: min(520px, 78vh); border-radius: 1.2rem; overflow: hidden; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); box-shadow: 0 28px 56px rgba(15,23,42,.45); display: flex; flex-direction: column; transform-origin: bottom right; animation: sectionFade .25s ease; }
+    .assistant-panel header { padding: .85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.16)); border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 80%, transparent); }
+    .assistant-panel header .title { display: flex; align-items: center; gap: .5rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; font-size: .75rem; }
+    .assistant-panel header .status-dot { width: 10px; height: 10px; border-radius: 999px; background: #20c997; box-shadow: 0 0 0 4px rgba(32,201,151,.25); }
+    .assistant-panel .assistant-body { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; flex: 1 1 auto; }
+    .assistant-panel .assistant-messages { flex: 1 1 auto; max-height: none; }
+    .assistant-panel .assistant-input { margin-top: 0; }
+    .assistant-panel footer { padding: .75rem 1rem; border-top: 1px solid color-mix(in srgb, var(--bs-border-color) 75%, transparent); background: var(--bs-body-bg); }
+    .assistant-launch-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .65rem; background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-radius: .75rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; }
     body.theme-neo { --exp-accent: #0d6efd; }
     body.theme-aurora { --exp-accent: #6f42c1; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(111,66,193,.25), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(32,201,151,.2), transparent); }
     body.theme-midnight { --exp-accent: #20c997; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(32,201,151,.3), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(13,110,253,.2), transparent); }
@@ -553,8 +582,22 @@
                       <h6 id="avatarTitle" class="title-mono text-secondary mb-0">Dynamic Avatar</h6>
                       <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1</span>
                     </div>
-                    <div class="dynamic-avatar" id="dynamicAvatar" role="img" aria-live="polite">
-                      <span id="avatarEmoji">🎧</span>
+                    <div class="dynamic-avatar dropdown" id="dynamicAvatar" aria-live="polite">
+                      <button type="button" class="avatar-btn" id="avatarToggle" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">
+                        <span id="avatarEmoji">🎧</span>
+                      </button>
+                      <div class="avatar-glow" aria-hidden="true"></div>
+                      <div class="dropdown-menu dropdown-menu-end avatar-menu" id="avatarMenu">
+                        <div class="avatar-meta">
+                          <span id="avatarEmojiMenu">🎧</span>
+                          <div>
+                            <div class="fw-semibold" id="avatarProfileTitle">Rookie</div>
+                            <div class="small text-secondary" id="avatarProfileMood">Pendatang baru yang penasaran.</div>
+                          </div>
+                        </div>
+                        <h6 class="text-secondary mb-2">Achievements</h6>
+                        <div class="avatar-achievements" id="avatarAchievementList"></div>
+                      </div>
                     </div>
                     <div class="avatar-status">
                       <span id="avatarMood">Pendatang baru yang penasaran.</span>
@@ -669,16 +712,22 @@
       
           <div class="card shadow-sm mt-4" id="aiAssistantCard">
             <div class="card-body p-4">
-              <div class="d-flex align-items-center gap-2 mb-3">
-                <i class="bi bi-robot text-primary fs-5"></i>
-                <h5 class="mb-0">AI Navigator</h5>
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-robot text-primary fs-5"></i>
+                  <h5 class="mb-0">AI Navigator</h5>
+                </div>
+                <span class="assistant-launch-chip"><i class="bi bi-rocket-takeoff"></i> Floating panel</span>
               </div>
-              <p class="small text-secondary mb-3">Chatbot mini ini siap bantu cari fitur, jawab FAQ, atau kasih rekomendasi langkah selanjutnya.</p>
-              <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
-              <div class="assistant-typing" id="assistantTyping" hidden>AI Studio companion mengetik…</div>
-              <div class="assistant-input">
-                <input type="text" id="assistantInput" class="form-control" placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
-                <button type="button" class="btn btn-primary" id="assistantSendBtn"><i class="bi bi-send-fill"></i></button>
+              <p class="small text-secondary mb-3">Ikon robot melayang di pojok kanan bawah. Tekan untuk membuka chat real time yang bisa menjawab pertanyaan, kasih rute fitur, dan menuliskan tips suara.</p>
+              <ul class="small ps-3 mb-3">
+                <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “apa itu AI Studio?”.</li>
+                <li>Chat akan mengetik jawabannya secara langsung lengkap dengan langkah lanjutan.</li>
+                <li>Shortcut ke walkthrough & FAQ tersedia langsung dari percakapan.</li>
+              </ul>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-primary assistant-launcher" id="assistantLaunchBtn"><i class="bi bi-robot me-1"></i>Buka AI Navigator</button>
+                <button type="button" class="btn btn-outline-secondary assistant-launcher" data-launch="voice"><i class="bi bi-mic me-1"></i>Pakai Voice Command</button>
               </div>
             </div>
           </div>
@@ -791,16 +840,22 @@
 
     <div class="card shadow-sm mt-4" id="aiAssistantCard">
       <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <i class="bi bi-robot text-primary fs-5"></i>
-          <h5 class="mb-0">AI Navigator</h5>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-robot text-primary fs-5"></i>
+            <h5 class="mb-0">AI Navigator</h5>
+          </div>
+          <span class="assistant-launch-chip"><i class="bi bi-rocket-takeoff"></i> Floating panel</span>
         </div>
-        <p class="small text-secondary mb-3">Chatbot mini ini siap bantu cari fitur, jawab FAQ, atau kasih rekomendasi langkah selanjutnya.</p>
-        <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
-        <div class="assistant-typing" id="assistantTyping" hidden>AI Studio companion mengetik…</div>
-        <div class="assistant-input">
-          <input type="text" id="assistantInput" class="form-control" placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
-          <button type="button" class="btn btn-primary" id="assistantSendBtn"><i class="bi bi-send-fill"></i></button>
+        <p class="small text-secondary mb-3">Ikon robot melayang di pojok kanan bawah. Tekan untuk membuka chat real time yang bisa menjawab pertanyaan, kasih rute fitur, dan menuliskan tips suara.</p>
+        <ul class="small ps-3 mb-3">
+          <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “apa itu AI Studio?”.</li>
+          <li>Chat akan mengetik jawabannya secara langsung lengkap dengan langkah lanjutan.</li>
+          <li>Shortcut ke walkthrough & FAQ tersedia langsung dari percakapan.</li>
+        </ul>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary assistant-launcher"><i class="bi bi-robot me-1"></i>Buka AI Navigator</button>
+          <button type="button" class="btn btn-outline-secondary assistant-launcher" data-launch="voice"><i class="bi bi-mic me-1"></i>Pakai Voice Command</button>
         </div>
       </div>
     </div>
@@ -1577,6 +1632,27 @@
     <div class="mascot-bubble" id="mascotMessage">Halo! Aku Echo siap bantu.</div>
     <div class="mascot-avatar" role="img" aria-label="Maskot AI Echo">🤖</div>
   </div>
+  <div class="assistant-fab" id="assistantFab">
+    <div class="assistant-panel shadow-lg" id="assistantPanel" hidden>
+      <header>
+        <div class="title"><span class="status-dot"></span> AI Navigator</div>
+        <button type="button" class="btn-close" id="assistantClose" aria-label="Tutup AI Navigator"></button>
+      </header>
+      <div class="assistant-body">
+        <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
+        <div class="assistant-typing" id="assistantTyping" hidden>AI Navigator mengetik…</div>
+        <div class="assistant-input">
+          <input type="text" id="assistantInput" class="form-control" placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
+          <button type="button" class="btn btn-primary" id="assistantSendBtn"><i class="bi bi-send-fill"></i></button>
+        </div>
+      </div>
+      <footer class="small text-secondary">Tip: ketik “/faq” atau “/walkthrough” untuk pintasan cepat.</footer>
+    </div>
+    <button type="button" class="ai-fab" id="assistantToggle" aria-label="Buka AI Navigator">
+      <span class="ai-fab-indicator" id="assistantPulse"></span>
+      <i class="bi bi-robot"></i>
+    </button>
+  </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
@@ -1628,6 +1704,8 @@
     if (sectionSubtitle && meta?.subtitle) sectionSubtitle.textContent = meta.subtitle;
     if (found) {
       localStorage.setItem('app:activeSection', target);
+      visitedSections.add(target);
+      if (visitedSections.size >= 3) awardBadge('explorer');
       if (navDrawer && navDrawerEl.classList.contains('show')) navDrawer.hide();
     }
     return found;
@@ -1733,12 +1811,17 @@
   const rewardToast = $('#rewardToast');
   const donationManualBtn = $('#manualDonationBtn');
   const dynamicAvatar = $('#dynamicAvatar');
+  const avatarToggle = $('#avatarToggle');
   const avatarEmoji = $('#avatarEmoji');
+  const avatarEmojiMenu = $('#avatarEmojiMenu');
   const avatarLevelBadge = $('#avatarLevelBadge');
   const avatarMood = $('#avatarMood');
+  const avatarProfileTitle = $('#avatarProfileTitle');
+  const avatarProfileMood = $('#avatarProfileMood');
   const avatarProgressBar = $('#avatarProgressBar');
   const rewardPointsLabel = $('#rewardPointsLabel');
   const rewardBadges = $('#rewardBadges');
+  const avatarAchievementList = $('#avatarAchievementList');
   const themeSelect = $('#themeSelect');
   const fontSelect = $('#fontSelect');
   const layoutSelect = $('#layoutSelect');
@@ -1758,6 +1841,17 @@
   const assistantInput = $('#assistantInput');
   const assistantSendBtn = $('#assistantSendBtn');
   const assistantTyping = $('#assistantTyping');
+  const assistantFab = $('#assistantFab');
+  const assistantToggle = $('#assistantToggle');
+  const assistantPanel = $('#assistantPanel');
+  const assistantClose = $('#assistantClose');
+  const assistantPulse = $('#assistantPulse');
+  const assistantLaunchers = Array.from(document.querySelectorAll('.assistant-launcher'));
+  if (assistantToggle && assistantPanel) {
+    assistantToggle.setAttribute('aria-controls', 'assistantPanel');
+    assistantToggle.setAttribute('aria-expanded', 'false');
+  }
+  assistantPulse?.setAttribute('aria-hidden', 'true');
   const runnerCanvas = $('#runnerCanvas');
   const runnerStartBtn = $('#runnerStartBtn');
   const runnerJumpBtn = $('#runnerJumpBtn');
@@ -1819,6 +1913,8 @@
 
   const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
   const selectedSpeedTips = new Set();
+  const avatarDropdown = avatarToggle ? bootstrap.Dropdown.getOrCreateInstance(avatarToggle) : null;
+  const visitedSections = new Set();
 
   if (speedTipButtons.length) {
     speedTipButtons.forEach((btn) => {
@@ -1839,6 +1935,7 @@
             : 'Ketuk tips untuk menandai prioritasmu.';
         }
         setToast(`${isActive ? 'Diprioritaskan' : 'Dilepas'}: ${label}`);
+        if (isActive && selectedSpeedTips.size >= 3) awardBadge('speedster');
       });
     });
   }
@@ -2102,7 +2199,13 @@
     narrator: 'Storyteller',
     stylist: 'UI Stylist',
     konami: 'Konami Master',
-    ai: 'AI Buddy'
+    ai: 'AI Buddy',
+    maestro: 'Sound Maestro',
+    speedster: 'Speed Runner',
+    explorer: 'Feature Explorer',
+    supporter: 'Support Squad',
+    collector: 'Badge Collector',
+    navigator: 'Navigator Pro'
   };
 
   const avatarLevels = [
@@ -2151,7 +2254,8 @@
   let audioCtx = null;
   let donationGain = null;
   let bgGain = null;
-  let bgOscillators = [];
+  let bgSource = null;
+  const moodBuffers = new Map();
   let musicPlaying = false;
   let currentMood = 'auto';
   let recognition = null;
@@ -2199,14 +2303,32 @@
   const formatBadgeLabel = (id) => badgeLabels[id] || id;
 
   const renderBadges = () => {
-    if (!rewardBadges) return;
-    rewardBadges.innerHTML = '';
-    (state.experience.badges || []).forEach((badge) => {
-      const li = document.createElement('li');
-      li.dataset.badge = badge;
-      li.textContent = formatBadgeLabel(badge);
-      rewardBadges.appendChild(li);
-    });
+    const badges = Array.from(state.experience.badges || []);
+    if (rewardBadges) {
+      rewardBadges.innerHTML = '';
+      badges.forEach((badge) => {
+        const li = document.createElement('li');
+        li.dataset.badge = badge;
+        li.textContent = formatBadgeLabel(badge);
+        rewardBadges.appendChild(li);
+      });
+    }
+    if (avatarAchievementList) {
+      avatarAchievementList.innerHTML = '';
+      if (!badges.length) {
+        const empty = document.createElement('div');
+        empty.className = 'text-secondary small';
+        empty.textContent = 'Belum ada achievement. Jelajahi fitur untuk mengumpulkan badge.';
+        avatarAchievementList.appendChild(empty);
+      } else {
+        badges.forEach((badge) => {
+          const chip = document.createElement('div');
+          chip.className = 'badge-chip';
+          chip.innerHTML = `<i class="bi bi-patch-check-fill text-primary"></i> ${formatBadgeLabel(badge)}`;
+          avatarAchievementList.appendChild(chip);
+        });
+      }
+    }
   };
 
   const getLevelInfo = (points) => {
@@ -2222,13 +2344,16 @@
     const levelInfo = getLevelInfo(points);
     const nextLevel = avatarLevels.find((lvl) => lvl.threshold > points);
     if (avatarEmoji) avatarEmoji.textContent = levelInfo.emoji;
+    if (avatarEmojiMenu) avatarEmojiMenu.textContent = levelInfo.emoji;
     if (avatarLevelBadge) {
       const levelIndex = avatarLevels.indexOf(levelInfo) + 1;
       avatarLevelBadge.textContent = `Lv.${levelIndex} ${levelInfo.title}`;
+      if (avatarProfileTitle) {
+        avatarProfileTitle.textContent = `${levelInfo.title} · Lv.${levelIndex}`;
+      }
     }
-    if (avatarMood) {
-      avatarMood.textContent = levelInfo.mood;
-    }
+    if (avatarMood) avatarMood.textContent = levelInfo.mood;
+    if (avatarProfileMood) avatarProfileMood.textContent = levelInfo.mood;
     if (rewardPointsLabel) rewardPointsLabel.textContent = `${points} XP`;
     if (avatarProgressBar) {
       let progress = 100;
@@ -2243,16 +2368,31 @@
     } else if (dynamicAvatar) {
       dynamicAvatar.classList.remove('level-up');
     }
+    if (dynamicAvatar) {
+      dynamicAvatar.setAttribute('aria-label', `Avatar level ${avatarLevelBadge ? avatarLevelBadge.textContent : ''}`.trim());
+    }
     renderBadges();
   };
 
   const awardBadge = (id) => {
     if (!id) return;
-    state.experience.badges = Array.from(new Set([...(state.experience.badges || []), id]));
-    renderBadges();
-    showRewardToast(`Badge baru: ${formatBadgeLabel(id)}`);
-    updateMascotMood('badge');
-    persistState();
+    const current = new Set(state.experience.badges || []);
+    if (!current.has(id)) {
+      current.add(id);
+      state.experience.badges = Array.from(current);
+      renderBadges();
+      showRewardToast(`Badge baru: ${formatBadgeLabel(id)}`);
+      updateMascotMood('badge');
+      persistState();
+    }
+    if (id !== 'collector' && (state.experience.badges || []).length >= 6 && !current.has('collector')) {
+      current.add('collector');
+      state.experience.badges = Array.from(current);
+      renderBadges();
+      showRewardToast(`Badge baru: ${formatBadgeLabel('collector')}`);
+      updateMascotMood('badge');
+      persistState();
+    }
   };
 
   const incrementPoints = (amount = 0, reason = '', opts = {}) => {
@@ -2339,7 +2479,10 @@
       navigator.vibrate(highlight ? [80, 30, 90, 30, 140] : [45, 20, 45]);
     }
     const label = rupiahFormatter.format(amount);
-    incrementPoints(Math.max(10, Math.min(120, Math.round(amount / 1500))), `Donasi ${label}`, { badge: 'donor' });
+    const xpGain = Math.max(10, Math.min(120, Math.round(amount / 1500)));
+    const badge = amount >= 75000 ? 'supporter' : 'donor';
+    incrementPoints(xpGain, `Donasi ${label}`, { badge });
+    if (badge === 'supporter') awardBadge('donor');
     updateMascotMood('donation');
     if (!opened && donationStatus) {
       donationStatus.innerHTML = `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau pakai tombol manual untuk donasi Rp 5.000.`;
@@ -2392,16 +2535,108 @@
     chill: 'Chill'
   };
 
+  const MUSIC_LIBRARY = {
+    energetic: {
+      label: 'Energetic',
+      description: 'Synthwave groove 112 BPM dengan bass dan arpeggio.',
+      tempo: 112,
+      chordBeats: 4,
+      chords: [
+        [392, 494, 587],
+        [440, 554, 659],
+        [392, 523, 659],
+        [349, 523, 659],
+      ],
+      lead: [784, 659, 698, 659],
+      accent: 0.32,
+      lfo: 10,
+    },
+    focus: {
+      label: 'Focus',
+      description: 'Ambient keys 88 BPM dengan lapisan shimmer.',
+      tempo: 88,
+      chordBeats: 4,
+      chords: [
+        [261, 329, 392],
+        [246, 329, 415],
+        [233, 311, 392],
+        [261, 329, 392],
+      ],
+      lead: [523, 493, 554, 493],
+      accent: 0.2,
+      lfo: 14,
+    },
+    chill: {
+      label: 'Chill',
+      description: 'Lo-fi dusk pad 72 BPM yang santai.',
+      tempo: 72,
+      chordBeats: 4,
+      chords: [
+        [196, 247, 311],
+        [174, 220, 293],
+        [196, 247, 311],
+        [220, 277, 329],
+      ],
+      lead: [392, 349, 330, 349],
+      accent: 0.18,
+      lfo: 16,
+    },
+  };
+
+  const getMoodBuffer = (ctx, moodKey) => {
+    const preset = MUSIC_LIBRARY[moodKey] || MUSIC_LIBRARY.chill;
+    const cacheKey = `${moodKey}:${ctx.sampleRate}`;
+    if (moodBuffers.has(cacheKey)) return moodBuffers.get(cacheKey);
+    const chordBeats = preset.chordBeats || 4;
+    const chordDuration = (chordBeats * 60) / preset.tempo;
+    const cycleDuration = chordDuration * preset.chords.length;
+    const frameCount = Math.max(1, Math.floor(ctx.sampleRate * cycleDuration));
+    const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frameCount; i += 1) {
+      const t = i / ctx.sampleRate;
+      const cyclePos = t % cycleDuration;
+      const chordIndex = Math.floor(cyclePos / chordDuration);
+      const chord = preset.chords[chordIndex % preset.chords.length];
+      const chordTime = cyclePos - chordIndex * chordDuration;
+      let sample = 0;
+      chord.forEach((freq, idx) => {
+        const drift = 1 + 0.0025 * Math.sin(2 * Math.PI * t / (8 + idx * 3));
+        sample += Math.sin(2 * Math.PI * freq * drift * t + idx * 0.4);
+      });
+      sample /= chord.length;
+      const bassFreq = chord[0] / 2;
+      sample += 0.55 * Math.sin(2 * Math.PI * bassFreq * t + Math.sin(t * 0.6));
+      if (preset.lead?.length) {
+        const leadFreq = preset.lead[chordIndex % preset.lead.length];
+        sample += 0.28 * Math.sin(2 * Math.PI * leadFreq * (t + 0.0015 * Math.sin(t)) + Math.sin(t * 1.2));
+      }
+      const beatPhase = (chordTime * preset.tempo) / 60;
+      const accent = Math.exp(-6 * (beatPhase % 1)) * (preset.accent ?? 0.2);
+      sample += accent;
+      const padFreq = chord[chord.length - 1] / 4;
+      sample += 0.18 * Math.sin(2 * Math.PI * padFreq * t + Math.sin(t / (preset.lfo || 12)));
+      const fadeIn = Math.min(1, i / (ctx.sampleRate * 0.6));
+      const fadeOut = Math.min(1, (frameCount - i) / (ctx.sampleRate * 0.6));
+      const lfo = 0.9 + 0.1 * Math.sin(2 * Math.PI * t / (preset.lfo || 12));
+      data[i] = Math.tanh(sample * 0.32 * lfo) * fadeIn * fadeOut;
+    }
+    moodBuffers.set(cacheKey, buffer);
+    return buffer;
+  };
+
   const updateMusicStatus = (resolvedMood, description) => {
-    const label = moodLabels[resolvedMood] || resolvedMood;
+    const preset = MUSIC_LIBRARY[resolvedMood] || MUSIC_LIBRARY.chill;
+    const label = preset?.label || moodLabels[resolvedMood] || resolvedMood;
+    const detail = description || preset?.description;
     if (bgMusicStatus) {
       bgMusicStatus.textContent = musicPlaying
-        ? `Mood ${label || 'auto'} diputar${description ? ` · ${description}` : ''}.`
+        ? `Mood ${label || 'auto'} diputar${detail ? ` · ${detail}` : ''}.`
         : 'Musik latar dimatikan.';
     }
     if (bgMusicNow) {
       bgMusicNow.textContent = musicPlaying
-        ? `Sedang bermain: ${label || 'Auto'}${description ? ` · ${description}` : ''}`
+        ? `Sedang bermain: ${label || 'Auto'}${detail ? ` · ${detail}` : ''}`
         : 'Belum diputar.';
     }
     if (musicToggleBtn) {
@@ -2412,22 +2647,23 @@
   };
 
   const stopBackgroundMusic = (silent = false) => {
-    if (!bgOscillators.length || !audioCtx || !bgGain) {
+    if (!audioCtx || !bgGain) {
       musicPlaying = false;
       updateMusicStatus(state.experience.mood || 'auto');
       return;
     }
     const now = audioCtx.currentTime;
     bgGain.gain.cancelScheduledValues(now);
-    bgGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-    bgOscillators.forEach(({ osc, gain }) => {
+    bgGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    if (bgSource) {
       try {
-        gain.gain.cancelScheduledValues(now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
-        osc.stop(now + 0.5);
+        bgSource.stop(now + 0.5);
       } catch {}
-    });
-    bgOscillators = [];
+      try {
+        bgSource.disconnect();
+      } catch {}
+      bgSource = null;
+    }
     musicPlaying = false;
     if (!silent) updateMusicStatus(state.experience.mood || 'auto');
   };
@@ -2441,33 +2677,29 @@
     stopBackgroundMusic(true);
     currentMood = mood || state.experience.mood || 'auto';
     const resolvedMood = currentMood === 'auto' ? determineAutoMood() : currentMood;
-    const presets = {
-      energetic: { freqs: [392, 523, 784], type: 'sawtooth', desc: 'Synthwave booster' },
-      focus: { freqs: [220, 330], type: 'triangle', desc: 'Focus hum' },
-      chill: { freqs: [196, 293], type: 'sine', desc: 'Chill pad' }
-    };
-    const preset = presets[resolvedMood] || presets.chill;
+    const preset = MUSIC_LIBRARY[resolvedMood] || MUSIC_LIBRARY.chill;
+    const buffer = getMoodBuffer(ctx, resolvedMood);
+    if (!buffer) {
+      setToast('Musik latar tidak siap diputar.');
+      return;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.loopStart = 0;
+    source.loopEnd = buffer.duration;
+    source.connect(bgGain);
     const now = ctx.currentTime;
-    bgOscillators = preset.freqs.map((freq, index) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = preset.type;
-      osc.frequency.value = freq;
-      gain.gain.value = 0;
-      osc.connect(gain);
-      gain.connect(bgGain);
-      const startAt = now + (index * 0.12);
-      gain.gain.setValueAtTime(0.0001, startAt);
-      gain.gain.exponentialRampToValueAtTime(0.08, startAt + 0.8);
-      osc.start(startAt);
-      return { osc, gain };
-    });
     bgGain.gain.cancelScheduledValues(now);
     bgGain.gain.setValueAtTime(0.0001, now);
-    bgGain.gain.exponentialRampToValueAtTime(0.28, now + 0.9);
+    bgGain.gain.exponentialRampToValueAtTime(0.28, now + 1.1);
+    source.start(now + 0.05);
+    bgSource = source;
     musicPlaying = true;
     state.experience.mood = currentMood;
-    updateMusicStatus(resolvedMood, preset.desc);
+    updateMusicStatus(resolvedMood, preset.description);
+    const alreadyMaestro = (state.experience.badges || []).includes('maestro');
+    incrementPoints(alreadyMaestro ? 4 : 8, 'Musik adaptif', alreadyMaestro ? {} : { badge: 'maestro' });
     persistState();
   };
 
@@ -2604,8 +2836,7 @@
       handled = true;
     }
     if (text.includes('ai')) {
-      scrollToElement(document.getElementById('aiAssistantCard'));
-      assistantInput?.focus();
+      openAssistantPanel();
       handled = true;
     }
     if (handled) {
@@ -2616,45 +2847,131 @@
     }
   };
 
-  const addAssistantMessage = (text, role = 'bot') => {
-    if (!assistantMessages) return;
+  const isAssistantOpen = () => assistantPanel && !assistantPanel.hasAttribute('hidden');
+
+  const focusAssistantInput = () => {
+    window.setTimeout(() => {
+      if (assistantInput) {
+        assistantInput.focus();
+        if (typeof assistantInput.select === 'function') assistantInput.select();
+      }
+    }, 80);
+  };
+
+  const openAssistantPanel = () => {
+    if (!assistantPanel) return;
+    assistantPanel.hidden = false;
+    assistantPanel.setAttribute('aria-hidden', 'false');
+    assistantToggle?.setAttribute('aria-expanded', 'true');
+    assistantToggle?.classList.remove('has-update');
+    assistantPulse?.setAttribute('aria-hidden', 'true');
+    focusAssistantInput();
+  };
+
+  const closeAssistantPanel = () => {
+    if (!assistantPanel || assistantPanel.hasAttribute('hidden')) return;
+    assistantPanel.hidden = true;
+    assistantPanel.setAttribute('aria-hidden', 'true');
+    assistantToggle?.setAttribute('aria-expanded', 'false');
+  };
+
+  const addAssistantMessage = (text, role = 'bot', opts = {}) => {
+    if (!assistantMessages) return null;
     const bubble = document.createElement('div');
     bubble.className = `assistant-bubble ${role}`;
-    bubble.textContent = text;
+    const content = String(text || '');
+    if (opts.animate && role === 'bot') {
+      bubble.textContent = '';
+      let index = 0;
+      const typeNext = () => {
+        if (index >= content.length) return;
+        bubble.textContent += content[index];
+        assistantMessages.scrollTop = assistantMessages.scrollHeight;
+        index += 1;
+        window.setTimeout(typeNext, 18 + Math.random() * 35);
+      };
+      typeNext();
+    } else {
+      bubble.textContent = content;
+    }
     assistantMessages.appendChild(bubble);
     assistantMessages.scrollTop = assistantMessages.scrollHeight;
+    if (role === 'bot' && assistantToggle && assistantPanel?.hasAttribute('hidden')) {
+      assistantToggle.classList.add('has-update');
+      assistantPulse?.setAttribute('aria-hidden', 'false');
+    }
+    return bubble;
   };
 
   const assistantKnowledge = [
-    { keywords: ['donasi', 'saweria'], reply: 'Klik tombol donasi dan pilih nominal. Jika pop-up diblokir, gunakan tombol manual Rp5.000.' },
-    { keywords: ['subtitle', 'transkrip'], reply: 'Gunakan tombol Ambil subtitle. Sistem akan mengambil track Indonesia, Inggris, dan fallback transkrip YouTube.' },
-    { keywords: ['ai', 'studio'], reply: 'AI Studio punya hook, cover prompt, dan planner. Kamu bisa klik tombol AI untuk mengisi metadata otomatis.' },
-    { keywords: ['offline', 'pwa'], reply: 'Tekan tombol Pasang aplikasi di pojok kanan atas agar converter bisa berjalan offline.' },
-    { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music untuk memilih mood atau biarkan auto mengikuti waktu.' },
-    { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk navigasi dengan suara.' },
-    { keywords: ['game', 'mini'], reply: 'Neo Runner siap dimainkan! Tekan mulai dan pakai Space untuk melompat.' }
+    { keywords: ['donasi', 'saweria'], reply: 'Untuk donasi, pilih nominal di kartu neo-brutalisme. Jika pop-up diblokir, gunakan tombol manual Rp5.000.' },
+    { keywords: ['subtitle', 'transkrip'], reply: 'Tekan tombol Ambil subtitle. Kami akan ambil track Indonesia, Inggris, dan fallback transkrip dari halaman watch.' },
+    { keywords: ['ai', 'studio'], reply: 'AI Studio mencakup Auto Music Tags, Caption Sosial, Playlist Pitch, dan planner rilis. Buka tab AI Studio untuk mengeksekusi.' },
+    { keywords: ['offline', 'pwa'], reply: 'Klik tombol Pasang aplikasi di kanan atas supaya converter bisa dipakai offline seperti aplikasi HP.' },
+    { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music. Pilih mood Energetic/Focus/Chill atau biarkan auto mengikuti waktu.' },
+    { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk perintah seperti “buka donasi” atau “mainkan game”.' },
+    { keywords: ['game', 'mini'], reply: 'Neo Runner ada di Experience Hub. Tekan mulai, gunakan Space atau tap layar untuk melompat, dan kejar skor terbaik.' }
   ];
 
-  const respondWithAssistant = (text) => {
+  const buildFallbackReply = (text) => {
+    const lower = text.toLowerCase();
+    const match = assistantKnowledge.find((item) => item.keywords.some((k) => lower.includes(k)));
+    if (match) return match.reply;
+    return 'Aku sudah catat pertanyaanmu. Coba buka FAQ, walkthrough, atau sebut fitur yang ingin kamu optimalkan.';
+  };
+
+  const handleAssistantCommand = (command) => {
+    const normalized = command.trim().toLowerCase();
+    if (!normalized.startsWith('/')) return '';
+    if (normalized === '/faq') {
+      setActiveSection('experience');
+      scrollToElement(document.getElementById('faqList'));
+      return 'FAQ sudah dibuka di tab Experience. Gulir ke bawah untuk melihat seluruh pertanyaan.';
+    }
+    if (normalized === '/walkthrough') {
+      document.getElementById('launchWalkthrough')?.click();
+      return 'Walkthrough dibuka, ikuti langkah-langkahnya ya!';
+    }
+    if (normalized === '/donasi') {
+      scrollToElement(document.getElementById('donationCard'));
+      return 'Kartu donasi sudah di depan mata. Pilih nominal favoritmu.';
+    }
+    if (normalized === '/ai') {
+      setActiveSection('experience');
+      openAssistantPanel();
+      return 'AI Navigator aktif. Tanyakan apa saja!';
+    }
+    return 'Perintah tidak dikenal. Gunakan /faq, /walkthrough, /donasi, atau /ai untuk pintasan cepat.';
+  };
+
+  const respondWithAssistant = async (text) => {
     if (!assistantMessages) return;
     assistantTyping?.removeAttribute('hidden');
-    const lower = text.toLowerCase();
-    let reply = 'Aku sudah tandai pertanyaanmu. Coba buka FAQ atau pakai walkthrough untuk detail lengkap.';
-    for (const item of assistantKnowledge) {
-      if (item.keywords.some((k) => lower.includes(k))) {
-        reply = item.reply;
-        break;
+    let reply = '';
+    try {
+      const response = await fetch(api('/api/assistant-chat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: text }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        reply = data?.reply || '';
+        if (Array.isArray(data?.suggestions) && data.suggestions.length) {
+          const tips = data.suggestions.slice(0, 3).map((tip) => `• ${tip}`).join('\n');
+          reply += `\n\nSaran cepat:\n${tips}`;
+        }
       }
+    } catch (err) {
+      console.error('Gagal mengambil jawaban AI', err);
     }
-    const delay = 600 + Math.random() * 400;
-    window.setTimeout(() => {
-      assistantTyping?.setAttribute('hidden', '');
-      addAssistantMessage(reply, 'bot');
-      state.assistantHistory.push({ role: 'bot', text: reply });
-      persistState();
-      incrementPoints(15, 'Interaksi AI', { badge: 'ai' });
-      updateMascotMood('ai');
-    }, delay);
+    if (!reply) reply = buildFallbackReply(text);
+    assistantTyping?.setAttribute('hidden', '');
+    addAssistantMessage(reply, 'bot', { animate: true });
+    state.assistantHistory.push({ role: 'bot', text: reply });
+    persistState();
+    incrementPoints(15, 'Interaksi AI', { badge: 'ai' });
+    updateMascotMood('ai');
   };
 
   function sendAssistantMessage() {
@@ -2664,6 +2981,15 @@
     addAssistantMessage(value, 'user');
     state.assistantHistory.push({ role: 'user', text: value });
     assistantInput.value = '';
+    const commandReply = handleAssistantCommand(value);
+    if (commandReply) {
+      addAssistantMessage(commandReply, 'bot', { animate: true });
+      state.assistantHistory.push({ role: 'bot', text: commandReply });
+      persistState();
+      incrementPoints(10, 'Perintah cepat AI', { badge: 'navigator' });
+      updateMascotMood('ai');
+      return;
+    }
     respondWithAssistant(value);
   }
 
@@ -2674,7 +3000,34 @@
     } else {
       state.assistantHistory.forEach((msg) => addAssistantMessage(msg.text, msg.role));
     }
+    assistantToggle?.classList.remove('has-update');
+    assistantPulse?.setAttribute('aria-hidden', 'true');
   };
+
+  assistantToggle?.addEventListener('click', () => {
+    if (isAssistantOpen()) {
+      closeAssistantPanel();
+    } else {
+      openAssistantPanel();
+    }
+  });
+  assistantClose?.addEventListener('click', closeAssistantPanel);
+  if (assistantLaunchers.length) {
+    assistantLaunchers.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openAssistantPanel();
+        if (btn.dataset.launch === 'voice') voiceCommandBtn?.click();
+      });
+    });
+  }
+  document.addEventListener('click', (evt) => {
+    if (!isAssistantOpen()) return;
+    if (assistantFab && assistantFab.contains(evt.target)) return;
+    closeAssistantPanel();
+  });
+  window.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Escape' && isAssistantOpen()) closeAssistantPanel();
+  });
 
   const resetRunner = () => {
     if (!runnerCanvas) return;
