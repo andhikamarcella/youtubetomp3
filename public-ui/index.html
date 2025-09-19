@@ -1663,7 +1663,7 @@
     currentDownloadUrl = absoluteUrl;
     currentDownloadName = meta.fileName || meta.baseName || '';
     lastPreviewTitle = meta.title || meta.fileName || lastPreviewTitle || 'Audio Preview';
-    const shareUrl = new URL('share.html', window.location.href);
+    const shareUrl = new URL('./share.html', window.location.href);
     shareUrl.searchParams.set('src', absoluteUrl);
     if (meta.fileName) shareUrl.searchParams.set('name', meta.fileName);
     if (meta.format) shareUrl.searchParams.set('fmt', meta.format);
