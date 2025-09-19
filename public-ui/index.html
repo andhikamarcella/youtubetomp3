@@ -40,6 +40,29 @@
     .card { border-radius: var(--radius); }
     .form-control, .form-select, .btn { border-radius: .9rem; }
     .brand-badge { letter-spacing:.08em; }
+    .app-tabbar { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: 1rem; }
+    .app-nav-btn { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .9rem; border-radius: .75rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); background: color-mix(in srgb, var(--bs-secondary-bg) 85%, transparent); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; transition: background .2s ease, color .2s ease, transform .2s ease, box-shadow .25s ease, border-color .2s ease; }
+    .app-nav-btn .bi { font-size: .9rem; }
+    .app-nav-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 26px rgba(13,110,253,.12); }
+    .app-nav-btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--bs-primary) 35%, transparent); outline-offset: 3px; }
+    .app-nav-btn.active { background: linear-gradient(135deg, rgba(13,110,253,.2) 0%, rgba(111,66,193,.24) 100%); color: color-mix(in srgb, var(--bs-primary) 70%, var(--bs-body-color) 30%); border-color: color-mix(in srgb, var(--bs-primary) 55%, transparent); box-shadow: 0 16px 36px rgba(13,110,253,.18); transform: translateY(-1px); }
+    html[data-bs-theme='dark'] .app-nav-btn { background: color-mix(in srgb, var(--bs-secondary-bg) 65%, transparent); border-color: color-mix(in srgb, rgba(255,255,255,.2) 60%, transparent); }
+    html[data-bs-theme='dark'] .app-nav-btn.active { color: rgba(255,255,255,.92); box-shadow: 0 18px 38px rgba(13,110,253,.28); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
+    .section-header h1 { font-size: 1.55rem; letter-spacing: .04em; text-transform: uppercase; margin: 0; }
+    .section-header p { margin: 0; font-size: .92rem; color: color-mix(in srgb, var(--bs-secondary) 80%, var(--bs-body-color) 20%); }
+    .section-header .btn { border-radius: .75rem; }
+    .app-section { display: block; }
+    .app-section > * + * { margin-top: 1.5rem; }
+    .app-section[hidden] { display: none !important; }
+    .app-section.is-active { animation: sectionFade .3s ease; }
+    @keyframes sectionFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    #offcanvasNav .offcanvas-body { display: flex; flex-direction: column; gap: 1.25rem; }
+    #offcanvasNav .app-nav-btn { width: 100%; justify-content: flex-start; font-size: .95rem; letter-spacing: .03em; text-transform: none; padding: .7rem 1rem; }
+    #offcanvasNav .menu-meta { font-size: .82rem; color: var(--bs-secondary); }
+    @media (max-width: 991.98px) {
+      .app-tabbar { display: none !important; }
+    }
     .log-box { max-height: 240px; overflow:auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
     .history-link { word-break: break-all; }
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; position: relative; }
@@ -367,9 +390,19 @@
 <body>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
-    <div class="container">
-      <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
-      <div class="d-flex align-items-center gap-2 ms-auto flex-wrap justify-content-end">
+    <div class="container d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2 flex-grow-1">
+        <button class="btn btn-outline-primary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-label="Buka menu navigasi">
+          <i class="bi bi-list"></i>
+        </button>
+        <a class="navbar-brand fw-semibold me-2" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
+        <div class="app-tabbar" id="sectionTabbar">
+          <button type="button" class="app-nav-btn active" data-section-target="converter" data-section-label="Converter"><i class="bi bi-cpu"></i> Converter</button>
+          <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub"><i class="bi bi-stars"></i> Experience</button>
+          <button type="button" class="app-nav-btn" data-section-target="studio" data-section-label="AI Studio"><i class="bi bi-robot"></i> AI Studio</button>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
         <span class="badge text-bg-warning" id="offlineBadge" hidden><i class="bi bi-wifi-off me-1"></i>Offline</span>
         <button class="btn btn-outline-success" id="installAppBtn" type="button" hidden>
           <i class="bi bi-download"></i>
@@ -382,19 +415,30 @@
   </nav>
 
   <main id="mainContent" class="container py-4 py-md-5">
-    <div id="welcomeCard" class="card shadow-sm mb-4" hidden>
-      <div class="card-body d-flex justify-content-between align-items-start">
-        <div>
-          <h5 class="mb-1">Selamat datang!</h5>
-          <p class="mb-0 small text-secondary">Gunakan form di bawah untuk mengonversi video YouTube menjadi audio dan jelajahi fitur seperti trim, metadata, serta antrian.</p>
-        </div>
-        <button type="button" class="btn-close ms-2" id="dismissWelcome" aria-label="Tutup"></button>
+    <header class="section-header">
+      <div>
+        <h1 id="activeSectionTitle">Converter</h1>
+        <p id="activeSectionSubtitle">Konversi video lebih cepat &amp; stabil.</p>
       </div>
-    </div>
-    <div class="row g-4">
-      <div class="col-lg-7">
-        <div class="card shadow-sm">
-          <div class="card-body p-4">
+      <button type="button" class="btn btn-outline-primary d-none d-lg-inline-flex" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-label="Buka menu fitur">
+        <i class="bi bi-grid-3x3-gap"></i>
+        <span class="ms-2">Menu fitur</span>
+      </button>
+    </header>
+    <section class="app-section is-active" data-section="converter" id="section-converter">
+      <div id="welcomeCard" class="card shadow-sm mb-4" hidden>
+        <div class="card-body d-flex justify-content-between align-items-start">
+          <div>
+            <h5 class="mb-1">Selamat datang!</h5>
+            <p class="mb-0 small text-secondary">Gunakan form di bawah untuk mengonversi video YouTube menjadi audio dan jelajahi fitur seperti trim, metadata, serta antrian.</p>
+          </div>
+          <button type="button" class="btn-close ms-2" id="dismissWelcome" aria-label="Tutup"></button>
+        </div>
+      </div>
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <div class="card shadow-sm">
+            <div class="card-body p-4">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
                 <span class="badge rounded-pill text-bg-primary brand-badge">Converter</span>
@@ -493,35 +537,159 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mt-4" id="experienceHub">
-      <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <i class="bi bi-stars text-info fs-5"></i>
-          <h5 class="mb-0">Experience Hub</h5>
-        </div>
-        <p class="small text-secondary mb-4">Atur avatar, tema, dan musik supaya sesi konversi terasa lebih personal.</p>
-        <div class="row g-3 align-items-stretch">
-          <div class="col-lg-6">
-            <section class="exp-section" aria-labelledby="avatarTitle">
-              <div class="d-flex align-items-center justify-content-between">
-                <h6 id="avatarTitle" class="title-mono text-secondary mb-0">Dynamic Avatar</h6>
-                <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1</span>
+    </section>
+    <section class="app-section" data-section="experience" id="section-experience" hidden>
+          <div class="card shadow-sm" id="experienceHub">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-stars text-info fs-5"></i>
+                <h5 class="mb-0">Experience Hub</h5>
               </div>
-              <div class="dynamic-avatar" id="dynamicAvatar" role="img" aria-live="polite">
-                <span id="avatarEmoji">🎧</span>
+              <p class="small text-secondary mb-4">Atur avatar, tema, dan musik supaya sesi konversi terasa lebih personal.</p>
+              <div class="row g-3 align-items-stretch">
+                <div class="col-lg-6">
+                  <section class="exp-section" aria-labelledby="avatarTitle">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 id="avatarTitle" class="title-mono text-secondary mb-0">Dynamic Avatar</h6>
+                      <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1</span>
+                    </div>
+                    <div class="dynamic-avatar" id="dynamicAvatar" role="img" aria-live="polite">
+                      <span id="avatarEmoji">🎧</span>
+                    </div>
+                    <div class="avatar-status">
+                      <span id="avatarMood">Pendatang baru yang penasaran.</span>
+                      <span class="fw-semibold" id="rewardPointsLabel">0 XP</span>
+                    </div>
+                    <div class="reward-meter" aria-hidden="true">
+                      <span id="avatarProgressBar"></span>
+                    </div>
+                    <div class="small text-secondary">Interaksi seperti donasi, main game, dan eksplorasi fitur bakal menaikkan level.</div>
+                    <ul id="rewardBadges" aria-live="polite">
+                      <li data-badge="welcome">Welcome</li>
+                    </ul>
+                  </section>
+                </div>
+                <div class="col-lg-6">
+                  <section class="exp-section" aria-labelledby="dashboardTitle">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 id="dashboardTitle" class="title-mono text-secondary mb-0">Customizable Dashboard</h6>
+                      <span class="badge rounded-pill text-bg-info">Live</span>
+                    </div>
+                    <p class="small text-secondary mb-0">Pilih tema, font, dan layout favoritmu. Preferensi tersimpan otomatis di perangkat ini.</p>
+                    <div class="dashboard-controls mt-3">
+                      <div>
+                        <label for="themeSelect" class="form-label small text-uppercase">Tema</label>
+                        <select id="themeSelect" class="form-select form-select-sm">
+                          <option value="neo">Neo</option>
+                          <option value="aurora">Aurora</option>
+                          <option value="midnight">Midnight</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="fontSelect" class="form-label small text-uppercase">Font</label>
+                        <select id="fontSelect" class="form-select form-select-sm">
+                          <option value="typewriter">Typewriter</option>
+                          <option value="retro">Retro Rounded</option>
+                          <option value="mono">Monospasi</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="layoutSelect" class="form-label small text-uppercase">Layout</label>
+                        <select id="layoutSelect" class="form-select form-select-sm">
+                          <option value="cozy">Cozy</option>
+                          <option value="compact">Compact</option>
+                          <option value="spacious">Spacious</option>
+                        </select>
+                      </div>
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="narratorToggle">
+                        <label class="form-check-label" for="narratorToggle">Aktifkan narrator mode otomatis</label>
+                      </div>
+                    </div>
+                  </section>
+                </div>
               </div>
-              <div class="avatar-status">
-                <span id="avatarMood">Pendatang baru yang penasaran.</span>
-                <span class="fw-semibold" id="rewardPointsLabel">0 XP</span>
+              <hr class="my-4">
+              <div class="row g-3 align-items-stretch">
+                <div class="col-lg-6">
+                  <section class="exp-section music-card" aria-labelledby="musicTitle">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 id="musicTitle" class="title-mono text-secondary mb-0">Adaptive Background Music</h6>
+                      <button type="button" class="btn btn-sm btn-outline-primary" id="musicToggleBtn">
+                        <i class="bi bi-play-fill me-1"></i>Play
+                      </button>
+                    </div>
+                    <div class="music-visual" aria-hidden="true">
+                      <div class="music-bar"></div>
+                      <div class="music-bar"></div>
+                      <div class="music-bar"></div>
+                      <div class="music-bar"></div>
+                      <div class="music-bar"></div>
+                    </div>
+                    <div class="small text-secondary">Musik mengikuti waktu dan mood. Kamu bisa ambil alih kapan saja.</div>
+                    <div class="dashboard-controls">
+                      <div>
+                        <label for="moodSelect" class="form-label small text-uppercase">Mood</label>
+                        <select id="moodSelect" class="form-select form-select-sm">
+                          <option value="auto">Auto (siang/malam)</option>
+                          <option value="energetic">Energetic</option>
+                          <option value="focus">Focus</option>
+                          <option value="chill">Chill</option>
+                        </select>
+                      </div>
+                      <div id="bgMusicStatus" class="fw-semibold text-primary">Auto mood siap dimainkan.</div>
+                    </div>
+                    <div class="narrator-actions">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="musicNextBtn"><i class="bi bi-skip-end"></i> Mood berikutnya</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="musicStopBtn"><i class="bi bi-stop"></i> Stop</button>
+                    </div>
+                    <div class="small text-secondary" id="bgMusicNow">Belum diputar.</div>
+                  </section>
+                </div>
+                <div class="col-lg-6">
+                  <section class="exp-section voice-panel" aria-labelledby="voiceTitle">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 id="voiceTitle" class="title-mono text-secondary mb-0">Voice &amp; Narrator</h6>
+                      <button type="button" class="btn btn-sm btn-outline-success" id="voiceCommandBtn">
+                        <i class="bi bi-mic-fill me-1"></i>Mulai
+                      </button>
+                    </div>
+                    <div id="voiceStatus" class="text-secondary small">Perintah suara siap digunakan.</div>
+                    <div class="narrator-actions">
+                      <button type="button" class="btn btn-outline-primary btn-sm" id="readSelectionBtn"><i class="bi bi-megaphone"></i> Baca pilihan</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm" id="readGuideBtn"><i class="bi bi-journal-text"></i> Baca ringkasan UI</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="stopNarratorBtn"><i class="bi bi-volume-mute"></i> Hentikan</button>
+                    </div>
+                    <div class="small text-secondary">Ucapkan “buka donasi”, “mainkan game”, atau “aktifkan narrator” untuk navigasi cepat.</div>
+                  </section>
+                </div>
               </div>
-              <div class="reward-meter" aria-hidden="true">
-                <span id="avatarProgressBar"></span>
+            </div>
+          </div>
+      
+          <div class="card shadow-sm mt-4" id="aiAssistantCard">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-robot text-primary fs-5"></i>
+                <h5 class="mb-0">AI Navigator</h5>
               </div>
-              <div class="small text-secondary">Interaksi seperti donasi, main game, dan eksplorasi fitur bakal menaikkan level.</div>
-              <ul id="rewardBadges" aria-live="polite">
-                <li data-badge="welcome">Welcome</li>
-              </ul>
-            </section>
+              <p class="small text-secondary mb-3">Chatbot mini ini siap bantu cari fitur, jawab FAQ, atau kasih rekomendasi langkah selanjutnya.</p>
+              <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
+              <div class="assistant-typing" id="assistantTyping" hidden>AI Studio companion mengetik…</div>
+              <div class="assistant-input">
+                <input type="text" id="assistantInput" class="form-control" placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
+                <button type="button" class="btn btn-primary" id="assistantSendBtn"><i class="bi bi-send-fill"></i></button>
+              </div>
+            </div>
+          </div>
+      
+          <div class="card shadow-sm mt-4" id="gameCard">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-joystick text-warning fs-5"></i>
+                <h5 class="mb-0">Neo Runner Mini-game</h5>
+              </div>
+    </section>
           </div>
           <div class="col-lg-6">
             <section class="exp-section" aria-labelledby="dashboardTitle">
@@ -663,6 +831,103 @@
         </div>
       </div>
     </div>
+    </section>
+
+    <section class="app-section" data-section="studio" id="section-studio" hidden>
+                  <div class="card border-0 bg-body-tertiary" id="aiStudioCard">
+                    <div class="card-body">
+                      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <strong class="me-auto">AI Studio</strong>
+                        <div class="form-check form-switch m-0">
+                          <input class="form-check-input" type="checkbox" id="backgroundMode">
+                          <label class="form-check-label small" for="backgroundMode">Background mode</label>
+                        </div>
+                      </div>
+                      <p class="text-secondary small mb-3">Gunakan Auto Music Tags untuk mengisi metadata secara instan atau minta AI membuat materi promo, visual, dan rencana rilis yang siap pakai.</p>
+                      <div class="ai-studio-actions d-flex flex-wrap">
+                        <button class="btn btn-outline-primary" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
+                        <button class="btn btn-outline-secondary" id="aiCaptionBtn" type="button"><i class="bi bi-megaphone"></i> AI Caption Sosial</button>
+                        <button class="btn btn-outline-success" id="aiPitchBtn" type="button"><i class="bi bi-broadcast"></i> AI Playlist Pitch</button>
+                        <button class="btn btn-outline-warning" id="aiAudiophileBtn" type="button"><i class="bi bi-soundwave"></i> AI Audiophile Guide</button>
+                        <button class="btn btn-outline-info" id="aiHookBtn" type="button"><i class="bi bi-lightning-charge"></i> AI Hook Headline</button>
+                        <button class="btn btn-outline-danger" id="aiVisualBtn" type="button"><i class="bi bi-image"></i> AI Cover Prompt</button>
+                        <button class="btn btn-outline-dark" id="aiReleaseBtn" type="button"><i class="bi bi-calendar3"></i> AI Release Planner</button>
+                      </div>
+                      <div class="ai-output mt-3" id="aiCaptionWrap" hidden>
+                        <header>
+                          <span class="title">Caption &amp; Hashtag</span>
+                          <div class="copy-actions">
+                            <button class="btn btn-sm btn-outline-secondary" id="aiCaptionCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                          </div>
+                        </header>
+                        <textarea id="aiCaptionText" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
+                        <div class="small text-secondary mt-2" id="aiCaptionMeta"></div>
+                      </div>
+                      <div class="ai-output mt-3" id="aiPitchWrap" hidden>
+                        <header>
+                          <span class="title">Playlist Pitch</span>
+                          <div class="copy-actions">
+                            <button class="btn btn-sm btn-outline-secondary" id="aiPitchCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                          </div>
+                        </header>
+                        <textarea id="aiPitchText" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
+                        <div class="small text-secondary mt-2" id="aiPitchHook"></div>
+                        <div class="small text-secondary" id="aiPitchPlaylists"></div>
+                      </div>
+                      <div class="ai-output mt-3" id="aiAudiophileWrap" hidden>
+                        <header>
+                          <span class="title">Panduan Audiophile</span>
+                          <div class="copy-actions">
+                            <button class="btn btn-sm btn-outline-secondary" id="aiAudiophileCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                          </div>
+                        </header>
+                        <textarea id="aiAudiophileText" class="form-control form-control-sm" rows="5" readonly spellcheck="false"></textarea>
+                        <div class="small text-secondary mt-2" id="aiAudiophileMeta"></div>
+                      </div>
+                      <div class="ai-output mt-3" id="aiHookWrap" hidden>
+                        <header>
+                          <span class="title">Hook &amp; CTA</span>
+                          <div class="copy-actions">
+                            <button class="btn btn-sm btn-outline-secondary" id="aiHookCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                          </div>
+                        </header>
+                        <ul class="ai-hook-list" id="aiHookList"></ul>
+                        <div class="ai-cta-pills" id="aiHookCtas"></div>
+                        <div class="small text-secondary mt-2" id="aiHookMeta"></div>
+                      </div>
+                      <div class="ai-output mt-3" id="aiVisualWrap" hidden>
+                        <header>
+                          <span class="title">Cover Art Prompt</span>
+                          <div class="copy-actions">
+                            <button class="btn btn-sm btn-outline-secondary" id="aiVisualCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                          </div>
+                        </header>
+                        <textarea id="aiVisualPrompt" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
+                        <div class="ai-color-palette" id="aiVisualPalette"></div>
+                        <div class="small text-secondary mt-2" id="aiVisualMeta"></div>
+                      </div>
+                      <div class="ai-output mt-3" id="aiPlanWrap" hidden>
+                        <header>
+                          <span class="title">Timeline Rilis</span>
+                          <div class="copy-actions">
+                            <button class="btn btn-sm btn-outline-secondary" id="aiPlanCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                          </div>
+                        </header>
+                        <ul class="ai-plan-list" id="aiPlanList"></ul>
+                        <div class="small text-secondary mt-2" id="aiPlanSummary"></div>
+                      </div>
+                      <div id="aiTagInsights" hidden></div>
+                      <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
+                    </div>
+                  </div>
+      
+                  <div class="card border-0 bg-body-tertiary" id="subtitleCard">
+                    <div class="card-body">
+                      <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
+                        <div class="flex-grow-1">
+                          <strong>Podcast Mode · Subtitle</strong>
+                          <div class="small text-secondary">Ambil subtitle otomatis atau manual dan simpan sebagai teks.</div>
+    </section>
 
             <div class="row g-3 mb-3">
               <div class="col-sm-6">
@@ -759,101 +1024,7 @@
               <button id="downloadZipBtn" class="btn btn-success"><i class="bi bi-collection"></i> Download ZIP</button>
               <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
             </div>
-
-            <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
-              <div class="card-body">
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                  <strong class="me-auto">AI Studio</strong>
-                  <div class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" id="backgroundMode">
-                    <label class="form-check-label small" for="backgroundMode">Background mode</label>
-                  </div>
-                </div>
-                <p class="text-secondary small mb-3">Gunakan Auto Music Tags untuk mengisi metadata secara instan atau minta AI membuat materi promo, visual, dan rencana rilis yang siap pakai.</p>
-                <div class="ai-studio-actions d-flex flex-wrap">
-                  <button class="btn btn-outline-primary" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
-                  <button class="btn btn-outline-secondary" id="aiCaptionBtn" type="button"><i class="bi bi-megaphone"></i> AI Caption Sosial</button>
-                  <button class="btn btn-outline-success" id="aiPitchBtn" type="button"><i class="bi bi-broadcast"></i> AI Playlist Pitch</button>
-                  <button class="btn btn-outline-warning" id="aiAudiophileBtn" type="button"><i class="bi bi-soundwave"></i> AI Audiophile Guide</button>
-                  <button class="btn btn-outline-info" id="aiHookBtn" type="button"><i class="bi bi-lightning-charge"></i> AI Hook Headline</button>
-                  <button class="btn btn-outline-danger" id="aiVisualBtn" type="button"><i class="bi bi-image"></i> AI Cover Prompt</button>
-                  <button class="btn btn-outline-dark" id="aiReleaseBtn" type="button"><i class="bi bi-calendar3"></i> AI Release Planner</button>
-                </div>
-                <div class="ai-output mt-3" id="aiCaptionWrap" hidden>
-                  <header>
-                    <span class="title">Caption &amp; Hashtag</span>
-                    <div class="copy-actions">
-                      <button class="btn btn-sm btn-outline-secondary" id="aiCaptionCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                    </div>
-                  </header>
-                  <textarea id="aiCaptionText" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
-                  <div class="small text-secondary mt-2" id="aiCaptionMeta"></div>
-                </div>
-                <div class="ai-output mt-3" id="aiPitchWrap" hidden>
-                  <header>
-                    <span class="title">Playlist Pitch</span>
-                    <div class="copy-actions">
-                      <button class="btn btn-sm btn-outline-secondary" id="aiPitchCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                    </div>
-                  </header>
-                  <textarea id="aiPitchText" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
-                  <div class="small text-secondary mt-2" id="aiPitchHook"></div>
-                  <div class="small text-secondary" id="aiPitchPlaylists"></div>
-                </div>
-                <div class="ai-output mt-3" id="aiAudiophileWrap" hidden>
-                  <header>
-                    <span class="title">Panduan Audiophile</span>
-                    <div class="copy-actions">
-                      <button class="btn btn-sm btn-outline-secondary" id="aiAudiophileCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                    </div>
-                  </header>
-                  <textarea id="aiAudiophileText" class="form-control form-control-sm" rows="5" readonly spellcheck="false"></textarea>
-                  <div class="small text-secondary mt-2" id="aiAudiophileMeta"></div>
-                </div>
-                <div class="ai-output mt-3" id="aiHookWrap" hidden>
-                  <header>
-                    <span class="title">Hook &amp; CTA</span>
-                    <div class="copy-actions">
-                      <button class="btn btn-sm btn-outline-secondary" id="aiHookCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                    </div>
-                  </header>
-                  <ul class="ai-hook-list" id="aiHookList"></ul>
-                  <div class="ai-cta-pills" id="aiHookCtas"></div>
-                  <div class="small text-secondary mt-2" id="aiHookMeta"></div>
-                </div>
-                <div class="ai-output mt-3" id="aiVisualWrap" hidden>
-                  <header>
-                    <span class="title">Cover Art Prompt</span>
-                    <div class="copy-actions">
-                      <button class="btn btn-sm btn-outline-secondary" id="aiVisualCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                    </div>
-                  </header>
-                  <textarea id="aiVisualPrompt" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
-                  <div class="ai-color-palette" id="aiVisualPalette"></div>
-                  <div class="small text-secondary mt-2" id="aiVisualMeta"></div>
-                </div>
-                <div class="ai-output mt-3" id="aiPlanWrap" hidden>
-                  <header>
-                    <span class="title">Timeline Rilis</span>
-                    <div class="copy-actions">
-                      <button class="btn btn-sm btn-outline-secondary" id="aiPlanCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                    </div>
-                  </header>
-                  <ul class="ai-plan-list" id="aiPlanList"></ul>
-                  <div class="small text-secondary mt-2" id="aiPlanSummary"></div>
-                </div>
-                <div id="aiTagInsights" hidden></div>
-                <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
-              </div>
-            </div>
-
-            <div class="card border-0 bg-body-tertiary mt-4" id="subtitleCard">
-              <div class="card-body">
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
-                  <div class="flex-grow-1">
-                    <strong>Podcast Mode · Subtitle</strong>
-                    <div class="small text-secondary">Ambil subtitle otomatis atau manual dan simpan sebagai teks.</div>
-                  </div>
+</div>
                   <div class="d-flex flex-wrap align-items-center gap-2">
                     <select id="subtitleLang" class="form-select form-select-sm" aria-label="Pilih bahasa subtitle">
                       <option value="id.*,en.*,en" selected>Indonesia / Inggris</option>
@@ -1230,6 +1401,21 @@
     </div>
   </div>
 
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNav">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title"><i class="bi bi-columns-gap me-2"></i>Navigasi Fitur</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
+    </div>
+    <div class="offcanvas-body">
+      <p class="menu-meta">Pilih tab untuk berpindah antar area converter.</p>
+      <div class="d-grid gap-2">
+        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter"><i class="bi bi-cpu"></i> Converter</button>
+        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub"><i class="bi bi-stars"></i> Experience Hub</button>
+        <button type="button" class="app-nav-btn" data-section-target="studio" data-section-label="AI Studio"><i class="bi bi-robot"></i> AI Studio</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Offcanvas Settings -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasSettings">
     <div class="offcanvas-header">
@@ -1402,6 +1588,57 @@
   const $$ = (sel) => document.querySelectorAll(sel);
   const toast = new bootstrap.Toast($('#toast'));
   const setToast = (msg) => { $('#toastText').textContent = msg; toast.show(); };
+
+  const sectionPanels = Array.from(document.querySelectorAll('.app-section'));
+  const navButtons = Array.from(document.querySelectorAll('[data-section-target]'));
+  const sectionTitle = $('#activeSectionTitle');
+  const sectionSubtitle = $('#activeSectionSubtitle');
+  const navDrawerEl = $('#offcanvasNav');
+  const navDrawer = navDrawerEl ? bootstrap.Offcanvas.getOrCreateInstance(navDrawerEl) : null;
+  const SECTION_META = {
+    converter: {
+      title: 'Converter',
+      subtitle: 'Konversi video lebih cepat & stabil.',
+    },
+    experience: {
+      title: 'Experience Hub',
+      subtitle: 'Avatar dinamis, musik adaptif, dan voice control siap dibuka.',
+    },
+    studio: {
+      title: 'AI Studio',
+      subtitle: 'Buat caption, hook, dan timeline rilis otomatis.',
+    },
+  };
+
+  const setActiveSection = (target) => {
+    let found = false;
+    sectionPanels.forEach((panel) => {
+      const isMatch = panel.dataset.section === target;
+      panel.classList.toggle('is-active', isMatch);
+      panel.hidden = !isMatch;
+      if (isMatch) found = true;
+    });
+    navButtons.forEach((btn) => {
+      const isMatch = btn.dataset.sectionTarget === target;
+      btn.classList.toggle('active', isMatch);
+      btn.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+    });
+    const meta = SECTION_META[target] || SECTION_META.converter;
+    if (sectionTitle && meta?.title) sectionTitle.textContent = meta.title;
+    if (sectionSubtitle && meta?.subtitle) sectionSubtitle.textContent = meta.subtitle;
+    if (found) {
+      localStorage.setItem('app:activeSection', target);
+      if (navDrawer && navDrawerEl.classList.contains('show')) navDrawer.hide();
+    }
+    return found;
+  };
+
+  navButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setActiveSection(btn.dataset.sectionTarget));
+  });
+
+  const savedSection = localStorage.getItem('app:activeSection');
+  if (!setActiveSection(savedSection)) setActiveSection('converter');
 
   const previewCard = $('#previewCard');
   const previewPlayer = $('#previewPlayer');
