@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" onload="this.onload=null;this.rel='stylesheet'">
   <noscript>
@@ -33,7 +33,9 @@
   </style>
   <style>
     :root { --radius: 1.2rem; }
-    body { min-height: 100dvh; background-color: var(--bs-body-bg); background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.25), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(16,185,129,.2), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); font-family: "Courier Prime", "IBM Plex Mono", "Courier New", monospace; letter-spacing: .015em; text-rendering: optimizeLegibility; }
+    body { min-height: 100dvh; background-color: var(--bs-body-bg); background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.25), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(16,185,129,.2), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); font-family: "Comfortaa", "Comforta", "Trebuchet MS", system-ui, sans-serif; letter-spacing: .01em; text-rendering: optimizeLegibility; }
+    code, kbd, pre, samp, .font-monospace { font-family: "IBM Plex Mono", "Comforta", "Courier New", monospace; font-feature-settings: "tnum" 1; }
+    .title-mono { font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; }
     html[data-bs-theme='dark'] body { background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.35), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(16,185,129,.28), transparent), linear-gradient(180deg, rgba(13,17,23,.8) 0%, rgba(13,17,23,0) 55%); }
     .card { border-radius: var(--radius); }
     .form-control, .form-select, .btn { border-radius: .9rem; }
@@ -150,26 +152,65 @@
     .tip-pill.is-active { background: linear-gradient(135deg, rgba(13,110,253,.18) 0%, rgba(111,66,193,.18) 60%, rgba(32,201,151,.24) 100%); border-color: color-mix(in srgb, var(--bs-primary) 55%, transparent); box-shadow: 0 18px 38px rgba(13,110,253,.22); }
     .tip-pill.is-active::before { opacity: .95; }
     #speedTipHint { margin-top: .75rem; font-size: .82rem; color: var(--bs-secondary); font-style: italic; }
-    #donationStatus { margin-top: .75rem; font-size: .82rem; color: var(--bs-secondary); font-style: italic; }
-    .donation-card { position: relative; overflow: hidden; background: radial-gradient(circle at top left, rgba(13,110,253,.2), transparent 60%), radial-gradient(circle at bottom right, rgba(255,193,7,.22), transparent 55%), var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-warning) 35%, transparent); }
-    .donation-card::after { content: ""; position: absolute; inset: -60% 40% auto -20%; width: 140%; height: 120%; background: radial-gradient(circle, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 70%); transform: rotate(12deg); pointer-events: none; }
-    .donation-card .card-body { position: relative; }
-    .donation-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
-    .btn-donation { flex: 1 1 120px; min-width: 120px; border-radius: .85rem; border: 1px solid color-mix(in srgb, var(--bs-warning) 45%, transparent); background: color-mix(in srgb, var(--bs-warning) 16%, transparent); color: color-mix(in srgb, var(--bs-body-color) 88%, var(--bs-warning) 12%); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: .75rem 1rem; display: grid; place-items: center; gap: .25rem; transition: transform .2s ease, box-shadow .25s ease, background .25s ease, border-color .25s ease; position: relative; overflow: hidden; }
+    .donation-status { margin-top: .85rem; font-size: .82rem; color: color-mix(in srgb, var(--bs-body-color) 70%, var(--bs-secondary) 30%); font-style: italic; }
+    .donation-link { display: inline-block; border-width: 2px; border-radius: 1rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
+    .donation-link small { display: block; letter-spacing: .02em; text-transform: none; font-family: "Comfortaa", "Comforta", system-ui, sans-serif; }
+    .donation-card { position: relative; overflow: visible; border-radius: calc(var(--radius) * 1.1); background: linear-gradient(135deg, color-mix(in srgb, var(--bs-warning-bg-subtle) 85%, #fff3bf 15%) 0%, color-mix(in srgb, var(--bs-body-bg) 78%, #ffd8a8 22%) 100%); border: 3px solid color-mix(in srgb, rgba(17,17,17,.82) 60%, var(--bs-warning) 40%); box-shadow: 10px 10px 0 color-mix(in srgb, rgba(17,17,17,.8) 75%, var(--bs-warning) 25%); transition: transform .25s ease, box-shadow .3s ease; }
+    .donation-card:hover { transform: translate(-4px,-4px); box-shadow: 14px 14px 0 color-mix(in srgb, rgba(17,17,17,.85) 70%, var(--bs-primary) 30%); }
+    .donation-card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) 14px, transparent 14px, transparent 28px); opacity: .6; mix-blend-mode: soft-light; pointer-events: none; }
+    .donation-card::after { content: ""; position: absolute; inset: .95rem; border-radius: calc(var(--radius) * .9); border: 2px dashed color-mix(in srgb, rgba(17,17,17,.72) 70%, var(--bs-warning) 30%); pointer-events: none; opacity: .5; }
+    .donation-card .card-body { position: relative; z-index: 1; background: color-mix(in srgb, var(--bs-body-bg) 90%, transparent); border-radius: calc(var(--radius) * .9); box-shadow: -6px -6px 0 rgba(255,255,255,.55); }
+    .donation-actions { display: flex; flex-wrap: wrap; gap: .9rem; }
+    .btn-donation { flex: 1 1 140px; min-width: 140px; border-radius: 1rem; border: 2px solid color-mix(in srgb, rgba(17,17,17,.78) 70%, var(--bs-warning) 30%); background: color-mix(in srgb, var(--bs-body-bg) 82%, #fff3bf 18%); color: color-mix(in srgb, var(--bs-body-color) 88%, rgba(17,17,17,.9) 12%); font-family: "IBM Plex Mono", "Comforta", monospace; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: .9rem 1rem; display: grid; place-items: center; gap: .35rem; box-shadow: 4px 4px 0 color-mix(in srgb, rgba(17,17,17,.8) 80%, var(--bs-warning) 20%); transition: transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease; position: relative; isolation: isolate; }
     .btn-donation span { font-size: .78rem; letter-spacing: .04em; text-transform: none; font-weight: 500; color: color-mix(in srgb, var(--bs-body-color) 82%, var(--bs-secondary) 18%); }
-    .btn-donation::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%); opacity: 0; transition: opacity .25s ease; }
-    .btn-donation:is(:hover, :focus-visible) { transform: translateY(-2px); box-shadow: 0 18px 38px rgba(255,193,7,.25); background: linear-gradient(135deg, rgba(255,193,7,.28) 0%, rgba(255,126,95,.22) 100%); border-color: color-mix(in srgb, var(--bs-warning) 65%, transparent); }
-    .btn-donation:is(:hover, :focus-visible)::after { opacity: .65; }
-    .btn-donation:focus-visible { outline: 3px solid color-mix(in srgb, var(--bs-warning) 55%, transparent); outline-offset: 3px; }
-    .btn-donation.is-pulse { animation: donationPulse .8s ease; }
-    @keyframes donationPulse { 0% { transform: translateY(0) scale(1); box-shadow: 0 12px 28px rgba(255,193,7,.18); } 40% { transform: translateY(-3px) scale(1.04); box-shadow: 0 22px 44px rgba(255,126,95,.3); } 100% { transform: translateY(0) scale(1); box-shadow: 0 12px 28px rgba(255,193,7,.18); } }
+    .btn-donation::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 65%); opacity: .35; mix-blend-mode: screen; pointer-events: none; transition: opacity .2s ease; }
+    .btn-donation:is(:hover, :focus-visible) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 color-mix(in srgb, rgba(17,17,17,.8) 70%, var(--bs-primary) 30%); }
+    .btn-donation:is(:hover, :focus-visible)::after { opacity: .7; }
+    .btn-donation:focus-visible { outline: 3px solid color-mix(in srgb, var(--bs-primary) 55%, transparent); outline-offset: 3px; }
+    .btn-donation.is-pulse { animation: donationPulse .9s ease; }
+    .btn-donation.is-selected { background: color-mix(in srgb, var(--bs-warning) 35%, var(--bs-body-bg) 65%); transform: translate(-3px,-3px); box-shadow: 7px 7px 0 color-mix(in srgb, var(--bs-primary) 25%, rgba(17,17,17,.85) 75%); color: color-mix(in srgb, var(--bs-body-color) 78%, rgba(17,17,17,.98) 22%); }
+    .btn-donation.is-selected span { color: color-mix(in srgb, var(--bs-body-color) 72%, var(--bs-primary) 28%); }
+    @keyframes donationPulse { 0% { transform: translate(0,0) scale(1); box-shadow: 4px 4px 0 color-mix(in srgb, rgba(17,17,17,.8) 80%, var(--bs-warning) 20%); } 45% { transform: translate(-3px,-3px) scale(1.04); box-shadow: 9px 9px 0 color-mix(in srgb, rgba(17,17,17,.85) 65%, var(--bs-primary) 35%); } 100% { transform: translate(0,0) scale(1); box-shadow: 4px 4px 0 color-mix(in srgb, rgba(17,17,17,.8) 80%, var(--bs-warning) 20%); } }
     html[data-bs-theme='dark'] .tip-pill { border-color: color-mix(in srgb, var(--bs-primary) 45%, transparent); background: color-mix(in srgb, rgba(13,110,253,.24) 65%, transparent); }
     html[data-bs-theme='dark'] .tip-pill .tip-desc { color: rgba(255,255,255,.78); }
     html[data-bs-theme='dark'] .tip-pill.is-active { background: linear-gradient(135deg, rgba(13,110,253,.42) 0%, rgba(111,66,193,.38) 55%, rgba(32,201,151,.45) 100%); }
-    html[data-bs-theme='dark'] .donation-card { background: radial-gradient(circle at top left, rgba(13,110,253,.35), transparent 60%), radial-gradient(circle at bottom right, rgba(255,193,7,.35), transparent 55%), rgba(13,17,23,.95); border-color: color-mix(in srgb, rgba(255,193,7,.55) 65%, transparent); }
-    html[data-bs-theme='dark'] .btn-donation { background: linear-gradient(135deg, rgba(255,193,7,.25) 0%, rgba(255,126,95,.22) 100%); color: rgba(255,255,255,.9); border-color: rgba(255,193,7,.55); }
-    html[data-bs-theme='dark'] .btn-donation span { color: rgba(255,255,255,.72); }
-    html[data-bs-theme='dark'] #speedTipHint, html[data-bs-theme='dark'] #donationStatus { color: rgba(255,255,255,.55); }
+    html[data-bs-theme='dark'] .donation-card { background: linear-gradient(135deg, color-mix(in srgb, rgba(44,48,66,.92) 80%, rgba(255,193,7,.32) 20%) 0%, color-mix(in srgb, rgba(34,28,54,.94) 70%, rgba(255,126,95,.35) 30%) 100%); border-color: color-mix(in srgb, rgba(255,209,102,.85) 60%, rgba(0,0,0,.88) 40%); box-shadow: 10px 10px 0 rgba(0,0,0,.75); }
+    html[data-bs-theme='dark'] .donation-card:hover { box-shadow: 14px 14px 0 rgba(0,0,0,.82); }
+    html[data-bs-theme='dark'] .donation-card::before { opacity: .4; }
+    html[data-bs-theme='dark'] .donation-card::after { border-color: color-mix(in srgb, rgba(255,209,102,.7) 65%, rgba(0,0,0,.8) 35%); }
+    html[data-bs-theme='dark'] .donation-card .card-body { background: color-mix(in srgb, rgba(18,18,18,.85) 80%, transparent); box-shadow: -6px -6px 0 rgba(255,255,255,.08); }
+    html[data-bs-theme='dark'] .btn-donation { background: color-mix(in srgb, rgba(24,26,40,.94) 70%, rgba(255,193,7,.42) 30%); border-color: color-mix(in srgb, rgba(255,209,102,.75) 60%, rgba(0,0,0,.85) 40%); color: rgba(255,244,214,.92); box-shadow: 4px 4px 0 rgba(0,0,0,.75); }
+    html[data-bs-theme='dark'] .btn-donation span { color: rgba(255,244,214,.8); }
+    html[data-bs-theme='dark'] .btn-donation.is-selected { background: color-mix(in srgb, rgba(255,193,7,.5) 40%, rgba(32,36,58,.95) 60%); box-shadow: 7px 7px 0 rgba(0,0,0,.82); color: rgba(255,248,230,.96); }
+    html[data-bs-theme='dark'] .btn-donation.is-selected span { color: rgba(255,248,230,.88); }
+    html[data-bs-theme='dark'] .donation-link { border-color: color-mix(in srgb, rgba(255,209,102,.7) 60%, rgba(0,0,0,.85) 40%); color: rgba(255,248,230,.95); }
+    html[data-bs-theme='dark'] .donation-link:hover, html[data-bs-theme='dark'] .donation-link:focus-visible { background-color: color-mix(in srgb, rgba(255,209,102,.35) 50%, rgba(32,36,58,.95) 50%); color: rgba(255,255,255,.98); }
+    .walkthrough-modal .modal-content { border-radius: 1.5rem; border: 3px solid color-mix(in srgb, var(--bs-primary) 45%, rgba(17,17,17,.82) 55%); background: linear-gradient(135deg, color-mix(in srgb, var(--bs-body-bg) 90%, rgba(13,110,253,.18) 10%) 0%, color-mix(in srgb, var(--bs-body-bg) 92%, rgba(32,201,151,.16) 8%) 100%); box-shadow: 12px 12px 0 color-mix(in srgb, rgba(17,17,17,.75) 65%, var(--bs-primary) 35%); overflow: hidden; }
+    .walkthrough-modal .modal-body { padding: 0; }
+    .walkthrough-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.5rem 1.5rem 0; }
+    .walkthrough-header h5 { font-family: "Comfortaa", "Comforta", system-ui, sans-serif; font-weight: 700; letter-spacing: .02em; }
+    .walkthrough-header p { margin-bottom: 0; font-size: .9rem; color: color-mix(in srgb, var(--bs-body-color) 78%, var(--bs-secondary) 22%); }
+    .walkthrough-progress { padding: 1rem 1.5rem .5rem; display: flex; align-items: center; gap: .75rem; }
+    .walkthrough-progress .progress { flex: 1 1 auto; height: .55rem; border-radius: 999px; background: color-mix(in srgb, var(--bs-secondary-bg) 80%, transparent); overflow: hidden; }
+    #walkthroughProgressBar { background: linear-gradient(135deg, rgba(13,110,253,.85) 0%, rgba(111,66,193,.85) 55%, rgba(32,201,151,.85) 100%); }
+    .walkthrough-progress-label { font-size: .75rem; font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .walkthrough-steps { padding: 0 1.5rem 1.5rem; display: grid; gap: 1rem; }
+    .walkthrough-step { display: none; padding: 1rem 1.25rem; border-radius: 1rem; border: 2px solid color-mix(in srgb, var(--bs-primary) 35%, rgba(17,17,17,.8) 65%); background: color-mix(in srgb, var(--bs-body-bg) 95%, rgba(13,110,253,.08) 5%); box-shadow: -6px -6px 0 rgba(255,255,255,.45); }
+    .walkthrough-step.is-active { display: block; animation: walkthroughFade .35s ease; }
+    .walkthrough-step h6 { font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; font-size: .85rem; margin-bottom: .5rem; }
+    .walkthrough-step p { font-size: .9rem; color: color-mix(in srgb, var(--bs-body-color) 85%, var(--bs-secondary) 15%); }
+    .walkthrough-step ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .4rem; font-size: .9rem; }
+    .walkthrough-step .chip-group { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .walkthrough-step .chip { padding: .35rem .75rem; border-radius: .8rem; font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; background: color-mix(in srgb, var(--bs-primary) 20%, transparent); border: 1px solid color-mix(in srgb, var(--bs-primary) 45%, transparent); }
+    .walkthrough-footer { padding: 0 1.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+    .walkthrough-footer .btn { border-radius: 999px; font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .walkthrough-trigger { font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; border-width: 2px; }
+    @keyframes walkthroughFade { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+    html[data-bs-theme='dark'] .walkthrough-modal .modal-content { background: linear-gradient(135deg, color-mix(in srgb, rgba(22,25,40,.95) 85%, rgba(13,110,253,.25) 15%) 0%, color-mix(in srgb, rgba(18,21,32,.95) 80%, rgba(32,201,151,.25) 20%) 100%); border-color: color-mix(in srgb, rgba(111,66,193,.65) 55%, rgba(0,0,0,.85) 45%); box-shadow: 14px 14px 0 rgba(0,0,0,.85); }
+    html[data-bs-theme='dark'] .walkthrough-step { background: color-mix(in srgb, rgba(22,25,40,.92) 85%, rgba(13,110,253,.12) 15%); border-color: color-mix(in srgb, rgba(111,66,193,.65) 60%, rgba(0,0,0,.85) 40%); box-shadow: -6px -6px 0 rgba(255,255,255,.08); }
+    html[data-bs-theme='dark'] .walkthrough-step p, html[data-bs-theme='dark'] .walkthrough-step ul { color: rgba(237,242,255,.88); }
+    html[data-bs-theme='dark'] .walkthrough-step .chip { background: color-mix(in srgb, rgba(111,66,193,.35) 60%, transparent); border-color: color-mix(in srgb, rgba(111,66,193,.6) 70%, transparent); color: rgba(255,255,255,.85); }
+    html[data-bs-theme='dark'] #speedTipHint, html[data-bs-theme='dark'] .donation-status { color: rgba(255,255,255,.55); }
     .faq-item {
       background: var(--bs-body-bg);
       border-radius: .9rem;
@@ -284,9 +325,14 @@
       <div class="col-lg-7">
         <div class="card shadow-sm">
           <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-3">
-              <span class="badge rounded-pill text-bg-primary brand-badge">Converter</span>
-              <span class="ms-2 text-secondary">Cepat & sederhana</span>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge rounded-pill text-bg-primary brand-badge">Converter</span>
+                <span class="text-secondary">Cepat & sederhana</span>
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm walkthrough-trigger" id="walkthroughTrigger">
+                <i class="bi bi-stars me-1"></i> Walkthrough
+              </button>
             </div>
 
             <div class="mb-3">
@@ -822,32 +868,41 @@
 
         <div class="card shadow-sm donation-card mt-4" id="donationCard">
           <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-cash-coin me-2 fs-5 text-warning"></i>
-              <h5 class="mb-0">Dukung pengembangan</h5>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-cash-coin me-2 fs-5 text-warning"></i>
+                <div>
+                  <h5 class="mb-0">Dukung pengembangan</h5>
+                  <small class="text-secondary">Retro vibes + performa ngebut</small>
+                </div>
+              </div>
+              <span class="badge text-bg-warning text-dark title-mono">NEO BRUTALISM</span>
             </div>
-            <p class="small mb-3">Suka dengan tampilan typewriter dan fitur AI Studio? Traktir developer lewat Saweria untuk menjaga server tetap kencang.</p>
-            <div class="donation-actions" id="donationButtons">
-              <button type="button" class="btn btn-donation" data-amount="5000">
+            <p class="small mb-3">UI ini hidup dari komunitas. Pilih nominal, kami otomatis bukakan Saweria dengan angka yang sama sehingga kamu tinggal tap bayar.</p>
+            <div class="donation-actions" id="donationButtons" role="group" aria-label="Nominal donasi Saweria">
+              <button type="button" class="btn btn-donation" data-amount="5000" aria-pressed="false">
                 Rp5.000
                 <span>Ngopi dulu ☕️</span>
               </button>
-              <button type="button" class="btn btn-donation" data-amount="10000">
+              <button type="button" class="btn btn-donation" data-amount="10000" aria-pressed="false">
                 Rp10.000
                 <span>Boost bandwidth</span>
               </button>
-              <button type="button" class="btn btn-donation" data-amount="25000">
+              <button type="button" class="btn btn-donation" data-amount="25000" aria-pressed="false">
                 Rp25.000
                 <span>Upgrade cache</span>
               </button>
-              <button type="button" class="btn btn-donation" data-amount="100000">
+              <button type="button" class="btn btn-donation" data-amount="100000" aria-pressed="false">
                 Rp100.000
                 <span>Bensin server 1 bulan</span>
               </button>
             </div>
-            <div id="donationStatus">Pilih nominal favoritmu — tab baru Saweria akan terbuka otomatis.</div>
+            <div id="donationStatus" class="donation-status">Nominal default Rp10.000 siap dimasukkan otomatis ke Saweria.</div>
             <div class="text-center mt-3">
-              <a class="btn btn-outline-primary px-4" id="donationLink" href="https://saweria.co/DhikaMarcella" target="_blank" rel="noopener">Buka halaman Saweria</a>
+              <a class="btn btn-outline-primary px-4 donation-link" id="donationLink" href="https://saweria.co/DhikaMarcella?amount=10000" target="_blank" rel="noopener">
+                <span class="title-mono d-block">Buka Saweria</span>
+                <small id="donationLinkHint" class="fw-semibold">Rp10.000 siap diisi otomatis</small>
+              </a>
             </div>
           </div>
         </div>
@@ -991,32 +1046,72 @@
   </div>
 
   <!-- Tutorial Modal -->
-  <div class="modal fade" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel">
-    <div class="modal-dialog">
+  <div class="modal fade walkthrough-modal" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="tutorialModalLabel">Tutorial Singkat</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
         <div class="modal-body">
-          <p>Ikuti langkah berikut untuk memulai:</p>
-          <ol>
-            <li>Tempel URL YouTube.</li>
-            <li>Pilih format, kualitas, dan opsi lainnya.</li>
-            <li>Klik <strong>Convert</strong> atau <strong>Download Semua</strong>.</li>
-            <li>Unduh hasilnya.</li>
-          </ol>
-          <hr>
-          <p class="mb-0">Fitur utama:</p>
-          <ul class="mb-0">
-            <li><strong>Trim</strong> untuk memotong durasi.</li>
-            <li><strong>ID3</strong> menulis judul, artis, dan album.</li>
-            <li><strong>Normalisasi</strong> menyamakan volume.</li>
-            <li><strong>Antrian</strong> memproses banyak URL sekaligus.</li>
-          </ul>
+          <div class="walkthrough-header">
+            <div>
+              <span class="badge text-bg-primary title-mono mb-2">WALKTHROUGH</span>
+              <h5 class="mb-1" id="tutorialModalLabel">Tur interaktif</h5>
+              <p>Kenalan dengan converter, AI Studio, dan mode offline dalam tiga langkah singkat.</p>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
+          <div class="walkthrough-progress">
+            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="walkthroughProgressLabel">
+              <div class="progress-bar" id="walkthroughProgressBar" style="width: 33%;" aria-valuenow="33"></div>
+            </div>
+            <div class="walkthrough-progress-label" id="walkthroughProgressLabel">Langkah 1 dari 3</div>
+          </div>
+          <div class="walkthrough-steps" id="walkthroughSteps">
+            <section class="walkthrough-step is-active" data-step="0">
+              <h6>1. Siapkan URL</h6>
+              <p>Tempel link YouTube atau tarik ke area converter. Pilih format favorit, aktifkan trim, normalisasi, atau ID3 sesuai kebutuhan.</p>
+              <ul>
+                <li>Gunakan tombol <strong>Contoh</strong> untuk mencoba cepat.</li>
+                <li>Antrian memproses banyak URL tanpa perlu menunggu satu per satu.</li>
+              </ul>
+              <div class="chip-group">
+                <span class="chip">Queue</span>
+                <span class="chip">Trim</span>
+                <span class="chip">ID3</span>
+              </div>
+            </section>
+            <section class="walkthrough-step" data-step="1">
+              <h6>2. Gunakan AI Studio</h6>
+              <p>Generator hook, prompt cover art, dan planner rilis membantu kamu meluncurkan audio dengan cepat.</p>
+              <ul>
+                <li>Buka tab <strong>AI Studio</strong> setelah metadata didapat.</li>
+                <li>Pilih bahasa output dan ketuk chip insight untuk menyalin.</li>
+              </ul>
+              <div class="chip-group">
+                <span class="chip">Hook</span>
+                <span class="chip">Cover</span>
+                <span class="chip">Planner</span>
+              </div>
+            </section>
+            <section class="walkthrough-step" data-step="2">
+              <h6>3. Mode offline & donasi</h6>
+              <p>Install sebagai aplikasi PWA untuk akses offline, lalu dukung server lewat kartu donasi neo-brutalisme.</p>
+              <ul>
+                <li>Klik ikon install di browser atau tombol prompt yang muncul.</li>
+                <li>Pilih nominal donasi; Saweria otomatis terbuka dengan angka yang sama.</li>
+              </ul>
+              <div class="chip-group">
+                <span class="chip">PWA</span>
+                <span class="chip">Offline</span>
+                <span class="chip">Saweria</span>
+              </div>
+            </section>
+          </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
+        <div class="walkthrough-footer">
+          <button type="button" class="btn btn-outline-secondary" id="walkthroughPrev" disabled>Langkah sebelumnya</button>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-link text-decoration-none px-0" data-bs-dismiss="modal">Lewati tur</button>
+            <button type="button" class="btn btn-primary" id="walkthroughNext">Langkah berikutnya</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1063,7 +1158,15 @@
   const donationButtons = $$('#donationButtons .btn-donation');
   const donationStatus = $('#donationStatus');
   const donationLink = $('#donationLink');
+  const donationLinkHint = $('#donationLinkHint');
   const faqItems = $$('#faqList details');
+  const tutorialModalEl = $('#tutorialModal');
+  const walkthroughSteps = tutorialModalEl ? Array.from(tutorialModalEl.querySelectorAll('.walkthrough-step')) : [];
+  const walkthroughPrev = $('#walkthroughPrev');
+  const walkthroughNext = $('#walkthroughNext');
+  const walkthroughProgressBar = $('#walkthroughProgressBar');
+  const walkthroughProgressLabel = $('#walkthroughProgressLabel');
+  const walkthroughTrigger = $('#walkthroughTrigger');
   const equalizerWrap = $('#equalizerWrap');
   const eqBass = $('#eqBass');
   const eqMid = $('#eqMid');
@@ -1203,23 +1306,58 @@
     });
   }
 
+  const donationBaseUrl = 'https://saweria.co/DhikaMarcella';
+  const defaultDonationAmount = 10000;
+  let activeDonationAmount = defaultDonationAmount;
+  let activeDonationUrl = `${donationBaseUrl}?amount=${defaultDonationAmount}`;
+
+  const applyDonationAmount = (amount) => {
+    const nominal = Number(amount) || defaultDonationAmount;
+    const label = rupiahFormatter.format(nominal);
+    activeDonationAmount = nominal;
+    activeDonationUrl = `${donationBaseUrl}?amount=${encodeURIComponent(nominal)}`;
+    if (donationButtons.length) {
+      donationButtons.forEach((btn) => {
+        const btnAmount = Number(btn.dataset.amount || 0);
+        const isSelected = btnAmount === nominal;
+        btn.classList.toggle('is-selected', isSelected);
+        btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        const btnLabel = rupiahFormatter.format(btnAmount || 0);
+        const chip = btn.querySelector('span');
+        const desc = chip ? chip.textContent.trim() : 'Donasi cepat';
+        btn.setAttribute('aria-label', `${btnLabel} · ${desc}`);
+      });
+    }
+    if (donationLink) {
+      donationLink.href = activeDonationUrl;
+      donationLink.dataset.amount = String(nominal);
+      donationLink.setAttribute('aria-label', `Buka Saweria nominal ${label}`);
+    }
+    if (donationLinkHint) donationLinkHint.textContent = `${label} siap diisi otomatis`;
+    return { nominal, label, url: activeDonationUrl };
+  };
+
   const openDonationWindow = (amount) => {
-    const nominal = Number(amount) || 0;
-    const label = rupiahFormatter.format(nominal || 0);
-    const targetUrl = `https://saweria.co/DhikaMarcella?amount=${encodeURIComponent(nominal || 0)}`;
+    const { label, url } = applyDonationAmount(amount);
     let popup = null;
     try {
-      popup = window.open(targetUrl, '_blank', 'noopener');
+      popup = window.open(url, '_blank', 'noopener');
+      popup?.focus?.();
     } catch (err) {
       console.error('Gagal membuka Saweria', err);
     }
     if (donationStatus) {
-      donationStatus.textContent = popup
+      donationStatus.innerHTML = popup
         ? `Terima kasih! ${label} siap dibayar di tab Saweria baru.`
-        : `Pop-up diblokir. Buka Saweria manual dan pilih ${label}.`;
+        : `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}.`;
     }
-    setToast(popup ? `Terima kasih! ${label} dipilih.` : `Aktifkan pop-up untuk melanjutkan donasi ${label}.`);
+    setToast(popup ? `Terima kasih! ${label} dipilih.` : `Aktifkan pop-up atau pakai tombol manual untuk donasi ${label}.`);
   };
+
+  const initialDonation = applyDonationAmount(defaultDonationAmount);
+  if (donationStatus) {
+    donationStatus.innerHTML = `Nominal ${initialDonation.label} siap dimasukkan otomatis ke Saweria.`;
+  }
 
   if (donationButtons.length) {
     donationButtons.forEach((btn) => {
@@ -1235,8 +1373,9 @@
 
   if (donationLink) {
     donationLink.addEventListener('click', () => {
-      if (donationStatus) donationStatus.textContent = 'Halaman Saweria dibuka di tab baru. Pilih nominal favoritmu di sana.';
-      setToast('Halaman Saweria dibuka.');
+      const label = rupiahFormatter.format(activeDonationAmount || defaultDonationAmount);
+      if (donationStatus) donationStatus.innerHTML = `Halaman Saweria dibuka di tab baru. Nominal ${label} sudah otomatis.`;
+      setToast(`Buka Saweria (${label}).`);
     });
   }
 
@@ -2024,6 +2163,80 @@ $('#queueList')?.addEventListener('click', (e) => {
       localStorage.setItem(welcomeKey,'1');
       card.remove();
     });
+  }
+
+  let walkthroughIndex = 0;
+
+  const updateWalkthroughStep = (idx = 0) => {
+    if (!walkthroughSteps.length) return;
+    const total = walkthroughSteps.length;
+    walkthroughIndex = Math.max(0, Math.min(idx, total - 1));
+    walkthroughSteps.forEach((step, stepIdx) => {
+      const isActive = stepIdx === walkthroughIndex;
+      step.classList.toggle('is-active', isActive);
+      step.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+    if (walkthroughProgressBar) {
+      const percent = Math.round(((walkthroughIndex + 1) / total) * 100);
+      walkthroughProgressBar.style.width = `${percent}%`;
+      walkthroughProgressBar.setAttribute('aria-valuenow', String(percent));
+    }
+    if (walkthroughProgressLabel) {
+      walkthroughProgressLabel.textContent = `Langkah ${walkthroughIndex + 1} dari ${total}`;
+    }
+    if (walkthroughPrev) walkthroughPrev.disabled = walkthroughIndex === 0;
+    if (walkthroughNext) walkthroughNext.textContent = walkthroughIndex === total - 1 ? 'Selesai tur' : 'Langkah berikutnya';
+  };
+
+  const showWalkthrough = (reset = true) => {
+    if (!tutorialModalEl) return;
+    if (reset) {
+      updateWalkthroughStep(0);
+    } else {
+      updateWalkthroughStep(walkthroughIndex);
+    }
+    bootstrap.Modal.getOrCreateInstance(tutorialModalEl).show();
+  };
+
+  const markWalkthroughComplete = () => localStorage.setItem(tutorialKey, '1');
+
+  if (walkthroughNext) {
+    walkthroughNext.addEventListener('click', () => {
+      if (!walkthroughSteps.length) return;
+      if (walkthroughIndex >= walkthroughSteps.length - 1) {
+        const modal = bootstrap.Modal.getOrCreateInstance(tutorialModalEl);
+        modal.hide();
+        markWalkthroughComplete();
+        setToast('Walkthrough selesai! Selamat mencoba.');
+      } else {
+        updateWalkthroughStep(walkthroughIndex + 1);
+      }
+    });
+  }
+
+  if (walkthroughPrev) {
+    walkthroughPrev.addEventListener('click', () => {
+      if (!walkthroughSteps.length) return;
+      updateWalkthroughStep(Math.max(0, walkthroughIndex - 1));
+    });
+  }
+
+  if (walkthroughTrigger) {
+    walkthroughTrigger.addEventListener('click', () => {
+      showWalkthrough(true);
+      setToast('Mulai tur interaktif.');
+    });
+  }
+
+  if (walkthroughSteps.length) {
+    updateWalkthroughStep(0);
+  }
+
+  if (tutorialModalEl) {
+    tutorialModalEl.addEventListener('show.bs.modal', () => {
+      updateWalkthroughStep(walkthroughIndex);
+    });
+    tutorialModalEl.addEventListener('hidden.bs.modal', () => markWalkthroughComplete(), { once: true });
   }
 
   // ===== History =====
@@ -3605,10 +3818,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     renderBackgroundJobs();
     loadStoredJobs();
     refreshBackgroundJobs();
-    if(!localStorage.getItem(tutorialKey)){
-      const m = new bootstrap.Modal($('#tutorialModal'));
-      m.show();
-      $('#tutorialModal').addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
+    if(!localStorage.getItem(tutorialKey) && tutorialModalEl){
+      showWalkthrough(true);
     }
   })();
   });
