@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" onload="this.onload=null;this.rel='stylesheet'">
   <noscript>
@@ -107,6 +107,76 @@
     .range-control .btn-range i { pointer-events: none; }
     @media (max-width: 576px) {
       .range-control .btn-range { width: 2.35rem; height: 2.35rem; font-size: 1rem; }
+    }
+    .exp-section { background: var(--bs-body-bg); border: 1px dashed color-mix(in srgb, var(--bs-border-color) 70%, transparent); border-radius: 1rem; padding: 1rem; height: 100%; display: flex; flex-direction: column; gap: .75rem; transition: border-color .3s ease, transform .3s ease; }
+    .exp-section:hover { transform: translateY(-2px); border-color: var(--bs-primary); }
+    .dynamic-avatar { display: flex; align-items: center; justify-content: center; border-radius: 1rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.22)); min-height: 120px; position: relative; overflow: hidden; }
+    .dynamic-avatar span { font-size: 3.5rem; filter: drop-shadow(0 6px 12px rgba(0,0,0,.2)); transition: transform .4s ease; }
+    .dynamic-avatar.level-up span { transform: scale(1.12) rotate(-2deg); }
+    .avatar-status { font-size: .85rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+    .reward-meter { width: 100%; height: .8rem; border-radius: 999px; background: color-mix(in srgb, var(--bs-secondary-bg) 70%, transparent); overflow: hidden; }
+    .reward-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(135deg, rgba(32,201,151,.85), rgba(111,66,193,.8)); transition: width .6s ease; }
+    #rewardBadges { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0; margin: 0; list-style: none; }
+    #rewardBadges li { padding: .35rem .6rem; border-radius: .75rem; background: color-mix(in srgb, var(--bs-primary) 12%, transparent); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+    .dashboard-controls { display: grid; gap: .6rem; }
+    .dashboard-controls .form-select,
+    .dashboard-controls .form-check-input { border-radius: .75rem; }
+    .music-card { display: flex; flex-direction: column; gap: .75rem; }
+    #bgMusicStatus { font-size: .85rem; }
+    .music-visual { position: relative; height: 100px; border-radius: 1rem; background: radial-gradient(circle at 30% 30%, rgba(13,110,253,.18), transparent 60%); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .music-bar { width: 6px; border-radius: 3px; background: var(--bs-primary); margin: 0 4px; height: 40px; animation: musicPulse 1s ease-in-out infinite; }
+    .music-bar:nth-child(2) { animation-delay: .2s; }
+    .music-bar:nth-child(3) { animation-delay: .4s; }
+    .music-bar:nth-child(4) { animation-delay: .6s; }
+    .music-bar:nth-child(5) { animation-delay: .8s; }
+    @keyframes musicPulse { 0%,100% { transform: scaleY(.3); opacity: .5; } 50% { transform: scaleY(1); opacity: 1; } }
+    .voice-panel { display: flex; flex-direction: column; gap: .6rem; }
+    .voice-panel button { border-radius: .75rem; }
+    #voiceStatus { font-size: .85rem; min-height: 1.4em; }
+    .narrator-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .narrator-actions button { border-radius: .75rem; }
+    #aiAssistantCard { position: relative; overflow: hidden; }
+    .assistant-messages { max-height: 260px; overflow: auto; padding: 1rem; border-radius: 1rem; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); display: flex; flex-direction: column; gap: .65rem; }
+    .assistant-bubble { padding: .6rem .75rem; border-radius: .85rem; max-width: 100%; line-height: 1.4; font-size: .85rem; }
+    .assistant-bubble.user { margin-left: auto; background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border: 1px solid color-mix(in srgb, var(--bs-primary) 40%, transparent); }
+    .assistant-bubble.bot { margin-right: auto; background: color-mix(in srgb, var(--bs-secondary-bg) 95%, transparent); border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
+    .assistant-input { display: flex; gap: .5rem; margin-top: 1rem; }
+    .assistant-input input { flex: 1 1 auto; border-radius: .75rem; }
+    .assistant-input button { border-radius: .75rem; }
+    .assistant-typing { font-size: .75rem; color: var(--bs-secondary); }
+    #runnerCanvas { width: 100%; height: 160px; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--bs-secondary-bg) 90%, transparent), color-mix(in srgb, var(--bs-secondary-bg) 90%, transparent) 24px, transparent 24px, transparent 48px); border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
+    .game-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .game-controls .btn { border-radius: .75rem; }
+    #gameStatus { font-size: .85rem; min-height: 1.4em; }
+    #konamiSecret { margin-top: 1rem; padding: .75rem; border-radius: .9rem; background: linear-gradient(135deg, rgba(255,193,7,.18), rgba(13,110,253,.18)); border: 1px dashed color-mix(in srgb, var(--bs-warning) 60%, transparent); display: none; }
+    #konamiSecret.show { display: block; }
+    #celebrationLayer { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 1100; opacity: 0; transition: opacity .3s ease; }
+    #celebrationLayer.active { opacity: 1; }
+    #celebrationLayer .confetti { position: absolute; width: 12px; height: 18px; border-radius: 2px; opacity: 0; animation: confettiFall 1.2s ease-out forwards; }
+    @keyframes confettiFall { 0% { transform: translate3d(var(--x,0), -10vh, 0) rotate(0deg); opacity: 1; } 100% { transform: translate3d(var(--xEnd,0), 100vh, 0) rotate(360deg); opacity: 0; } }
+    #customEndingOverlay { position: fixed; inset: 0; background: rgba(13,17,23,.86); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1200; opacity: 0; pointer-events: none; transition: opacity .4s ease; text-align: center; padding: 2rem; }
+    #customEndingOverlay.show { opacity: 1; pointer-events: auto; }
+    #customEndingOverlay .ending-card { max-width: 420px; border-radius: 1.2rem; padding: 1.5rem; background: rgba(32,201,151,.15); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 20px 35px rgba(0,0,0,.35); }
+    #mascotAssistant { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1050; display: flex; align-items: flex-end; gap: .5rem; }
+    #mascotAssistant[hidden] { display: none; }
+    .mascot-avatar { width: 58px; height: 58px; border-radius: 1.2rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(13,110,253,.8), rgba(111,66,193,.8)); color: #fff; font-size: 2rem; box-shadow: 0 12px 25px rgba(13,110,253,.35); animation: mascotBounce 3s ease-in-out infinite; }
+    .mascot-bubble { max-width: 220px; background: var(--bs-body-bg); border-radius: 1rem; padding: .75rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); font-size: .82rem; box-shadow: 0 10px 18px rgba(0,0,0,.12); }
+    @keyframes mascotBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    body.theme-neo { --exp-accent: #0d6efd; }
+    body.theme-aurora { --exp-accent: #6f42c1; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(111,66,193,.25), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(32,201,151,.2), transparent); }
+    body.theme-midnight { --exp-accent: #20c997; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(32,201,151,.3), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(13,110,253,.2), transparent); }
+    body.font-typewriter { font-family: 'Courier Prime', 'IBM Plex Mono', monospace; }
+    body.font-retro { font-family: 'Comfortaa', 'IBM Plex Mono', sans-serif; }
+    body.font-mono { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
+    body.layout-compact .card-body { padding: 1.5rem; }
+    body.layout-spacious .card-body { padding: 2.25rem; }
+    body.layout-spacious .row.g-3 { gap: 1.25rem; }
+    .reward-toast { position: fixed; left: 50%; bottom: 3rem; transform: translateX(-50%) translateY(120%); background: linear-gradient(135deg, rgba(111,66,193,.95), rgba(32,201,151,.95)); color: #fff; padding: .75rem 1.25rem; border-radius: 999px; box-shadow: 0 18px 35px rgba(0,0,0,.25); z-index: 1300; transition: transform .4s ease, opacity .4s ease; opacity: 0; font-size: .85rem; letter-spacing: .04em; }
+    .reward-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    @media (max-width: 768px) {
+      #mascotAssistant { right: .75rem; left: .75rem; bottom: 1rem; justify-content: space-between; }
+      .mascot-bubble { max-width: 70%; }
+      .exp-section { padding: .85rem; }
     }
     .ai-studio-actions { gap: .5rem; }
     .ai-studio-actions .btn { flex: 1 1 180px; min-width: 0; border-radius: .85rem; }
@@ -419,9 +489,180 @@
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" id="showLog" checked>
                   <label class="form-check-label" for="showLog">Tampilkan log proses</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-4" id="experienceHub">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-stars text-info fs-5"></i>
+          <h5 class="mb-0">Experience Hub</h5>
+        </div>
+        <p class="small text-secondary mb-4">Atur avatar, tema, dan musik supaya sesi konversi terasa lebih personal.</p>
+        <div class="row g-3 align-items-stretch">
+          <div class="col-lg-6">
+            <section class="exp-section" aria-labelledby="avatarTitle">
+              <div class="d-flex align-items-center justify-content-between">
+                <h6 id="avatarTitle" class="title-mono text-secondary mb-0">Dynamic Avatar</h6>
+                <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1</span>
+              </div>
+              <div class="dynamic-avatar" id="dynamicAvatar" role="img" aria-live="polite">
+                <span id="avatarEmoji">🎧</span>
+              </div>
+              <div class="avatar-status">
+                <span id="avatarMood">Pendatang baru yang penasaran.</span>
+                <span class="fw-semibold" id="rewardPointsLabel">0 XP</span>
+              </div>
+              <div class="reward-meter" aria-hidden="true">
+                <span id="avatarProgressBar"></span>
+              </div>
+              <div class="small text-secondary">Interaksi seperti donasi, main game, dan eksplorasi fitur bakal menaikkan level.</div>
+              <ul id="rewardBadges" aria-live="polite">
+                <li data-badge="welcome">Welcome</li>
+              </ul>
+            </section>
+          </div>
+          <div class="col-lg-6">
+            <section class="exp-section" aria-labelledby="dashboardTitle">
+              <div class="d-flex align-items-center justify-content-between">
+                <h6 id="dashboardTitle" class="title-mono text-secondary mb-0">Customizable Dashboard</h6>
+                <span class="badge rounded-pill text-bg-info">Live</span>
+              </div>
+              <p class="small text-secondary mb-0">Pilih tema, font, dan layout favoritmu. Preferensi tersimpan otomatis di perangkat ini.</p>
+              <div class="dashboard-controls mt-3">
+                <div>
+                  <label for="themeSelect" class="form-label small text-uppercase">Tema</label>
+                  <select id="themeSelect" class="form-select form-select-sm">
+                    <option value="neo">Neo</option>
+                    <option value="aurora">Aurora</option>
+                    <option value="midnight">Midnight</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="fontSelect" class="form-label small text-uppercase">Font</label>
+                  <select id="fontSelect" class="form-select form-select-sm">
+                    <option value="typewriter">Typewriter</option>
+                    <option value="retro">Retro Rounded</option>
+                    <option value="mono">Monospasi</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="layoutSelect" class="form-label small text-uppercase">Layout</label>
+                  <select id="layoutSelect" class="form-select form-select-sm">
+                    <option value="cozy">Cozy</option>
+                    <option value="compact">Compact</option>
+                    <option value="spacious">Spacious</option>
+                  </select>
+                </div>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" id="narratorToggle">
+                  <label class="form-check-label" for="narratorToggle">Aktifkan narrator mode otomatis</label>
                 </div>
               </div>
-            </div>
+            </section>
+          </div>
+        </div>
+        <hr class="my-4">
+        <div class="row g-3 align-items-stretch">
+          <div class="col-lg-6">
+            <section class="exp-section music-card" aria-labelledby="musicTitle">
+              <div class="d-flex align-items-center justify-content-between">
+                <h6 id="musicTitle" class="title-mono text-secondary mb-0">Adaptive Background Music</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="musicToggleBtn">
+                  <i class="bi bi-play-fill me-1"></i>Play
+                </button>
+              </div>
+              <div class="music-visual" aria-hidden="true">
+                <div class="music-bar"></div>
+                <div class="music-bar"></div>
+                <div class="music-bar"></div>
+                <div class="music-bar"></div>
+                <div class="music-bar"></div>
+              </div>
+              <div class="small text-secondary">Musik mengikuti waktu dan mood. Kamu bisa ambil alih kapan saja.</div>
+              <div class="dashboard-controls">
+                <div>
+                  <label for="moodSelect" class="form-label small text-uppercase">Mood</label>
+                  <select id="moodSelect" class="form-select form-select-sm">
+                    <option value="auto">Auto (siang/malam)</option>
+                    <option value="energetic">Energetic</option>
+                    <option value="focus">Focus</option>
+                    <option value="chill">Chill</option>
+                  </select>
+                </div>
+                <div id="bgMusicStatus" class="fw-semibold text-primary">Auto mood siap dimainkan.</div>
+              </div>
+              <div class="narrator-actions">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="musicNextBtn"><i class="bi bi-skip-end"></i> Mood berikutnya</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="musicStopBtn"><i class="bi bi-stop"></i> Stop</button>
+              </div>
+              <div class="small text-secondary" id="bgMusicNow">Belum diputar.</div>
+            </section>
+          </div>
+          <div class="col-lg-6">
+            <section class="exp-section voice-panel" aria-labelledby="voiceTitle">
+              <div class="d-flex align-items-center justify-content-between">
+                <h6 id="voiceTitle" class="title-mono text-secondary mb-0">Voice &amp; Narrator</h6>
+                <button type="button" class="btn btn-sm btn-outline-success" id="voiceCommandBtn">
+                  <i class="bi bi-mic-fill me-1"></i>Mulai
+                </button>
+              </div>
+              <div id="voiceStatus" class="text-secondary small">Perintah suara siap digunakan.</div>
+              <div class="narrator-actions">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="readSelectionBtn"><i class="bi bi-megaphone"></i> Baca pilihan</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="readGuideBtn"><i class="bi bi-journal-text"></i> Baca ringkasan UI</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="stopNarratorBtn"><i class="bi bi-volume-mute"></i> Hentikan</button>
+              </div>
+              <div class="small text-secondary">Ucapkan “buka donasi”, “mainkan game”, atau “aktifkan narrator” untuk navigasi cepat.</div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-4" id="aiAssistantCard">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-robot text-primary fs-5"></i>
+          <h5 class="mb-0">AI Navigator</h5>
+        </div>
+        <p class="small text-secondary mb-3">Chatbot mini ini siap bantu cari fitur, jawab FAQ, atau kasih rekomendasi langkah selanjutnya.</p>
+        <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
+        <div class="assistant-typing" id="assistantTyping" hidden>AI Studio companion mengetik…</div>
+        <div class="assistant-input">
+          <input type="text" id="assistantInput" class="form-control" placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
+          <button type="button" class="btn btn-primary" id="assistantSendBtn"><i class="bi bi-send-fill"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-4" id="gameCard">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-joystick text-warning fs-5"></i>
+          <h5 class="mb-0">Neo Runner Mini-game</h5>
+        </div>
+        <p class="small text-secondary mb-3">Tekan <kbd>Space</kbd> atau tap tombol lompat untuk menghindari glitch. Mode rahasia terbuka dengan kode <span class="fw-semibold">↑↑↓↓←→←→BA</span>.</p>
+        <canvas id="runnerCanvas" width="480" height="160" role="img" aria-label="Mini game pelari digital"></canvas>
+        <div class="game-controls">
+          <div>
+            <span class="fw-semibold me-2">Skor:</span>
+            <span id="runnerScore" class="fw-semibold">0</span>
+            <span class="text-secondary ms-3 small">High: <span id="runnerHighScore">0</span></span>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="runnerStartBtn"><i class="bi bi-play-circle"></i> Mulai</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="runnerJumpBtn"><i class="bi bi-arrow-up"></i> Lompat</button>
+          </div>
+        </div>
+        <div id="gameStatus" class="text-secondary small mt-2">Siap berlari! Konami code membuka kejutan.</div>
+        <div id="konamiSecret" aria-live="polite">
+          <strong>Konami unlocked!</strong>
+          <p class="mb-0 small">Avatar kamu mendapat aura khusus dan poin bonus.</p>
+        </div>
+      </div>
+    </div>
 
             <div class="row g-3 mb-3">
               <div class="col-sm-6">
@@ -898,6 +1139,11 @@
               </button>
             </div>
             <div id="donationStatus" class="donation-status">Nominal default Rp10.000 siap dimasukkan otomatis ke Saweria.</div>
+            <div class="text-center mt-2">
+              <button type="button" class="btn btn-sm btn-outline-warning" id="manualDonationBtn">
+                <i class="bi bi-arrow-up-right-circle me-1"></i>Manual Rp5.000
+              </button>
+            </div>
             <div class="text-center mt-3">
               <a class="btn btn-outline-primary px-4 donation-link" id="donationLink" href="https://saweria.co/DhikaMarcella?amount=10000" target="_blank" rel="noopener">
                 <span class="title-mono d-block">Buka Saweria</span>
@@ -1133,6 +1379,20 @@
     </div>
   </div>
 
+  <div id="celebrationLayer" aria-hidden="true"></div>
+  <div id="customEndingOverlay" aria-hidden="true">
+    <div class="ending-card">
+      <h4 class="mb-2">Terima kasih sudah mampir!</h4>
+      <p class="mb-3">Simpan situs ini sebagai aplikasi supaya musik, AI, dan konversi siap kapan saja.</p>
+      <button type="button" class="btn btn-light" id="endingStayBtn"><i class="bi bi-heart-fill me-1"></i> Tutup animasi</button>
+    </div>
+  </div>
+  <div id="mascotAssistant" hidden>
+    <div class="mascot-bubble" id="mascotMessage">Halo! Aku Echo siap bantu.</div>
+    <div class="mascot-avatar" role="img" aria-label="Maskot AI Echo">🤖</div>
+  </div>
+  <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
   <script>
@@ -1228,6 +1488,46 @@
   const backgroundList = $('#backgroundList');
   const backgroundEmpty = $('#backgroundEmpty');
   const urlDropOverlay = $('#urlDropOverlay');
+  const celebrationLayer = $('#celebrationLayer');
+  const customEndingOverlay = $('#customEndingOverlay');
+  const endingStayBtn = $('#endingStayBtn');
+  const mascotAssistant = $('#mascotAssistant');
+  const mascotMessage = $('#mascotMessage');
+  const rewardToast = $('#rewardToast');
+  const donationManualBtn = $('#manualDonationBtn');
+  const dynamicAvatar = $('#dynamicAvatar');
+  const avatarEmoji = $('#avatarEmoji');
+  const avatarLevelBadge = $('#avatarLevelBadge');
+  const avatarMood = $('#avatarMood');
+  const avatarProgressBar = $('#avatarProgressBar');
+  const rewardPointsLabel = $('#rewardPointsLabel');
+  const rewardBadges = $('#rewardBadges');
+  const themeSelect = $('#themeSelect');
+  const fontSelect = $('#fontSelect');
+  const layoutSelect = $('#layoutSelect');
+  const narratorToggle = $('#narratorToggle');
+  const musicToggleBtn = $('#musicToggleBtn');
+  const musicNextBtn = $('#musicNextBtn');
+  const musicStopBtn = $('#musicStopBtn');
+  const moodSelect = $('#moodSelect');
+  const bgMusicStatus = $('#bgMusicStatus');
+  const bgMusicNow = $('#bgMusicNow');
+  const voiceCommandBtn = $('#voiceCommandBtn');
+  const voiceStatus = $('#voiceStatus');
+  const readSelectionBtn = $('#readSelectionBtn');
+  const readGuideBtn = $('#readGuideBtn');
+  const stopNarratorBtn = $('#stopNarratorBtn');
+  const assistantMessages = $('#assistantMessages');
+  const assistantInput = $('#assistantInput');
+  const assistantSendBtn = $('#assistantSendBtn');
+  const assistantTyping = $('#assistantTyping');
+  const runnerCanvas = $('#runnerCanvas');
+  const runnerStartBtn = $('#runnerStartBtn');
+  const runnerJumpBtn = $('#runnerJumpBtn');
+  const runnerScoreLabel = $('#runnerScore');
+  const runnerHighScoreLabel = $('#runnerHighScore');
+  const gameStatus = $('#gameStatus');
+  const konamiSecret = $('#konamiSecret');
   const miniPlayerEl = $('#miniPlayer');
   const miniPlayBtn = $('#miniPlayBtn');
   const miniPlayIcon = miniPlayBtn ? miniPlayBtn.querySelector('i') : null;
@@ -1338,7 +1638,7 @@
   };
 
   const openDonationWindow = (amount) => {
-    const { label, url } = applyDonationAmount(amount);
+    const { nominal, label, url } = applyDonationAmount(amount);
     let popup = null;
     try {
       popup = window.open(url, '_blank', 'noopener');
@@ -1349,8 +1649,9 @@
     if (donationStatus) {
       donationStatus.innerHTML = popup
         ? `Terima kasih! ${label} siap dibayar di tab Saweria baru.`
-        : `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}.`;
+        : `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau pakai tombol manual untuk donasi Rp 5.000.`;
     }
+    triggerDonationCelebration(nominal, !!popup);
     setToast(popup ? `Terima kasih! ${label} dipilih.` : `Aktifkan pop-up atau pakai tombol manual untuk donasi ${label}.`);
   };
 
@@ -1379,6 +1680,27 @@
     });
   }
 
+  if (donationManualBtn) {
+    donationManualBtn.addEventListener('click', () => {
+      const manualAmount = 5000;
+      const manualUrl = `${donationBaseUrl}?amount=${manualAmount}`;
+      let popup = null;
+      try {
+        popup = window.open(manualUrl, '_blank', 'noopener');
+        popup?.focus?.();
+      } catch (err) {
+        console.error('Gagal membuka manual Saweria', err);
+      }
+      if (donationStatus) {
+        donationStatus.innerHTML = popup
+          ? 'Tombol manual Rp5.000 sudah terbuka di tab baru.'
+          : 'Pop-up masih diblokir. Tekan dan tahan tombol manual lalu pilih “buka tautan” untuk lanjut.';
+      }
+      triggerDonationCelebration(manualAmount, !!popup);
+      setToast('Buka Saweria manual Rp5.000.');
+    });
+  }
+
   if (faqItems.length) {
     faqItems.forEach((faq) => {
       faq.addEventListener('toggle', () => {
@@ -1390,6 +1712,141 @@
     });
   }
 
+  if (themeSelect) {
+    themeSelect.addEventListener('change', () => {
+      const newTheme = themeSelect.value || 'neo';
+      if (state.experience.theme !== newTheme) {
+        state.experience.theme = newTheme;
+        applyTheme();
+        persistState();
+        incrementPoints(12, 'Ganti tema', { badge: 'stylist' });
+      }
+    });
+  }
+
+  if (fontSelect) {
+    fontSelect.addEventListener('change', () => {
+      const value = fontSelect.value || 'typewriter';
+      if (state.experience.font !== value) {
+        state.experience.font = value;
+        applyFont();
+        persistState();
+        incrementPoints(10, 'Ganti font', { badge: 'stylist' });
+      }
+    });
+  }
+
+  if (layoutSelect) {
+    layoutSelect.addEventListener('change', () => {
+      const value = layoutSelect.value || 'cozy';
+      if (state.experience.layout !== value) {
+        state.experience.layout = value;
+        applyLayout();
+        persistState();
+        incrementPoints(8, 'Atur layout', { badge: 'stylist' });
+      }
+    });
+  }
+
+  if (moodSelect) {
+    moodSelect.addEventListener('change', () => {
+      state.experience.mood = moodSelect.value || 'auto';
+      persistState();
+      startBackgroundMusic(state.experience.mood);
+    });
+  }
+
+  if (musicToggleBtn) {
+    musicToggleBtn.addEventListener('click', () => {
+      if (musicPlaying) {
+        stopBackgroundMusic();
+      } else {
+        startBackgroundMusic(state.experience.mood || 'auto');
+      }
+    });
+  }
+
+  musicNextBtn?.addEventListener('click', rotateMood);
+  musicStopBtn?.addEventListener('click', () => stopBackgroundMusic());
+
+  if (narratorToggle) {
+    narratorToggle.addEventListener('change', () => {
+      state.experience.narratorAuto = !!narratorToggle.checked;
+      persistState();
+      if (narratorToggle.checked) narrateGuide();
+    });
+  }
+
+  readSelectionBtn?.addEventListener('click', () => {
+    const selection = window.getSelection()?.toString();
+    if (speak(selection)) incrementPoints(6, 'Narrator pilihan', { badge: 'narrator' });
+  });
+  readGuideBtn?.addEventListener('click', narrateGuide);
+  stopNarratorBtn?.addEventListener('click', stopNarrator);
+
+  if (voiceCommandBtn) {
+    const recognitionInstance = ensureRecognition();
+    if (!recognitionInstance) {
+      voiceCommandBtn.disabled = true;
+      if (voiceStatus) voiceStatus.textContent = 'Browser belum mendukung voice recognition.';
+    } else {
+      voiceCommandBtn.addEventListener('click', () => {
+        if (voiceActive) {
+          recognitionInstance.stop();
+          voiceActive = false;
+          if (voiceStatus) voiceStatus.textContent = 'Perintah suara dihentikan.';
+        } else {
+          recognitionInstance.start();
+          voiceActive = true;
+          if (voiceStatus) voiceStatus.textContent = 'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.';
+        }
+      });
+    }
+  }
+
+  assistantSendBtn?.addEventListener('click', sendAssistantMessage);
+  assistantInput?.addEventListener('keydown', (evt) => {
+    if (evt.key === 'Enter' && !evt.shiftKey) {
+      evt.preventDefault();
+      sendAssistantMessage();
+    }
+  });
+
+  runnerStartBtn?.addEventListener('click', startRunner);
+  runnerJumpBtn?.addEventListener('click', () => {
+    if (!runnerState.running) {
+      startRunner();
+      return;
+    }
+    jumpRunner();
+    incrementPoints(2, 'Lompatan mini game');
+  });
+  runnerCanvas?.addEventListener('pointerdown', () => {
+    if (!runnerState.running) {
+      startRunner();
+    } else {
+      jumpRunner();
+    }
+  });
+
+  document.addEventListener('keydown', (evt) => {
+    konamiTracker(evt.key);
+    if (evt.code === 'Space' && !(evt.target instanceof HTMLInputElement) && !(evt.target instanceof HTMLTextAreaElement)) {
+      evt.preventDefault();
+      jumpRunner();
+    }
+  });
+
+  endingStayBtn?.addEventListener('click', hideCustomEnding);
+  document.addEventListener('mouseleave', (evt) => {
+    if (evt.clientY <= 0) showCustomEnding();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') showCustomEnding();
+  });
+
+  document.addEventListener('pointerdown', () => ensureAudioContext(), { once: true });
+
   const storage = {
     get k(){ return 'ytmp3.settings.v1'; },
     load(){ try { return JSON.parse(localStorage.getItem(this.k)) || {}; } catch { return {}; } },
@@ -1397,18 +1854,741 @@
   };
 
   const defaultAccessibility = { highContrast: false, largeText: false, reduceMotion: false };
+  const defaultExperience = {
+    theme: 'neo',
+    font: 'typewriter',
+    layout: 'cozy',
+    mood: 'auto',
+    narratorAuto: false,
+    points: 0,
+    level: 1,
+    progress: 0,
+    badges: ['welcome'],
+    highScore: 0
+  };
 
   const state = {
     backendUrl: '',
     adminBearer: '',
-    accessibility: { ...defaultAccessibility }
+    accessibility: { ...defaultAccessibility },
+    experience: { ...defaultExperience },
+    narratorEnabled: false,
+    assistantHistory: [],
+    avatarAura: ''
+  };
+
+  const badgeLabels = {
+    welcome: 'Welcome',
+    donor: 'Donor Pro',
+    gamer: 'Game Runner',
+    voice: 'Voice Navigator',
+    narrator: 'Storyteller',
+    stylist: 'UI Stylist',
+    konami: 'Konami Master',
+    ai: 'AI Buddy'
+  };
+
+  const avatarLevels = [
+    { threshold: 0, emoji: '🎧', title: 'Rookie', mood: 'Pendatang baru yang penasaran.' },
+    { threshold: 120, emoji: '🎶', title: 'Explorer', mood: 'Explorer audio dengan telinga tajam.' },
+    { threshold: 260, emoji: '🪩', title: 'Mixer', mood: 'Mixer retro yang lihai menyusun playlist.' },
+    { threshold: 450, emoji: '🚀', title: 'Legend', mood: 'Legenda streaming. Semua fitur sudah kamu kuasai.' },
+    { threshold: 700, emoji: '🌌', title: 'Cosmic', mood: 'Kurator kosmik. Maskot kami takjub setiap kamu muncul.', aura: 'glow' }
+  ];
+
+  const mascotPhrases = {
+    default: [
+      'Halo! Aku Echo siap nemenin sesi convert kamu. 👋',
+      'Butuh tips? Ketik di AI Navigator ya!',
+      'Coba main Neo Runner sebentar biar otak segar. 🏃‍♂️'
+    ],
+    xp: [
+      'XP kamu naik! Avatar makin semangat nih.',
+      'Mantap! Level avatar semakin tinggi. 🎉'
+    ],
+    badge: [
+      'Badge baru unlocked! Simpan momen kerennya.',
+      'Badge fresh! Aku catat di papan kehormatan. 🏅'
+    ],
+    donation: [
+      'Terima kasih sudah dukung server kami! 💖',
+      'Donasimu bikin converter makin ngebut. 🔥'
+    ],
+    game: [
+      'Neo Runner bikin refleksmu makin lincah!',
+      'Skor baru! Jangan lupa klaim badge gamer. 🕹️'
+    ],
+    ai: [
+      'AI Navigator selalu siap bantu kok.',
+      'Pertanyaanmu keren! AI sudah jawab ya. 🤖'
+    ],
+    voice: [
+      'Perintah suara diterima. Lanjutkan!',
+      'Voice navigation aktif, captain! 🎙️'
+    ]
+  };
+
+  let rewardToastTimer = null;
+  let mascotTimer = null;
+  let celebrationTimer = null;
+  let audioCtx = null;
+  let donationGain = null;
+  let bgGain = null;
+  let bgOscillators = [];
+  let musicPlaying = false;
+  let currentMood = 'auto';
+  let recognition = null;
+  let voiceActive = false;
+  let runnerFrame = null;
+  const runnerState = {
+    ctx: runnerCanvas ? runnerCanvas.getContext('2d') : null,
+    running: false,
+    playerY: 0,
+    playerVy: 0,
+    gravity: 0.65,
+    ground: runnerCanvas ? runnerCanvas.height - 24 : 120,
+    obstacleX: runnerCanvas ? runnerCanvas.width : 400,
+    obstacleWidth: 22,
+    obstacleGap: 220,
+    speed: 4.2,
+    score: 0,
+    highScore: 0
+  };
+
+  const ensureAudioContext = () => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!audioCtx) {
+      audioCtx = new AudioCtx();
+      donationGain = audioCtx.createGain();
+      donationGain.gain.value = 0.0001;
+      donationGain.connect(audioCtx.destination);
+      bgGain = audioCtx.createGain();
+      bgGain.gain.value = 0.0001;
+      bgGain.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return audioCtx;
+  };
+
+  const showRewardToast = (text) => {
+    if (!rewardToast || !text) return;
+    rewardToast.textContent = text;
+    rewardToast.classList.add('show');
+    clearTimeout(rewardToastTimer);
+    rewardToastTimer = window.setTimeout(() => rewardToast.classList.remove('show'), 2600);
+  };
+
+  const formatBadgeLabel = (id) => badgeLabels[id] || id;
+
+  const renderBadges = () => {
+    if (!rewardBadges) return;
+    rewardBadges.innerHTML = '';
+    (state.experience.badges || []).forEach((badge) => {
+      const li = document.createElement('li');
+      li.dataset.badge = badge;
+      li.textContent = formatBadgeLabel(badge);
+      rewardBadges.appendChild(li);
+    });
+  };
+
+  const getLevelInfo = (points) => {
+    let active = avatarLevels[0];
+    for (const level of avatarLevels) {
+      if (points >= level.threshold) active = level;
+    }
+    return active;
+  };
+
+  const updateAvatarUi = () => {
+    const points = Number(state.experience.points) || 0;
+    const levelInfo = getLevelInfo(points);
+    const nextLevel = avatarLevels.find((lvl) => lvl.threshold > points);
+    if (avatarEmoji) avatarEmoji.textContent = levelInfo.emoji;
+    if (avatarLevelBadge) {
+      const levelIndex = avatarLevels.indexOf(levelInfo) + 1;
+      avatarLevelBadge.textContent = `Lv.${levelIndex} ${levelInfo.title}`;
+    }
+    if (avatarMood) {
+      avatarMood.textContent = levelInfo.mood;
+    }
+    if (rewardPointsLabel) rewardPointsLabel.textContent = `${points} XP`;
+    if (avatarProgressBar) {
+      let progress = 100;
+      if (nextLevel) {
+        const span = nextLevel.threshold - levelInfo.threshold || 1;
+        progress = Math.min(100, Math.round(((points - levelInfo.threshold) / span) * 100));
+      }
+      avatarProgressBar.style.width = `${progress}%`;
+    }
+    if (state.avatarAura === 'konami' && dynamicAvatar) {
+      dynamicAvatar.classList.add('level-up');
+    } else if (dynamicAvatar) {
+      dynamicAvatar.classList.remove('level-up');
+    }
+    renderBadges();
+  };
+
+  const awardBadge = (id) => {
+    if (!id) return;
+    state.experience.badges = Array.from(new Set([...(state.experience.badges || []), id]));
+    renderBadges();
+    showRewardToast(`Badge baru: ${formatBadgeLabel(id)}`);
+    updateMascotMood('badge');
+    persistState();
+  };
+
+  const incrementPoints = (amount = 0, reason = '', opts = {}) => {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const prev = Number(state.experience.points) || 0;
+    state.experience.points = Math.min(9999, Math.round(prev + amount));
+    if (typeof opts.highScore === 'number') {
+      state.experience.highScore = Math.max(Number(state.experience.highScore) || 0, opts.highScore);
+    }
+    updateAvatarUi();
+    persistState();
+    showRewardToast(`+${amount} XP${reason ? ` · ${reason}` : ''}`);
+    updateMascotMood('xp');
+    if (opts.badge) awardBadge(opts.badge);
+  };
+
+  const pickPhrase = (topic) => {
+    const pool = mascotPhrases[topic] || mascotPhrases.default;
+    return pool[Math.floor(Math.random() * pool.length)] || '';
+  };
+
+  const updateMascotMood = (topic = 'default') => {
+    if (!mascotAssistant || !mascotMessage) return;
+    mascotAssistant.hidden = false;
+    mascotMessage.textContent = pickPhrase(topic);
+    clearTimeout(mascotTimer);
+    mascotTimer = window.setTimeout(() => updateMascotMood('default'), 14000);
+  };
+
+  const showConfetti = (count = 28, highlight = false) => {
+    if (!celebrationLayer) return;
+    celebrationLayer.innerHTML = '';
+    celebrationLayer.classList.add('active');
+    const colors = highlight
+      ? ['#ffd700', '#ff6b6b', '#51cf66', '#845ef7']
+      : ['#0d6efd', '#6f42c1', '#20c997', '#f8d94e'];
+    for (let i = 0; i < count; i += 1) {
+      const piece = document.createElement('span');
+      piece.className = 'confetti';
+      const color = colors[i % colors.length];
+      piece.style.background = color;
+      const offset = (Math.random() * 200) - 100;
+      const offsetEnd = offset + ((Math.random() * 80) - 40);
+      piece.style.left = `${Math.random() * 100}%`;
+      piece.style.setProperty('--x', `${offset}vw`);
+      piece.style.setProperty('--xEnd', `${offsetEnd}vw`);
+      piece.style.animationDelay = `${Math.random() * 0.4}s`;
+      celebrationLayer.appendChild(piece);
+    }
+    clearTimeout(celebrationTimer);
+    celebrationTimer = window.setTimeout(() => {
+      celebrationLayer.classList.remove('active');
+      celebrationLayer.innerHTML = '';
+    }, 1600);
+  };
+
+  const playDonationTone = (amount) => {
+    const ctx = ensureAudioContext();
+    if (!ctx || !donationGain) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = amount >= 100000 ? 'sawtooth' : 'triangle';
+    const baseFreq = amount >= 100000 ? 880 : 523.25;
+    osc.frequency.value = baseFreq;
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(donationGain);
+    donationGain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    donationGain.gain.cancelScheduledValues(now);
+    donationGain.gain.setValueAtTime(0.0001, now);
+    donationGain.gain.exponentialRampToValueAtTime(0.35, now + 0.05);
+    donationGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+    osc.start(now);
+    osc.stop(now + 0.6);
+  };
+
+  const triggerDonationCelebration = (amount, opened = true) => {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const highlight = amount >= 100000;
+    showConfetti(highlight ? 60 : 30, highlight);
+    playDonationTone(amount);
+    if (navigator.vibrate) {
+      navigator.vibrate(highlight ? [80, 30, 90, 30, 140] : [45, 20, 45]);
+    }
+    const label = rupiahFormatter.format(amount);
+    incrementPoints(Math.max(10, Math.min(120, Math.round(amount / 1500))), `Donasi ${label}`, { badge: 'donor' });
+    updateMascotMood('donation');
+    if (!opened && donationStatus) {
+      donationStatus.innerHTML = `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau pakai tombol manual untuk donasi Rp 5.000.`;
+    }
+  };
+
+  const applyTheme = () => {
+    if (!document.body) return;
+    const theme = state.experience.theme || 'neo';
+    document.body.classList.remove('theme-neo', 'theme-aurora', 'theme-midnight');
+    document.body.classList.add(`theme-${theme}`);
+  };
+
+  const applyFont = () => {
+    if (!document.body) return;
+    const font = state.experience.font || 'typewriter';
+    document.body.classList.remove('font-typewriter', 'font-retro', 'font-mono');
+    document.body.classList.add(`font-${font}`);
+  };
+
+  const applyLayout = () => {
+    if (!document.body) return;
+    const layout = state.experience.layout || 'cozy';
+    document.body.classList.remove('layout-compact', 'layout-spacious');
+    if (layout === 'compact') document.body.classList.add('layout-compact');
+    if (layout === 'spacious') document.body.classList.add('layout-spacious');
+  };
+
+  const applyDashboardExperience = () => {
+    applyTheme();
+    applyFont();
+    applyLayout();
+    if (themeSelect) themeSelect.value = state.experience.theme || 'neo';
+    if (fontSelect) fontSelect.value = state.experience.font || 'typewriter';
+    if (layoutSelect) layoutSelect.value = state.experience.layout || 'cozy';
+    if (moodSelect) moodSelect.value = state.experience.mood || 'auto';
+    if (narratorToggle) narratorToggle.checked = !!state.experience.narratorAuto;
+  };
+
+  const determineAutoMood = () => {
+    const hour = new Date().getHours();
+    if (hour >= 6 && hour < 12) return 'energetic';
+    if (hour >= 12 && hour < 18) return 'focus';
+    return 'chill';
+  };
+
+  const moodLabels = {
+    energetic: 'Energetic',
+    focus: 'Focus',
+    chill: 'Chill'
+  };
+
+  const updateMusicStatus = (resolvedMood, description) => {
+    const label = moodLabels[resolvedMood] || resolvedMood;
+    if (bgMusicStatus) {
+      bgMusicStatus.textContent = musicPlaying
+        ? `Mood ${label || 'auto'} diputar${description ? ` · ${description}` : ''}.`
+        : 'Musik latar dimatikan.';
+    }
+    if (bgMusicNow) {
+      bgMusicNow.textContent = musicPlaying
+        ? `Sedang bermain: ${label || 'Auto'}${description ? ` · ${description}` : ''}`
+        : 'Belum diputar.';
+    }
+    if (musicToggleBtn) {
+      musicToggleBtn.innerHTML = musicPlaying
+        ? '<i class="bi bi-pause-fill me-1"></i>Pause'
+        : '<i class="bi bi-play-fill me-1"></i>Play';
+    }
+  };
+
+  const stopBackgroundMusic = (silent = false) => {
+    if (!bgOscillators.length || !audioCtx || !bgGain) {
+      musicPlaying = false;
+      updateMusicStatus(state.experience.mood || 'auto');
+      return;
+    }
+    const now = audioCtx.currentTime;
+    bgGain.gain.cancelScheduledValues(now);
+    bgGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+    bgOscillators.forEach(({ osc, gain }) => {
+      try {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        osc.stop(now + 0.5);
+      } catch {}
+    });
+    bgOscillators = [];
+    musicPlaying = false;
+    if (!silent) updateMusicStatus(state.experience.mood || 'auto');
+  };
+
+  const startBackgroundMusic = (mood) => {
+    const ctx = ensureAudioContext();
+    if (!ctx || !bgGain) {
+      setToast('Browser tidak mendukung audio latar.');
+      return;
+    }
+    stopBackgroundMusic(true);
+    currentMood = mood || state.experience.mood || 'auto';
+    const resolvedMood = currentMood === 'auto' ? determineAutoMood() : currentMood;
+    const presets = {
+      energetic: { freqs: [392, 523, 784], type: 'sawtooth', desc: 'Synthwave booster' },
+      focus: { freqs: [220, 330], type: 'triangle', desc: 'Focus hum' },
+      chill: { freqs: [196, 293], type: 'sine', desc: 'Chill pad' }
+    };
+    const preset = presets[resolvedMood] || presets.chill;
+    const now = ctx.currentTime;
+    bgOscillators = preset.freqs.map((freq, index) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = preset.type;
+      osc.frequency.value = freq;
+      gain.gain.value = 0;
+      osc.connect(gain);
+      gain.connect(bgGain);
+      const startAt = now + (index * 0.12);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(0.08, startAt + 0.8);
+      osc.start(startAt);
+      return { osc, gain };
+    });
+    bgGain.gain.cancelScheduledValues(now);
+    bgGain.gain.setValueAtTime(0.0001, now);
+    bgGain.gain.exponentialRampToValueAtTime(0.28, now + 0.9);
+    musicPlaying = true;
+    state.experience.mood = currentMood;
+    updateMusicStatus(resolvedMood, preset.desc);
+    persistState();
+  };
+
+  const rotateMood = () => {
+    const order = ['auto', 'energetic', 'focus', 'chill'];
+    const idx = order.indexOf(state.experience.mood || 'auto');
+    const nextMood = order[(idx + 1) % order.length];
+    if (moodSelect) moodSelect.value = nextMood;
+    state.experience.mood = nextMood;
+    persistState();
+    startBackgroundMusic(nextMood);
+  };
+
+  const speak = (text) => {
+    const synth = window.speechSynthesis;
+    const clean = String(text || '').trim();
+    if (!synth) {
+      setToast('Browser belum mendukung text-to-speech.');
+      return false;
+    }
+    if (!clean) {
+      setToast('Tidak ada teks yang bisa dibacakan.');
+      return false;
+    }
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = 'id-ID';
+    utter.rate = 1;
+    utter.pitch = 1;
+    synth.speak(utter);
+    state.narratorEnabled = true;
+    persistState();
+    updateMascotMood('voice');
+    return true;
+  };
+
+  const stopNarrator = () => {
+    const synth = window.speechSynthesis;
+    if (synth) synth.cancel();
+    state.narratorEnabled = false;
+    persistState();
+  };
+
+  const narrateGuide = () => {
+    const summary = 'Converter ini siap ambil URL YouTube, aktifkan AI Studio, dan share lewat mini player. Ketuk tombol konversi untuk mulai.';
+    if (speak(summary)) incrementPoints(10, 'Narrator mode', { badge: 'narrator' });
+  };
+
+  const ensureRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+    if (!recognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'id-ID';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((res) => res[0]?.transcript || '')
+          .join(' ')
+          .trim();
+        if (transcript) handleVoiceCommand(transcript);
+      };
+      recognition.onerror = (event) => {
+        voiceActive = false;
+        if (voiceStatus) voiceStatus.textContent = `Perintah suara berhenti (${event.error || 'error'}).`;
+      };
+      recognition.onend = () => {
+        voiceActive = false;
+        if (voiceStatus) voiceStatus.textContent = 'Perintah suara siap digunakan.';
+      };
+    }
+    return recognition;
+  };
+
+  const scrollToElement = (el) => {
+    if (!el) return;
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      el.scrollIntoView();
+    }
+  };
+
+  const handleVoiceCommand = (raw) => {
+    const text = (raw || '').toLowerCase();
+    let handled = false;
+    if (text.includes('donasi')) {
+      scrollToElement(document.getElementById('donationCard'));
+      handled = true;
+    }
+    if (text.includes('game')) {
+      scrollToElement(document.getElementById('gameCard'));
+      startRunner();
+      updateMascotMood('game');
+      handled = true;
+    }
+    if (text.includes('faq')) {
+      const firstFaq = document.querySelector('#faqList details');
+      if (firstFaq) firstFaq.open = true;
+      scrollToElement(document.getElementById('faqList'));
+      handled = true;
+    }
+    if (text.includes('musik') || text.includes('music')) {
+      startBackgroundMusic('auto');
+      handled = true;
+    }
+    if (text.includes('matikan musik') || text.includes('stop musik')) {
+      stopBackgroundMusic();
+      handled = true;
+    }
+    if (text.includes('narrator') || text.includes('bacakan')) {
+      narrateGuide();
+      handled = true;
+    }
+    if (text.includes('ai')) {
+      scrollToElement(document.getElementById('aiAssistantCard'));
+      assistantInput?.focus();
+      handled = true;
+    }
+    if (handled) {
+      incrementPoints(20, 'Voice command', { badge: 'voice' });
+      setToast(`Perintah suara: ${raw}`);
+    } else {
+      setToast(`Perintah belum dikenali: ${raw}`);
+    }
+  };
+
+  const addAssistantMessage = (text, role = 'bot') => {
+    if (!assistantMessages) return;
+    const bubble = document.createElement('div');
+    bubble.className = `assistant-bubble ${role}`;
+    bubble.textContent = text;
+    assistantMessages.appendChild(bubble);
+    assistantMessages.scrollTop = assistantMessages.scrollHeight;
+  };
+
+  const assistantKnowledge = [
+    { keywords: ['donasi', 'saweria'], reply: 'Klik tombol donasi dan pilih nominal. Jika pop-up diblokir, gunakan tombol manual Rp5.000.' },
+    { keywords: ['subtitle', 'transkrip'], reply: 'Gunakan tombol Ambil subtitle. Sistem akan mengambil track Indonesia, Inggris, dan fallback transkrip YouTube.' },
+    { keywords: ['ai', 'studio'], reply: 'AI Studio punya hook, cover prompt, dan planner. Kamu bisa klik tombol AI untuk mengisi metadata otomatis.' },
+    { keywords: ['offline', 'pwa'], reply: 'Tekan tombol Pasang aplikasi di pojok kanan atas agar converter bisa berjalan offline.' },
+    { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music untuk memilih mood atau biarkan auto mengikuti waktu.' },
+    { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk navigasi dengan suara.' },
+    { keywords: ['game', 'mini'], reply: 'Neo Runner siap dimainkan! Tekan mulai dan pakai Space untuk melompat.' }
+  ];
+
+  const respondWithAssistant = (text) => {
+    if (!assistantMessages) return;
+    assistantTyping?.removeAttribute('hidden');
+    const lower = text.toLowerCase();
+    let reply = 'Aku sudah tandai pertanyaanmu. Coba buka FAQ atau pakai walkthrough untuk detail lengkap.';
+    for (const item of assistantKnowledge) {
+      if (item.keywords.some((k) => lower.includes(k))) {
+        reply = item.reply;
+        break;
+      }
+    }
+    const delay = 600 + Math.random() * 400;
+    window.setTimeout(() => {
+      assistantTyping?.setAttribute('hidden', '');
+      addAssistantMessage(reply, 'bot');
+      state.assistantHistory.push({ role: 'bot', text: reply });
+      persistState();
+      incrementPoints(15, 'Interaksi AI', { badge: 'ai' });
+      updateMascotMood('ai');
+    }, delay);
+  };
+
+  const sendAssistantMessage = () => {
+    if (!assistantInput) return;
+    const value = assistantInput.value.trim();
+    if (!value) return;
+    addAssistantMessage(value, 'user');
+    state.assistantHistory.push({ role: 'user', text: value });
+    assistantInput.value = '';
+    respondWithAssistant(value);
+  };
+
+  const ensureAssistantWelcome = () => {
+    if (!assistantMessages) return;
+    if (!state.assistantHistory.length) {
+      addAssistantMessage('Halo! Aku Echo Assistant. Tanyakan apa saja soal fitur converter ini.', 'bot');
+    } else {
+      state.assistantHistory.forEach((msg) => addAssistantMessage(msg.text, msg.role));
+    }
+  };
+
+  const resetRunner = () => {
+    if (!runnerCanvas) return;
+    runnerState.playerY = runnerState.ground;
+    runnerState.playerVy = 0;
+    runnerState.obstacleX = runnerCanvas.width + Math.random() * runnerState.obstacleGap;
+    runnerState.speed = 4.2;
+    runnerState.ticks = 0;
+    runnerState.score = 0;
+    if (runnerScoreLabel) runnerScoreLabel.textContent = '0';
+  };
+
+  const drawRunner = () => {
+    const ctx = runnerState.ctx;
+    if (!ctx || !runnerCanvas) return;
+    ctx.clearRect(0, 0, runnerCanvas.width, runnerCanvas.height);
+    ctx.fillStyle = 'rgba(13,110,253,0.08)';
+    ctx.fillRect(0, runnerState.ground + 12, runnerCanvas.width, runnerCanvas.height - runnerState.ground - 12);
+    ctx.fillStyle = '#0d6efd';
+    ctx.fillRect(0, runnerState.ground + 10, runnerCanvas.width, 2);
+    const playerX = 30;
+    const playerY = runnerState.playerY - 30;
+    const playerW = 28;
+    const playerH = 30;
+    ctx.fillStyle = '#6f42c1';
+    ctx.beginPath();
+    ctx.moveTo(playerX + 6, playerY);
+    ctx.lineTo(playerX + playerW - 6, playerY);
+    ctx.quadraticCurveTo(playerX + playerW, playerY, playerX + playerW, playerY + 6);
+    ctx.lineTo(playerX + playerW, playerY + playerH - 6);
+    ctx.quadraticCurveTo(playerX + playerW, playerY + playerH, playerX + playerW - 6, playerY + playerH);
+    ctx.lineTo(playerX + 6, playerY + playerH);
+    ctx.quadraticCurveTo(playerX, playerY + playerH, playerX, playerY + playerH - 6);
+    ctx.lineTo(playerX, playerY + 6);
+    ctx.quadraticCurveTo(playerX, playerY, playerX + 6, playerY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffc107';
+    ctx.fillRect(runnerState.obstacleX, runnerState.ground - 20, runnerState.obstacleWidth, 20);
+  };
+
+  const endRunner = (crashed = false) => {
+    runnerState.running = false;
+    if (runnerFrame) cancelAnimationFrame(runnerFrame);
+    runnerFrame = null;
+    if (gameStatus) {
+      gameStatus.textContent = crashed ? 'Kena glitch! Coba lagi dan kejar skor lebih tinggi.' : 'Permainan dihentikan.';
+    }
+    const high = Math.max(Number(state.experience.highScore) || 0, runnerState.score);
+    state.experience.highScore = high;
+    runnerState.highScore = high;
+    if (runnerHighScoreLabel) runnerHighScoreLabel.textContent = String(high);
+    persistState();
+    if (crashed) updateMascotMood('game');
+  };
+
+  const updateRunner = () => {
+    if (!runnerState.running) return;
+    const ctx = runnerState.ctx;
+    if (!ctx || !runnerCanvas) return;
+    runnerState.playerVy += runnerState.gravity;
+    runnerState.playerY += runnerState.playerVy;
+    if (runnerState.playerY >= runnerState.ground) {
+      runnerState.playerY = runnerState.ground;
+      runnerState.playerVy = 0;
+    }
+    runnerState.obstacleX -= runnerState.speed;
+    if (runnerState.obstacleX < -runnerState.obstacleWidth) {
+      runnerState.obstacleX = runnerCanvas.width + Math.random() * runnerState.obstacleGap;
+      runnerState.speed = Math.min(runnerState.speed + 0.25, 9);
+      incrementPoints(8, 'Hindari glitch', { badge: 'gamer' });
+      updateMascotMood('game');
+    }
+    runnerState.ticks = (runnerState.ticks || 0) + 1;
+    const score = Math.floor((runnerState.ticks || 0) / 5);
+    if (runnerState.score !== score) {
+      runnerState.score = score;
+      if (runnerScoreLabel) runnerScoreLabel.textContent = String(score);
+    }
+    drawRunner();
+    const playerLeft = 30;
+    const playerRight = playerLeft + 28;
+    const obstacleLeft = runnerState.obstacleX;
+    const obstacleRight = obstacleLeft + runnerState.obstacleWidth;
+    const verticalCollision = runnerState.playerY > runnerState.ground - 18;
+    if (verticalCollision && playerRight > obstacleLeft && playerLeft < obstacleRight) {
+      endRunner(true);
+      return;
+    }
+    runnerFrame = requestAnimationFrame(updateRunner);
+  };
+
+  const startRunner = () => {
+    if (!runnerCanvas) {
+      setToast('Mini game belum tersedia di perangkat ini.');
+      return;
+    }
+    ensureAudioContext();
+    state.experience.highScore = state.experience.highScore || 0;
+    if (runnerHighScoreLabel) runnerHighScoreLabel.textContent = String(state.experience.highScore || 0);
+    resetRunner();
+    runnerState.running = true;
+    if (gameStatus) gameStatus.textContent = 'Lompat untuk hindari glitch!';
+    drawRunner();
+    updateRunner();
+    incrementPoints(6, 'Mulai mini game');
+  };
+
+  const jumpRunner = () => {
+    if (!runnerState.running) return;
+    if (runnerState.playerY >= runnerState.ground) {
+      runnerState.playerVy = -11;
+    }
+  };
+
+  const konamiTracker = (() => {
+    const sequence = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
+    let buffer = [];
+    return (key) => {
+      buffer.push(key.toLowerCase());
+      buffer = buffer.slice(-sequence.length);
+      if (sequence.every((v, idx) => buffer[idx] === v)) {
+        buffer = [];
+        if (konamiSecret) konamiSecret.classList.add('show');
+        state.avatarAura = 'konami';
+        updateAvatarUi();
+        incrementPoints(100, 'Kode rahasia', { badge: 'konami' });
+        updateMascotMood('game');
+        showConfetti(70, true);
+        setToast('Konami code aktif!');
+      }
+    };
+  })();
+
+  const showCustomEnding = () => {
+    if (!customEndingOverlay) return;
+    customEndingOverlay.classList.add('show');
+    setTimeout(() => customEndingOverlay.classList.remove('show'), 2800);
+  };
+
+  const hideCustomEnding = () => {
+    customEndingOverlay?.classList.remove('show');
   };
 
   const persistState = () => {
     storage.save({
       backendUrl: state.backendUrl,
       adminBearer: state.adminBearer,
-      accessibility: state.accessibility
+      accessibility: state.accessibility,
+      experience: state.experience,
+      narratorEnabled: state.narratorEnabled
     });
   };
 
@@ -2297,11 +3477,18 @@ $('#queueList')?.addEventListener('click', (e) => {
     state.backendUrl = s.backendUrl || '';
     state.adminBearer = s.adminBearer || '';
     state.accessibility = { ...defaultAccessibility, ...(s.accessibility || {}) };
+    state.experience = { ...defaultExperience, ...(s.experience || {}) };
+    state.narratorEnabled = !!s.narratorEnabled;
     $('#backendUrl').value = state.backendUrl;
     updateAccessibilityControls();
     applyAccessibility();
     updateAdminUi();
     updateBackendBadge();
+    applyDashboardExperience();
+    updateAvatarUi();
+    updateMusicStatus(state.experience.mood === 'auto' ? determineAutoMood() : state.experience.mood);
+    if (runnerHighScoreLabel) runnerHighScoreLabel.textContent = String(state.experience.highScore || 0);
+    runnerState.highScore = Number(state.experience.highScore) || 0;
   };
 
   $('#saveSettings').addEventListener('click', () => {
@@ -3810,6 +4997,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     initTheme();
     initWelcome();
     loadSettings();
+    ensureAssistantWelcome();
+    updateMascotMood('default');
+    if (state.experience.narratorAuto) narrateGuide();
     renderHistory();
     renderQueue();
     applyFormatPolicy();

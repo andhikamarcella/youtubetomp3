@@ -17,6 +17,10 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Mode progres interaktif dengan status real-time saat konversi berlangsung.
 - Dukungan PWA/offline: pasang aplikasi di perangkat dan gunakan UI meski tanpa koneksi.
 - Tema typewriter interaktif lengkap dengan FAQ mendalam, tips percepatan konversi, dan tombol donasi Saweria sekali klik.
+- Experience Hub dengan avatar dinamis, poin, dan badge yang berkembang mengikuti aktivitas.
+- Adaptive background music yang menyesuaikan mood siang/malam beserta kontrol tema/layout personal.
+- Voice navigation, narrator mode, dan AI Navigator chatbot yang siap memandu tanpa harus meninggalkan halaman.
+- Mini-game Neo Runner dengan Konami code easter egg plus perayaan donasi lengkap (confetti, suara, getaran).
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
