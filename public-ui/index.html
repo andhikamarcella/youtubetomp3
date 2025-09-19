@@ -2021,26 +2021,6 @@
   readGuideBtn?.addEventListener('click', narrateGuide);
   stopNarratorBtn?.addEventListener('click', stopNarrator);
 
-  if (voiceCommandBtn) {
-    const recognitionInstance = ensureRecognition();
-    if (!recognitionInstance) {
-      voiceCommandBtn.disabled = true;
-      if (voiceStatus) voiceStatus.textContent = 'Browser belum mendukung voice recognition.';
-    } else {
-      voiceCommandBtn.addEventListener('click', () => {
-        if (voiceActive) {
-          recognitionInstance.stop();
-          voiceActive = false;
-          if (voiceStatus) voiceStatus.textContent = 'Perintah suara dihentikan.';
-        } else {
-          recognitionInstance.start();
-          voiceActive = true;
-          if (voiceStatus) voiceStatus.textContent = 'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.';
-        }
-      });
-    }
-  }
-
   assistantSendBtn?.addEventListener('click', sendAssistantMessage);
   assistantInput?.addEventListener('keydown', (evt) => {
     if (evt.key === 'Enter' && !evt.shiftKey) {
@@ -2491,7 +2471,7 @@
     persistState();
   };
 
-  const rotateMood = () => {
+  function rotateMood() {
     const order = ['auto', 'energetic', 'focus', 'chill'];
     const idx = order.indexOf(state.experience.mood || 'auto');
     const nextMood = order[(idx + 1) % order.length];
@@ -2499,7 +2479,7 @@
     state.experience.mood = nextMood;
     persistState();
     startBackgroundMusic(nextMood);
-  };
+  }
 
   const speak = (text) => {
     const synth = window.speechSynthesis;
@@ -2524,19 +2504,19 @@
     return true;
   };
 
-  const stopNarrator = () => {
+  function stopNarrator() {
     const synth = window.speechSynthesis;
     if (synth) synth.cancel();
     state.narratorEnabled = false;
     persistState();
-  };
+  }
 
-  const narrateGuide = () => {
+  function narrateGuide() {
     const summary = 'Converter ini siap ambil URL YouTube, aktifkan AI Studio, dan share lewat mini player. Ketuk tombol konversi untuk mulai.';
     if (speak(summary)) incrementPoints(10, 'Narrator mode', { badge: 'narrator' });
-  };
+  }
 
-  const ensureRecognition = () => {
+  function ensureRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return null;
     if (!recognition) {
@@ -2561,7 +2541,27 @@
       };
     }
     return recognition;
-  };
+  }
+
+  if (voiceCommandBtn) {
+    const recognitionInstance = ensureRecognition();
+    if (!recognitionInstance) {
+      voiceCommandBtn.disabled = true;
+      if (voiceStatus) voiceStatus.textContent = 'Browser belum mendukung voice recognition.';
+    } else {
+      voiceCommandBtn.addEventListener('click', () => {
+        if (voiceActive) {
+          recognitionInstance.stop();
+          voiceActive = false;
+          if (voiceStatus) voiceStatus.textContent = 'Perintah suara dihentikan.';
+        } else {
+          recognitionInstance.start();
+          voiceActive = true;
+          if (voiceStatus) voiceStatus.textContent = 'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.';
+        }
+      });
+    }
+  }
 
   const scrollToElement = (el) => {
     if (!el) return;
@@ -2657,7 +2657,7 @@
     }, delay);
   };
 
-  const sendAssistantMessage = () => {
+  function sendAssistantMessage() {
     if (!assistantInput) return;
     const value = assistantInput.value.trim();
     if (!value) return;
@@ -2665,7 +2665,7 @@
     state.assistantHistory.push({ role: 'user', text: value });
     assistantInput.value = '';
     respondWithAssistant(value);
-  };
+  }
 
   const ensureAssistantWelcome = () => {
     if (!assistantMessages) return;
@@ -2767,7 +2767,7 @@
     runnerFrame = requestAnimationFrame(updateRunner);
   };
 
-  const startRunner = () => {
+  function startRunner() {
     if (!runnerCanvas) {
       setToast('Mini game belum tersedia di perangkat ini.');
       return;
@@ -2781,7 +2781,7 @@
     drawRunner();
     updateRunner();
     incrementPoints(6, 'Mulai mini game');
-  };
+  }
 
   const jumpRunner = () => {
     if (!runnerState.running) return;
@@ -2815,9 +2815,9 @@
     setTimeout(() => customEndingOverlay.classList.remove('show'), 2800);
   };
 
-  const hideCustomEnding = () => {
+  function hideCustomEnding() {
     customEndingOverlay?.classList.remove('show');
-  };
+  }
 
   const persistState = () => {
     storage.save({
@@ -3109,7 +3109,6 @@
     }
   };
 
-  let audioCtx = null;
   let eqFilters = [];
   let eqSource = null;
   let eqReady = false;
@@ -3551,7 +3550,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   // ===== Theme Toggle =====
   const themeToggle = $('#themeToggle');
-  const applyTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
+  const applyBsTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
   const themeKey = 'ytmp3.theme';
   const tutorialKey = 'ytmp3.tutorial.v1';
   const welcomeKey = 'ytmp3.welcome.v1';
@@ -3559,14 +3558,14 @@ $('#queueList')?.addEventListener('click', (e) => {
     const stored = localStorage.getItem(themeKey);
     const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     const t = stored || prefers;
-    applyTheme(t);
+    applyBsTheme(t);
     themeToggle.innerHTML = t === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
     refreshEqUi();
   };
   themeToggle.addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-bs-theme') || 'light';
     const nxt = cur === 'light' ? 'dark' : 'light';
-    applyTheme(nxt); localStorage.setItem(themeKey, nxt);
+    applyBsTheme(nxt); localStorage.setItem(themeKey, nxt);
     themeToggle.innerHTML = nxt === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
     requestAnimationFrame(refreshEqUi);
   });
