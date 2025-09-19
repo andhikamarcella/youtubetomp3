@@ -16,6 +16,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - AI Studio dengan auto metadata, caption promosi, panduan audiophile, hook headline, cover art prompt, dan release planner siap pakai.
 - Mode progres interaktif dengan status real-time saat konversi berlangsung.
 - Dukungan PWA/offline: pasang aplikasi di perangkat dan gunakan UI meski tanpa koneksi.
+- Tema typewriter interaktif lengkap dengan FAQ mendalam, tips percepatan konversi, dan tombol donasi Saweria sekali klik.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
