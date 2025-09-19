@@ -159,11 +159,18 @@
     .profile-stat .label { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary); display: block; margin-bottom: .25rem; }
     .profile-stat .value { font-weight: 700; font-size: 1rem; }
     .profile-badge-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-    .profile-badge-list li { display: flex; align-items: center; gap: .5rem; padding: .65rem .8rem; border-radius: 1rem; border: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); background: color-mix(in srgb, var(--bs-primary) 10%, transparent); font-weight: 600; font-size: .82rem; letter-spacing: .03em; }
+    .profile-badge-list li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .65rem .8rem; border-radius: 1rem; border: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); background: color-mix(in srgb, var(--bs-primary) 10%, transparent); font-weight: 600; font-size: .82rem; letter-spacing: .03em; }
     .profile-badge-list li::before { content: '🏅'; filter: drop-shadow(0 2px 6px rgba(0,0,0,.2)); }
     .profile-badge-list li.is-empty { justify-content: center; text-align: center; font-weight: 500; }
     .profile-badge-list li.is-empty::before { content: 'ℹ️'; }
+    .profile-badge-list li .badge-label { display: inline-flex; align-items: center; gap: .35rem; }
+    .profile-badge-list li .badge-xp { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--bs-secondary-color); }
     html[data-bs-theme='dark'] .profile-badge-list li { background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-color: color-mix(in srgb, var(--bs-border-color) 85%, transparent); }
+    .avatar-menu .badge-chip-xp { display: inline-flex; align-items: center; gap: .2rem; padding-left: .35rem; margin-left: .35rem; border-left: 1px dashed color-mix(in srgb, var(--bs-border-color) 45%, transparent); font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); }
+    #achievementModalList .list-group-item { border: 0; border-bottom: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
+    #achievementModalList .list-group-item:last-child { border-bottom: 0; }
+    #achievementModalList .list-group-item .badge { letter-spacing: .08em; }
+    #achievementModalList .list-group-item.is-locked { opacity: .75; }
     .level-milestones { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
     .level-milestones li { border: 1px dashed color-mix(in srgb, var(--bs-border-color) 65%, transparent); border-radius: 1rem; padding: .75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; background: var(--bs-body-bg); transition: border-color .3s ease, box-shadow .3s ease, background .3s ease; }
     .level-milestones li .title { font-weight: 600; }
@@ -709,7 +716,7 @@
             </div>
           </div>
       
-          <div class="card shadow-sm mt-4" id="aiAssistantCard">
+          <div class="card shadow-sm mt-4" id="aiAssistantCard" hidden aria-hidden="true">
             <div class="card-body p-4">
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                 <div class="d-flex align-items-center gap-2">
@@ -837,54 +844,6 @@
       </div>
     </div>
 
-    <div class="card shadow-sm mt-4" id="aiAssistantCard">
-      <div class="card-body p-4">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-          <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-robot text-primary fs-5"></i>
-            <h5 class="mb-0">AI Navigator</h5>
-          </div>
-          <span class="assistant-launch-chip"><i class="bi bi-rocket-takeoff"></i> Floating panel</span>
-        </div>
-        <p class="small text-secondary mb-3">Ikon robot melayang di pojok kanan bawah. Tekan untuk membuka chat real time yang bisa menjawab pertanyaan, kasih rute fitur, dan menuliskan tips suara.</p>
-        <ul class="small ps-3 mb-3">
-          <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “buka tab Profil”.</li>
-          <li>Chat akan mengetik jawabannya secara langsung lengkap dengan langkah lanjutan.</li>
-          <li>Shortcut ke walkthrough & FAQ tersedia langsung dari percakapan.</li>
-        </ul>
-        <div class="d-flex flex-wrap gap-2">
-          <button type="button" class="btn btn-primary assistant-launcher"><i class="bi bi-robot me-1"></i>Buka AI Navigator</button>
-          <button type="button" class="btn btn-outline-secondary assistant-launcher" data-launch="voice"><i class="bi bi-mic me-1"></i>Pakai Voice Command</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mt-4" id="gameCard">
-      <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <i class="bi bi-joystick text-warning fs-5"></i>
-          <h5 class="mb-0">Neo Runner Mini-game</h5>
-        </div>
-        <p class="small text-secondary mb-3">Tekan <kbd>Space</kbd> atau tap tombol lompat untuk menghindari glitch. Mode rahasia terbuka dengan kode <span class="fw-semibold">↑↑↓↓←→←→BA</span>.</p>
-        <canvas id="runnerCanvas" width="480" height="160" role="img" aria-label="Mini game pelari digital"></canvas>
-        <div class="game-controls">
-          <div>
-            <span class="fw-semibold me-2">Skor:</span>
-            <span id="runnerScore" class="fw-semibold">0</span>
-            <span class="text-secondary ms-3 small">High: <span id="runnerHighScore">0</span></span>
-          </div>
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-primary btn-sm" id="runnerStartBtn"><i class="bi bi-play-circle"></i> Mulai</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="runnerJumpBtn"><i class="bi bi-arrow-up"></i> Lompat</button>
-          </div>
-        </div>
-        <div id="gameStatus" class="text-secondary small mt-2">Siap berlari! Konami code membuka kejutan.</div>
-        <div id="konamiSecret" aria-live="polite">
-          <strong>Konami unlocked!</strong>
-          <p class="mb-0 small">Avatar kamu mendapat aura khusus dan poin bonus.</p>
-        </div>
-      </div>
-    </div>
     </section>
 
     <section class="app-section" data-section="profile" id="section-profile" hidden>
@@ -947,7 +906,10 @@
         <div class="card-body p-4">
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <h6 class="title-mono text-secondary mb-0">Achievement Board</h6>
-            <span class="badge rounded-pill text-bg-info" id="badgeCountLabel">0 badge</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-primary btn-sm" id="achievementSeeMore" data-bs-toggle="modal" data-bs-target="#achievementModal" aria-controls="achievementModal"><i class="bi bi-grid me-1"></i>Lihat Selengkapnya</button>
+              <span class="badge rounded-pill text-bg-info" id="badgeCountLabel">0 badge</span>
+            </div>
           </div>
           <div class="small text-secondary mb-3">Badge membuka animasi ekstra di Experience Hub dan menaikkan XP kamu.</div>
           <ul id="rewardBadges" class="badge-list profile-badge-list" aria-live="polite"></ul>
@@ -961,6 +923,25 @@
         </div>
       </div>
     </section>
+
+  <div class="modal fade" id="achievementModal" tabindex="-1" aria-labelledby="achievementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="achievementModalLabel"><i class="bi bi-patch-check-fill me-2"></i>Badge &amp; XP Detail</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-secondary mb-3">Lihat daftar lengkap badge, cara membukanya, dan estimasi XP yang kamu dapatkan.</p>
+          <ul class="list-group" id="achievementModalList"></ul>
+        </div>
+        <div class="modal-footer">
+          <div class="small text-secondary me-auto">Badge terkunci ditandai ikon gembok.</div>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="miniPlayer" class="mini-player" hidden>
     <div class="mini-player-card card shadow-lg border-0">
@@ -1288,6 +1269,8 @@
   const donationLink = $('#donationLink');
   const donationLinkHint = $('#donationLinkHint');
   const faqItems = $$('#faqList details');
+  const achievementModalEl = $('#achievementModal');
+  const achievementModalList = $('#achievementModalList');
   const tutorialModalEl = $('#tutorialModal');
   const walkthroughSteps = tutorialModalEl ? Array.from(tutorialModalEl.querySelectorAll('.walkthrough-step')) : [];
   const walkthroughPrev = $('#walkthroughPrev');
@@ -1753,21 +1736,93 @@
     avatarAura: ''
   };
 
-  const badgeLabels = {
-    welcome: 'Welcome',
-    donor: 'Donor Pro',
-    gamer: 'Game Runner',
-    voice: 'Voice Navigator',
-    narrator: 'Storyteller',
-    stylist: 'UI Stylist',
-    konami: 'Konami Master',
-    ai: 'AI Buddy',
-    maestro: 'Sound Maestro',
-    speedster: 'Speed Runner',
-    explorer: 'Feature Explorer',
-    supporter: 'Support Squad',
-    collector: 'Badge Collector',
-    navigator: 'Navigator Pro'
+  const badgeCatalog = {
+    welcome: {
+      label: 'Welcome',
+      xp: 12,
+      description: 'Badge perdana saat kamu mulai mengumpulkan XP di Experience Hub.'
+    },
+    donor: {
+      label: 'Donor Pro',
+      xp: '10–120 XP',
+      description: 'Dukung server melalui tombol donasi Saweria.'
+    },
+    gamer: {
+      label: 'Game Runner',
+      xp: 8,
+      description: 'Capai skor dan hindari glitch di Neo Runner.'
+    },
+    voice: {
+      label: 'Voice Navigator',
+      xp: 20,
+      description: 'Aktifkan dan jalankan perintah suara dari panel Voice & Narrator.'
+    },
+    narrator: {
+      label: 'Storyteller',
+      xp: 16,
+      description: 'Gunakan narrator untuk membacakan pilihan atau ringkasan UI.'
+    },
+    stylist: {
+      label: 'UI Stylist',
+      xp: 30,
+      description: 'Ubah tema, font, dan layout dashboard Experience.'
+    },
+    konami: {
+      label: 'Konami Master',
+      xp: 100,
+      description: 'Masukkan kode rahasia ↑↑↓↓←→←→BA.'
+    },
+    ai: {
+      label: 'AI Buddy',
+      xp: 15,
+      description: 'Gunakan AI Navigator untuk menjawab pertanyaan seputar web.'
+    },
+    maestro: {
+      label: 'Sound Maestro',
+      xp: 20,
+      description: 'Mainkan musik adaptif dan jelajahi beberapa mood.'
+    },
+    speedster: {
+      label: 'Speed Runner',
+      xp: 12,
+      description: 'Tandai minimal tiga tips kecepatan favoritmu.'
+    },
+    explorer: {
+      label: 'Feature Explorer',
+      xp: 18,
+      description: 'Kunjungi ketiga tab utama converter.'
+    },
+    supporter: {
+      label: 'Support Squad',
+      xp: '≥75 XP',
+      description: 'Donasikan Rp75.000 atau lebih dalam satu transaksi.'
+    },
+    collector: {
+      label: 'Badge Collector',
+      xp: 40,
+      description: 'Kumpulkan setidaknya enam badge berbeda.'
+    },
+    navigator: {
+      label: 'Navigator Pro',
+      xp: 18,
+      description: 'Manfaatkan slash command cepat di AI Navigator.'
+    }
+  };
+
+  const getBadgeMeta = (id) => badgeCatalog[id] || { label: id, xp: 'XP variabel', description: '' };
+
+  const formatBadgeLabel = (id) => getBadgeMeta(id).label;
+
+  const formatBadgeXp = (id) => {
+    const meta = getBadgeMeta(id);
+    if (typeof meta.xp === 'string' && meta.xp.trim()) return meta.xp;
+    if (Number.isFinite(meta.xp) && meta.xp > 0) return `${meta.xp} XP`;
+    return 'XP variabel';
+  };
+
+  const formatBadgeDescription = (id) => {
+    const meta = getBadgeMeta(id);
+    return meta.description || 'Eksplor fitur lainnya untuk membuka badge ini.';
   };
 
   const avatarLevels = [
@@ -1862,8 +1917,6 @@
     rewardToastTimer = window.setTimeout(() => rewardToast.classList.remove('show'), 2600);
   };
 
-  const formatBadgeLabel = (id) => badgeLabels[id] || id;
-
   const renderBadges = () => {
     const badges = Array.from(state.experience.badges || []);
     if (rewardBadges) {
@@ -1877,7 +1930,11 @@
         badges.forEach((badge) => {
           const li = document.createElement('li');
           li.dataset.badge = badge;
-          li.textContent = formatBadgeLabel(badge);
+          const label = formatBadgeLabel(badge);
+          const xpLabel = formatBadgeXp(badge);
+          li.innerHTML = `<span class="badge-label">${label}</span><span class="badge-xp">${xpLabel}</span>`;
+          li.title = `${label} · ${xpLabel}`;
+          li.setAttribute('aria-label', `${label} · ${xpLabel}`);
           rewardBadges.appendChild(li);
         });
       }
@@ -1897,12 +1954,57 @@
         badges.forEach((badge) => {
           const chip = document.createElement('div');
           chip.className = 'badge-chip';
-          chip.innerHTML = `<i class="bi bi-patch-check-fill text-primary"></i> ${formatBadgeLabel(badge)}`;
+          const label = formatBadgeLabel(badge);
+          const xpLabel = formatBadgeXp(badge);
+          chip.dataset.badge = badge;
+          chip.innerHTML = `<i class="bi bi-patch-check-fill text-primary"></i> <span>${label}</span><span class="badge-chip-xp">${xpLabel}</span>`;
+          chip.title = `${label} · ${xpLabel} — ${formatBadgeDescription(badge)}`;
           avatarAchievementList.appendChild(chip);
         });
       }
     }
+    renderAchievementModal();
   };
+
+  const renderAchievementModal = () => {
+    if (!achievementModalList) return;
+    achievementModalList.innerHTML = '';
+    const owned = new Set(state.experience.badges || []);
+    const entries = Object.entries(badgeCatalog).sort((a, b) => {
+      const labelA = a[1]?.label || a[0];
+      const labelB = b[1]?.label || b[0];
+      return labelA.localeCompare(labelB, 'id', { sensitivity: 'base' });
+    });
+    entries.forEach(([id, meta]) => {
+      const unlocked = owned.has(id);
+      const item = document.createElement('li');
+      item.className = 'list-group-item d-flex flex-column flex-sm-row align-items-sm-center gap-2';
+      item.dataset.badge = id;
+      if (!unlocked) item.classList.add('is-locked');
+      const label = meta?.label || id;
+      const xpLabel = formatBadgeXp(id);
+      const description = formatBadgeDescription(id);
+      const statusIcon = unlocked
+        ? '<i class="bi bi-patch-check-fill text-primary" aria-hidden="true"></i>'
+        : '<i class="bi bi-lock-fill text-secondary" aria-hidden="true"></i>';
+      item.innerHTML = `
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center gap-2 fw-semibold">
+            ${statusIcon}
+            <span>${label}</span>
+          </div>
+          <div class="small text-secondary">${description}</div>
+        </div>
+        <span class="badge ${unlocked ? 'text-bg-primary' : 'text-bg-secondary'} rounded-pill">${xpLabel}</span>
+      `;
+      item.setAttribute('aria-label', `${label} · ${xpLabel}`);
+      achievementModalList.appendChild(item);
+    });
+  };
+
+  if (achievementModalEl) {
+    achievementModalEl.addEventListener('show.bs.modal', () => renderAchievementModal());
+  }
 
   const renderLevelMilestones = (points = Number(state.experience.points) || 0) => {
     if (!profileMilestones) return;
