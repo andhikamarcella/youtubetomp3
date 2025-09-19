@@ -13,7 +13,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Tutorial singkat otomatis saat pertama kali membuka aplikasi.
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
-- AI Studio dengan auto metadata, caption promosi, panduan audiophile, hook headline, cover art prompt, dan release planner siap pakai.
+- Halaman Profil dengan avatar dinamis, XP, badge, dan milestone level yang tumbuh sesuai aktivitas.
 - Mode progres interaktif dengan status real-time saat konversi berlangsung.
 - Dukungan PWA/offline: pasang aplikasi di perangkat dan gunakan UI meski tanpa koneksi.
 - Tema typewriter interaktif lengkap dengan FAQ mendalam, tips percepatan konversi, dan tombol donasi Saweria sekali klik.

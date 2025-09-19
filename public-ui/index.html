@@ -152,6 +152,23 @@
     .reward-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(135deg, rgba(32,201,151,.85), rgba(111,66,193,.8)); transition: width .6s ease; }
     #rewardBadges { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0; margin: 0; list-style: none; }
     #rewardBadges li { padding: .35rem .6rem; border-radius: .75rem; background: color-mix(in srgb, var(--bs-primary) 12%, transparent); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+    .avatar-preview-tile { display: flex; align-items: center; gap: .9rem; padding: .85rem 1rem; border-radius: 1rem; border: 1px dashed color-mix(in srgb, var(--bs-border-color) 65%, transparent); background: color-mix(in srgb, var(--bs-primary) 8%, transparent); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+    .avatar-preview-emoji { font-size: 2.4rem; filter: drop-shadow(0 6px 12px rgba(13,110,253,.35)); }
+    .profile-stats { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .profile-stat { background: color-mix(in srgb, var(--bs-secondary-bg) 85%, transparent); border-radius: .85rem; padding: .65rem .85rem; min-width: 150px; box-shadow: 0 12px 24px rgba(13,110,253,.08); }
+    .profile-stat .label { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary); display: block; margin-bottom: .25rem; }
+    .profile-stat .value { font-weight: 700; font-size: 1rem; }
+    .profile-badge-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .profile-badge-list li { display: flex; align-items: center; gap: .5rem; padding: .65rem .8rem; border-radius: 1rem; border: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); background: color-mix(in srgb, var(--bs-primary) 10%, transparent); font-weight: 600; font-size: .82rem; letter-spacing: .03em; }
+    .profile-badge-list li::before { content: '🏅'; filter: drop-shadow(0 2px 6px rgba(0,0,0,.2)); }
+    .profile-badge-list li.is-empty { justify-content: center; text-align: center; font-weight: 500; }
+    .profile-badge-list li.is-empty::before { content: 'ℹ️'; }
+    html[data-bs-theme='dark'] .profile-badge-list li { background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-color: color-mix(in srgb, var(--bs-border-color) 85%, transparent); }
+    .level-milestones { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+    .level-milestones li { border: 1px dashed color-mix(in srgb, var(--bs-border-color) 65%, transparent); border-radius: 1rem; padding: .75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; background: var(--bs-body-bg); transition: border-color .3s ease, box-shadow .3s ease, background .3s ease; }
+    .level-milestones li .title { font-weight: 600; }
+    .level-milestones li .range { font-size: .8rem; color: var(--bs-secondary); }
+    .level-milestones li.is-active { border-color: var(--bs-primary); box-shadow: 0 12px 28px rgba(13,110,253,.12); background: color-mix(in srgb, var(--bs-primary) 14%, transparent); }
     .dashboard-controls { display: grid; gap: .6rem; }
     .dashboard-controls .form-select,
     .dashboard-controls .form-check-input { border-radius: .75rem; }
@@ -230,8 +247,6 @@
       .mascot-bubble { max-width: 70%; }
       .exp-section { padding: .85rem; }
     }
-    .ai-studio-actions { gap: .5rem; }
-    .ai-studio-actions .btn { flex: 1 1 180px; min-width: 0; border-radius: .85rem; }
     .ai-output { background: var(--bs-body-bg); border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); padding: 1rem; box-shadow: 0 10px 26px rgba(13,110,253,.06); }
     .ai-output header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
     .ai-output header .title { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--bs-secondary); font-weight: 600; }
@@ -428,7 +443,7 @@
         <div class="app-tabbar" id="sectionTabbar">
           <button type="button" class="app-nav-btn active" data-section-target="converter" data-section-label="Converter"><i class="bi bi-cpu"></i> Converter</button>
           <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub"><i class="bi bi-stars"></i> Experience</button>
-          <button type="button" class="app-nav-btn" data-section-target="studio" data-section-label="AI Studio"><i class="bi bi-robot"></i> AI Studio</button>
+          <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung"><i class="bi bi-person-circle"></i> Profil</button>
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
@@ -580,36 +595,20 @@
                   <section class="exp-section" aria-labelledby="avatarTitle">
                     <div class="d-flex align-items-center justify-content-between">
                       <h6 id="avatarTitle" class="title-mono text-secondary mb-0">Dynamic Avatar</h6>
-                      <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1</span>
-                    </div>
-                    <div class="dynamic-avatar dropdown" id="dynamicAvatar" aria-live="polite">
-                      <button type="button" class="avatar-btn" id="avatarToggle" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">
-                        <span id="avatarEmoji">🎧</span>
+                      <button type="button" class="btn btn-link btn-sm px-0" data-open-profile="true">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span>Lihat Profil</span>
                       </button>
-                      <div class="avatar-glow" aria-hidden="true"></div>
-                      <div class="dropdown-menu dropdown-menu-end avatar-menu" id="avatarMenu">
-                        <div class="avatar-meta">
-                          <span id="avatarEmojiMenu">🎧</span>
-                          <div>
-                            <div class="fw-semibold" id="avatarProfileTitle">Rookie</div>
-                            <div class="small text-secondary" id="avatarProfileMood">Pendatang baru yang penasaran.</div>
-                          </div>
-                        </div>
-                        <h6 class="text-secondary mb-2">Achievements</h6>
-                        <div class="avatar-achievements" id="avatarAchievementList"></div>
+                    </div>
+                    <p class="small text-secondary mb-3">Avatar dan XP lengkap kini berada di tab <strong>Profil</strong>. Panel ini merangkum level aktifmu secara singkat.</p>
+                    <div class="avatar-preview-tile" aria-live="polite">
+                      <div class="avatar-preview-emoji" id="avatarEmojiPreview">🎧</div>
+                      <div>
+                        <div class="fw-semibold" id="avatarPreviewLevel">Lv.1 Rookie</div>
+                        <div class="small text-secondary" id="avatarPreviewMood">Pendatang baru yang penasaran.</div>
                       </div>
                     </div>
-                    <div class="avatar-status">
-                      <span id="avatarMood">Pendatang baru yang penasaran.</span>
-                      <span class="fw-semibold" id="rewardPointsLabel">0 XP</span>
-                    </div>
-                    <div class="reward-meter" aria-hidden="true">
-                      <span id="avatarProgressBar"></span>
-                    </div>
-                    <div class="small text-secondary">Interaksi seperti donasi, main game, dan eksplorasi fitur bakal menaikkan level.</div>
-                    <ul id="rewardBadges" aria-live="polite">
-                      <li data-badge="welcome">Welcome</li>
-                    </ul>
+                    <div class="small text-secondary">Kumpulkan XP lewat donasi, main game, dan eksplorasi fitur untuk membuka badge baru.</div>
                   </section>
                 </div>
                 <div class="col-lg-6">
@@ -721,7 +720,7 @@
               </div>
               <p class="small text-secondary mb-3">Ikon robot melayang di pojok kanan bawah. Tekan untuk membuka chat real time yang bisa menjawab pertanyaan, kasih rute fitur, dan menuliskan tips suara.</p>
               <ul class="small ps-3 mb-3">
-                <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “apa itu AI Studio?”.</li>
+                <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “buka tab Profil”.</li>
                 <li>Chat akan mengetik jawabannya secara langsung lengkap dengan langkah lanjutan.</li>
                 <li>Shortcut ke walkthrough & FAQ tersedia langsung dari percakapan.</li>
               </ul>
@@ -849,7 +848,7 @@
         </div>
         <p class="small text-secondary mb-3">Ikon robot melayang di pojok kanan bawah. Tekan untuk membuka chat real time yang bisa menjawab pertanyaan, kasih rute fitur, dan menuliskan tips suara.</p>
         <ul class="small ps-3 mb-3">
-          <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “apa itu AI Studio?”.</li>
+          <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “buka tab Profil”.</li>
           <li>Chat akan mengetik jawabannya secara langsung lengkap dengan langkah lanjutan.</li>
           <li>Shortcut ke walkthrough & FAQ tersedia langsung dari percakapan.</li>
         </ul>
@@ -888,538 +887,80 @@
     </div>
     </section>
 
-    <section class="app-section" data-section="studio" id="section-studio" hidden>
-                  <div class="card border-0 bg-body-tertiary" id="aiStudioCard">
-                    <div class="card-body">
-                      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <strong class="me-auto">AI Studio</strong>
-                        <div class="form-check form-switch m-0">
-                          <input class="form-check-input" type="checkbox" id="backgroundMode">
-                          <label class="form-check-label small" for="backgroundMode">Background mode</label>
-                        </div>
-                      </div>
-                      <p class="text-secondary small mb-3">Gunakan Auto Music Tags untuk mengisi metadata secara instan atau minta AI membuat materi promo, visual, dan rencana rilis yang siap pakai.</p>
-                      <div class="ai-studio-actions d-flex flex-wrap">
-                        <button class="btn btn-outline-primary" id="autoTagBtn" type="button"><i class="bi bi-stars"></i> Auto Music Tags</button>
-                        <button class="btn btn-outline-secondary" id="aiCaptionBtn" type="button"><i class="bi bi-megaphone"></i> AI Caption Sosial</button>
-                        <button class="btn btn-outline-success" id="aiPitchBtn" type="button"><i class="bi bi-broadcast"></i> AI Playlist Pitch</button>
-                        <button class="btn btn-outline-warning" id="aiAudiophileBtn" type="button"><i class="bi bi-soundwave"></i> AI Audiophile Guide</button>
-                        <button class="btn btn-outline-info" id="aiHookBtn" type="button"><i class="bi bi-lightning-charge"></i> AI Hook Headline</button>
-                        <button class="btn btn-outline-danger" id="aiVisualBtn" type="button"><i class="bi bi-image"></i> AI Cover Prompt</button>
-                        <button class="btn btn-outline-dark" id="aiReleaseBtn" type="button"><i class="bi bi-calendar3"></i> AI Release Planner</button>
-                      </div>
-                      <div class="ai-output mt-3" id="aiCaptionWrap" hidden>
-                        <header>
-                          <span class="title">Caption &amp; Hashtag</span>
-                          <div class="copy-actions">
-                            <button class="btn btn-sm btn-outline-secondary" id="aiCaptionCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                          </div>
-                        </header>
-                        <textarea id="aiCaptionText" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
-                        <div class="small text-secondary mt-2" id="aiCaptionMeta"></div>
-                      </div>
-                      <div class="ai-output mt-3" id="aiPitchWrap" hidden>
-                        <header>
-                          <span class="title">Playlist Pitch</span>
-                          <div class="copy-actions">
-                            <button class="btn btn-sm btn-outline-secondary" id="aiPitchCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                          </div>
-                        </header>
-                        <textarea id="aiPitchText" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
-                        <div class="small text-secondary mt-2" id="aiPitchHook"></div>
-                        <div class="small text-secondary" id="aiPitchPlaylists"></div>
-                      </div>
-                      <div class="ai-output mt-3" id="aiAudiophileWrap" hidden>
-                        <header>
-                          <span class="title">Panduan Audiophile</span>
-                          <div class="copy-actions">
-                            <button class="btn btn-sm btn-outline-secondary" id="aiAudiophileCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                          </div>
-                        </header>
-                        <textarea id="aiAudiophileText" class="form-control form-control-sm" rows="5" readonly spellcheck="false"></textarea>
-                        <div class="small text-secondary mt-2" id="aiAudiophileMeta"></div>
-                      </div>
-                      <div class="ai-output mt-3" id="aiHookWrap" hidden>
-                        <header>
-                          <span class="title">Hook &amp; CTA</span>
-                          <div class="copy-actions">
-                            <button class="btn btn-sm btn-outline-secondary" id="aiHookCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                          </div>
-                        </header>
-                        <ul class="ai-hook-list" id="aiHookList"></ul>
-                        <div class="ai-cta-pills" id="aiHookCtas"></div>
-                        <div class="small text-secondary mt-2" id="aiHookMeta"></div>
-                      </div>
-                      <div class="ai-output mt-3" id="aiVisualWrap" hidden>
-                        <header>
-                          <span class="title">Cover Art Prompt</span>
-                          <div class="copy-actions">
-                            <button class="btn btn-sm btn-outline-secondary" id="aiVisualCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                          </div>
-                        </header>
-                        <textarea id="aiVisualPrompt" class="form-control form-control-sm" rows="3" readonly spellcheck="false"></textarea>
-                        <div class="ai-color-palette" id="aiVisualPalette"></div>
-                        <div class="small text-secondary mt-2" id="aiVisualMeta"></div>
-                      </div>
-                      <div class="ai-output mt-3" id="aiPlanWrap" hidden>
-                        <header>
-                          <span class="title">Timeline Rilis</span>
-                          <div class="copy-actions">
-                            <button class="btn btn-sm btn-outline-secondary" id="aiPlanCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
-                          </div>
-                        </header>
-                        <ul class="ai-plan-list" id="aiPlanList"></ul>
-                        <div class="small text-secondary mt-2" id="aiPlanSummary"></div>
-                      </div>
-                      <div id="aiTagInsights" hidden></div>
-                      <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
+    <section class="app-section" data-section="profile" id="section-profile" hidden>
+      <div class="card shadow-sm" id="profileCard">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+            <div>
+              <h5 class="mb-1">Profil Pengunjung</h5>
+              <p class="small text-secondary mb-0">Pantau level avatar, XP, dan pencapaian yang kamu kumpulkan.</p>
+            </div>
+            <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1 Rookie</span>
+          </div>
+          <div class="row g-4 align-items-center">
+            <div class="col-lg-5">
+              <div class="dynamic-avatar dropdown" id="dynamicAvatar" aria-live="polite">
+                <button type="button" class="avatar-btn" id="avatarToggle" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">
+                  <span id="avatarEmoji">🎧</span>
+                </button>
+                <div class="avatar-glow" aria-hidden="true"></div>
+                <div class="dropdown-menu avatar-menu" id="avatarMenu">
+                  <div class="avatar-meta">
+                    <span id="avatarEmojiMenu">🎧</span>
+                    <div>
+                      <div class="fw-semibold" id="avatarProfileTitle">Rookie · Lv.1</div>
+                      <div class="small text-secondary" id="avatarProfileMoodMenu">Pendatang baru yang penasaran.</div>
                     </div>
                   </div>
-      
-                  <div class="card border-0 bg-body-tertiary" id="subtitleCard">
-                    <div class="card-body">
-                      <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
-                        <div class="flex-grow-1">
-                          <strong>Podcast Mode · Subtitle</strong>
-                          <div class="small text-secondary">Ambil subtitle otomatis atau manual dan simpan sebagai teks.</div>
+                  <h6 class="text-secondary mb-2">Achievements</h6>
+                  <div class="avatar-achievements" id="avatarAchievementList"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-7">
+              <div class="profile-stats">
+                <div class="profile-stat">
+                  <span class="label">XP Saat Ini</span>
+                  <span class="value" id="rewardPointsLabel">0 XP</span>
+                </div>
+                <div class="profile-stat">
+                  <span class="label">Rentang Level</span>
+                  <span class="value" id="avatarLevelRange">0 – 119 XP</span>
+                </div>
+              </div>
+              <p class="mb-1 fw-semibold" id="avatarMood">Pendatang baru yang penasaran.</p>
+              <p class="mb-3 text-secondary" id="avatarProfileMood">Pendatang baru yang penasaran.</p>
+              <div class="reward-meter" role="progressbar" aria-label="Progres level avatar">
+                <span id="avatarProgressBar"></span>
+              </div>
+              <p class="small text-secondary mb-0" id="avatarLevelSummary">120 XP lagi menuju Lv.2 Explorer.</p>
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-open-experience="true"><i class="bi bi-stars me-1"></i> Buka Experience</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-open-profile="true"><i class="bi bi-arrow-clockwise me-1"></i> Refresh Profil</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mt-4">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h6 class="title-mono text-secondary mb-0">Achievement Board</h6>
+            <span class="badge rounded-pill text-bg-info" id="badgeCountLabel">0 badge</span>
+          </div>
+          <div class="small text-secondary mb-3">Badge membuka animasi ekstra di Experience Hub dan menaikkan XP kamu.</div>
+          <ul id="rewardBadges" class="badge-list profile-badge-list" aria-live="polite"></ul>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mt-4">
+        <div class="card-body p-4">
+          <h6 class="title-mono text-secondary mb-3">Level Milestones</h6>
+          <ul class="level-milestones" id="profileMilestones"></ul>
+        </div>
+      </div>
     </section>
-
-            <div class="row g-3 mb-3">
-              <div class="col-sm-6">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="autoDownload" checked>
-                  <label class="form-check-label" for="autoDownload">Auto-download</label>
-                </div>
-              </div>
-              <div class="col-sm-6">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="autoClear">
-                  <label class="form-check-label" for="autoClear">Auto-bersihkan</label>
-                </div>
-              </div>
-            </div>
-
-            <div class="row g-3 mb-3">
-              <div class="col-sm-6">
-                <label class="form-label">Trim Mulai</label>
-                <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
-              </div>
-              <div class="col-sm-6">
-                <label class="form-label">Trim Selesai</label>
-                <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Nama file</label>
-              <input id="fileName" type="text" class="form-control" placeholder="Nama file output" />
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Metadata ID3</label>
-              <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
-              <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
-              <input id="id3Album" type="text" class="form-control mb-2" placeholder="Album" />
-              <input id="id3Genre" type="text" class="form-control" placeholder="Genre" />
-            </div>
-
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="normalize" />
-              <label class="form-check-label" for="normalize">Normalisasi audio</label>
-            </div>
-
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="atmos" />
-              <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
-            </div>
-
-            <div class="row g-3 mb-3 align-items-end">
-              <div class="col-md-4">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" id="denoise">
-                  <label class="form-check-label" for="denoise">AI Noise Cleaner</label>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label d-flex justify-content-between align-items-center" for="volumeBoost">
-                  <span>Volume Booster</span>
-                  <span class="badge text-bg-secondary" id="volumeBoostLabel">0 dB</span>
-                </label>
-                <div class="range-control" data-range-wrapper>
-                  <button class="btn-range" type="button" data-range-step="-1" aria-label="Turunkan volume booster"><i class="bi bi-dash-lg"></i></button>
-                  <input type="range" class="form-range" id="volumeBoost" min="0" max="12" step="1" value="0">
-                  <button class="btn-range" type="button" data-range-step="1" aria-label="Naikkan volume booster"><i class="bi bi-plus-lg"></i></button>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label" for="enhancer">AI Enhancer</label>
-                <select id="enhancer" class="form-select">
-                  <option value="none" selected>Off</option>
-                  <option value="clarity">Vocal Clarity</option>
-                  <option value="warm">Warm Glow</option>
-                  <option value="club">Club Lift</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="dropzone mb-3" id="dropzone" role="region" aria-label="Upload cookies.txt">
-              <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
-              <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
-              <input type="file" id="cookieFile" accept=".txt" hidden>
-              <div class="mt-2 d-flex flex-wrap justify-content-center gap-2">
-                <button class="btn btn-sm btn-outline-primary" id="pickCookie" type="button">Pilih cookies.txt</button>
-                <button class="btn btn-sm btn-outline-secondary" id="openLoginBtn" type="button"><i class="bi bi-shield-lock"></i> Login admin</button>
-              </div>
-              <div class="dropzone-status small text-secondary mt-2" id="dropzoneStatus">Login admin diperlukan sebelum upload cookies.</div>
-            </div>
-
-            <div class="d-grid d-sm-flex gap-2 align-items-center">
-              <button id="convertBtn" class="btn btn-primary btn-lg"><i class="bi bi-magic"></i> Convert</button>
-              <button id="downloadAllBtn" class="btn btn-outline-primary"><i class="bi bi-download"></i> Download Semua</button>
-              <button id="downloadZipBtn" class="btn btn-success"><i class="bi bi-collection"></i> Download ZIP</button>
-              <button id="clearBtn" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Bersihkan</button>
-            </div>
-</div>
-                  <div class="d-flex flex-wrap align-items-center gap-2">
-                    <select id="subtitleLang" class="form-select form-select-sm" aria-label="Pilih bahasa subtitle">
-                      <option value="id.*,en.*,en" selected>Indonesia / Inggris</option>
-                      <option value="id.*,id">Indonesia saja</option>
-                      <option value="en.*,en">Inggris saja</option>
-                      <option value="all">Semua bahasa</option>
-                    </select>
-                    <div class="form-check form-switch m-0">
-                      <input class="form-check-input" type="checkbox" id="subtitleAuto" checked>
-                      <label class="form-check-label small" for="subtitleAuto">Gunakan auto caption</label>
-                    </div>
-                    <button class="btn btn-outline-primary btn-sm" id="subtitleBtn" type="button"><i class="bi bi-text-left"></i> Ambil subtitle</button>
-                  </div>
-                </div>
-                <div class="alert alert-secondary mt-3" id="subtitleResult" hidden>
-                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <strong id="subtitleStatus">Subtitle siap</strong>
-                    <span class="badge text-bg-primary" id="subtitleLangBadge"></span>
-                    <span class="badge text-bg-warning text-dark" id="subtitleAutoBadge" hidden>Auto</span>
-                    <button class="btn btn-sm btn-outline-secondary ms-lg-auto" id="subtitleCopyBtn" type="button"><i class="bi bi-clipboard"></i> Salin teks</button>
-                  </div>
-                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <a id="subtitleSrtLink" class="btn btn-sm btn-primary" href="#" download><i class="bi bi-filetype-srt"></i> Download .srt</a>
-                    <a id="subtitleTxtLink" class="btn btn-sm btn-outline-primary" href="#" download><i class="bi bi-filetype-txt"></i> Download .txt</a>
-                    <button id="subtitleShareBtn" class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-share"></i> Share</button>
-                  </div>
-                  <pre class="mb-0 small" id="subtitlePreview"></pre>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-3" id="statusWrap" hidden>
-              <div class="d-flex align-items-center gap-2">
-                <div class="spinner-border spinner-border-sm" role="status" id="loadingSpinner" aria-hidden="true"></div>
-                <div id="status" class="fw-medium">Memproses…</div>
-                <span class="badge text-bg-secondary" id="backendBadge" title="Target backend"></span>
-              </div>
-            </div>
-
-            <div class="progress w-100 mt-2" id="convertProgWrap" hidden data-state="hidden" aria-live="polite">
-              <div class="progress-bar" id="convertProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width:0%">
-                <span id="convertProgressLabel">0%</span>
-              </div>
-            </div>
-
-            <progress id="queueProgress" class="w-100 mt-2" value="0" max="100" hidden aria-label="Progress antrian"></progress>
-
-            <div class="mt-3" id="resultWrap" hidden>
-              <div class="alert alert-success d-flex align-items-center" role="alert">
-                <i class="bi bi-check-circle me-2"></i>
-                <div>
-                  Selesai! <a id="downloadLink" class="alert-link" href="#" download>Download hasil</a>
-                </div>
-              </div>
-              <div class="card border-0 bg-body-tertiary preview-card" id="previewCard" hidden>
-                <div class="card-body d-flex flex-column flex-md-row align-items-start gap-3">
-                  <div class="flex-grow-1 w-100">
-                    <div class="d-flex align-items-center gap-2">
-                      <i class="bi bi-play-circle-fill text-primary"></i>
-                      <strong>Preview Audio</strong>
-                    </div>
-                    <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"></audio>
-
-                    <div id="shareWrap" class="mt-3" hidden>
-                      <div class="d-flex flex-wrap align-items-center gap-2">
-                        <strong class="me-auto">Bagikan</strong>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Bagikan hasil">
-                          <button class="btn btn-outline-primary" id="shareBtn" type="button"><i class="bi bi-share"></i> Share</button>
-                          <button class="btn btn-outline-secondary" id="copyShareBtn" type="button"><i class="bi bi-link-45deg"></i> Salin link</button>
-                        </div>
-                      </div>
-                      <div class="input-group input-group-sm mt-2">
-                        <span class="input-group-text"><i class="bi bi-box-arrow-up-right"></i></span>
-                        <input type="text" class="form-control" id="shareLinkInput" readonly>
-                        <button class="btn btn-outline-secondary" id="openShareBtn" type="button" aria-label="Buka link share"><i class="bi bi-arrow-up-right-square"></i></button>
-                      </div>
-                      <div class="small text-secondary mt-2" id="shareInfo"></div>
-                    </div>
-
-                    <div id="equalizerWrap" class="mt-3" hidden>
-                      <div class="d-flex flex-wrap align-items-center gap-2">
-                        <strong class="me-auto">Equalizer</strong>
-                        <div class="btn-group btn-group-sm" role="group">
-                          <button class="btn btn-outline-secondary" id="eqPresetFlat" type="button">Flat</button>
-                          <button class="btn btn-outline-secondary" id="eqPresetPodcast" type="button">Podcast</button>
-                          <button class="btn btn-outline-secondary" id="eqPresetBass" type="button">Bass+</button>
-                        </div>
-                      </div>
-                      <div class="row g-3 mt-2 eq-slider">
-                        <div class="col-sm-4">
-                          <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label mb-0" for="eqBass">Bass</label>
-                            <span class="eq-value" id="eqBassValue">0 dB</span>
-                          </div>
-                          <div class="range-control" data-range-wrapper>
-                            <button class="btn-range" type="button" data-range-step="-1" aria-label="Turunkan gain bass"><i class="bi bi-dash-lg"></i></button>
-                            <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqBass" aria-label="Atur gain bass">
-                            <button class="btn-range" type="button" data-range-step="1" aria-label="Naikkan gain bass"><i class="bi bi-plus-lg"></i></button>
-                          </div>
-                        </div>
-                        <div class="col-sm-4">
-                          <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label mb-0" for="eqMid">Mid</label>
-                            <span class="eq-value" id="eqMidValue">0 dB</span>
-                          </div>
-                          <div class="range-control" data-range-wrapper>
-                            <button class="btn-range" type="button" data-range-step="-1" aria-label="Turunkan gain mid"><i class="bi bi-dash-lg"></i></button>
-                            <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqMid" aria-label="Atur gain mid">
-                            <button class="btn-range" type="button" data-range-step="1" aria-label="Naikkan gain mid"><i class="bi bi-plus-lg"></i></button>
-                          </div>
-                        </div>
-                        <div class="col-sm-4">
-                          <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label mb-0" for="eqTreble">Treble</label>
-                            <span class="eq-value" id="eqTrebleValue">0 dB</span>
-                          </div>
-                          <div class="range-control" data-range-wrapper>
-                            <button class="btn-range" type="button" data-range-step="-1" aria-label="Turunkan gain treble"><i class="bi bi-dash-lg"></i></button>
-                            <input type="range" class="form-range" min="-12" max="12" step="1" value="0" id="eqTreble" aria-label="Atur gain treble">
-                            <button class="btn-range" type="button" data-range-step="1" aria-label="Naikkan gain treble"><i class="bi bi-plus-lg"></i></button>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="small text-secondary mt-2" id="eqStatus">Flat</div>
-                    </div>
-                  </div>
-                  <div id="qrWrap" class="text-center" hidden>
-                    <canvas id="downloadQr" width="156" height="156" class="border rounded bg-body"></canvas>
-                    <div class="small text-secondary mt-2"><i class="bi bi-qr-code"></i> Scan untuk mini player</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-3" id="playlistResultWrap" hidden>
-              <div class="alert alert-info d-flex align-items-center" role="alert">
-                <i class="bi bi-collection-play me-2"></i>
-                <div>
-                  Playlist ZIP siap! <a id="playlistDownloadLink" class="alert-link" href="#" download>Download ZIP</a>
-                  <div class="small text-secondary" id="playlistInfo"></div>
-                </div>
-              </div>
-              <div class="card border-0 bg-body-tertiary" id="playlistShareCard" hidden>
-                <div class="card-body d-flex flex-column flex-md-row align-items-start gap-3">
-                  <div class="flex-grow-1">
-                    <strong>Bagikan playlist</strong>
-                    <p class="small text-secondary mb-0">Scan kode QR untuk unduh ZIP di perangkat lain.</p>
-                  </div>
-                  <div id="playlistQrWrap" class="text-center" hidden>
-                    <canvas id="playlistQr" width="156" height="156" class="border rounded bg-body"></canvas>
-                    <div class="small text-secondary mt-2">Scan untuk unduh ZIP</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-3" id="logWrap" hidden>
-              <div class="card border-0 bg-body-tertiary">
-                <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong>Log</strong>
-                    <button class="btn btn-sm btn-outline-secondary" id="copyLog"><i class="bi bi-clipboard-check"></i> Salin</button>
-                  </div>
-                  <pre class="log-box" id="logs" aria-live="polite"></pre>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-5">
-        <div class="card shadow-sm mb-4" id="backgroundCard">
-          <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-cloud-check me-2"></i>
-              <h5 class="mb-0">Background Jobs</h5>
-            </div>
-            <div class="small text-secondary" id="backgroundEmpty">Belum ada job latar.</div>
-            <ul class="list-group list-group-flush" id="backgroundList"></ul>
-          </div>
-        </div>
-
-        <div class="card shadow-sm mb-4">
-          <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-clock-history me-2"></i>
-              <h5 class="mb-0">Riwayat</h5>
-            </div>
-            <div id="historyEmpty" class="text-secondary small">Belum ada riwayat. Selesai convert, link akan tersimpan di sini.</div>
-            <ul class="list-group list-group-flush" id="historyList"></ul>
-            <div class="d-grid mt-3">
-              <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm">
-          <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-lightbulb me-2"></i>
-              <h5 class="mb-0">Tips kecepatan</h5>
-            </div>
-            <p class="small text-secondary mb-3">Ketuk tips untuk menandai prioritas percepatan konversi kamu.</p>
-            <ul class="speed-tips" id="speedTips">
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="format" data-tip-label="Format tercepat">
-                  <span class="tip-title">Format tercepat</span>
-                  <span class="tip-desc"><strong>M4A</strong> menyimpan audio DASH apa adanya tanpa proses ulang sehingga antrean selesai dalam hitungan detik.</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="playlist" data-tip-label="Single video">
-                  <span class="tip-title">Single video fokus</span>
-                  <span class="tip-desc">Aktifkan <strong>Abaikan playlist</strong> untuk melewati bundel puluhan video dan menuntaskan satu URL lebih cepat.</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="deps" data-tip-label="Update toolchain">
-                  <span class="tip-title">Toolchain terbaru</span>
-                  <span class="tip-desc">Pastikan <code>ffmpeg</code> &amp; <code>yt-dlp</code> versi terbaru agar tidak mengulang download karena bug lama.</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="backend" data-tip-label="Server terdekat">
-                  <span class="tip-title">Server terdekat</span>
-                  <span class="tip-desc">Isi <strong>Backend URL</strong> dengan instance di region terdekat supaya latensi rendah dan fetch metadata lebih sigap.</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="filters" data-tip-label="Minim filter">
-                  <span class="tip-title">Minim filter berat</span>
-                  <span class="tip-desc">Nonaktifkan <em>denoise</em>, <em>normalisasi</em>, dan <em>Dolby Atmos</em> jika ingin prioritas kecepatan render.</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="queue" data-tip-label="Antrian ringan">
-                  <span class="tip-title">Antrian ringan</span>
-                  <span class="tip-desc">Masukkan 3‑5 URL per batch, lalu lanjutkan batch berikutnya ketika proses selesai agar worker tidak throttle.</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" class="tip-pill" data-tip-id="cookies" data-tip-label="Cookies valid">
-                  <span class="tip-title">Cookies valid</span>
-                  <span class="tip-desc">Login admin dan unggah <code>cookies.txt</code> terbaru supaya konten age‑gate tidak menghentikan pipeline.</span>
-                </button>
-              </li>
-            </ul>
-            <div id="speedTipHint">Ketuk tips untuk menandai prioritasmu.</div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm donation-card mt-4" id="donationCard">
-          <div class="card-body p-4">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-              <div class="d-flex align-items-center">
-                <i class="bi bi-cash-coin me-2 fs-5 text-warning"></i>
-                <div>
-                  <h5 class="mb-0">Dukung pengembangan</h5>
-                  <small class="text-secondary">Retro vibes + performa ngebut</small>
-                </div>
-              </div>
-              <span class="badge text-bg-warning text-dark title-mono">NEO BRUTALISM</span>
-            </div>
-            <p class="small mb-3">UI ini hidup dari komunitas. Pilih nominal, kami otomatis bukakan Saweria dengan angka yang sama sehingga kamu tinggal tap bayar.</p>
-            <div class="donation-actions" id="donationButtons" role="group" aria-label="Nominal donasi Saweria">
-              <button type="button" class="btn btn-donation" data-amount="5000" aria-pressed="false">
-                Rp5.000
-                <span>Ngopi dulu ☕️</span>
-              </button>
-              <button type="button" class="btn btn-donation" data-amount="10000" aria-pressed="false">
-                Rp10.000
-                <span>Boost bandwidth</span>
-              </button>
-              <button type="button" class="btn btn-donation" data-amount="25000" aria-pressed="false">
-                Rp25.000
-                <span>Upgrade cache</span>
-              </button>
-              <button type="button" class="btn btn-donation" data-amount="100000" aria-pressed="false">
-                Rp100.000
-                <span>Bensin server 1 bulan</span>
-              </button>
-            </div>
-            <div id="donationStatus" class="donation-status">Nominal default Rp10.000 siap dimasukkan otomatis ke Saweria.</div>
-            <div class="text-center mt-2">
-              <button type="button" class="btn btn-sm btn-outline-warning" id="manualDonationBtn">
-                <i class="bi bi-arrow-up-right-circle me-1"></i>Manual Rp5.000
-              </button>
-            </div>
-            <div class="text-center mt-3">
-              <a class="btn btn-outline-primary px-4 donation-link" id="donationLink" href="https://saweria.co/DhikaMarcella?amount=10000" target="_blank" rel="noopener">
-                <span class="title-mono d-block">Buka Saweria</span>
-                <small id="donationLinkHint" class="fw-semibold">Rp10.000 siap diisi otomatis</small>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="card shadow-sm mt-4">
-          <div class="card-body p-4">
-            <div class="d-flex align-items-center mb-2">
-              <i class="bi bi-question-circle me-2"></i>
-              <h5 class="mb-0">FAQ</h5>
-            </div>
-            <div class="d-grid gap-2" id="faqList">
-              <details class="faq-item" open>
-                <summary>Apakah subtitle yang diunduh lengkap?</summary>
-                <p>Ya. Tombol <strong>Ambil subtitle</strong> menarik transkrip penuh dengan fallback halaman tontonan YouTube. Bahasa Indonesia, Inggris, dan track otomatis lainnya ikut disertakan; teks <em>(Tidak ada teks tersedia)</em> hanya muncul jika video tidak memiliki caption sama sekali.</p>
-              </details>
-              <details class="faq-item">
-                <summary>Bagaimana AI Studio membantu audiophile?</summary>
-                <p><strong>AI Studio</strong> kini berisi auto metadata, caption promosi, audiophile guide, hook headline, cover art prompt, dan release planner. Semua insight tersimpan di panel output sehingga kamu bisa salin ide rilisan dengan sekali klik.</p>
-              </details>
-              <details class="faq-item">
-                <summary>Bagaimana cara berbagi hasil ke perangkat lain?</summary>
-                <p>Setelah convert, buka kartu preview lalu tekan ikon <strong>QR</strong>. Halaman share mini player akan terbuka; kode QR bisa dipindai dari ponsel dan tetap berfungsi offline karena sudah diprecache oleh PWA.</p>
-              </details>
-              <details class="faq-item">
-                <summary>Konversi terasa lambat, apa yang bisa dicek?</summary>
-                <p>Gunakan panel <strong>Tips kecepatan</strong> untuk menandai optimasi penting: pilih format M4A, batasi batch, perbarui <code>ffmpeg</code>/<code>yt-dlp</code>, matikan filter berat, serta arahkan backend ke server terdekat.</p>
-              </details>
-              <details class="faq-item">
-                <summary>Bagaimana cara memasang dan memakai mode offline?</summary>
-                <p>Tekan tombol <strong>Pasang aplikasi</strong> di pojok kanan atas saat ikon download muncul. Setelah terpasang, UI, mini player, dan QR share dapat dibuka meski koneksi sedang tidak stabil.</p>
-              </details>
-              <details class="faq-item">
-                <summary>Apa fungsi login admin &amp; apakah aman?</summary>
-                <p>Login admin hanya dipakai untuk mengirim <em>hash credential</em> ke backend supaya <code>cookies.txt</code> bisa diunggah aman. Username dan password asli tidak pernah tampil di source maupun disimpan di localStorage.</p>
-              </details>
-              <details class="faq-item">
-                <summary>Preferensi aksesibilitas disimpan di mana?</summary>
-                <p>Setiap kali kamu mengaktifkan high contrast, teks besar, atau reduce motion dari panel pengaturan, pilihannya disimpan di <code>localStorage</code> dan otomatis diterapkan lagi saat aplikasi dibuka di perangkat yang sama.</p>
-              </details>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
 
   <div id="miniPlayer" class="mini-player" hidden>
     <div class="mini-player-card card shadow-lg border-0">
@@ -1466,7 +1007,7 @@
       <div class="d-grid gap-2">
         <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter"><i class="bi bi-cpu"></i> Converter</button>
         <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub"><i class="bi bi-stars"></i> Experience Hub</button>
-        <button type="button" class="app-nav-btn" data-section-target="studio" data-section-label="AI Studio"><i class="bi bi-robot"></i> AI Studio</button>
+        <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung"><i class="bi bi-person-circle"></i> Profil</button>
       </div>
     </div>
   </div>
@@ -1541,7 +1082,7 @@
             <div>
               <span class="badge text-bg-primary title-mono mb-2">WALKTHROUGH</span>
               <h5 class="mb-1" id="tutorialModalLabel">Tur interaktif</h5>
-              <p>Kenalan dengan converter, AI Studio, dan mode offline dalam tiga langkah singkat.</p>
+              <p>Kenalan dengan converter, Experience Hub, dan profil avatar dalam tiga langkah singkat.</p>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
           </div>
@@ -1566,29 +1107,29 @@
               </div>
             </section>
             <section class="walkthrough-step" data-step="1">
-              <h6>2. Gunakan AI Studio</h6>
-              <p>Generator hook, prompt cover art, dan planner rilis membantu kamu meluncurkan audio dengan cepat.</p>
+              <h6>2. Jelajahi Experience Hub</h6>
+              <p>Atur tema, musik adaptif, voice command, dan buka AI Navigator langsung dari Experience Hub.</p>
               <ul>
-                <li>Buka tab <strong>AI Studio</strong> setelah metadata didapat.</li>
-                <li>Pilih bahasa output dan ketuk chip insight untuk menyalin.</li>
+                <li>Aktifkan musik adaptif atau voice navigation untuk kontrol hands-free.</li>
+                <li>Tekan ikon robot untuk chat cepat dan pintasan walkthrough.</li>
               </ul>
               <div class="chip-group">
-                <span class="chip">Hook</span>
-                <span class="chip">Cover</span>
-                <span class="chip">Planner</span>
+                <span class="chip">Voice</span>
+                <span class="chip">Music</span>
+                <span class="chip">Navigator</span>
               </div>
             </section>
             <section class="walkthrough-step" data-step="2">
-              <h6>3. Mode offline & donasi</h6>
-              <p>Install sebagai aplikasi PWA untuk akses offline, lalu dukung server lewat kartu donasi neo-brutalisme.</p>
+              <h6>3. Profil & mode offline</h6>
+              <p>Level dan badge avatar muncul di tab Profil. Install sebagai PWA dan dukung server lewat donasi.</p>
               <ul>
-                <li>Klik ikon install di browser atau tombol prompt yang muncul.</li>
-                <li>Pilih nominal donasi; Saweria otomatis terbuka dengan angka yang sama.</li>
+                <li>Pantau XP, badge, dan milestone avatar di tab <strong>Profil</strong>.</li>
+                <li>Klik ikon install di browser lalu pilih nominal donasi favoritmu.</li>
               </ul>
               <div class="chip-group">
+                <span class="chip">Profil</span>
+                <span class="chip">Donasi</span>
                 <span class="chip">PWA</span>
-                <span class="chip">Offline</span>
-                <span class="chip">Saweria</span>
               </div>
             </section>
           </div>
@@ -1665,6 +1206,7 @@
   const toast = new bootstrap.Toast($('#toast'));
   const setToast = (msg) => { $('#toastText').textContent = msg; toast.show(); };
 
+  const visitedSections = new Set();
   const sectionPanels = Array.from(document.querySelectorAll('.app-section'));
   const navButtons = Array.from(document.querySelectorAll('[data-section-target]'));
   const sectionTitle = $('#activeSectionTitle');
@@ -1680,9 +1222,9 @@
       title: 'Experience Hub',
       subtitle: 'Avatar dinamis, musik adaptif, dan voice control siap dibuka.',
     },
-    studio: {
-      title: 'AI Studio',
-      subtitle: 'Buat caption, hook, dan timeline rilis otomatis.',
+    profile: {
+      title: 'Profil',
+      subtitle: 'Pantau XP, badge, dan riwayat avatar kamu.',
     },
   };
 
@@ -1713,6 +1255,17 @@
 
   navButtons.forEach((btn) => {
     btn.addEventListener('click', () => setActiveSection(btn.dataset.sectionTarget));
+  });
+
+  openProfileButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setActiveSection('profile');
+      updateAvatarUi();
+    });
+  });
+
+  openExperienceButtons.forEach((btn) => {
+    btn.addEventListener('click', () => setActiveSection('experience'));
   });
 
   const savedSection = localStorage.getItem('app:activeSection');
@@ -1818,10 +1371,20 @@
   const avatarMood = $('#avatarMood');
   const avatarProfileTitle = $('#avatarProfileTitle');
   const avatarProfileMood = $('#avatarProfileMood');
+  const avatarProfileMoodMenu = $('#avatarProfileMoodMenu');
   const avatarProgressBar = $('#avatarProgressBar');
   const rewardPointsLabel = $('#rewardPointsLabel');
   const rewardBadges = $('#rewardBadges');
   const avatarAchievementList = $('#avatarAchievementList');
+  const avatarLevelSummary = $('#avatarLevelSummary');
+  const avatarLevelRange = $('#avatarLevelRange');
+  const avatarEmojiPreview = $('#avatarEmojiPreview');
+  const avatarPreviewLevel = $('#avatarPreviewLevel');
+  const avatarPreviewMood = $('#avatarPreviewMood');
+  const profileMilestones = $('#profileMilestones');
+  const badgeCountLabel = $('#badgeCountLabel');
+  const openProfileButtons = Array.from(document.querySelectorAll('[data-open-profile]'));
+  const openExperienceButtons = Array.from(document.querySelectorAll('[data-open-experience]'));
   const themeSelect = $('#themeSelect');
   const fontSelect = $('#fontSelect');
   const layoutSelect = $('#layoutSelect');
@@ -1914,7 +1477,6 @@
   const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
   const selectedSpeedTips = new Set();
   const avatarDropdown = avatarToggle ? bootstrap.Dropdown.getOrCreateInstance(avatarToggle) : null;
-  const visitedSections = new Set();
 
   if (speedTipButtons.length) {
     speedTipButtons.forEach((btn) => {
@@ -2306,12 +1868,23 @@
     const badges = Array.from(state.experience.badges || []);
     if (rewardBadges) {
       rewardBadges.innerHTML = '';
-      badges.forEach((badge) => {
-        const li = document.createElement('li');
-        li.dataset.badge = badge;
-        li.textContent = formatBadgeLabel(badge);
-        rewardBadges.appendChild(li);
-      });
+      if (!badges.length) {
+        const empty = document.createElement('li');
+        empty.className = 'is-empty';
+        empty.textContent = 'Belum ada badge. Jelajahi Experience Hub untuk mulai mengumpulkan.';
+        rewardBadges.appendChild(empty);
+      } else {
+        badges.forEach((badge) => {
+          const li = document.createElement('li');
+          li.dataset.badge = badge;
+          li.textContent = formatBadgeLabel(badge);
+          rewardBadges.appendChild(li);
+        });
+      }
+    }
+    if (badgeCountLabel) {
+      const count = badges.length;
+      badgeCountLabel.textContent = count === 1 ? '1 badge' : `${count} badge`;
     }
     if (avatarAchievementList) {
       avatarAchievementList.innerHTML = '';
@@ -2329,6 +1902,27 @@
         });
       }
     }
+  };
+
+  const renderLevelMilestones = (points = Number(state.experience.points) || 0) => {
+    if (!profileMilestones) return;
+    profileMilestones.innerHTML = '';
+    avatarLevels.forEach((level, idx) => {
+      const next = avatarLevels[idx + 1];
+      const item = document.createElement('li');
+      if (points >= level.threshold && (!next || points < next.threshold)) {
+        item.classList.add('is-active');
+      }
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.textContent = `Lv.${idx + 1} ${level.title}`;
+      const range = document.createElement('div');
+      range.className = 'range';
+      range.textContent = next ? `${level.threshold} – ${next.threshold - 1} XP` : `${level.threshold}+ XP`;
+      item.appendChild(title);
+      item.appendChild(range);
+      profileMilestones.appendChild(item);
+    });
   };
 
   const getLevelInfo = (points) => {
@@ -2351,10 +1945,22 @@
       if (avatarProfileTitle) {
         avatarProfileTitle.textContent = `${levelInfo.title} · Lv.${levelIndex}`;
       }
+      if (avatarPreviewLevel) {
+        avatarPreviewLevel.textContent = `Lv.${levelIndex} ${levelInfo.title}`;
+      }
     }
+    if (avatarEmojiPreview) avatarEmojiPreview.textContent = levelInfo.emoji;
     if (avatarMood) avatarMood.textContent = levelInfo.mood;
     if (avatarProfileMood) avatarProfileMood.textContent = levelInfo.mood;
+    if (avatarProfileMoodMenu) avatarProfileMoodMenu.textContent = levelInfo.mood;
+    if (avatarPreviewMood) avatarPreviewMood.textContent = levelInfo.mood;
     if (rewardPointsLabel) rewardPointsLabel.textContent = `${points} XP`;
+    if (avatarLevelRange) {
+      const rangeText = nextLevel
+        ? `${levelInfo.threshold} – ${nextLevel.threshold - 1} XP`
+        : `${levelInfo.threshold}+ XP`;
+      avatarLevelRange.textContent = rangeText;
+    }
     if (avatarProgressBar) {
       let progress = 100;
       if (nextLevel) {
@@ -2362,6 +1968,15 @@
         progress = Math.min(100, Math.round(((points - levelInfo.threshold) / span) * 100));
       }
       avatarProgressBar.style.width = `${progress}%`;
+    }
+    if (avatarLevelSummary) {
+      if (nextLevel) {
+        const levelIndex = avatarLevels.indexOf(nextLevel) + 1;
+        const remaining = Math.max(0, nextLevel.threshold - points);
+        avatarLevelSummary.textContent = `${remaining} XP lagi menuju Lv.${levelIndex} ${nextLevel.title}.`;
+      } else {
+        avatarLevelSummary.textContent = 'Kamu sudah mencapai level tertinggi! 🎉';
+      }
     }
     if (state.avatarAura === 'konami' && dynamicAvatar) {
       dynamicAvatar.classList.add('level-up');
@@ -2371,6 +1986,7 @@
     if (dynamicAvatar) {
       dynamicAvatar.setAttribute('aria-label', `Avatar level ${avatarLevelBadge ? avatarLevelBadge.textContent : ''}`.trim());
     }
+    renderLevelMilestones(points);
     renderBadges();
   };
 
@@ -2744,7 +2360,7 @@
   }
 
   function narrateGuide() {
-    const summary = 'Converter ini siap ambil URL YouTube, aktifkan AI Studio, dan share lewat mini player. Ketuk tombol konversi untuk mulai.';
+    const summary = 'Converter ini siap ambil URL YouTube, membuka Experience Hub, dan mencatat XP avatar di tab Profil. Ketuk tombol konversi untuk mulai.';
     if (speak(summary)) incrementPoints(10, 'Narrator mode', { badge: 'narrator' });
   }
 
@@ -2906,7 +2522,7 @@
   const assistantKnowledge = [
     { keywords: ['donasi', 'saweria'], reply: 'Untuk donasi, pilih nominal di kartu neo-brutalisme. Jika pop-up diblokir, gunakan tombol manual Rp5.000.' },
     { keywords: ['subtitle', 'transkrip'], reply: 'Tekan tombol Ambil subtitle. Kami akan ambil track Indonesia, Inggris, dan fallback transkrip dari halaman watch.' },
-    { keywords: ['ai', 'studio'], reply: 'AI Studio mencakup Auto Music Tags, Caption Sosial, Playlist Pitch, dan planner rilis. Buka tab AI Studio untuk mengeksekusi.' },
+    { keywords: ['profil', 'avatar', 'xp'], reply: 'Tab Profil menampilkan avatar dinamis, XP, dan badge yang kamu kumpulkan. Buka tab Profil untuk melihat milestone dan reward.' },
     { keywords: ['offline', 'pwa'], reply: 'Klik tombol Pasang aplikasi di kanan atas supaya converter bisa dipakai offline seperti aplikasi HP.' },
     { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music. Pilih mood Energetic/Focus/Chill atau biarkan auto mengikuti waktu.' },
     { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk perintah seperti “buka donasi” atau “mainkan game”.' },

@@ -1064,8 +1064,8 @@ const assistantTopicReply = {
     "Untuk donasi tinggal klik tombol Buka Saweria. Nominal default otomatis Rp10.000 dan kamu bisa pilih Rp5.000, Rp10.000, Rp25.000, atau Rp100.000 langsung di kartu donasi neo-brutalisme. Kalau pop-up diblokir, pakai tombol manual supaya link https://saweria.co/DhikaMarcella terbuka.",
   subtitle: () =>
     "Subtitle diambil dari track Indonesia dan Inggris. Tekan Ambil Subtitle, kami ambil caption resmi, auto-generated, lalu fallback ke transkrip halaman watch bila perlu. File .srt dan .txt langsung siap di Riwayat unduhan.",
-  aiStudio: () =>
-    "AI Studio mencakup Hook Headline, Cover Art Prompt, dan Release Planner. Masukkan judul serta vibe lagu, nanti kami siapkan CTA, palet warna, hingga timeline rilis supaya tim kreatif bisa langsung eksekusi.",
+  profile: () =>
+    "Tab Profil menampilkan avatar dinamis lengkap dengan XP, badge, dan milestone level. Buka Profil untuk melihat progress, klaim badge, dan lanjutkan pengalaman dari Experience Hub.",
   music: () => {
     const moodBadges = Object.entries(MOOD_EMOJIS)
       .map(([mood, emoji]) => `${emoji} ${mood}`)
@@ -1111,12 +1111,12 @@ const ASSISTANT_TOPICS = [
     ],
   },
   {
-    key: "aiStudio",
-    keywords: ["ai studio", "ai navigator", "ai hook", "hook headline", "cover art", "cover prompt", "release planner", "playlist pitch"],
+    key: "profile",
+    keywords: ["profil", "avatar", "xp", "badge", "poin", "achievement"],
     suggestions: [
-      "Isi metadata lagu saat convert supaya Hook dan Cover lebih presisi.",
-      "Gunakan Release Planner untuk jadwal teaser sampai follow-up.",
-      "Bagikan hasil AI Studio lewat tombol salin ke clipboard.",
+      "Buka tab Profil untuk melihat level avatar dan daftar badge.",
+      "Jelajahi Experience Hub agar XP naik lebih cepat.",
+      "Donasi, main game, dan pakai voice command untuk mengumpulkan badge baru.",
     ],
   },
   {
@@ -1206,7 +1206,7 @@ const buildAssistantResponse = (prompt) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
   if (!raw) {
     return {
-      reply: "Aku siap bantu optimalkan converter ini. Tanyakan apa saja seputar donasi, subtitle, AI Studio, atau fitur lainnya.",
+      reply: "Aku siap bantu optimalkan converter ini. Tanyakan apa saja seputar donasi, subtitle, Experience Hub, atau profil avatar.",
       suggestions: DEFAULT_ASSISTANT_SUGGESTIONS,
     };
   }
@@ -1236,7 +1236,7 @@ const buildAssistantResponse = (prompt) => {
 
   if (!replySegments.length) {
     replySegments.push(
-      "Aku siap bantu optimalkan converter ini. Bahas donasi, subtitle, AI Studio, musik latar, atau aktifkan walkthrough bila butuh panduan."
+      "Aku siap bantu optimalkan converter ini. Bahas donasi, subtitle, Experience Hub, profil avatar, musik latar, atau aktifkan walkthrough bila butuh panduan."
     );
   }
 
