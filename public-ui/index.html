@@ -1190,6 +1190,8 @@
   const visitedSections = new Set();
   const sectionPanels = Array.from(document.querySelectorAll('.app-section'));
   const navButtons = Array.from(document.querySelectorAll('[data-section-target]'));
+  const openProfileButtons = Array.from(document.querySelectorAll('[data-open-profile]'));
+  const openExperienceButtons = Array.from(document.querySelectorAll('[data-open-experience]'));
   const sectionTitle = $('#activeSectionTitle');
   const sectionSubtitle = $('#activeSectionSubtitle');
   const navDrawerEl = $('#offcanvasNav');
@@ -1366,8 +1368,6 @@
   const avatarPreviewMood = $('#avatarPreviewMood');
   const profileMilestones = $('#profileMilestones');
   const badgeCountLabel = $('#badgeCountLabel');
-  const openProfileButtons = Array.from(document.querySelectorAll('[data-open-profile]'));
-  const openExperienceButtons = Array.from(document.querySelectorAll('[data-open-experience]'));
   const themeSelect = $('#themeSelect');
   const fontSelect = $('#fontSelect');
   const layoutSelect = $('#layoutSelect');
