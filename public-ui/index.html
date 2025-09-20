@@ -218,6 +218,17 @@
     .assistant-fab { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; transition: transform .2s ease; max-width: min(420px, 92vw); }
     .assistant-fab.is-dragging { transition: none; }
     .assistant-fab[hidden] { display: none !important; }
+    .assistant-toggle { position: relative; display: inline-flex; align-items: center; gap: .6rem; border: 0; border-radius: 999px; padding: .55rem .9rem .55rem .6rem; background: linear-gradient(135deg, rgba(13,110,253,.92), rgba(111,66,193,.9)); color: #fff; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 18px 40px rgba(15,23,42,.35); cursor: pointer; touch-action: none; }
+    .assistant-toggle:focus-visible { outline: 2px dashed rgba(255,255,255,.65); outline-offset: 4px; }
+    .assistant-toggle .icon { display: inline-flex; align-items: center; justify-content: center; width: 2.45rem; height: 2.45rem; border-radius: 50%; background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); font-size: 1.2rem; }
+    .assistant-toggle .label { font-size: .74rem; letter-spacing: .08em; }
+    .assistant-toggle .pulse { position: absolute; top: .45rem; right: .45rem; width: .65rem; height: .65rem; border-radius: 50%; background: #ffc107; box-shadow: 0 0 0 0 rgba(255,193,7,.5); transform: scale(0); opacity: 0; transition: transform .2s ease, opacity .2s ease; }
+    .assistant-toggle.has-update .pulse { opacity: 1; transform: scale(1); animation: assistantPulse 1.4s ease-out infinite; }
+    @keyframes assistantPulse { 0% { box-shadow: 0 0 0 0 rgba(255,193,7,.5); } 70% { box-shadow: 0 0 0 12px rgba(255,193,7,0); } 100% { box-shadow: 0 0 0 0 rgba(255,193,7,0); } }
+    @media (max-width: 480px) {
+      .assistant-toggle { padding-right: .7rem; }
+      .assistant-toggle .label { display: none; }
+    }
     .assistant-panel { width: min(360px, 92vw); max-height: min(520px, 78vh); border-radius: 1.2rem; overflow: hidden; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); box-shadow: 0 28px 56px rgba(15,23,42,.45); display: flex; flex-direction: column; transform-origin: bottom right; animation: sectionFade .25s ease; }
     .assistant-panel header { padding: .85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.16)); border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 80%, transparent); cursor: grab; touch-action: none; }
     .assistant-panel header button { cursor: pointer; }
@@ -1213,7 +1224,7 @@
             </div>
           </div>
       
-          <div class="card shadow-sm mt-4" id="aiAssistantCard" hidden aria-hidden="true">
+          <div class="card shadow-sm mt-4" id="aiAssistantCard">
             <div class="card-body p-4">
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                 <div class="d-flex align-items-center gap-2">
@@ -1591,7 +1602,7 @@
       <button type="button" class="btn btn-light" id="endingStayBtn"><i class="bi bi-heart-fill me-1"></i> Tutup animasi</button>
     </div>
   </div>
-  <div class="assistant-fab" id="assistantFab" hidden>
+  <div class="assistant-fab" id="assistantFab">
     <div class="assistant-panel shadow-lg" id="assistantPanel" hidden>
       <header>
         <div class="title"><span class="status-dot"></span> AI Navigator</div>
@@ -1607,6 +1618,11 @@
       </div>
       <footer class="small text-secondary">Tip: ketik “/faq” atau “/walkthrough” untuk pintasan cepat.</footer>
     </div>
+    <button type="button" class="assistant-toggle" id="assistantToggle" aria-label="Buka AI Navigator" aria-expanded="false">
+      <span class="icon"><i class="bi bi-robot"></i></span>
+      <span class="label">AI Navigator</span>
+      <span class="pulse" id="assistantPulse" aria-hidden="true"></span>
+    </button>
   </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
 
@@ -1897,6 +1913,7 @@
   if (assistantFab) {
     const savedFab = loadAssistantFabPosition();
     if (savedFab) applyAssistantFabPosition(savedFab);
+    assistantFab.removeAttribute('hidden');
   }
 
   const registerAssistantDragHandle = (handle) => {
@@ -3372,7 +3389,7 @@
 
   const openAssistantPanel = () => {
     if (!assistantPanel) return;
-    assistantFab?.removeAttribute('hidden');
+    assistantFab?.classList.add('panel-open');
     assistantPanel.hidden = false;
     assistantPanel.setAttribute('aria-hidden', 'false');
     assistantToggle?.setAttribute('aria-expanded', 'true');
@@ -3386,7 +3403,7 @@
     assistantPanel.hidden = true;
     assistantPanel.setAttribute('aria-hidden', 'true');
     assistantToggle?.setAttribute('aria-expanded', 'false');
-    assistantFab?.setAttribute('hidden', '');
+    assistantFab?.classList.remove('panel-open');
   };
 
   const addAssistantMessage = (text, role = 'bot', opts = {}) => {
