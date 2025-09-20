@@ -235,8 +235,8 @@
     .assistant-panel header:active { cursor: grabbing; }
     .assistant-panel header .title { display: flex; align-items: center; gap: .5rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; font-size: .75rem; }
     .assistant-panel header .status-dot { width: 10px; height: 10px; border-radius: 999px; background: #20c997; box-shadow: 0 0 0 4px rgba(32,201,151,.25); }
-    .assistant-panel .assistant-body { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; flex: 1 1 auto; }
-    .assistant-panel .assistant-messages { flex: 1 1 auto; max-height: none; }
+    .assistant-panel .assistant-body { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; flex: 1 1 auto; min-height: 0; }
+    .assistant-panel .assistant-messages { flex: 1 1 auto; max-height: none; min-height: 0; overflow-y: auto; }
     .assistant-panel .assistant-input { margin-top: 0; }
     .assistant-panel footer { padding: .75rem 1rem; border-top: 1px solid color-mix(in srgb, var(--bs-border-color) 75%, transparent); background: var(--bs-body-bg); }
     .assistant-launch-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .65rem; background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-radius: .75rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; }
@@ -377,9 +377,13 @@
     .walkthrough-step ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .4rem; font-size: .9rem; }
     .walkthrough-step .chip-group { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
     .walkthrough-step .chip { padding: .35rem .75rem; border-radius: .8rem; font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; background: color-mix(in srgb, var(--bs-primary) 20%, transparent); border: 1px solid color-mix(in srgb, var(--bs-primary) 45%, transparent); }
-    .walkthrough-footer { padding: 0 1.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-    .walkthrough-footer .btn { border-radius: 999px; font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .walkthrough-footer { padding: 0 1.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .walkthrough-footer .btn { border-radius: 1rem; font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .04em; text-transform: none; font-size: .85rem; padding: .65rem 1.25rem; flex: 1 1 calc(50% - .5rem); min-width: 150px; }
     .walkthrough-trigger { font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; border-width: 2px; }
+    @media (max-width: 576px) {
+      .walkthrough-footer { flex-direction: column; align-items: stretch; }
+      .walkthrough-footer .btn { width: 100%; flex: 1 1 100%; min-width: 0; }
+    }
     @keyframes walkthroughFade { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
     html[data-bs-theme='dark'] .walkthrough-modal .modal-content { background: linear-gradient(135deg, color-mix(in srgb, rgba(22,27,46,.95) 85%, rgba(13,110,253,.25) 15%) 0%, color-mix(in srgb, rgba(18,24,42,.95) 80%, rgba(32,201,151,.25) 20%) 100%); border-color: color-mix(in srgb, rgba(111,66,193,.65) 55%, rgba(23,35,63,.82) 45%); box-shadow: 14px 14px 0 rgba(23,35,63,.78); }
     html[data-bs-theme='dark'] .walkthrough-step { background: color-mix(in srgb, rgba(24,30,52,.92) 85%, rgba(13,110,253,.12) 15%); border-color: color-mix(in srgb, rgba(111,66,193,.65) 60%, rgba(23,35,63,.78) 40%); box-shadow: -6px -6px 0 rgba(255,255,255,.08); }
@@ -1568,10 +1572,10 @@
           </div>
         </div>
         <div class="walkthrough-footer">
-          <button type="button" class="btn btn-outline-secondary" id="walkthroughPrev" disabled>Langkah sebelumnya</button>
+          <button type="button" class="btn btn-outline-secondary" id="walkthroughPrev" disabled>Sebelumnya</button>
           <div class="d-flex align-items-center gap-2">
             <button type="button" class="btn btn-link text-decoration-none px-0" data-bs-dismiss="modal">Lewati tur</button>
-            <button type="button" class="btn btn-primary" id="walkthroughNext">Langkah berikutnya</button>
+            <button type="button" class="btn btn-primary" id="walkthroughNext">Lanjut</button>
           </div>
         </div>
       </div>
@@ -1609,7 +1613,7 @@
         <button type="button" class="btn-close" id="assistantClose" aria-label="Tutup AI Navigator"></button>
       </header>
       <div class="assistant-body">
-        <div class="assistant-messages" id="assistantMessages" aria-live="polite"></div>
+        <div class="assistant-messages" id="assistantMessages" aria-live="polite" tabindex="0"></div>
         <div class="assistant-typing" id="assistantTyping" hidden>AI Navigator mengetik…</div>
         <div class="assistant-input">
           <input type="text" id="assistantInput" class="form-control" placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
@@ -1645,6 +1649,9 @@
   const sectionSubtitle = $('#activeSectionSubtitle');
   const navDrawerEl = $('#offcanvasNav');
   const navDrawer = navDrawerEl ? bootstrap.Offcanvas.getOrCreateInstance(navDrawerEl) : null;
+  const assistantBridge = { autoOpen: () => {} };
+  let assistantAutoOpenQueued = false;
+
   const SECTION_META = {
     converter: {
       title: 'Converter',
@@ -1681,6 +1688,12 @@
       visitedSections.add(target);
       if (visitedSections.size >= 3) awardBadge('explorer');
       if (navDrawer && navDrawerEl.classList.contains('show')) navDrawer.hide();
+      if (target === 'experience') {
+        assistantAutoOpenQueued = true;
+        assistantBridge.autoOpen();
+      } else {
+        assistantAutoOpenQueued = false;
+      }
     }
     return found;
   };
@@ -1852,6 +1865,7 @@
   let assistantFabPosition = null;
   let assistantFabDragSession = null;
   let assistantFabSuppressClick = false;
+  let assistantDismissedManually = false;
 
   const clampAssistantFabPosition = (left, top) => {
     if (!assistantFab) return { left, top };
@@ -3387,7 +3401,7 @@
     }, 80);
   };
 
-  const openAssistantPanel = () => {
+  function openAssistantPanel(opts = {}) {
     if (!assistantPanel) return;
     assistantFab?.classList.add('panel-open');
     assistantPanel.hidden = false;
@@ -3395,16 +3409,53 @@
     assistantToggle?.setAttribute('aria-expanded', 'true');
     assistantToggle?.classList.remove('has-update');
     assistantPulse?.setAttribute('aria-hidden', 'true');
-    focusAssistantInput();
-  };
+    assistantDismissedManually = false;
+    if (assistantMessages) {
+      if (typeof assistantMessages.scrollTo === 'function') {
+        assistantMessages.scrollTo({ top: assistantMessages.scrollHeight });
+      } else {
+        assistantMessages.scrollTop = assistantMessages.scrollHeight;
+      }
+    }
+    if (!opts.skipFocus) {
+      focusAssistantInput();
+    }
+    if (opts.focusMessages && assistantMessages) {
+      assistantMessages.focus({ preventScroll: true });
+    }
+  }
 
-  const closeAssistantPanel = () => {
+  function closeAssistantPanel(opts = {}) {
     if (!assistantPanel || assistantPanel.hasAttribute('hidden')) return;
     assistantPanel.hidden = true;
     assistantPanel.setAttribute('aria-hidden', 'true');
     assistantToggle?.setAttribute('aria-expanded', 'false');
     assistantFab?.classList.remove('panel-open');
+    if (opts.manual) assistantDismissedManually = true;
+  }
+
+  function maybeAutoOpenAssistant(opts = {}) {
+    if (!assistantPanel || !assistantFab) return;
+    if (!assistantPanel.hasAttribute('hidden')) return;
+    if (assistantDismissedManually && !opts.force) return;
+    const delay = typeof opts.delay === 'number' ? opts.delay : 0;
+    window.setTimeout(() => {
+      openAssistantPanel({
+        skipFocus: opts.skipFocus,
+        focusMessages: opts.focusMessages,
+      });
+    }, delay);
+  }
+
+  assistantBridge.autoOpen = () => {
+    if (!assistantAutoOpenQueued) return;
+    maybeAutoOpenAssistant({ delay: 120 });
+    assistantAutoOpenQueued = false;
   };
+
+  if (assistantAutoOpenQueued) {
+    assistantBridge.autoOpen();
+  }
 
   const addAssistantMessage = (text, role = 'bot', opts = {}) => {
     if (!assistantMessages) return null;
@@ -3542,12 +3593,12 @@
       return;
     }
     if (isAssistantOpen()) {
-      closeAssistantPanel();
+      closeAssistantPanel({ manual: true });
     } else {
       openAssistantPanel();
     }
   });
-  assistantClose?.addEventListener('click', closeAssistantPanel);
+  assistantClose?.addEventListener('click', () => closeAssistantPanel({ manual: true }));
   if (assistantLaunchers.length) {
     assistantLaunchers.forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -3559,10 +3610,10 @@
   document.addEventListener('click', (evt) => {
     if (!isAssistantOpen()) return;
     if (assistantFab && assistantFab.contains(evt.target)) return;
-    closeAssistantPanel();
+    closeAssistantPanel({ manual: true });
   });
   window.addEventListener('keydown', (evt) => {
-    if (evt.key === 'Escape' && isAssistantOpen()) closeAssistantPanel();
+    if (evt.key === 'Escape' && isAssistantOpen()) closeAssistantPanel({ manual: true });
   });
 
   const resetRunner = () => {
@@ -4489,7 +4540,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       walkthroughProgressLabel.textContent = `Langkah ${walkthroughIndex + 1} dari ${total}`;
     }
     if (walkthroughPrev) walkthroughPrev.disabled = walkthroughIndex === 0;
-    if (walkthroughNext) walkthroughNext.textContent = walkthroughIndex === total - 1 ? 'Selesai tur' : 'Langkah berikutnya';
+    if (walkthroughNext) walkthroughNext.textContent = walkthroughIndex === total - 1 ? 'Selesai tur' : 'Lanjut';
   };
 
   const showWalkthrough = (reset = true) => {
