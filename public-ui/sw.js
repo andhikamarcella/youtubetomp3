@@ -1,17 +1,32 @@
-const CACHE_NAME = 'ytmp3-ui-v2';
+const CACHE_NAME = 'ytmp3-ui-v3';
 const CDN_CACHE = 'ytmp3-cdn-v2';
 const APP_SHELL = [
-  './',
-  './index.html',
-  './share.html',
-  './manifest.webmanifest',
-  './icons/icon.svg',
-  './icons/icon-maskable.svg'
+  '/',
+  '/index.html',
+  '/share.html',
+  '/manifest.webmanifest',
+  '/icons/icon.svg',
+  '/icons/icon-maskable.svg'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => {})
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await Promise.all(
+        APP_SHELL.map(async (url) => {
+          try {
+            const request = new Request(url, { cache: 'reload' });
+            const response = await fetch(request);
+            if (response && response.ok) {
+              await cache.put(request, response.clone());
+            }
+          } catch (err) {
+            console.warn('[sw] gagal menyimpan shell', url, err);
+          }
+        })
+      );
+    })().catch(() => {})
   );
   self.skipWaiting();
 });
@@ -47,8 +62,19 @@ self.addEventListener('fetch', (event) => {
 
       const fetchAndCache = async () => {
         const response = await fetch(request);
-        cache.put(request, response.clone());
+        if (response && response.ok) {
+          cache.put(request, response.clone());
+        }
         return response;
+      };
+
+      const matchNavigationFallback = async () => {
+        const fallbacks = ['/index.html', '/'];
+        for (const urlPath of fallbacks) {
+          const match = await cache.match(urlPath);
+          if (match) return match;
+        }
+        return null;
       };
 
       if (isNavigate) {
@@ -56,7 +82,7 @@ self.addEventListener('fetch', (event) => {
           return await fetchAndCache();
         } catch (err) {
           if (cached) return cached;
-          const fallback = await cache.match('./index.html');
+          const fallback = await matchNavigationFallback();
           if (fallback) return fallback;
           return offlineResponse();
         }
