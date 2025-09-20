@@ -202,7 +202,8 @@
     .assistant-input input { flex: 1 1 auto; border-radius: .75rem; }
     .assistant-input button { border-radius: .75rem; }
     .assistant-typing { font-size: .75rem; color: var(--bs-secondary); }
-    #runnerCanvas { width: 100%; height: 160px; background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--bs-secondary-bg) 90%, transparent), color-mix(in srgb, var(--bs-secondary-bg) 90%, transparent) 24px, transparent 24px, transparent 48px); border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
+    #runnerCanvas { width: 100%; height: 160px; background: transparent; border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); overflow: hidden; display: block; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bs-border-color) 28%, transparent); }
+    html[data-bs-theme='dark'] #runnerCanvas { border-color: color-mix(in srgb, rgba(199,178,255,.65) 60%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, rgba(199,178,255,.42) 60%, transparent); }
     .game-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
     .game-controls .btn { border-radius: .75rem; }
     #gameStatus { font-size: .85rem; min-height: 1.4em; }
@@ -2561,20 +2562,136 @@
   let currentMood = 'auto';
   let recognition = null;
   let voiceActive = false;
+  const runnerSpriteArt = [
+    '......####......',
+    '.....######.....',
+    '....########....',
+    '....########....',
+    '....######......',
+    '...########.....',
+    '...########.....',
+    '..##########....',
+    '..##########....',
+    '..####.######...',
+    '.####..######...',
+    '.###....######..',
+    '.###.....######.',
+    '####.....######.',
+    '###......######.',
+    '###......######.',
+    '###......######.',
+    '###......######.',
+    '###.......#####.',
+    '###.......#####.',
+    '###........####.',
+    '###........####.',
+    '###.........###.',
+    '###.........###.',
+    '###.........###.',
+    '###.........###.',
+    '###.........###.',
+    '###.........###.',
+    ' ###........##..',
+    '  ###......###..',
+    '   ##########...',
+    '    ########....',
+    '     ######.....',
+    '      ####......'
+  ];
+
+  const monsterSpriteArt = [
+    '....####..####....',
+    '...############...',
+    '..##############..',
+    '.###############.',
+    '###.##########.###',
+    '##..##########..##',
+    '##..##########..##',
+    '###.##########.###',
+    '###############..',
+    '##############...',
+    '########..########',
+    '######......######',
+    '######......######',
+    '######......######',
+    '######......######'
+  ];
+
+  const RUNNER_PIXEL_SIZE = 3;
+  const MONSTER_PIXEL_SIZE = 3;
+
+  const createSprite = (art, pixelSize) => {
+    const columns = art.reduce((max, row) => Math.max(max, row.length), 0);
+    const height = art.length * pixelSize;
+    const width = columns * pixelSize;
+    return { art, pixelSize, width, height, columns };
+  };
+
+  const drawSprite = (ctx, sprite, x, baseline, color) => {
+    if (!ctx || !sprite) return;
+    const { art, pixelSize, height, columns } = sprite;
+    ctx.fillStyle = color;
+    for (let row = 0; row < art.length; row += 1) {
+      const line = art[row];
+      for (let col = 0; col < columns; col += 1) {
+        const cell = line[col] || '.';
+        if (cell === '#' || cell === '1') {
+          const px = x + col * pixelSize;
+          const py = baseline - height + row * pixelSize;
+          ctx.fillRect(px, py, pixelSize, pixelSize);
+        }
+      }
+    }
+  };
+
+  const runnerSprite = createSprite(runnerSpriteArt, RUNNER_PIXEL_SIZE);
+  const monsterSprite = createSprite(monsterSpriteArt, MONSTER_PIXEL_SIZE);
+
+  const runnerVisualStyles = {
+    light: {
+      sky: '#f3f0ff',
+      track: 'rgba(111,66,193,0.2)',
+      trackLine: '#6f42c1',
+      stripe: 'rgba(111,66,193,0.15)',
+      shadow: 'rgba(31,24,56,0.18)',
+      player: '#1f1a24',
+      obstacle: '#1f1a24'
+    },
+    dark: {
+      sky: 'rgba(18,24,42,0.88)',
+      track: 'rgba(111,66,193,0.26)',
+      trackLine: 'rgba(199,178,255,0.82)',
+      stripe: 'rgba(111,66,193,0.2)',
+      shadow: 'rgba(0,0,0,0.38)',
+      player: '#f6f1e7',
+      obstacle: '#f6f1e7'
+    }
+  };
+
+  const getRunnerTheme = () => document.documentElement.getAttribute('data-bs-theme') || 'dark';
+  const getRunnerStyle = () => runnerVisualStyles[getRunnerTheme()] || runnerVisualStyles.dark;
+
   let runnerFrame = null;
   const runnerState = {
     ctx: runnerCanvas ? runnerCanvas.getContext('2d') : null,
     running: false,
-    playerY: 0,
+    playerX: 36,
+    playerY: runnerCanvas ? runnerCanvas.height - 24 : 120,
     playerVy: 0,
     gravity: 0.65,
     ground: runnerCanvas ? runnerCanvas.height - 24 : 120,
-    obstacleX: runnerCanvas ? runnerCanvas.width : 400,
-    obstacleWidth: 22,
+    obstacleX: runnerCanvas ? runnerCanvas.width - (monsterSprite?.width || 0) - 60 : 400,
+    obstacleWidth: monsterSprite.width,
+    obstacleHeight: monsterSprite.height,
     obstacleGap: 220,
     speed: 4.2,
     score: 0,
-    highScore: 0
+    ticks: 0,
+    highScore: 0,
+    playerWidth: runnerSprite.width,
+    playerHeight: runnerSprite.height,
+    collider: { left: 8, right: 10, top: 16, bottom: 6 },
+    obstacleCollider: { left: 6, right: 6, top: 4, bottom: 4 }
   };
 
   const ensureAudioContext = () => {
@@ -3625,35 +3742,34 @@
     runnerState.ticks = 0;
     runnerState.score = 0;
     if (runnerScoreLabel) runnerScoreLabel.textContent = '0';
+    if (!runnerState.running) drawRunner();
   };
 
   const drawRunner = () => {
     const ctx = runnerState.ctx;
     if (!ctx || !runnerCanvas) return;
+    const style = getRunnerStyle();
     ctx.clearRect(0, 0, runnerCanvas.width, runnerCanvas.height);
-    ctx.fillStyle = 'rgba(13,110,253,0.08)';
-    ctx.fillRect(0, runnerState.ground + 12, runnerCanvas.width, runnerCanvas.height - runnerState.ground - 12);
-    ctx.fillStyle = '#0d6efd';
-    ctx.fillRect(0, runnerState.ground + 10, runnerCanvas.width, 2);
-    const playerX = 30;
-    const playerY = runnerState.playerY - 30;
-    const playerW = 28;
-    const playerH = 30;
-    ctx.fillStyle = '#6f42c1';
-    ctx.beginPath();
-    ctx.moveTo(playerX + 6, playerY);
-    ctx.lineTo(playerX + playerW - 6, playerY);
-    ctx.quadraticCurveTo(playerX + playerW, playerY, playerX + playerW, playerY + 6);
-    ctx.lineTo(playerX + playerW, playerY + playerH - 6);
-    ctx.quadraticCurveTo(playerX + playerW, playerY + playerH, playerX + playerW - 6, playerY + playerH);
-    ctx.lineTo(playerX + 6, playerY + playerH);
-    ctx.quadraticCurveTo(playerX, playerY + playerH, playerX, playerY + playerH - 6);
-    ctx.lineTo(playerX, playerY + 6);
-    ctx.quadraticCurveTo(playerX, playerY, playerX + 6, playerY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#ffc107';
-    ctx.fillRect(runnerState.obstacleX, runnerState.ground - 20, runnerState.obstacleWidth, 20);
+    ctx.fillStyle = style.sky;
+    ctx.fillRect(0, 0, runnerCanvas.width, runnerCanvas.height);
+    ctx.fillStyle = style.track;
+    ctx.fillRect(0, runnerState.ground + 6, runnerCanvas.width, runnerCanvas.height - runnerState.ground - 6);
+    ctx.fillStyle = style.trackLine;
+    ctx.fillRect(0, runnerState.ground + 4, runnerCanvas.width, 3);
+    ctx.save();
+    ctx.fillStyle = style.stripe;
+    for (let x = 0; x < runnerCanvas.width + 32; x += 36) {
+      ctx.fillRect(x, runnerState.ground + 12, 18, 5);
+    }
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = style.shadow;
+    ctx.globalAlpha = 0.22;
+    ctx.fillRect(runnerState.playerX + 6, runnerState.ground + 10, Math.max(12, runnerState.playerWidth - 12), 6);
+    ctx.fillRect(runnerState.obstacleX + 6, runnerState.ground + 10, Math.max(12, runnerState.obstacleWidth - 12), 6);
+    ctx.restore();
+    drawSprite(ctx, monsterSprite, runnerState.obstacleX, runnerState.ground, style.obstacle);
+    drawSprite(ctx, runnerSprite, runnerState.playerX, runnerState.playerY, style.player);
   };
 
   const endRunner = (crashed = false) => {
@@ -3683,7 +3799,7 @@
     }
     runnerState.obstacleX -= runnerState.speed;
     if (runnerState.obstacleX < -runnerState.obstacleWidth) {
-      runnerState.obstacleX = runnerCanvas.width + Math.random() * runnerState.obstacleGap;
+      runnerState.obstacleX = runnerCanvas.width + (runnerState.obstacleGap * (0.5 + Math.random()));
       runnerState.speed = Math.min(runnerState.speed + 0.25, 9);
       incrementPoints(8, 'Hindari glitch', { badge: 'gamer' });
       updateMascotMood('game');
@@ -3695,12 +3811,19 @@
       if (runnerScoreLabel) runnerScoreLabel.textContent = String(score);
     }
     drawRunner();
-    const playerLeft = 30;
-    const playerRight = playerLeft + 28;
-    const obstacleLeft = runnerState.obstacleX;
-    const obstacleRight = obstacleLeft + runnerState.obstacleWidth;
-    const verticalCollision = runnerState.playerY > runnerState.ground - 18;
-    if (verticalCollision && playerRight > obstacleLeft && playerLeft < obstacleRight) {
+    const playerCollider = runnerState.collider;
+    const obstacleCollider = runnerState.obstacleCollider;
+    const playerLeft = runnerState.playerX + playerCollider.left;
+    const playerRight = runnerState.playerX + runnerState.playerWidth - playerCollider.right;
+    const playerBottom = runnerState.playerY - playerCollider.bottom;
+    const playerTop = runnerState.playerY - runnerState.playerHeight + playerCollider.top;
+    const obstacleLeft = runnerState.obstacleX + obstacleCollider.left;
+    const obstacleRight = runnerState.obstacleX + runnerState.obstacleWidth - obstacleCollider.right;
+    const obstacleBottom = runnerState.ground - obstacleCollider.bottom;
+    const obstacleTop = runnerState.ground - runnerState.obstacleHeight + obstacleCollider.top;
+    const horizontalCollision = playerRight > obstacleLeft && playerLeft < obstacleRight;
+    const verticalCollision = playerBottom > obstacleTop && playerTop < obstacleBottom;
+    if (horizontalCollision && verticalCollision) {
       endRunner(true);
       return;
     }
@@ -4500,6 +4623,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     applyBsTheme(t);
     themeToggle.innerHTML = t === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
     refreshEqUi();
+    requestAnimationFrame(drawRunner);
   };
   themeToggle.addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-bs-theme') || 'dark';
@@ -4507,6 +4631,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     applyBsTheme(nxt); localStorage.setItem(themeKey, nxt);
     themeToggle.innerHTML = nxt === 'light' ? '<i class="bi bi-moon-stars"></i>' : '<i class="bi bi-sun"></i>';
     requestAnimationFrame(refreshEqUi);
+    requestAnimationFrame(drawRunner);
   });
 
   function initWelcome(){
