@@ -2238,8 +2238,6 @@
     updateRingtoneLengthLabel();
   }
 
-  applyTranslations();
-
   const toast = toastEl ? bootstrap.Toast.getOrCreateInstance(toastEl) : null;
   const setToast = (msg) => {
     const text = translateMessage(msg);
@@ -2289,6 +2287,8 @@
   const ratingSummary = $('#ratingSummary');
   const ratingThanks = $('#ratingThanks');
   const ratingButtons = $$('#ratingWrap button[data-rating]');
+
+  applyTranslations();
 
   const speedTipButtons = $$('#speedTips .tip-pill');
   const speedTipHint = $('#speedTipHint');
