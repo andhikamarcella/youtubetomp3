@@ -318,46 +318,112 @@ const buildVideoMetadata = (entry = {}, { requestedUrl = "", keywordUsed = false
   };
 };
 
-const runYtDlpJson = async (args, { label = "yt-dlp" } = {}) => {
-  let stdout = "";
-  let stderr = "";
-  const logs = [`${label}: yt-dlp ${args.join(" ")}`];
-  try {
-    await new Promise((resolve, reject) => {
-      const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
-      proc.stdout.on("data", (chunk) => {
-        stdout += chunk.toString();
-      });
-      proc.stderr.on("data", (chunk) => {
-        stderr += chunk.toString();
-      });
-      proc.on("error", (err) => {
-        const error = new Error("yt-dlp tidak bisa dijalankan");
-        error.cause = err;
-        reject(error);
-      });
-      proc.on("close", (code) => {
-        if (code !== 0) {
-          const error = new Error("yt-dlp gagal mengambil metadata");
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
+const buildYtDlpCandidates = () => {
+  const envBin = typeof process.env.YTDLP_PATH === "string" ? process.env.YTDLP_PATH.trim() : "";
+  const envPython =
+    typeof process.env.PYTHON === "string"
+      ? process.env.PYTHON.trim()
+      : typeof process.env.PYTHON_PATH === "string"
+        ? process.env.PYTHON_PATH.trim()
+        : typeof process.env.PYTHON_BIN === "string"
+          ? process.env.PYTHON_BIN.trim()
+          : "";
+
+  const candidates = [
+    envBin ? { cmd: envBin, prefix: [] } : null,
+    { cmd: "yt-dlp", prefix: [] },
+    envPython ? { cmd: envPython, prefix: ["-m", "yt_dlp"] } : null,
+    { cmd: "python3", prefix: ["-m", "yt_dlp"] },
+    { cmd: "python", prefix: ["-m", "yt_dlp"] },
+    process.platform === "win32" ? { cmd: "py", prefix: ["-3", "-m", "yt_dlp"] } : null,
+  ].filter(Boolean);
+
+  const seen = new Set();
+  return candidates.filter(({ cmd, prefix }) => {
+    const key = `${cmd} ${(prefix || []).join(" ")}`.trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const runYtDlpAttempt = (command, args, { label }) =>
+  new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+    const proc = spawn(command.cmd, [...(command.prefix || []), ...args], {
+      stdio: ["ignore", "pipe", "pipe"],
     });
-  } catch (err) {
-    const error = new Error(err.message || "yt-dlp gagal");
-    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
-    throw error;
+    const displayArgs = [...(command.prefix || []), ...args].join(" ");
+    const baseLog = `${label}: ${command.cmd} ${displayArgs}`.trim();
+
+    proc.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    proc.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    proc.on("error", (err) => {
+      const error = new Error("yt-dlp tidak bisa dijalankan");
+      error.cause = err;
+      error.stdout = stdout;
+      error.stderr = stderr;
+      error.baseLog = baseLog;
+      error.logs = [baseLog, stderr, stdout, err.message].filter(Boolean).join("\n");
+      reject(error);
+    });
+    proc.on("close", (code) => {
+      if (code !== 0) {
+        const error = new Error("yt-dlp gagal mengambil metadata");
+        error.code = code;
+        error.stdout = stdout;
+        error.stderr = stderr;
+        error.baseLog = baseLog;
+        error.logs = [baseLog, stderr || stdout].filter(Boolean).join("\n");
+        reject(error);
+      } else {
+        resolve({ stdout, stderr, baseLog });
+      }
+    });
+  });
+
+const runYtDlpJson = async (args, { label = "yt-dlp" } = {}) => {
+  const errors = [];
+  const candidates = buildYtDlpCandidates();
+  let lastStdout = "";
+  let lastStderr = "";
+  let lastLog = "";
+
+  for (const candidate of candidates) {
+    try {
+      const { stdout, stderr, baseLog } = await runYtDlpAttempt(candidate, args, { label });
+      lastStdout = stdout;
+      lastStderr = stderr;
+      lastLog = baseLog;
+      const jsonText = stdout || "{}";
+      try {
+        return JSON.parse(jsonText);
+      } catch (parseErr) {
+        const error = new Error("Respons yt-dlp tidak valid");
+        error.stdout = jsonText;
+        error.stderr = stderr;
+        error.baseLog = baseLog;
+        error.logs = [baseLog, stderr, jsonText, parseErr.message]
+          .filter(Boolean)
+          .join("\n");
+        throw error;
+      }
+    } catch (err) {
+      errors.push(err.logs || err.message || "yt-dlp gagal mengambil metadata");
+      lastStdout = err.stdout || lastStdout;
+      lastStderr = err.stderr || lastStderr;
+      lastLog = err.baseLog || lastLog;
+    }
   }
 
-  try {
-    return JSON.parse(stdout || "{}");
-  } catch (err) {
-    const error = new Error("Respons yt-dlp tidak valid");
-    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
-    throw error;
-  }
+  const error = new Error("yt-dlp gagal mengambil metadata");
+  error.logs = [lastLog, lastStderr, lastStdout, ...errors].filter(Boolean).join("\n");
+  throw error;
 };
 
 const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
