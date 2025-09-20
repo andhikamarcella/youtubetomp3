@@ -1,13 +1,22 @@
-const CACHE_NAME = 'ytmp3-ui-v3';
+const CACHE_NAME = 'ytmp3-ui-v4';
 const CDN_CACHE = 'ytmp3-cdn-v2';
+
+const scopeReference = (self.registration && self.registration.scope) || self.location.href;
+const scopeUrl = new URL(scopeReference);
+const resolveToScopeUrl = (path) => new URL(path, scopeUrl).toString();
+const resolveToScopePath = (path) => new URL(path, scopeUrl).pathname;
+
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/share.html',
-  '/manifest.webmanifest',
-  '/icons/icon.svg',
-  '/icons/icon-maskable.svg'
-];
+  './',
+  'index.html',
+  'share.html',
+  'manifest.webmanifest',
+  'icons/icon.svg',
+  'icons/icon-maskable.svg'
+].map((entry) => resolveToScopeUrl(entry));
+const NAVIGATION_FALLBACKS = ['./', 'index.html'].map((entry) => resolveToScopeUrl(entry));
+const API_PREFIX = resolveToScopePath('api/');
+const ADMIN_PREFIX = resolveToScopePath('admin/');
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -43,8 +52,11 @@ self.addEventListener('activate', (event) => {
 const shouldHandle = (request) => {
   if (request.method !== 'GET') return false;
   const url = new URL(request.url);
-  if (url.pathname.startsWith('/api/')) return false;
-  if (url.pathname.startsWith('/admin/')) return false;
+  if (url.origin !== scopeUrl.origin) {
+    return /cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url.host);
+  }
+  if (url.pathname.startsWith(API_PREFIX)) return false;
+  if (url.pathname.startsWith(ADMIN_PREFIX)) return false;
   return true;
 };
 
@@ -69,9 +81,8 @@ self.addEventListener('fetch', (event) => {
       };
 
       const matchNavigationFallback = async () => {
-        const fallbacks = ['/index.html', '/'];
-        for (const urlPath of fallbacks) {
-          const match = await cache.match(urlPath);
+        for (const fallbackUrl of NAVIGATION_FALLBACKS) {
+          const match = await cache.match(fallbackUrl);
           if (match) return match;
         }
         return null;
