@@ -33,10 +33,16 @@
   </style>
   <style>
     :root { --radius: 1.2rem; --night-base: #17233f; --night-shadow: rgba(23,35,63,.62); --night-soft: rgba(36,52,86,.5); }
-    body { min-height: 100dvh; background-color: var(--bs-body-bg); background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.25), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(16,185,129,.2), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); font-family: "Comfortaa", "Comforta", "Trebuchet MS", system-ui, sans-serif; letter-spacing: .01em; text-rendering: optimizeLegibility; }
+    body { min-height: 100dvh; background-color: var(--bs-body-bg); background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.25), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(16,185,129,.2), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); font-family: "Comfortaa", "Comforta", "Trebuchet MS", system-ui, sans-serif; letter-spacing: .01em; text-rendering: optimizeLegibility; --skin-primary: #0d6efd; --skin-secondary: #6f42c1; }
     code, kbd, pre, samp, .font-monospace { font-family: "IBM Plex Mono", "Comforta", "Courier New", monospace; font-feature-settings: "tnum" 1; }
     .title-mono { font-family: "IBM Plex Mono", "Comforta", monospace; letter-spacing: .08em; text-transform: uppercase; }
     html[data-bs-theme='dark'] body { background-color: var(--night-base); background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.42), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(32,201,151,.3), transparent), linear-gradient(180deg, rgba(23,35,63,.92) 0%, rgba(23,35,63,0) 55%); }
+    body.skin-valentine { --skin-primary: #ff6f91; --skin-secondary: #ff85a1; background-image: radial-gradient(42rem 32rem at 90% 0%, rgba(255,111,145,.22), transparent), radial-gradient(40rem 36rem at 10% 100%, rgba(255,133,161,.2), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); }
+    html[data-bs-theme='dark'] body.skin-valentine { background-image: radial-gradient(42rem 32rem at 90% 0%, rgba(255,111,145,.32), transparent), radial-gradient(40rem 36rem at 10% 100%, rgba(255,133,161,.28), transparent), linear-gradient(180deg, rgba(46,16,31,.9) 0%, rgba(23,35,63,0) 55%); }
+    body.skin-halloween { --skin-primary: #ff922b; --skin-secondary: #845ef7; background-image: radial-gradient(50rem 40rem at 85% 0%, rgba(255,146,43,.24), transparent), radial-gradient(45rem 36rem at 15% 100%, rgba(132,94,247,.18), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); }
+    html[data-bs-theme='dark'] body.skin-halloween { background-image: radial-gradient(50rem 40rem at 85% 0%, rgba(255,146,43,.35), transparent), radial-gradient(45rem 36rem at 15% 100%, rgba(132,94,247,.26), transparent), linear-gradient(180deg, rgba(34,17,4,.92) 0%, rgba(23,35,63,0) 55%); }
+    body.skin-holiday { --skin-primary: #74c0fc; --skin-secondary: #51cf66; background-image: radial-gradient(46rem 34rem at 95% 0%, rgba(116,192,252,.24), transparent), radial-gradient(40rem 34rem at 5% 100%, rgba(81,207,102,.2), transparent), linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 45%); }
+    html[data-bs-theme='dark'] body.skin-holiday { background-image: radial-gradient(46rem 34rem at 95% 0%, rgba(116,192,252,.32), transparent), radial-gradient(40rem 34rem at 5% 100%, rgba(81,207,102,.26), transparent), linear-gradient(180deg, rgba(9,33,56,.92) 0%, rgba(23,35,63,0) 55%); }
     .card { border-radius: var(--radius); }
     .form-control, .form-select, .btn { border-radius: .9rem; }
     .brand-badge { letter-spacing:.08em; }
@@ -166,6 +172,10 @@
     .profile-badge-list li .badge-label { display: inline-flex; align-items: center; gap: .35rem; }
     .profile-badge-list li .badge-xp { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--bs-secondary-color); }
     html[data-bs-theme='dark'] .profile-badge-list li { background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-color: color-mix(in srgb, var(--bs-border-color) 85%, transparent); }
+    .spin-wheel { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; padding: 1rem; border-radius: 1rem; background: linear-gradient(135deg, rgba(13,110,253,.12), rgba(111,66,193,.18)); border: 1px solid color-mix(in srgb, var(--bs-border-color) 65%, transparent); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+    .spin-wheel .spin-item { padding: .75rem; border-radius: .85rem; border: 1px dashed color-mix(in srgb, var(--bs-border-color) 55%, transparent); background: color-mix(in srgb, var(--bs-secondary-bg) 88%, transparent); text-align: center; font-weight: 600; font-size: .85rem; transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+    .spin-wheel .spin-item.active { transform: scale(1.04); border-color: var(--bs-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bs-primary) 30%, transparent); }
+    .spin-wheel .spin-item .desc { display: block; font-size: .72rem; font-weight: 500; color: var(--bs-secondary-color); margin-top: .35rem; }
     .avatar-menu .badge-chip-xp { display: inline-flex; align-items: center; gap: .2rem; padding-left: .35rem; margin-left: .35rem; border-left: 1px dashed color-mix(in srgb, var(--bs-border-color) 45%, transparent); font-size: .68rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bs-secondary-color); }
     #achievementModalList .list-group-item { border: 0; border-bottom: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
     #achievementModalList .list-group-item:last-child { border-bottom: 0; }
@@ -230,7 +240,7 @@
     html[data-bs-theme='dark'] .rating-stars .btn-rating.active { color: #fff7db; box-shadow: 0 8px 18px rgba(255,193,7,.35); }
     .assistant-fab.is-dragging { transition: none; }
     .assistant-fab[hidden] { display: none !important; }
-    .assistant-toggle { position: relative; display: inline-flex; align-items: center; gap: .6rem; border: 0; border-radius: 999px; padding: .55rem .9rem .55rem .6rem; background: linear-gradient(135deg, rgba(13,110,253,.92), rgba(111,66,193,.9)); color: #fff; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 18px 40px rgba(15,23,42,.35); cursor: pointer; touch-action: none; }
+    .assistant-toggle { position: relative; display: inline-flex; align-items: center; gap: .6rem; border: 0; border-radius: 999px; padding: .55rem .9rem .55rem .6rem; background: linear-gradient(135deg, color-mix(in srgb, var(--skin-primary) 92%, transparent), color-mix(in srgb, var(--skin-secondary) 90%, transparent)); color: #fff; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 18px 40px rgba(15,23,42,.35); cursor: pointer; touch-action: none; }
     .assistant-toggle:focus-visible { outline: 2px dashed rgba(255,255,255,.65); outline-offset: 4px; }
     .assistant-toggle .icon { display: inline-flex; align-items: center; justify-content: center; width: 2.45rem; height: 2.45rem; border-radius: 50%; background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); font-size: 1.2rem; }
     .assistant-toggle .label { font-size: .74rem; letter-spacing: .08em; }
@@ -267,6 +277,9 @@
     body.theme-neo { --exp-accent: #0d6efd; }
     body.theme-aurora { --exp-accent: #6f42c1; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(111,66,193,.25), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(32,201,151,.2), transparent); }
     body.theme-midnight { --exp-accent: #20c997; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(32,201,151,.3), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(13,110,253,.2), transparent); }
+    body.theme-halloween { --exp-accent: #fd7e14; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(253,126,20,.28), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(111,66,193,.28), transparent); }
+    body.theme-holiday { --exp-accent: #20c997; background-image: radial-gradient(55rem 45rem at 100% 0%, rgba(32,201,151,.32), transparent), radial-gradient(55rem 45rem at 0% 100%, rgba(255,214,102,.28), transparent); }
+    body.theme-valentine { --exp-accent: #e2558f; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(226,85,143,.32), transparent), radial-gradient(40rem 35rem at 0% 100%, rgba(111,66,193,.26), transparent); }
     body.font-typewriter { font-family: 'Courier Prime', 'IBM Plex Mono', monospace; }
     body.font-retro { font-family: 'Comfortaa', 'IBM Plex Mono', sans-serif; }
     body.font-mono { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
@@ -598,6 +611,23 @@
             </button>
           </div>
 
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="vpnFriendly">
+                <label class="form-check-label" for="vpnFriendly">VPN-friendly mode</label>
+                <div class="form-text">Aktifkan agar unduhan dipecah kecil dan tahan saat koneksi tinggi latensi.</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="smartResume">
+                <label class="form-check-label" for="smartResume">Smart resume download</label>
+                <div class="form-text">Lanjutkan unduhan otomatis bila koneksi terputus.</div>
+              </div>
+            </div>
+          </div>
+
           <div class="mb-3">
             <label for="url" class="form-label" data-i18n="labelUrl">URL YouTube</label>
             <div class="input-group">
@@ -764,13 +794,13 @@
           </div>
 
           <div class="row g-3 mb-3 align-items-end">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="denoise">
                 <label class="form-check-label" for="denoise">AI Noise Cleaner</label>
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label d-flex justify-content-between align-items-center" for="volumeBoost">
                 <span>Volume Booster</span>
                 <span class="badge text-bg-secondary" id="volumeBoostLabel">0 dB</span>
@@ -781,7 +811,7 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-range-step="1" aria-label="Naikkan gain">+</button>
               </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label" for="enhancer">AI Enhancer</label>
               <select id="enhancer" class="form-select">
                 <option value="none" selected>Off</option>
@@ -789,6 +819,16 @@
                 <option value="warm">Warm Glow</option>
                 <option value="club">Club Lift</option>
               </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="soundEffect">Sound Effect Add-on</label>
+              <select id="soundEffect" class="form-select">
+                <option value="none" selected>Original</option>
+                <option value="reverb">Dreamy Reverb</option>
+                <option value="echo">Echo Space</option>
+                <option value="lofi">8-bit Crunch</option>
+              </select>
+              <div class="form-text">Tambahkan karakter reverb, echo, atau gaya 8-bit.</div>
             </div>
           </div>
 
@@ -1054,6 +1094,9 @@
                         <button class="btn btn-outline-secondary" id="copyShareBtn" type="button"><i class="bi bi-link-45deg"></i> Salin link</button>
                       </div>
                     </div>
+                    <div class="mt-2">
+                      <button class="btn btn-outline-warning btn-sm" id="privateShareBtn" type="button"><i class="bi bi-shield-lock"></i> Private Room Share</button>
+                    </div>
                     <div class="input-group input-group-sm mt-2">
                       <span class="input-group-text"><i class="bi bi-box-arrow-up-right"></i></span>
                       <input type="text" class="form-control" id="shareLinkInput" readonly>
@@ -1178,6 +1221,11 @@
           <div class="d-flex align-items-center mb-2">
             <i class="bi bi-cloud-check me-2"></i>
             <h5 class="mb-0">Background Jobs</h5>
+          </div>
+          <div class="mb-3" id="backgroundNotifyWrap">
+            <label class="form-label small fw-semibold" for="backgroundEmail">Notifikasi email (opsional)</label>
+            <input type="email" class="form-control form-control-sm" id="backgroundEmail" placeholder="nama@domain.com">
+            <div class="form-text">Kami kirim tautan unduhan ketika job selesai.</div>
           </div>
           <div class="small text-secondary" id="backgroundEmpty">Belum ada job latar.</div>
           <ul class="list-group list-group-flush" id="backgroundList"></ul>
@@ -1334,6 +1382,7 @@
                       <div>
                         <label for="themeSelect" class="form-label small text-uppercase">Tema</label>
                         <select id="themeSelect" class="form-select form-select-sm">
+                          <option value="auto">AI Seasonal (Auto)</option>
                           <option value="neo">Neo</option>
                           <option value="aurora">Aurora</option>
                           <option value="midnight">Midnight</option>
@@ -1442,7 +1491,25 @@
               </div>
             </div>
           </div>
-      
+
+          <div class="card shadow-sm mt-4" id="rewardHubCard">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-gift text-warning fs-5"></i>
+                  <h5 class="mb-0">Reward Hub</h5>
+                </div>
+                <span class="badge text-bg-warning text-dark" id="spinTicketBadge">0 tiket</span>
+              </div>
+              <p class="small text-secondary mb-3">Putar Lucky Spin selepas convert, temukan kuis musik tersembunyi, dan kumpulkan badge bonus musiman.</p>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-primary" id="openSpinBtn"><i class="bi bi-lightning-charge me-1"></i>Buka Lucky Spin</button>
+                <button type="button" class="btn btn-outline-info" id="openTriviaBtn"><i class="bi bi-question-diamond me-1"></i>Main Music Trivia</button>
+              </div>
+              <p class="small text-secondary mt-3 mb-0" id="rewardHubHint">Kumpulkan streak harian untuk tiket ekstra dan cari kata kunci rahasia di pencarian lagu.</p>
+            </div>
+          </div>
+
           <div class="card shadow-sm mt-4" id="gameCard">
             <div class="card-body p-4">
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -1535,6 +1602,11 @@
                   <span class="label">Rentang Level</span>
                   <span class="value" id="avatarLevelRange">0 – 119 XP</span>
                 </div>
+                <div class="profile-stat">
+                  <span class="label">Daily Streak</span>
+                  <span class="value" id="profileStreakLabel">0 hari</span>
+                  <small class="text-secondary d-block" id="profileStreakBest">Rekor terbaik: 0</small>
+                </div>
               </div>
               <p class="mb-1 fw-semibold" id="avatarMood">Pendatang baru yang penasaran.</p>
               <p class="mb-3 text-secondary" id="avatarProfileMood">Pendatang baru yang penasaran.</p>
@@ -1587,6 +1659,47 @@
         <div class="modal-footer">
           <div class="small text-secondary me-auto">Badge terkunci ditandai ikon gembok.</div>
           <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="luckySpinModal" tabindex="-1" aria-labelledby="luckySpinLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="luckySpinLabel"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Lucky Spin</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary small">Putar roda keberuntungan setiap selesai convert dan dapatkan bonus XP, badge, atau hadiah khusus.</p>
+          <div class="spin-wheel" id="spinWheel" aria-live="polite"></div>
+          <p class="fw-semibold mt-3" id="spinResult" role="status" aria-live="polite"></p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-primary" id="spinStartBtn">Putar Sekarang</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="musicTriviaModal" tabindex="-1" aria-labelledby="musicTriviaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="musicTriviaLabel"><i class="bi bi-question-diamond-fill me-2 text-info"></i>Music Trivia Challenge</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary small">Jawab kuis musik acak. Temukan easter egg untuk bonus XP!</p>
+          <div id="triviaQuestion" class="mb-3 fw-semibold"></div>
+          <div class="list-group" id="triviaOptions" role="group" aria-live="polite"></div>
+          <div class="mt-3 small" id="triviaFeedback"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="triviaSkipBtn">Lewati</button>
+          <button type="button" class="btn btn-primary" id="triviaNextBtn">Pertanyaan Selanjutnya</button>
         </div>
       </div>
     </div>
@@ -2332,6 +2445,24 @@
   const copyShareBtn = $('#copyShareBtn');
   const openShareBtn = $('#openShareBtn');
   const shareAppButtons = $$('#shareAppButtons button[data-app]');
+  const privateShareBtn = $('#privateShareBtn');
+
+  const spinModalEl = $('#luckySpinModal');
+  const spinWheelEl = $('#spinWheel');
+  const spinResultEl = $('#spinResult');
+  const spinStartBtn = $('#spinStartBtn');
+  const spinTicketBadge = $('#spinTicketBadge');
+  const openSpinBtn = $('#openSpinBtn');
+  const rewardHubHint = $('#rewardHubHint');
+
+  const triviaModalEl = $('#musicTriviaModal');
+  const triviaQuestionEl = $('#triviaQuestion');
+  const triviaOptionsEl = $('#triviaOptions');
+  const triviaFeedbackEl = $('#triviaFeedback');
+  const triviaSkipBtn = $('#triviaSkipBtn');
+  const triviaNextBtn = $('#triviaNextBtn');
+  const openTriviaBtn = $('#openTriviaBtn');
+  const rewardBaseHint = rewardHubHint ? rewardHubHint.textContent : '';
 
   const ratingWrap = $('#ratingWrap');
   const ratingSummary = $('#ratingSummary');
@@ -2497,7 +2628,11 @@
   const volumeBoost = $('#volumeBoost');
   const volumeBoostLabel = $('#volumeBoostLabel');
   const enhancerSelect = $('#enhancer');
+  const soundEffectSelect = $('#soundEffect');
+  const vpnFriendlyToggle = $('#vpnFriendly');
+  const smartResumeToggle = $('#smartResume');
   const backgroundMode = $('#backgroundMode');
+  const backgroundEmailInput = $('#backgroundEmail');
   const aiStatus = $('#aiStatus');
   const autoTagBtn = $('#autoTagBtn');
   const aiCaptionBtn = $('#aiCaptionBtn');
@@ -2589,6 +2724,8 @@
   const avatarAchievementList = $('#avatarAchievementList');
   const avatarLevelSummary = $('#avatarLevelSummary');
   const avatarLevelRange = $('#avatarLevelRange');
+  const profileStreakLabel = $('#profileStreakLabel');
+  const profileStreakBest = $('#profileStreakBest');
   const avatarEmojiPreview = $('#avatarEmojiPreview');
   const avatarPreviewLevel = $('#avatarPreviewLevel');
   const avatarPreviewMood = $('#avatarPreviewMood');
@@ -2968,7 +3105,7 @@
 
   if (themeSelect) {
     themeSelect.addEventListener('change', () => {
-      const newTheme = themeSelect.value || 'neo';
+      const newTheme = themeSelect.value || 'auto';
       if (state.experience.theme !== newTheme) {
         state.experience.theme = newTheme;
         applyTheme();
@@ -3111,7 +3248,7 @@
 
   const defaultAccessibility = { highContrast: false, largeText: false, reduceMotion: false };
   const defaultExperience = {
-    theme: 'neo',
+    theme: 'auto',
     font: 'typewriter',
     layout: 'cozy',
     mood: 'auto',
@@ -3119,12 +3256,28 @@
     points: 0,
     level: 1,
     progress: 0,
+    streak: 0,
+    streakBest: 0,
+    lastConvertDate: '',
     badges: ['welcome'],
     highScore: 0,
     legendaryUnlocked: false,
     legendaryDex: [],
     legendarySecret: false,
-    legendaryTarget: ''
+    legendaryTarget: '',
+    spinTickets: 0,
+    spinHistory: [],
+    triviaSeen: 0,
+    triviaScore: 0,
+    lastTriviaId: '',
+    seasonalSkin: '',
+    usage: {
+      vpn: 0,
+      resume: 0,
+      soundfx: 0,
+      privateshare: 0,
+      spin: 0
+    }
   };
 
   const state = {
@@ -3134,7 +3287,8 @@
     experience: { ...defaultExperience },
     narratorEnabled: false,
     assistantHistory: [],
-    avatarAura: ''
+    avatarAura: '',
+    backgroundEmail: ''
   };
 
   const badgeCatalog = {
@@ -3207,6 +3361,46 @@
       label: 'Navigator Pro',
       xp: 18,
       description: 'Manfaatkan slash command cepat di AI Navigator.'
+    },
+    streak3: {
+      label: 'Streak Bronze',
+      xp: 24,
+      description: 'Capai streak 3 hari berturut-turut.'
+    },
+    streak7: {
+      label: 'Streak Silver',
+      xp: 60,
+      description: 'Pertahankan streak konversi selama seminggu penuh.'
+    },
+    streak30: {
+      label: 'Streak Legend',
+      xp: 200,
+      description: 'Tetap konsisten convert selama 30 hari.'
+    },
+    spin: {
+      label: 'Lucky Star',
+      xp: 35,
+      description: 'Menang hadiah dari Lucky Spin.'
+    },
+    vpn: {
+      label: 'VPN Guardian',
+      xp: 18,
+      description: 'Gunakan mode VPN-friendly saat convert.'
+    },
+    resume: {
+      label: 'Download Sentinel',
+      xp: 18,
+      description: 'Selesaikan unduhan menggunakan Smart Resume.'
+    },
+    soundfx: {
+      label: 'Sound Sculptor',
+      xp: 20,
+      description: 'Tambah efek reverb, echo, atau 8-bit ke hasilmu.'
+    },
+    privateshare: {
+      label: 'Private Keeper',
+      xp: 26,
+      description: 'Bagikan hasil konversi via Private Room yang diproteksi.'
     },
     maxed: {
       label: 'Mythic Level',
@@ -3290,6 +3484,18 @@
     voice: [
       'Perintah suara diterima. Lanjutkan!',
       'Voice navigation aktif, captain! 🎙️'
+    ],
+    spin: [
+      'Lucky Spin kasih hadiah manis! 🎁',
+      'Wheel of fortune berhenti di hadiah favoritmu!'
+    ],
+    trivia: [
+      'Jawabanmu tepat! Pengetahuan musikmu mantap. 🎵',
+      'Quiz musik sukses! Tambah lagi pengetahuanmu ya.'
+    ],
+    secure: [
+      'Mode aman aktif. VPN-friendly jalan terus! 🔐',
+      'Smart Resume siap jaga unduhanmu kalau jaringan putus.'
     ]
   };
 
@@ -3817,6 +4023,14 @@
     updateLegendaryUi(points);
     renderLevelMilestones(points);
     renderBadges();
+    updateStreakUi();
+  };
+
+  const updateStreakUi = () => {
+    const streak = Number(state.experience.streak) || 0;
+    const best = Number(state.experience.streakBest) || 0;
+    if (profileStreakLabel) profileStreakLabel.textContent = `${streak} hari`;
+    if (profileStreakBest) profileStreakBest.textContent = `Rekor terbaik: ${best}`;
   };
 
   const awardBadge = (id) => {
@@ -3852,6 +4066,71 @@
     showRewardToast(`+${amount} XP${reason ? ` · ${reason}` : ''}`);
     updateMascotMood('xp');
     if (opts.badge) awardBadge(opts.badge);
+  };
+
+  const parseDateKey = (key) => {
+    if (!key || typeof key !== 'string') return null;
+    const parts = key.split('-').map((v) => Number(v));
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+    const [year, month, day] = parts;
+    return new Date(Date.UTC(year, month - 1, day));
+  };
+
+  const trackUsage = (key) => {
+    if (!state.experience.usage) state.experience.usage = { ...defaultExperience.usage };
+    const prev = Number(state.experience.usage[key]) || 0;
+    state.experience.usage[key] = prev + 1;
+    return prev;
+  };
+
+  const registerConversionSuccess = (source = 'direct', meta = {}) => {
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10);
+    const lastKey = state.experience.lastConvertDate || '';
+    const todayMidnight = new Date(todayKey);
+    let streak = Number(state.experience.streak) || 0;
+    if (lastKey === todayKey) {
+      // no change, already counted today
+    } else {
+      const lastDate = parseDateKey(lastKey);
+      if (lastDate) {
+        const lastMidnight = parseDateKey(lastKey);
+        const diff = Math.floor((todayMidnight - lastMidnight) / (24 * 60 * 60 * 1000));
+        streak = diff === 1 ? streak + 1 : 1;
+      } else {
+        streak = 1;
+      }
+      state.experience.lastConvertDate = todayKey;
+      state.experience.streak = streak;
+      state.experience.streakBest = Math.max(Number(state.experience.streakBest) || 0, streak);
+      persistState();
+      updateStreakUi();
+      if (streak >= 30) awardBadge('streak30');
+      else if (streak >= 7) awardBadge('streak7');
+      else if (streak >= 3) awardBadge('streak3');
+    }
+    let usageChanged = false;
+    let secureMood = false;
+    if (meta?.vpnFriendly) {
+      trackUsage('vpn');
+      awardBadge('vpn');
+      usageChanged = true;
+      secureMood = true;
+    }
+    if (meta?.smartResume) {
+      trackUsage('resume');
+      awardBadge('resume');
+      usageChanged = true;
+      secureMood = true;
+    }
+    if (meta?.soundEffect && meta.soundEffect !== 'none') {
+      trackUsage('soundfx');
+      awardBadge('soundfx');
+      usageChanged = true;
+    }
+    if (usageChanged) persistState();
+    if (secureMood) updateMascotMood('secure');
+    offerLuckySpin(source);
   };
 
   const pickPhrase = (topic) => {
@@ -3934,11 +4213,52 @@
     }
   };
 
+  const SEASONAL_SKINS = {
+    default: { theme: 'neo', hint: '' },
+    valentine: { theme: 'aurora', hint: 'Valentine Bloom aktif — bagikan link private biar makin manis.' },
+    halloween: { theme: 'midnight', hint: 'Halloween vibes! Cari easter egg di Legendary Catch Challenge.' },
+    holiday: { theme: 'midnight', hint: 'Holiday sparkle hadir. Putar Lucky Spin untuk hadiah spesial.' }
+  };
+
+  const determineSeasonalSkin = () => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    if (month === 2 && day <= 21) return 'valentine';
+    if (month === 10) return 'halloween';
+    if (month === 12) return 'holiday';
+    return 'default';
+  };
+
+  const resolveSeasonalTheme = (value) => {
+    if (value === 'auto' || !value) {
+      const skin = determineSeasonalSkin();
+      const meta = SEASONAL_SKINS[skin] || SEASONAL_SKINS.default;
+      return { theme: meta.theme, skin, hint: meta.hint };
+    }
+    return { theme: value, skin: 'default', hint: '' };
+  };
+
+  const applySeasonalSkin = (skin) => {
+    if (!document.body) return;
+    document.body.classList.remove('skin-valentine', 'skin-halloween', 'skin-holiday');
+    if (skin && skin !== 'default') {
+      document.body.classList.add(`skin-${skin}`);
+    }
+  };
+
   const applyTheme = () => {
     if (!document.body) return;
-    const theme = state.experience.theme || 'neo';
+    const resolved = resolveSeasonalTheme(state.experience.theme || 'auto');
     document.body.classList.remove('theme-neo', 'theme-aurora', 'theme-midnight');
-    document.body.classList.add(`theme-${theme}`);
+    document.body.classList.add(`theme-${resolved.theme}`);
+    applySeasonalSkin(resolved.skin);
+    state.experience.seasonalSkin = resolved.skin;
+    if (rewardHubHint) {
+      const baseHint = rewardBaseHint || 'Kumpulkan streak harian untuk tiket ekstra dan cari kata kunci rahasia di pencarian lagu.';
+      if (resolved.hint) rewardHubHint.textContent = `${baseHint} · ${resolved.hint}`;
+      else rewardHubHint.textContent = baseHint;
+    }
   };
 
   const applyFont = () => {
@@ -3960,7 +4280,7 @@
     applyTheme();
     applyFont();
     applyLayout();
-    if (themeSelect) themeSelect.value = state.experience.theme || 'neo';
+    if (themeSelect) themeSelect.value = state.experience.theme || 'auto';
     if (fontSelect) fontSelect.value = state.experience.font || 'typewriter';
     if (layoutSelect) layoutSelect.value = state.experience.layout || 'cozy';
     if (moodSelect) moodSelect.value = state.experience.mood || 'auto';
@@ -4147,6 +4467,351 @@
     incrementPoints(alreadyMaestro ? 4 : 8, 'Musik adaptif', alreadyMaestro ? {} : { badge: 'maestro' });
     persistState();
   };
+
+  const SPIN_REWARDS = [
+    {
+      id: 'xp25',
+      label: '+25 XP',
+      description: 'Bonus XP instan.',
+      weight: 3,
+      handler: () => {
+        incrementPoints(25, 'Lucky Spin');
+      }
+    },
+    {
+      id: 'xp60',
+      label: '+60 XP',
+      description: 'XP langka untuk boost level.',
+      weight: 1,
+      handler: () => {
+        incrementPoints(60, 'Lucky Spin Rare');
+        showConfetti(36, true);
+      }
+    },
+    {
+      id: 'ticket',
+      label: 'Tiket tambahan',
+      description: 'Tambah 1 tiket Lucky Spin.',
+      weight: 2,
+      handler: () => {
+        state.experience.spinTickets = Math.min(5, Number(state.experience.spinTickets || 0) + 2);
+        incrementPoints(12, 'Bonus tiket Lucky Spin');
+        showRewardToast('Tiket Lucky Spin bertambah!');
+      }
+    },
+    {
+      id: 'badge',
+      label: 'Badge Lucky Star',
+      description: 'Langsung klaim badge Lucky Star.',
+      weight: 1,
+      handler: () => {
+        incrementPoints(40, 'Lucky Star');
+        awardBadge('spin');
+      }
+    },
+    {
+      id: 'mood',
+      label: 'Mood Booster',
+      description: 'Adaptive music berganti mood unik.',
+      weight: 2,
+      handler: () => {
+        const moods = ['energetic', 'focus', 'chill'];
+        const pick = moods[Math.floor(Math.random() * moods.length)];
+        startBackgroundMusic(pick);
+        incrementPoints(15, 'Mood booster');
+      }
+    },
+    {
+      id: 'trivia',
+      label: 'Easter Trivia',
+      description: 'Pertanyaan easter egg terbuka.',
+      weight: 1,
+      handler: () => {
+        const launch = () => openTriviaModal(true);
+        if (spinModalEl) {
+          const modal = bootstrap.Modal.getInstance(spinModalEl);
+          if (modal) {
+            modal.hide();
+            window.setTimeout(launch, 360);
+            return;
+          }
+        }
+        window.setTimeout(launch, 280);
+      }
+    }
+  ];
+
+  const renderSpinWheel = () => {
+    if (!spinWheelEl) return;
+    spinWheelEl.innerHTML = '';
+    spinItems = SPIN_REWARDS.map((reward) => {
+      const item = document.createElement('div');
+      item.className = 'spin-item';
+      item.dataset.reward = reward.id;
+      item.innerHTML = `<span>${reward.label}</span><span class="desc">${reward.description}</span>`;
+      spinWheelEl.appendChild(item);
+      return item;
+    });
+  };
+
+  const updateSpinUi = () => {
+    const tickets = Number(state.experience.spinTickets) || 0;
+    if (spinStartBtn) {
+      const label = tickets > 0 ? `Putar (${tickets} tiket)` : 'Putar Sekarang';
+      spinStartBtn.innerHTML = `<i class="bi bi-lightning-charge me-1"></i>${label}`;
+      spinStartBtn.disabled = tickets <= 0 || spinActive;
+    }
+    if (openSpinBtn) {
+      openSpinBtn.classList.toggle('btn-primary', tickets > 0);
+      openSpinBtn.classList.toggle('btn-outline-primary', tickets <= 0);
+      openSpinBtn.innerHTML = tickets > 0
+        ? `<i class="bi bi-lightning-charge me-1"></i>Buka Lucky Spin (${tickets})`
+        : '<i class="bi bi-lightning-charge me-1"></i>Buka Lucky Spin';
+    }
+    if (spinTicketBadge) {
+      spinTicketBadge.textContent = tickets === 1 ? '1 tiket' : `${tickets} tiket`;
+    }
+    if (spinResultEl) {
+      const history = Array.isArray(state.experience.spinHistory) ? state.experience.spinHistory : [];
+      if (history.length) {
+        const last = history[history.length - 1];
+        const time = last?.ts ? new Date(last.ts).toLocaleTimeString('id-ID') : '';
+        spinResultEl.textContent = `Terakhir: ${last.label}${time ? ` · ${time}` : ''}`;
+      } else {
+        spinResultEl.textContent = 'Putar Lucky Spin setelah konversi untuk hadiah kejutan.';
+      }
+    }
+  };
+
+  const pickSpinReward = () => {
+    const pool = [];
+    SPIN_REWARDS.forEach((reward) => {
+      const weight = Math.max(1, Number(reward.weight) || 1);
+      for (let i = 0; i < weight; i += 1) pool.push(reward);
+    });
+    return pool[Math.floor(Math.random() * pool.length)] || SPIN_REWARDS[0];
+  };
+
+  const applySpinReward = (reward) => {
+    if (!reward) return;
+    try {
+      reward.handler?.();
+    } catch (err) {
+      console.error('Spin reward error', err);
+    }
+    if (!state.experience.usage) state.experience.usage = { ...defaultExperience.usage };
+    state.experience.usage.spin = (Number(state.experience.usage.spin) || 0) + 1;
+    awardBadge('spin');
+    updateMascotMood('spin');
+    persistState();
+  };
+
+  const finishSpin = (reward) => {
+    spinActive = false;
+    if (spinTimer) {
+      clearTimeout(spinTimer);
+      spinTimer = null;
+    }
+    state.experience.spinTickets = Math.max(0, Number(state.experience.spinTickets || 0) - 1);
+    const history = Array.isArray(state.experience.spinHistory) ? state.experience.spinHistory : [];
+    const entry = { id: reward.id, label: reward.label, ts: Date.now() };
+    state.experience.spinHistory = [...history.slice(-9), entry];
+    applySpinReward(reward);
+    updateSpinUi();
+    if (spinResultEl) {
+      spinResultEl.textContent = `Selamat! ${reward.label} · ${reward.description}`;
+    }
+  };
+
+  function startLuckySpin() {
+    if ((Number(state.experience.spinTickets) || 0) <= 0) {
+      setToast('Belum ada tiket Lucky Spin. Selesaikan konversi dulu ya!');
+      return;
+    }
+    if (spinActive) return;
+    if (!spinItems.length) renderSpinWheel();
+    if (!spinItems.length) return;
+    const reward = pickSpinReward();
+    const len = spinItems.length;
+    const winnerIndex = spinItems.findIndex((node) => node.dataset.reward === reward.id);
+    const totalSteps = len * 4 + (winnerIndex >= 0 ? winnerIndex : 0);
+    let index = 0;
+    let delay = 90;
+    spinActive = true;
+    spinItems.forEach((node) => node.classList.remove('active'));
+    const tick = () => {
+      spinItems.forEach((node) => node.classList.remove('active'));
+      const node = spinItems[index % len];
+      if (node) node.classList.add('active');
+      index += 1;
+      if (index <= totalSteps) {
+        delay = Math.min(360, delay + 10);
+        spinTimer = window.setTimeout(tick, delay);
+      } else {
+        finishSpin(reward);
+      }
+    };
+    tick();
+  }
+
+  const offerLuckySpin = (source = 'direct') => {
+    state.experience.spinTickets = Math.min(5, Number(state.experience.spinTickets || 0) + 1);
+    pendingSpinOffer = true;
+    updateSpinUi();
+    persistState();
+    if (source === 'background') {
+      showRewardToast('Job background selesai! Lucky Spin siap diputar.');
+    } else {
+      showRewardToast('Lucky Spin siap diputar!');
+    }
+    if (spinModalEl && !document.body.classList.contains('modal-open')) {
+      const modal = bootstrap.Modal.getOrCreateInstance(spinModalEl);
+      pendingSpinOffer = false;
+      modal.show();
+    }
+  };
+
+  const TRIVIA_KEYWORDS = ['music trivia', 'musik trivia', 'trivia musik', 'kuis musik', 'music quiz'];
+
+  const TRIVIA_BANK = [
+    {
+      id: 'tempo',
+      question: 'Istilah untuk kecepatan sebuah lagu dalam musik disebut apa?',
+      options: [
+        { text: 'Tempo', correct: true },
+        { text: 'Timbre' },
+        { text: 'Harmony' },
+        { text: 'Dynamics' }
+      ],
+      explanation: 'Tempo menentukan seberapa cepat atau lambat sebuah lagu dimainkan.'
+    },
+    {
+      id: 'blinding',
+      question: 'Siapa artis di balik hits global "Blinding Lights"?',
+      options: [
+        { text: 'The Weeknd', correct: true },
+        { text: 'Bruno Mars' },
+        { text: 'Ed Sheeran' },
+        { text: 'Dua Lipa' }
+      ],
+      explanation: 'The Weeknd merilis “Blinding Lights” pada 2019 dan menjadi salah satu lagu paling populer dekade ini.'
+    },
+    {
+      id: 'house128',
+      question: 'Genre elektronik apa yang identik dengan tempo sekitar 128 BPM?',
+      options: [
+        { text: 'House', correct: true },
+        { text: 'Trap' },
+        { text: 'Dubstep' },
+        { text: 'Lo-fi' }
+      ],
+      explanation: 'Genre House biasanya berada di tempo 120–130 BPM dan populer di lantai dansa.'
+    },
+    {
+      id: 'konami',
+      question: 'Kode rahasia apa yang membuka tantangan Konami di Experience Hub?',
+      options: [
+        { text: '↑↑↓↓←→←→BA', correct: true },
+        { text: '12345' },
+        { text: 'WASD + Space' },
+        { text: 'CTRL + M' }
+      ],
+      explanation: 'Masukkan urutan ↑↑↓↓←→←→BA untuk memunculkan aura Konami.',
+      easter: true
+    },
+    {
+      id: 'grammy',
+      question: 'Album siapakah yang meraih Grammy Album of the Year 2024?',
+      options: [
+        { text: 'Midnights – Taylor Swift', correct: true },
+        { text: 'SOUR – Olivia Rodrigo' },
+        { text: 'SOS – SZA' },
+        { text: 'Endless Summer Vacation – Miley Cyrus' }
+      ],
+      explanation: 'Taylor Swift meraih Album of the Year 2024 lewat “Midnights”.'
+    }
+  ];
+
+  const renderTriviaQuestion = (question) => {
+    currentTrivia = question;
+    triviaAnswered = false;
+    if (triviaQuestionEl) triviaQuestionEl.textContent = question?.question || '';
+    if (triviaFeedbackEl) triviaFeedbackEl.textContent = '';
+    if (triviaOptionsEl) {
+      triviaOptionsEl.innerHTML = '';
+      (question?.options || []).forEach((option, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action';
+        btn.textContent = option.text;
+        btn.dataset.index = String(index);
+        btn.addEventListener('click', () => handleTriviaOption(index));
+        triviaOptionsEl.appendChild(btn);
+      });
+      const firstOption = triviaOptionsEl.querySelector('button');
+      if (firstOption) {
+        window.setTimeout(() => {
+          if (document.contains(firstOption)) firstOption.focus();
+        }, 120);
+      }
+    }
+    if (triviaSkipBtn) triviaSkipBtn.disabled = false;
+    if (triviaNextBtn) triviaNextBtn.disabled = true;
+  };
+
+  const chooseTriviaQuestion = (forceEaster = false) => {
+    const pool = forceEaster
+      ? TRIVIA_BANK.filter((q) => q.easter)
+      : TRIVIA_BANK.filter((q) => q.id !== state.experience.lastTriviaId || TRIVIA_BANK.length === 1);
+    const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : TRIVIA_BANK[0];
+    renderTriviaQuestion(pick);
+  };
+
+  function handleTriviaOption(index) {
+    if (!currentTrivia || triviaAnswered) return;
+    triviaAnswered = true;
+    const options = Array.from(triviaOptionsEl?.querySelectorAll('button') || []);
+    options.forEach((btn, idx) => {
+      btn.disabled = true;
+      if (idx === index) btn.classList.add('active');
+      if (currentTrivia.options[idx]?.correct) {
+        btn.classList.add('list-group-item-success');
+      }
+    });
+    const selected = currentTrivia.options[index];
+    const correct = currentTrivia.options.find((opt) => opt.correct);
+    const isCorrect = !!selected?.correct;
+    const base = isCorrect
+      ? 'Jawaban benar!'
+      : `Kurang tepat. Jawaban yang benar: ${correct?.text || ''}.`;
+    const extra = currentTrivia.explanation ? ` ${currentTrivia.explanation}` : '';
+    if (triviaFeedbackEl) triviaFeedbackEl.textContent = `${base}${extra}`.trim();
+    state.experience.triviaSeen = (Number(state.experience.triviaSeen) || 0) + 1;
+    state.experience.lastTriviaId = currentTrivia.id;
+    if (isCorrect) {
+      state.experience.triviaScore = (Number(state.experience.triviaScore) || 0) + 1;
+      incrementPoints(currentTrivia.easter ? 60 : 24, currentTrivia.easter ? 'Easter Trivia' : 'Music Trivia');
+      if (currentTrivia.easter) {
+        awardBadge('easter');
+        showConfetti(32, true);
+      }
+      updateMascotMood('trivia');
+    }
+    persistState();
+    if (triviaNextBtn) triviaNextBtn.disabled = false;
+  }
+
+  const loadTriviaQuestion = (forceEaster = false) => {
+    chooseTriviaQuestion(forceEaster);
+  };
+
+  function openTriviaModal(forceEaster = false) {
+    if (!triviaModalEl) return;
+    loadTriviaQuestion(forceEaster);
+    const modal = bootstrap.Modal.getOrCreateInstance(triviaModalEl);
+    modal.show();
+    updateMascotMood('trivia');
+  }
 
   function rotateMood() {
     const order = ['auto', 'energetic', 'focus', 'chill'];
@@ -4711,7 +5376,8 @@
       adminBearer: state.adminBearer,
       accessibility: state.accessibility,
       experience: state.experience,
-      narratorEnabled: state.narratorEnabled
+      narratorEnabled: state.narratorEnabled,
+      backgroundEmail: state.backgroundEmail
     });
   };
 
@@ -5027,6 +5693,12 @@
   const backgroundTimers = new Map();
   const BACKGROUND_STORE_KEY = 'ytmp3.background.jobs.v1';
   let qrLibPromise = null;
+  let spinItems = [];
+  let spinActive = false;
+  let pendingSpinOffer = false;
+  let currentTrivia = null;
+  let triviaAnswered = false;
+  let spinTimer = null;
 
   const getBackend = () => (state.backendUrl || '').trim();
 
@@ -6063,9 +6735,27 @@ $('#queueList')?.addEventListener('click', (e) => {
     state.experience = { ...defaultExperience, ...(s.experience || {}) };
     if (!Array.isArray(state.experience.legendaryDex)) state.experience.legendaryDex = [];
     if (typeof state.experience.legendaryTarget !== 'string') state.experience.legendaryTarget = '';
+    if (!Array.isArray(state.experience.spinHistory)) state.experience.spinHistory = [];
+    if (!Number.isFinite(state.experience.spinTickets)) state.experience.spinTickets = 0;
+    if (typeof state.experience.lastTriviaId !== 'string') state.experience.lastTriviaId = '';
+    if (typeof state.experience.seasonalSkin !== 'string') state.experience.seasonalSkin = '';
+    if (!state.experience.usage || typeof state.experience.usage !== 'object') {
+      state.experience.usage = { ...defaultExperience.usage };
+    } else {
+      state.experience.usage = {
+        vpn: Number(state.experience.usage.vpn) || 0,
+        resume: Number(state.experience.usage.resume) || 0,
+        soundfx: Number(state.experience.usage.soundfx) || 0,
+        privateshare: Number(state.experience.usage.privateshare) || 0,
+        spin: Number(state.experience.usage.spin) || 0
+      };
+    }
     legendaryCurrent = state.experience.legendaryTarget || '';
     state.narratorEnabled = !!s.narratorEnabled;
+    state.backgroundEmail = s.backgroundEmail || '';
     $('#backendUrl').value = state.backendUrl;
+    const backgroundEmailInput = $('#backgroundEmail');
+    if (backgroundEmailInput) backgroundEmailInput.value = state.backgroundEmail;
     updateAccessibilityControls();
     applyAccessibility();
     updateAdminUi();
@@ -6425,6 +7115,13 @@ $('#queueList')?.addEventListener('click', (e) => {
   }
   updateEqStatus();
 
+  if (backgroundEmailInput) {
+    backgroundEmailInput.addEventListener('input', () => {
+      state.backgroundEmail = backgroundEmailInput.value.trim();
+      persistState();
+    });
+  }
+
   const persistBackgroundJobs = () => {
     try {
       const ids = Array.from(backgroundJobsState.keys()).slice(0, 20);
@@ -6437,7 +7134,16 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (Notification.permission !== 'granted') return;
     const title = isError ? 'Konversi gagal' : 'Konversi selesai';
     const body = job?.result?.fileName || job?.error || job?.id || 'Job selesai';
-    try { new Notification(title, { body }); } catch {}
+    const showNative = () => {
+      try { new Notification(title, { body }); } catch {}
+    };
+    if (navigator.serviceWorker?.ready) {
+      navigator.serviceWorker.ready.then((reg) => {
+        if (reg?.showNotification) reg.showNotification(title, { body }); else showNative();
+      }).catch(showNative);
+    } else {
+      showNative();
+    }
   };
 
   const renderBackgroundJobs = () => {
@@ -6460,6 +7166,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (job.result?.downloadUrl) {
         const href = absoluteFromRelative(job.result.downloadUrl);
         actions.push(`<a class="btn btn-sm btn-outline-primary" href="${href}" download="${job.result.fileName || ''}"><i class="bi bi-download"></i> Unduh</a>`);
+      }
+      if (job.notify?.email) {
+        actions.push(`<span class="badge text-bg-warning text-dark"><i class="bi bi-envelope-at me-1"></i>${job.notify.email}</span>`);
       }
       if (status !== 'done' && status !== 'error') {
         actions.push('<span class="text-secondary">Diproses…</span>');
@@ -6499,6 +7208,11 @@ $('#queueList')?.addEventListener('click', (e) => {
           channels: job.result.channels || null,
         };
       }
+      registerConversionSuccess('background', {
+        vpnFriendly: job.result?.vpnFriendly ?? job.payload?.vpnFriendly,
+        smartResume: job.result?.smartResume ?? job.payload?.smartResume,
+        soundEffect: job.result?.soundEffect ?? job.payload?.soundEffect,
+      });
     } else if (job.status === 'error' && previous?.status !== 'error') {
       setToast(`Job gagal: ${job.error || job.id}`);
       notifyJob(job, true);
@@ -6569,6 +7283,62 @@ $('#queueList')?.addEventListener('click', (e) => {
     } catch {}
   };
 
+  async function handlePrivateShare() {
+    if (!currentDownloadUrl) {
+      setToast('Konversi dulu sebelum membuat Private Room.');
+      return;
+    }
+    const raw = window.prompt('Buat password Private Room (min. 4 karakter):');
+    if (raw == null) {
+      setToast('Pembuatan Private Room dibatalkan.');
+      return;
+    }
+    const password = raw.trim();
+    if (password.length < 4) {
+      setToast('Password minimal 4 karakter.');
+      return;
+    }
+    try {
+      const relative = toRelativePublic(currentDownloadUrl);
+      if (!relative) throw new Error('Link unduhan tidak valid.');
+      const resp = await fetch(api('/api/private-share'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          downloadUrl: relative,
+          password,
+          fileName: lastPreviewMeta?.fileName || currentDownloadName || ''
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || 'Gagal membuat Private Room');
+      const roomId = data?.room?.id;
+      if (!roomId) throw new Error('Room tidak valid.');
+      const roomUrl = new URL('./private.html', window.location.href);
+      roomUrl.searchParams.set('room', roomId);
+      const shareUrl = roomUrl.toString();
+      currentShareUrl = shareUrl;
+      if (shareLinkInput) shareLinkInput.value = shareUrl;
+      if (shareInfo) shareInfo.textContent = 'Private Room siap dibagikan. Berikan password ke temanmu.';
+      updateShareAppTargets();
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setToast('Link Private Room tersalin.');
+      } catch {
+        setToast('Private Room dibuat. Salin link secara manual jika perlu.');
+      }
+      if (!state.experience.usage) state.experience.usage = { ...defaultExperience.usage };
+      state.experience.usage.privateshare = (Number(state.experience.usage.privateshare) || 0) + 1;
+      awardBadge('privateshare');
+      incrementPoints(26, 'Private Room Share');
+      updateMascotMood('badge');
+      persistState();
+    } catch (err) {
+      console.error('Private share error', err);
+      setToast(`Gagal membuat Private Room: ${err.message}`);
+    }
+  }
+
   const shareLink = async (link) => {
     if (!link) { setToast('Belum ada link untuk dibagikan'); return; }
     if (navigator.share){
@@ -6602,6 +7372,51 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (!currentShareUrl){ setToast('Belum ada link share'); return; }
     window.open(currentShareUrl, '_blank', 'noopener');
   });
+
+  if (privateShareBtn) privateShareBtn.addEventListener('click', handlePrivateShare);
+
+  if (openSpinBtn) {
+    openSpinBtn.addEventListener('click', () => {
+      if (!spinModalEl) return;
+      const modal = bootstrap.Modal.getOrCreateInstance(spinModalEl);
+      pendingSpinOffer = false;
+      modal.show();
+      updateSpinUi();
+    });
+  }
+
+  if (spinStartBtn) spinStartBtn.addEventListener('click', startLuckySpin);
+
+  if (spinModalEl) {
+    spinModalEl.addEventListener('shown.bs.modal', () => {
+      pendingSpinOffer = false;
+      updateSpinUi();
+      if (spinStartBtn && !spinStartBtn.disabled) {
+        spinStartBtn.focus();
+      } else {
+        const closeBtn = spinModalEl.querySelector('[data-bs-dismiss="modal"]');
+        if (closeBtn instanceof HTMLElement) closeBtn.focus();
+      }
+    });
+  }
+
+  if (openTriviaBtn) openTriviaBtn.addEventListener('click', () => openTriviaModal(false));
+  if (triviaSkipBtn) triviaSkipBtn.addEventListener('click', () => loadTriviaQuestion(false));
+  if (triviaNextBtn) triviaNextBtn.addEventListener('click', () => loadTriviaQuestion(false));
+  if (triviaModalEl) {
+    triviaModalEl.addEventListener('shown.bs.modal', () => {
+      const firstOption = triviaOptionsEl ? triviaOptionsEl.querySelector('button') : null;
+      if (firstOption instanceof HTMLElement) {
+        firstOption.focus();
+      } else if (triviaSkipBtn instanceof HTMLElement) {
+        triviaSkipBtn.focus();
+      }
+    });
+    triviaModalEl.addEventListener('hidden.bs.modal', () => {
+      currentTrivia = null;
+      triviaAnswered = false;
+    });
+  }
 
   updateShareAppTargets();
   if (shareAppButtons.length){
@@ -7681,6 +8496,15 @@ $('#queueList')?.addEventListener('click', (e) => {
       urlInput?.focus();
       return;
     }
+    if (!url && keyword) {
+      const normalizedKeyword = keyword.toLowerCase();
+      if (TRIVIA_KEYWORDS.includes(normalizedKeyword)) {
+        openTriviaModal(false);
+        setToast('Music Trivia dibuka!');
+        if (keywordInput) keywordInput.value = '';
+        return;
+      }
+    }
     if (url && !/^https?:\/\//i.test(url)) {
       setToast(translateMessage('Masukkan URL YouTube yang valid'));
       urlInput?.focus();
@@ -7726,11 +8550,15 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (denoiseInput) body.denoise = denoiseInput.checked;
     if (volumeBoost) body.volumeBoost = Number(volumeBoost.value || 0);
     if (enhancerSelect) body.enhancer = enhancerSelect.value || 'none';
+    if (soundEffectSelect) body.soundEffect = soundEffectSelect.value || 'none';
+    if (vpnFriendlyToggle) body.vpnFriendly = !!vpnFriendlyToggle.checked;
+    if (smartResumeToggle) body.smartResume = !!smartResumeToggle.checked;
 
     const ringtonePayload = getRingtoneRequest();
     if (ringtonePayload) body.ringtone = ringtonePayload;
 
     if (backgroundMode?.checked) {
+      if (backgroundEmailInput?.value.trim()) body.notifyEmail = backgroundEmailInput.value.trim();
       await submitBackgroundJob(body);
       return;
     }
@@ -7799,6 +8627,11 @@ $('#queueList')?.addEventListener('click', (e) => {
       showAudioPreview(absoluteDownload, previewMeta);
       setToast(translateMessage('Berhasil diproses'));
       updateAiStatus('Konversi selesai', 'success');
+      registerConversionSuccess('direct', {
+        vpnFriendly: data.vpnFriendly ?? body.vpnFriendly,
+        smartResume: data.smartResume ?? body.smartResume,
+        soundEffect: data.soundEffect ?? body.soundEffect,
+      });
       if ($('#autoClear').checked && !overrideUrl) { $('#clearBtn').click(); }
     } catch (err) {
       $('#status').textContent = translateMessage(`Error: ${err.message}`);
@@ -7900,6 +8733,12 @@ $('#queueList')?.addEventListener('click', (e) => {
     };
     if(Object.keys(trim).length) body.trim = trim;
     if(Object.keys(id3).length) body.id3 = id3;
+    if (denoiseInput) body.denoise = denoiseInput.checked;
+    if (volumeBoost) body.volumeBoost = Number(volumeBoost.value || 0);
+    if (enhancerSelect) body.enhancer = enhancerSelect.value || 'none';
+    if (soundEffectSelect) body.soundEffect = soundEffectSelect.value || 'none';
+    if (vpnFriendlyToggle) body.vpnFriendly = !!vpnFriendlyToggle.checked;
+    if (smartResumeToggle) body.smartResume = !!smartResumeToggle.checked;
 
     try {
       const resp = await fetch(api('/api/convert-playlist'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
@@ -7912,6 +8751,11 @@ $('#queueList')?.addEventListener('click', (e) => {
       const base = getBackend() || window.location.origin;
       const absoluteZip = new URL(data.downloadUrl, base).href;
       pushHistory({ downloadUrl: absoluteZip, format: 'zip', abr: body.abr, fileName: data.fileName });
+      registerConversionSuccess('playlist', {
+        vpnFriendly: body.vpnFriendly,
+        smartResume: body.smartResume,
+        soundEffect: body.soundEffect,
+      });
       if($('#autoDownload').checked && playlistDownloadLink){ playlistDownloadLink.click(); }
       if($('#autoClear').checked){ queue.length = 0; renderQueue(); $('#playlist').value=''; }
     } catch(err){
@@ -8044,7 +8888,9 @@ $('#queueList')?.addEventListener('click', (e) => {
   (function init(){
     initTheme();
     initWelcome();
+    renderSpinWheel();
     loadSettings();
+    updateSpinUi();
     ensureAssistantWelcome();
     updateMascotMood('default');
     if (state.experience.narratorAuto) narrateGuide();

@@ -22,6 +22,13 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Voice navigation, narrator mode, dan AI Navigator chatbot yang siap memandu tanpa harus meninggalkan halaman.
 - Mini-game Neo Runner dengan Konami code easter egg plus perayaan donasi lengkap (confetti, suara, getaran).
 - AI Studio yang terus bertambah dengan Auto Music Tags, caption, pitch, press kit instan, email outreach, hingga teaser lirik untuk sosial media.
+- Background mode dengan notifikasi email opsional sehingga pekerjaan besar tetap berjalan walau tab ditutup.
+- Sound Effect add-on (reverb, echo, 8-bit) untuk mewarnai hasil audio langsung dari UI utama maupun mini player.
+- Mode VPN-friendly dan Smart Resume agar unduhan tetap stabil ketika koneksi lambat atau terputus sementara.
+- Reward Hub dengan streak harian, Lucky Spin, dan Easter Egg Music Trivia untuk menambah XP, badge, dan kejutan baru.
+- AI themed skins musiman yang otomatis berganti (Valentine, Halloween, Holiday) serta bisa dipilih manual lewat dashboard.
+- Private Room Share yang melindungi tautan unduhan dengan password sebelum dibagikan ke teman.
+- Ekstensi browser yang menambahkan tombol “Convert MP3” langsung di bawah video YouTube.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
@@ -29,6 +36,10 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 3. Pilih kualitas, atur nama file, dan lengkapi metadata jika diperlukan.
 4. Klik **Convert** dan tunggu hingga proses selesai, lalu unduh MP3 hasil konversi.
 5. Untuk banyak video, tempelkan beberapa URL di kolom *Playlist* dan gunakan **Convert Antrian**.
+
+## Browser Extension
+
+Folder [`browser-extension/`](./browser-extension) berisi manifest dan content script sederhana untuk menambahkan tombol **Convert MP3** di halaman video YouTube (desktop maupun mobile web). Muat ekstensi ini dalam mode developer pada browser Chromium, lalu setiap klik tombol akan membuka konverter dengan URL video yang sedang dibuka.
 
 ## Lisensi
 Proyek ini dirilis di bawah lisensi MIT.

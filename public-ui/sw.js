@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ytmp3-ui-v4';
+const CACHE_NAME = 'ytmp3-ui-v5';
 const CDN_CACHE = 'ytmp3-cdn-v2';
 
 const scopeReference = (self.registration && self.registration.scope) || self.location.href;
@@ -10,6 +10,7 @@ const APP_SHELL = [
   './',
   'index.html',
   'share.html',
+  'private.html',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-maskable.svg'

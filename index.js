@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { promises as fsp } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
-import { join, dirname, resolve as pathResolve } from "node:path";
+import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
@@ -22,6 +22,14 @@ try {
   ffprobePath = (await import("ffprobe-static")).path;
 } catch {
   ffprobePath = null;
+}
+
+let nodemailer = null;
+try {
+  const nodemailerMod = await import("nodemailer");
+  nodemailer = nodemailerMod?.default || nodemailerMod;
+} catch {
+  nodemailer = null;
 }
 
 const normalizeHeaderInit = (input) => {
@@ -216,6 +224,115 @@ const PUBLIC_ROOT = pathResolve(PUBLIC_DIR);
 const backgroundJobs = new Map();
 const backgroundQueue = [];
 let backgroundProcessing = false;
+
+const sanitizeEmail = (input = "") => {
+  if (!input) return "";
+  const trimmed = String(input).trim().toLowerCase();
+  if (!trimmed) return "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "";
+  return trimmed;
+};
+
+const maskEmail = (email = "") => {
+  if (!email) return "";
+  const [user, domain] = email.split("@");
+  if (!domain) return email;
+  if (user.length <= 2) return `${user[0] || ""}***@${domain}`;
+  return `${user.slice(0, 2)}***@${domain}`;
+};
+
+let mailTransport = null;
+let mailTransportFailed = false;
+
+const getMailTransport = () => {
+  if (mailTransportFailed) return null;
+  if (mailTransport) return mailTransport;
+  if (!nodemailer) {
+    mailTransportFailed = true;
+    return null;
+  }
+  try {
+    const smtpUrl = process.env.NOTIFY_SMTP_URL || process.env.SMTP_URL;
+    if (smtpUrl) {
+      mailTransport = nodemailer.createTransport(smtpUrl);
+      return mailTransport;
+    }
+    const host = process.env.NOTIFY_SMTP_HOST;
+    if (host) {
+      const port = Number(process.env.NOTIFY_SMTP_PORT) || 587;
+      const secure = String(process.env.NOTIFY_SMTP_SECURE || "false").toLowerCase() === "true";
+      const user = process.env.NOTIFY_SMTP_USER;
+      const pass = process.env.NOTIFY_SMTP_PASS;
+      mailTransport = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: user && pass ? { user, pass } : undefined,
+      });
+      return mailTransport;
+    }
+  } catch (err) {
+    console.warn("[notify] gagal menyiapkan transport email", err);
+    mailTransportFailed = true;
+    return null;
+  }
+  mailTransportFailed = true;
+  return null;
+};
+
+const privateShares = new Map();
+const PRIVATE_SHARE_TTL_MS = Math.max(5 * 60 * 1000, Number(process.env.PRIVATE_SHARE_TTL_MS) || 24 * 60 * 60 * 1000);
+const PRIVATE_SHARE_SECRET = process.env.PRIVATE_SHARE_SECRET
+  || createHash("sha256").update(`${__dirname}|ytmp3-private-share`).digest("hex");
+let privateShareCleanupTimer = null;
+
+const prunePrivateShares = () => {
+  const now = Date.now();
+  for (const [id, share] of privateShares) {
+    if (share.expiresAt && share.expiresAt <= now) {
+      privateShares.delete(id);
+    }
+  }
+};
+
+const ensureShareCleanup = () => {
+  if (privateShareCleanupTimer) return;
+  privateShareCleanupTimer = setInterval(prunePrivateShares, Math.min(PRIVATE_SHARE_TTL_MS, 60 * 60 * 1000));
+  if (typeof privateShareCleanupTimer.unref === "function") privateShareCleanupTimer.unref();
+};
+
+const hashSharePassword = (password = "") =>
+  createHash("sha256").update(`${password}:${PRIVATE_SHARE_SECRET}`).digest("hex");
+
+const createShareToken = (share) => {
+  const salt = nanoid(6);
+  const signature = createHash("sha256")
+    .update(`${share.id}:${share.passwordHash}:${salt}:${PRIVATE_SHARE_SECRET}`)
+    .digest("hex");
+  const token = `${salt}.${signature}`;
+  if (!share.tokens) share.tokens = new Set();
+  share.tokens.add(token);
+  if (share.tokens.size > 10) {
+    const latest = Array.from(share.tokens).slice(-10);
+    share.tokens = new Set(latest);
+  }
+  return token;
+};
+
+const verifyShareToken = (share, token = "") => {
+  if (!token || typeof token !== "string") return false;
+  const [salt, signature] = token.split(".");
+  if (!salt || !signature) return false;
+  if (share.tokens && !share.tokens.has(token)) return false;
+  const expected = createHash("sha256")
+    .update(`${share.id}:${share.passwordHash}:${salt}:${PRIVATE_SHARE_SECRET}`)
+    .digest("hex");
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+};
 
 // ==== Util ====
 const abrToQ = (abr) => {
@@ -537,6 +654,18 @@ const resolvePublicPath = (urlPath = "") => {
   const fullPath = pathResolve(PUBLIC_ROOT, relative);
   if (!fullPath.startsWith(PUBLIC_ROOT)) return null;
   return fullPath;
+};
+
+const buildAbsolutePublicUrl = (path = "") => {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = process.env.PUBLIC_BASE_URL || process.env.NOTIFY_PUBLIC_URL || process.env.APP_BASE_URL;
+  if (!base) return path;
+  try {
+    return new URL(path, base).toString();
+  } catch {
+    return path;
+  }
 };
 
 const probeAudioStream = async (inputPath) => {
@@ -1719,6 +1848,8 @@ const validateConvertPayload = (payload = {}) => {
 
 const enqueueBackgroundJob = (payload = {}) => {
   const normalized = validateConvertPayload(payload);
+  const notifyEmail = sanitizeEmail(payload.notifyEmail || normalized.notifyEmail);
+  if (Object.prototype.hasOwnProperty.call(normalized, "notifyEmail")) delete normalized.notifyEmail;
   const id = nanoid(12);
   const job = {
     id,
@@ -1727,6 +1858,7 @@ const enqueueBackgroundJob = (payload = {}) => {
     updatedAt: Date.now(),
     payload: normalized,
     logs: "",
+    notify: notifyEmail ? { email: notifyEmail, masked: maskEmail(notifyEmail) } : null,
   };
   backgroundJobs.set(id, job);
   backgroundQueue.push(id);
@@ -1758,6 +1890,10 @@ const processBackgroundQueue = async () => {
         ext: result.ext,
         sampleRate: result.sampleRate,
         channels: result.channels,
+        speedMode: result.speedMode,
+        soundEffect: result.soundEffect,
+        vpnFriendly: result.vpnFriendly,
+        smartResume: result.smartResume,
       };
       if (result.fullPath) job.result.fullPath = result.fullPath;
       job.logs = (result.logs || "").slice(-8000);
@@ -1768,6 +1904,13 @@ const processBackgroundQueue = async () => {
       job.logs = (err.logs || "").slice(-8000);
     }
     job.updatedAt = Date.now();
+    if (job.notify?.email) {
+      try {
+        await dispatchJobNotification(job);
+      } catch (err) {
+        console.warn("[notify] gagal memproses notifikasi job", err);
+      }
+    }
   }
   backgroundProcessing = false;
 };
@@ -1796,8 +1939,67 @@ const serializeJob = (job) => {
     if (job.result.sampleRate !== undefined) data.result.sampleRate = job.result.sampleRate;
     if (job.result.channels !== undefined) data.result.channels = job.result.channels;
     if (job.result.speedMode) data.result.speedMode = job.result.speedMode;
+    if (job.result.soundEffect) data.result.soundEffect = job.result.soundEffect;
+    if (job.result.vpnFriendly !== undefined) data.result.vpnFriendly = job.result.vpnFriendly;
+    if (job.result.smartResume !== undefined) data.result.smartResume = job.result.smartResume;
+  }
+  if (job.notify?.masked) {
+    data.notify = {
+      email: job.notify.masked,
+      sentAt: job.notify.sentAt || null,
+    };
   }
   return data;
+};
+
+const dispatchJobNotification = async (job) => {
+  if (!job || !job.notify?.email) return;
+  if (job.notify.sentAt) return;
+  if (!["done", "error"].includes(job.status)) return;
+  const transport = getMailTransport();
+  if (!transport) return;
+  const from = process.env.NOTIFY_FROM_EMAIL || process.env.NOTIFY_EMAIL_FROM || "no-reply@youtubetomp3.app";
+  const subject = job.status === "done" ? "Konversi selesai" : "Konversi gagal";
+  const lines = [];
+  lines.push("Halo,");
+  lines.push("");
+  if (job.status === "done") {
+    lines.push("File yang kamu konversi sudah siap diunduh.");
+  } else {
+    lines.push("Maaf, konversi latar gagal diproses.");
+  }
+  if (job.result?.fileName) lines.push(`File: ${job.result.fileName}`);
+  if (job.result?.format) lines.push(`Format: ${job.result.format}`);
+  if (job.result?.downloadUrl && job.status === "done") {
+    const link = buildAbsolutePublicUrl(job.result.downloadUrl);
+    lines.push("");
+    lines.push(`Unduh: ${link}`);
+  }
+  if (job.error) {
+    lines.push("");
+    lines.push(`Error: ${job.error}`);
+  }
+  lines.push("");
+  lines.push(`Job ID: ${job.id}`);
+  if (job.logs) {
+    lines.push("");
+    lines.push("Ringkasan log (akhir):");
+    lines.push(job.logs.split(/\n+/).slice(-6).join("\n"));
+  }
+  lines.push("");
+  lines.push("Terima kasih sudah memakai converter kami.");
+  try {
+    await transport.sendMail({
+      to: job.notify.email,
+      from,
+      subject,
+      text: lines.join("\n"),
+    });
+    job.notify.sentAt = Date.now();
+  } catch (err) {
+    console.warn("[notify] gagal mengirim email", err);
+    job.notify.lastError = err?.message || String(err);
+  }
 };
 
 const resolveJobFilePath = (job) => {
@@ -1896,6 +2098,7 @@ const buildAudioFilters = ({
   denoise = false,
   volumeBoost = 0,
   enhancer = "none",
+  soundEffect = "none",
   sampleRate,
   sourceSampleRate,
 } = {}) => {
@@ -1925,6 +2128,15 @@ const buildAudioFilters = ({
       filters.push("equalizer=f=160:t=h:w=2:g=4", "equalizer=f=6400:t=h:w=2:g=-3");
     } else if (enhancer === "club") {
       filters.push("acompressor=threshold=-16dB:ratio=3:attack=8:release=80", "equalizer=f=90:t=h:w=2:g=5", "equalizer=f=8500:t=h:w=2:g=2");
+    }
+  }
+  if (soundEffect && typeof soundEffect === "string" && soundEffect !== "none") {
+    if (soundEffect === "reverb") {
+      filters.push("aecho=0.7:0.5:1200:0.3");
+    } else if (soundEffect === "echo") {
+      filters.push("aecho=0.8:0.88:60:0.4");
+    } else if (soundEffect === "lofi") {
+      filters.push("aresample=12000", "acrusher=bits=8:mode=log:mix=0.6");
     }
   }
   if (normalize) filters.push("loudnorm");
@@ -3164,6 +3376,9 @@ const convertSingle = async (payload = {}) => {
     denoise = false,
     volumeBoost = 0,
     enhancer = "none",
+    soundEffect = "none",
+    vpnFriendly = false,
+    smartResume = false,
   } = payload;
 
   let coverUrl = typeof payload.coverUrl === "string" ? payload.coverUrl : undefined;
@@ -3219,6 +3434,17 @@ const convertSingle = async (payload = {}) => {
   const enhancerKey = typeof enhancer === "string" ? enhancer.trim().toLowerCase() : "none";
   const VALID_ENHANCERS = new Set(["none", "clarity", "warm", "club"]);
   const enhancerMode = VALID_ENHANCERS.has(enhancerKey) ? enhancerKey : "none";
+
+  const soundEffectKey = typeof soundEffect === "string" ? soundEffect.trim().toLowerCase() : "none";
+  const VALID_SOUND_EFFECTS = new Set(["none", "reverb", "echo", "lofi"]);
+  const soundEffectMode = VALID_SOUND_EFFECTS.has(soundEffectKey) ? soundEffectKey : "none";
+
+  const vpnMode = typeof vpnFriendly === "string"
+    ? ["1", "true", "yes", "on"].includes(vpnFriendly.trim().toLowerCase())
+    : !!vpnFriendly;
+  const resumeMode = typeof smartResume === "string"
+    ? ["1", "true", "yes", "on"].includes(smartResume.trim().toLowerCase())
+    : !!smartResume;
 
   let sr;
   if (sampleRate !== undefined) {
@@ -3290,6 +3516,20 @@ const convertSingle = async (payload = {}) => {
   } else if (fmt === "ogg") {
     args.push("-x", "--audio-format", "ogg");
   }
+  if (resumeMode) {
+    args.push("--continue", "--no-overwrites");
+  }
+  if (vpnMode) {
+    const chunkSize = String(process.env.VPN_HTTP_CHUNK_SIZE || "4M");
+    args.push("--concurrent-fragments", "1", "--http-chunk-size", chunkSize);
+    const proxyUrl = process.env.VPN_PROXY_URL;
+    if (proxyUrl) args.push("--proxy", proxyUrl);
+  }
+  if (vpnMode || resumeMode) {
+    const retryCount = String(process.env.VPN_RETRY_COUNT || 12);
+    const fragmentRetry = String(process.env.VPN_FRAGMENT_RETRY_COUNT || 12);
+    args.push("--retries", retryCount, "--fragment-retries", fragmentRetry);
+  }
   args.push(url);
 
   let logs = "";
@@ -3323,6 +3563,7 @@ const convertSingle = async (payload = {}) => {
     denoise: denoiseEnabled,
     volumeBoost: boostValue,
     enhancer: enhancerMode,
+    soundEffect: soundEffectMode,
     sampleRate: filterSampleRate,
     sourceSampleRate: detectedSampleRate,
   });
@@ -3444,6 +3685,9 @@ const convertSingle = async (payload = {}) => {
     sampleRate: finalSampleRate,
     channels: audioProbe?.channels || null,
     speedMode: effectiveSpeedMode,
+    soundEffect: soundEffectMode,
+    vpnFriendly: vpnMode,
+    smartResume: resumeMode,
     metadata: metadataResponse,
     ringtones: ringtoneVariants,
   };
@@ -3650,6 +3894,118 @@ app.get("/api/background/:id", (req, res) => {
   const job = backgroundJobs.get(req.params.id);
   if (!job) return res.status(404).json({ error: "Job tidak ditemukan" });
   return res.json({ ok: true, job: serializeJob(job) });
+});
+
+app.post("/api/private-share", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const downloadUrl = typeof body.downloadUrl === "string" ? body.downloadUrl.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!downloadUrl) {
+      return res.status(400).json({ error: "Link unduhan tidak valid" });
+    }
+    if (!password || password.length < 4) {
+      return res.status(400).json({ error: "Password minimal 4 karakter" });
+    }
+    const filePath = resolvePublicPath(downloadUrl);
+    if (!filePath) {
+      return res.status(400).json({ error: "File tidak dikenali" });
+    }
+    let stat;
+    try {
+      stat = await fsp.stat(filePath);
+    } catch {
+      return res.status(404).json({ error: "File tidak ditemukan" });
+    }
+    const id = nanoid(10);
+    const share = {
+      id,
+      filePath,
+      fileName: sanitizeFileName(body.fileName || basename(filePath)) || basename(filePath),
+      downloadUrl,
+      passwordHash: hashSharePassword(password),
+      createdAt: Date.now(),
+      expiresAt: Date.now() + PRIVATE_SHARE_TTL_MS,
+      size: Number(stat.size) || 0,
+      tokens: new Set(),
+    };
+    privateShares.set(id, share);
+    ensureShareCleanup();
+    return res.json({
+      ok: true,
+      room: {
+        id,
+        expiresAt: share.expiresAt,
+        fileName: share.fileName,
+        size: share.size,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "Gagal membuat private room" });
+  }
+});
+
+app.get("/api/private-share/:id", (req, res) => {
+  const share = privateShares.get(req.params.id);
+  if (!share) return res.status(404).json({ error: "Room tidak ditemukan" });
+  if (share.expiresAt && share.expiresAt <= Date.now()) {
+    privateShares.delete(req.params.id);
+    return res.status(410).json({ error: "Room kedaluwarsa" });
+  }
+  return res.json({
+    ok: true,
+    room: {
+      id: share.id,
+      fileName: share.fileName,
+      size: share.size,
+      expiresAt: share.expiresAt,
+      createdAt: share.createdAt,
+    },
+  });
+});
+
+app.post("/api/private-share/:id/unlock", (req, res) => {
+  const share = privateShares.get(req.params.id);
+  if (!share) return res.status(404).json({ error: "Room tidak ditemukan" });
+  if (share.expiresAt && share.expiresAt <= Date.now()) {
+    privateShares.delete(req.params.id);
+    return res.status(410).json({ error: "Room kedaluwarsa" });
+  }
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!password) return res.status(400).json({ error: "Password wajib diisi" });
+  const hash = hashSharePassword(password);
+  let match = false;
+  try {
+    match = timingSafeEqual(Buffer.from(hash), Buffer.from(share.passwordHash));
+  } catch {
+    match = false;
+  }
+  if (!match) return res.status(403).json({ error: "Password salah" });
+  const token = createShareToken(share);
+  return res.json({ ok: true, token, fileName: share.fileName, size: share.size });
+});
+
+app.get("/api/private-share/:id/download", async (req, res) => {
+  const share = privateShares.get(req.params.id);
+  if (!share) return res.status(404).json({ error: "Room tidak ditemukan" });
+  if (share.expiresAt && share.expiresAt <= Date.now()) {
+    privateShares.delete(req.params.id);
+    return res.status(410).json({ error: "Room kedaluwarsa" });
+  }
+  const token = typeof req.query.token === "string" ? req.query.token : "";
+  if (!verifyShareToken(share, token)) {
+    return res.status(403).json({ error: "Token tidak valid" });
+  }
+  try {
+    await fsp.access(share.filePath);
+  } catch {
+    privateShares.delete(req.params.id);
+    return res.status(404).json({ error: "File sudah tidak tersedia" });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.download(share.filePath, share.fileName, (err) => {
+    if (err) console.warn("[share] gagal mengirim file", err);
+  });
 });
 
 app.post("/api/ai-tags", (req, res) => {
