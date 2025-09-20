@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ytmp3-ui-v1';
-const CDN_CACHE = 'ytmp3-cdn-v1';
+const CACHE_NAME = 'ytmp3-ui-v2';
+const CDN_CACHE = 'ytmp3-cdn-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -37,31 +37,60 @@ self.addEventListener('fetch', (event) => {
   if (!shouldHandle(event.request)) return;
   const request = event.request;
   const url = new URL(request.url);
+  const offlineResponse = () => new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+
   if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        }).catch(() => cached);
-        return cached || fetchPromise;
-      })
-    );
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request);
+      const isNavigate = request.mode === 'navigate' || request.destination === 'document';
+
+      const fetchAndCache = async () => {
+        const response = await fetch(request);
+        cache.put(request, response.clone());
+        return response;
+      };
+
+      if (isNavigate) {
+        try {
+          return await fetchAndCache();
+        } catch (err) {
+          if (cached) return cached;
+          const fallback = await cache.match('./index.html');
+          if (fallback) return fallback;
+          return offlineResponse();
+        }
+      }
+
+      if (cached) {
+        fetchAndCache().catch(() => {});
+        return cached;
+      }
+
+      try {
+        return await fetchAndCache();
+      } catch (err) {
+        return offlineResponse();
+      }
+    })());
     return;
   }
 
   if (/cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url.host)) {
-    event.respondWith(
-      caches.open(CDN_CACHE).then((cache) =>
-        cache.match(request).then((cached) => {
-          const fetchPromise = fetch(request).then((response) => {
-            cache.put(request, response.clone());
-            return response;
-          }).catch(() => cached);
-          return cached || fetchPromise;
-        })
-      )
-    );
+    event.respondWith((async () => {
+      const cache = await caches.open(CDN_CACHE);
+      const cached = await cache.match(request);
+      if (cached) {
+        fetch(request).then((response) => cache.put(request, response.clone())).catch(() => {});
+        return cached;
+      }
+      try {
+        const response = await fetch(request);
+        cache.put(request, response.clone());
+        return response;
+      } catch (err) {
+        return offlineResponse();
+      }
+    })());
   }
 });
