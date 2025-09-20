@@ -2681,7 +2681,7 @@
     updateLegendaryDexUi();
   };
 
-  const handleLegendaryThrow = () => {
+  function handleLegendaryThrow() {
     if (!state.experience.legendaryUnlocked) return;
     const target = ensureLegendaryTarget();
     legendaryThrowBtn?.setAttribute('aria-busy', 'true');
@@ -2711,7 +2711,7 @@
       shuffleLegendary(false);
       if (legendaryLog) legendaryLog.textContent = `Target berikutnya: ${legendaryCurrent}.`;
     }, 900);
-  };
+  }
 
   const revealLegendarySecret = () => {
     if (!state.experience.legendaryUnlocked || state.experience.legendarySecret) return;
