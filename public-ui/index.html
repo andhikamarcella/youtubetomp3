@@ -1843,6 +1843,11 @@
   const toastTextEl = $('#toastText');
 
   const SUPPORTED_LANGS = ['id', 'en'];
+  const LANGUAGE_VARIANTS = {
+    id: ['id', 'in', 'ms', 'ms-my', 'ms-id', 'jv', 'jw', 'su'],
+    en: ['en', 'en-us', 'en-gb', 'en-au', 'en-ca', 'en-in', 'eng'],
+  };
+  const FALLBACK_LANG = 'en';
   const I18N_STRINGS = {
     id: {
       navConverter: 'Converter',
@@ -2163,22 +2168,56 @@
     },
   ];
 
+  const resolveLanguageCandidate = (candidate) => {
+    if (!candidate) return null;
+    const normalized = String(candidate).trim().toLowerCase();
+    if (!normalized || normalized === 'auto') return null;
+    if (SUPPORTED_LANGS.includes(normalized)) return normalized;
+    for (const [target, variants] of Object.entries(LANGUAGE_VARIANTS)) {
+      if (variants.includes(normalized)) return target;
+    }
+    const base = normalized.split(/[-_]/)[0];
+    if (SUPPORTED_LANGS.includes(base)) return base;
+    for (const [target, variants] of Object.entries(LANGUAGE_VARIANTS)) {
+      if (variants.includes(base)) return target;
+    }
+    return null;
+  };
+
   const detectLanguage = () => {
-    const stored = localStorage.getItem('app:preferredLang');
+    let stored = null;
+    try {
+      stored = localStorage.getItem('app:preferredLang');
+    } catch {
+      stored = null;
+    }
     const candidates = [];
-    if (stored && SUPPORTED_LANGS.includes(stored)) candidates.push(stored);
-    if (Array.isArray(navigator.languages)) {
-      candidates.push(...navigator.languages);
-    } else if (navigator.language) {
-      candidates.push(navigator.language);
+    if (stored) candidates.push(stored);
+    if (typeof navigator !== 'undefined') {
+      if (Array.isArray(navigator.languages)) {
+        candidates.push(...navigator.languages);
+      } else if (navigator.language) {
+        candidates.push(navigator.language);
+      }
     }
+    const docLang = document.documentElement?.getAttribute('lang');
+    if (docLang) candidates.push(docLang);
     for (const candidate of candidates) {
-      if (!candidate) continue;
-      const normalized = String(candidate).toLowerCase();
-      if (normalized.startsWith('id')) return 'id';
-      if (normalized.startsWith('en')) return 'en';
+      const resolved = resolveLanguageCandidate(candidate);
+      if (resolved) return resolved;
     }
-    return 'id';
+    return FALLBACK_LANG;
+  };
+
+  const persistPreferredLang = (lang) => {
+    if (!lang || !SUPPORTED_LANGS.includes(lang)) return;
+    try {
+      const current = localStorage.getItem('app:preferredLang');
+      if (current === lang) return;
+      localStorage.setItem('app:preferredLang', lang);
+    } catch (err) {
+      console?.debug?.('Skip persisting preferredLang', err);
+    }
   };
 
   const preserveSpacing = (original, replacement) => {
@@ -2188,13 +2227,24 @@
   };
 
   let currentLang = detectLanguage();
+  if (!SUPPORTED_LANGS.includes(currentLang)) {
+    currentLang = FALLBACK_LANG;
+  }
+  persistPreferredLang(currentLang);
 
   const translate = (key, fallback) => {
     if (!key) return fallback ?? '';
-    const dict = I18N_STRINGS[currentLang] || I18N_STRINGS.id || {};
-    if (dict[key] != null) return dict[key];
-    const fallbackDict = I18N_STRINGS.id || {};
-    if (fallbackDict[key] != null) return fallbackDict[key];
+    const order = currentLang === 'en' ? ['en', 'id'] : ['id', 'en'];
+    if (currentLang && !order.includes(currentLang)) {
+      order.unshift(currentLang);
+    }
+    const seen = new Set();
+    for (const lang of order) {
+      if (!lang || seen.has(lang)) continue;
+      seen.add(lang);
+      const dict = I18N_STRINGS[lang] || {};
+      if (dict[key] != null) return dict[key];
+    }
     return fallback ?? '';
   };
 

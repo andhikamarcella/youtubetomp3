@@ -239,6 +239,26 @@ const sanitizeFileName = (name = "") =>
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const LANGUAGE_VARIANTS = {
+  id: ["id", "in", "ms", "ms-my", "ms-id", "jv", "jw", "su"],
+  en: ["en", "en-us", "en-gb", "en-au", "en-ca", "en-in", "eng"],
+};
+
+const FALLBACK_LANG = "en";
+
+const normalizePreferredLang = (value = "") => {
+  if (!value) return "";
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized || normalized === "auto") return "";
+  if (LANGUAGE_VARIANTS.id.includes(normalized)) return "id";
+  if (LANGUAGE_VARIANTS.en.includes(normalized)) return "en";
+  const base = normalized.split(/[-_]/)[0];
+  if (!base) return FALLBACK_LANG;
+  if (LANGUAGE_VARIANTS.id.includes(base)) return "id";
+  if (LANGUAGE_VARIANTS.en.includes(base)) return "en";
+  return FALLBACK_LANG;
+};
+
 const SMART_TITLE_PATTERNS = [
   /\s*\((?:official(?:\s+music)?\s+video|official\s+audio|lyrics?|lyric\s+video|lirik|audio|video|visualizer|mv|music\s+video|color\s+coded|teaser|live|performance|practice|karaoke|remix).*?\)/gi,
   /\s*\[(?:official(?:\s+music)?\s+video|official\s+audio|lyrics?|lyric\s+video|lirik|audio|video|visualizer|mv|music\s+video|color\s+coded|teaser|live|performance|practice|karaoke|remix).*?\]/gi,
@@ -431,6 +451,7 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   const rawKeyword = typeof keyword === "string" ? keyword.trim() : "";
   let target = rawUrl;
   let keywordUsed = false;
+  const language = normalizePreferredLang(preferLang);
   if (!target) {
     if (!rawKeyword) {
       throw new Error("URL atau kata kunci tidak valid");
@@ -447,8 +468,8 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     "ytsearch",
     "--no-playlist",
   ];
-  if (preferLang) {
-    args.push("--sub-lang", String(preferLang));
+  if (language) {
+    args.push("--sub-lang", language);
   }
   if (existsSync(COOKIES_PATH)) {
     args.push("--cookies", COOKIES_PATH);
@@ -474,6 +495,7 @@ const searchYoutubeVideos = async ({ query, limit = 6, preferLang } = {}) => {
   }
   const clamped = clamp(Number(limit) || 6, 1, 15);
   const target = `ytsearch${clamped}:${rawQuery}`;
+  const language = normalizePreferredLang(preferLang);
   const args = [
     "--dump-single-json",
     "--skip-download",
@@ -482,8 +504,8 @@ const searchYoutubeVideos = async ({ query, limit = 6, preferLang } = {}) => {
     "ytsearch",
     "--no-playlist",
   ];
-  if (preferLang) {
-    args.push("--sub-lang", String(preferLang));
+  if (language) {
+    args.push("--sub-lang", language);
   }
   if (existsSync(COOKIES_PATH)) {
     args.push("--cookies", COOKIES_PATH);
@@ -3147,7 +3169,8 @@ const convertSingle = async (payload = {}) => {
   let coverUrl = typeof payload.coverUrl === "string" ? payload.coverUrl : undefined;
   let url = typeof payload.url === "string" ? payload.url.trim() : "";
   const keywordQuery = typeof payload.keyword === "string" ? payload.keyword.trim() : "";
-  const preferredLang = typeof payload.preferredLang === "string" ? payload.preferredLang.trim() : "";
+  const preferredLangRaw = typeof payload.preferredLang === "string" ? payload.preferredLang.trim() : "";
+  const preferredLang = normalizePreferredLang(preferredLangRaw);
   const ringtoneRequest = payload.ringtone || {};
 
   let metadata = null;
@@ -3569,10 +3592,11 @@ app.post("/api/convert", async (req, res) => {
 app.post("/api/video-info", async (req, res) => {
   try {
     const body = req.body || {};
+    const preferLang = normalizePreferredLang(body.lang || body.preferredLang);
     const info = await fetchVideoInfo({
       url: body.url,
       keyword: body.keyword,
-      preferLang: body.lang || body.preferredLang,
+      preferLang,
     });
     return res.json({ ok: true, info });
   } catch (e) {
@@ -3589,10 +3613,11 @@ app.post("/api/video-info", async (req, res) => {
 app.post("/api/search", async (req, res) => {
   try {
     const body = req.body || {};
+    const preferLang = normalizePreferredLang(body.lang || body.preferredLang);
     const results = await searchYoutubeVideos({
       query: body.query || body.keyword,
       limit: body.limit,
-      preferLang: body.lang || body.preferredLang,
+      preferLang,
     });
     return res.json({ ok: true, results });
   } catch (e) {
