@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mini Player · Share Audio</title>
-  <meta name="theme-color" content="#0d1117" />
+  <meta name="theme-color" content="#17233f" />
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="icon" sizes="192x192" href="./icons/icon.svg">
@@ -28,15 +28,15 @@
     .eq-slider .form-range:focus-visible { outline: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 0 0 .35rem rgba(13,110,253,.25); }
     .eq-slider .form-range::-webkit-slider-runnable-track { height: .5rem; border-radius: 999px; background: transparent; }
     .eq-slider .form-range::-moz-range-track { height: .5rem; border-radius: 999px; background: transparent; }
-    .eq-slider .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255,255,255,.65) 40%, rgba(13,110,253,1) 100%); border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 12px rgba(13,110,253,.55), 0 4px 10px rgba(0,0,0,.25); margin-top: -6px; transition: transform .15s ease, box-shadow .2s ease; }
-    .eq-slider .form-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255,255,255,.65) 40%, rgba(13,110,253,1) 100%); border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 12px rgba(13,110,253,.55), 0 4px 10px rgba(0,0,0,.25); transition: transform .15s ease, box-shadow .2s ease; }
-    .eq-slider .form-range:active::-webkit-slider-thumb, .eq-slider .form-range:active::-moz-range-thumb { transform: scale(1.08); box-shadow: 0 0 18px rgba(111,66,193,.55), 0 6px 14px rgba(0,0,0,.3); }
+    .eq-slider .form-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255,255,255,.65) 40%, rgba(13,110,253,1) 100%); border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 12px rgba(13,110,253,.55), 0 4px 10px rgba(23,35,63,.25); margin-top: -6px; transition: transform .15s ease, box-shadow .2s ease; }
+    .eq-slider .form-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, rgba(255,255,255,.65) 40%, rgba(13,110,253,1) 100%); border: 2px solid rgba(255,255,255,.85); box-shadow: 0 0 12px rgba(13,110,253,.55), 0 4px 10px rgba(23,35,63,.25); transition: transform .15s ease, box-shadow .2s ease; }
+    .eq-slider .form-range:active::-webkit-slider-thumb, .eq-slider .form-range:active::-moz-range-thumb { transform: scale(1.08); box-shadow: 0 0 18px rgba(111,66,193,.55), 0 6px 14px rgba(23,35,63,.3); }
     .eq-slider .eq-value { font-size: .72rem; font-weight: 600; background: color-mix(in srgb, var(--bs-primary) 25%, transparent); color: rgba(255,255,255,.92); border-radius: .65rem; padding: .2rem .45rem; min-width: 3.4rem; text-align: center; }
     .range-control { display: flex; align-items: center; gap: .5rem; }
     .range-control .form-range { flex: 1 1 auto; min-width: 0; touch-action: pan-y; }
     .range-control .btn-range { flex: 0 0 auto; width: 2.4rem; height: 2.4rem; border-radius: .7rem; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.05rem; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.08); color: rgba(255,255,255,.92); transition: transform .15s ease, box-shadow .2s ease, background .2s ease; }
     .range-control .btn-range:focus-visible { outline: 3px solid rgba(13,110,253,.5); outline-offset: 2px; }
-    .range-control .btn-range:active { transform: scale(.94); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+    .range-control .btn-range:active { transform: scale(.94); box-shadow: inset 0 0 0 1px rgba(23,35,63,.2); }
     .range-control .btn-range i { pointer-events: none; }
     @media (max-width: 576px) {
       .range-control .btn-range { width: 2.2rem; height: 2.2rem; font-size: 1rem; }
@@ -345,8 +345,8 @@
           ctx.fillRect(0, 0, qrCanvas.width, qrCanvas.height);
         }
         const theme = document.documentElement.getAttribute('data-bs-theme') || 'dark';
-        const light = theme === 'dark' ? '#0d1117' : '#ffffff';
-        const dark = theme === 'dark' ? '#ffffff' : '#0d0d0d';
+        const light = theme === 'dark' ? '#17233f' : '#ffffff';
+        const dark = theme === 'dark' ? '#ffffff' : '#1a223d';
         lib.toCanvas(qrCanvas, url, { width: qrCanvas.width || 156, margin: 1, color: { dark, light } }, (err) => {
           if (err && ctx) {
             ctx.fillStyle = '#dc3545';
