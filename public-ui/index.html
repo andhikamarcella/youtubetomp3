@@ -2407,6 +2407,52 @@
     if (toast) toast.show();
   };
 
+  const readJsonSafe = async (resp) => {
+    if (!resp) return { data: null, rawText: '', parseError: null };
+    let text = '';
+    try {
+      text = await resp.text();
+    } catch (err) {
+      return { data: null, rawText: '', parseError: err };
+    }
+    if (!text) return { data: null, rawText: '', parseError: null };
+    try {
+      return { data: JSON.parse(text), rawText: text, parseError: null };
+    } catch (err) {
+      return { data: null, rawText: text, parseError: err };
+    }
+  };
+
+  const resolveJsonResponse = async (resp, { fallbackMessage = 'Terjadi kesalahan', logLabel = '' } = {}) => {
+    const safe = await readJsonSafe(resp);
+    const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
+    if (!resp?.ok) {
+      const raw = (safe.rawText || '').trim();
+      if (safe.parseError) {
+        console?.warn?.('[json] gagal parsing', { label: logLabel || resp?.url, error: safe.parseError, raw });
+      }
+      const message = payload.error || payload.message || (raw ? raw.slice(0, 280) : '') || fallbackMessage;
+      const err = new Error(message || fallbackMessage);
+      err.status = resp?.status;
+      err.payload = payload;
+      err.rawText = safe.rawText;
+      throw err;
+    }
+    if (safe.parseError) {
+      console?.warn?.('[json] respons tidak valid', { label: logLabel || resp?.url, error: safe.parseError, raw: safe.rawText });
+    }
+    return { data: payload, rawText: safe.rawText };
+  };
+
+  const postJson = async (path, body, options = {}) => {
+    const resp = await fetch(api(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+    });
+    return resolveJsonResponse(resp, options);
+  };
+
   const urlInput = $('#url');
   const keywordInput = $('#keywordInput');
   const keywordConvertBtn = $('#keywordConvertBtn');
@@ -5948,12 +5994,12 @@
         body: JSON.stringify({ url, keyword, preferredLang: currentLang }),
         signal: controller.signal,
       });
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
-      }
-      if (data.info) lastVideoInfo = data.info;
-      return data.info;
+      const { data: payload } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal mencari video. Coba kata kunci lain.'),
+        logLabel: 'video-info',
+      });
+      if (payload.info) lastVideoInfo = payload.info;
+      return payload.info;
     } catch (err) {
       if (err?.name === 'AbortError') return null;
       throw err;
@@ -5984,10 +6030,13 @@
         body: JSON.stringify({ query: keyword, preferredLang: currentLang }),
         signal: controller.signal,
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
-      renderSearchResults(Array.isArray(data.results) ? data.results : [], keyword);
-      if (!Array.isArray(data.results) || !data.results.length) {
+      const { data: payload } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal mencari video. Coba kata kunci lain.'),
+        logLabel: 'search',
+      });
+      const results = Array.isArray(payload.results) ? payload.results : [];
+      renderSearchResults(results, keyword);
+      if (!results.length) {
         setToast(translateMessage('Tidak ada hasil yang cocok.'));
       }
     } catch (err) {
@@ -7270,10 +7319,13 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
         return;
       }
-      const data = await resp.json();
-      if (data?.job) {
-        updateBackgroundJob(data.job);
-        if (data.job.status !== 'done' && data.job.status !== 'error') {
+      const { data: payload } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal mengambil status job'),
+        logLabel: 'background-status',
+      });
+      if (payload?.job) {
+        updateBackgroundJob(payload.job);
+        if (payload.job.status !== 'done' && payload.job.status !== 'error') {
           scheduleJobPoll(id, 4000);
         }
       }
@@ -7286,15 +7338,18 @@ $('#queueList')?.addEventListener('click', (e) => {
     try {
       const resp = await fetch(api('/api/background'));
       if (!resp.ok) return;
-      const data = await resp.json();
-      if (Array.isArray(data?.jobs)) {
+      const { data: payload } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal memuat daftar job'),
+        logLabel: 'background-list',
+      });
+      if (Array.isArray(payload?.jobs)) {
         backgroundJobsState.clear();
-        data.jobs.forEach((job) => {
+        payload.jobs.forEach((job) => {
           if (job && job.id) backgroundJobsState.set(job.id, job);
         });
         renderBackgroundJobs();
         persistBackgroundJobs();
-        data.jobs.forEach((job) => {
+        payload.jobs.forEach((job) => {
           if (job.status !== 'done' && job.status !== 'error') scheduleJobPoll(job.id, 2000);
         });
       }
@@ -7339,9 +7394,11 @@ $('#queueList')?.addEventListener('click', (e) => {
           fileName: lastPreviewMeta?.fileName || currentDownloadName || ''
         })
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data?.error || 'Gagal membuat Private Room');
-      const roomId = data?.room?.id;
+      const { data: payload } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal membuat Private Room'),
+        logLabel: 'private-share-create',
+      });
+      const roomId = payload?.room?.id;
       if (!roomId) throw new Error('Room tidak valid.');
       const roomUrl = new URL('./private.html', window.location.href);
       roomUrl.searchParams.set('room', roomId);
@@ -7599,18 +7656,15 @@ $('#queueList')?.addEventListener('click', (e) => {
     resetAiInsights();
     updateAiStatus('Menganalisis metadata…', 'info');
     try {
-      const resp = await fetch(api('/api/ai-tags'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
-          duration: Number(previewPlayer?.duration || 0) || undefined,
-        }),
+      const { data: payload } = await postJson('/api/ai-tags', {
+        title,
+        channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+        duration: Number(previewPlayer?.duration || 0) || undefined,
+      }, {
+        fallbackMessage: translateMessage('Gagal menganalisis'),
+        logLabel: 'ai-tags',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal menganalisis');
-      const tags = data.tags || {};
+      const tags = payload.tags || {};
       if (tags.title) $('#id3Title').value = tags.title;
       if (tags.artist) $('#id3Artist').value = tags.artist;
       if (tags.album) $('#id3Album').value = tags.album;
@@ -7640,15 +7694,12 @@ $('#queueList')?.addEventListener('click', (e) => {
         enhancer: enhancerSelect?.value || 'none',
         format: $('#format').value,
       };
-      const resp = await fetch(api('/api/ai-caption'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: captionData } = await postJson('/api/ai-caption', payload, {
+        fallbackMessage: translateMessage('Gagal menulis caption'),
+        logLabel: 'ai-caption',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal menulis caption');
-      const caption = (data.caption || '').trim();
-      const hashtags = Array.isArray(data.hashtags) ? data.hashtags.filter(Boolean) : [];
+      const caption = (captionData.caption || '').trim();
+      const hashtags = Array.isArray(captionData.hashtags) ? captionData.hashtags.filter(Boolean) : [];
       if (aiCaptionText) {
         const combined = [caption, hashtags.join(' ')].filter(Boolean).join('\n');
         aiCaptionText.value = combined;
@@ -7690,22 +7741,19 @@ $('#queueList')?.addEventListener('click', (e) => {
         duration: Number(previewPlayer?.duration || 0) || undefined,
         genre: id3Genre ? id3Genre.value.trim() || undefined : undefined,
       };
-      const resp = await fetch(api('/api/ai-pitch'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: pitchData } = await postJson('/api/ai-pitch', payload, {
+        fallbackMessage: translateMessage('Gagal membuat pitch'),
+        logLabel: 'ai-pitch',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat pitch');
-      const pitch = (data.pitch || '').trim();
+      const pitch = (pitchData.pitch || '').trim();
       if (aiPitchText) aiPitchText.value = pitch;
-      if (aiPitchHook) aiPitchHook.textContent = data.hook ? `Hook: ${data.hook}` : '';
+      if (aiPitchHook) aiPitchHook.textContent = pitchData.hook ? `Hook: ${pitchData.hook}` : '';
       if (aiPitchPlaylists) {
-        const list = Array.isArray(data.playlists) ? data.playlists.filter(Boolean) : [];
+        const list = Array.isArray(pitchData.playlists) ? pitchData.playlists.filter(Boolean) : [];
         aiPitchPlaylists.textContent = list.length ? `Target playlist: ${list.join(', ')}` : '';
       }
-      if (id3Genre && !id3Genre.value.trim() && data.tags?.genre) {
-        id3Genre.value = data.tags.genre;
+      if (id3Genre && !id3Genre.value.trim() && pitchData.tags?.genre) {
+        id3Genre.value = pitchData.tags.genre;
       }
       if (aiPitchWrap) aiPitchWrap.hidden = false;
       updateAiStatus('Pitch playlist siap dipakai ✅', 'success');
@@ -7735,14 +7783,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         enhancer: enhancerSelect?.value || 'none',
         normalize: $('#normalize').checked,
       };
-      const resp = await fetch(api('/api/ai-audiophile'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: audiophileData } = await postJson('/api/ai-audiophile', payload, {
+        fallbackMessage: translateMessage('Gagal membuat panduan'),
+        logLabel: 'ai-audiophile',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat panduan');
-      const guide = data.guide || {};
+      const guide = audiophileData.guide || {};
       const lines = [];
       const summary = (guide.summary || '').trim();
       const sampleAdvice = (guide.sampleRate || '').trim();
@@ -7802,14 +7847,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         enhancer: enhancerSelect?.value || 'none',
         eq: getEqValues(),
       };
-      const resp = await fetch(api('/api/ai-hook'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: hookData } = await postJson('/api/ai-hook', payload, {
+        fallbackMessage: translateMessage('Gagal membuat hook'),
+        logLabel: 'ai-hook',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat hook');
-      const hooks = Array.isArray(data.hooks) ? data.hooks.filter(Boolean) : [];
+      const hooks = Array.isArray(hookData.hooks) ? hookData.hooks.filter(Boolean) : [];
       if (aiHookList) {
         aiHookList.innerHTML = '';
         hooks.forEach((line, idx) => {
@@ -7820,13 +7862,13 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       if (aiHookCtas) {
         aiHookCtas.innerHTML = '';
-        const ctas = Array.isArray(data.ctas) ? data.ctas.filter(Boolean) : [];
+        const ctas = Array.isArray(hookData.ctas) ? hookData.ctas.filter(Boolean) : [];
         ctas.forEach((cta) => {
           const span = document.createElement('span');
           span.textContent = cta;
           aiHookCtas.appendChild(span);
         });
-        const hashtags = Array.isArray(data.hashtags) ? data.hashtags.filter(Boolean) : [];
+        const hashtags = Array.isArray(hookData.hashtags) ? hookData.hashtags.filter(Boolean) : [];
         hashtags.forEach((tag) => {
           const span = document.createElement('span');
           span.textContent = tag.startsWith('#') ? tag : `#${tag}`;
@@ -7835,16 +7877,16 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       if (aiHookMeta) {
         const parts = [];
-        if (data.emoji) parts.push(data.emoji);
-        if (data.tone) parts.push(`Tone: ${data.tone}`);
-        if (data.focus) parts.push(data.focus);
+        if (hookData.emoji) parts.push(hookData.emoji);
+        if (hookData.tone) parts.push(`Tone: ${hookData.tone}`);
+        if (hookData.focus) parts.push(hookData.focus);
         aiHookMeta.textContent = parts.filter(Boolean).join(' · ');
       }
       if (aiHookWrap) aiHookWrap.hidden = false;
       lastAiHookData = {
         hooks,
-        ctas: Array.isArray(data.ctas) ? data.ctas.filter(Boolean) : [],
-        hashtags: Array.isArray(data.hashtags) ? data.hashtags.filter(Boolean) : [],
+        ctas: Array.isArray(hookData.ctas) ? hookData.ctas.filter(Boolean) : [],
+        hashtags: Array.isArray(hookData.hashtags) ? hookData.hashtags.filter(Boolean) : [],
         meta: aiHookMeta?.textContent || '',
       };
       updateAiStatus('Hook promosi siap pakai ⚡', 'success');
@@ -7875,14 +7917,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         normalize: $('#normalize').checked,
         eq: getEqValues(),
       };
-      const resp = await fetch(api('/api/ai-cover'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: coverData } = await postJson('/api/ai-cover', payload, {
+        fallbackMessage: translateMessage('Gagal membuat prompt cover'),
+        logLabel: 'ai-cover',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat prompt cover');
-      const prompt = (data.prompt || '').trim();
+      const prompt = (coverData.prompt || '').trim();
       if (aiVisualPrompt) {
         aiVisualPrompt.value = prompt;
         const lineCount = prompt ? prompt.split(/\n/).length : 3;
@@ -7890,7 +7929,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       if (aiVisualPalette) {
         aiVisualPalette.innerHTML = '';
-        const palette = Array.isArray(data.palette) ? data.palette.filter(Boolean) : [];
+        const palette = Array.isArray(coverData.palette) ? coverData.palette.filter(Boolean) : [];
         palette.forEach((chip) => {
           const item = document.createElement('div');
           item.className = 'ai-color-chip';
@@ -7907,10 +7946,10 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       if (aiVisualMeta) {
         const metaParts = [];
-        if (data.style) metaParts.push(`Style: ${data.style}`);
-        if (data.lighting) metaParts.push(`Lighting: ${data.lighting}`);
-        if (data.texture) metaParts.push(`Texture: ${data.texture}`);
-        if (data.vibe) metaParts.push(data.vibe);
+        if (coverData.style) metaParts.push(`Style: ${coverData.style}`);
+        if (coverData.lighting) metaParts.push(`Lighting: ${coverData.lighting}`);
+        if (coverData.texture) metaParts.push(`Texture: ${coverData.texture}`);
+        if (coverData.vibe) metaParts.push(coverData.vibe);
         aiVisualMeta.textContent = metaParts.filter(Boolean).join(' · ');
       }
       if (aiVisualWrap) aiVisualWrap.hidden = false;
@@ -7947,14 +7986,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         hasPlaylist: Array.isArray(queue) ? queue.length > 0 : false,
         volumeBoost: Number(volumeBoost?.value || 0) || 0,
       };
-      const resp = await fetch(api('/api/ai-release'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: releaseData } = await postJson('/api/ai-release', payload, {
+        fallbackMessage: translateMessage('Gagal membuat timeline'),
+        logLabel: 'ai-release',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat timeline');
-      const planItems = Array.isArray(data.plan) ? data.plan.filter(Boolean) : [];
+      const planItems = Array.isArray(releaseData.plan) ? releaseData.plan.filter(Boolean) : [];
       if (aiPlanList) {
         aiPlanList.innerHTML = '';
         planItems.forEach((item) => {
@@ -7983,8 +8019,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       if (aiPlanSummary) {
         const summaryParts = [];
-        if (data.summary) summaryParts.push(data.summary);
-        if (data.focus) summaryParts.push(`Fokus: ${data.focus}`);
+        if (releaseData.summary) summaryParts.push(releaseData.summary);
+        if (releaseData.focus) summaryParts.push(`Fokus: ${releaseData.focus}`);
         aiPlanSummary.textContent = summaryParts.filter(Boolean).join(' · ');
       }
       if (aiPlanWrap) aiPlanWrap.hidden = false;
@@ -8019,14 +8055,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         mood: moodSelect && moodSelect.value !== 'auto' ? moodSelect.value : undefined,
         format: $('#format').value,
       };
-      const resp = await fetch(api('/api/ai-presskit'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: pressData } = await postJson('/api/ai-presskit', payload, {
+        fallbackMessage: translateMessage('Gagal membuat press kit'),
+        logLabel: 'ai-presskit',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat press kit');
-      const presskit = data.presskit || {};
+      const presskit = pressData.presskit || {};
       if (aiPressHeadline) aiPressHeadline.textContent = presskit.headline || '';
       if (aiPressStory) aiPressStory.textContent = presskit.story || '';
       if (aiPressHighlights) {
@@ -8075,14 +8108,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         mood: moodSelect && moodSelect.value !== 'auto' ? moodSelect.value : undefined,
         target,
       };
-      const resp = await fetch(api('/api/ai-outreach'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: outreachData } = await postJson('/api/ai-outreach', payload, {
+        fallbackMessage: translateMessage('Gagal menulis email'),
+        logLabel: 'ai-outreach',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal menulis email');
-      const outreach = data.outreach || {};
+      const outreach = outreachData.outreach || {};
       if (aiOutreachSubject) aiOutreachSubject.textContent = outreach.subject || '';
       if (aiOutreachOpener) aiOutreachOpener.textContent = outreach.opener || '';
       if (aiOutreachIntro) aiOutreachIntro.textContent = outreach.intro || '';
@@ -8129,14 +8159,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         genre: id3Genre ? (id3Genre.value.trim() || undefined) : undefined,
         mood: moodSelect && moodSelect.value !== 'auto' ? moodSelect.value : undefined,
       };
-      const resp = await fetch(api('/api/ai-lyrics'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data: lyricData } = await postJson('/api/ai-lyrics', payload, {
+        fallbackMessage: translateMessage('Gagal membuat teaser lirik'),
+        logLabel: 'ai-lyrics',
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat teaser lirik');
-      const teaser = data.teaser || {};
+      const teaser = lyricData.teaser || {};
       if (aiLyricLines) {
         aiLyricLines.innerHTML = '';
         (Array.isArray(teaser.lines) ? teaser.lines : []).filter(Boolean).forEach((line) => {
@@ -8324,14 +8351,12 @@ $('#queueList')?.addEventListener('click', (e) => {
       const submitBtn = adminLoginForm.querySelector('button[type="submit"]');
       try {
         if (submitBtn) submitBtn.disabled = true;
-        const resp = await fetch(api('/admin/login'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+        const { data: loginData } = await postJson('/admin/login', { username, password }, {
+          fallbackMessage: translateMessage('Login gagal'),
+          logLabel: 'admin-login',
         });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok || !data?.token) throw new Error(data.error || 'Login gagal');
-        state.adminBearer = data.token;
+        if (!loginData?.token) throw new Error('Login gagal');
+        state.adminBearer = loginData.token;
         persistState();
         if (adminPassInput) adminPassInput.value = '';
         setToast('Login admin berhasil');
@@ -8430,11 +8455,12 @@ $('#queueList')?.addEventListener('click', (e) => {
       const resp = await fetch(api('/admin/upload-cookies'), {
         method:'POST', headers:{ 'Authorization': `Bearer ${bearer}`, 'Content-Type':'text/plain' }, body:text
       });
-      const data = await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(data.error || 'Upload gagal');
+      const safe = await readJsonSafe(resp);
+      const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
+      if(!resp.ok) throw new Error(payload.error || (safe.rawText || '').trim() || 'Upload gagal');
       setToast('cookies.txt terunggah ✔');
       setDropzoneMessage('cookies.txt terunggah ✔', 'success');
-      $('#cookieStatus').textContent = `OK · ${data.bytes||0} bytes → ${data.path||'/tmp/cookies.txt'}`;
+      $('#cookieStatus').textContent = `OK · ${payload.bytes||0} bytes → ${payload.path||'/tmp/cookies.txt'}`;
     }catch(err){
       setDropzoneMessage(`Gagal upload cookies: ${err.message}`, 'error');
       setToast('Gagal upload cookies: '+err.message);
@@ -8444,8 +8470,10 @@ $('#queueList')?.addEventListener('click', (e) => {
   $('#checkCookie').addEventListener('click', async ()=>{
     try{
       const resp = await fetch(api('/admin/cookies-status'));
-      const data = await resp.json();
-      if(data.exists){ $('#cookieStatus').textContent = `Ada · ${data.bytes||0} bytes · ${data.path}`; }
+      const safe = await readJsonSafe(resp);
+      const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
+      if(!resp.ok) throw new Error(payload.error || (safe.rawText || '').trim() || 'Gagal mengecek status');
+      if(payload.exists){ $('#cookieStatus').textContent = `Ada · ${payload.bytes||0} bytes · ${payload.path}`; }
       else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
     }catch{ $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
   });
@@ -8614,26 +8642,28 @@ $('#queueList')?.addEventListener('click', (e) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || translateMessage('Gagal memproses'));
+      const { data: convertData } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal memproses'),
+        logLabel: 'convert',
+      });
 
       const backendBase = getBackend() || window.location.origin;
-      const absoluteDownload = new URL(data.downloadUrl, backendBase).href;
+      const absoluteDownload = new URL(convertData.downloadUrl, backendBase).href;
       $('#downloadLink').href = absoluteDownload;
-      $('#downloadLink').setAttribute('download', data.fileName || 'audio');
+      $('#downloadLink').setAttribute('download', convertData.fileName || 'audio');
       $('#resultWrap').hidden = false;
       $('#status').textContent = translateMessage('Selesai');
       $('#loadingSpinner').style.display = 'none';
       fake = 100;
       convertProgressAnimator.complete(`${translateMessage('Selesai')} · 100%`);
-      if (data.logs && $('#showLog').checked) { $('#logs').textContent = data.logs; }
+      if (convertData.logs && $('#showLog').checked) { $('#logs').textContent = convertData.logs; }
       if (forceAutoDownload) $('#downloadLink').click();
 
-      const metaFromServer = data.metadata || providedMetadata || lastVideoInfo || null;
+      const metaFromServer = convertData.metadata || providedMetadata || lastVideoInfo || null;
       if (metaFromServer) {
         applyVideoMetadata(metaFromServer, { setUrl: !overrideUrl, autoFillId3: false, fillEmptyId3: true });
       }
-      renderRingtoneResults(Array.isArray(data.ringtones) ? data.ringtones : []);
+      renderRingtoneResults(Array.isArray(convertData.ringtones) ? convertData.ringtones : []);
 
       const historyMeta = metaFromServer
         ? {
@@ -8643,23 +8673,23 @@ $('#queueList')?.addEventListener('click', (e) => {
             cover: metaFromServer.cover || metaFromServer.thumbnail || '',
           }
         : null;
-      pushHistory({ downloadUrl: absoluteDownload, format: data.format, abr: body.abr, fileName: data.fileName, meta: historyMeta });
+      pushHistory({ downloadUrl: absoluteDownload, format: convertData.format, abr: body.abr, fileName: convertData.fileName, meta: historyMeta });
 
       const previewMeta = {
-        fileName: data.fileName || '',
-        baseName: data.baseName || '',
-        format: data.format,
-        title: $('#id3Title').value.trim() || metaFromServer?.cleanTitle || metaFromServer?.title || data.fileName || '',
-        sampleRate: data.sampleRate || null,
-        channels: data.channels || null,
+        fileName: convertData.fileName || '',
+        baseName: convertData.baseName || '',
+        format: convertData.format,
+        title: $('#id3Title').value.trim() || metaFromServer?.cleanTitle || metaFromServer?.title || convertData.fileName || '',
+        sampleRate: convertData.sampleRate || null,
+        channels: convertData.channels || null,
       };
       showAudioPreview(absoluteDownload, previewMeta);
       setToast(translateMessage('Berhasil diproses'));
       updateAiStatus('Konversi selesai', 'success');
       registerConversionSuccess('direct', {
-        vpnFriendly: data.vpnFriendly ?? body.vpnFriendly,
-        smartResume: data.smartResume ?? body.smartResume,
-        soundEffect: data.soundEffect ?? body.soundEffect,
+        vpnFriendly: convertData.vpnFriendly ?? body.vpnFriendly,
+        smartResume: convertData.smartResume ?? body.smartResume,
+        soundEffect: convertData.soundEffect ?? body.soundEffect,
       });
       if ($('#autoClear').checked && !overrideUrl) { $('#clearBtn').click(); }
     } catch (err) {
@@ -8686,13 +8716,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Gagal membuat job');
-      if (data.job) {
-        updateBackgroundJob(data.job);
+      const { data: payload } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Gagal membuat job'),
+        logLabel: 'background-create',
+      });
+      if (payload.job) {
+        updateBackgroundJob(payload.job);
         setToast('Job diproses di latar');
-        updateAiStatus(`Job #${data.job.id.slice(-5)} masuk antrian.`, 'info');
-        scheduleJobPoll(data.job.id, 1500);
+        updateAiStatus(`Job #${payload.job.id.slice(-5)} masuk antrian.`, 'info');
+        scheduleJobPoll(payload.job.id, 1500);
       }
     } catch (err) {
       updateAiStatus(err.message || 'Gagal membuat job', 'danger');
@@ -8770,16 +8802,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (smartResumeToggle) body.smartResume = !!smartResumeToggle.checked;
 
     try {
-      const resp = await fetch(api('/api/convert-playlist'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-      const data = await resp.json();
-      if(!resp.ok) throw new Error(data.error || 'Gagal membuat ZIP');
+      const { data: playlistData } = await postJson('/api/convert-playlist', body, {
+        fallbackMessage: translateMessage('Gagal membuat ZIP'),
+        logLabel: 'convert-playlist',
+      });
       $('#loadingSpinner').style.display = 'none';
       $('#status').textContent = 'ZIP selesai';
-      showPlaylistResult(data, items.length);
+      showPlaylistResult(playlistData, items.length);
       setToast(`Playlist ZIP siap (${items.length} file)`);
       const base = getBackend() || window.location.origin;
-      const absoluteZip = new URL(data.downloadUrl, base).href;
-      pushHistory({ downloadUrl: absoluteZip, format: 'zip', abr: body.abr, fileName: data.fileName });
+      const absoluteZip = new URL(playlistData.downloadUrl, base).href;
+      pushHistory({ downloadUrl: absoluteZip, format: 'zip', abr: body.abr, fileName: playlistData.fileName });
       registerConversionSuccess('playlist', {
         vpnFriendly: body.vpnFriendly,
         smartResume: body.smartResume,
@@ -8820,33 +8853,34 @@ $('#queueList')?.addEventListener('click', (e) => {
         fileName: sanitizeFileName($('#fileName').value.trim()) || undefined,
         title: $('#id3Title').value.trim() || $('#videoTitle').textContent.trim() || undefined,
       };
-      const resp = await fetch(api('/api/subtitle'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
-      const data = await resp.json();
-      if(!resp.ok) throw new Error(data.error || 'Gagal mengambil subtitle');
-      if (subtitleLangBadge) subtitleLangBadge.textContent = (data.lang || '').toUpperCase() || 'TXT';
-      if (subtitleAutoBadge) subtitleAutoBadge.hidden = !data.auto;
+      const { data: subtitleData } = await postJson('/api/subtitle', body, {
+        fallbackMessage: translateMessage('Gagal mengambil subtitle'),
+        logLabel: 'subtitle',
+      });
+      if (subtitleLangBadge) subtitleLangBadge.textContent = (subtitleData.lang || '').toUpperCase() || 'TXT';
+      if (subtitleAutoBadge) subtitleAutoBadge.hidden = !subtitleData.auto;
       if (subtitleSrtLink){
-        subtitleSrtLink.href = data.srtUrl || '#';
-        if (data.srtFileName) subtitleSrtLink.setAttribute('download', data.srtFileName);
+        subtitleSrtLink.href = subtitleData.srtUrl || '#';
+        if (subtitleData.srtFileName) subtitleSrtLink.setAttribute('download', subtitleData.srtFileName);
       }
       if (subtitleTxtLink){
-        subtitleTxtLink.href = data.txtUrl || '#';
-        if (data.txtFileName) subtitleTxtLink.setAttribute('download', data.txtFileName);
+        subtitleTxtLink.href = subtitleData.txtUrl || '#';
+        if (subtitleData.txtFileName) subtitleTxtLink.setAttribute('download', subtitleData.txtFileName);
       }
-      const rawText = (data.text || data.preview || '').trim();
+      const rawText = (subtitleData.text || subtitleData.preview || '').trim();
       subtitleFullText = rawText;
       if (subtitlePreview) {
         subtitlePreview.textContent = rawText || '(Tidak ada teks tersedia)';
         subtitlePreview.scrollTop = 0;
       }
       if (subtitleStatus) {
-        const lineCount = Number(data.lineCount);
-        const wordCount = Number(data.wordCount);
+        const lineCount = Number(subtitleData.lineCount);
+        const wordCount = Number(subtitleData.wordCount);
         const metaParts = [];
-        const langBadge = String(data.lang || '').toLowerCase();
-        const originalLang = String(data.originalLang || '').trim().toLowerCase();
-        const translatedFrom = String(data.translatedFrom || '').trim().toLowerCase();
-        if (data.translated) {
+        const langBadge = String(subtitleData.lang || '').toLowerCase();
+        const originalLang = String(subtitleData.originalLang || '').trim().toLowerCase();
+        const translatedFrom = String(subtitleData.translatedFrom || '').trim().toLowerCase();
+        if (subtitleData.translated) {
           const fromLabel = (translatedFrom || originalLang || '')?.toUpperCase();
           metaParts.push(fromLabel ? `Terjemahan dari ${fromLabel}` : 'Terjemahan');
         } else if (originalLang && originalLang !== langBadge) {
@@ -8856,7 +8890,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (Number.isFinite(wordCount) && wordCount > 0) metaParts.push(`${wordCount} kata`);
         subtitleStatus.textContent = metaParts.length ? `Subtitle lengkap (${metaParts.join(' · ')})` : 'Subtitle siap diunduh';
       }
-      subtitleShareUrl = data.txtUrl ? new URL(data.txtUrl, window.location.origin).href : (data.srtUrl ? new URL(data.srtUrl, window.location.origin).href : '');
+      subtitleShareUrl = subtitleData.txtUrl ? new URL(subtitleData.txtUrl, window.location.origin).href : (subtitleData.srtUrl ? new URL(subtitleData.srtUrl, window.location.origin).href : '');
       if (subtitleResult) subtitleResult.hidden = false;
       setToast('Subtitle lengkap siap diunduh');
     } catch(err){
