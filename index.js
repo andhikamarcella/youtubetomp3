@@ -1013,6 +1013,142 @@ const buildAiReleasePlan = ({
   return { plan, summary, focus };
 };
 
+const buildAiPressKit = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  mood,
+  format = "",
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  if (mood && typeof mood === "string" && mood.trim()) tags.mood = mood.trim();
+  const trackTitle = tags.title || title || "Rilisan Baru";
+  const artist = tags.artist || channel || "Creator";
+  const vibe = `${tags.genre || "Multi-genre"} · ${tags.mood || "Fresh"}`;
+  const runtime = formatDurationLabel(duration);
+  const formatLabel = format && typeof format === "string" && format.trim() ? format.toUpperCase() : "MP3";
+
+  const headline = `${trackTitle} oleh ${artist} siap ${tags.energy === "High" ? "mengguncang" : "menemani"} playlist kamu`;
+
+  const storyParts = [
+    `${artist} merilis ${trackTitle}${runtime ? ` berdurasi ${runtime}` : ""} dalam format ${formatLabel}.`,
+    `Rilisan ini memadukan nuansa ${vibe.toLowerCase()} dengan karakter ${tags.energy?.toLowerCase() || "dinamis"}.`,
+  ];
+  if (tags.comment) storyParts.push(tags.comment);
+
+  const highlights = [
+    `Genre utama: ${tags.genre || "Eksploratif"}`,
+    `Mood: ${tags.mood || "Serbaguna"}`,
+    `Energi: ${tags.energy || "Seimbang"}`,
+  ];
+  if (runtime) highlights.push(`Durasi: ${runtime}`);
+  if (formatLabel) highlights.push(`Format unggulan: ${formatLabel}`);
+
+  const socialHook = `Gunakan hashtag #${slugifyTag(trackTitle) || "MusikBaru"} untuk ikut merayakan perilisan.`;
+  const quote = `"${trackTitle} adalah ${tags.mood ? tags.mood.toLowerCase() : "perjalanan"} sonik yang ${tags.energy === "High" ? "penuh energi" : "hangat"}." — ${artist}`;
+
+  return {
+    headline,
+    story: storyParts.join(" "),
+    highlights,
+    quote,
+    socialHook,
+  };
+};
+
+const buildAiOutreachEmail = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  mood,
+  target = "curator",
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  if (mood && typeof mood === "string" && mood.trim()) tags.mood = mood.trim();
+  const trackTitle = tags.title || title || "Rilisan Baru";
+  const artist = tags.artist || channel || "Creator";
+  const vibe = `${tags.genre || "multi-genre"} • ${tags.mood || "fresh"}`;
+  const durationLabel = formatDurationLabel(duration);
+  const friendlyTarget = target === "press" ? "media" : target === "community" ? "komunitas" : "kurator";
+
+  const subject = `${trackTitle} – ${tags.genre || "genre"} ${tags.mood || "mood"} terbaru dari ${artist}`;
+  const opener = `Halo ${friendlyTarget},`;
+  const intro = `Aku ${artist}. Mau bagi ${trackTitle}${durationLabel ? ` (${durationLabel})` : ""} yang lagi siap dipromosikan.`;
+  const hook = `Nuansanya ${vibe.toLowerCase()} dengan energi ${tags.energy?.toLowerCase() || "menarik"}.`;
+  const why = target === "press"
+    ? "Materi ini cocok untuk liputan rilisan baru atau playlist rekomendasi mingguan."
+    : target === "community"
+      ? "Kusertakan assets buat challenge komunitas + QR mini player biar gampang dishare."
+      : "Rasanya pas buat playlist tematik dan takeover segar di minggu ini.";
+  const cta = target === "press"
+    ? "Kalau tertarik, bisa aku kirim press kit lengkap & link interview."
+    : target === "community"
+      ? "Boleh bantu share atau pakai buat konten komunitas ya, nanti ku-repost."
+      : "Boleh minta feedback atau masuk playlist kamu?";
+
+  const extras = [`Link dengar cepat: {{preview_link}}`];
+  if (tags.comment) extras.push(tags.comment);
+  extras.push("Terima kasih atas waktunya!", `Salam hangat, ${artist}`);
+
+  return {
+    subject,
+    opener,
+    intro,
+    hook,
+    why,
+    cta,
+    extras,
+  };
+};
+
+const buildAiLyricTeaser = ({
+  title = "",
+  channel = "",
+  duration,
+  genre,
+  mood,
+} = {}) => {
+  const tags = buildAiTags({ title, channel, duration });
+  if (genre && typeof genre === "string" && genre.trim()) tags.genre = genre.trim();
+  if (mood && typeof mood === "string" && mood.trim()) tags.mood = mood.trim();
+  const trackTitle = tags.title || title || "Rilisan Baru";
+  const vibe = `${tags.genre || "pop"} ${tags.mood || "fresh"}`.toLowerCase();
+  const energyEmoji = MOOD_EMOJIS[tags.mood] || "🎵";
+
+  const opening = tags.mood === "Epic"
+    ? "Langkahmu memantul, lampu kota jadi saksi"
+    : tags.mood === "Calm"
+      ? "Sunyi merona di balik helaan napas"
+      : tags.mood === "Happy"
+        ? "Tawa kita meledak seperti kembang api"
+        : "Nada berputar, memori ikut menari";
+  const bridge = tags.energy === "High"
+    ? "Detak menaik, bass memeluk malam"
+    : "Langkah melambat, kata tetap menyala";
+  const closer = tags.mood === "Melancholy"
+    ? "Kusimpan kisahmu di sela senja"
+    : "Kita ulang lagi sampai fajar menyapa";
+
+  const lines = [opening, bridge, closer];
+  const hashtags = [
+    `#${slugifyTag(trackTitle) || "NewMusic"}`,
+    `#${(tags.genre || "genre").replace(/\s+/g, "")}`,
+    `#${(tags.mood || "mood").replace(/\s+/g, "")}`,
+  ];
+
+  const callout = `${energyEmoji} ${trackTitle} · teaser lirik vibe ${vibe}`;
+
+  return {
+    lines,
+    hashtags,
+    callout,
+  };
+};
+
 // ==== AI Assistant helper ====
 const DEFAULT_ASSISTANT_SUGGESTIONS = [
   "Ketik /faq untuk membuka daftar pertanyaan cepat di tab Experience.",
@@ -3193,6 +3329,59 @@ app.post("/api/ai-release", (req, res) => {
     return res.json({ ok: true, plan: result.plan, summary: result.summary, focus: result.focus });
   } catch (e) {
     const msg = e?.message || "Gagal membuat timeline";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-presskit", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiPressKit({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      mood: body.mood,
+      format: body.format,
+    });
+    return res.json({ ok: true, presskit: result });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat press kit";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-outreach", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiOutreachEmail({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      mood: body.mood,
+      target: body.target,
+    });
+    return res.json({ ok: true, outreach: result });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat email";
+    return res.status(400).json({ error: msg });
+  }
+});
+
+app.post("/api/ai-lyrics", (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = buildAiLyricTeaser({
+      title: body.title,
+      channel: body.channel,
+      duration: body.duration,
+      genre: body.genre,
+      mood: body.mood,
+    });
+    return res.json({ ok: true, teaser: result });
+  } catch (e) {
+    const msg = e?.message || "Gagal membuat teaser lirik";
     return res.status(400).json({ error: msg });
   }
 });

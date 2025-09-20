@@ -21,6 +21,7 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Adaptive background music yang menyesuaikan mood siang/malam beserta kontrol tema/layout personal.
 - Voice navigation, narrator mode, dan AI Navigator chatbot yang siap memandu tanpa harus meninggalkan halaman.
 - Mini-game Neo Runner dengan Konami code easter egg plus perayaan donasi lengkap (confetti, suara, getaran).
+- AI Studio yang terus bertambah dengan Auto Music Tags, caption, pitch, press kit instan, email outreach, hingga teaser lirik untuk sosial media.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).

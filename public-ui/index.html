@@ -283,6 +283,14 @@
     .ai-output header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
     .ai-output header .title { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--bs-secondary); font-weight: 600; }
     .ai-output .copy-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; margin-top: .75rem; }
+    .ai-outreach-grid { display: grid; gap: .5rem; font-size: .9rem; }
+    .ai-outreach-grid .label { display: block; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--bs-secondary); }
+    #aiPressHighlights { padding-left: 1.1rem; font-size: .95rem; }
+    #aiPressHighlights li { margin-bottom: .25rem; }
+    #aiLyricLines { padding-left: 1.1rem; }
+    #aiLyricLines li { margin-bottom: .35rem; font-weight: 500; }
+    #aiLyricHashtags { display: flex; flex-wrap: wrap; gap: .4rem; }
+    #aiLyricHashtags span { background: color-mix(in srgb, var(--bs-primary) 16%, transparent); border-radius: 999px; padding: .15rem .6rem; font-weight: 600; letter-spacing: .06em; }
     .ai-hook-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }
     .ai-hook-list li { padding: .55rem .7rem; border-radius: .75rem; background: color-mix(in srgb, var(--bs-primary) 9%, transparent); border: 1px solid color-mix(in srgb, var(--bs-primary) 18%, transparent); font-weight: 600; display: flex; align-items: flex-start; gap: .45rem; }
     .ai-hook-list li strong { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--bs-primary) 60%, var(--bs-body-color) 40%); background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-radius: .6rem; padding: .2rem .45rem; margin-top: .05rem; }
@@ -749,6 +757,11 @@
                 <button class="btn btn-outline-primary flex-grow-1" id="aiVisualBtn" type="button"><i class="bi bi-brush"></i> Cover Prompt</button>
                 <button class="btn btn-ai-release flex-grow-1" id="aiReleaseBtn" type="button"><i class="bi bi-calendar-week"></i> Release Planner</button>
               </div>
+              <div class="d-grid d-md-flex flex-wrap gap-2 mt-2">
+                <button class="btn btn-outline-danger flex-grow-1" id="aiPressBtn" type="button"><i class="bi bi-newspaper"></i> AI Press Kit</button>
+                <button class="btn btn-outline-success flex-grow-1" id="aiOutreachBtn" type="button"><i class="bi bi-envelope-paper"></i> AI Outreach</button>
+                <button class="btn btn-outline-secondary flex-grow-1" id="aiLyricBtn" type="button"><i class="bi bi-mic"></i> Lyric Teaser</button>
+              </div>
               <div id="aiTagInsights" class="mt-3" hidden></div>
 
               <div class="ai-output mt-3" id="aiCaptionWrap" hidden>
@@ -818,6 +831,50 @@
                 </header>
                 <ul class="ai-plan-list" id="aiPlanList"></ul>
                 <div class="small text-secondary" id="aiPlanSummary"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiPressWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-newspaper"></i><span>Press Kit Singkat</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiPressCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <h6 id="aiPressHeadline" class="fw-semibold"></h6>
+                <p id="aiPressStory" class="mb-2"></p>
+                <ul id="aiPressHighlights" class="mb-2"></ul>
+                <blockquote class="blockquote" id="aiPressQuote"></blockquote>
+                <div class="small text-secondary" id="aiPressSocial"></div>
+              </div>
+
+              <div class="ai-output mt-3" id="aiOutreachWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-envelope-paper"></i><span>Email Outreach</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiOutreachCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <div class="ai-outreach-grid">
+                  <div><span class="label">Subjek</span><span id="aiOutreachSubject"></span></div>
+                  <div><span class="label">Sapaan</span><span id="aiOutreachOpener"></span></div>
+                  <div><span class="label">Pembuka</span><span id="aiOutreachIntro"></span></div>
+                  <div><span class="label">Hook</span><span id="aiOutreachHook"></span></div>
+                  <div><span class="label">Alasan</span><span id="aiOutreachWhy"></span></div>
+                  <div><span class="label">CTA</span><span id="aiOutreachCta"></span></div>
+                </div>
+                <ul id="aiOutreachExtras" class="mt-2 mb-0"></ul>
+              </div>
+
+              <div class="ai-output mt-3" id="aiLyricWrap" hidden>
+                <header>
+                  <div class="title"><i class="bi bi-mic"></i><span>Lyric Teaser</span></div>
+                  <div class="copy-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="aiLyricCopy" type="button"><i class="bi bi-clipboard"></i> Salin</button>
+                  </div>
+                </header>
+                <ul id="aiLyricLines" class="mb-2"></ul>
+                <div id="aiLyricCallout" class="fw-semibold mb-2"></div>
+                <div id="aiLyricHashtags" class="small text-secondary"></div>
               </div>
 
               <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
@@ -1841,6 +1898,30 @@
   const aiPlanList = $('#aiPlanList');
   const aiPlanSummary = $('#aiPlanSummary');
   const aiPlanCopy = $('#aiPlanCopy');
+  const aiPressBtn = $('#aiPressBtn');
+  const aiPressWrap = $('#aiPressWrap');
+  const aiPressHeadline = $('#aiPressHeadline');
+  const aiPressStory = $('#aiPressStory');
+  const aiPressHighlights = $('#aiPressHighlights');
+  const aiPressQuote = $('#aiPressQuote');
+  const aiPressSocial = $('#aiPressSocial');
+  const aiPressCopy = $('#aiPressCopy');
+  const aiOutreachBtn = $('#aiOutreachBtn');
+  const aiOutreachWrap = $('#aiOutreachWrap');
+  const aiOutreachSubject = $('#aiOutreachSubject');
+  const aiOutreachOpener = $('#aiOutreachOpener');
+  const aiOutreachIntro = $('#aiOutreachIntro');
+  const aiOutreachHook = $('#aiOutreachHook');
+  const aiOutreachWhy = $('#aiOutreachWhy');
+  const aiOutreachCta = $('#aiOutreachCta');
+  const aiOutreachExtras = $('#aiOutreachExtras');
+  const aiOutreachCopy = $('#aiOutreachCopy');
+  const aiLyricBtn = $('#aiLyricBtn');
+  const aiLyricWrap = $('#aiLyricWrap');
+  const aiLyricLines = $('#aiLyricLines');
+  const aiLyricCallout = $('#aiLyricCallout');
+  const aiLyricHashtags = $('#aiLyricHashtags');
+  const aiLyricCopy = $('#aiLyricCopy');
   const aiTagInsights = $('#aiTagInsights');
   const playlistResultWrap = $('#playlistResultWrap');
   const playlistDownloadLink = $('#playlistDownloadLink');
@@ -4252,6 +4333,9 @@
   let lastAiHookData = null;
   let lastAiVisualData = null;
   let lastAiPlanData = null;
+  let lastAiPressData = null;
+  let lastAiOutreachData = null;
+  let lastAiLyricData = null;
   let currentRatingKey = '';
   let ratingStore = loadRatingStore();
   let clipboardToastShown = false;
@@ -4347,6 +4431,36 @@
     if (aiPlanList) aiPlanList.innerHTML = '';
     if (aiPlanSummary) aiPlanSummary.textContent = '';
     lastAiPlanData = null;
+  };
+
+  const resetAiPress = () => {
+    if (aiPressWrap) aiPressWrap.hidden = true;
+    if (aiPressHeadline) aiPressHeadline.textContent = '';
+    if (aiPressStory) aiPressStory.textContent = '';
+    if (aiPressHighlights) aiPressHighlights.innerHTML = '';
+    if (aiPressQuote) aiPressQuote.textContent = '';
+    if (aiPressSocial) aiPressSocial.textContent = '';
+    lastAiPressData = null;
+  };
+
+  const resetAiOutreach = () => {
+    if (aiOutreachWrap) aiOutreachWrap.hidden = true;
+    if (aiOutreachSubject) aiOutreachSubject.textContent = '';
+    if (aiOutreachOpener) aiOutreachOpener.textContent = '';
+    if (aiOutreachIntro) aiOutreachIntro.textContent = '';
+    if (aiOutreachHook) aiOutreachHook.textContent = '';
+    if (aiOutreachWhy) aiOutreachWhy.textContent = '';
+    if (aiOutreachCta) aiOutreachCta.textContent = '';
+    if (aiOutreachExtras) aiOutreachExtras.innerHTML = '';
+    lastAiOutreachData = null;
+  };
+
+  const resetAiLyric = () => {
+    if (aiLyricWrap) aiLyricWrap.hidden = true;
+    if (aiLyricLines) aiLyricLines.innerHTML = '';
+    if (aiLyricCallout) aiLyricCallout.textContent = '';
+    if (aiLyricHashtags) aiLyricHashtags.innerHTML = '';
+    lastAiLyricData = null;
   };
 
   function attachRangeControls() {
@@ -4532,6 +4646,9 @@
     resetAiHook();
     resetAiVisual();
     resetAiPlan();
+    resetAiPress();
+    resetAiOutreach();
+    resetAiLyric();
     resetAiInsights();
     if (equalizerWrap) equalizerWrap.hidden = true;
     if (eqBass) eqBass.value = 0;
@@ -5952,6 +6069,170 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
   });
 
+  if (aiPressBtn) aiPressBtn.addEventListener('click', async () => {
+    const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
+    if (!title) { setToast('Isi judul terlebih dahulu'); return; }
+    updateAiStatus('Menyusun press kit…', 'info');
+    resetAiPress();
+    try {
+      const payload = {
+        title,
+        channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+        duration: Number(previewPlayer?.duration || 0) || undefined,
+        genre: id3Genre ? (id3Genre.value.trim() || undefined) : undefined,
+        mood: moodSelect && moodSelect.value !== 'auto' ? moodSelect.value : undefined,
+        format: $('#format').value,
+      };
+      const resp = await fetch(api('/api/ai-presskit'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal membuat press kit');
+      const presskit = data.presskit || {};
+      if (aiPressHeadline) aiPressHeadline.textContent = presskit.headline || '';
+      if (aiPressStory) aiPressStory.textContent = presskit.story || '';
+      if (aiPressHighlights) {
+        aiPressHighlights.innerHTML = '';
+        const highlights = Array.isArray(presskit.highlights) ? presskit.highlights.filter(Boolean) : [];
+        highlights.forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          aiPressHighlights.appendChild(li);
+        });
+      }
+      if (aiPressQuote) aiPressQuote.textContent = presskit.quote || '';
+      if (aiPressSocial) aiPressSocial.textContent = presskit.socialHook || '';
+      if (aiPressWrap) aiPressWrap.hidden = false;
+      lastAiPressData = {
+        headline: aiPressHeadline?.textContent || '',
+        story: aiPressStory?.textContent || '',
+        highlights: Array.from(aiPressHighlights?.querySelectorAll('li') || []).map((li) => li.textContent.trim()).filter(Boolean),
+        quote: aiPressQuote?.textContent || '',
+        socialHook: aiPressSocial?.textContent || '',
+      };
+      updateAiStatus('Press kit siap dibagikan 📰', 'success');
+      setToast('Press kit siap disalin');
+    } catch (err) {
+      resetAiPress();
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal AI press kit: ' + err.message);
+    }
+  });
+
+  if (aiOutreachBtn) aiOutreachBtn.addEventListener('click', async () => {
+    const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
+    if (!title) { setToast('Isi judul terlebih dahulu'); return; }
+    updateAiStatus('Menulis email outreach…', 'info');
+    resetAiOutreach();
+    try {
+      const formatValue = $('#format').value;
+      let target = 'curator';
+      if (['wav', 'flac', 'alac'].includes(String(formatValue).toLowerCase())) target = 'press';
+      else if (backgroundMode?.checked) target = 'community';
+      const payload = {
+        title,
+        channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+        duration: Number(previewPlayer?.duration || 0) || undefined,
+        genre: id3Genre ? (id3Genre.value.trim() || undefined) : undefined,
+        mood: moodSelect && moodSelect.value !== 'auto' ? moodSelect.value : undefined,
+        target,
+      };
+      const resp = await fetch(api('/api/ai-outreach'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal menulis email');
+      const outreach = data.outreach || {};
+      if (aiOutreachSubject) aiOutreachSubject.textContent = outreach.subject || '';
+      if (aiOutreachOpener) aiOutreachOpener.textContent = outreach.opener || '';
+      if (aiOutreachIntro) aiOutreachIntro.textContent = outreach.intro || '';
+      if (aiOutreachHook) aiOutreachHook.textContent = outreach.hook || '';
+      if (aiOutreachWhy) aiOutreachWhy.textContent = outreach.why || '';
+      if (aiOutreachCta) aiOutreachCta.textContent = outreach.cta || '';
+      if (aiOutreachExtras) {
+        aiOutreachExtras.innerHTML = '';
+        (Array.isArray(outreach.extras) ? outreach.extras : []).filter(Boolean).forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          aiOutreachExtras.appendChild(li);
+        });
+      }
+      if (aiOutreachWrap) aiOutreachWrap.hidden = false;
+      lastAiOutreachData = {
+        subject: aiOutreachSubject?.textContent || '',
+        opener: aiOutreachOpener?.textContent || '',
+        intro: aiOutreachIntro?.textContent || '',
+        hook: aiOutreachHook?.textContent || '',
+        why: aiOutreachWhy?.textContent || '',
+        cta: aiOutreachCta?.textContent || '',
+        extras: Array.from(aiOutreachExtras?.querySelectorAll('li') || []).map((li) => li.textContent.trim()).filter(Boolean),
+      };
+      updateAiStatus('Email outreach siap kirim ✉️', 'success');
+      setToast('Draft email siap disalin');
+    } catch (err) {
+      resetAiOutreach();
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal AI outreach: ' + err.message);
+    }
+  });
+
+  if (aiLyricBtn) aiLyricBtn.addEventListener('click', async () => {
+    const title = $('#id3Title').value.trim() || lastVideoMeta.title || $('#videoTitle').textContent.trim();
+    if (!title) { setToast('Isi judul terlebih dahulu'); return; }
+    updateAiStatus('Menyusun teaser lirik…', 'info');
+    resetAiLyric();
+    try {
+      const payload = {
+        title,
+        channel: $('#id3Artist').value.trim() || lastVideoMeta.author || '',
+        duration: Number(previewPlayer?.duration || 0) || undefined,
+        genre: id3Genre ? (id3Genre.value.trim() || undefined) : undefined,
+        mood: moodSelect && moodSelect.value !== 'auto' ? moodSelect.value : undefined,
+      };
+      const resp = await fetch(api('/api/ai-lyrics'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Gagal membuat teaser lirik');
+      const teaser = data.teaser || {};
+      if (aiLyricLines) {
+        aiLyricLines.innerHTML = '';
+        (Array.isArray(teaser.lines) ? teaser.lines : []).filter(Boolean).forEach((line) => {
+          const li = document.createElement('li');
+          li.textContent = line;
+          aiLyricLines.appendChild(li);
+        });
+      }
+      if (aiLyricCallout) aiLyricCallout.textContent = teaser.callout || '';
+      if (aiLyricHashtags) {
+        aiLyricHashtags.innerHTML = '';
+        (Array.isArray(teaser.hashtags) ? teaser.hashtags : []).filter(Boolean).forEach((tag) => {
+          const span = document.createElement('span');
+          span.textContent = tag.startsWith('#') ? tag : `#${tag}`;
+          aiLyricHashtags.appendChild(span);
+        });
+      }
+      if (aiLyricWrap) aiLyricWrap.hidden = false;
+      lastAiLyricData = {
+        lines: Array.from(aiLyricLines?.querySelectorAll('li') || []).map((li) => li.textContent.trim()).filter(Boolean),
+        callout: aiLyricCallout?.textContent || '',
+        hashtags: Array.from(aiLyricHashtags?.querySelectorAll('span') || []).map((span) => span.textContent.trim()).filter(Boolean),
+      };
+      updateAiStatus('Teaser lirik siap di-post 🎤', 'success');
+      setToast('Teaser lirik siap disalin');
+    } catch (err) {
+      resetAiLyric();
+      updateAiStatus(err.message, 'danger');
+      setToast('Gagal AI lyric: ' + err.message);
+    }
+  });
+
   if (aiPitchCopy) aiPitchCopy.addEventListener('click', async () => {
     const text = aiPitchText?.value?.trim();
     if (!text) { setToast('Belum ada pitch untuk disalin'); return; }
@@ -6027,6 +6308,62 @@ $('#queueList')?.addEventListener('click', (e) => {
     try {
       await navigator.clipboard.writeText(lines.join('\n'));
       setToast('Timeline rilis disalin');
+    } catch {
+      setToast('Clipboard tidak tersedia');
+    }
+  });
+
+  if (aiPressCopy) aiPressCopy.addEventListener('click', async () => {
+    const data = lastAiPressData || null;
+    if (!data || !(data.headline || data.story || (data.highlights || []).length)) {
+      setToast('Belum ada press kit untuk disalin');
+      return;
+    }
+    const lines = [data.headline, '', data.story, '', ...(data.highlights || []), '', data.quote, data.socialHook]
+      .filter((line) => line && line.trim());
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setToast('Press kit tersalin ke clipboard');
+    } catch {
+      setToast('Clipboard tidak tersedia');
+    }
+  });
+
+  if (aiOutreachCopy) aiOutreachCopy.addEventListener('click', async () => {
+    const data = lastAiOutreachData || null;
+    if (!data || !data.subject) {
+      setToast('Belum ada email untuk disalin');
+      return;
+    }
+    const lines = [
+      `Subjek: ${data.subject}`,
+      '',
+      data.opener,
+      data.intro,
+      data.hook,
+      data.why,
+      data.cta,
+      '',
+      ...(data.extras || []),
+    ].filter((line) => line && line.trim());
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setToast('Draft email disalin');
+    } catch {
+      setToast('Clipboard tidak tersedia');
+    }
+  });
+
+  if (aiLyricCopy) aiLyricCopy.addEventListener('click', async () => {
+    const data = lastAiLyricData || null;
+    if (!data || !(data.lines || []).length) {
+      setToast('Belum ada teaser lirik untuk disalin');
+      return;
+    }
+    const lines = [...(data.lines || []), '', data.callout, '', (data.hashtags || []).join(' ')].filter((line) => line && line.trim());
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setToast('Teaser lirik disalin');
     } catch {
       setToast('Clipboard tidak tersedia');
     }
@@ -6211,6 +6548,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     resetAiHook();
     resetAiVisual();
     resetAiPlan();
+    resetAiPress();
+    resetAiOutreach();
+    resetAiLyric();
     resetAiInsights();
     updateAiStatus('', 'info');
   });
