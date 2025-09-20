@@ -5104,7 +5104,7 @@
 
     const selectResult = (result, { autoConvert } = {}) => {
       if (!result) return;
-      applyVideoMetadata(result, { setUrl: true, autoFillId3: false, fillEmptyId3: true });
+      applyVideoMetadata(result, { setUrl: true, autoFillId3: true, fillEmptyId3: true });
       if (keywordInput && (result.cleanTitle || result.title)) {
         keywordInput.value = result.cleanTitle || result.title;
       }
