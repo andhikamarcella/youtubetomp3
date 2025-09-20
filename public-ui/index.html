@@ -194,7 +194,7 @@
     .narrator-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
     .narrator-actions button { border-radius: .75rem; }
     #aiAssistantCard { position: relative; overflow: hidden; }
-    .assistant-messages { max-height: min(55vh, 320px); overflow-y: auto; padding: 1rem; border-radius: 1rem; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); display: flex; flex-direction: column; gap: .65rem; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+    .assistant-messages { max-height: min(55vh, 320px); overflow-y: auto; padding: 1rem; padding-right: 1.25rem; border-radius: 1rem; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); display: flex; flex-direction: column; gap: .65rem; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; scrollbar-gutter: stable both-edges; }
     .assistant-bubble { padding: .6rem .75rem; border-radius: .85rem; max-width: 100%; line-height: 1.4; font-size: .85rem; }
     .assistant-bubble.user { margin-left: auto; background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border: 1px solid color-mix(in srgb, var(--bs-primary) 40%, transparent); }
     .assistant-bubble.bot { margin-right: auto; background: color-mix(in srgb, var(--bs-secondary-bg) 95%, transparent); border: 1px solid color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
@@ -215,22 +215,9 @@
     #customEndingOverlay { position: fixed; inset: 0; background: rgba(23,35,63,.88); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1200; opacity: 0; pointer-events: none; transition: opacity .4s ease; text-align: center; padding: 2rem; }
     #customEndingOverlay.show { opacity: 1; pointer-events: auto; }
     #customEndingOverlay .ending-card { max-width: 420px; border-radius: 1.2rem; padding: 1.5rem; background: rgba(32,201,151,.18); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 20px 35px rgba(23,35,63,.52); }
-    #mascotAssistant { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1050; display: flex; align-items: flex-end; gap: .5rem; }
-    #mascotAssistant[hidden] { display: none; }
-    .mascot-avatar { width: 58px; height: 58px; border-radius: 1.2rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(13,110,253,.8), rgba(111,66,193,.85)); color: #fff; font-size: 1.8rem; box-shadow: 0 12px 25px rgba(13,110,253,.35); animation: mascotBounce 3s ease-in-out infinite; }
-    .mascot-bubble { max-width: 220px; background: var(--bs-body-bg); border-radius: 1rem; padding: .75rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); font-size: .82rem; box-shadow: 0 12px 28px rgba(15,23,42,.25); }
-    @keyframes mascotBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
     .assistant-fab { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; transition: transform .2s ease; max-width: min(420px, 92vw); }
     .assistant-fab.is-dragging { transition: none; }
-    .assistant-fab.is-dragging .ai-fab { cursor: grabbing; }
     .assistant-fab[hidden] { display: none !important; }
-    .ai-fab { width: 60px; height: 60px; border-radius: 1.5rem; display: inline-flex; align-items: center; justify-content: center; border: none; background: linear-gradient(135deg, rgba(13,110,253,.9), rgba(111,66,193,.92)); color: #fff; box-shadow: 0 18px 35px rgba(15,23,42,.35); position: relative; transition: transform .25s ease, box-shadow .25s ease; cursor: grab; touch-action: none; }
-    .ai-fab:focus-visible { outline: 3px solid rgba(255,255,255,.65); outline-offset: 3px; }
-    .ai-fab:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 22px 45px rgba(15,23,42,.38); }
-    .ai-fab i { font-size: 1.8rem; }
-    .ai-fab-indicator { position: absolute; inset: 6px; border-radius: inherit; border: 2px solid rgba(255,255,255,.7); opacity: 0; pointer-events: none; transition: opacity .3s ease; animation: pulseGlow 1.8s ease-in-out infinite; }
-    .ai-fab.has-update .ai-fab-indicator { opacity: 1; }
-    @keyframes pulseGlow { 0%,100% { transform: scale(.95); opacity: .4; } 50% { transform: scale(1.08); opacity: .9; } }
     .assistant-panel { width: min(360px, 92vw); max-height: min(520px, 78vh); border-radius: 1.2rem; overflow: hidden; background: var(--bs-body-bg); border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); box-shadow: 0 28px 56px rgba(15,23,42,.45); display: flex; flex-direction: column; transform-origin: bottom right; animation: sectionFade .25s ease; }
     .assistant-panel header { padding: .85rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.16)); border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 80%, transparent); cursor: grab; touch-action: none; }
     .assistant-panel header button { cursor: pointer; }
@@ -242,6 +229,18 @@
     .assistant-panel .assistant-input { margin-top: 0; }
     .assistant-panel footer { padding: .75rem 1rem; border-top: 1px solid color-mix(in srgb, var(--bs-border-color) 75%, transparent); background: var(--bs-body-bg); }
     .assistant-launch-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .65rem; background: color-mix(in srgb, var(--bs-primary) 18%, transparent); border-radius: .75rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; }
+    #legendaryCard { position: relative; overflow: hidden; }
+    #legendaryCard::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 20%, rgba(255,193,7,.12), transparent 55%), radial-gradient(circle at 80% 0%, rgba(13,110,253,.12), transparent 60%); pointer-events: none; opacity: .85; }
+    .legendary-stage { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 1rem; border-radius: 1.1rem; background: color-mix(in srgb, var(--bs-secondary-bg) 90%, transparent); border: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); min-height: 128px; text-align: center; }
+    .legendary-pokemon { font-size: 2rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .legendary-hint { font-size: .85rem; }
+    .legendary-controls { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: .6rem; justify-content: center; margin-top: 1rem; }
+    .legendary-controls .btn { border-radius: .85rem; min-width: 150px; }
+    .legendary-log { position: relative; z-index: 1; font-size: .85rem; min-height: 1.4em; text-align: center; }
+    .legendary-dex { position: relative; z-index: 1; margin: 1.25rem 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+    .legendary-dex li { padding: .35rem .85rem; border-radius: 999px; font-size: .75rem; letter-spacing: .05em; border: 1px solid color-mix(in srgb, var(--bs-border-color) 65%, transparent); background: color-mix(in srgb, var(--bs-body-bg) 92%, transparent); }
+    .legendary-dex li.captured { border-color: rgba(255,193,7,.65); background: rgba(255,193,7,.12); color: rgba(255,193,7,.95); font-weight: 600; }
+    .legendary-dex li.is-locked { opacity: .55; font-style: italic; }
     body.theme-neo { --exp-accent: #0d6efd; }
     body.theme-aurora { --exp-accent: #6f42c1; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(111,66,193,.25), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(32,201,151,.2), transparent); }
     body.theme-midnight { --exp-accent: #20c997; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(32,201,151,.3), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(13,110,253,.2), transparent); }
@@ -254,9 +253,8 @@
     .reward-toast { position: fixed; left: 50%; bottom: 3rem; transform: translateX(-50%) translateY(120%); background: linear-gradient(135deg, rgba(111,66,193,.95), rgba(32,201,151,.95)); color: #fff; padding: .75rem 1.25rem; border-radius: 999px; box-shadow: 0 18px 35px rgba(23,35,63,.32); z-index: 1300; transition: transform .4s ease, opacity .4s ease; opacity: 0; font-size: .85rem; letter-spacing: .04em; }
     .reward-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     @media (max-width: 768px) {
-      #mascotAssistant { right: .75rem; left: .75rem; bottom: 1rem; justify-content: space-between; }
-      .mascot-bubble { max-width: 70%; }
       .exp-section { padding: .85rem; }
+      .assistant-panel { width: min(100%, 92vw); }
     }
     .ai-output { background: var(--bs-body-bg); border-radius: 1rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); padding: 1rem; box-shadow: 0 10px 26px rgba(13,110,253,.06); }
     .ai-output header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
@@ -1222,13 +1220,13 @@
                   <i class="bi bi-robot text-primary fs-5"></i>
                   <h5 class="mb-0">AI Navigator</h5>
                 </div>
-                <span class="assistant-launch-chip"><i class="bi bi-rocket-takeoff"></i> Floating panel</span>
+                <span class="assistant-launch-chip"><i class="bi bi-arrows-move"></i> Docked panel</span>
               </div>
-              <p class="small text-secondary mb-3">Ikon robot melayang di pojok kanan bawah. Tekan untuk membuka chat real time yang bisa menjawab pertanyaan, kasih rute fitur, dan menuliskan tips suara.</p>
+              <p class="small text-secondary mb-3">Buka panel chat dari tombol di bawah. Panel akan muncul di pojok layar, bisa digeser, dan histori percakapan dapat digulir tanpa menutup konversi.</p>
               <ul class="small ps-3 mb-3">
                 <li>Minta bantuan: “buka donasi”, “cari subtitle Inggris”, atau “buka tab Profil”.</li>
-                <li>Chat akan mengetik jawabannya secara langsung lengkap dengan langkah lanjutan.</li>
-                <li>Shortcut ke walkthrough & FAQ tersedia langsung dari percakapan.</li>
+                <li>Jawaban AI tampil real time lengkap dengan langkah lanjutan yang mudah diikuti.</li>
+                <li>Shortcut ke walkthrough, FAQ, dan kontrol suara tersedia di dalam percakapan.</li>
               </ul>
               <div class="d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-primary assistant-launcher" id="assistantLaunchBtn"><i class="bi bi-robot me-1"></i>Buka AI Navigator</button>
@@ -1259,6 +1257,29 @@
               <div id="konamiSecret" class="alert alert-warning mt-3 small" hidden>
                 ↑↑↓↓←→←→BA berhasil! Bonus XP sudah ditambahkan.
               </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm mt-4" id="legendaryCard" hidden aria-hidden="true">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-lightning-charge-fill text-danger fs-5"></i>
+                  <h5 class="mb-0">Legendary Catch Challenge</h5>
+                </div>
+                <span class="badge text-bg-secondary" id="legendaryStatusBadge">Terkunci</span>
+              </div>
+              <p class="small text-secondary mb-3">Capai Level 5 (30000 XP) untuk membuka hadiah khusus: mini-game lempar Pokéball berisi Pokémon legenda acak.</p>
+              <div class="legendary-stage" id="legendaryStage" role="group" aria-live="polite" tabindex="0">
+                <div class="legendary-pokemon" id="legendaryPokemon">???</div>
+                <div class="legendary-hint text-secondary" id="legendaryHint">Lengkapi XP dulu untuk memulai perburuan.</div>
+              </div>
+              <div class="legendary-controls">
+                <button type="button" class="btn btn-danger" id="legendaryThrowBtn" disabled><i class="bi bi-record-fill me-1"></i>Lempar Pokéball</button>
+                <button type="button" class="btn btn-outline-light" id="legendaryShuffleBtn" disabled><i class="bi bi-shuffle me-1"></i>Pokemon Berikutnya</button>
+              </div>
+              <div class="legendary-log text-secondary" id="legendaryLog">Belum ada aksi.</div>
+              <ul class="legendary-dex" id="legendaryDexList" aria-label="Legendary Dex"></ul>
             </div>
           </div>
         </div>
@@ -1512,7 +1533,7 @@
               <p>Atur tema, musik adaptif, voice command, dan buka AI Navigator langsung dari Experience Hub.</p>
               <ul>
                 <li>Aktifkan musik adaptif atau voice navigation untuk kontrol hands-free.</li>
-                <li>Tekan ikon robot untuk chat cepat dan pintasan walkthrough.</li>
+                <li>Buka AI Navigator lewat tombol di Experience Hub untuk chat cepat dan pintasan walkthrough.</li>
               </ul>
               <div class="chip-group">
                 <span class="chip">Voice</span>
@@ -1570,11 +1591,7 @@
       <button type="button" class="btn btn-light" id="endingStayBtn"><i class="bi bi-heart-fill me-1"></i> Tutup animasi</button>
     </div>
   </div>
-  <div id="mascotAssistant" hidden>
-    <div class="mascot-bubble" id="mascotMessage">Halo! Aku Echo siap bantu.</div>
-    <div class="mascot-avatar" role="img" aria-label="Maskot AI Echo">🤖</div>
-  </div>
-  <div class="assistant-fab" id="assistantFab">
+  <div class="assistant-fab" id="assistantFab" hidden>
     <div class="assistant-panel shadow-lg" id="assistantPanel" hidden>
       <header>
         <div class="title"><span class="status-dot"></span> AI Navigator</div>
@@ -1590,10 +1607,6 @@
       </div>
       <footer class="small text-secondary">Tip: ketik “/faq” atau “/walkthrough” untuk pintasan cepat.</footer>
     </div>
-    <button type="button" class="ai-fab" id="assistantToggle" aria-label="Buka AI Navigator">
-      <span class="ai-fab-indicator" id="assistantPulse"></span>
-      <i class="bi bi-robot"></i>
-    </button>
   </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
 
@@ -1968,6 +1981,15 @@
   const miniTime = $('#miniTime');
   const miniTitle = $('#miniTitle');
   const miniSubtitle = $('#miniSubtitle');
+  const legendaryCard = $('#legendaryCard');
+  const legendaryStatusBadge = $('#legendaryStatusBadge');
+  const legendaryStage = $('#legendaryStage');
+  const legendaryPokemon = $('#legendaryPokemon');
+  const legendaryHint = $('#legendaryHint');
+  const legendaryThrowBtn = $('#legendaryThrowBtn');
+  const legendaryShuffleBtn = $('#legendaryShuffleBtn');
+  const legendaryLog = $('#legendaryLog');
+  const legendaryDexList = $('#legendaryDexList');
   const subtitleBtn = $('#subtitleBtn');
   const subtitleLang = $('#subtitleLang');
   const subtitleAuto = $('#subtitleAuto');
@@ -2241,6 +2263,28 @@
     }
   });
 
+  legendaryThrowBtn?.addEventListener('click', handleLegendaryThrow);
+  legendaryShuffleBtn?.addEventListener('click', () => shuffleLegendary());
+  if (legendaryStage) {
+    legendaryStage.addEventListener('click', () => {
+      if (!state.experience.legendaryUnlocked || state.experience.legendarySecret) return;
+      legendarySecretCounter += 1;
+      clearTimeout(legendarySecretTimer);
+      legendarySecretTimer = window.setTimeout(() => { legendarySecretCounter = 0; }, 900);
+      if (legendarySecretCounter >= 5) {
+        legendarySecretCounter = 0;
+        revealLegendarySecret();
+      }
+    });
+    legendaryStage.addEventListener('keydown', (evt) => {
+      if (!state.experience.legendaryUnlocked) return;
+      if (evt.key === 'Enter' || evt.key === ' ') {
+        evt.preventDefault();
+        shuffleLegendary();
+      }
+    });
+  }
+
   document.addEventListener('keydown', (evt) => {
     konamiTracker(evt.key);
     if (evt.code === 'Space' && !(evt.target instanceof HTMLInputElement) && !(evt.target instanceof HTMLTextAreaElement)) {
@@ -2276,7 +2320,11 @@
     level: 1,
     progress: 0,
     badges: ['welcome'],
-    highScore: 0
+    highScore: 0,
+    legendaryUnlocked: false,
+    legendaryDex: [],
+    legendarySecret: false,
+    legendaryTarget: ''
   };
 
   const state = {
@@ -2359,6 +2407,31 @@
       label: 'Navigator Pro',
       xp: 18,
       description: 'Manfaatkan slash command cepat di AI Navigator.'
+    },
+    maxed: {
+      label: 'Mythic Level',
+      xp: 300,
+      description: 'Capai Level 5 (30000 XP) dan buka Legendary Catch Challenge.'
+    },
+    legendary: {
+      label: 'Legendary Catch',
+      xp: 220,
+      description: 'Tangkap Pokémon legenda pertama dari hadiah Legendary Catch.'
+    },
+    mythic: {
+      label: 'Mythic Hunter',
+      xp: 420,
+      description: 'Kumpulkan minimal lima legenda berbeda di Legendary Dex.'
+    },
+    apex: {
+      label: 'Apex Dex',
+      xp: 600,
+      description: 'Lengkapi seluruh Legendary Dex dan raih penghujung petualangan.'
+    },
+    easter: {
+      label: 'Easter Whisper',
+      xp: 180,
+      description: 'Temukan easter egg rahasia yang tersembunyi di panggung legenda.'
     }
   };
 
@@ -2378,19 +2451,21 @@
     return meta.description || 'Eksplor fitur lainnya untuk membuka badge ini.';
   };
 
+  const LEGENDARY_THRESHOLD = 30000;
+
   const avatarLevels = [
     { threshold: 0, emoji: '🎧', title: 'Rookie', mood: 'Pendatang baru yang penasaran.' },
-    { threshold: 120, emoji: '🎶', title: 'Explorer', mood: 'Explorer audio dengan telinga tajam.' },
-    { threshold: 260, emoji: '🪩', title: 'Mixer', mood: 'Mixer retro yang lihai menyusun playlist.' },
-    { threshold: 450, emoji: '🚀', title: 'Legend', mood: 'Legenda streaming. Semua fitur sudah kamu kuasai.' },
-    { threshold: 700, emoji: '🌌', title: 'Cosmic', mood: 'Kurator kosmik. Maskot kami takjub setiap kamu muncul.', aura: 'glow' }
+    { threshold: 600, emoji: '🎶', title: 'Beat Rider', mood: 'Semakin luwes mengikuti ritme converter.' },
+    { threshold: 3000, emoji: '🪩', title: 'Synth Virtuoso', mood: 'Mixer retro yang lihai meracik playlist.' },
+    { threshold: 12000, emoji: '🚀', title: 'Starlight Pilot', mood: 'Navigator audio yang melesat lintas galaksi.' },
+    { threshold: LEGENDARY_THRESHOLD, emoji: '🌠', title: 'Mythic Legend', mood: 'Legenda sejati. Hadiah rahasia menanti petualanganmu.', aura: 'glow' }
   ];
 
   const mascotPhrases = {
     default: [
-      'Halo! Aku Echo siap nemenin sesi convert kamu. 👋',
-      'Butuh tips? Ketik di AI Navigator ya!',
-      'Coba main Neo Runner sebentar biar otak segar. 🏃‍♂️'
+      'Navigator siap nemenin sesi convert kamu. 👋',
+      'Butuh tips? Coba tanya di AI Navigator ya!',
+      'Rehat dulu yuk dengan main Neo Runner sebentar. 🏃‍♂️'
     ],
     xp: [
       'XP kamu naik! Avatar makin semangat nih.',
@@ -2417,6 +2492,31 @@
       'Voice navigation aktif, captain! 🎙️'
     ]
   };
+
+  const legendaryRoster = [
+    'Mewtwo',
+    'Lugia',
+    'Ho-Oh',
+    'Rayquaza',
+    'Groudon',
+    'Kyogre',
+    'Dialga',
+    'Palkia',
+    'Giratina',
+    'Reshiram',
+    'Zekrom',
+    'Xerneas',
+    'Yveltal',
+    'Solgaleo',
+    'Lunala',
+    'Zacian',
+    'Zamazenta',
+    'Eternatus'
+  ];
+
+  let legendaryCurrent = '';
+  let legendarySecretCounter = 0;
+  let legendarySecretTimer = null;
 
   let rewardToastTimer = null;
   let mascotTimer = null;
@@ -2468,6 +2568,145 @@
     rewardToast.classList.add('show');
     clearTimeout(rewardToastTimer);
     rewardToastTimer = window.setTimeout(() => rewardToast.classList.remove('show'), 2600);
+  };
+
+  const randomLegendary = () => legendaryRoster[Math.floor(Math.random() * legendaryRoster.length)];
+
+  const updateLegendaryDexUi = () => {
+    if (!legendaryDexList) return;
+    const dex = new Set(state.experience.legendaryDex || []);
+    legendaryDexList.innerHTML = '';
+    legendaryRoster.forEach((name) => {
+      const item = document.createElement('li');
+      const captured = dex.has(name);
+      item.textContent = captured ? name : '???';
+      item.className = captured ? 'captured' : 'is-locked';
+      item.setAttribute('aria-label', captured ? `${name} tertangkap` : `${name} belum tertangkap`);
+      legendaryDexList.appendChild(item);
+    });
+  };
+
+  const ensureLegendaryTarget = () => {
+    if (legendaryCurrent && legendaryRoster.includes(legendaryCurrent)) return legendaryCurrent;
+    const stored = state.experience.legendaryTarget;
+    if (stored && legendaryRoster.includes(stored)) {
+      legendaryCurrent = stored;
+      return legendaryCurrent;
+    }
+    const next = randomLegendary();
+    legendaryCurrent = next;
+    state.experience.legendaryTarget = next;
+    persistState();
+    return next;
+  };
+
+  const updateLegendaryUi = (points = Number(state.experience.points) || 0) => {
+    if (!legendaryCard) return;
+    const unlocked = points >= LEGENDARY_THRESHOLD || state.experience.legendaryUnlocked;
+    if (!unlocked) {
+      legendaryCard.hidden = true;
+      legendaryCard.setAttribute('aria-hidden', 'true');
+      if (legendaryStatusBadge) {
+        legendaryStatusBadge.className = 'badge text-bg-secondary';
+        legendaryStatusBadge.textContent = 'Terkunci';
+      }
+      if (legendaryPokemon) legendaryPokemon.textContent = '???';
+      if (legendaryHint) legendaryHint.textContent = 'Lengkapi XP dulu untuk memulai perburuan.';
+      legendaryThrowBtn?.setAttribute('disabled', '');
+      legendaryShuffleBtn?.setAttribute('disabled', '');
+      if (legendaryLog) legendaryLog.textContent = 'Belum ada aksi.';
+      if (legendaryDexList) legendaryDexList.innerHTML = '';
+      return;
+    }
+    legendaryCard.hidden = false;
+    legendaryCard.setAttribute('aria-hidden', 'false');
+    const dex = new Set(state.experience.legendaryDex || []);
+    if (legendaryStatusBadge) {
+      const variant = dex.size >= legendaryRoster.length ? 'text-bg-success' : dex.size ? 'text-bg-warning' : 'text-bg-info';
+      legendaryStatusBadge.className = `badge ${variant}`;
+      legendaryStatusBadge.textContent = `Tertangkap ${dex.size}/${legendaryRoster.length}`;
+    }
+    const current = ensureLegendaryTarget();
+    if (legendaryPokemon) legendaryPokemon.textContent = current;
+    if (legendaryHint) legendaryHint.textContent = 'Lempar Pokéball atau ganti target kapan saja.';
+    legendaryThrowBtn?.removeAttribute('disabled');
+    legendaryShuffleBtn?.removeAttribute('disabled');
+    updateLegendaryDexUi();
+    if (legendaryLog && (!legendaryLog.textContent || legendaryLog.textContent === 'Belum ada aksi.')) {
+      legendaryLog.textContent = `Target pertama: ${current}.`;
+    }
+  };
+
+  const handleLegendaryUnlock = (points) => {
+    if (points < LEGENDARY_THRESHOLD || state.experience.legendaryUnlocked) return;
+    state.experience.legendaryUnlocked = true;
+    showRewardToast('Legendary Catch Challenge terbuka!');
+    showConfetti(40, true);
+    awardBadge('maxed');
+    persistState();
+  };
+
+  const shuffleLegendary = (announce = true) => {
+    if (!state.experience.legendaryUnlocked) return;
+    let next = randomLegendary();
+    if (legendaryCurrent) {
+      let guard = 0;
+      while (next === legendaryCurrent && guard < 6) {
+        next = randomLegendary();
+        guard += 1;
+      }
+    }
+    legendaryCurrent = next;
+    state.experience.legendaryTarget = next;
+    persistState();
+    if (legendaryPokemon) legendaryPokemon.textContent = next;
+    if (announce && legendaryLog) legendaryLog.textContent = `Target berikutnya: ${next}.`;
+    updateLegendaryDexUi();
+  };
+
+  const handleLegendaryThrow = () => {
+    if (!state.experience.legendaryUnlocked) return;
+    const target = ensureLegendaryTarget();
+    legendaryThrowBtn?.setAttribute('aria-busy', 'true');
+    legendaryThrowBtn?.setAttribute('disabled', '');
+    const success = Math.random() < 0.68;
+    if (success) {
+      const dex = new Set(state.experience.legendaryDex || []);
+      const isNew = !dex.has(target);
+      dex.add(target);
+      state.experience.legendaryDex = Array.from(dex);
+      const xpGain = isNew ? 720 : 220;
+      const reason = `Menangkap ${target}`;
+      incrementPoints(xpGain, reason, isNew ? { badge: 'legendary' } : {});
+      if (dex.size >= 5) awardBadge('mythic');
+      if (dex.size >= legendaryRoster.length) awardBadge('apex');
+      showConfetti(42, true);
+      showRewardToast(`Berhasil menangkap ${target}!`);
+      if (legendaryLog) legendaryLog.textContent = `Berhasil menangkap ${target}!`;
+      updateLegendaryDexUi();
+      persistState();
+    } else if (legendaryLog) {
+      legendaryLog.textContent = `${target} menghindar! Coba lagi.`;
+    }
+    window.setTimeout(() => {
+      legendaryThrowBtn?.removeAttribute('aria-busy');
+      legendaryThrowBtn?.removeAttribute('disabled');
+      shuffleLegendary(false);
+      if (legendaryLog) legendaryLog.textContent = `Target berikutnya: ${legendaryCurrent}.`;
+    }, 900);
+  };
+
+  const revealLegendarySecret = () => {
+    if (!state.experience.legendaryUnlocked || state.experience.legendarySecret) return;
+    state.experience.legendarySecret = true;
+    clearTimeout(legendarySecretTimer);
+    legendarySecretCounter = 0;
+    legendarySecretTimer = null;
+    awardBadge('easter');
+    showRewardToast('Easter egg ditemukan!');
+    showConfetti(30, true);
+    if (legendaryLog) legendaryLog.textContent = 'Easter egg terbuka! Bonus rahasia ditambahkan.';
+    incrementPoints(500, 'Easter egg legenda');
   };
 
   const renderBadges = () => {
@@ -2641,6 +2880,8 @@
     if (dynamicAvatar) {
       dynamicAvatar.setAttribute('aria-label', `Avatar level ${avatarLevelBadge ? avatarLevelBadge.textContent : ''}`.trim());
     }
+    handleLegendaryUnlock(points);
+    updateLegendaryUi(points);
     renderLevelMilestones(points);
     renderBadges();
   };
@@ -2669,7 +2910,7 @@
   const incrementPoints = (amount = 0, reason = '', opts = {}) => {
     if (!Number.isFinite(amount) || amount <= 0) return;
     const prev = Number(state.experience.points) || 0;
-    state.experience.points = Math.min(9999, Math.round(prev + amount));
+    state.experience.points = Math.min(100000, Math.round(prev + amount));
     if (typeof opts.highScore === 'number') {
       state.experience.highScore = Math.max(Number(state.experience.highScore) || 0, opts.highScore);
     }
@@ -3131,6 +3372,7 @@
 
   const openAssistantPanel = () => {
     if (!assistantPanel) return;
+    assistantFab?.removeAttribute('hidden');
     assistantPanel.hidden = false;
     assistantPanel.setAttribute('aria-hidden', 'false');
     assistantToggle?.setAttribute('aria-expanded', 'true');
@@ -3144,6 +3386,7 @@
     assistantPanel.hidden = true;
     assistantPanel.setAttribute('aria-hidden', 'true');
     assistantToggle?.setAttribute('aria-expanded', 'false');
+    assistantFab?.setAttribute('hidden', '');
   };
 
   const addAssistantMessage = (text, role = 'bot', opts = {}) => {
@@ -3267,7 +3510,7 @@
   const ensureAssistantWelcome = () => {
     if (!assistantMessages) return;
     if (!state.assistantHistory.length) {
-      addAssistantMessage('Halo! Aku Echo Assistant. Tanyakan apa saja soal fitur converter ini.', 'bot');
+      addAssistantMessage('Navigator siap bantu. Tanyakan apa saja soal fitur converter ini.', 'bot');
     } else {
       state.assistantHistory.forEach((msg) => addAssistantMessage(msg.text, msg.role));
     }
@@ -4342,6 +4585,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     state.adminBearer = s.adminBearer || '';
     state.accessibility = { ...defaultAccessibility, ...(s.accessibility || {}) };
     state.experience = { ...defaultExperience, ...(s.experience || {}) };
+    if (!Array.isArray(state.experience.legendaryDex)) state.experience.legendaryDex = [];
+    if (typeof state.experience.legendaryTarget !== 'string') state.experience.legendaryTarget = '';
+    legendaryCurrent = state.experience.legendaryTarget || '';
     state.narratorEnabled = !!s.narratorEnabled;
     $('#backendUrl').value = state.backendUrl;
     updateAccessibilityControls();
