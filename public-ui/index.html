@@ -217,6 +217,17 @@
     #customEndingOverlay.show { opacity: 1; pointer-events: auto; }
     #customEndingOverlay .ending-card { max-width: 420px; border-radius: 1.2rem; padding: 1.5rem; background: rgba(32,201,151,.18); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 20px 35px rgba(23,35,63,.52); }
     .assistant-fab { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1100; display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; transition: transform .2s ease; max-width: min(420px, 92vw); }
+    .share-app-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+    .share-app-buttons .btn { border-radius: .75rem; display: inline-flex; align-items: center; gap: .35rem; padding-inline: .85rem; }
+    .share-app-buttons .btn i { font-size: 1rem; }
+    .rating-wrap { border-radius: .9rem; border: 1px dashed color-mix(in srgb, var(--bs-border-color) 65%, transparent); background: color-mix(in srgb, var(--bs-primary) 10%, transparent); padding: .75rem 1rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+    html[data-bs-theme='dark'] .rating-wrap { background: color-mix(in srgb, rgba(13,110,253,.35) 18%, transparent); border-color: color-mix(in srgb, rgba(199,178,255,.6) 65%, transparent); box-shadow: inset 0 0 0 1px rgba(13,110,253,.18); }
+    .rating-stars { display: inline-flex; gap: .45rem; }
+    .rating-stars .btn-rating { width: 2.3rem; height: 2.3rem; border-radius: .85rem; border: 1px solid color-mix(in srgb, var(--bs-border-color) 55%, transparent); background: color-mix(in srgb, var(--bs-body-bg) 90%, transparent); color: var(--bs-warning); display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; font-weight: 600; transition: transform .15s ease, box-shadow .2s ease, background .2s ease; }
+    .rating-stars .btn-rating:focus-visible { outline: 3px solid color-mix(in srgb, var(--bs-warning) 35%, transparent); outline-offset: 2px; }
+    .rating-stars .btn-rating:hover { transform: translateY(-2px); }
+    .rating-stars .btn-rating.active { background: color-mix(in srgb, var(--bs-warning) 18%, transparent); box-shadow: 0 8px 18px rgba(255,193,7,.25); color: #4c3700; border-color: color-mix(in srgb, var(--bs-warning) 45%, transparent); }
+    html[data-bs-theme='dark'] .rating-stars .btn-rating.active { color: #fff7db; box-shadow: 0 8px 18px rgba(255,193,7,.35); }
     .assistant-fab.is-dragging { transition: none; }
     .assistant-fab[hidden] { display: none !important; }
     .assistant-toggle { position: relative; display: inline-flex; align-items: center; gap: .6rem; border: 0; border-radius: 999px; padding: .55rem .9rem .55rem .6rem; background: linear-gradient(135deg, rgba(13,110,253,.92), rgba(111,66,193,.9)); color: #fff; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 18px 40px rgba(15,23,42,.35); cursor: pointer; touch-action: none; }
@@ -896,7 +907,27 @@
                       <input type="text" class="form-control" id="shareLinkInput" readonly>
                       <button class="btn btn-outline-secondary" id="openShareBtn" type="button" aria-label="Buka link share"><i class="bi bi-arrow-up-right-square"></i></button>
                     </div>
+                    <div class="share-app-buttons mt-2" id="shareAppButtons">
+                      <span class="small text-secondary">Kirim cepat:</span>
+                      <button class="btn btn-outline-success btn-sm" type="button" data-app="wa"><i class="bi bi-whatsapp"></i> WhatsApp</button>
+                      <button class="btn btn-outline-info btn-sm" type="button" data-app="tg"><i class="bi bi-telegram"></i> Telegram</button>
+                    </div>
                     <div class="small text-secondary mt-2" id="shareInfo"></div>
+                  </div>
+
+                  <div id="ratingWrap" class="mt-3 rating-wrap" hidden>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <strong>Beri rating hasil</strong>
+                      <span class="badge text-bg-secondary" id="ratingSummary">Belum ada rating</span>
+                      <span class="ms-auto small text-success" id="ratingThanks" hidden>Terima kasih!</span>
+                    </div>
+                    <div class="rating-stars mt-3" role="group" aria-label="Beri rating hasil konversi">
+                      <button class="btn btn-rating" type="button" data-rating="1" aria-label="1 bintang">★</button>
+                      <button class="btn btn-rating" type="button" data-rating="2" aria-label="2 bintang">★</button>
+                      <button class="btn btn-rating" type="button" data-rating="3" aria-label="3 bintang">★</button>
+                      <button class="btn btn-rating" type="button" data-rating="4" aria-label="4 bintang">★</button>
+                      <button class="btn btn-rating" type="button" data-rating="5" aria-label="5 bintang">★</button>
+                    </div>
                   </div>
 
                   <div id="equalizerWrap" class="mt-3" hidden>
@@ -1717,16 +1748,32 @@
   const savedSection = localStorage.getItem('app:activeSection');
   if (!setActiveSection(savedSection)) setActiveSection('converter');
 
+  setTimeout(() => { tryPrefillClipboard({ forceToast: false, overrideExisting: false }); }, 600);
+  window.addEventListener('focus', () => { tryPrefillClipboard({ forceToast: false, overrideExisting: false }); });
+  document.addEventListener('keydown', (event) => {
+    if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'v'){
+      if (urlInput && document.activeElement !== urlInput){
+        urlInput.focus();
+      }
+    }
+  });
+
   const previewCard = $('#previewCard');
   const previewPlayer = $('#previewPlayer');
   const qrCanvas = $('#downloadQr');
   const qrWrap = $('#qrWrap');
   const shareWrap = $('#shareWrap');
+  const urlInput = $('#url');
   const shareInfo = $('#shareInfo');
   const shareLinkInput = $('#shareLinkInput');
   const shareBtn = $('#shareBtn');
   const copyShareBtn = $('#copyShareBtn');
   const openShareBtn = $('#openShareBtn');
+  const shareAppButtons = $$('#shareAppButtons button[data-app]');
+  const ratingWrap = $('#ratingWrap');
+  const ratingSummary = $('#ratingSummary');
+  const ratingThanks = $('#ratingThanks');
+  const ratingButtons = $$('#ratingWrap button[data-rating]');
   const speedTipButtons = $$('#speedTips .tip-pill');
   const speedTipHint = $('#speedTipHint');
   const donationButtons = $$('#donationButtons .btn-donation');
@@ -4205,6 +4252,10 @@
   let lastAiHookData = null;
   let lastAiVisualData = null;
   let lastAiPlanData = null;
+  let currentRatingKey = '';
+  let ratingStore = loadRatingStore();
+  let clipboardToastShown = false;
+  let lastClipboardValue = '';
   const backgroundJobsState = new Map();
   const backgroundTimers = new Map();
   const BACKGROUND_STORE_KEY = 'ytmp3.background.jobs.v1';
@@ -4465,6 +4516,8 @@
     if (shareWrap) shareWrap.hidden = true;
     if (shareLinkInput) shareLinkInput.value = '';
     if (shareInfo) shareInfo.textContent = '';
+    updateShareAppTargets();
+    resetRatingUi();
     currentDownloadUrl = '';
     currentDownloadName = '';
     currentShareUrl = '';
@@ -4525,6 +4578,9 @@
     if (shareWrap) shareWrap.hidden = false;
     if (shareLinkInput) shareLinkInput.value = currentShareUrl;
     if (shareInfo) shareInfo.textContent = 'Bagikan link atau scan QR untuk membuka mini player.';
+    updateShareAppTargets();
+    currentRatingKey = ratingKeyFrom(absoluteUrl, meta);
+    updateRatingUi();
     renderQr(qrCanvas, qrWrap, currentShareUrl);
     if (equalizerWrap) equalizerWrap.hidden = false;
     refreshEqUi();
@@ -4877,6 +4933,165 @@ $('#queueList')?.addEventListener('click', (e) => {
     return str.replace(/[\\/:*?"<>|\r\n]+/g,'').replace(/\s+/g,' ').trim();
   }
 
+  function cleanVideoTitle(rawTitle = ''){
+    let result = String(rawTitle || '');
+    const patternList = [
+      /\s*\((?:official|official\s+video|official\s+audio|lyrics?|lyric\s+video|audio|video|visualizer|mv|music\s+video|color\s+coded|teaser|live).*?\)/gi,
+      /\s*\[(?:official|official\s+video|lyrics?|audio|mv|music\s+video|visualizer|live).*?\]/gi,
+      /\s*\b(?:official\s+video|lyrics?|audio\s+only|full\s+album)\b/gi,
+      /\s*\b(?:HD|4K|1080p|720p)\b/gi,
+    ];
+    patternList.forEach((re) => {
+      result = result.replace(re, '');
+    });
+    result = result.replace(/\s+-\s+(?:official|lyrics?|audio)/gi, '');
+    result = result.replace(/\s{2,}/g, ' ').trim();
+    return result;
+  }
+
+  function looksLikeYoutubeUrl(text = ''){
+    const value = String(text || '').trim();
+    if (!value) return false;
+    try {
+      const parsed = new URL(value);
+      return /(?:youtube\.com|youtu\.be)$/i.test(parsed.hostname) || /youtube|youtu\.be/i.test(parsed.hostname);
+    } catch {
+      return /https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)/i.test(value);
+    }
+  }
+
+  const RATING_STORE_KEY = 'ytmp3.ratings.v1';
+
+  function loadRatingStore(){
+    try {
+      const raw = localStorage.getItem(RATING_STORE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {}
+    return {};
+  }
+
+  function persistRatingStore(){
+    try {
+      localStorage.setItem(RATING_STORE_KEY, JSON.stringify(ratingStore));
+    } catch {}
+  }
+
+  function ratingKeyFrom(downloadUrl, meta = {}){
+    if (downloadUrl) return downloadUrl;
+    if (meta.fileName) return `file:${meta.fileName}`;
+    if (meta.baseName) return `base:${meta.baseName}`;
+    return null;
+  }
+
+  function getRatingEntry(key){
+    if (!key) return null;
+    if (!ratingStore[key]) {
+      ratingStore[key] = { sum: 0, count: 0, user: 0 };
+    }
+    return ratingStore[key];
+  }
+
+  function formatRatingSummary(entry){
+    if (!entry || !entry.count) return 'Belum ada rating';
+    const average = entry.sum / entry.count;
+    return `${average.toFixed(1)} dari ${entry.count} rating`;
+  }
+
+  function updateRatingUi(){
+    if (!ratingWrap) return;
+    if (!currentRatingKey){
+      ratingWrap.hidden = true;
+      return;
+    }
+    const entry = getRatingEntry(currentRatingKey);
+    ratingWrap.hidden = false;
+    if (ratingSummary) ratingSummary.textContent = formatRatingSummary(entry);
+    if (ratingThanks) {
+      if (entry.user){
+        ratingThanks.hidden = false;
+        ratingThanks.textContent = `Terima kasih! Rating kamu: ${entry.user}/5`;
+      } else {
+        ratingThanks.hidden = true;
+      }
+    }
+    ratingButtons.forEach((btn) => {
+      const value = Number(btn.dataset.rating || 0);
+      const isActive = entry.user && value <= entry.user;
+      btn.classList.toggle('active', Boolean(isActive));
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      btn.disabled = false;
+    });
+  }
+
+  function resetRatingUi(){
+    currentRatingKey = '';
+    if (ratingWrap) ratingWrap.hidden = true;
+  }
+
+  function applyUserRating(value){
+    if (!currentRatingKey || !value) return;
+    const entry = getRatingEntry(currentRatingKey);
+    if (!entry) return;
+    if (entry.user){
+      entry.sum = Math.max(0, entry.sum - Number(entry.user));
+    } else {
+      entry.count += 1;
+    }
+    entry.user = value;
+    entry.sum += value;
+    ratingStore[currentRatingKey] = entry;
+    persistRatingStore();
+    updateRatingUi();
+    setToast('Terima kasih atas ratingnya!');
+  }
+
+  function updateShareAppTargets(){
+    if (!shareAppButtons.length) return;
+    const link = currentShareUrl;
+    const title = lastPreviewTitle || document.title;
+    shareAppButtons.forEach((btn) => {
+      const app = btn.dataset.app;
+      let target = '';
+      if (link){
+        if (app === 'wa') target = `https://wa.me/?text=${encodeURIComponent(`${title} ${link}`.trim())}`;
+        if (app === 'tg') target = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(title || 'Hasil konversi YouTube')}`;
+      }
+      if (target){
+        btn.dataset.href = target;
+        btn.disabled = false;
+        btn.setAttribute('aria-disabled', 'false');
+      } else {
+        btn.dataset.href = '';
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
+      }
+    });
+  }
+
+  async function tryPrefillClipboard({ forceToast = false, overrideExisting = false } = {}){
+    if (!urlInput || !navigator.clipboard?.readText) return;
+    try {
+      const text = (await navigator.clipboard.readText() || '').trim();
+      if (!text || text === lastClipboardValue) return;
+      if (!looksLikeYoutubeUrl(text)) return;
+      if (!overrideExisting && urlInput.value.trim()){
+        lastClipboardValue = text;
+        return;
+      }
+      urlInput.value = text;
+      lastClipboardValue = text;
+      updatePreview();
+      if (forceToast || !clipboardToastShown){
+        setToast('URL YouTube dari clipboard terpasang otomatis');
+        clipboardToastShown = true;
+      }
+    } catch (err) {
+      if (forceToast) setToast('Tidak dapat membaca clipboard');
+    }
+  }
+
   // ===== Equalizer helpers =====
   const formatGain = (value) => `${Number(value) >= 0 ? '+' : ''}${Number(value)} dB`;
 
@@ -5178,6 +5393,28 @@ $('#queueList')?.addEventListener('click', (e) => {
     window.open(currentShareUrl, '_blank', 'noopener');
   });
 
+  updateShareAppTargets();
+  if (shareAppButtons.length){
+    shareAppButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.href;
+        if (!target){ setToast('Belum ada link share'); return; }
+        window.open(target, '_blank', 'noopener');
+      });
+    });
+  }
+
+  if (ratingButtons.length){
+    ratingButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = Number(btn.dataset.rating || 0);
+        if (!value){ return; }
+        if (!currentRatingKey){ setToast('Konversi audio dulu sebelum memberi rating'); return; }
+        applyUserRating(value);
+      });
+    });
+  }
+
   const updateMiniSubtitle = () => {
     if (!miniSubtitle) return;
     const parts = [];
@@ -5272,15 +5509,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     try{
       const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
       const data = await resp.json();
-      $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = data.title;
+      const cleanedTitle = cleanVideoTitle(data.title || '');
+      $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = cleanedTitle || data.title;
       $('#previewWrap').hidden = false;
-      $('#id3Title').value = data.title;
+      $('#id3Title').value = cleanedTitle || data.title;
       $('#id3Artist').value = data.author_name || '';
-      $('#id3Album').value = data.title;
+      $('#id3Album').value = cleanedTitle || data.title;
       if (id3Genre) id3Genre.value = '';
-      $('#fileName').value = sanitizeFileName(data.title);
+      $('#fileName').value = sanitizeFileName(cleanedTitle || data.title);
       lastVideoMeta = {
-        title: data.title,
+        title: cleanedTitle || data.title,
+        rawTitle: data.title,
         author: data.author_name || '',
         thumbnail: data.thumbnail_url,
       };
@@ -5289,6 +5528,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       lastVideoMeta = {};
     }
   }
+  if (urlInput) urlInput.addEventListener('focus', () => { tryPrefillClipboard({ forceToast: false, overrideExisting: false }); });
   $('#pasteBtn').addEventListener('click', async () => {
     try { $('#url').value = (await navigator.clipboard.readText() || '').trim(); } catch {}
     $('#url').focus();
