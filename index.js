@@ -242,7 +242,40 @@ const inferKoyebBaseUrl = () => {
   return null;
 };
 
-const DEFAULT_PUBLIC_BASE_URL = inferKoyebBaseUrl();
+const inferRailwayBaseUrl = () => {
+  const directCandidates = [
+    process.env.RAILWAY_STATIC_URL,
+    process.env.RAILWAY_PUBLIC_DOMAIN,
+    process.env.RAILWAY_URL,
+  ];
+  for (const candidate of directCandidates) {
+    const normalized = normalizeBaseUrl(candidate);
+    if (normalized) return normalized;
+  }
+
+  const hostCandidates = [
+    process.env.RAILWAY_PRIVATE_DOMAIN,
+    process.env.RAILWAY_PROJECT_DOMAIN,
+  ];
+  for (const host of hostCandidates) {
+    const normalized = normalizeBaseUrl(host);
+    if (normalized) return normalized;
+  }
+
+  const fallbackName =
+    process.env.RAILWAY_SERVICE_NAME ||
+    process.env.RAILWAY_PROJECT_NAME ||
+    process.env.RAILWAY_APP_NAME;
+  if (fallbackName) {
+    const normalized = normalizeBaseUrl(`${fallbackName}.up.railway.app`);
+    if (normalized) return normalized;
+  }
+
+  return null;
+};
+
+const DEFAULT_PUBLIC_BASE_URL =
+  inferKoyebBaseUrl() || inferRailwayBaseUrl();
 
 const safeFetch = async (...args) => {
   if (!fetchImpl) {
@@ -706,17 +739,25 @@ const resolvePublicPath = (urlPath = "") => {
 const buildAbsolutePublicUrl = (path = "") => {
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
-  const base =
-    process.env.PUBLIC_BASE_URL ||
-    process.env.NOTIFY_PUBLIC_URL ||
-    process.env.APP_BASE_URL ||
-    DEFAULT_PUBLIC_BASE_URL;
-  if (!base) return path;
-  try {
-    return new URL(path, base).toString();
-  } catch {
-    return path;
+  const baseCandidates = [
+    process.env.PUBLIC_BASE_URL,
+    process.env.NOTIFY_PUBLIC_URL,
+    process.env.APP_BASE_URL,
+    process.env.RAILWAY_STATIC_URL,
+    process.env.RAILWAY_PUBLIC_DOMAIN,
+    process.env.RAILWAY_URL,
+    DEFAULT_PUBLIC_BASE_URL,
+  ];
+  for (const candidate of baseCandidates) {
+    const normalized = normalizeBaseUrl(candidate);
+    if (!normalized) continue;
+    try {
+      return new URL(path, normalized).toString();
+    } catch {
+      continue;
+    }
   }
+  return path;
 };
 
 const probeAudioStream = async (inputPath) => {

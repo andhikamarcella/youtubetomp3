@@ -53,5 +53,16 @@ Platform ini juga dapat dijalankan di [Koyeb](https://www.koyeb.com) memakai Doc
 
 Setelah berhasil, UI converter dan API akan tersedia di domain Koyeb Anda dengan dukungan PWA/offline mode sebagaimana pada deployment platform lainnya.
 
+## Deploy ke Railway
+
+Railway juga dapat menjalankan proyek ini langsung dari Dockerfile yang sama sehingga dependensi ffmpeg, Python, dan yt-dlp ikut terpasang otomatis.
+
+1. Buat project baru di [Railway](https://railway.app) dan hubungkan repository ini, lalu pilih opsi **Dockerfile** saat diminta metode build.
+2. Railway akan mengisi variabel `PORT` secara otomatis. Jika ingin URL absolut pada email/notifikasi sesuai domain Railway, Anda bisa menambahkan `PUBLIC_BASE_URL` atau `APP_BASE_URL` dengan nilai `https://${RAILWAY_PUBLIC_DOMAIN}`. Aplikasi juga akan mendeteksi `RAILWAY_STATIC_URL`/`RAILWAY_PUBLIC_DOMAIN` secara otomatis bila variabel tersebut tersedia.
+3. (Opsional) Isi konfigurasi SMTP (`NOTIFY_SMTP_*`) bila ingin notifikasi email, sama seperti pada deployment lain.
+4. Deploy. Container akan menjalankan `node index.js` dan otomatis bind ke `0.0.0.0`, sehingga Railway dapat meneruskan trafiknya ke port publik Anda.
+
+Setelah build selesai, UI converter, Experience Hub, hingga API dapat diakses di domain Railway (misalnya `https://nama-layanan.up.railway.app`).
+
 ## Lisensi
 Proyek ini dirilis di bawah lisensi MIT.
