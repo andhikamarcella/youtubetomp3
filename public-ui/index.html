@@ -2563,40 +2563,40 @@
   let recognition = null;
   let voiceActive = false;
   const runnerSpriteArt = [
-    '......####......',
-    '.....######.....',
-    '....########....',
-    '....########....',
-    '....######......',
-    '...########.....',
-    '...########.....',
-    '..##########....',
-    '..##########....',
-    '..####.######...',
-    '.####..######...',
-    '.###....######..',
-    '.###.....######.',
-    '####.....######.',
-    '###......######.',
-    '###......######.',
-    '###......######.',
-    '###......######.',
-    '###.......#####.',
-    '###.......#####.',
-    '###........####.',
-    '###........####.',
-    '###.........###.',
-    '###.........###.',
-    '###.........###.',
-    '###.........###.',
-    '###.........###.',
-    '###.........###.',
-    ' ###........##..',
-    '  ###......###..',
-    '   ##########...',
-    '    ########....',
-    '     ######.....',
-    '      ####......'
+    '........3333........',
+    '.......333333.......',
+    '......33333333......',
+    '.....3333333333.....',
+    '....333#######333...',
+    '...333##1111##333...',
+    '...333##1111##333...',
+    '...333########333...',
+    '..333##########333..',
+    '..333###2222###333..',
+    '.333###2222###3333..',
+    '.333###2222###3333..',
+    '.333###2222###333...',
+    '.333###2222###333...',
+    '.333####222####333..',
+    '..33#####22#####33..',
+    '..33#####22#####33..',
+    '..33####2222####33..',
+    '...3###222222###33..',
+    '...3###222222###3...',
+    '..3####2222#####3...',
+    '.3####2222######3...',
+    '.3###2222######33...',
+    '..###2222#####333...',
+    '..###222#####333....',
+    '...##222#####33.....',
+    '...#22#######3......',
+    '...#22######3.......',
+    '....#######3........',
+    '.....#####3.........',
+    '......####3.........',
+    '.......###..........',
+    '.......###..........',
+    '........##..........'
   ];
 
   const monsterSpriteArt = [
@@ -2630,16 +2630,21 @@
   const drawSprite = (ctx, sprite, x, baseline, color) => {
     if (!ctx || !sprite) return;
     const { art, pixelSize, height, columns } = sprite;
-    ctx.fillStyle = color;
+    const palette = typeof color === 'string' || color instanceof String ? null : color;
+    if (!palette) {
+      ctx.fillStyle = color;
+    }
     for (let row = 0; row < art.length; row += 1) {
       const line = art[row];
       for (let col = 0; col < columns; col += 1) {
         const cell = line[col] || '.';
-        if (cell === '#' || cell === '1') {
-          const px = x + col * pixelSize;
-          const py = baseline - height + row * pixelSize;
-          ctx.fillRect(px, py, pixelSize, pixelSize);
+        if (cell === '.' || cell === ' ') continue;
+        if (palette) {
+          ctx.fillStyle = palette[cell] || palette.default || palette['#'] || color || '#000';
         }
+        const px = x + col * pixelSize;
+        const py = baseline - height + row * pixelSize;
+        ctx.fillRect(px, py, pixelSize, pixelSize);
       }
     }
   };
@@ -2654,7 +2659,13 @@
       trackLine: '#6f42c1',
       stripe: 'rgba(111,66,193,0.15)',
       shadow: 'rgba(31,24,56,0.18)',
-      player: '#1f1a24',
+      player: {
+        '#': '#1f1a24',
+        '1': '#f6cda3',
+        '2': '#6f42c1',
+        '3': '#ff6f61',
+        default: '#1f1a24'
+      },
       obstacle: '#1f1a24'
     },
     dark: {
@@ -2663,7 +2674,13 @@
       trackLine: 'rgba(199,178,255,0.82)',
       stripe: 'rgba(111,66,193,0.2)',
       shadow: 'rgba(0,0,0,0.38)',
-      player: '#f6f1e7',
+      player: {
+        '#': '#f6f1e7',
+        '1': '#ffd6ad',
+        '2': '#c3b6ff',
+        '3': '#ffb56b',
+        default: '#f6f1e7'
+      },
       obstacle: '#f6f1e7'
     }
   };
@@ -2690,7 +2707,7 @@
     highScore: 0,
     playerWidth: runnerSprite.width,
     playerHeight: runnerSprite.height,
-    collider: { left: 8, right: 10, top: 16, bottom: 6 },
+    collider: { left: 12, right: 18, top: 24, bottom: 8 },
     obstacleCollider: { left: 6, right: 6, top: 4, bottom: 4 }
   };
 
