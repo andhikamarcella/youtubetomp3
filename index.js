@@ -1608,7 +1608,7 @@ const keywordScore = (text, keywords = []) => {
 
 const assistantTopicReply = {
   donation: () =>
-    "Untuk donasi tinggal klik tombol Buka Saweria. Nominal default otomatis Rp10.000 dan kamu bisa pilih Rp5.000, Rp10.000, Rp25.000, atau Rp100.000 langsung di kartu donasi neo-brutalisme. Kalau pop-up diblokir, pakai tombol manual supaya link https://saweria.co/DhikaMarcella terbuka.",
+    "Untuk donasi tinggal klik tombol Buka Saweria. Nominal default otomatis Rp10.000 dan kamu bisa pilih Rp5.000, Rp10.000, Rp25.000, atau Rp100.000 langsung di kartu donasi neo-brutalisme. Kalau pop-up diblokir, klik tombol Buka manual supaya nominal terpilih tetap terbuka di tab baru.",
   subtitle: () =>
     "Subtitle diambil dari track Indonesia dan Inggris. Tekan Ambil Subtitle, kami ambil caption resmi, auto-generated, lalu fallback ke transkrip halaman watch bila perlu. File .srt dan .txt langsung siap di Riwayat unduhan.",
   profile: () =>

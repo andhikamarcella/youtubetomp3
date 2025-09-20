@@ -1308,7 +1308,7 @@
             Buka Saweria
             <small id="donationLinkHint">Rp 10.000 siap diisi otomatis</small>
           </a>
-          <button type="button" class="btn btn-manual-donation w-100 mt-2" id="manualDonationBtn">Donasi manual Rp 5.000</button>
+          <a class="btn btn-manual-donation w-100 mt-2" id="manualDonationLink" href="https://saweria.co/DhikaMarcella?amount=10000" target="_blank" rel="noopener">Buka manual (Rp 10.000)</a>
           <div class="donation-status" id="donationStatus">Pop-up akan mencoba dibuka otomatis. Jika diblokir, gunakan tombol di atas.</div>
         </div>
       </div>
@@ -2101,7 +2101,6 @@
   'Mengirim ke background…': { en: 'Sending to background…' },
   'Browser belum mendukung text-to-speech.': { en: 'Browser does not support text-to-speech.' },
   'Browser tidak mendukung audio latar.': { en: 'Browser does not support background audio.' },
-  'Buka Saweria manual Rp5.000.': { en: 'Open Saweria manually for Rp5,000.' },
   'Caption disalin ke clipboard': { en: 'Caption copied to clipboard' },
   'Caption siap disalin': { en: 'Caption ready to copy' },
   'Clipboard tidak tersedia': { en: 'Clipboard not available' },
@@ -2218,10 +2217,10 @@
       },
     },
     {
-      pattern: /^Aktifkan pop-up atau pakai tombol manual untuk donasi /i,
+      pattern: /^Aktifkan pop-up atau gunakan tombol Buka manual untuk donasi /i,
       translate: {
         id: (value) => value,
-        en: (value) => value.replace(/^Aktifkan pop-up atau pakai tombol manual untuk donasi /i, 'Enable pop-ups or use the manual button to donate '),
+        en: (value) => value.replace(/^Aktifkan pop-up atau gunakan tombol Buka manual untuk donasi /i, 'Enable pop-ups or use the Open manually button to donate '),
       },
     },
     {
@@ -2708,7 +2707,7 @@
   const mascotAssistant = $('#mascotAssistant');
   const mascotMessage = $('#mascotMessage');
   const rewardToast = $('#rewardToast');
-  const donationManualBtn = $('#manualDonationBtn');
+  const donationManualLink = $('#manualDonationLink');
   const dynamicAvatar = $('#dynamicAvatar');
   const avatarToggle = $('#avatarToggle');
   const avatarEmoji = $('#avatarEmoji');
@@ -3022,9 +3021,30 @@
     if (donationLink) {
       donationLink.href = activeDonationUrl;
       donationLink.dataset.amount = String(nominal);
-      donationLink.setAttribute('aria-label', `Buka Saweria nominal ${label}`);
+      donationLink.setAttribute(
+        'aria-label',
+        currentLang === 'en' ? `Open Saweria with ${label}` : `Buka Saweria nominal ${label}`,
+      );
     }
-    if (donationLinkHint) donationLinkHint.textContent = `${label} siap diisi otomatis`;
+    if (donationManualLink) {
+      donationManualLink.href = activeDonationUrl;
+      const manualText = currentLang === 'en'
+        ? `Open manually (${label})`
+        : `Buka manual (${label})`;
+      donationManualLink.textContent = manualText;
+      donationManualLink.setAttribute(
+        'aria-label',
+        currentLang === 'en'
+          ? `Open Saweria manually with ${label}`
+          : `Buka Saweria manual nominal ${label}`,
+      );
+      donationManualLink.dataset.amount = String(nominal);
+    }
+    if (donationLinkHint) {
+      donationLinkHint.textContent = currentLang === 'en'
+        ? `${label} will be pre-filled automatically`
+        : `${label} siap diisi otomatis`;
+    }
     return { nominal, label, url: activeDonationUrl };
   };
 
@@ -3039,16 +3059,28 @@
     }
     if (donationStatus) {
       donationStatus.innerHTML = popup
-        ? `Terima kasih! ${label} siap dibayar di tab Saweria baru.`
-        : `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau pakai tombol manual untuk donasi Rp 5.000.`;
+        ? (currentLang === 'en'
+          ? `Thank you! ${label} is ready in the new Saweria tab.`
+          : `Terima kasih! ${label} siap dibayar di tab Saweria baru.`)
+        : (currentLang === 'en'
+          ? `Pop-up blocked. Tap the <strong>Open manually</strong> button below, amount ${label} is ready.`
+          : `Pop-up diblokir. Klik tombol <strong>Buka manual</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau tekan dan tahan untuk membuka di tab baru.`);
     }
     triggerDonationCelebration(nominal, !!popup);
-    setToast(popup ? `Terima kasih! ${label} dipilih.` : `Aktifkan pop-up atau pakai tombol manual untuk donasi ${label}.`);
+    const successMessage = currentLang === 'en'
+      ? `Thank you! ${label} selected.`
+      : `Terima kasih! ${label} dipilih.`;
+    const blockedMessage = currentLang === 'en'
+      ? `Enable pop-ups or use the Open manually button to donate ${label}.`
+      : `Aktifkan pop-up atau gunakan tombol Buka manual untuk donasi ${label}.`;
+    setToast(popup ? successMessage : blockedMessage);
   };
 
   const initialDonation = applyDonationAmount(defaultDonationAmount);
   if (donationStatus) {
-    donationStatus.innerHTML = `Nominal ${initialDonation.label} siap dimasukkan otomatis ke Saweria.`;
+    donationStatus.innerHTML = currentLang === 'en'
+      ? `Amount ${initialDonation.label} will be pre-filled automatically on Saweria.`
+      : `Nominal ${initialDonation.label} siap dimasukkan otomatis ke Saweria.`;
   }
 
   if (donationButtons.length) {
@@ -3071,24 +3103,19 @@
     });
   }
 
-  if (donationManualBtn) {
-    donationManualBtn.addEventListener('click', () => {
-      const manualAmount = 5000;
-      const manualUrl = `${donationBaseUrl}?amount=${manualAmount}`;
-      let popup = null;
-      try {
-        popup = window.open(manualUrl, '_blank', 'noopener');
-        popup?.focus?.();
-      } catch (err) {
-        console.error('Gagal membuka manual Saweria', err);
-      }
+  if (donationManualLink) {
+    donationManualLink.addEventListener('click', () => {
+      const label = rupiahFormatter.format(activeDonationAmount || defaultDonationAmount);
+      triggerDonationCelebration(activeDonationAmount || defaultDonationAmount, true);
       if (donationStatus) {
-        donationStatus.innerHTML = popup
-          ? 'Tombol manual Rp5.000 sudah terbuka di tab baru.'
-          : 'Pop-up masih diblokir. Tekan dan tahan tombol manual lalu pilih “buka tautan” untuk lanjut.';
+        donationStatus.innerHTML = currentLang === 'en'
+          ? `Manual link opened. If a new tab doesn't appear, long-press and choose “open link”. Amount ${label} is already filled in.`
+          : `Tautan manual dibuka. Jika tab baru tidak muncul, tekan dan tahan lalu pilih “buka tautan”. Nominal ${label} sudah otomatis.`;
       }
-      triggerDonationCelebration(manualAmount, !!popup);
-      setToast('Buka Saweria manual Rp5.000.');
+      const toastMessage = currentLang === 'en'
+        ? `Manual Saweria link opened (${label}).`
+        : `Buka Saweria manual (${label}).`;
+      setToast(toastMessage);
     });
   }
 
@@ -4209,7 +4236,9 @@
     if (badge === 'supporter') awardBadge('donor');
     updateMascotMood('donation');
     if (!opened && donationStatus) {
-      donationStatus.innerHTML = `Pop-up diblokir. Klik tombol <strong>Buka Saweria</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau pakai tombol manual untuk donasi Rp 5.000.`;
+      donationStatus.innerHTML = currentLang === 'en'
+        ? `Pop-up blocked. Tap the <strong>Open manually</strong> button below, amount ${label} is ready. Enable pop-ups or long-press to open in a new tab.`
+        : `Pop-up diblokir. Klik tombol <strong>Buka manual</strong> di bawah, nominal sudah otomatis ${label}. Aktifkan pop-up atau tekan dan tahan untuk membuka di tab baru.`;
     }
   };
 
@@ -5091,7 +5120,7 @@
   };
 
   const assistantKnowledge = [
-    { keywords: ['donasi', 'saweria'], reply: 'Untuk donasi, pilih nominal di kartu neo-brutalisme. Jika pop-up diblokir, gunakan tombol manual Rp5.000.' },
+    { keywords: ['donasi', 'saweria'], reply: 'Untuk donasi, pilih nominal di kartu neo-brutalisme. Jika pop-up diblokir, gunakan tombol Buka manual agar nominal terpilih tetap terbuka.' },
     { keywords: ['subtitle', 'transkrip'], reply: 'Tekan tombol Ambil subtitle. Kami akan ambil track Indonesia, Inggris, dan fallback transkrip dari halaman watch.' },
     { keywords: ['profil', 'avatar', 'xp'], reply: 'Tab Profil menampilkan avatar dinamis, XP, dan badge yang kamu kumpulkan. Buka tab Profil untuk melihat milestone dan reward.' },
     { keywords: ['offline', 'pwa'], reply: 'Klik tombol Pasang aplikasi di kanan atas supaya converter bisa dipakai offline seperti aplikasi HP.' },
