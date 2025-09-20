@@ -46,3 +46,25 @@ test('POST /api/assistant-chat menolak prompt kosong', async () => {
   const payload = await response.json();
   assert.ok(/prompt/i.test(payload.error || ''));
 });
+
+test('POST /api/video-info menolak permintaan tanpa URL atau kata kunci', async () => {
+  const response = await fetch(`${baseUrl}/api/video-info`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: '  ' }),
+  });
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.ok(/tidak valid/i.test(payload.error || ''));
+});
+
+test('POST /api/search menolak kata kunci kosong', async () => {
+  const response = await fetch(`${baseUrl}/api/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: '   ' }),
+  });
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.ok(/kosong|valid/i.test(payload.error || ''));
+});

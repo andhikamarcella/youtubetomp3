@@ -472,6 +472,39 @@
     html[data-bs-theme='dark'] .mini-player .mini-action-label { color: rgba(255,255,255,.6); }
     html[data-bs-theme='dark'] .mini-player-subtitle { color: rgba(255,255,255,.6); }
     #miniPlayer[hidden] { display: none !important; }
+    .history-item-cover {
+      width: 56px;
+      height: 56px;
+      border-radius: 0.75rem;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--bs-border-color);
+      box-shadow: 0 10px 26px rgba(23,35,63,.18);
+    }
+    .history-item-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: color-mix(in srgb, var(--bs-primary) 18%, transparent);
+      border: 1px solid color-mix(in srgb, var(--bs-primary) 45%, var(--bs-border-color));
+      color: var(--bs-primary);
+      font-size: 1.5rem;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bs-primary) 15%, transparent), 0 8px 20px rgba(13,110,253,.16);
+    }
+    html[data-bs-theme='dark'] .history-item-icon {
+      background: color-mix(in srgb, rgba(13,110,253,.6) 22%, transparent);
+      border-color: rgba(13,110,253,.45);
+      color: rgba(255,255,255,.92);
+      box-shadow: inset 0 0 0 1px rgba(13,110,253,.32), 0 12px 28px rgba(13,110,253,.22);
+    }
+    .history-item-meta {
+      font-size: 0.75rem;
+      color: var(--bs-secondary-color);
+    }
     @media (min-width: 577px) {
       .mini-player-body { flex-wrap: nowrap; }
     }
@@ -503,9 +536,18 @@
         </button>
         <a class="navbar-brand fw-semibold me-2" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
         <div class="app-tabbar" id="sectionTabbar">
-          <button type="button" class="app-nav-btn active" data-section-target="converter" data-section-label="Converter"><i class="bi bi-cpu"></i> Converter</button>
-          <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub"><i class="bi bi-stars"></i> Experience</button>
-          <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung"><i class="bi bi-person-circle"></i> Profil</button>
+          <button type="button" class="app-nav-btn active" data-section-target="converter" data-section-label="Converter">
+            <i class="bi bi-cpu"></i>
+            <span data-i18n="navConverter">Converter</span>
+          </button>
+          <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub">
+            <i class="bi bi-stars"></i>
+            <span data-i18n="navExperience">Experience</span>
+          </button>
+          <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung">
+            <i class="bi bi-person-circle"></i>
+            <span data-i18n="navProfile">Profil</span>
+          </button>
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
@@ -523,8 +565,8 @@
   <main id="mainContent" class="container py-4 py-md-5">
     <header class="section-header">
       <div>
-        <h1 id="activeSectionTitle">Converter</h1>
-        <p id="activeSectionSubtitle">Konversi video lebih cepat &amp; stabil.</p>
+        <h1 id="activeSectionTitle" data-i18n="sectionTitleConverter">Converter</h1>
+        <p id="activeSectionSubtitle" data-i18n="sectionSubtitleConverter">Konversi video lebih cepat &amp; stabil.</p>
       </div>
       <button type="button" class="btn btn-outline-primary d-none d-lg-inline-flex" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-label="Buka menu fitur">
         <i class="bi bi-grid-3x3-gap"></i>
@@ -557,14 +599,37 @@
           </div>
 
           <div class="mb-3">
-            <label for="url" class="form-label">URL YouTube</label>
+            <label for="url" class="form-label" data-i18n="labelUrl">URL YouTube</label>
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
-              <input id="url" type="url" class="form-control" placeholder="Tempel URL YouTube (https://...)" autocomplete="off" required>
+              <input id="url" type="url" class="form-control" placeholder="Tempel URL YouTube (https://...)" data-i18n-placeholder="placeholderUrl" autocomplete="off" required>
               <button class="btn btn-outline-secondary" id="pasteBtn" type="button" aria-label="Tempel dari clipboard"><i class="bi bi-clipboard2"></i></button>
-              <button class="btn btn-outline-secondary" id="sampleBtn" type="button">Contoh</button>
+              <button class="btn btn-outline-secondary" id="sampleBtn" type="button" data-i18n="buttonSample">Contoh</button>
             </div>
-            <div id="urlHelp" class="form-text">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
+            <div id="urlHelp" class="form-text" data-i18n="helpUrl">Dukung single video. Centang "Abaikan playlist" untuk mempercepat.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="keywordInput" class="form-label" data-i18n="labelKeyword">Cari judul lagu</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input id="keywordInput" type="text" class="form-control" placeholder="Ketik judul lagu atau artis" data-i18n-placeholder="placeholderKeyword" autocomplete="off">
+              <button class="btn btn-outline-primary" id="keywordConvertBtn" type="button"><i class="bi bi-lightning"></i> <span data-i18n="buttonKeywordConvert">Auto Convert</span></button>
+              <button class="btn btn-outline-secondary" id="keywordSearchBtn" type="button"><i class="bi bi-search"></i> <span data-i18n="buttonKeywordSearch">Cari</span></button>
+            </div>
+            <div id="keywordHelp" class="form-text" data-i18n="helpKeyword">Cukup ketik judul, kami cari &amp; convert otomatis.</div>
+          </div>
+
+          <div class="mb-3" id="searchResultsWrap" hidden>
+            <div class="card border-0 bg-body-tertiary">
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <i class="bi bi-youtube text-danger"></i>
+                  <strong data-i18n="labelSearchResults">Hasil YouTube</strong>
+                </div>
+                <div class="list-group" id="searchResults"></div>
+              </div>
+            </div>
           </div>
 
           <div class="mb-3" id="previewWrap" hidden>
@@ -572,6 +637,11 @@
               <img id="thumb" class="rounded object-fit-cover" alt="Thumbnail" loading="lazy" />
             </div>
             <div id="videoTitle" class="fw-semibold"></div>
+            <div id="videoMeta" class="small text-secondary mt-1" hidden>
+              <div id="videoArtist"></div>
+              <div id="videoAlbum"></div>
+              <div id="videoDuration"></div>
+            </div>
           </div>
 
           <div class="mb-3">
@@ -722,6 +792,31 @@
             </div>
           </div>
 
+          <div class="card border-0 bg-body-tertiary mb-3 p-3" id="ringtoneCard">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="makeRingtone">
+              <label class="form-check-label" for="makeRingtone" data-i18n="labelRingtoneToggle">Siapkan versi ringtone (Android &amp; iPhone)</label>
+            </div>
+            <div class="row g-2 align-items-center" id="ringtoneOptions" hidden>
+              <div class="col-sm-6">
+                <label class="form-label" for="ringtoneLength" data-i18n="labelRingtoneLength">Durasi ringtone (detik)</label>
+                <div class="d-flex align-items-center gap-2" data-range-wrapper>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-range-step="-5" aria-label="Kurangi durasi">−</button>
+                  <input type="range" class="form-range flex-grow-1" id="ringtoneLength" min="5" max="60" step="5" value="30">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-range-step="5" aria-label="Tambah durasi">+</button>
+                </div>
+                <div class="small text-secondary" id="ringtoneLengthLabel" data-i18n="labelRingtoneSummary">30 detik</div>
+              </div>
+              <div class="col-sm-6">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="ringtoneFade" checked>
+                  <label class="form-check-label" for="ringtoneFade" data-i18n="labelRingtoneFade">Gunakan fade in/out halus</label>
+                </div>
+                <div class="small text-secondary" data-i18n="hintRingtone">Hasilkan file .m4r untuk iPhone dan .ogg untuk Android.</div>
+              </div>
+            </div>
+          </div>
+
           <div class="dropzone mb-3" id="dropzone">
             <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
             <div id="dropzoneStatus" class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
@@ -730,10 +825,10 @@
           </div>
 
           <div class="d-grid d-sm-flex gap-2 align-items-center">
-            <button id="convertBtn" class="btn btn-primary btn-lg" type="button"><i class="bi bi-magic"></i> Convert</button>
-            <button id="downloadAllBtn" class="btn btn-outline-primary" type="button"><i class="bi bi-download"></i> Download Semua</button>
-            <button id="downloadZipBtn" class="btn btn-success" type="button"><i class="bi bi-collection"></i> Download ZIP</button>
-            <button id="clearBtn" class="btn btn-outline-secondary" type="button"><i class="bi bi-x-circle"></i> Bersihkan</button>
+            <button id="convertBtn" class="btn btn-primary btn-lg" type="button"><i class="bi bi-magic"></i> <span data-i18n="buttonConvert">Convert</span></button>
+            <button id="downloadAllBtn" class="btn btn-outline-primary" type="button"><i class="bi bi-download"></i> <span data-i18n="buttonDownloadAll">Download Semua</span></button>
+            <button id="downloadZipBtn" class="btn btn-success" type="button"><i class="bi bi-collection"></i> <span data-i18n="buttonDownloadZip">Download ZIP</span></button>
+            <button id="clearBtn" class="btn btn-outline-secondary" type="button"><i class="bi bi-x-circle"></i> <span data-i18n="buttonClear">Bersihkan</span></button>
           </div>
 
           <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
@@ -970,6 +1065,15 @@
                       <button class="btn btn-outline-info btn-sm" type="button" data-app="tg"><i class="bi bi-telegram"></i> Telegram</button>
                     </div>
                     <div class="small text-secondary mt-2" id="shareInfo"></div>
+                  </div>
+
+                  <div class="mt-3" id="ringtoneResult" hidden>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <i class="bi bi-bell-fill text-warning"></i>
+                      <strong id="ringtoneTitle">Ringtone siap diunduh</strong>
+                    </div>
+                    <div id="ringtoneSummary" class="small text-secondary mb-2"></div>
+                    <div class="d-flex flex-wrap gap-2" id="ringtoneLinks"></div>
                   </div>
 
                   <div id="ratingWrap" class="mt-3 rating-wrap" hidden>
@@ -1531,9 +1635,18 @@
     <div class="offcanvas-body">
       <p class="menu-meta">Pilih tab untuk berpindah antar area converter.</p>
       <div class="d-grid gap-2">
-        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter"><i class="bi bi-cpu"></i> Converter</button>
-        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub"><i class="bi bi-stars"></i> Experience Hub</button>
-        <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung"><i class="bi bi-person-circle"></i> Profil</button>
+        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter">
+          <i class="bi bi-cpu"></i>
+          <span data-i18n="navConverter">Converter</span>
+        </button>
+        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub">
+          <i class="bi bi-stars"></i>
+          <span data-i18n="navExperience">Experience Hub</span>
+        </button>
+        <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung">
+          <i class="bi bi-person-circle"></i>
+          <span data-i18n="navProfile">Profil</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1726,8 +1839,462 @@
   // ===== Utilities =====
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
-  const toast = new bootstrap.Toast($('#toast'));
-  const setToast = (msg) => { $('#toastText').textContent = msg; toast.show(); };
+  const toastEl = $('#toast');
+  const toastTextEl = $('#toastText');
+
+  const SUPPORTED_LANGS = ['id', 'en'];
+  const I18N_STRINGS = {
+    id: {
+      navConverter: 'Converter',
+      navExperience: 'Experience',
+      navProfile: 'Profil',
+      sectionTitleConverter: 'Converter',
+      sectionSubtitleConverter: 'Konversi video lebih cepat & stabil.',
+      sectionTitleExperience: 'Experience Hub',
+      sectionSubtitleExperience: 'Avatar dinamis, musik adaptif, dan voice control siap dibuka.',
+      sectionTitleProfile: 'Profil',
+      sectionSubtitleProfile: 'Pantau XP, badge, dan riwayat avatar kamu.',
+      labelUrl: 'URL YouTube',
+      placeholderUrl: 'Tempel URL YouTube (https://...)',
+      buttonSample: 'Contoh',
+      helpUrl: 'Dukung single video. Centang "Abaikan playlist" untuk mempercepat.',
+      labelKeyword: 'Cari judul lagu',
+      placeholderKeyword: 'Ketik judul lagu atau artis',
+      buttonKeywordConvert: 'Auto Convert',
+      buttonKeywordSearch: 'Cari',
+      helpKeyword: 'Cukup ketik judul, kami cari & convert otomatis.',
+      labelSearchResults: 'Hasil YouTube',
+      labelRingtoneToggle: 'Siapkan versi ringtone (Android & iPhone)',
+      labelRingtoneLength: 'Durasi ringtone (detik)',
+      labelRingtoneSummary: '30 detik',
+      labelRingtoneFade: 'Gunakan fade in/out halus',
+      hintRingtone: 'Hasilkan file .m4r untuk iPhone dan .ogg untuk Android.',
+      buttonConvert: 'Convert',
+      buttonDownloadAll: 'Download Semua',
+      buttonDownloadZip: 'Download ZIP',
+      buttonClear: 'Bersihkan',
+      ringtoneTitle: 'Ringtone siap diunduh',
+      searchUse: 'Pakai',
+      searchConvert: 'Convert',
+      searchNoResults: 'Tidak ada hasil yang cocok.',
+      searchLoading: 'Mencari…',
+      toastKeywordRequired: 'Masukkan kata kunci lagu terlebih dahulu',
+      toastKeywordReady: 'Video ditemukan, siap dikonversi.',
+      toastKeywordError: 'Gagal mencari video. Coba kata kunci lain.',
+      toastKeywordQueued: 'Sedang menyiapkan konversi dari kata kunci…',
+      ringtoneSummaryDefault: 'Pilih versi ringtone sesuai perangkatmu.',
+      ringtoneSummaryAndroid: 'Versi Android siap diunduh.',
+      ringtoneSummaryIphone: 'Versi iPhone siap diunduh.',
+      ringtoneSummaryBoth: 'Versi Android & iPhone siap diunduh.',
+      voiceStatusReady: 'Perintah suara siap digunakan.',
+      voiceStatusListening: 'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.',
+      voiceStatusStopped: 'Perintah suara dihentikan.',
+      voiceStatusUnsupported: 'Browser belum mendukung voice recognition.',
+      toastVoiceHandled: 'Perintah suara: {value}',
+      toastVoiceUnknown: 'Perintah belum dikenali: {value}',
+    },
+    en: {
+      navConverter: 'Converter',
+      navExperience: 'Experience',
+      navProfile: 'Profile',
+      sectionTitleConverter: 'Converter',
+      sectionSubtitleConverter: 'Convert videos faster & more reliably.',
+      sectionTitleExperience: 'Experience Hub',
+      sectionSubtitleExperience: 'Dynamic avatar, adaptive music, and voice control are ready to explore.',
+      sectionTitleProfile: 'Profile',
+      sectionSubtitleProfile: 'Track your XP, badges, and avatar history.',
+      labelUrl: 'YouTube URL',
+      placeholderUrl: 'Paste YouTube URL (https://...)',
+      buttonSample: 'Sample',
+      helpUrl: 'Supports single videos. Check “Ignore playlist” to speed things up.',
+      labelKeyword: 'Search song title',
+      placeholderKeyword: 'Type a song title or artist',
+      buttonKeywordConvert: 'Auto Convert',
+      buttonKeywordSearch: 'Search',
+      helpKeyword: 'Just enter a title—we’ll search and convert automatically.',
+      labelSearchResults: 'YouTube Results',
+      labelRingtoneToggle: 'Prepare ringtone versions (Android & iPhone)',
+      labelRingtoneLength: 'Ringtone length (seconds)',
+      labelRingtoneSummary: '30 seconds',
+      labelRingtoneFade: 'Apply gentle fade in/out',
+      hintRingtone: 'Generate .m4r for iPhone and .ogg for Android.',
+      buttonConvert: 'Convert',
+      buttonDownloadAll: 'Download All',
+      buttonDownloadZip: 'Download ZIP',
+      buttonClear: 'Clear',
+      ringtoneTitle: 'Ringtones ready to download',
+      searchUse: 'Use',
+      searchConvert: 'Convert',
+      searchNoResults: 'No matching results.',
+      searchLoading: 'Searching…',
+      toastKeywordRequired: 'Enter a song keyword first',
+      toastKeywordReady: 'Video found and ready to convert.',
+      toastKeywordError: 'Failed to find the video. Try another keyword.',
+      toastKeywordQueued: 'Preparing conversion from keyword…',
+      ringtoneSummaryDefault: 'Pick the ringtone version for your device.',
+      ringtoneSummaryAndroid: 'Android version ready to download.',
+      ringtoneSummaryIphone: 'iPhone version ready to download.',
+      ringtoneSummaryBoth: 'Android & iPhone versions ready to download.',
+      voiceStatusReady: 'Voice commands are ready.',
+      voiceStatusListening: 'Listening… say “open donation” or “play the game”.',
+      voiceStatusStopped: 'Voice command stopped.',
+      voiceStatusUnsupported: 'This browser does not support voice recognition.',
+      toastVoiceHandled: 'Voice command: {value}',
+      toastVoiceUnknown: 'Command not recognized: {value}',
+    },
+  };
+
+  const TEXT_TRANSLATIONS = {
+  'Antrian kosong': { en: 'Queue is empty' },
+  'Aplikasi ditambahkan ke layar utama': { en: 'App added to home screen' },
+  'Bass+ diterapkan': { en: 'Bass+ applied' },
+  'Belum ada caption untuk disalin': { en: 'No caption to copy yet' },
+  'Belum ada email untuk disalin': { en: 'No email draft to copy' },
+  'Belum ada hook untuk disalin': { en: 'No hook to copy yet' },
+  'Belum ada link share': { en: 'No share link yet' },
+  'Belum ada link untuk dibagikan': { en: 'No link available to share' },
+  'Belum ada panduan audiophile untuk disalin': { en: 'No audiophile guide to copy yet' },
+  'Belum ada pitch untuk disalin': { en: 'No pitch to copy yet' },
+  'Belum ada press kit untuk disalin': { en: 'No press kit to copy yet' },
+  'Belum ada prompt cover untuk disalin': { en: 'No cover prompt to copy yet' },
+  'Belum ada teaser lirik untuk disalin': { en: 'No lyric teaser to copy yet' },
+  'Belum ada teks subtitle': { en: 'No subtitle text yet' },
+  'Belum ada timeline rilis untuk disalin': { en: 'No release timeline to copy yet' },
+  'Berhasil diproses': { en: 'Processed successfully' },
+  'Menganalisis metadata…': { en: 'Analyzing metadata…' },
+  'Menulis caption promosi…': { en: 'Writing promo caption…' },
+  'Caption promosi siap digunakan ✨': { en: 'Promo caption ready ✨' },
+  'Menyusun pitch playlist…': { en: 'Drafting playlist pitch…' },
+  'Pitch playlist siap dipakai ✅': { en: 'Playlist pitch ready ✅' },
+  'Menganalisis karakter audio…': { en: 'Analyzing audio profile…' },
+  'Panduan audiophile siap digunakan 🎧': { en: 'Audiophile guide ready 🎧' },
+  'Menyusun hook promosi…': { en: 'Crafting promo hook…' },
+  'Hook promosi siap pakai ⚡': { en: 'Promo hook ready ⚡' },
+  'Membangun prompt cover art…': { en: 'Building cover art prompt…' },
+  'Prompt cover siap 🎨': { en: 'Cover prompt ready 🎨' },
+  'Merancang timeline rilis…': { en: 'Designing release timeline…' },
+  'Timeline rilis siap dipakai 🗓️': { en: 'Release timeline ready 🗓️' },
+  'Menyusun press kit…': { en: 'Assembling press kit…' },
+  'Press kit siap dibagikan 📰': { en: 'Press kit ready to share 📰' },
+  'Menulis email outreach…': { en: 'Writing outreach email…' },
+  'Email outreach siap kirim ✉️': { en: 'Outreach email ready to send ✉️' },
+  'Menyusun teaser lirik…': { en: 'Crafting lyric teaser…' },
+  'Teaser lirik siap di-post 🎤': { en: 'Lyric teaser ready to post 🎤' },
+  'Mengirim ke background…': { en: 'Sending to background…' },
+  'Browser belum mendukung text-to-speech.': { en: 'Browser does not support text-to-speech.' },
+  'Browser tidak mendukung audio latar.': { en: 'Browser does not support background audio.' },
+  'Buka Saweria manual Rp5.000.': { en: 'Open Saweria manually for Rp5,000.' },
+  'Caption disalin ke clipboard': { en: 'Caption copied to clipboard' },
+  'Caption siap disalin': { en: 'Caption ready to copy' },
+  'Clipboard tidak tersedia': { en: 'Clipboard not available' },
+  'Draft email disalin': { en: 'Email draft copied' },
+  'Draft email siap disalin': { en: 'Email draft ready to copy' },
+  'Equalizer direset ke mode Flat': { en: 'Equalizer reset to Flat' },
+  'Gagal memulai instalasi': { en: 'Failed to start installation' },
+  'Hook & CTA disalin': { en: 'Hook & CTA copied' },
+  'Hook & CTA siap disalin': { en: 'Hook & CTA ready to copy' },
+  'Install tidak tersedia saat ini': { en: 'Install not available right now' },
+  'Isi judul terlebih dahulu': { en: 'Fill in the title first' },
+  'Isi username dan password admin': { en: 'Enter admin username and password' },
+  'Job diproses di latar': { en: 'Job processed in background' },
+  'Download': { en: 'Download' },
+  'Kamu offline · mode PWA siap dipakai': { en: 'You are offline · PWA mode ready' },
+  'Konami code aktif!': { en: 'Konami code activated!' },
+  'Koneksi kembali online': { en: 'Connection restored' },
+  'Konversi audio dulu sebelum memberi rating': { en: 'Convert audio before rating' },
+  'Salin link': { en: 'Copy link' },
+  'Link disalin': { en: 'Link copied' },
+  'Link share disalin': { en: 'Share link copied' },
+  'Log tersalin': { en: 'Log copied' },
+  'Login admin berhasil': { en: 'Admin login successful' },
+  'Login admin terlebih dahulu untuk upload cookies': { en: 'Log in as admin before uploading cookies' },
+  'Logout admin berhasil': { en: 'Admin logged out' },
+  'Hapus': { en: 'Delete' },
+  'Masukkan URL YouTube yang valid': { en: 'Enter a valid YouTube URL' },
+  'Masukkan URL YouTube yang valid terlebih dahulu': { en: 'Enter a valid YouTube URL first' },
+  'Metadata diperbarui otomatis': { en: 'Metadata updated automatically' },
+  'Mini game belum tersedia di perangkat ini.': { en: 'Mini game not available on this device.' },
+  'Mulai tur interaktif.': { en: 'Interactive tour started.' },
+  'Musik latar tidak siap diputar.': { en: 'Background music not ready to play.' },
+  'PWA siap dipakai offline ✨': { en: 'PWA ready for offline use ✨' },
+  'Panduan audiophile disalin': { en: 'Audiophile guide copied' },
+  'Panduan audiophile siap disalin': { en: 'Audiophile guide ready to copy' },
+  'Pengaturan direset': { en: 'Settings reset' },
+  'Pengaturan disimpan': { en: 'Settings saved' },
+  'Pilih file .txt hasil export cookies': { en: 'Choose the exported cookies .txt file' },
+  'Pitch disalin ke clipboard': { en: 'Pitch copied to clipboard' },
+  'Pitch siap disalin ke proposal playlist': { en: 'Pitch ready for playlist proposals' },
+  'Preset Podcast diterapkan': { en: 'Podcast preset applied' },
+  'Press kit siap disalin': { en: 'Press kit ready to copy' },
+  'Press kit tersalin ke clipboard': { en: 'Press kit copied to clipboard' },
+  'Prompt cover disalin': { en: 'Cover prompt copied' },
+  'Prompt cover siap dipakai': { en: 'Cover prompt ready to use' },
+  'Riwayat dibersihkan': { en: 'History cleared' },
+  'Semua antrian selesai': { en: 'All queue items completed' },
+  'Subtitle lengkap siap diunduh': { en: 'Full subtitles ready to download' },
+  'Teaser lirik disalin': { en: 'Lyric teaser copied' },
+  'Teaser lirik siap disalin': { en: 'Lyric teaser ready to copy' },
+  'Teks subtitle tersalin': { en: 'Subtitle text copied' },
+  'Terima kasih atas ratingnya!': { en: 'Thanks for the rating!' },
+  'Tidak ada teks yang bisa dibacakan.': { en: 'No text to narrate.' },
+  'Tidak bisa menyalin': { en: 'Unable to copy' },
+  'Tidak dapat membaca clipboard': { en: 'Cannot read clipboard' },
+  'Tidak dapat menyalin teks subtitle': { en: 'Cannot copy subtitle text' },
+  'Timeline rilis disalin': { en: 'Release timeline copied' },
+  'Timeline rilis siap disalin': { en: 'Release timeline ready to copy' },
+  'URL YouTube dari clipboard terpasang otomatis': { en: 'YouTube URL pasted from clipboard' },
+  'URL ditempel dari drag & drop': { en: 'URL pasted from drag & drop' },
+  'URL tidak valid': { en: 'Invalid URL' },
+  'Walkthrough selesai! Selamat mencoba.': { en: 'Walkthrough complete! Have fun.' },
+  'cookies.txt terunggah ✔': { en: 'cookies.txt uploaded ✔' },
+  'Mencari…': { en: 'Searching…' },
+  'Tidak ada hasil yang cocok.': { en: 'No matching results.' },
+  'Video ditemukan, siap dikonversi.': { en: 'Video found and ready to convert.' },
+  'Gagal mencari video. Coba kata kunci lain.': { en: 'Failed to find the video. Try another keyword.' },
+  'Sedang menyiapkan konversi dari kata kunci…': { en: 'Preparing conversion from keyword…' },
+  'Masukkan kata kunci lagu terlebih dahulu': { en: 'Enter a song keyword first' },
+  'Ringtone siap diunduh': { en: 'Ringtones ready to download' },
+  'Pilih versi ringtone sesuai perangkatmu.': { en: 'Pick the ringtone version for your device.' },
+  'Versi Android siap diunduh.': { en: 'Android version ready to download.' },
+  'Versi iPhone siap diunduh.': { en: 'iPhone version ready to download.' },
+  'Versi Android & iPhone siap diunduh.': { en: 'Android & iPhone versions ready to download.' },
+  'Perintah suara siap digunakan.': { en: 'Voice commands are ready.' },
+  'Perintah suara dihentikan.': { en: 'Voice command stopped.' },
+  'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.': { en: 'Listening… say “open donation” or “play the game”.' },
+  'Browser belum mendukung voice recognition.': { en: 'This browser does not support voice recognition.' },
+  'Memproses…': { en: 'Processing…' },
+  'Menyiapkan…': { en: 'Preparing…' },
+  'Selesai': { en: 'Done' },
+  'Gagal': { en: 'Failed' },
+  'Konversi selesai': { en: 'Conversion complete' },
+  'Job selesai': { en: 'Job complete' },
+  'Job gagal': { en: 'Job failed' },
+  'Perintah suara': { en: 'Voice command' },
+  'Perintah belum dikenali': { en: 'Command not recognized' },
+  };
+
+  const TEXT_TRANSLATION_PATTERNS = [
+    {
+      pattern: /^Diprioritaskan:/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Diprioritaskan:/i, 'Prioritized:'),
+      },
+    },
+    {
+      pattern: /^Dilepas:/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Dilepas:/i, 'Released:'),
+      },
+    },
+    {
+      pattern: /^Terima kasih!\s*(.+) dipilih\.?$/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => {
+          const match = value.match(/^Terima kasih!\s*(.+) dipilih\.?$/i);
+          const label = match ? match[1] : '';
+          return `Thank you! ${label} selected.`;
+        },
+      },
+    },
+    {
+      pattern: /^Aktifkan pop-up atau pakai tombol manual untuk donasi /i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Aktifkan pop-up atau pakai tombol manual untuk donasi /i, 'Enable pop-ups or use the manual button to donate '),
+      },
+    },
+    {
+      pattern: /^Buka Saweria \(/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Buka Saweria/i, 'Open Saweria'),
+      },
+    },
+    {
+      pattern: /^Perintah suara:/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Perintah suara:/i, 'Voice command:'),
+      },
+    },
+    {
+      pattern: /^Perintah belum dikenali:/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Perintah belum dikenali:/i, 'Command not recognized:'),
+      },
+    },
+    {
+      pattern: /^Job selesai:/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Job selesai:/i, 'Job finished:'),
+      },
+    },
+    {
+      pattern: /^Job gagal:/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Job gagal:/i, 'Job failed:'),
+      },
+    },
+    {
+      pattern: /^Memproses\s+(\d+)\/(\d+)/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => value.replace(/^Memproses/i, 'Processing'),
+      },
+    },
+    {
+      pattern: /^Playlist ZIP siap \((\d+) file\)/i,
+      translate: {
+        id: (value) => value,
+        en: (value) => {
+          const match = value.match(/^Playlist ZIP siap \((\d+) file\)/i);
+          if (!match) return 'Playlist ZIP ready';
+          const count = Number(match[1]) || 0;
+          const unit = count === 1 ? 'file' : 'files';
+          return `Playlist ZIP ready (${count} ${unit})`;
+        },
+      },
+    },
+  ];
+
+  const detectLanguage = () => {
+    const stored = localStorage.getItem('app:preferredLang');
+    const candidates = [];
+    if (stored && SUPPORTED_LANGS.includes(stored)) candidates.push(stored);
+    if (Array.isArray(navigator.languages)) {
+      candidates.push(...navigator.languages);
+    } else if (navigator.language) {
+      candidates.push(navigator.language);
+    }
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const normalized = String(candidate).toLowerCase();
+      if (normalized.startsWith('id')) return 'id';
+      if (normalized.startsWith('en')) return 'en';
+    }
+    return 'id';
+  };
+
+  const preserveSpacing = (original, replacement) => {
+    const leading = original.match(/^\s*/)?.[0] ?? '';
+    const trailing = original.match(/\s*$/)?.[0] ?? '';
+    return `${leading}${replacement}${trailing}`;
+  };
+
+  let currentLang = detectLanguage();
+
+  const translate = (key, fallback) => {
+    if (!key) return fallback ?? '';
+    const dict = I18N_STRINGS[currentLang] || I18N_STRINGS.id || {};
+    if (dict[key] != null) return dict[key];
+    const fallbackDict = I18N_STRINGS.id || {};
+    if (fallbackDict[key] != null) return fallbackDict[key];
+    return fallback ?? '';
+  };
+
+  const translateMessage = (value) => {
+    if (value == null) return '';
+    const str = String(value);
+    const trimmed = str.trim();
+    if (!trimmed) return str;
+    if (currentLang !== 'id') {
+      const direct = TEXT_TRANSLATIONS[trimmed];
+      if (direct?.[currentLang]) {
+        return preserveSpacing(str, direct[currentLang]);
+      }
+      for (const pattern of TEXT_TRANSLATION_PATTERNS) {
+        if (pattern.pattern.test(str)) {
+          const translator = pattern.translate?.[currentLang];
+          if (typeof translator === 'function') {
+            const translated = translator(str);
+            if (translated) return translated;
+          }
+        }
+      }
+    }
+    return str;
+  };
+
+  function applyTranslations() {
+    document.documentElement.setAttribute('lang', currentLang);
+    $$('[data-i18n]').forEach((el) => {
+      const key = el.getAttribute('data-i18n');
+      if (!key) return;
+      const translated = translate(key, el.textContent);
+      if (translated != null) el.textContent = translated;
+    });
+    $$('[data-i18n-placeholder]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (!key) return;
+      const translated = translate(key, el.getAttribute('placeholder'));
+      if (translated != null) el.setAttribute('placeholder', translated);
+    });
+    updateRingtoneLengthLabel();
+  }
+
+  applyTranslations();
+
+  const toast = toastEl ? bootstrap.Toast.getOrCreateInstance(toastEl) : null;
+  const setToast = (msg) => {
+    const text = translateMessage(msg);
+    if (toastTextEl) toastTextEl.textContent = text;
+    if (toast) toast.show();
+  };
+
+  const urlInput = $('#url');
+  const keywordInput = $('#keywordInput');
+  const keywordConvertBtn = $('#keywordConvertBtn');
+  const keywordSearchBtn = $('#keywordSearchBtn');
+  const searchResultsWrap = $('#searchResultsWrap');
+  const searchResultsList = $('#searchResults');
+
+  const previewCard = $('#previewCard');
+  const previewPlayer = $('#previewPlayer');
+  const previewWrap = $('#previewWrap');
+  const qrCanvas = $('#downloadQr');
+  const qrWrap = $('#qrWrap');
+  const thumbEl = $('#thumb');
+  const videoTitleEl = $('#videoTitle');
+  const videoMetaWrap = $('#videoMeta');
+  const videoArtistEl = $('#videoArtist');
+  const videoAlbumEl = $('#videoAlbum');
+  const videoDurationEl = $('#videoDuration');
+
+  const ringtoneResultCard = $('#ringtoneResult');
+  const ringtoneLinks = $('#ringtoneLinks');
+  const ringtoneSummaryEl = $('#ringtoneSummary');
+  const ringtoneTitleEl = $('#ringtoneTitle');
+  const ringtoneCard = $('#ringtoneCard');
+  const makeRingtoneToggle = $('#makeRingtone');
+  const ringtoneOptions = $('#ringtoneOptions');
+  const ringtoneLengthInput = $('#ringtoneLength');
+  const ringtoneLengthLabel = $('#ringtoneLengthLabel');
+  const ringtoneFadeInput = $('#ringtoneFade');
+
+  const shareWrap = $('#shareWrap');
+  const shareInfo = $('#shareInfo');
+  const shareLinkInput = $('#shareLinkInput');
+  const shareBtn = $('#shareBtn');
+  const copyShareBtn = $('#copyShareBtn');
+  const openShareBtn = $('#openShareBtn');
+  const shareAppButtons = $$('#shareAppButtons button[data-app]');
+
+  const ratingWrap = $('#ratingWrap');
+  const ratingSummary = $('#ratingSummary');
+  const ratingThanks = $('#ratingThanks');
+  const ratingButtons = $$('#ratingWrap button[data-rating]');
+
+  const speedTipButtons = $$('#speedTips .tip-pill');
+  const speedTipHint = $('#speedTipHint');
+  const donationButtons = $$('#donationButtons .btn-donation');
+  const donationStatus = $('#donationStatus');
+  const donationLink = $('#donationLink');
 
   const visitedSections = new Set();
   const sectionPanels = Array.from(document.querySelectorAll('.app-section'));
@@ -1743,16 +2310,16 @@
 
   const SECTION_META = {
     converter: {
-      title: 'Converter',
-      subtitle: 'Konversi video lebih cepat & stabil.',
+      titleKey: 'sectionTitleConverter',
+      subtitleKey: 'sectionSubtitleConverter',
     },
     experience: {
-      title: 'Experience Hub',
-      subtitle: 'Avatar dinamis, musik adaptif, dan voice control siap dibuka.',
+      titleKey: 'sectionTitleExperience',
+      subtitleKey: 'sectionSubtitleExperience',
     },
     profile: {
-      title: 'Profil',
-      subtitle: 'Pantau XP, badge, dan riwayat avatar kamu.',
+      titleKey: 'sectionTitleProfile',
+      subtitleKey: 'sectionSubtitleProfile',
     },
   };
 
@@ -1770,8 +2337,8 @@
       btn.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
     });
     const meta = SECTION_META[target] || SECTION_META.converter;
-    if (sectionTitle && meta?.title) sectionTitle.textContent = meta.title;
-    if (sectionSubtitle && meta?.subtitle) sectionSubtitle.textContent = meta.subtitle;
+    if (sectionTitle && meta?.titleKey) sectionTitle.textContent = translate(meta.titleKey, sectionTitle.textContent);
+    if (sectionSubtitle && meta?.subtitleKey) sectionSubtitle.textContent = translate(meta.subtitleKey, sectionSubtitle.textContent);
     if (found) {
       localStorage.setItem('app:activeSection', target);
       visitedSections.add(target);
@@ -1815,27 +2382,45 @@
     }
   });
 
-  const previewCard = $('#previewCard');
-  const previewPlayer = $('#previewPlayer');
-  const qrCanvas = $('#downloadQr');
-  const qrWrap = $('#qrWrap');
-  const shareWrap = $('#shareWrap');
-  const urlInput = $('#url');
-  const shareInfo = $('#shareInfo');
-  const shareLinkInput = $('#shareLinkInput');
-  const shareBtn = $('#shareBtn');
-  const copyShareBtn = $('#copyShareBtn');
-  const openShareBtn = $('#openShareBtn');
-  const shareAppButtons = $$('#shareAppButtons button[data-app]');
-  const ratingWrap = $('#ratingWrap');
-  const ratingSummary = $('#ratingSummary');
-  const ratingThanks = $('#ratingThanks');
-  const ratingButtons = $$('#ratingWrap button[data-rating]');
-  const speedTipButtons = $$('#speedTips .tip-pill');
-  const speedTipHint = $('#speedTipHint');
-  const donationButtons = $$('#donationButtons .btn-donation');
-  const donationStatus = $('#donationStatus');
-  const donationLink = $('#donationLink');
+  if (makeRingtoneToggle) {
+    const syncRingtone = () => {
+      const enabled = !!makeRingtoneToggle.checked;
+      if (ringtoneOptions) ringtoneOptions.hidden = !enabled;
+      if (enabled) updateRingtoneLengthLabel();
+    };
+    makeRingtoneToggle.addEventListener('change', syncRingtone);
+    syncRingtone();
+  } else {
+    if (ringtoneOptions) ringtoneOptions.hidden = true;
+  }
+
+  if (ringtoneLengthInput) {
+    ringtoneLengthInput.addEventListener('input', () => updateRingtoneLengthLabel());
+    ringtoneLengthInput.addEventListener('change', () => updateRingtoneLengthLabel());
+    updateRingtoneLengthLabel();
+  }
+
+  if (ringtoneFadeInput) {
+    ringtoneFadeInput.addEventListener('change', () => {
+      if (makeRingtoneToggle?.checked) updateRingtoneLengthLabel();
+    });
+  }
+
+  if (keywordInput) {
+    keywordInput.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Enter') {
+        evt.preventDefault();
+        handleKeywordConvert();
+      }
+    });
+    keywordInput.addEventListener('input', () => {
+      if (!keywordInput.value.trim()) clearSearchResults();
+    });
+  }
+  if (keywordConvertBtn) keywordConvertBtn.addEventListener('click', () => handleKeywordConvert());
+  if (keywordSearchBtn) keywordSearchBtn.addEventListener('click', () => handleKeywordSearch());
+
+  
   const donationLinkHint = $('#donationLinkHint');
   const faqItems = $$('#faqList details');
   const achievementModalEl = $('#achievementModal');
@@ -1971,6 +2556,11 @@
   const bgMusicNow = $('#bgMusicNow');
   const voiceCommandBtn = $('#voiceCommandBtn');
   const voiceStatus = $('#voiceStatus');
+  const setVoiceStatus = (key, fallback, extra = '') => {
+    if (!voiceStatus) return;
+    const base = translate(key, fallback);
+    voiceStatus.textContent = extra ? `${base} ${extra}`.trim() : base;
+  };
   const readSelectionBtn = $('#readSelectionBtn');
   const readGuideBtn = $('#readGuideBtn');
   const stopNarratorBtn = $('#stopNarratorBtn');
@@ -3558,7 +4148,6 @@
     if (!SpeechRecognition) return null;
     if (!recognition) {
       recognition = new SpeechRecognition();
-      recognition.lang = 'id-ID';
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.onresult = (event) => {
@@ -3570,13 +4159,15 @@
       };
       recognition.onerror = (event) => {
         voiceActive = false;
-        if (voiceStatus) voiceStatus.textContent = `Perintah suara berhenti (${event.error || 'error'}).`;
+        const extra = event?.error ? `(${event.error})` : '';
+        setVoiceStatus('voiceStatusStopped', 'Perintah suara dihentikan.', extra);
       };
       recognition.onend = () => {
         voiceActive = false;
-        if (voiceStatus) voiceStatus.textContent = 'Perintah suara siap digunakan.';
+        setVoiceStatus('voiceStatusReady', 'Perintah suara siap digunakan.');
       };
     }
+    recognition.lang = currentLang === 'en' ? 'en-US' : 'id-ID';
     return recognition;
   }
 
@@ -3584,17 +4175,20 @@
     const recognitionInstance = ensureRecognition();
     if (!recognitionInstance) {
       voiceCommandBtn.disabled = true;
-      if (voiceStatus) voiceStatus.textContent = 'Browser belum mendukung voice recognition.';
+      setVoiceStatus('voiceStatusUnsupported', 'Browser belum mendukung voice recognition.');
     } else {
+      setVoiceStatus('voiceStatusReady', 'Perintah suara siap digunakan.');
       voiceCommandBtn.addEventListener('click', () => {
+        const activeRecognition = ensureRecognition();
+        if (!activeRecognition) return;
         if (voiceActive) {
-          recognitionInstance.stop();
+          activeRecognition.stop();
           voiceActive = false;
-          if (voiceStatus) voiceStatus.textContent = 'Perintah suara dihentikan.';
+          setVoiceStatus('voiceStatusStopped', 'Perintah suara dihentikan.');
         } else {
-          recognitionInstance.start();
+          activeRecognition.start();
           voiceActive = true;
-          if (voiceStatus) voiceStatus.textContent = 'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.';
+          setVoiceStatus('voiceStatusListening', 'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.');
         }
       });
     }
@@ -3610,45 +4204,79 @@
   };
 
   const handleVoiceCommand = (raw) => {
-    const text = (raw || '').toLowerCase();
+    const spoken = (raw || '').trim();
+    if (!spoken) return;
+    const text = spoken.toLowerCase();
+    const includes = (...phrases) => phrases.some((phrase) => text.includes(phrase));
     let handled = false;
-    if (text.includes('donasi')) {
+    let convertTriggered = false;
+
+    const showVoiceToast = (key, fallback) => {
+      const template = translate(key, fallback);
+      setToast(template.replace('{value}', spoken));
+    };
+
+    const convertMatch = text.match(/(?:download|unduh|convert|konversi)\s+(.+)/);
+    if (convertMatch) {
+      let query = convertMatch[1].trim();
+      const qualityMatch = query.match(/(\d{2,3})\s*(?:kbps|k\s?bps|kb|k)/);
+      if (qualityMatch) {
+        const desiredAbr = clamp(Number(qualityMatch[1]) || 0, 32, 512);
+        if (abrSelect) {
+          abrSelect.value = String(desiredAbr);
+          abrSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        query = query.replace(qualityMatch[0], ' ');
+      }
+      query = query.replace(/\b(?:ke|to)\b\s*(?:mp3|audio)/g, ' ');
+      query = query.replace(/\b(mp3|audio|lagu|song|musik|music|tolong|please|dong|nih|nya|format|bitrate|dengan|with|in)\b/g, ' ');
+      query = query.replace(/\s+/g, ' ').trim();
+      if (query) {
+        handled = true;
+        convertTriggered = true;
+        handleKeywordConvert(query, { autoDownload: true });
+      }
+    }
+
+    if (includes('donasi', 'donation', 'donate', 'saweria')) {
       scrollToElement(document.getElementById('donationCard'));
       handled = true;
     }
-    if (text.includes('game')) {
+    if (includes('game', 'runner', 'neo runner', 'play game')) {
       scrollToElement(document.getElementById('gameCard'));
       startRunner();
       updateMascotMood('game');
       handled = true;
     }
-    if (text.includes('faq')) {
+    if (includes('faq', 'pertanyaan', 'question', 'help')) {
       const firstFaq = document.querySelector('#faqList details');
       if (firstFaq) firstFaq.open = true;
       scrollToElement(document.getElementById('faqList'));
       handled = true;
     }
-    if (text.includes('musik') || text.includes('music')) {
+    if (!convertTriggered && includes('musik', 'music', 'play music', 'putar musik', 'background music')) {
       startBackgroundMusic('auto');
       handled = true;
     }
-    if (text.includes('matikan musik') || text.includes('stop musik')) {
+    if (!convertTriggered && includes('matikan musik', 'stop musik', 'stop music', 'mute music', 'pause music')) {
       stopBackgroundMusic();
       handled = true;
     }
-    if (text.includes('narrator') || text.includes('bacakan')) {
+    if (includes('narrator', 'bacakan', 'narrate', 'read guide', 'read page')) {
       narrateGuide();
       handled = true;
     }
-    if (text.includes('ai')) {
+    if (includes('ai', 'navigator', 'assistant', 'open ai', 'open assistant', 'buka ai')) {
       openAssistantPanel();
       handled = true;
     }
+
     if (handled) {
-      incrementPoints(20, 'Voice command', { badge: 'voice' });
-      setToast(`Perintah suara: ${raw}`);
+      const reason = currentLang === 'en' ? 'Voice command' : 'Perintah suara';
+      incrementPoints(20, reason, { badge: 'voice' });
+      if (!convertTriggered) showVoiceToast('toastVoiceHandled', 'Perintah suara: {value}');
     } else {
-      setToast(`Perintah belum dikenali: ${raw}`);
+      showVoiceToast('toastVoiceUnknown', 'Perintah belum dikenali: {value}');
     }
   };
 
@@ -4330,6 +4958,11 @@
   let lastPreviewMeta = {};
   let lastResult = null;
   let lastVideoMeta = {};
+  let lastVideoInfo = null;
+  let searchAbortController = null;
+  let videoInfoAbortController = null;
+  let currentSearchResults = [];
+  let currentSearchKeyword = '';
   let lastAiHookData = null;
   let lastAiVisualData = null;
   let lastAiPlanData = null;
@@ -4379,6 +5012,335 @@
     }
   };
 
+  function updateRingtoneLengthLabel() {
+    if (!ringtoneLengthLabel) return;
+    const length = clamp(Number(ringtoneLengthInput?.value) || 30, 5, 60);
+    if (ringtoneLengthInput) ringtoneLengthInput.value = String(length);
+    const unit = currentLang === 'en' ? 'seconds' : 'detik';
+    ringtoneLengthLabel.textContent = `${length} ${unit}`;
+  }
+
+  function getRingtoneRequest() {
+    if (!makeRingtoneToggle || !makeRingtoneToggle.checked) return null;
+    const length = clamp(Number(ringtoneLengthInput?.value) || 30, 5, 60);
+    const fadeEnabled = ringtoneFadeInput ? !!ringtoneFadeInput.checked : true;
+    const fadeIn = fadeEnabled ? Math.min(2, length * 0.12) : 0;
+    const fadeOut = fadeEnabled ? Math.min(3, length * 0.2) : 0;
+    return {
+      enabled: true,
+      length,
+      fadeIn: Number(fadeIn.toFixed(2)),
+      fadeOut: Number(fadeOut.toFixed(2)),
+    };
+  }
+
+  function renderRingtoneResults(items = []) {
+    if (!ringtoneResultCard || !ringtoneLinks) return;
+    ringtoneLinks.innerHTML = '';
+    if (ringtoneSummaryEl) ringtoneSummaryEl.textContent = '';
+    if (Array.isArray(items) && items.length) {
+      ringtoneResultCard.hidden = false;
+      if (ringtoneTitleEl) ringtoneTitleEl.textContent = translate('ringtoneTitle', ringtoneTitleEl.textContent || '');
+      const platforms = new Set(items.map((item) => String(item.platform || '').toLowerCase()));
+      let summaryKey = 'ringtoneSummaryDefault';
+      if (platforms.has('android') && platforms.has('iphone')) summaryKey = 'ringtoneSummaryBoth';
+      else if (platforms.has('android')) summaryKey = 'ringtoneSummaryAndroid';
+      else if (platforms.has('iphone')) summaryKey = 'ringtoneSummaryIphone';
+      if (ringtoneSummaryEl) ringtoneSummaryEl.textContent = translate(summaryKey, ringtoneSummaryEl.textContent || '');
+      const base = getBackend() || window.location.origin;
+      items.forEach((item) => {
+        const href = (() => {
+          if (!item?.downloadUrl) return '';
+          if (/^https?:/i.test(item.downloadUrl)) return item.downloadUrl;
+          try {
+            return new URL(item.downloadUrl, base).href;
+          } catch {
+            return absoluteFromRelative(item.downloadUrl);
+          }
+        })();
+        const btn = document.createElement('a');
+        btn.className = 'btn btn-sm btn-outline-primary d-flex align-items-center';
+        if (href) btn.href = href;
+        if (item?.fileName) btn.download = item.fileName;
+        const icon = document.createElement('i');
+        const platform = String(item?.platform || '').toLowerCase();
+        icon.className = platform === 'iphone' ? 'bi bi-apple' : 'bi bi-android2';
+        icon.setAttribute('aria-hidden', 'true');
+        btn.appendChild(icon);
+        const label = document.createElement('span');
+        label.className = 'ms-2';
+        if (platform === 'iphone') {
+          label.textContent = currentLang === 'en' ? 'iPhone (.m4r)' : 'iPhone (.m4r)';
+        } else {
+          label.textContent = currentLang === 'en' ? 'Android (.ogg)' : 'Android (.ogg)';
+        }
+        btn.appendChild(label);
+        ringtoneLinks.appendChild(btn);
+      });
+    } else {
+      ringtoneResultCard.hidden = true;
+    }
+  }
+
+  function clearSearchResults() {
+    if (searchResultsList) searchResultsList.innerHTML = '';
+    if (searchResultsWrap) searchResultsWrap.hidden = true;
+    currentSearchResults = [];
+  }
+
+  function renderSearchResults(results = [], keyword = '') {
+    if (!searchResultsWrap || !searchResultsList) return;
+    currentSearchKeyword = keyword || '';
+    currentSearchResults = Array.isArray(results) ? results : [];
+    searchResultsList.innerHTML = '';
+    if (!currentSearchResults.length) {
+      const empty = document.createElement('div');
+      empty.className = 'list-group-item small text-secondary';
+      empty.textContent = translateMessage('Tidak ada hasil yang cocok.');
+      searchResultsList.appendChild(empty);
+      searchResultsWrap.hidden = false;
+      return;
+    }
+
+    const selectResult = (result, { autoConvert } = {}) => {
+      if (!result) return;
+      applyVideoMetadata(result, { setUrl: true, autoFillId3: false, fillEmptyId3: true });
+      if (keywordInput && (result.cleanTitle || result.title)) {
+        keywordInput.value = result.cleanTitle || result.title;
+      }
+      if (searchResultsWrap) searchResultsWrap.hidden = true;
+      if (autoConvert) {
+        const autoDownload = !!document.getElementById('autoDownload')?.checked;
+        handleKeywordConvert(result.cleanTitle || result.title || currentSearchKeyword, {
+          metadata: result,
+          autoDownload,
+        });
+      } else {
+        setToast(translateMessage('Video ditemukan, siap dikonversi.'));
+      }
+    };
+
+    currentSearchResults.forEach((item) => {
+      const container = document.createElement('div');
+      container.className = 'list-group-item';
+      container.setAttribute('role', 'button');
+      container.tabIndex = 0;
+      const row = document.createElement('div');
+      row.className = 'd-flex align-items-start gap-3';
+      const thumb = document.createElement('img');
+      thumb.className = 'rounded flex-shrink-0';
+      thumb.width = 96;
+      thumb.height = 54;
+      thumb.loading = 'lazy';
+      thumb.alt = item?.cleanTitle || item?.title || 'thumbnail';
+      if (item?.thumbnail || item?.cover) thumb.src = item.thumbnail || item.cover;
+      row.appendChild(thumb);
+
+      const infoWrap = document.createElement('div');
+      infoWrap.className = 'flex-grow-1';
+      const titleEl = document.createElement('div');
+      titleEl.className = 'fw-semibold';
+      titleEl.textContent = item?.cleanTitle || item?.title || '';
+      infoWrap.appendChild(titleEl);
+      const metaLine = document.createElement('div');
+      metaLine.className = 'small text-secondary';
+      const parts = [];
+      if (item?.artist || item?.author) parts.push(item.artist || item.author);
+      if (Number(item?.duration)) parts.push(secondsToClock(Number(item.duration)));
+      metaLine.textContent = parts.join(' · ');
+      infoWrap.appendChild(metaLine);
+      row.appendChild(infoWrap);
+
+      const actions = document.createElement('div');
+      actions.className = 'btn-group btn-group-sm align-self-center';
+      const useBtn = document.createElement('button');
+      useBtn.type = 'button';
+      useBtn.className = 'btn btn-outline-secondary';
+      useBtn.textContent = translate('searchUse', 'Pakai');
+      useBtn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        selectResult(item, { autoConvert: false });
+      });
+      const convertBtn = document.createElement('button');
+      convertBtn.type = 'button';
+      convertBtn.className = 'btn btn-outline-primary';
+      convertBtn.textContent = translate('searchConvert', 'Convert');
+      convertBtn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        selectResult(item, { autoConvert: true });
+      });
+      actions.append(useBtn, convertBtn);
+      row.appendChild(actions);
+
+      container.appendChild(row);
+      container.addEventListener('click', () => selectResult(item, { autoConvert: false }));
+      container.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Enter' || evt.key === ' ') {
+          evt.preventDefault();
+          selectResult(item, { autoConvert: false });
+        }
+      });
+      searchResultsList.appendChild(container);
+    });
+
+    searchResultsWrap.hidden = false;
+  }
+
+  async function fetchVideoInfoClient({ url, keyword } = {}) {
+    if (videoInfoAbortController) videoInfoAbortController.abort();
+    const controller = new AbortController();
+    videoInfoAbortController = controller;
+    try {
+      const resp = await fetch(api('/api/video-info'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, keyword, preferredLang: currentLang }),
+        signal: controller.signal,
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
+      }
+      if (data.info) lastVideoInfo = data.info;
+      return data.info;
+    } catch (err) {
+      if (err?.name === 'AbortError') return null;
+      throw err;
+    } finally {
+      if (videoInfoAbortController === controller) videoInfoAbortController = null;
+    }
+  }
+
+  async function handleKeywordSearch() {
+    if (!keywordInput) return;
+    const keyword = keywordInput.value.trim();
+    if (!keyword) {
+      setToast(translateMessage('Masukkan kata kunci lagu terlebih dahulu'));
+      keywordInput.focus();
+      return;
+    }
+    if (searchAbortController) searchAbortController.abort();
+    const controller = new AbortController();
+    searchAbortController = controller;
+    if (searchResultsList) {
+      searchResultsList.innerHTML = `<div class="list-group-item small text-secondary">${translate('searchLoading', 'Mencari…')}</div>`;
+    }
+    if (searchResultsWrap) searchResultsWrap.hidden = false;
+    try {
+      const resp = await fetch(api('/api/search'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: keyword, preferredLang: currentLang }),
+        signal: controller.signal,
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
+      renderSearchResults(Array.isArray(data.results) ? data.results : [], keyword);
+      if (!Array.isArray(data.results) || !data.results.length) {
+        setToast(translateMessage('Tidak ada hasil yang cocok.'));
+      }
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      setToast(err?.message || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
+      renderSearchResults([], keyword);
+    } finally {
+      if (searchAbortController === controller) searchAbortController = null;
+    }
+  }
+
+  async function handleKeywordConvert(keywordOverride, options = {}) {
+    const keyword = (keywordOverride || keywordInput?.value || '').trim();
+    if (!keyword) {
+      setToast(translateMessage('Masukkan kata kunci lagu terlebih dahulu'));
+      keywordInput?.focus();
+      return;
+    }
+    let metadata = options.metadata || null;
+    const autoDownload = options.autoDownload ?? !!document.getElementById('autoDownload')?.checked;
+    try {
+      if (!metadata) {
+        if (keywordConvertBtn) keywordConvertBtn.disabled = true;
+        setToast(translateMessage('Sedang menyiapkan konversi dari kata kunci…'));
+        metadata = await fetchVideoInfoClient({ keyword });
+        if (!metadata) return;
+      }
+      applyVideoMetadata(metadata, { setUrl: true, autoFillId3: true });
+      if (keywordInput) keywordInput.value = metadata.cleanTitle || metadata.title || keyword;
+      setActiveSection('converter');
+      setToast(translateMessage('Video ditemukan, siap dikonversi.'));
+      await doConvert({
+        url: metadata.webpageUrl,
+        keyword,
+        metadata,
+        autoDownload,
+      });
+    } catch (err) {
+      setToast(err?.message || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
+    } finally {
+      if (keywordConvertBtn) keywordConvertBtn.disabled = false;
+    }
+  }
+
+  function applyVideoMetadata(info, { setUrl = true, autoFillId3 = true, fillEmptyId3 = false } = {}) {
+    if (!info || typeof info !== 'object') return;
+    const cleaned = cleanVideoTitle(info.cleanTitle || info.title || '');
+    const displayTitle = cleaned || info.title || '';
+    if (setUrl && urlInput && info.webpageUrl) urlInput.value = info.webpageUrl;
+    if (thumbEl) {
+      if (info.cover || info.thumbnail) {
+        thumbEl.src = info.cover || info.thumbnail;
+      } else if (!info.cover && !info.thumbnail && !currentDownloadUrl) {
+        thumbEl.src = '';
+      }
+    }
+    if (videoTitleEl) videoTitleEl.textContent = displayTitle;
+    const artist = info.artist || info.author || '';
+    if (videoArtistEl) videoArtistEl.textContent = artist;
+    if (videoAlbumEl) videoAlbumEl.textContent = info.album || '';
+    if (videoDurationEl) {
+      const duration = Number(info.duration) || 0;
+      videoDurationEl.textContent = duration > 0 ? `${currentLang === 'en' ? 'Duration' : 'Durasi'} ${secondsToClock(duration)}` : '';
+    }
+    if (videoMetaWrap) {
+      const hasArtist = !!(videoArtistEl && videoArtistEl.textContent.trim());
+      const hasAlbum = !!(videoAlbumEl && videoAlbumEl.textContent.trim());
+      const hasDuration = !!(videoDurationEl && videoDurationEl.textContent.trim());
+      videoMetaWrap.hidden = !(hasArtist || hasAlbum || hasDuration);
+    }
+    if (previewWrap) previewWrap.hidden = false;
+    const id3TitleInput = document.getElementById('id3Title');
+    const id3ArtistInput = document.getElementById('id3Artist');
+    const id3AlbumInput = document.getElementById('id3Album');
+    const id3GenreInput = document.getElementById('id3Genre');
+    const metaId3 = info.id3 || {};
+    if (autoFillId3 || (fillEmptyId3 && id3TitleInput && !id3TitleInput.value.trim())) {
+      if (id3TitleInput) id3TitleInput.value = metaId3.title || displayTitle;
+    }
+    if (autoFillId3 || (fillEmptyId3 && id3ArtistInput && !id3ArtistInput.value.trim())) {
+      if (id3ArtistInput) id3ArtistInput.value = metaId3.artist || artist;
+    }
+    if (autoFillId3 || (fillEmptyId3 && id3AlbumInput && !id3AlbumInput.value.trim())) {
+      if (id3AlbumInput) id3AlbumInput.value = metaId3.album || displayTitle;
+    }
+    if (autoFillId3 || (fillEmptyId3 && id3GenreInput && !id3GenreInput.value.trim())) {
+      if (id3GenreInput && metaId3.genre) id3GenreInput.value = metaId3.genre;
+    }
+    const fileNameInput = document.getElementById('fileName');
+    if (fileNameInput && (autoFillId3 || !fileNameInput.value.trim())) {
+      const candidate = sanitizeFileName(info.cleanTitle || info.title || info.id || '');
+      if (candidate) fileNameInput.value = candidate;
+    }
+    lastVideoMeta = {
+      title: displayTitle,
+      rawTitle: info.title || '',
+      author: artist,
+      album: info.album || '',
+      thumbnail: info.cover || info.thumbnail || '',
+      duration: info.duration || null,
+    };
+    lastVideoInfo = info;
+  }
+
   const updateAiStatus = (message, type = 'info') => {
     if (!aiStatus) return;
     if (!message) {
@@ -4388,7 +5350,11 @@
     }
     aiStatus.hidden = false;
     aiStatus.className = `alert alert-${type} mt-3 small`;
-    aiStatus.innerHTML = message;
+    if (typeof message === 'string') {
+      aiStatus.innerHTML = translateMessage(message);
+    } else {
+      aiStatus.innerHTML = '';
+    }
   };
 
   const resetAiCaption = () => {
@@ -4925,33 +5891,110 @@ $('#queueList')?.addEventListener('click', (e) => {
   };
   const renderHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
-    const ul = $('#historyList'); ul.innerHTML = '';
-    $('#historyEmpty').style.display = list.length ? 'none' : '';
-    list.forEach((it, idx) => {
+    const ul = $('#historyList');
+    const emptyState = $('#historyEmpty');
+    if (!ul) return;
+    ul.innerHTML = '';
+    if (emptyState) emptyState.style.display = list.length ? 'none' : '';
+
+    list.forEach((item, idx) => {
       const li = document.createElement('li');
-      li.className = 'list-group-item d-flex align-items-start gap-2';
-      li.innerHTML = `
-        <i class="bi bi-file-music mt-1"></i>
-        <div class="flex-grow-1">
-          <div class="small">${new Date(it.at).toLocaleString()}</div>
-          <a class="history-link" href="${it.downloadUrl}" download="${it.fileName || ''}" target="_blank">${it.fileName || it.downloadUrl}</a>
-          <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
-        </div>
-        <div class="btn-group btn-group-sm">
-          <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
-          <button class="btn btn-outline-secondary copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
-          <button class="btn btn-outline-danger delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
-        </div>`;
-      ul.appendChild(li);
-    });
-    ul.querySelectorAll('.copy-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(btn.dataset.url); setToast('Link disalin'); }
-        catch { setToast('Tidak bisa menyalin'); }
+      li.className = 'list-group-item d-flex align-items-start gap-3';
+
+      const coverUrl = item?.meta?.cover || '';
+      let previewNode;
+      if (coverUrl) {
+        const img = document.createElement('img');
+        img.className = 'history-item-cover';
+        img.src = coverUrl;
+        img.alt = item?.meta?.title || item?.fileName || 'History cover';
+        img.loading = 'lazy';
+        previewNode = img;
+      } else {
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'history-item-icon';
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-music-note-beamed';
+        icon.setAttribute('aria-hidden', 'true');
+        iconWrap.appendChild(icon);
+        previewNode = iconWrap;
+      }
+      li.appendChild(previewNode);
+
+      const body = document.createElement('div');
+      body.className = 'flex-grow-1';
+      const time = document.createElement('div');
+      time.className = 'small text-secondary';
+      time.textContent = new Date(item.at).toLocaleString();
+      body.appendChild(time);
+
+      const titleLink = document.createElement('a');
+      titleLink.className = 'history-link fw-semibold';
+      titleLink.href = item.downloadUrl;
+      if (item.fileName) titleLink.setAttribute('download', item.fileName);
+      titleLink.target = '_blank';
+      titleLink.rel = 'noopener';
+      titleLink.textContent = item?.meta?.title || item.fileName || item.downloadUrl;
+      body.appendChild(titleLink);
+
+      const infoParts = [];
+      if (item?.meta?.artist) infoParts.push(item.meta.artist);
+      if (item?.meta?.album) infoParts.push(item.meta.album);
+      if (item?.format) infoParts.push(String(item.format).toUpperCase());
+      if (item?.abr) infoParts.push(`${item.abr} kbps`);
+      if (infoParts.length) {
+        const metaLine = document.createElement('div');
+        metaLine.className = 'history-item-meta';
+        metaLine.textContent = infoParts.join(' · ');
+        body.appendChild(metaLine);
+      }
+      li.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'btn-group btn-group-sm flex-shrink-0';
+
+      const downloadBtn = document.createElement('a');
+      downloadBtn.className = 'btn btn-outline-primary';
+      downloadBtn.href = item.downloadUrl;
+      if (item.fileName) downloadBtn.setAttribute('download', item.fileName);
+      downloadBtn.title = translateMessage('Download');
+      const downloadIcon = document.createElement('i');
+      downloadIcon.className = 'bi bi-download';
+      downloadIcon.setAttribute('aria-hidden', 'true');
+      downloadBtn.appendChild(downloadIcon);
+      actions.appendChild(downloadBtn);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'btn btn-outline-secondary';
+      copyBtn.title = translateMessage('Salin link');
+      const copyIcon = document.createElement('i');
+      copyIcon.className = 'bi bi-clipboard';
+      copyIcon.setAttribute('aria-hidden', 'true');
+      copyBtn.appendChild(copyIcon);
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(item.downloadUrl);
+          setToast('Link disalin');
+        } catch {
+          setToast('Tidak bisa menyalin');
+        }
       });
-    });
-    ul.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', () => removeHistory(Number(btn.dataset.idx)));
+      actions.appendChild(copyBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'btn btn-outline-danger';
+      deleteBtn.title = translateMessage('Hapus');
+      const deleteIcon = document.createElement('i');
+      deleteIcon.className = 'bi bi-trash';
+      deleteIcon.setAttribute('aria-hidden', 'true');
+      deleteBtn.appendChild(deleteIcon);
+      deleteBtn.addEventListener('click', () => removeHistory(idx));
+      actions.appendChild(deleteBtn);
+
+      li.appendChild(actions);
+      ul.appendChild(li);
     });
   };
 
@@ -5621,28 +6664,27 @@ $('#queueList')?.addEventListener('click', (e) => {
   }
 
   async function updatePreview(){
-    const url = $('#url').value.trim();
-    if(!/^https?:\/\//i.test(url)){ $('#previewWrap').hidden = true; return; }
-    try{
-      const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
-      const data = await resp.json();
-      const cleanedTitle = cleanVideoTitle(data.title || '');
-      $('#thumb').src = data.thumbnail_url; $('#videoTitle').textContent = cleanedTitle || data.title;
-      $('#previewWrap').hidden = false;
-      $('#id3Title').value = cleanedTitle || data.title;
-      $('#id3Artist').value = data.author_name || '';
-      $('#id3Album').value = cleanedTitle || data.title;
-      if (id3Genre) id3Genre.value = '';
-      $('#fileName').value = sanitizeFileName(cleanedTitle || data.title);
-      lastVideoMeta = {
-        title: cleanedTitle || data.title,
-        rawTitle: data.title,
-        author: data.author_name || '',
-        thumbnail: data.thumbnail_url,
-      };
-    }catch{
-      $('#previewWrap').hidden = true;
+    const url = (urlInput?.value || '').trim();
+    if (!url) {
+      if (previewWrap) previewWrap.hidden = true;
       lastVideoMeta = {};
+      lastVideoInfo = null;
+      return;
+    }
+    if (!looksLikeYoutubeUrl(url)) {
+      if (previewWrap) previewWrap.hidden = true;
+      lastVideoMeta = {};
+      lastVideoInfo = null;
+      return;
+    }
+    try {
+      const info = await fetchVideoInfoClient({ url });
+      if (info) applyVideoMetadata(info, { setUrl: false, autoFillId3: false, fillEmptyId3: true });
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      if (previewWrap) previewWrap.hidden = true;
+      lastVideoMeta = {};
+      lastVideoInfo = null;
     }
   }
   if (urlInput) urlInput.addEventListener('focus', () => { tryPrefillClipboard({ forceToast: false, overrideExisting: false }); });
@@ -6568,21 +7610,50 @@ $('#queueList')?.addEventListener('click', (e) => {
   });
   if (subtitleShareBtn) subtitleShareBtn.addEventListener('click', () => shareLink(subtitleShareUrl));
 
-  async function doConvert(urlOverride, autoDownload = false){
-    const url = (urlOverride || $('#url').value).trim();
-    if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
+  async function doConvert(target, autoDownload = false){
+    let overrideUrl = '';
+    let keywordQuery = '';
+    let providedMetadata = null;
+    let forceAutoDownload = autoDownload;
+    if (typeof target === 'object' && target !== null) {
+      overrideUrl = typeof target.url === 'string' ? target.url : '';
+      keywordQuery = typeof target.keyword === 'string' ? target.keyword : '';
+      providedMetadata = target.metadata || null;
+      if (typeof target.autoDownload === 'boolean') forceAutoDownload = target.autoDownload;
+    } else if (typeof target === 'string') {
+      overrideUrl = target;
+    }
+
+    const url = (overrideUrl || urlInput?.value || '').trim();
+    const keyword = keywordQuery || (!url ? (keywordInput?.value.trim() || '') : '');
+    if (!url && !keyword) {
+      setToast(translateMessage('Masukkan URL YouTube yang valid'));
+      urlInput?.focus();
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) {
+      setToast(translateMessage('Masukkan URL YouTube yang valid'));
+      urlInput?.focus();
+      return;
+    }
+
     resetAudioPreview();
-    if(!urlOverride) resetPlaylistPreview();
+    if (!overrideUrl) resetPlaylistPreview();
+    renderRingtoneResults([]);
+
     const body = {
-      url,
       format: $('#format').value,
       abr: Number($('#abr').value),
       sampleRate: Number($('#sampleRate').value),
       fileName: sanitizeFileName($('#fileName').value.trim()),
       noPlaylist: $('#noPlaylist').checked,
       atmos: $('#atmos').checked,
-      speedMode: $('#speedMode').value
+      speedMode: $('#speedMode').value,
+      preferredLang: currentLang,
     };
+
+    if (url) body.url = url;
+    if (keyword) body.keyword = keyword;
 
     const id3 = {
       title: $('#id3Title').value.trim(),
@@ -6590,77 +7661,104 @@ $('#queueList')?.addEventListener('click', (e) => {
       album: $('#id3Album').value.trim(),
       genre: id3Genre ? id3Genre.value.trim() : ''
     };
-    Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
-    if(Object.keys(id3).length) body.id3 = id3;
+    Object.keys(id3).forEach((k) => { if (!id3[k]) delete id3[k]; });
+    if (Object.keys(id3).length) body.id3 = id3;
 
     const trim = {};
     const s = parseTime($('#trimStart').value.trim());
     const e = parseTime($('#trimEnd').value.trim());
-    if(s !== null) trim.start = s;
-    if(e !== null) trim.end = e;
-    if(Object.keys(trim).length) body.trim = trim;
+    if (s !== null) trim.start = s;
+    if (e !== null) trim.end = e;
+    if (Object.keys(trim).length) body.trim = trim;
 
     body.normalize = $('#normalize').checked;
-    if($('#thumb').src) body.coverUrl = $('#thumb').src;
+    if (thumbEl?.src) body.coverUrl = thumbEl.src;
     if (denoiseInput) body.denoise = denoiseInput.checked;
     if (volumeBoost) body.volumeBoost = Number(volumeBoost.value || 0);
     if (enhancerSelect) body.enhancer = enhancerSelect.value || 'none';
+
+    const ringtonePayload = getRingtoneRequest();
+    if (ringtonePayload) body.ringtone = ringtonePayload;
 
     if (backgroundMode?.checked) {
       await submitBackgroundJob(body);
       return;
     }
 
-    $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
+    $('#statusWrap').hidden = false;
+    $('#resultWrap').hidden = true;
+    $('#logWrap').hidden = !$('#showLog').checked;
+    $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
-    $('#status').textContent = 'Memproses…';
-    convertProgressAnimator.start('Menyiapkan…');
+    $('#status').textContent = translateMessage('Memproses…');
+    convertProgressAnimator.start(translateMessage('Menyiapkan…'));
     let fake = 10;
     convertProgressAnimator.to(fake, null);
-    const timer = setInterval(()=>{
-      if(fake < 92){
-        fake = Math.min(92, fake + Math.random()*8 + 2);
+    const timer = setInterval(() => {
+      if (fake < 92) {
+        fake = Math.min(92, fake + Math.random() * 8 + 2);
         convertProgressAnimator.to(fake, null);
       }
-    },650);
+    }, 650);
 
-    try{
-      const resp = await fetch(api('/api/convert'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+    try {
+      const resp = await fetch(api('/api/convert'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
       const data = await resp.json();
-      if(!resp.ok) throw new Error(data.error || 'Gagal memproses');
+      if (!resp.ok) throw new Error(data.error || translateMessage('Gagal memproses'));
 
       const backendBase = getBackend() || window.location.origin;
       const absoluteDownload = new URL(data.downloadUrl, backendBase).href;
-      $('#downloadLink').href = absoluteDownload; $('#downloadLink').setAttribute('download', data.fileName || 'audio');
+      $('#downloadLink').href = absoluteDownload;
+      $('#downloadLink').setAttribute('download', data.fileName || 'audio');
       $('#resultWrap').hidden = false;
-      $('#status').textContent = 'Selesai';
+      $('#status').textContent = translateMessage('Selesai');
       $('#loadingSpinner').style.display = 'none';
       fake = 100;
-      convertProgressAnimator.complete('Selesai · 100%');
-      if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
-      if(autoDownload) $('#downloadLink').click();
-      pushHistory({ downloadUrl: absoluteDownload, format: data.format, abr: body.abr, fileName: data.fileName });
+      convertProgressAnimator.complete(`${translateMessage('Selesai')} · 100%`);
+      if (data.logs && $('#showLog').checked) { $('#logs').textContent = data.logs; }
+      if (forceAutoDownload) $('#downloadLink').click();
+
+      const metaFromServer = data.metadata || providedMetadata || lastVideoInfo || null;
+      if (metaFromServer) {
+        applyVideoMetadata(metaFromServer, { setUrl: !overrideUrl, autoFillId3: false, fillEmptyId3: true });
+      }
+      renderRingtoneResults(Array.isArray(data.ringtones) ? data.ringtones : []);
+
+      const historyMeta = metaFromServer
+        ? {
+            title: metaFromServer.cleanTitle || metaFromServer.title || '',
+            artist: metaFromServer.artist || metaFromServer.author || '',
+            album: metaFromServer.album || '',
+            cover: metaFromServer.cover || metaFromServer.thumbnail || '',
+          }
+        : null;
+      pushHistory({ downloadUrl: absoluteDownload, format: data.format, abr: body.abr, fileName: data.fileName, meta: historyMeta });
+
       const previewMeta = {
         fileName: data.fileName || '',
         baseName: data.baseName || '',
         format: data.format,
-        title: $('#id3Title').value.trim() || $('#videoTitle').textContent.trim() || data.fileName || '',
+        title: $('#id3Title').value.trim() || metaFromServer?.cleanTitle || metaFromServer?.title || data.fileName || '',
         sampleRate: data.sampleRate || null,
         channels: data.channels || null,
       };
       showAudioPreview(absoluteDownload, previewMeta);
-      setToast('Berhasil diproses');
+      setToast(translateMessage('Berhasil diproses'));
       updateAiStatus('Konversi selesai', 'success');
-      if($('#autoClear').checked && !urlOverride){ $('#clearBtn').click(); }
-    }catch(err){
-      $('#status').textContent = 'Error: ' + err.message;
+      if ($('#autoClear').checked && !overrideUrl) { $('#clearBtn').click(); }
+    } catch (err) {
+      $('#status').textContent = translateMessage(`Error: ${err.message}`);
       $('#loadingSpinner').style.display = 'none';
       $('#resultWrap').hidden = true;
       $('#logWrap').hidden = false;
       $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
       resetAudioPreview();
-      convertProgressAnimator.fail('Gagal');
-      setToast('Terjadi error: '+err.message);
+      convertProgressAnimator.fail(translateMessage('Gagal'));
+      setToast(`${translateMessage('Terjadi error: ')}${err.message}`);
       updateAiStatus(err.message, 'danger');
     } finally {
       clearInterval(timer);

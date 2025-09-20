@@ -239,6 +239,200 @@ const sanitizeFileName = (name = "") =>
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const SMART_TITLE_PATTERNS = [
+  /\s*\((?:official(?:\s+music)?\s+video|official\s+audio|lyrics?|lyric\s+video|lirik|audio|video|visualizer|mv|music\s+video|color\s+coded|teaser|live|performance|practice|karaoke|remix).*?\)/gi,
+  /\s*\[(?:official(?:\s+music)?\s+video|official\s+audio|lyrics?|lyric\s+video|lirik|audio|video|visualizer|mv|music\s+video|color\s+coded|teaser|live|performance|practice|karaoke|remix).*?\]/gi,
+  /\s*-\s*(?:official(?:\s+music)?\s+video|official\s+audio|lyrics?|lyric\s+video|lirik|audio(?:\s+only)?|mv|music\s+video)\b/gi,
+  /\b(?:official(?:\s+music)?\s+video|official\s+audio|lyrics?|lyric\s+video|lirik|mv|music\s+video|visualizer|audio\s+only|full\s+album|shorts)\b/gi,
+  /\b(?:HD|4K|1080p|720p)\b/gi,
+];
+
+const cleanVideoTitle = (rawTitle = "") => {
+  let result = String(rawTitle || "");
+  SMART_TITLE_PATTERNS.forEach((pattern) => {
+    result = result.replace(pattern, "");
+  });
+  result = result.replace(/[-–—]\s*(?:official|lyrics?|lyric\s+video|lirik|audio)$/gi, "");
+  return result.replace(/\s{2,}/g, " ").trim();
+};
+
+const extractBestThumbnail = (info) => {
+  if (!info || typeof info !== "object") return null;
+  if (typeof info.thumbnail === "string" && info.thumbnail.trim()) {
+    return info.thumbnail.trim();
+  }
+  if (Array.isArray(info.thumbnails)) {
+    const sorted = [...info.thumbnails]
+      .filter((item) => item && typeof item === "object")
+      .sort((a, b) => (Number(b?.width) || 0) - (Number(a?.width) || 0));
+    const candidate = sorted.find((item) => item?.url) || sorted[0];
+    if (candidate?.url) return String(candidate.url);
+  }
+  return null;
+};
+
+const buildVideoMetadata = (entry = {}, { requestedUrl = "", keywordUsed = false } = {}) => {
+  if (!entry || typeof entry !== "object") return null;
+  const baseTitle = entry.track || entry.title || entry.fulltitle || "";
+  const cleaned = cleanVideoTitle(baseTitle);
+  const artist = entry.artist || entry.channel || entry.uploader || entry.uploader_id || "";
+  const albumSource = entry.album || entry.playlist_title || entry.playlist || "";
+  const album = albumSource ? cleanVideoTitle(albumSource) : "";
+  const webpageUrl =
+    entry.original_url ||
+    entry.webpage_url ||
+    entry.url ||
+    (entry.id ? `https://www.youtube.com/watch?v=${entry.id}` : requestedUrl || "");
+  const duration = Number.isFinite(entry.duration) ? Number(entry.duration) : null;
+  const languageList = Array.isArray(entry.languages)
+    ? entry.languages.map((lang) => (lang == null ? null : String(lang))).filter(Boolean)
+    : entry.language
+      ? [String(entry.language)]
+      : [];
+  const keywords = Array.isArray(entry.tags)
+    ? entry.tags.map((tag) => (tag == null ? null : String(tag))).filter(Boolean)
+    : [];
+
+  const cover = extractBestThumbnail(entry);
+
+  return {
+    id: entry.id || null,
+    title: baseTitle,
+    cleanTitle: cleaned || baseTitle,
+    author: entry.channel || entry.uploader || entry.channel_id || "",
+    artist: artist || "",
+    album: album || cleaned || baseTitle,
+    cover,
+    thumbnail: cover,
+    duration,
+    webpageUrl,
+    keywords,
+    languages: Array.from(new Set(languageList)),
+    keywordUsed: Boolean(keywordUsed),
+    id3: {
+      title: cleaned || baseTitle,
+      artist: artist || entry.channel || "",
+      album: album || cleaned || baseTitle,
+      cover,
+    },
+  };
+};
+
+const runYtDlpJson = async (args, { label = "yt-dlp" } = {}) => {
+  let stdout = "";
+  let stderr = "";
+  const logs = [`${label}: yt-dlp ${args.join(" ")}`];
+  try {
+    await new Promise((resolve, reject) => {
+      const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
+      proc.stdout.on("data", (chunk) => {
+        stdout += chunk.toString();
+      });
+      proc.stderr.on("data", (chunk) => {
+        stderr += chunk.toString();
+      });
+      proc.on("error", (err) => {
+        const error = new Error("yt-dlp tidak bisa dijalankan");
+        error.cause = err;
+        reject(error);
+      });
+      proc.on("close", (code) => {
+        if (code !== 0) {
+          const error = new Error("yt-dlp gagal mengambil metadata");
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    const error = new Error(err.message || "yt-dlp gagal");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
+
+  try {
+    return JSON.parse(stdout || "{}");
+  } catch (err) {
+    const error = new Error("Respons yt-dlp tidak valid");
+    error.logs = [...logs, stderr, stdout].filter(Boolean).join("\n");
+    throw error;
+  }
+};
+
+const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
+  const rawUrl = typeof url === "string" ? url.trim() : "";
+  const rawKeyword = typeof keyword === "string" ? keyword.trim() : "";
+  let target = rawUrl;
+  let keywordUsed = false;
+  if (!target) {
+    if (!rawKeyword) {
+      throw new Error("URL atau kata kunci tidak valid");
+    }
+    keywordUsed = true;
+    target = `ytsearch1:${rawKeyword}`;
+  }
+
+  const args = [
+    "--dump-single-json",
+    "--skip-download",
+    "--no-warnings",
+    "--default-search",
+    "ytsearch",
+    "--no-playlist",
+  ];
+  if (preferLang) {
+    args.push("--sub-lang", String(preferLang));
+  }
+  if (existsSync(COOKIES_PATH)) {
+    args.push("--cookies", COOKIES_PATH);
+  }
+  args.push(target);
+
+  const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
+  const entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
+  if (!entry) {
+    throw new Error("Video tidak ditemukan");
+  }
+  const metadata = buildVideoMetadata(entry, { requestedUrl: rawUrl, keywordUsed });
+  if (!metadata?.webpageUrl) {
+    metadata.webpageUrl = rawUrl || metadata?.id ? `https://www.youtube.com/watch?v=${metadata.id}` : "";
+  }
+  return metadata;
+};
+
+const searchYoutubeVideos = async ({ query, limit = 6, preferLang } = {}) => {
+  const rawQuery = typeof query === "string" ? query.trim() : "";
+  if (!rawQuery) {
+    throw new Error("Kata kunci pencarian kosong");
+  }
+  const clamped = clamp(Number(limit) || 6, 1, 15);
+  const target = `ytsearch${clamped}:${rawQuery}`;
+  const args = [
+    "--dump-single-json",
+    "--skip-download",
+    "--no-warnings",
+    "--default-search",
+    "ytsearch",
+    "--no-playlist",
+  ];
+  if (preferLang) {
+    args.push("--sub-lang", String(preferLang));
+  }
+  if (existsSync(COOKIES_PATH)) {
+    args.push("--cookies", COOKIES_PATH);
+  }
+  args.push(target);
+
+  const json = await runYtDlpJson(args, { label: "search" });
+  const entries = Array.isArray(json?.entries) ? json.entries : [];
+  return entries
+    .filter(Boolean)
+    .slice(0, clamped)
+    .map((entry) => buildVideoMetadata(entry, { keywordUsed: true }))
+    .filter(Boolean);
+};
+
 const toPositiveInt = (value) => {
   const num = Number(value);
   if (!Number.isFinite(num) || num <= 0) return null;
@@ -2695,6 +2889,97 @@ const ffmpegToOgg = (input, output, opts = {}) => {
   });
 };
 
+const ffmpegCreateRingtone = (input, output, opts = {}) => {
+  const {
+    start = 0,
+    duration = 30,
+    fadeIn = 0.6,
+    fadeOut = 1.2,
+    codecArgs = [],
+  } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    if (start > 0) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (duration > 0) args.push("-t", String(duration));
+    args.push("-ac", "2", "-ar", "44100");
+    const fades = [];
+    if (fadeIn > 0) fades.push(`afade=t=in:st=0:d=${fadeIn.toFixed(2)}`);
+    if (fadeOut > 0) {
+      const fadeStart = Math.max(duration - fadeOut, 0);
+      fades.push(`afade=t=out:st=${fadeStart.toFixed(2)}:d=${fadeOut.toFixed(2)}`);
+    }
+    if (fades.length) {
+      args.push("-af", fades.join(","));
+    }
+    args.push(...codecArgs, output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
+const createRingtoneVariants = async ({ sourcePath, id, baseName, trimOpt, request = {} }) => {
+  const enabled = request && (request.enabled === true || request.enabled === "true" || request.enabled === 1);
+  if (!enabled || !sourcePath) return [];
+  const variants = [];
+  const length = clamp(Number(request.length) || 30, 5, 60);
+  const fadeIn = clamp(Number(request.fadeIn) || 0.6, 0, 10);
+  const fadeOut = clamp(Number(request.fadeOut) || 1.2, 0, 10);
+  const start = trimOpt?.start ? Math.max(Number(trimOpt.start), 0) : 0;
+  const stem = sanitizeFileName(request.fileStem || `${baseName || id}-ringtone`) || `${id}-ringtone`;
+
+  const addVariant = async ({ ext, codecArgs, platform }) => {
+    const outName = `${id}.ring.${ext}`;
+    const outputPath = join(JOBS_DIR, outName);
+    await ffmpegCreateRingtone(sourcePath, outputPath, {
+      start,
+      duration: length,
+      fadeIn,
+      fadeOut,
+      codecArgs,
+    });
+    variants.push({
+      format: ext,
+      platform,
+      downloadUrl: `/public/jobs/${outName}`,
+      fileName: `${stem}.${ext}`,
+      duration: length,
+    });
+  };
+
+  try {
+    await addVariant({
+      ext: "m4r",
+      platform: "iphone",
+      codecArgs: ["-c:a", "aac", "-b:a", "192k"],
+    });
+  } catch (err) {
+    console.warn("Gagal membuat ringtone m4r", err);
+  }
+
+  try {
+    await addVariant({
+      ext: "ogg",
+      platform: "android",
+      codecArgs: ["-c:a", "libvorbis", "-qscale:a", "5"],
+    });
+  } catch (err) {
+    console.warn("Gagal membuat ringtone ogg", err);
+  }
+
+  return variants;
+};
+
 const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
 
 const runYtDlpDownload = ({ args, id }) =>
@@ -2778,7 +3063,6 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
 
 const convertSingle = async (payload = {}) => {
   const {
-    url,
     format = "mp3",
     abr = 192,
     sampleRate,
@@ -2787,7 +3071,6 @@ const convertSingle = async (payload = {}) => {
     id3 = {},
     trim,
     normalize = false,
-    coverUrl,
     atmos = false,
     speedMode = "normal",
     denoise = false,
@@ -2795,9 +3078,39 @@ const convertSingle = async (payload = {}) => {
     enhancer = "none",
   } = payload;
 
+  let coverUrl = typeof payload.coverUrl === "string" ? payload.coverUrl : undefined;
+  let url = typeof payload.url === "string" ? payload.url.trim() : "";
+  const keywordQuery = typeof payload.keyword === "string" ? payload.keyword.trim() : "";
+  const preferredLang = typeof payload.preferredLang === "string" ? payload.preferredLang.trim() : "";
+  const ringtoneRequest = payload.ringtone || {};
+
+  let metadata = null;
+  if (!url || !/^https?:\/\//.test(url)) {
+    if (!keywordQuery) {
+      throw new Error("URL atau kata kunci tidak valid");
+    }
+    try {
+      metadata = await fetchVideoInfo({ keyword: keywordQuery, preferLang: preferredLang });
+      url = metadata?.webpageUrl || "";
+    } catch (err) {
+      const error = new Error(err?.message || "Tidak menemukan hasil pencarian");
+      error.logs = err?.logs;
+      throw error;
+    }
+  }
+
   if (!url || !/^https?:\/\//.test(url)) {
     throw new Error("URL tidak valid");
   }
+
+  if (!metadata) {
+    metadata = await fetchVideoInfo({ url, preferLang: preferredLang }).catch(() => null);
+  }
+
+  if (!coverUrl && metadata?.cover) {
+    coverUrl = metadata.cover;
+  }
+
   const fmt = String(format || "").toLowerCase();
   if (!SUPPORTED_FORMATS.has(fmt)) {
     throw new Error("Format tidak didukung");
@@ -2835,21 +3148,22 @@ const convertSingle = async (payload = {}) => {
   if (trim && (trim.start !== undefined || trim.end !== undefined)) {
     const hasStart = trim.start !== undefined;
     const hasEnd = trim.end !== undefined;
-    const start = hasStart ? Number(trim.start) : 0;
-    const end = hasEnd ? Number(trim.end) : undefined;
-    if ((hasStart && Number.isNaN(start)) ||
-        (hasEnd && Number.isNaN(end)) ||
-        (hasStart && hasEnd && end < start)) {
+    const startVal = hasStart ? Number(trim.start) : 0;
+    const endVal = hasEnd ? Number(trim.end) : undefined;
+    if ((hasStart && Number.isNaN(startVal)) ||
+        (hasEnd && Number.isNaN(endVal)) ||
+        (hasStart && hasEnd && endVal < startVal)) {
       throw new Error("trim tidak valid");
     }
     trimOpt = {};
-    if (hasStart) trimOpt.start = start;
-    if (hasEnd) trimOpt.end = end;
+    if (hasStart) trimOpt.start = startVal;
+    if (hasEnd) trimOpt.end = endVal;
   }
 
   const id = nanoid(10);
   const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
-  const baseName = sanitizeFileName(fileName || id3.title || id) || id;
+  const metaBase = metadata?.cleanTitle || metadata?.title || keywordQuery || "";
+  const baseName = sanitizeFileName(fileName || id3.title || metaBase || id) || id;
 
   let coverPath = null;
   if (coverUrl && /^https?:\/\//.test(coverUrl) && ["mp3", "m4a", "flac"].includes(fmt)) {
@@ -2928,6 +3242,9 @@ const convertSingle = async (payload = {}) => {
     if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
     return acc;
   }, {});
+  if (!id3Clean.title && metadata?.id3?.title) id3Clean.title = metadata.id3.title;
+  if (!id3Clean.artist && metadata?.id3?.artist) id3Clean.artist = metadata.id3.artist;
+  if (!id3Clean.album && metadata?.id3?.album) id3Clean.album = metadata.id3.album;
   if (!id3Clean.genre) {
     const autoGenre = buildAiTags({
       title: id3Clean.title || baseName,
@@ -3001,6 +3318,30 @@ const convertSingle = async (payload = {}) => {
   const finalSampleRate = finalSamplePreference
     ? Math.round(finalSamplePreference)
     : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
+  const metadataResponse = metadata
+    ? {
+        id: metadata.id || null,
+        title: metadata.title || null,
+        cleanTitle: metadata.cleanTitle || null,
+        author: metadata.author || null,
+        artist: metadata.artist || null,
+        album: metadata.album || null,
+        cover: metadata.cover || null,
+        duration: metadata.duration || null,
+        webpageUrl: metadata.webpageUrl || null,
+        keywords: metadata.keywords || [],
+        languages: metadata.languages || [],
+        keywordUsed: metadata.keywordUsed || false,
+      }
+    : null;
+  const ringtoneVariants = await createRingtoneVariants({
+    sourcePath: fullPath,
+    id,
+    baseName,
+    trimOpt,
+    request: ringtoneRequest,
+  });
+
   return {
     ok: true,
     id,
@@ -3014,6 +3355,8 @@ const convertSingle = async (payload = {}) => {
     sampleRate: finalSampleRate,
     channels: audioProbe?.channels || null,
     speedMode: effectiveSpeedMode,
+    metadata: metadataResponse,
+    ringtones: ringtoneVariants,
   };
 };
 
@@ -3153,6 +3496,42 @@ app.post("/api/convert", async (req, res) => {
   } catch (e) {
     const msg = e?.message || "Gagal memproses";
     const status = /tidak valid|tidak dikenali/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ error: msg, logs: e?.logs });
+  }
+});
+
+app.post("/api/video-info", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const info = await fetchVideoInfo({
+      url: body.url,
+      keyword: body.keyword,
+      preferLang: body.lang || body.preferredLang,
+    });
+    return res.json({ ok: true, info });
+  } catch (e) {
+    const msg = e?.message || "Gagal mengambil info video";
+    const status = /tidak valid|kata kunci/i.test(msg)
+      ? 400
+      : /tidak ditemukan/i.test(msg)
+        ? 404
+        : 500;
+    return res.status(status).json({ error: msg, logs: e?.logs });
+  }
+});
+
+app.post("/api/search", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const results = await searchYoutubeVideos({
+      query: body.query || body.keyword,
+      limit: body.limit,
+      preferLang: body.lang || body.preferredLang,
+    });
+    return res.json({ ok: true, results });
+  } catch (e) {
+    const msg = e?.message || "Gagal mencari video";
+    const status = /kosong|valid/i.test(msg) ? 400 : 500;
     return res.status(status).json({ error: msg, logs: e?.logs });
   }
 });
