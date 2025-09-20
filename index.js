@@ -198,6 +198,52 @@ if (!fetchImpl) {
   }
 }
 
+const normalizeBaseUrl = (input) => {
+  if (!input) return null;
+  const trimmed = String(input).trim();
+  if (!trimmed) return null;
+  try {
+    const candidate = trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+    const url = new URL(candidate);
+    if (!/^https?:$/i.test(url.protocol)) return null;
+    if (!url.pathname) url.pathname = "/";
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+const inferKoyebBaseUrl = () => {
+  const directCandidates = [
+    process.env.KOYEB_URL,
+    process.env.KOYEB_APP_URL,
+    process.env.KOYEB_SERVICE_URL,
+  ];
+  for (const candidate of directCandidates) {
+    const normalized = normalizeBaseUrl(candidate);
+    if (normalized) return normalized;
+  }
+
+  const hostCandidates = [
+    process.env.KOYEB_APP_HOSTNAME,
+    process.env.KOYEB_SERVICE_HOSTNAME,
+  ];
+  for (const host of hostCandidates) {
+    const normalized = normalizeBaseUrl(host);
+    if (normalized) return normalized;
+  }
+
+  const fallbackName = process.env.KOYEB_APP_NAME || process.env.KOYEB_SERVICE_NAME;
+  if (fallbackName) {
+    const normalized = normalizeBaseUrl(`${fallbackName}.koyeb.app`);
+    if (normalized) return normalized;
+  }
+
+  return null;
+};
+
+const DEFAULT_PUBLIC_BASE_URL = inferKoyebBaseUrl();
+
 const safeFetch = async (...args) => {
   if (!fetchImpl) {
     throw new Error("fetch API tidak tersedia di lingkungan ini");
@@ -209,6 +255,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
 app.use(cors());
 
@@ -659,7 +706,11 @@ const resolvePublicPath = (urlPath = "") => {
 const buildAbsolutePublicUrl = (path = "") => {
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
-  const base = process.env.PUBLIC_BASE_URL || process.env.NOTIFY_PUBLIC_URL || process.env.APP_BASE_URL;
+  const base =
+    process.env.PUBLIC_BASE_URL ||
+    process.env.NOTIFY_PUBLIC_URL ||
+    process.env.APP_BASE_URL ||
+    DEFAULT_PUBLIC_BASE_URL;
   if (!base) return path;
   try {
     return new URL(path, base).toString();
@@ -4384,6 +4435,7 @@ app.get("/admin/cookies-status", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => console.log(`Server jalan di :${PORT}`));
+const HOST = process.env.HOST || "0.0.0.0";
+const server = app.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
 
 export { app, server, buildAssistantResponse };

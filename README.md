@@ -41,5 +41,17 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 
 Folder [`browser-extension/`](./browser-extension) berisi manifest dan content script sederhana untuk menambahkan tombol **Convert MP3** di halaman video YouTube (desktop maupun mobile web). Muat ekstensi ini dalam mode developer pada browser Chromium, lalu setiap klik tombol akan membuka konverter dengan URL video yang sedang dibuka.
 
+## Deploy ke Koyeb
+
+Platform ini juga dapat dijalankan di [Koyeb](https://www.koyeb.com) memakai Docker image yang sudah disiapkan. Berikut ringkasan langkahnya:
+
+1. Fork/clone repository ini lalu hubungkan ke aplikasi baru di dashboard Koyeb.
+2. Pilih opsi **Dockerfile** sebagai sumber build (file [`Dockerfile`](./Dockerfile) sudah memasang ffmpeg, yt-dlp, dan dependensi Python yang dibutuhkan).
+3. Set environment variable `PORT` (otomatis diisi oleh Koyeb) serta `APP_BASE_URL` dengan URL publik aplikasi Koyeb Anda, misalnya `https://youtubetomp3-abcdef.koyeb.app` agar tautan unduhan dan email memakai domain yang benar.
+4. (Opsional) Tambahkan kredensial SMTP pada variabel `NOTIFY_SMTP_*` bila ingin mengirim notifikasi email ketika background job selesai.
+5. Deploy dan pastikan service mendengarkan pada port 3000; aplikasi ini otomatis bind ke `0.0.0.0` sehingga dapat diteruskan oleh reverse proxy Koyeb.
+
+Setelah berhasil, UI converter dan API akan tersedia di domain Koyeb Anda dengan dukungan PWA/offline mode sebagaimana pada deployment platform lainnya.
+
 ## Lisensi
 Proyek ini dirilis di bawah lisensi MIT.
