@@ -30,6 +30,17 @@ Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversin
 - Private Room Share yang melindungi tautan unduhan dengan password sebelum dibagikan ke teman.
 - Ekstensi browser yang menambahkan tombol “Convert MP3” langsung di bawah video YouTube.
 
+## Antarmuka Next.js + Bootstrap
+Untuk antarmuka modern berbasis React, repositori ini menyertakan aplikasi [Next.js](./next-app) yang memanfaatkan komponen Bootstrap namun tetap memakai API backend yang sama. Antarmuka ini dapat dijalankan berdampingan dengan UI klasik tanpa memodifikasi fitur yang sudah ada.
+
+**Menjalankan antarmuka Next.js secara lokal**
+1. Masuk ke folder `next-app` kemudian jalankan `npm install`.
+2. (Opsional) Set `NEXT_PUBLIC_BACKEND_BASE_URL` bila backend berjalan pada domain/port berbeda. Secara default, antarmuka akan memakai origin yang sama.
+3. Jalankan `npm run dev` untuk mode pengembangan, atau `npm run build` diikuti `npm start` untuk mode produksi.
+4. Buka `http://localhost:3000` (atau port yang ditampilkan Next.js) untuk mencoba UI React dengan gaya Bootstrap.
+
+Antarmuka Next.js menyertakan form konversi, pencarian video, serta monitor job latar dan memanfaatkan semua endpoint bawaan (`/api/convert`, `/api/search`, `/api/background`, dll.).
+
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
 2. Masukkan URL video YouTube pada kolom yang tersedia.

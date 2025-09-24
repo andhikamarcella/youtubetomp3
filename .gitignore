@@ -2,3 +2,5 @@
 public/jobs/
 /tmp/
 cookies.txt
+next-app/.next/
+next-app/node_modules/
