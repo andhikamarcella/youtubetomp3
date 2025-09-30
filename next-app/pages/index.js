@@ -16,6 +16,9 @@ const formatOptions = [
   { value: 'flac', label: 'FLAC' },
   { value: 'wav', label: 'WAV' },
   { value: 'ogg', label: 'OGG' },
+  { value: 'mp4', label: 'MP4 Video' },
+  { value: 'webm', label: 'WEBM Video' },
+  { value: 'mkv', label: 'MKV Video' },
 ];
 
 export default function Home() {

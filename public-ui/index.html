@@ -696,6 +696,9 @@
                 <option value="flac">FLAC (Hi-Res lossless)</option>
                 <option value="wav">WAV (PCM lossless)</option>
                 <option value="ogg">OGG Vorbis</option>
+                <option value="mp4">MP4 Video (audio + visual)</option>
+                <option value="webm">WEBM Video</option>
+                <option value="mkv">MKV Video</option>
               </select>
             </div>
             <div class="col-md-3">
@@ -5692,6 +5695,39 @@
       sampleRateHint: '44.1 kHz atau 48 kHz.',
       speedModes: ['normal', 'nightcore'],
       speedHint: 'Nightcore tersedia, Slowed dimatikan.',
+    },
+    mp4: {
+      labelAbr: 'Kualitas Audio (MP4)',
+      labelSampleRate: 'Sample Rate (MP4)',
+      labelSpeed: 'Mode Kecepatan',
+      abr: [],
+      abrHint: 'Bitrate mengikuti sumber video.',
+      sampleRates: ['48000', '44100'],
+      sampleRateHint: 'Audio 48 kHz atau 44.1 kHz.',
+      speedModes: ['normal'],
+      speedHint: 'Pengubah kecepatan dimatikan untuk video.',
+    },
+    webm: {
+      labelAbr: 'Kualitas Audio (WEBM)',
+      labelSampleRate: 'Sample Rate (WEBM)',
+      labelSpeed: 'Mode Kecepatan',
+      abr: [],
+      abrHint: 'Bitrate mengikuti sumber video.',
+      sampleRates: ['48000', '44100'],
+      sampleRateHint: 'Audio 48 kHz atau 44.1 kHz.',
+      speedModes: ['normal'],
+      speedHint: 'Pengubah kecepatan dimatikan untuk video.',
+    },
+    mkv: {
+      labelAbr: 'Kualitas Audio (MKV)',
+      labelSampleRate: 'Sample Rate (MKV)',
+      labelSpeed: 'Mode Kecepatan',
+      abr: [],
+      abrHint: 'Bitrate mengikuti sumber video.',
+      sampleRates: ['48000', '44100'],
+      sampleRateHint: 'Audio 48 kHz atau 44.1 kHz.',
+      speedModes: ['normal'],
+      speedHint: 'Pengubah kecepatan dimatikan untuk video.',
     },
   };
 

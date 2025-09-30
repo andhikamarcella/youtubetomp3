@@ -1,11 +1,11 @@
 # YouTube to MP3 Converter
 
-Aplikasi web sederhana untuk mengunduh audio dari video YouTube dan mengonversinya menjadi MP3. Layanan ini berjalan di [`mis-ytmp3-backend.onrender.com`](https://mis-ytmp3-backend.onrender.com).
+Aplikasi web serbaguna untuk mengunduh audio atau video dari YouTube dan mengonversinya menjadi MP3, M4A, FLAC, WAV, OGG, hingga MP4/WEBM/MKV. Layanan ini berjalan di [`mis-ytmp3-backend.onrender.com`](https://mis-ytmp3-backend.onrender.com).
 
 ## Fitur Utama
 - Unduh audio dari tautan YouTube secara langsung.
 - Tentukan nama berkas output dan laju sampel (44.1 kHz, 48 kHz, atau 96 kHz).
-- Opsi FLAC lossless (Hi-Res) untuk kualitas maksimal.
+- Opsi audio lossless (FLAC, WAV) serta video MP4/WEBM/MKV siap pakai.
 - Pemangkasan awal/akhir audio serta penyematan metadata ID3 (judul, artis, album).
 - Thumbnail video otomatis dijadikan gambar album; artis diisi dari nama channel, album mengikuti judul video.
 - Normalisasi loudness opsional untuk hasil audio yang konsisten.

@@ -2101,7 +2101,8 @@ const resolveJobFilePath = (job) => {
   return null;
 };
 
-const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
+const VIDEO_FORMATS = new Set(["mp4", "webm", "mkv"]);
+const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg", "mp4", "webm", "mkv"]);
 const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
 
 const FORMAT_RULES = {
@@ -2129,6 +2130,27 @@ const FORMAT_RULES = {
     abr: [256, 192, 160, 128],
     sampleRates: [48000, 44100],
     speedModes: ["normal", "nightcore"],
+  },
+  mp4: {
+    abr: [],
+    sampleRates: [48000, 44100],
+    speedModes: ["normal"],
+    video: true,
+    audioCodec: "aac",
+  },
+  webm: {
+    abr: [],
+    sampleRates: [48000, 44100],
+    speedModes: ["normal"],
+    video: true,
+    audioCodec: "libopus",
+  },
+  mkv: {
+    abr: [],
+    sampleRates: [48000, 44100],
+    speedModes: ["normal"],
+    video: true,
+    audioCodec: "aac",
   },
 };
 
@@ -3281,6 +3303,86 @@ const ffmpegToOgg = (input, output, opts = {}) => {
   });
 };
 
+const ffmpegConvertVideo = (input, output, opts = {}) => {
+  const {
+    trim = {},
+    filters = [],
+    sampleRate,
+    abr,
+    audioCodec = "aac",
+    videoCodec = "copy",
+    preferCopyAudio = true,
+    faststart = false,
+    extraArgs = [],
+  } = opts;
+  const args = ["-y"];
+  const { start, end } = trim || {};
+  const hasStart = typeof start === "number" && !Number.isNaN(start);
+  const hasEnd = typeof end === "number" && !Number.isNaN(end);
+  if (hasStart) args.push("-ss", String(start));
+  args.push("-i", input);
+  if (hasEnd) {
+    if (hasStart) args.push("-t", String(Math.max(0, end - start)));
+    else args.push("-to", String(end));
+  }
+  const audioFilters = Array.isArray(filters) ? filters.filter(Boolean) : [];
+  if (audioFilters.length) args.push("-filter:a", audioFilters.join(","));
+  if (sampleRate) args.push("-ar", String(sampleRate));
+  args.push("-c:v", videoCodec || "copy");
+  const audioBitrate = Number(abr);
+  const hasAbr = Number.isFinite(audioBitrate) && audioBitrate > 0;
+  const needEncodeAudio =
+    !preferCopyAudio ||
+    audioFilters.length > 0 ||
+    (typeof sampleRate === "number" && Number.isFinite(sampleRate)) ||
+    hasAbr ||
+    (audioCodec && audioCodec !== "copy");
+  if (needEncodeAudio) {
+    args.push("-c:a", audioCodec || "aac");
+    if (hasAbr) args.push("-b:a", `${audioBitrate}k`);
+  } else {
+    args.push("-c:a", "copy");
+  }
+  if (faststart) args.push("-movflags", "+faststart");
+  if (Array.isArray(extraArgs) && extraArgs.length) args.push(...extraArgs);
+  args.push(output);
+  return runFfmpeg(args);
+};
+
+const ffmpegToMp4Video = (input, output, opts = {}) => {
+  const { abr, preferCopyAudio = true, videoCodec = "copy", ...rest } = opts || {};
+  return ffmpegConvertVideo(input, output, {
+    ...rest,
+    abr,
+    preferCopyAudio,
+    audioCodec: "aac",
+    videoCodec,
+    faststart: true,
+  });
+};
+
+const ffmpegToWebmVideo = (input, output, opts = {}) => {
+  const { abr, preferCopyAudio = true, videoCodec = "copy", ...rest } = opts || {};
+  return ffmpegConvertVideo(input, output, {
+    ...rest,
+    abr,
+    preferCopyAudio,
+    audioCodec: "libopus",
+    videoCodec,
+  });
+};
+
+const ffmpegToMkvVideo = (input, output, opts = {}) => {
+  const { abr, preferCopyAudio = true, videoCodec = "copy", ...rest } = opts || {};
+  return ffmpegConvertVideo(input, output, {
+    ...rest,
+    abr,
+    preferCopyAudio,
+    audioCodec: "aac",
+    videoCodec,
+  });
+};
+
 const ffmpegCreateRingtone = (input, output, opts = {}) => {
   const {
     start = 0,
@@ -3511,6 +3613,7 @@ const convertSingle = async (payload = {}) => {
   if (!SUPPORTED_FORMATS.has(fmt)) {
     throw new Error("Format tidak didukung");
   }
+  const isVideoFormat = VIDEO_FORMATS.has(fmt);
   if (!VALID_SPEED_MODES.has(speedMode || "normal")) {
     throw new Error("Mode kecepatan tidak dikenali");
   }
@@ -3592,12 +3695,23 @@ const convertSingle = async (payload = {}) => {
     args.push("--cookies", COOKIES_PATH);
   }
   if (noPlaylist) args.push("--no-playlist");
-  if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
+  if (atmos && !isVideoFormat) args.push("-f", "bestaudio[channels>2]/bestaudio");
   args.push("-o", outTpl);
 
-  const sanitizedAbrForDownload = targetAbr || Number(abr) || undefined;
+  const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
 
-  if (fmt === "m4a") {
+  if (isVideoFormat) {
+    if (fmt === "mp4") {
+      args.push("-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/best");
+      args.push("--merge-output-format", "mp4");
+    } else if (fmt === "webm") {
+      args.push("-f", "bv*[ext=webm]+ba[ext=webm]/b[ext=webm]/bv*+ba/best");
+      args.push("--merge-output-format", "webm");
+    } else if (fmt === "mkv") {
+      args.push("-f", "bv*+ba/best");
+      args.push("--merge-output-format", "mkv");
+    }
+  } else if (fmt === "m4a") {
     args.push("-f", "bestaudio[ext=m4a]/bestaudio");
   } else if (fmt === "flac") {
     args.push("-x", "--audio-format", "flac");
@@ -3632,6 +3746,12 @@ const convertSingle = async (payload = {}) => {
     logs = downloadResult.logs || "";
   } catch (err) {
     const baseLogs = err.logs || "";
+    if (isVideoFormat) {
+      if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+      const videoError = new Error(err.message || "Gagal mengunduh");
+      videoError.logs = (baseLogs || "").slice(-8000);
+      throw videoError;
+    }
     try {
       downloadResult = await runPythonDownload({ url, id, baseLogs });
       logs = downloadResult.logs || baseLogs;
@@ -3723,6 +3843,36 @@ const convertSingle = async (payload = {}) => {
       const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
       if (needConvert) {
         await finalize("ogg", ffmpegToOgg, {});
+      }
+    } else if (fmt === "mp4") {
+      const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
+      const needConvert =
+        ext !== "mp4" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
+      if (needConvert) {
+        await finalize("mp4", ffmpegToMp4Video, {
+          abr: targetAbr || undefined,
+          preferCopyAudio,
+        });
+      }
+    } else if (fmt === "webm") {
+      const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
+      const needConvert =
+        ext !== "webm" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
+      if (needConvert) {
+        await finalize("webm", ffmpegToWebmVideo, {
+          abr: targetAbr || undefined,
+          preferCopyAudio,
+        });
+      }
+    } else if (fmt === "mkv") {
+      const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
+      const needConvert =
+        ext !== "mkv" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
+      if (needConvert) {
+        await finalize("mkv", ffmpegToMkvVideo, {
+          abr: targetAbr || undefined,
+          preferCopyAudio,
+        });
       }
     }
   } catch (err) {
