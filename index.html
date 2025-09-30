@@ -103,9 +103,14 @@
                   <option value="mp3">MP3 (re-encode, fleksibel)</option>
                   <option value="m4a" selected>M4A (super cepat)</option>
                   <option value="flac">FLAC (Hi-Res lossless)</option>
+                  <option value="wav">WAV (PCM lossless)</option>
+                  <option value="ogg">OGG (Vorbis)</option>
+                  <option value="mp4">MP4 (Video)</option>
+                  <option value="mkv">MKV (Video lengkap)</option>
+                  <option value="webm">WEBM (Video ringan)</option>
                 </select>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-4" id="abrGroup">
                 <label for="abr" class="form-label">Kualitas (MP3)</label>
                 <select id="abr" class="form-select">
                   <option value="320">320 kbps</option>
@@ -115,7 +120,7 @@
                   <option value="64">64 kbps</option>
                 </select>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-4" id="sampleRateGroup">
                 <label for="sampleRate" class="form-label">Sample Rate</label>
                 <select id="sampleRate" class="form-select">
                   <option value="44100" selected>44.1 kHz</option>
@@ -155,7 +160,7 @@
               </div>
             </div>
 
-            <div class="row g-3 mb-3">
+            <div class="row g-3 mb-3" id="trimRow">
               <div class="col-sm-6">
                 <label class="form-label">Trim Mulai</label>
                 <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
@@ -171,19 +176,19 @@
               <input id="fileName" type="text" class="form-control" placeholder="Nama file output" />
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3" id="id3Group">
               <label class="form-label">Metadata ID3</label>
               <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
               <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
               <input id="id3Album" type="text" class="form-control" placeholder="Album" />
             </div>
 
-            <div class="form-check form-switch mb-3">
+            <div class="form-check form-switch mb-3" id="normalizeGroup">
               <input class="form-check-input" type="checkbox" id="normalize" />
               <label class="form-check-label" for="normalize">Normalisasi audio</label>
             </div>
 
-            <div class="form-check form-switch mb-3">
+            <div class="form-check form-switch mb-3" id="atmosGroup">
               <input class="form-check-input" type="checkbox" id="atmos" />
               <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
             </div>
@@ -373,11 +378,38 @@
     return b ? b.replace(/\/$/, '') + path : path; // relative fallback
   };
 
+  const AUDIO_FORMATS = new Set(['mp3','m4a','flac','wav','ogg']);
+  const VIDEO_FORMATS = new Set(['mp4','mkv','webm']);
+  const isAudioFormat = (fmt) => AUDIO_FORMATS.has(String(fmt || '').toLowerCase());
+
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
     const b = getBackend();
     badge.textContent = b ? new URL(b).host : location.host;
   };
+
+  function updateFormatUI(){
+    const select = $('#format');
+    const fmt = select ? select.value : 'mp3';
+    const audio = isAudioFormat(fmt);
+    const isMp3 = fmt === 'mp3';
+    const abrGroup = $('#abrGroup');
+    if(abrGroup) abrGroup.hidden = !isMp3;
+    const sampleGroup = $('#sampleRateGroup');
+    if(sampleGroup) sampleGroup.hidden = !audio;
+    const trimRow = $('#trimRow');
+    if(trimRow) trimRow.hidden = !audio;
+    const id3Group = $('#id3Group');
+    if(id3Group) id3Group.hidden = !audio;
+    const normalizeGroup = $('#normalizeGroup');
+    if(normalizeGroup) normalizeGroup.hidden = !audio;
+    const atmosGroup = $('#atmosGroup');
+    if(atmosGroup) atmosGroup.hidden = !audio;
+    if(!audio){
+      $('#normalize').checked = false;
+      $('#atmos').checked = false;
+    }
+  }
 
   // ===== Queue =====
   const queue = [];
@@ -402,12 +434,14 @@
     if(clearBtn) clearBtn.disabled = queue.length === 0;
   }
 
-$('#queueList')?.addEventListener('click', (e) => {
+  $('#queueList')?.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-idx]');
     if(!btn) return;
     queue.splice(Number(btn.getAttribute('data-idx')),1);
     renderQueue();
   });
+
+  $('#format')?.addEventListener('change', updateFormatUI);
 
   $('#addQueueBtn')?.addEventListener('click', async () => {
     const url = $('#queueUrl').value.trim();
@@ -499,12 +533,16 @@ $('#queueList')?.addEventListener('click', (e) => {
     list.forEach((it, idx) => {
       const li = document.createElement('li');
       li.className = 'list-group-item d-flex align-items-start gap-2';
+      const fmt = (it.format || '').toLowerCase();
+      const isAudio = isAudioFormat(fmt);
+      const icon = isAudio ? 'bi-file-music' : 'bi-file-earmark-play';
+      const quality = isAudio && it.abr ? ` · ${it.abr}kbps` : '';
       li.innerHTML = `
-        <i class="bi bi-file-music mt-1"></i>
+        <i class="bi ${icon} mt-1"></i>
         <div class="flex-grow-1">
           <div class="small">${new Date(it.at).toLocaleString()}</div>
           <a class="history-link" href="${it.downloadUrl}" download="${it.fileName || ''}" target="_blank">${it.fileName || it.downloadUrl}</a>
-          <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
+          <div class="small text-secondary">${(it.format || '').toUpperCase()}${quality}</div>
         </div>
         <div class="btn-group btn-group-sm">
           <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
@@ -659,33 +697,47 @@ $('#queueList')?.addEventListener('click', (e) => {
   async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
     if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
+    const format = $('#format').value;
+    const audioFormat = isAudioFormat(format);
+    const isMp3 = format === 'mp3';
     const body = {
       url,
-      format: $('#format').value,
-      abr: Number($('#abr').value),
-      sampleRate: Number($('#sampleRate').value),
+      format,
       fileName: sanitizeFileName($('#fileName').value.trim()),
       noPlaylist: $('#noPlaylist').checked,
-      atmos: $('#atmos').checked
     };
 
-    const id3 = {
-      title: $('#id3Title').value.trim(),
-      artist: $('#id3Artist').value.trim(),
-      album: $('#id3Album').value.trim()
-    };
-    Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
-    if(Object.keys(id3).length) body.id3 = id3;
+    if (audioFormat) {
+      const srVal = Number($('#sampleRate').value);
+      if (!Number.isNaN(srVal)) body.sampleRate = srVal;
+      body.atmos = $('#atmos').checked;
+    } else {
+      body.atmos = false;
+    }
 
-    const trim = {};
-    const s = parseTime($('#trimStart').value.trim());
-    const e = parseTime($('#trimEnd').value.trim());
-    if(s !== null) trim.start = s;
-    if(e !== null) trim.end = e;
-    if(Object.keys(trim).length) body.trim = trim;
+    if (isMp3) {
+      body.abr = Number($('#abr').value);
+    }
 
-    body.normalize = $('#normalize').checked;
-    if($('#thumb').src) body.coverUrl = $('#thumb').src;
+    if (audioFormat) {
+      const id3 = {
+        title: $('#id3Title').value.trim(),
+        artist: $('#id3Artist').value.trim(),
+        album: $('#id3Album').value.trim()
+      };
+      Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
+      if(Object.keys(id3).length) body.id3 = id3;
+
+      const trim = {};
+      const s = parseTime($('#trimStart').value.trim());
+      const e = parseTime($('#trimEnd').value.trim());
+      if(s !== null) trim.start = s;
+      if(e !== null) trim.end = e;
+      if(Object.keys(trim).length) body.trim = trim;
+
+      body.normalize = $('#normalize').checked;
+      if($('#thumb').src) body.coverUrl = $('#thumb').src;
+    }
 
     $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
@@ -760,6 +812,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     renderHistory();
     renderQueue();
     updateBackendBadge();
+    updateFormatUI();
     updatePreview();
     if(!localStorage.getItem(tutorialKey)){
       const m = new bootstrap.Modal($('#tutorialModal'));

@@ -2101,7 +2101,9 @@ const resolveJobFilePath = (job) => {
   return null;
 };
 
-const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
+const AUDIO_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg"]);
+const VIDEO_FORMATS = new Set(["mp4", "mkv", "webm"]);
+const SUPPORTED_FORMATS = new Set([...AUDIO_FORMATS, ...VIDEO_FORMATS]);
 const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
 
 const FORMAT_RULES = {
@@ -2129,6 +2131,21 @@ const FORMAT_RULES = {
     abr: [256, 192, 160, 128],
     sampleRates: [48000, 44100],
     speedModes: ["normal", "nightcore"],
+  },
+  mp4: {
+    abr: [],
+    sampleRates: [],
+    speedModes: ["normal"],
+  },
+  mkv: {
+    abr: [],
+    sampleRates: [],
+    speedModes: ["normal"],
+  },
+  webm: {
+    abr: [],
+    sampleRates: [],
+    speedModes: ["normal"],
   },
 };
 
@@ -3320,6 +3337,25 @@ const ffmpegCreateRingtone = (input, output, opts = {}) => {
   });
 };
 
+const ffmpegRemuxVideo = (input, output, opts = {}) => {
+  const { appendLogs = "" } = opts || {};
+  return new Promise((resolve, reject) => {
+    const args = ["-y", "-i", input, "-c", "copy", output];
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = appendLogs || "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
 const createRingtoneVariants = async ({ sourcePath, id, baseName, trimOpt, request = {} }) => {
   const enabled = request && (request.enabled === true || request.enabled === "true" || request.enabled === 1);
   if (!enabled || !sourcePath) return [];
@@ -3508,11 +3544,17 @@ const convertSingle = async (payload = {}) => {
   }
 
   const fmt = String(format || "").toLowerCase();
+  const isAudioFormat = AUDIO_FORMATS.has(fmt);
+  const isVideoFormat = VIDEO_FORMATS.has(fmt);
   if (!SUPPORTED_FORMATS.has(fmt)) {
     throw new Error("Format tidak didukung");
   }
-  if (!VALID_SPEED_MODES.has(speedMode || "normal")) {
+  const requestedSpeedMode = String(speedMode || "normal");
+  if (!VALID_SPEED_MODES.has(requestedSpeedMode)) {
     throw new Error("Mode kecepatan tidak dikenali");
+  }
+  if (isVideoFormat && requestedSpeedMode !== "normal") {
+    throw new Error("Mode kecepatan khusus hanya tersedia untuk format audio");
   }
 
   const denoiseEnabled = typeof denoise === "string"
@@ -3546,7 +3588,7 @@ const convertSingle = async (payload = {}) => {
     }
   }
 
-  const sanitizedOptions = sanitizeFormatOptions(fmt, { abr, sampleRate: sr, speedMode });
+  const sanitizedOptions = sanitizeFormatOptions(fmt, { abr, sampleRate: sr, speedMode: requestedSpeedMode });
   const effectiveSpeedMode = sanitizedOptions.speedMode || "normal";
   const targetAbr = sanitizedOptions.abr != null ? sanitizedOptions.abr : (fmt === "mp3" ? Number(abr) || 192 : null);
   sr = sanitizedOptions.sampleRate !== undefined ? sanitizedOptions.sampleRate : sr;
@@ -3565,6 +3607,24 @@ const convertSingle = async (payload = {}) => {
     trimOpt = {};
     if (hasStart) trimOpt.start = startVal;
     if (hasEnd) trimOpt.end = endVal;
+  }
+
+  if (isVideoFormat) {
+    if (trimOpt && Object.keys(trimOpt).length) {
+      throw new Error("Trim hanya tersedia untuk format audio");
+    }
+    if (normalize || denoiseEnabled || boostValue !== 0 || enhancerMode !== "none" || soundEffectMode !== "none") {
+      throw new Error("Opsi peningkatan audio hanya tersedia untuk format audio");
+    }
+    if (sr !== undefined) {
+      throw new Error("Sample rate hanya berlaku untuk format audio");
+    }
+    if (id3 && typeof id3 === "object" && Object.keys(id3).length) {
+      throw new Error("Metadata ID3 hanya tersedia untuk format audio");
+    }
+    if (atmos) {
+      throw new Error("Dolby Atmos hanya tersedia untuk format audio");
+    }
   }
 
   const id = nanoid(10);
@@ -3592,7 +3652,7 @@ const convertSingle = async (payload = {}) => {
     args.push("--cookies", COOKIES_PATH);
   }
   if (noPlaylist) args.push("--no-playlist");
-  if (atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
+  if (!isVideoFormat && atmos) args.push("-f", "bestaudio[channels>2]/bestaudio");
   args.push("-o", outTpl);
 
   const sanitizedAbrForDownload = targetAbr || Number(abr) || undefined;
@@ -3607,6 +3667,9 @@ const convertSingle = async (payload = {}) => {
     args.push("-x", "--audio-format", "wav");
   } else if (fmt === "ogg") {
     args.push("-x", "--audio-format", "ogg");
+  } else if (isVideoFormat) {
+    args.push("-f", "bestvideo+bestaudio/best");
+    args.push("--merge-output-format", fmt);
   }
   if (resumeMode) {
     args.push("--continue", "--no-overwrites");
@@ -3632,6 +3695,12 @@ const convertSingle = async (payload = {}) => {
     logs = downloadResult.logs || "";
   } catch (err) {
     const baseLogs = err.logs || "";
+    if (isVideoFormat) {
+      if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+      const finalError = new Error(err.message || "Gagal mengunduh");
+      finalError.logs = (baseLogs || "").slice(-8000);
+      throw finalError;
+    }
     try {
       downloadResult = await runPythonDownload({ url, id, baseLogs });
       logs = downloadResult.logs || baseLogs;
@@ -3646,100 +3715,135 @@ const convertSingle = async (payload = {}) => {
   let { filename, fullPath, ext } = downloadResult;
   logs = downloadResult.logs || logs;
 
-  const audioProbe = await probeAudioStream(fullPath).catch(() => null);
-  const detectedSampleRate = audioProbe?.sampleRate;
-  const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
-  const filters = buildAudioFilters({
-    normalize,
-    speedMode: effectiveSpeedMode,
-    denoise: denoiseEnabled,
-    volumeBoost: boostValue,
-    enhancer: enhancerMode,
-    soundEffect: soundEffectMode,
-    sampleRate: filterSampleRate,
-    sourceSampleRate: detectedSampleRate,
-  });
+  let audioChannels = null;
+  let finalSampleRate = null;
+  let ringtoneVariants = [];
 
-  const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
-    if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
-    return acc;
-  }, {});
-  if (!id3Clean.title && metadata?.id3?.title) id3Clean.title = metadata.id3.title;
-  if (!id3Clean.artist && metadata?.id3?.artist) id3Clean.artist = metadata.id3.artist;
-  if (!id3Clean.album && metadata?.id3?.album) id3Clean.album = metadata.id3.album;
-  if (!id3Clean.genre) {
-    const autoGenre = buildAiTags({
-      title: id3Clean.title || baseName,
-      channel: id3Clean.artist || "",
-    }).genre;
-    if (autoGenre) id3Clean.genre = autoGenre;
-  }
-  const hasId3 = Object.keys(id3Clean).length > 0;
-  const hasTrim = !!trimOpt && Object.keys(trimOpt).length > 0;
-  const hasFilters = filters.length > 0;
-  const hasCover = !!coverPath;
-  const rule = FORMAT_RULES[fmt];
-  const detectedRate = parseSampleRate(detectedSampleRate);
-  const needSampleRate = sr !== undefined || (!!rule?.sampleRates?.length && !rule.sampleRates.includes(detectedRate));
-  const finalSamplePreference = sr !== undefined ? sr : (needSampleRate ? filterSampleRate : undefined);
-
-  const finalize = async (targetExt, converter, extraOpts = {}) => {
-    const tmpOut = join(JOBS_DIR, `${id}.tmp.${targetExt}`);
-    await converter(fullPath, tmpOut, {
-      ...extraOpts,
-      trim: trimOpt || {},
-      sampleRate: finalSamplePreference,
-      filters,
+  if (isAudioFormat) {
+    const audioProbe = await probeAudioStream(fullPath).catch(() => null);
+    const detectedSampleRate = audioProbe?.sampleRate;
+    audioChannels = audioProbe?.channels || null;
+    const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
+    const filters = buildAudioFilters({
+      normalize,
+      speedMode: effectiveSpeedMode,
+      denoise: denoiseEnabled,
+      volumeBoost: boostValue,
+      enhancer: enhancerMode,
+      soundEffect: soundEffectMode,
+      sampleRate: filterSampleRate,
+      sourceSampleRate: detectedSampleRate,
     });
-    await fsp.unlink(fullPath);
-    filename = `${id}.${targetExt}`;
-    fullPath = join(JOBS_DIR, filename);
-    await fsp.rename(tmpOut, fullPath);
-    ext = targetExt;
-  };
 
-  try {
-    if (fmt === "mp3") {
-      const needConvert = ext !== "mp3" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("mp3", ffmpegToMp3, { abr: targetAbr || 192, id3: id3Clean, cover: coverPath });
+    const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
+      if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
+      return acc;
+    }, {});
+    if (!id3Clean.title && metadata?.id3?.title) id3Clean.title = metadata.id3.title;
+    if (!id3Clean.artist && metadata?.id3?.artist) id3Clean.artist = metadata.id3.artist;
+    if (!id3Clean.album && metadata?.id3?.album) id3Clean.album = metadata.id3.album;
+    if (!id3Clean.genre) {
+      const autoGenre = buildAiTags({
+        title: id3Clean.title || baseName,
+        channel: id3Clean.artist || "",
+      }).genre;
+      if (autoGenre) id3Clean.genre = autoGenre;
+    }
+
+    const hasId3 = Object.keys(id3Clean).length > 0;
+    const hasTrim = !!trimOpt && Object.keys(trimOpt).length > 0;
+    const hasFilters = filters.length > 0;
+    const hasCover = !!coverPath;
+    const rule = FORMAT_RULES[fmt];
+    const detectedRate = parseSampleRate(detectedSampleRate);
+    const needSampleRate = sr !== undefined || (!!rule?.sampleRates?.length && !rule.sampleRates.includes(detectedRate));
+    const finalSamplePreference = sr !== undefined ? sr : (needSampleRate ? filterSampleRate : undefined);
+
+    const finalize = async (targetExt, converter, extraOpts = {}) => {
+      const tmpOut = join(JOBS_DIR, `${id}.tmp.${targetExt}`);
+      await converter(fullPath, tmpOut, {
+        ...extraOpts,
+        trim: trimOpt || {},
+        sampleRate: finalSamplePreference,
+        filters,
+      });
+      await fsp.unlink(fullPath);
+      filename = `${id}.${targetExt}`;
+      fullPath = join(JOBS_DIR, filename);
+      await fsp.rename(tmpOut, fullPath);
+      ext = targetExt;
+    };
+
+    try {
+      if (fmt === "mp3") {
+        const needConvert = ext !== "mp3" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("mp3", ffmpegToMp3, { abr: targetAbr || 192, id3: id3Clean, cover: coverPath });
+        }
+      } else if (fmt === "flac") {
+        const needConvert = ext !== "flac" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("flac", ffmpegToFlac, { id3: id3Clean, cover: coverPath });
+        }
+      } else if (fmt === "m4a") {
+        const needConvert = ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath, abr: targetAbr || 192 });
+        }
+      } else if (fmt === "wav") {
+        const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("wav", ffmpegToWav, {});
+        }
+      } else if (fmt === "ogg") {
+        const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("ogg", ffmpegToOgg, {});
+        }
       }
-    } else if (fmt === "flac") {
-      const needConvert = ext !== "flac" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("flac", ffmpegToFlac, { id3: id3Clean, cover: coverPath });
-      }
-    } else if (fmt === "m4a") {
-      const needConvert = ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath, abr: targetAbr || 192 });
-      }
-    } else if (fmt === "wav") {
-      const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("wav", ffmpegToWav, {});
-      }
-    } else if (fmt === "ogg") {
-      const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("ogg", ffmpegToOgg, {});
+    } catch (err) {
+      if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+      const error = new Error(err.message || "ffmpeg gagal");
+      error.logs = (logs + (err.logs || "")).slice(-8000);
+      throw error;
+    }
+
+    if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+
+    finalSampleRate = finalSamplePreference
+      ? Math.round(finalSamplePreference)
+      : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
+
+    ringtoneVariants = await createRingtoneVariants({
+      sourcePath: fullPath,
+      id,
+      baseName,
+      trimOpt,
+      request: ringtoneRequest,
+    });
+  } else {
+    if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+    if (ext !== fmt) {
+      const tmpOut = join(JOBS_DIR, `${id}.tmp.${fmt}`);
+      try {
+        const remuxLogs = await ffmpegRemuxVideo(fullPath, tmpOut, { appendLogs: logs });
+        logs = remuxLogs;
+        await fsp.unlink(fullPath);
+        filename = `${id}.${fmt}`;
+        fullPath = join(JOBS_DIR, filename);
+        await fsp.rename(tmpOut, fullPath);
+        ext = fmt;
+      } catch (err) {
+        const error = new Error(err.message || "ffmpeg gagal");
+        error.logs = (logs + (err.logs || err.message || "")).slice(-8000);
+        throw error;
       }
     }
-  } catch (err) {
-    if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-    const error = new Error(err.message || "ffmpeg gagal");
-    error.logs = (logs + (err.logs || "")).slice(-8000);
-    throw error;
   }
-
-  if (coverPath) try { await fsp.unlink(coverPath); } catch {}
 
   const downloadUrl = `/public/jobs/${filename}`;
   const finalExt = ext;
   const downloadFileName = `${baseName}.${finalExt}`;
-  const finalSampleRate = finalSamplePreference
-    ? Math.round(finalSamplePreference)
-    : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
   const metadataResponse = metadata
     ? {
         id: metadata.id || null,
@@ -3756,14 +3860,6 @@ const convertSingle = async (payload = {}) => {
         keywordUsed: metadata.keywordUsed || false,
       }
     : null;
-  const ringtoneVariants = await createRingtoneVariants({
-    sourcePath: fullPath,
-    id,
-    baseName,
-    trimOpt,
-    request: ringtoneRequest,
-  });
-
   return {
     ok: true,
     id,
@@ -3775,7 +3871,7 @@ const convertSingle = async (payload = {}) => {
     fullPath,
     ext: finalExt,
     sampleRate: finalSampleRate,
-    channels: audioProbe?.channels || null,
+    channels: audioChannels,
     speedMode: effectiveSpeedMode,
     soundEffect: soundEffectMode,
     vpnFriendly: vpnMode,
@@ -4475,8 +4571,30 @@ app.get("/admin/cookies-status", (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = (() => {
+  const raw = process.env.PORT;
+  if (raw === undefined || raw === null || String(raw).trim() === "") return 3000;
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : 3000;
+})();
+
 const HOST = process.env.HOST || "0.0.0.0";
-const server = app.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
+const server = app.listen(PORT, HOST);
+
+await new Promise((resolve, reject) => {
+  if (server.listening) {
+    resolve();
+    return;
+  }
+  server.once("listening", resolve);
+  server.once("error", reject);
+});
+
+const serverAddress = server.address();
+const displayAddress = typeof serverAddress === "object" && serverAddress
+  ? `${serverAddress.address}:${serverAddress.port}`
+  : `${HOST}:${PORT}`;
+
+console.log(`Server jalan di ${displayAddress}`);
 
 export { app, server, buildAssistantResponse };
