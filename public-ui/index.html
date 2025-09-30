@@ -111,13 +111,27 @@
     #offlineBadge { font-size: .7rem; border-radius: .75rem; padding: .25rem .5rem; }
     #installAppBtn { transition: transform .2s ease, box-shadow .2s ease; }
     #installAppBtn:not([hidden]):hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(32,201,151,.25); }
-    .preview-card audio { border-radius: .8rem; background: var(--bs-body-bg); }
+    .preview-card { position: relative; border-radius: 1.2rem; background: linear-gradient(135deg, rgba(13,110,253,.14), rgba(111,66,193,.18)); overflow: hidden; }
+    .preview-card::before { content: ""; position: absolute; inset: -40% -10%; background: radial-gradient(circle at 20% 20%, rgba(255,255,255,.45), transparent 60%); opacity: .4; pointer-events: none; transition: opacity .3s ease; }
+    .preview-card:hover::before { opacity: .65; }
+    .preview-card audio,
+    .preview-card video { position: relative; border-radius: .9rem; background: color-mix(in srgb, var(--bs-body-bg) 92%, rgba(13,110,253,.1) 8%); box-shadow: 0 12px 28px rgba(13,110,253,.22); }
+    .preview-card video { max-height: 240px; object-fit: cover; }
+    .preview-meta { display: flex; flex-direction: column; gap: .35rem; }
+    #previewWrap { position: relative; border-radius: 1.2rem; overflow: hidden; background: linear-gradient(135deg, rgba(13,110,253,.18), rgba(17,24,39,.28)); padding: 1rem; }
+    #previewWrap .preview-visual { position: relative; border-radius: 1rem; overflow: hidden; box-shadow: 0 18px 36px rgba(17,24,39,.28); }
+    #previewWrap .preview-visual iframe,
+    #previewWrap .preview-visual video,
+    #previewWrap .preview-visual img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #previewWrap .preview-visual::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(17,24,39,.32)); pointer-events: none; }
     #qrWrap, #playlistQrWrap { min-width: 150px; }
     #qrWrap canvas, #playlistQrWrap canvas { width: 100%; height: auto; max-width: 160px; }
     #playlistShareCard { margin-top: .75rem; }
     #urlDropOverlay { position: fixed; inset: 0; background: rgba(13,110,253,.1); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600; color: var(--bs-primary); z-index: 1090; backdrop-filter: blur(2px); padding: 1rem; text-align:center; }
     #urlDropOverlay[hidden] { display: none !important; }
-    #equalizerWrap, #shareWrap { background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 1rem; box-shadow: 0 12px 32px rgba(13,110,253,.08); }
+    #equalizerWrap, #shareWrap { position: relative; background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 1rem; box-shadow: 0 12px 32px rgba(13,110,253,.12); overflow: hidden; }
+    #equalizerWrap::before { content: ""; position: absolute; inset: -30% -10%; background: radial-gradient(circle at 30% 20%, rgba(111,66,193,.25), transparent 60%); opacity: .45; pointer-events: none; filter: blur(0); animation: eqGlow 4s ease-in-out infinite; }
+    @keyframes eqGlow { 0%, 100% { transform: rotate(0deg) scale(1); opacity: .45; } 50% { transform: rotate(8deg) scale(1.08); opacity: .7; } }
     .eq-slider label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--bs-secondary); }
     .eq-slider .form-range { height: 1.6rem; appearance: none; background: linear-gradient(90deg, rgba(13,110,253,.28) 0%, rgba(111,66,193,.38) 55%, rgba(220,53,69,.32) 100%); border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 6px 18px rgba(13,110,253,.15); transition: box-shadow .2s ease, background .2s ease; touch-action: pan-y; }
     .eq-slider .form-range:focus-visible { outline: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 0 0 .35rem rgba(13,110,253,.25); }
@@ -663,14 +677,17 @@
           </div>
 
           <div class="mb-3" id="previewWrap" hidden>
-            <div class="ratio ratio-16x9 mb-2">
+            <div class="preview-visual ratio ratio-16x9 mb-3" id="videoPreviewWrap">
+              <iframe id="videoPreviewFrame" title="Video preview" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" hidden></iframe>
               <img id="thumb" class="rounded object-fit-cover" alt="Thumbnail" loading="lazy" />
             </div>
-            <div id="videoTitle" class="fw-semibold"></div>
-            <div id="videoMeta" class="small text-secondary mt-1" hidden>
-              <div id="videoArtist"></div>
-              <div id="videoAlbum"></div>
-              <div id="videoDuration"></div>
+            <div class="preview-meta">
+              <div id="videoTitle" class="fw-semibold"></div>
+              <div id="videoMeta" class="small text-secondary" hidden>
+                <div id="videoArtist"></div>
+                <div id="videoAlbum"></div>
+                <div id="videoDuration"></div>
+              </div>
             </div>
           </div>
 
@@ -690,16 +707,19 @@
           <div class="row g-3 mb-3">
             <div class="col-md-3">
               <label for="format" class="form-label">Format</label>
-              <select id="format" class="form-select">
-                <option value="mp3">MP3 (re-encode, fleksibel)</option>
-                <option value="m4a" selected>M4A (super cepat)</option>
-                <option value="flac">FLAC (Hi-Res lossless)</option>
-                <option value="wav">WAV (PCM lossless)</option>
-                <option value="ogg">OGG Vorbis</option>
-                <option value="mp4">MP4 Video (audio + visual)</option>
-                <option value="webm">WEBM Video</option>
-                <option value="mkv">MKV Video</option>
-              </select>
+                <select id="format" class="form-select">
+                  <option value="mp3">MP3 (re-encode, fleksibel)</option>
+                  <option value="m4a" selected>M4A (super cepat)</option>
+                  <option value="aac">AAC (MPEG-4 audio)</option>
+                  <option value="opus">OPUS (Web audio)</option>
+                  <option value="flac">FLAC (Hi-Res lossless)</option>
+                  <option value="wav">WAV (PCM lossless)</option>
+                  <option value="aiff">AIFF (Studio)</option>
+                  <option value="ogg">OGG Vorbis</option>
+                  <option value="mp4">MP4 Video (audio + visual)</option>
+                  <option value="webm">WEBM Video</option>
+                  <option value="mkv">MKV Video</option>
+                </select>
             </div>
             <div class="col-md-3">
               <label for="abr" class="form-label">Kualitas (MP3)</label>
@@ -729,6 +749,30 @@
                 <option value="slow_reverb">Slowed + Reverb</option>
               </select>
               <div class="form-text" id="speedHelp">Beberapa format mungkin membatasi pilihan.</div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3" id="videoOptions" hidden>
+            <div class="col-sm-6">
+              <label for="videoQuality" class="form-label">Resolusi Video</label>
+              <select id="videoQuality" class="form-select">
+                <option value="best" selected>Auto (terbaik)</option>
+                <option value="2160">2160p (4K)</option>
+                <option value="1440">1440p (2K)</option>
+                <option value="1080">1080p Full HD</option>
+                <option value="720">720p HD</option>
+                <option value="480">480p</option>
+                <option value="360">360p</option>
+              </select>
+              <div class="form-text" id="videoQualityHelp">Pilih batas resolusi saat mengunduh format video.</div>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label" for="videoPreviewToggle">Embed pratinjau</label>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="videoPreviewToggle" checked>
+                <label class="form-check-label" for="videoPreviewToggle">Tampilkan video YouTube di pratinjau</label>
+              </div>
+              <div class="form-text">Matikan untuk menghemat data atau mempercepat pencarian.</div>
             </div>
           </div>
 
@@ -1085,9 +1129,10 @@
                 <div class="flex-grow-1 w-100">
                   <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-play-circle-fill text-primary"></i>
-                    <strong>Preview Audio</strong>
+                    <strong>Preview Media</strong>
                   </div>
                   <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"></audio>
+                  <video id="previewVideo" class="w-100 mt-3" controls preload="metadata" playsinline hidden></video>
 
                   <div id="shareWrap" class="mt-3" hidden>
                     <div class="d-flex flex-wrap align-items-center gap-2">
@@ -1275,6 +1320,18 @@
               <span class="tip-title">Cookies Valid</span>
               <span class="tip-desc">Jika muncul age-gate, unggah <code>cookies.txt</code> valid sebelum convert.</span>
             </button>
+            <button type="button" class="tip-pill" data-tip-id="background" data-tip-label="Proses di background">
+              <span class="tip-title">Background Task</span>
+              <span class="tip-desc">Aktifkan notifikasi email agar job berat jalan paralel tanpa menunggu tab.</span>
+            </button>
+            <button type="button" class="tip-pill" data-tip-id="resolution" data-tip-label="Gunakan resolusi adaptif">
+              <span class="tip-title">Resolusi Adaptif</span>
+              <span class="tip-desc">Untuk format video pilih <strong>Auto</strong> atau 720p agar unduhan stabil.</span>
+            </button>
+            <button type="button" class="tip-pill" data-tip-id="voice" data-tip-label="Gunakan voice command">
+              <span class="tip-title">Voice Command</span>
+              <span class="tip-desc">Tekan tombol voice untuk jalankan convert tanpa menyentuh keyboard.</span>
+            </button>
           </div>
           <div class="small text-secondary mt-2" id="speedTipHint">Ketuk tips untuk menandai prioritasmu.</div>
         </div>
@@ -1338,6 +1395,18 @@
             <details class="faq-item">
               <summary>Mengapa perlu upload cookies.txt?</summary>
               <p>Beberapa video dibatasi usia/login. Unggah <code>cookies.txt</code> valid melalui pengaturan agar proses tetap lancar.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Format apa yang cocok untuk kebutuhan saya?</summary>
+              <p>Pilih <strong>M4A/AAC</strong> untuk ukuran kecil, <strong>FLAC/AIFF</strong> untuk mastering, dan <strong>MP4/WEBM</strong> jika butuh video lengkap. Resolusi video dapat diatur pada menu <em>Resolusi Video</em>.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Bisakah situs ini dipakai offline?</summary>
+              <p>Ya. Klik ikon install di browser (Add to Home Screen) untuk memasang versi PWA. Service worker menyimpan shell aplikasi sehingga masih bisa membuka riwayat dan FAQ saat offline.</p>
+            </details>
+            <details class="faq-item">
+              <summary>Bagaimana dengan kontrol suara dan narrator?</summary>
+              <p>Aktifkan switch <strong>Voice &amp; Narrator</strong> di Experience Hub. Narrator akan otomatis membacakan status jika mode otomatis dinyalakan, sedangkan tombol Voice menjalankan perintah seperti “convert sekarang”.</p>
             </details>
           </div>
         </div>
@@ -1829,7 +1898,7 @@
   </div>
 
   <!-- Tutorial Modal -->
-  <div class="modal fade walkthrough-modal" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel">
+  <div class="modal fade walkthrough-modal" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <div class="modal-body">
@@ -2404,10 +2473,17 @@
   }
 
   const toast = toastEl ? bootstrap.Toast.getOrCreateInstance(toastEl) : null;
+  let shouldNarrate = () => false;
+  let queueNarration = () => {};
+  const announceNarrator = (message) => {
+    if (!message) return;
+    if (shouldNarrate()) queueNarration(String(message));
+  };
   const setToast = (msg) => {
     const text = translateMessage(msg);
     if (toastTextEl) toastTextEl.textContent = text;
     if (toast) toast.show();
+    announceNarrator(text);
   };
 
   const readJsonSafe = async (resp) => {
@@ -2456,6 +2532,17 @@
     return resolveJsonResponse(resp, options);
   };
 
+  const createDebounced = (fn, delay = 380) => {
+    let timer = null;
+    return (...args) => {
+      if (timer) clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        timer = null;
+        fn(...args);
+      }, delay);
+    };
+  };
+
   const urlInput = $('#url');
   const keywordInput = $('#keywordInput');
   const keywordConvertBtn = $('#keywordConvertBtn');
@@ -2466,9 +2553,12 @@
   const previewCard = $('#previewCard');
   const previewPlayer = $('#previewPlayer');
   const previewWrap = $('#previewWrap');
+  const previewVideo = $('#previewVideo');
   const qrCanvas = $('#downloadQr');
   const qrWrap = $('#qrWrap');
   const thumbEl = $('#thumb');
+  const videoPreviewFrame = $('#videoPreviewFrame');
+  const videoPreviewWrap = $('#videoPreviewWrap');
   const videoTitleEl = $('#videoTitle');
   const videoMetaWrap = $('#videoMeta');
   const videoArtistEl = $('#videoArtist');
@@ -2636,6 +2726,10 @@
   }
 
   if (keywordInput) {
+    const instantSearch = createDebounced((value) => {
+      if (!value || value.length < 2) return;
+      handleKeywordSearch(value, { silent: true, instant: true });
+    }, 420);
     keywordInput.addEventListener('keydown', (evt) => {
       if (evt.key === 'Enter') {
         evt.preventDefault();
@@ -2643,11 +2737,36 @@
       }
     });
     keywordInput.addEventListener('input', () => {
-      if (!keywordInput.value.trim()) clearSearchResults();
+      const val = keywordInput.value.trim();
+      if (!val) {
+        clearSearchResults();
+        return;
+      }
+      instantSearch(val);
     });
   }
   if (keywordConvertBtn) keywordConvertBtn.addEventListener('click', () => handleKeywordConvert());
   if (keywordSearchBtn) keywordSearchBtn.addEventListener('click', () => handleKeywordSearch());
+
+  if (videoPreviewToggle) {
+    videoPreviewToggle.addEventListener('change', () => {
+      state.experience.previewEmbed = !!videoPreviewToggle.checked;
+      persistState();
+      if (!videoPreviewToggle.checked && videoPreviewFrame) {
+        videoPreviewFrame.src = '';
+        videoPreviewFrame.hidden = true;
+        if (thumbEl) thumbEl.hidden = false;
+      } else if (lastVideoInfo) {
+        applyVideoMetadata(lastVideoInfo, { setUrl: false, autoFillId3: false, fillEmptyId3: false });
+      }
+    });
+  }
+  if (videoQualitySelect) {
+    videoQualitySelect.addEventListener('change', () => {
+      state.experience.videoQuality = videoQualitySelect.value || 'best';
+      persistState();
+    });
+  }
 
   
   const donationLinkHint = $('#donationLinkHint');
@@ -2997,6 +3116,10 @@
   const abrSelect = $('#abr');
   const sampleRateSelect = $('#sampleRate');
   const speedModeSelect = $('#speedMode');
+  const videoQualitySelect = $('#videoQuality');
+  const videoQualityWrap = $('#videoOptions');
+  const videoPreviewToggle = $('#videoPreviewToggle');
+  const videoQualityHelp = $('#videoQualityHelp');
   const abrHelp = $('#abrHelp');
   const sampleRateHelp = $('#sampleRateHelp');
   const speedHelp = $('#speedHelp');
@@ -3300,6 +3423,7 @@
 
   document.addEventListener('keydown', (evt) => {
     konamiTracker(evt.key);
+    secretCheatTracker(evt.key);
     if (evt.code === 'Space' && !(evt.target instanceof HTMLInputElement) && !(evt.target instanceof HTMLTextAreaElement)) {
       evt.preventDefault();
       jumpRunner();
@@ -3328,6 +3452,8 @@
     font: 'typewriter',
     layout: 'cozy',
     mood: 'auto',
+    previewEmbed: true,
+    videoQuality: 'best',
     narratorAuto: false,
     points: 0,
     level: 1,
@@ -3402,6 +3528,12 @@
       label: 'Konami Master',
       xp: 100,
       description: 'Masukkan kode rahasia ↑↑↓↓←→←→BA.'
+    },
+    andhika: {
+      label: 'Secret Admirer',
+      xp: '30000 XP',
+      description: 'Kode rahasia eksklusif yang tidak muncul di daftar publik.',
+      hidden: true,
     },
     ai: {
       label: 'AI Buddy',
@@ -3928,13 +4060,14 @@
     const badges = Array.from(state.experience.badges || []);
     if (rewardBadges) {
       rewardBadges.innerHTML = '';
-      if (!badges.length) {
+      const visibleBadges = badges.filter((id) => !getBadgeMeta(id).hidden);
+      if (!visibleBadges.length) {
         const empty = document.createElement('li');
         empty.className = 'is-empty';
         empty.textContent = 'Belum ada badge. Jelajahi Experience Hub untuk mulai mengumpulkan.';
         rewardBadges.appendChild(empty);
       } else {
-        badges.forEach((badge) => {
+        visibleBadges.forEach((badge) => {
           const li = document.createElement('li');
           li.dataset.badge = badge;
           const label = formatBadgeLabel(badge);
@@ -3947,18 +4080,19 @@
       }
     }
     if (badgeCountLabel) {
-      const count = badges.length;
+      const count = badges.filter((id) => !getBadgeMeta(id).hidden).length;
       badgeCountLabel.textContent = count === 1 ? '1 badge' : `${count} badge`;
     }
     if (avatarAchievementList) {
       avatarAchievementList.innerHTML = '';
-      if (!badges.length) {
+      const visible = badges.filter((id) => !getBadgeMeta(id).hidden);
+      if (!visible.length) {
         const empty = document.createElement('div');
         empty.className = 'text-secondary small';
         empty.textContent = 'Belum ada achievement. Jelajahi fitur untuk mengumpulkan badge.';
         avatarAchievementList.appendChild(empty);
       } else {
-        badges.forEach((badge) => {
+        visible.forEach((badge) => {
           const chip = document.createElement('div');
           chip.className = 'badge-chip';
           const label = formatBadgeLabel(badge);
@@ -3983,6 +4117,7 @@
       return labelA.localeCompare(labelB, 'id', { sensitivity: 'base' });
     });
     entries.forEach(([id, meta]) => {
+      if (meta?.hidden) return;
       const unlocked = owned.has(id);
       const item = document.createElement('li');
       item.className = 'list-group-item d-flex flex-column flex-sm-row align-items-sm-center gap-2';
@@ -4363,6 +4498,11 @@
     if (layoutSelect) layoutSelect.value = state.experience.layout || 'cozy';
     if (moodSelect) moodSelect.value = state.experience.mood || 'auto';
     if (narratorToggle) narratorToggle.checked = !!state.experience.narratorAuto;
+    if (videoPreviewToggle) videoPreviewToggle.checked = state.experience.previewEmbed !== false;
+    if (videoQualitySelect) {
+      const q = state.experience.videoQuality || 'best';
+      videoQualitySelect.value = q;
+    }
   };
 
   const determineAutoMood = () => {
@@ -4901,20 +5041,21 @@
     startBackgroundMusic(nextMood);
   }
 
-  const speak = (text) => {
+  const speak = (text, options = {}) => {
+    const { silent = false } = options || {};
     const synth = window.speechSynthesis;
     const clean = String(text || '').trim();
     if (!synth) {
-      setToast('Browser belum mendukung text-to-speech.');
+      if (!silent) setToast('Browser belum mendukung text-to-speech.');
       return false;
     }
     if (!clean) {
-      setToast('Tidak ada teks yang bisa dibacakan.');
+      if (!silent) setToast('Tidak ada teks yang bisa dibacakan.');
       return false;
     }
     synth.cancel();
     const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = 'id-ID';
+    utter.lang = currentLang === 'en' ? 'en-US' : 'id-ID';
     utter.rate = 1;
     utter.pitch = 1;
     synth.speak(utter);
@@ -4923,6 +5064,27 @@
     updateMascotMood('voice');
     return true;
   };
+
+  queueNarration = (() => {
+    let chain = Promise.resolve();
+    let lastMessage = '';
+    let lastSpokenAt = 0;
+    return (text) => {
+      const clean = String(text || '').trim();
+      if (!clean) return;
+      const now = Date.now();
+      if (clean === lastMessage && now - lastSpokenAt < 4000) return;
+      lastMessage = clean;
+      lastSpokenAt = now;
+      chain = chain.then(() => new Promise((resolve) => {
+        const ok = speak(clean, { silent: true });
+        const words = clean.split(/\s+/).filter(Boolean).length || 1;
+        const wait = ok ? Math.min(9000, Math.max(1400, words * 140)) : 0;
+        window.setTimeout(resolve, wait);
+      }));
+    };
+  })();
+  shouldNarrate = () => Boolean(state?.experience?.narratorAuto || state?.narratorEnabled);
 
   function stopNarrator() {
     const synth = window.speechSynthesis;
@@ -5438,6 +5600,27 @@
     };
   })();
 
+  const secretCheatTracker = (() => {
+    const target = 'andhikagantengbangetomagadgantengbangetmuachmuach';
+    let buffer = '';
+    let unlocked = false;
+    return (key) => {
+      if (!key || key.length > 1) return;
+      buffer = (buffer + key.toLowerCase()).slice(-target.length);
+      if (buffer.includes(target)) {
+        buffer = '';
+        if (!unlocked) {
+          unlocked = true;
+          incrementPoints(30000, 'Cheat rahasia', { badge: 'andhika' });
+          showRewardToast('XP rahasia +30000!');
+        } else {
+          incrementPoints(1200, 'Cheat rahasia');
+        }
+        setToast('Kode rahasia Andhika aktif!');
+      }
+    };
+  })();
+
   const showCustomEnding = () => {
     if (!customEndingOverlay) return;
     customEndingOverlay.classList.add('show');
@@ -5663,6 +5846,28 @@
       speedModes: ['normal'],
       speedHint: 'Nightcore & Slowed dinonaktifkan.',
     },
+    aac: {
+      labelAbr: 'Kualitas (AAC)',
+      labelSampleRate: 'Sample Rate (AAC)',
+      labelSpeed: 'Mode Kecepatan',
+      abr: ['320', '256', '192', '128'],
+      abrHint: 'AAC ideal untuk ekosistem Apple & streaming.',
+      sampleRates: ['44100', '48000'],
+      sampleRateHint: 'Pilih 48 kHz untuk konten video.',
+      speedModes: ['normal'],
+      speedHint: 'Mode kecepatan dimatikan demi sinkronisasi.',
+    },
+    opus: {
+      labelAbr: 'Kualitas (OPUS)',
+      labelSampleRate: 'Sample Rate (OPUS)',
+      labelSpeed: 'Mode Kecepatan',
+      abr: ['256', '192', '160'],
+      abrHint: 'OPUS efisien untuk Discord/Telegram.',
+      sampleRates: ['48000'],
+      sampleRateHint: 'Sample rate tetap 48 kHz.',
+      speedModes: ['normal', 'nightcore'],
+      speedHint: 'Nightcore tersedia untuk eksperimen tempo.',
+    },
     flac: {
       labelAbr: 'Kualitas (FLAC)',
       labelSampleRate: 'Sample Rate (FLAC)',
@@ -5685,6 +5890,17 @@
       speedModes: ['normal'],
       speedHint: 'Tidak ada pengubah kecepatan.',
     },
+    aiff: {
+      labelAbr: 'Kualitas (AIFF)',
+      labelSampleRate: 'Sample Rate (AIFF)',
+      labelSpeed: 'Mode Kecepatan',
+      abr: [],
+      abrHint: 'AIFF cocok untuk workflow Mac & DAW.',
+      sampleRates: ['48000', '44100', '96000'],
+      sampleRateHint: 'Pilih 96 kHz untuk produksi.',
+      speedModes: ['normal'],
+      speedHint: 'Mode kecepatan dimatikan.',
+    },
     ogg: {
       labelAbr: 'Kualitas (OGG)',
       labelSampleRate: 'Sample Rate (OGG)',
@@ -5706,6 +5922,7 @@
       sampleRateHint: 'Audio 48 kHz atau 44.1 kHz.',
       speedModes: ['normal'],
       speedHint: 'Pengubah kecepatan dimatikan untuk video.',
+      videoQualities: ['best', '2160', '1440', '1080', '720', '480', '360'],
     },
     webm: {
       labelAbr: 'Kualitas Audio (WEBM)',
@@ -5717,6 +5934,7 @@
       sampleRateHint: 'Audio 48 kHz atau 44.1 kHz.',
       speedModes: ['normal'],
       speedHint: 'Pengubah kecepatan dimatikan untuk video.',
+      videoQualities: ['best', '2160', '1440', '1080', '720', '480', '360'],
     },
     mkv: {
       labelAbr: 'Kualitas Audio (MKV)',
@@ -5728,6 +5946,7 @@
       sampleRateHint: 'Audio 48 kHz atau 44.1 kHz.',
       speedModes: ['normal'],
       speedHint: 'Pengubah kecepatan dimatikan untuk video.',
+      videoQualities: ['best', '2160', '1440', '1080', '720', '480', '360'],
     },
   };
 
@@ -5769,6 +5988,22 @@
     if (speedHelp) speedHelp.textContent = policy.speedHint || '';
     if (speedModeSelect && appliedSpeed && policy.speedModes?.length === 1) {
       speedModeSelect.value = policy.speedModes[0];
+    }
+    if (videoQualityWrap) {
+      const hasVideoOptions = Array.isArray(policy.videoQualities);
+      videoQualityWrap.hidden = !hasVideoOptions;
+      if (hasVideoOptions && videoQualitySelect) {
+        updateSelectForPolicy(videoQualitySelect, policy.videoQualities);
+        const stored = state.experience.videoQuality || 'best';
+        if (policy.videoQualities.includes(stored)) {
+          videoQualitySelect.value = stored;
+        } else {
+          state.experience.videoQuality = videoQualitySelect.value || 'best';
+        }
+        if (videoQualityHelp) videoQualityHelp.textContent = 'Atur batas resolusi saat mengunduh format video.';
+      } else if (videoQualityHelp) {
+        videoQualityHelp.textContent = 'Resolusi video hanya tersedia untuk MP4/WEBM/MKV.';
+      }
     }
   };
 
@@ -6044,18 +6279,23 @@
     }
   }
 
-  async function handleKeywordSearch() {
-    if (!keywordInput) return;
-    const keyword = keywordInput.value.trim();
+  async function handleKeywordSearch(keywordOverride, options = {}) {
+    const { silent = false, instant = false } = options || {};
+    const source = keywordOverride != null ? keywordOverride : keywordInput?.value || '';
+    const keyword = String(source || '').trim();
     if (!keyword) {
-      setToast(translateMessage('Masukkan kata kunci lagu terlebih dahulu'));
-      keywordInput.focus();
+      if (!silent) {
+        setToast(translateMessage('Masukkan kata kunci lagu terlebih dahulu'));
+        keywordInput?.focus();
+      } else {
+        clearSearchResults();
+      }
       return;
     }
     if (searchAbortController) searchAbortController.abort();
     const controller = new AbortController();
     searchAbortController = controller;
-    if (searchResultsList) {
+    if (searchResultsList && !instant) {
       searchResultsList.innerHTML = `<div class="list-group-item small text-secondary">${translate('searchLoading', 'Mencari…')}</div>`;
     }
     if (searchResultsWrap) searchResultsWrap.hidden = false;
@@ -6072,12 +6312,15 @@
       });
       const results = Array.isArray(payload.results) ? payload.results : [];
       renderSearchResults(results, keyword);
-      if (!results.length) {
+      if (instant && results.length) {
+        applyVideoMetadata(results[0], { setUrl: false, autoFillId3: false, fillEmptyId3: false });
+      }
+      if (!results.length && !silent) {
         setToast(translateMessage('Tidak ada hasil yang cocok.'));
       }
     } catch (err) {
       if (err?.name === 'AbortError') return;
-      setToast(err?.message || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
+      if (!silent) setToast(err?.message || translateMessage('Gagal mencari video. Coba kata kunci lain.'));
       renderSearchResults([], keyword);
     } finally {
       if (searchAbortController === controller) searchAbortController = null;
@@ -6122,6 +6365,20 @@
     const cleaned = cleanVideoTitle(info.cleanTitle || info.title || '');
     const displayTitle = cleaned || info.title || '';
     if (setUrl && urlInput && info.webpageUrl) urlInput.value = info.webpageUrl;
+    const embedAllowed = state?.experience?.previewEmbed !== false;
+    if (videoPreviewFrame) {
+      if (embedAllowed && info.id) {
+        const embedSrc = `https://www.youtube.com/embed/${info.id}?rel=0&modestbranding=1&autoplay=0`;
+        if (videoPreviewFrame.src !== embedSrc) videoPreviewFrame.src = embedSrc;
+        videoPreviewFrame.hidden = false;
+        if (thumbEl) thumbEl.hidden = true;
+      } else {
+        videoPreviewFrame.src = '';
+        videoPreviewFrame.hidden = true;
+        if (thumbEl) thumbEl.hidden = false;
+      }
+    }
+    if (videoPreviewWrap) videoPreviewWrap.classList.toggle('is-disabled', !embedAllowed);
     if (thumbEl) {
       if (info.cover || info.thumbnail) {
         thumbEl.src = info.cover || info.thumbnail;
@@ -6428,6 +6685,17 @@
       previewPlayer.removeAttribute('src');
       previewPlayer.load();
     }
+    if (previewVideo) {
+      try { previewVideo.pause(); } catch {}
+      previewVideo.removeAttribute('src');
+      previewVideo.load();
+      previewVideo.hidden = true;
+    }
+    if (videoPreviewFrame) {
+      videoPreviewFrame.src = '';
+      videoPreviewFrame.hidden = true;
+    }
+    if (thumbEl) thumbEl.hidden = false;
     if (previewCard) previewCard.hidden = true;
     if (shareWrap) shareWrap.hidden = true;
     if (shareLinkInput) shareLinkInput.value = '';
@@ -6464,10 +6732,28 @@
 
   const showAudioPreview = (url, meta = {}) => {
     if (!previewPlayer || !previewCard || !url) return;
-    const cacheBuster = url.includes('?') ? '&' : '?';
     const backendBase = getBackend() || window.location.origin;
     const absoluteUrl = new URL(url, backendBase).href;
-    previewPlayer.src = `${absoluteUrl}${absoluteUrl.includes('?') ? '&' : '?'}preview=${Date.now()}`;
+    const extension = String(meta.format || '').toLowerCase();
+    const isVideoFormat = ['mp4', 'webm', 'mkv'].includes(extension);
+    const previewUrl = `${absoluteUrl}${absoluteUrl.includes('?') ? '&' : '?'}preview=${Date.now()}`;
+    if (isVideoFormat) {
+      try { previewPlayer.pause(); } catch {}
+      previewPlayer.removeAttribute('src');
+      previewPlayer.load();
+      if (previewVideo) {
+        previewVideo.src = previewUrl;
+        previewVideo.hidden = false;
+      }
+    } else {
+      previewPlayer.src = previewUrl;
+      if (previewVideo) {
+        try { previewVideo.pause(); } catch {}
+        previewVideo.removeAttribute('src');
+        previewVideo.load();
+        previewVideo.hidden = true;
+      }
+    }
     previewCard.hidden = false;
     currentDownloadUrl = absoluteUrl;
     currentDownloadName = meta.fileName || meta.baseName || '';
@@ -6501,10 +6787,10 @@
     currentRatingKey = ratingKeyFrom(absoluteUrl, meta);
     updateRatingUi();
     renderQr(qrCanvas, qrWrap, currentShareUrl);
-    if (equalizerWrap) equalizerWrap.hidden = false;
+    if (equalizerWrap) equalizerWrap.hidden = isVideoFormat;
     refreshEqUi();
     if (miniPlayerEl) {
-      miniPlayerEl.hidden = false;
+      miniPlayerEl.hidden = isVideoFormat;
       if (miniSeek) miniSeek.value = 0;
       if (miniTime) miniTime.textContent = '00:00';
       if (miniTitle) miniTitle.textContent = lastPreviewTitle || 'Audio Preview';
@@ -8619,6 +8905,10 @@ $('#queueList')?.addEventListener('click', (e) => {
       preferredLang: currentLang,
     };
 
+    if (videoQualitySelect && !videoQualityWrap?.hidden) {
+      body.videoQuality = videoQualitySelect.value || 'best';
+    }
+
     if (url) body.url = url;
     if (keyword) body.keyword = keyword;
 
@@ -8662,6 +8952,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
     $('#status').textContent = translateMessage('Memproses…');
+    announceNarrator('Konversi dimulai, mohon tunggu.');
     convertProgressAnimator.start(translateMessage('Menyiapkan…'));
     let fake = 10;
     convertProgressAnimator.to(fake, null);
@@ -8690,6 +8981,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#resultWrap').hidden = false;
       $('#status').textContent = translateMessage('Selesai');
       $('#loadingSpinner').style.display = 'none';
+      announceNarrator('Konversi selesai, file siap diunduh.');
       fake = 100;
       convertProgressAnimator.complete(`${translateMessage('Selesai')} · 100%`);
       if (convertData.logs && $('#showLog').checked) { $('#logs').textContent = convertData.logs; }
@@ -8737,6 +9029,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       resetAudioPreview();
       convertProgressAnimator.fail(translateMessage('Gagal'));
       setToast(`${translateMessage('Terjadi error: ')}${err.message}`);
+      announceNarrator(`Konversi gagal: ${err.message}`);
       updateAiStatus(err.message, 'danger');
     } finally {
       clearInterval(timer);

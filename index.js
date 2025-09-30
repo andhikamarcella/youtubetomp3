@@ -1986,6 +1986,7 @@ const processBackgroundQueue = async () => {
         soundEffect: result.soundEffect,
         vpnFriendly: result.vpnFriendly,
         smartResume: result.smartResume,
+        videoQuality: result.videoQuality,
       };
       if (result.fullPath) job.result.fullPath = result.fullPath;
       job.logs = (result.logs || "").slice(-8000);
@@ -2034,6 +2035,7 @@ const serializeJob = (job) => {
     if (job.result.soundEffect) data.result.soundEffect = job.result.soundEffect;
     if (job.result.vpnFriendly !== undefined) data.result.vpnFriendly = job.result.vpnFriendly;
     if (job.result.smartResume !== undefined) data.result.smartResume = job.result.smartResume;
+    if (job.result.videoQuality) data.result.videoQuality = job.result.videoQuality;
   }
   if (job.notify?.masked) {
     data.notify = {
@@ -2102,7 +2104,7 @@ const resolveJobFilePath = (job) => {
 };
 
 const VIDEO_FORMATS = new Set(["mp4", "webm", "mkv"]);
-const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "flac", "wav", "ogg", "mp4", "webm", "mkv"]);
+const SUPPORTED_FORMATS = new Set(["mp3", "m4a", "aac", "opus", "flac", "wav", "aiff", "ogg", "mp4", "webm", "mkv"]);
 const VALID_SPEED_MODES = new Set(["normal", "nightcore", "slow_reverb"]);
 
 const FORMAT_RULES = {
@@ -2116,12 +2118,27 @@ const FORMAT_RULES = {
     sampleRates: [44100],
     speedModes: ["normal"],
   },
+  aac: {
+    abr: [320, 256, 192, 128],
+    sampleRates: [44100, 48000],
+    speedModes: ["normal"],
+  },
+  opus: {
+    abr: [256, 192, 160],
+    sampleRates: [48000],
+    speedModes: ["normal", "nightcore"],
+  },
   flac: {
     abr: [320, 256, 192],
     sampleRates: [96000],
     speedModes: ["normal"],
   },
   wav: {
+    abr: [],
+    sampleRates: [48000, 44100, 96000],
+    speedModes: ["normal"],
+  },
+  aiff: {
     abr: [],
     sampleRates: [48000, 44100, 96000],
     speedModes: ["normal"],
@@ -2137,6 +2154,7 @@ const FORMAT_RULES = {
     speedModes: ["normal"],
     video: true,
     audioCodec: "aac",
+    videoQualities: ["best", "2160", "1440", "1080", "720", "480", "360"],
   },
   webm: {
     abr: [],
@@ -2144,6 +2162,7 @@ const FORMAT_RULES = {
     speedModes: ["normal"],
     video: true,
     audioCodec: "libopus",
+    videoQualities: ["best", "2160", "1440", "1080", "720", "480", "360"],
   },
   mkv: {
     abr: [],
@@ -2151,6 +2170,7 @@ const FORMAT_RULES = {
     speedModes: ["normal"],
     video: true,
     audioCodec: "aac",
+    videoQualities: ["best", "2160", "1440", "1080", "720", "480", "360"],
   },
 };
 
@@ -2160,7 +2180,7 @@ const pickFormatSampleRate = (fmt) => {
   return 44100;
 };
 
-const sanitizeFormatOptions = (fmt, { abr, sampleRate, speedMode }) => {
+const sanitizeFormatOptions = (fmt, { abr, sampleRate, speedMode, videoQuality }) => {
   const rule = FORMAT_RULES[fmt] || {};
   let cleanedAbr = abr;
   if (Array.isArray(rule.abr)) {
@@ -2184,11 +2204,39 @@ const sanitizeFormatOptions = (fmt, { abr, sampleRate, speedMode }) => {
     cleanedSpeed = rule.speedModes.includes(speedMode) ? speedMode : rule.speedModes[0];
   }
 
+  let cleanedVideoQuality = undefined;
+  if (Array.isArray(rule.videoQualities) && rule.videoQualities.length) {
+    const normalized = typeof videoQuality === "string" ? videoQuality.trim().toLowerCase() : "";
+    if (!normalized) {
+      cleanedVideoQuality = rule.videoQualities[0];
+    } else {
+      const match = rule.videoQualities.find((opt) => String(opt).toLowerCase() === normalized);
+      cleanedVideoQuality = match || rule.videoQualities[0];
+    }
+  }
+
   return {
     abr: cleanedAbr,
     sampleRate: cleanedSampleRate,
     speedMode: cleanedSpeed,
+    videoQuality: cleanedVideoQuality,
   };
+};
+
+const buildVideoFormatSelector = (fmt, quality = "best") => {
+  const rule = FORMAT_RULES[fmt];
+  if (!rule?.video) return null;
+  const normalized = typeof quality === "string" ? quality.trim() : "";
+  const resolved = normalized || rule.videoQualities?.[0] || "best";
+  const limit = resolved !== "best" ? `[height<=${resolved}]` : "";
+  const filter = (ext) => `${limit}${ext ? `[ext=${ext}]` : ""}`;
+  if (fmt === "mp4") {
+    return `bv*${filter("mp4")}+ba[ext=m4a]/b${filter("mp4")}/bv*${limit}+ba/best`;
+  }
+  if (fmt === "webm") {
+    return `bv*${filter("webm")}+ba[ext=webm]/b${filter("webm")}/bv*${limit}+ba/best`;
+  }
+  return `bv*${limit}+ba/b${limit}/bv*${limit}+ba/best`;
 };
 
 const deriveFilterSampleRate = (fmt, requested, detected) => {
@@ -3241,6 +3289,82 @@ const ffmpegToM4a = (input, output, opts = {}) => {
   });
 };
 
+const ffmpegToAac = (input, output, opts = {}) => {
+  const { id3 = {}, trim = {}, sampleRate, filters = [], abr = 256 } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !Number.isNaN(start);
+    const hasEnd = typeof end === "number" && !Number.isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    applyAudioFilters(args, filters);
+    for (const [k, v] of Object.entries(id3 || {})) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        args.push("-metadata", `${k}=${v}`);
+      }
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    args.push("-map", "0:a", "-vn");
+    const targetAbr = Number(abr) || 256;
+    args.push("-c:a", "aac", "-b:a", `${targetAbr}k`, output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
+const ffmpegToOpus = (input, output, opts = {}) => {
+  const { id3 = {}, trim = {}, sampleRate, filters = [], abr = 192 } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !Number.isNaN(start);
+    const hasEnd = typeof end === "number" && !Number.isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    applyAudioFilters(args, filters);
+    for (const [k, v] of Object.entries(id3 || {})) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        args.push("-metadata", `${k}=${v}`);
+      }
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    args.push("-map", "0:a", "-vn");
+    const targetAbr = Math.max(64, Number(abr) || 192);
+    args.push("-c:a", "libopus", "-b:a", `${targetAbr}k`, "-vbr", "on", "-compression_level", "10", output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
 const ffmpegToWav = (input, output, opts = {}) => {
   const { trim = {}, sampleRate, filters = [] } = opts;
   return new Promise((resolve, reject) => {
@@ -3288,6 +3412,42 @@ const ffmpegToOgg = (input, output, opts = {}) => {
     if (sampleRate) args.push("-ar", String(sampleRate));
     applyAudioFilters(args, filters);
     args.push("-map", "0:a", "-vn", "-codec:a", "libvorbis", "-qscale:a", "5", output);
+    const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let logs = "";
+    ff.stdout.on("data", (d) => (logs += d.toString()));
+    ff.stderr.on("data", (d) => (logs += d.toString()));
+    ff.on("error", (err) => {
+      if (err.code === "ENOENT") return reject(new Error("ffmpeg tidak ditemukan"));
+      reject(err);
+    });
+    ff.on("close", (code) => {
+      if (code === 0) resolve(logs);
+      else reject(new Error(logs));
+    });
+  });
+};
+
+const ffmpegToAiff = (input, output, opts = {}) => {
+  const { id3 = {}, trim = {}, sampleRate, filters = [] } = opts;
+  return new Promise((resolve, reject) => {
+    const args = ["-y"];
+    const { start, end } = trim || {};
+    const hasStart = typeof start === "number" && !Number.isNaN(start);
+    const hasEnd = typeof end === "number" && !Number.isNaN(end);
+    if (hasStart) args.push("-ss", String(start));
+    args.push("-i", input);
+    if (hasEnd) {
+      if (hasStart) args.push("-t", String(end - start));
+      else args.push("-to", String(end));
+    }
+    applyAudioFilters(args, filters);
+    for (const [k, v] of Object.entries(id3 || {})) {
+      if (v !== undefined && v !== null && String(v).trim() !== "") {
+        args.push("-metadata", `${k}=${v}`);
+      }
+    }
+    if (sampleRate) args.push("-ar", String(sampleRate));
+    args.push("-map", "0:a", "-vn", "-c:a", "pcm_s16be", output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
@@ -3573,6 +3733,7 @@ const convertSingle = async (payload = {}) => {
     soundEffect = "none",
     vpnFriendly = false,
     smartResume = false,
+    videoQuality: videoQualityPreference = "best",
   } = payload;
 
   let coverUrl = typeof payload.coverUrl === "string" ? payload.coverUrl : undefined;
@@ -3649,10 +3810,16 @@ const convertSingle = async (payload = {}) => {
     }
   }
 
-  const sanitizedOptions = sanitizeFormatOptions(fmt, { abr, sampleRate: sr, speedMode });
+  const sanitizedOptions = sanitizeFormatOptions(fmt, {
+    abr,
+    sampleRate: sr,
+    speedMode,
+    videoQuality: videoQualityPreference,
+  });
   const effectiveSpeedMode = sanitizedOptions.speedMode || "normal";
   const targetAbr = sanitizedOptions.abr != null ? sanitizedOptions.abr : (fmt === "mp3" ? Number(abr) || 192 : null);
   sr = sanitizedOptions.sampleRate !== undefined ? sanitizedOptions.sampleRate : sr;
+  const targetVideoQuality = sanitizedOptions.videoQuality || "best";
 
   let trimOpt = null;
   if (trim && (trim.start !== undefined || trim.end !== undefined)) {
@@ -3701,23 +3868,30 @@ const convertSingle = async (payload = {}) => {
   const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
 
   if (isVideoFormat) {
+    const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
+    if (selector) args.push("-f", selector);
     if (fmt === "mp4") {
-      args.push("-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/best");
       args.push("--merge-output-format", "mp4");
     } else if (fmt === "webm") {
-      args.push("-f", "bv*[ext=webm]+ba[ext=webm]/b[ext=webm]/bv*+ba/best");
       args.push("--merge-output-format", "webm");
     } else if (fmt === "mkv") {
-      args.push("-f", "bv*+ba/best");
       args.push("--merge-output-format", "mkv");
     }
   } else if (fmt === "m4a") {
     args.push("-f", "bestaudio[ext=m4a]/bestaudio");
+  } else if (fmt === "aac") {
+    args.push("-x", "--audio-format", "aac");
+    if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
+  } else if (fmt === "opus") {
+    args.push("-x", "--audio-format", "opus");
+    if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
   } else if (fmt === "flac") {
     args.push("-x", "--audio-format", "flac");
   } else if (fmt === "mp3") {
     args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(sanitizedAbrForDownload));
   } else if (fmt === "wav") {
+    args.push("-x", "--audio-format", "wav");
+  } else if (fmt === "aiff") {
     args.push("-x", "--audio-format", "wav");
   } else if (fmt === "ogg") {
     args.push("-x", "--audio-format", "ogg");
@@ -3834,10 +4008,25 @@ const convertSingle = async (payload = {}) => {
       if (needConvert) {
         await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath, abr: targetAbr || 192 });
       }
+    } else if (fmt === "aac") {
+      const needConvert = ext !== "aac" || hasId3 || hasTrim || hasFilters || needSampleRate;
+      if (needConvert) {
+        await finalize("aac", ffmpegToAac, { id3: id3Clean, abr: targetAbr || 256 });
+      }
+    } else if (fmt === "opus") {
+      const needConvert = ext !== "opus" || hasId3 || hasTrim || hasFilters || needSampleRate;
+      if (needConvert) {
+        await finalize("opus", ffmpegToOpus, { id3: id3Clean, abr: targetAbr || 192 });
+      }
     } else if (fmt === "wav") {
       const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
       if (needConvert) {
         await finalize("wav", ffmpegToWav, {});
+      }
+    } else if (fmt === "aiff") {
+      const needConvert = ext !== "aiff" || hasId3 || hasTrim || hasFilters || needSampleRate;
+      if (needConvert) {
+        await finalize("aiff", ffmpegToAiff, { id3: id3Clean });
       }
     } else if (fmt === "ogg") {
       const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
@@ -3930,6 +4119,7 @@ const convertSingle = async (payload = {}) => {
     soundEffect: soundEffectMode,
     vpnFriendly: vpnMode,
     smartResume: resumeMode,
+    videoQuality: targetVideoQuality,
     metadata: metadataResponse,
     ringtones: ringtoneVariants,
   };
@@ -4629,4 +4819,4 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 const server = app.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
 
-export { app, server, buildAssistantResponse };
+export { app, server, buildAssistantResponse, sanitizeFormatOptions, FORMAT_RULES, buildVideoFormatSelector };

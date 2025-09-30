@@ -6,13 +6,30 @@ process.env.PORT = '0';
 const mod = await import('../index.js');
 const { server, buildAssistantResponse } = mod;
 
-const address = server.address();
-const baseUrl = typeof address === 'object' && address
-  ? `http://127.0.0.1:${address.port}`
-  : 'http://127.0.0.1:3000';
+if (server?.unref) server.unref();
 
-after(() => {
-  server.close();
+const resolveAddress = () => {
+  const address = server.address();
+  if (address && typeof address === 'object' && typeof address.port === 'number') {
+    return `http://127.0.0.1:${address.port}`;
+  }
+  return null;
+};
+
+const immediateAddress = resolveAddress();
+const baseUrl = immediateAddress ?? await new Promise((resolve) => {
+  server.once('listening', () => {
+    resolve(resolveAddress() ?? 'http://127.0.0.1:3000');
+  });
+});
+
+globalThis.__serverRefCount = (globalThis.__serverRefCount || 0) + 1;
+
+after(async () => {
+  globalThis.__serverRefCount -= 1;
+  if (globalThis.__serverRefCount <= 0 && server?.listening) {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('buildAssistantResponse memberikan arahan donasi yang jelas', () => {
