@@ -2026,6 +2026,16 @@
   const $$ = (sel) => document.querySelectorAll(sel);
   const toastEl = $('#toast');
   const toastTextEl = $('#toastText');
+  const bs = new Proxy(
+    {},
+    {
+      get(_, prop) {
+        const lib = window.bootstrap;
+        if (!lib) return undefined;
+        return lib[prop];
+      },
+    },
+  );
 
   const SUPPORTED_LANGS = ['id', 'en'];
   const LANGUAGE_VARIANTS = {
@@ -2472,7 +2482,9 @@
     updateRingtoneLengthLabel();
   }
 
-  const toast = toastEl ? bootstrap.Toast.getOrCreateInstance(toastEl) : null;
+  const toast = toastEl && bs?.Toast?.getOrCreateInstance
+    ? bs.Toast.getOrCreateInstance(toastEl)
+    : null;
   let shouldNarrate = () => false;
   let queueNarration = () => {};
   const announceNarrator = (message) => {
@@ -2482,7 +2494,12 @@
   const setToast = (msg) => {
     const text = translateMessage(msg);
     if (toastTextEl) toastTextEl.textContent = text;
-    if (toast) toast.show();
+    if (toast) {
+      toast.show();
+    } else if (toastEl) {
+      toastEl.classList.add('show');
+      window.setTimeout(() => toastEl.classList.remove('show'), 2600);
+    }
     announceNarrator(text);
   };
 
@@ -2623,7 +2640,9 @@
   const sectionTitle = $('#activeSectionTitle');
   const sectionSubtitle = $('#activeSectionSubtitle');
   const navDrawerEl = $('#offcanvasNav');
-  const navDrawer = navDrawerEl ? bootstrap.Offcanvas.getOrCreateInstance(navDrawerEl) : null;
+  const navDrawer = navDrawerEl && bs?.Offcanvas?.getOrCreateInstance
+    ? bs.Offcanvas.getOrCreateInstance(navDrawerEl)
+    : null;
   const assistantBridge = { autoOpen: () => {} };
   let assistantAutoOpenQueued = false;
 
@@ -3138,11 +3157,15 @@
   const accessLargeText = $('#accessLargeText');
   const accessReduceMotion = $('#accessReduceMotion');
   const settingsOffcanvasEl = document.getElementById('offcanvasSettings');
-  const settingsOffcanvas = settingsOffcanvasEl ? bootstrap.Offcanvas.getOrCreateInstance(settingsOffcanvasEl) : null;
+  const settingsOffcanvas = settingsOffcanvasEl && bs?.Offcanvas?.getOrCreateInstance
+    ? bs.Offcanvas.getOrCreateInstance(settingsOffcanvasEl)
+    : null;
 
   const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
   const selectedSpeedTips = new Set();
-  const avatarDropdown = avatarToggle ? bootstrap.Dropdown.getOrCreateInstance(avatarToggle) : null;
+  const avatarDropdown = avatarToggle && bs?.Dropdown?.getOrCreateInstance
+    ? bs.Dropdown.getOrCreateInstance(avatarToggle)
+    : null;
 
   if (speedTipButtons.length) {
     speedTipButtons.forEach((btn) => {
@@ -4746,8 +4769,8 @@
       weight: 1,
       handler: () => {
         const launch = () => openTriviaModal(true);
-        if (spinModalEl) {
-          const modal = bootstrap.Modal.getInstance(spinModalEl);
+        if (spinModalEl && bs?.Modal?.getInstance) {
+          const modal = bs.Modal.getInstance(spinModalEl);
           if (modal) {
             modal.hide();
             window.setTimeout(launch, 360);
@@ -4883,9 +4906,11 @@
       showRewardToast('Lucky Spin siap diputar!');
     }
     if (spinModalEl && !document.body.classList.contains('modal-open')) {
-      const modal = bootstrap.Modal.getOrCreateInstance(spinModalEl);
+      const modal = bs?.Modal?.getOrCreateInstance
+        ? bs.Modal.getOrCreateInstance(spinModalEl)
+        : null;
       pendingSpinOffer = false;
-      modal.show();
+      modal?.show();
     }
   };
 
@@ -5026,8 +5051,10 @@
   function openTriviaModal(forceEaster = false) {
     if (!triviaModalEl) return;
     loadTriviaQuestion(forceEaster);
-    const modal = bootstrap.Modal.getOrCreateInstance(triviaModalEl);
-    modal.show();
+    const modal = bs?.Modal?.getOrCreateInstance
+      ? bs.Modal.getOrCreateInstance(triviaModalEl)
+      : null;
+    modal?.show();
     updateMascotMood('trivia');
   }
 
@@ -6953,7 +6980,10 @@ $('#queueList')?.addEventListener('click', (e) => {
     } else {
       updateWalkthroughStep(walkthroughIndex);
     }
-    bootstrap.Modal.getOrCreateInstance(tutorialModalEl).show();
+    const modal = bs?.Modal?.getOrCreateInstance
+      ? bs.Modal.getOrCreateInstance(tutorialModalEl)
+      : null;
+    modal?.show();
   };
 
   const markWalkthroughComplete = () => localStorage.setItem(tutorialKey, '1');
@@ -6962,8 +6992,10 @@ $('#queueList')?.addEventListener('click', (e) => {
     walkthroughNext.addEventListener('click', () => {
       if (!walkthroughSteps.length) return;
       if (walkthroughIndex >= walkthroughSteps.length - 1) {
-        const modal = bootstrap.Modal.getOrCreateInstance(tutorialModalEl);
-        modal.hide();
+        const modal = bs?.Modal?.getOrCreateInstance
+          ? bs.Modal.getOrCreateInstance(tutorialModalEl)
+          : null;
+        modal?.hide();
         markWalkthroughComplete();
         setToast('Walkthrough selesai! Selamat mencoba.');
       } else {
@@ -7786,9 +7818,11 @@ $('#queueList')?.addEventListener('click', (e) => {
   if (openSpinBtn) {
     openSpinBtn.addEventListener('click', () => {
       if (!spinModalEl) return;
-      const modal = bootstrap.Modal.getOrCreateInstance(spinModalEl);
+      const modal = bs?.Modal?.getOrCreateInstance
+        ? bs.Modal.getOrCreateInstance(spinModalEl)
+        : null;
       pendingSpinOffer = false;
-      modal.show();
+      modal?.show();
       updateSpinUi();
     });
   }
