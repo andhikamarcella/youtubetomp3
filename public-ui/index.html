@@ -3470,11 +3470,31 @@
   });
 
   endingStayBtn?.addEventListener('click', hideCustomEnding);
+  const cancelCustomEndingIntent = () => {
+    if (customEndingIntentTimer) {
+      clearTimeout(customEndingIntentTimer);
+      customEndingIntentTimer = 0;
+    }
+  };
+
   document.addEventListener('mouseleave', (evt) => {
-    if (evt.clientY <= 0) showCustomEnding();
+    if (evt.clientY <= 0) {
+      cancelCustomEndingIntent();
+      customEndingIntentTimer = window.setTimeout(() => {
+        customEndingIntentTimer = 0;
+        const isVisible = typeof document.visibilityState === 'undefined' || document.visibilityState === 'visible';
+        if (isVisible) {
+          showCustomEnding();
+        }
+      }, 600);
+    }
   });
-  window.addEventListener('pagehide', (evt) => {
-    if (!evt.persisted) showCustomEnding();
+  document.addEventListener('mouseenter', () => cancelCustomEndingIntent());
+  window.addEventListener('focus', () => cancelCustomEndingIntent());
+  document.addEventListener('visibilitychange', () => {
+    if (typeof document.hidden === 'undefined' || !document.hidden) {
+      cancelCustomEndingIntent();
+    }
   });
 
   document.addEventListener('pointerdown', () => ensureAudioContext(), { once: true });
@@ -5673,6 +5693,8 @@
   function hideCustomEnding() {
     customEndingOverlay?.classList.remove('show');
   }
+
+  let customEndingIntentTimer = 0;
 
   const persistState = () => {
     storage.save({
