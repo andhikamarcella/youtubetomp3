@@ -1,45 +1,171 @@
-# download_audio.py — helper for PyTube audio download
-import sys, os, subprocess
+# download_audio.py — helper for yt_dlp / PyTube audio download
+import os
+import subprocess
+import sys
+from typing import Iterable, Optional
 
-# Ensure PyTube is available even if not pre-installed
-try:
-    from pytube import YouTube
-except ModuleNotFoundError:
+YoutubeDL = None
+YouTube = None
+
+
+def ensure_ytdlp() -> bool:
+    """Lazily import yt_dlp, installing it when absent."""
+
+    global YoutubeDL
+    if YoutubeDL is not None:
+        return True
     try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--quiet", "pytube"]
-        )
-        from pytube import YouTube
-    except Exception as e:
-        print(f"failed to install pytube: {e}", file=sys.stderr)
-        sys.exit(1)
+        from yt_dlp import YoutubeDL as _YoutubeDL  # type: ignore
 
-def main():
+        YoutubeDL = _YoutubeDL
+        return True
+    except ModuleNotFoundError:
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--quiet", "yt-dlp"]
+            )
+            from yt_dlp import YoutubeDL as _YoutubeDL  # type: ignore
+
+            YoutubeDL = _YoutubeDL
+            return True
+        except Exception as exc:  # pragma: no cover - install best effort
+            print(f"failed to install yt_dlp: {exc}", file=sys.stderr)
+            return False
+    except Exception as exc:  # pragma: no cover - unexpected import failure
+        print(f"failed to load yt_dlp: {exc}", file=sys.stderr)
+        return False
+
+
+def ensure_pytube() -> bool:
+    """Lazily import PyTube, installing it on demand."""
+
+    global YouTube
+    if YouTube is not None:
+        return True
+    try:
+        from pytube import YouTube as _YouTube  # type: ignore
+
+        YouTube = _YouTube
+        return True
+    except ModuleNotFoundError:
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "--quiet", "pytube"]
+            )
+            from pytube import YouTube as _YouTube  # type: ignore
+
+            YouTube = _YouTube
+            return True
+        except Exception as exc:  # pragma: no cover - install best effort
+            print(f"failed to install pytube: {exc}", file=sys.stderr)
+            return False
+    except Exception as exc:  # pragma: no cover - unexpected import failure
+        print(f"failed to load pytube: {exc}", file=sys.stderr)
+        return False
+
+
+def _iter_candidates(info) -> Iterable[object]:
+    """Yield possible filename sources from a yt_dlp info dict."""
+
+    if isinstance(info, dict):
+        requested = info.get("requested_downloads") or []
+        entries = info.get("entries") or []
+        for item in requested:
+            yield item
+        for item in entries:
+            yield item
+        yield info
+    else:
+        yield info
+
+
+def download_with_ytdlp(url: str, out_dir: str, out_basename: str) -> str:
+    if not ensure_ytdlp():
+        raise RuntimeError("yt_dlp unavailable")
+
+    template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
+    opts = {
+        "format": "bestaudio/best",
+        "outtmpl": template,
+        "restrictfilenames": False,
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "nocheckcertificate": True,
+        "cachedir": False,
+        "ignoreerrors": False,
+    }
+
+    with YoutubeDL(opts) as ydl:  # type: ignore[misc]
+        info = ydl.extract_info(url, download=True)
+        if info is None:
+            raise RuntimeError("yt_dlp returned no metadata")
+
+        for candidate in _iter_candidates(info):
+            filename: Optional[str] = None
+            if isinstance(candidate, dict):
+                filename = candidate.get("_filename")
+            if filename and os.path.isfile(filename):
+                return os.path.abspath(filename)
+            try:
+                guess = ydl.prepare_filename(candidate)
+            except Exception:
+                continue
+            if guess and os.path.isfile(guess):
+                return os.path.abspath(guess)
+
+    raise RuntimeError("yt_dlp did not produce an output file")
+
+
+def download_with_pytube(url: str, out_dir: str, out_basename: str) -> str:
+    if not ensure_pytube():
+        raise RuntimeError("pytube unavailable")
+
+    yt = YouTube(url)  # type: ignore[call-arg]
+    stream = (
+        yt.streams.filter(only_audio=True).order_by("abr").desc().first()  # type: ignore[attr-defined]
+    )
+    if not stream:
+        raise RuntimeError("no audio stream found")
+
+    out_path = stream.download(output_path=out_dir, filename=out_basename)  # type: ignore[attr-defined]
+    if not out_path:
+        raise RuntimeError("pytube returned empty path")
+    return os.path.abspath(out_path)
+
+
+def main() -> None:
     if len(sys.argv) < 4:
-        print("usage: python3 download_audio.py <url> <out_dir> <out_basename>", file=sys.stderr)
+        print(
+            "usage: python3 download_audio.py <url> <out_dir> <out_basename>",
+            file=sys.stderr,
+        )
         sys.exit(2)
+
     url, out_dir, out_basename = sys.argv[1], sys.argv[2], sys.argv[3]
     os.makedirs(out_dir, exist_ok=True)
 
-    yt = YouTube(url)
-    # pick highest abr audio-only stream
-    stream = (
-        yt.streams
-          .filter(only_audio=True)
-          .order_by('abr')
-          .desc()
-          .first()
-    )
+    errors = []
+    try:
+        path = download_with_ytdlp(url, out_dir, out_basename)
+    except Exception as exc:
+        errors.append(f"yt_dlp failed: {exc}")
+        path = None
 
-    if not stream:
-        print("no audio stream found", file=sys.stderr)
-        sys.exit(3)
+    if path is None:
+        try:
+            path = download_with_pytube(url, out_dir, out_basename)
+        except Exception as exc:
+            errors.append(f"pytube failed: {exc}")
+            path = None
 
-    # let PyTube set correct extension (webm/m4a) — keep basename consistent
-    filename = out_basename  # pytube adds proper extension
-    out_path = stream.download(output_path=out_dir, filename=filename)
-    # print absolute path for Node to read
-    print(out_path)
+    if path is None:
+        for msg in errors:
+            print(msg, file=sys.stderr)
+        sys.exit(1)
+
+    print(path)
+
 
 if __name__ == "__main__":
     main()
