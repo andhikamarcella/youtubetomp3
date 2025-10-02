@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="id" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Private Room · YTMP3</title>
+  <meta name="theme-color" content="#17233f" />
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="mask-icon" href="./icons/icon-maskable.svg" color="#0d6efd">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { font-family: "Comfortaa", system-ui, sans-serif; min-height: 100vh; background: radial-gradient(circle at top right, rgba(13,110,253,.2), transparent 55%), radial-gradient(circle at bottom left, rgba(32,201,151,.2), transparent 55%), var(--bs-body-bg); }
+    .card { border-radius: 1.25rem; box-shadow: 0 24px 60px rgba(13,110,253,.18); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(12px); }
+    .badge-mono { font-family: "IBM Plex Mono", monospace; letter-spacing: .08em; }
+    .form-control, .btn { border-radius: .85rem; }
+    #downloadActions { display: none; }
+  </style>
+</head>
+<body>
+  <main class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 col-md-8">
+        <div class="card bg-body-tertiary border-0">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <span class="fs-3">🔒</span>
+              <div>
+                <h1 class="h4 mb-0">Private Room Share</h1>
+                <p class="text-secondary small mb-0">Masukkan password yang dibagikan untuk membuka file hasil konversi.</p>
+              </div>
+            </div>
+            <div class="alert alert-secondary mb-4" id="roomStatus" role="alert">
+              Memuat detail room...
+            </div>
+            <form id="privateForm" class="mb-4">
+              <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" autocomplete="current-password" required minlength="4" placeholder="Masukkan password">
+                <div class="form-text">Password diberikan oleh pengirim file.</div>
+              </div>
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary" id="unlockBtn">
+                  <span class="spinner-border spinner-border-sm me-2" id="unlockSpinner" hidden aria-hidden="true"></span>
+                  Buka Room
+                </button>
+                <button type="button" class="btn btn-outline-light" id="copyLinkBtn">Salin tautan room</button>
+              </div>
+            </form>
+            <div id="downloadActions" class="bg-body rounded-4 border border-primary-subtle p-4">
+              <h2 class="h5 mb-2">File siap diunduh</h2>
+              <p class="small text-secondary mb-3" id="fileMeta"></p>
+              <div class="d-grid gap-2">
+                <a class="btn btn-success" id="downloadBtn" href="#" download>
+                  <i class="bi bi-download me-2"></i>Unduh sekarang
+                </a>
+                <button type="button" class="btn btn-outline-primary" id="copyDownloadBtn"><i class="bi bi-clipboard me-2"></i>Salin link unduhan</button>
+              </div>
+            </div>
+            <p class="text-secondary small mt-4 mb-0">Butuh bantuan? Gunakan tombol share di halaman utama untuk membuat Private Room baru atau hubungi admin.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+      const roomId = params.get('room') || params.get('id') || '';
+      const statusEl = document.getElementById('roomStatus');
+      const form = document.getElementById('privateForm');
+      const passwordInput = document.getElementById('password');
+      const unlockBtn = document.getElementById('unlockBtn');
+      const unlockSpinner = document.getElementById('unlockSpinner');
+      const copyLinkBtn = document.getElementById('copyLinkBtn');
+      const downloadActions = document.getElementById('downloadActions');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const copyDownloadBtn = document.getElementById('copyDownloadBtn');
+      const fileMeta = document.getElementById('fileMeta');
+
+      let cachedMeta = null;
+      let downloadToken = '';
+
+      const api = (path) => {
+        const base = window.location.origin.replace(/\/$/, '');
+        if (!path.startsWith('/')) return `${base}/${path}`;
+        return `${base}${path}`;
+      };
+
+      const formatBytes = (size) => {
+        const num = Number(size);
+        if (!Number.isFinite(num) || num <= 0) return '';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let value = num;
+        let unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+          value /= 1024;
+          unit += 1;
+        }
+        return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+      };
+
+      const showStatus = (message, variant = 'secondary') => {
+        if (!statusEl) return;
+        statusEl.className = `alert alert-${variant}`;
+        statusEl.textContent = message;
+      };
+
+      const updateMeta = (meta) => {
+        cachedMeta = meta;
+        if (!meta) return;
+        const parts = [];
+        if (meta.fileName) parts.push(`Nama file: ${meta.fileName}`);
+        if (Number.isFinite(meta.size)) parts.push(`Ukuran: ${formatBytes(meta.size)}`);
+        if (meta.expiresAt) {
+          const date = new Date(meta.expiresAt);
+          if (!Number.isNaN(date.getTime())) {
+            parts.push(`Kedaluwarsa: ${date.toLocaleString('id-ID')}`);
+          }
+        }
+        if (fileMeta) fileMeta.textContent = parts.join(' · ');
+      };
+
+      const loadMeta = async () => {
+        if (!roomId) {
+          showStatus('Room tidak ditemukan. Pastikan link yang dibuka sudah benar.', 'danger');
+          form?.classList.add('d-none');
+          return;
+        }
+        try {
+          const resp = await fetch(api(`/api/private-share/${encodeURIComponent(roomId)}`));
+          if (!resp.ok) {
+            if (resp.status === 410) showStatus('Room kedaluwarsa. Minta pengirim membuat room baru.', 'warning');
+            else if (resp.status === 404) showStatus('Room tidak ditemukan. Periksa kembali tautannya.', 'danger');
+            else showStatus('Gagal memuat detail room.', 'danger');
+            return;
+          }
+          const data = await resp.json();
+          if (data?.room) {
+            updateMeta(data.room);
+            showStatus('Masukkan password untuk membuka file.', 'info');
+          }
+        } catch (err) {
+          console.error('meta error', err);
+          showStatus('Tidak dapat terhubung ke server.', 'danger');
+        }
+      };
+
+      form?.addEventListener('submit', async (evt) => {
+        evt.preventDefault();
+        if (!roomId) return;
+        const password = passwordInput.value.trim();
+        if (!password) {
+          showStatus('Password wajib diisi.', 'warning');
+          passwordInput.focus();
+          return;
+        }
+        unlockBtn.disabled = true;
+        unlockSpinner.hidden = false;
+        showStatus('Memverifikasi password...', 'secondary');
+        try {
+          const resp = await fetch(api(`/api/private-share/${encodeURIComponent(roomId)}/unlock`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+          });
+          const data = await resp.json();
+          if (!resp.ok) {
+            if (resp.status === 403) showStatus('Password salah. Coba lagi.', 'danger');
+            else if (resp.status === 410) showStatus('Room sudah kedaluwarsa.', 'warning');
+            else showStatus(data?.error || 'Gagal membuka room.', 'danger');
+            return;
+          }
+          downloadToken = data?.token || '';
+          if (data?.fileName || data?.size) updateMeta({ ...cachedMeta, ...data });
+          const downloadUrl = api(`/api/private-share/${encodeURIComponent(roomId)}/download?token=${encodeURIComponent(downloadToken)}`);
+          downloadBtn.href = downloadUrl;
+          downloadBtn.setAttribute('download', (data?.fileName || cachedMeta?.fileName || 'audio')); 
+          downloadActions.style.display = 'block';
+          showStatus('Berhasil! File siap diunduh.', 'success');
+        } catch (err) {
+          console.error('unlock error', err);
+          showStatus('Terjadi kesalahan jaringan.', 'danger');
+        } finally {
+          unlockBtn.disabled = false;
+          unlockSpinner.hidden = true;
+        }
+      });
+
+      copyLinkBtn?.addEventListener('click', async () => {
+        if (!roomId) return;
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          showStatus('Tautan room disalin ke clipboard.', 'success');
+        } catch {
+          showStatus('Gagal menyalin tautan.', 'danger');
+        }
+      });
+
+      copyDownloadBtn?.addEventListener('click', async () => {
+        if (!downloadToken || !roomId) {
+          showStatus('Buka room terlebih dahulu sebelum menyalin link unduhan.', 'warning');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(downloadBtn.href);
+          showStatus('Link unduhan disalin.', 'success');
+        } catch {
+          showStatus('Tidak bisa menyalin link unduhan.', 'danger');
+        }
+      });
+
+      loadMeta();
+    })();
+  </script>
+</body>
+</html>
