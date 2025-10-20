@@ -32,6 +32,14 @@
     .history-link { word-break: break-all; }
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
     .dropzone.dragover { background: rgba(28,38,62,.08); border-color: var(--bs-primary); }
+    .btn-account { display:flex; align-items:center; gap:.5rem; }
+    #accountAvatar { width:32px; height:32px; border-radius:50%; object-fit:cover; background: var(--bs-secondary-bg); }
+    .plan-chip { font-size:.75rem; letter-spacing:.06em; }
+    .premium-badge { font-size:.7rem; }
+    [data-premium-input]:disabled { cursor:not-allowed; opacity:.6; }
+    .premium-lock-note { font-size:.75rem; color: var(--bs-secondary-color); }
+    #scheduleStatus { font-size:.875rem; color: var(--bs-secondary-color); }
+    #accountBtn { white-space:nowrap; }
   </style>
 </head>
 <body>
@@ -39,9 +47,14 @@
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
     <div class="container">
       <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
-      <div class="d-flex gap-2 ms-auto">
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <span class="badge rounded-pill text-bg-info d-none d-md-inline-flex align-items-center gap-1 plan-chip" id="planBadge"><i class="bi bi-stars"></i><span id="planBadgeText">Basic</span></span>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
+        <button class="btn btn-outline-light btn-account" id="accountBtn" type="button" data-bs-toggle="modal" data-bs-target="#accountModal" aria-label="Buka akun">
+          <img id="accountAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23adb5bd'/%3E%3Ccircle cx='16' cy='12' r='7' fill='%23f8f9fa'/%3E%3Cpath d='M4 28c2.5-5 8-8 12-8s9.5 3 12 8' fill='%23f8f9fa'/%3E%3C/svg%3E" alt="Avatar" width="32" height="32">
+          <span id="accountNameLabel" class="fw-medium">Masuk</span>
+        </button>
       </div>
     </div>
   </nav>
@@ -93,13 +106,29 @@
                 <button class="btn btn-outline-secondary" id="addQueueBtn" type="button"><i class="bi bi-plus-lg"></i> Tambah</button>
                 <button class="btn btn-outline-danger" id="clearQueueBtn" type="button" aria-label="Hapus antrian"><i class="bi bi-trash"></i></button>
               </div>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <button class="btn btn-outline-secondary btn-sm" id="importQueueBtn" type="button"><i class="bi bi-upload"></i> Import daftar URL</button>
+                <button class="btn btn-outline-secondary btn-sm" id="exportQueueBtn" type="button"><i class="bi bi-download"></i> Export antrian</button>
+                <button class="btn btn-outline-warning btn-sm" id="optimizeQueueBtn" type="button" data-premium-input><i class="bi bi-magic"></i> Optimalkan (Premium)</button>
+                <input type="file" id="queueImportFile" accept=".txt,.csv" hidden>
+              </div>
               <ul class="list-group mt-2" id="queueList"></ul>
             </div>
 
-            <div class="row g-3 mb-3">
-              <div class="col-md-4">
-                <label for="format" class="form-label">Format</label>
-                <select id="format" class="form-select">
+          <div class="mb-3">
+            <label class="form-label">Preset konversi</label>
+            <div class="input-group">
+              <select id="presetSelect" class="form-select"></select>
+              <button class="btn btn-outline-primary" id="savePresetBtn" type="button"><i class="bi bi-bookmark-plus"></i> Simpan</button>
+              <button class="btn btn-outline-danger" id="deletePresetBtn" type="button" aria-label="Hapus preset"><i class="bi bi-bookmark-x"></i></button>
+            </div>
+            <div class="form-text" id="presetLimitInfo">Preset menyimpan format, kualitas, normalisasi, dan opsi lainnya.</div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label for="format" class="form-label">Format</label>
+              <select id="format" class="form-select">
                   <option value="mp3">MP3 (re-encode, fleksibel)</option>
                   <option value="m4a" selected>M4A (super cepat)</option>
                   <option value="flac">FLAC (Hi-Res lossless)</option>
@@ -175,7 +204,16 @@
               <label class="form-label">Metadata ID3</label>
               <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
               <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
-              <input id="id3Album" type="text" class="form-control" placeholder="Album" />
+              <input id="id3Album" type="text" class="form-control mb-2" placeholder="Album" />
+              <input id="id3Genre" type="text" class="form-control mb-2" placeholder="Genre (opsional)" />
+              <textarea id="id3Comment" class="form-control" rows="2" placeholder="Komentar / Catatan"></textarea>
+            </div>
+
+            <div class="mb-3 premium-lock" id="filePatternWrap">
+              <label class="form-label">Pola nama file <span class="badge text-bg-warning premium-badge">Premium</span></label>
+              <input id="filePattern" type="text" class="form-control" placeholder="Mis: {artist} - {title}" data-premium-input />
+              <div class="form-text">Gunakan token <code>{title}</code>, <code>{artist}</code>, <code>{channel}</code>, <code>{date}</code>, atau <code>{id}</code> untuk membuat nama file otomatis.</div>
+              <div class="premium-lock-note" id="filePatternNote">Aktifkan Premium untuk membuka pola nama file otomatis.</div>
             </div>
 
             <div class="form-check form-switch mb-3">
@@ -186,6 +224,11 @@
             <div class="form-check form-switch mb-3">
               <input class="form-check-input" type="checkbox" id="atmos" />
               <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="autoMetadata" data-premium-input />
+              <label class="form-check-label" for="autoMetadata">Lengkapi metadata otomatis <span class="badge text-bg-warning premium-badge">Premium</span></label>
             </div>
 
             <div class="dropzone mb-3" id="dropzone">
@@ -252,6 +295,45 @@
             <div class="d-grid mt-3">
               <button class="btn btn-outline-danger btn-sm" id="clearHistory"><i class="bi bi-trash3"></i> Bersihkan Riwayat</button>
             </div>
+            <div class="d-grid mt-2">
+              <button class="btn btn-outline-secondary btn-sm" id="exportHistory"><i class="bi bi-file-earmark-arrow-down"></i> Export CSV</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mb-4" id="subscriptionCard">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-gem me-2 text-warning"></i>
+              <h5 class="mb-0">Langganan</h5>
+            </div>
+            <p class="small text-secondary mb-3">Nikmati fitur tambahan dengan upgrade ke Premium seharga <strong>Rp1.000</strong>.</p>
+            <div class="row g-2 small">
+              <div class="col-sm-6">
+                <div class="border rounded-3 p-3 h-100">
+                  <h6 class="fw-semibold">Basic</h6>
+                  <ul class="ps-3 mb-0">
+                    <li>Semua fitur standar</li>
+                    <li>1 preset konversi tersimpan</li>
+                    <li>Riwayat lokal</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="border border-warning rounded-3 p-3 h-100 bg-warning-subtle">
+                  <h6 class="fw-semibold d-flex align-items-center gap-1">Premium <span class="badge text-bg-warning">Rp1.000</span></h6>
+                  <ul class="ps-3 mb-0">
+                    <li>Pola nama file otomatis</li>
+                    <li>Jadwal konversi & optimasi antrian</li>
+                    <li>Preset tanpa batas & metadata pintar</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="d-grid gap-2 mt-3">
+              <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#accountModal" id="openUpgrade"><i class="bi bi-stars"></i> Lihat opsi Premium</button>
+              <button class="btn btn-outline-secondary" id="refreshAccount"><i class="bi bi-arrow-repeat"></i> Sinkron status akun</button>
+            </div>
           </div>
         </div>
 
@@ -267,6 +349,26 @@
               <li>Pastikan <code>ffmpeg</code> & <code>yt-dlp</code> versi terbaru di server.</li>
               <li>Jika muncul age‑gate, unggah <code>cookies.txt</code> valid.</li>
             </ul>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mt-4" id="automationCard">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-robot me-2"></i>
+              <h5 class="mb-0">Otomasi Premium</h5>
+            </div>
+            <p class="small text-secondary mb-3">Atur jadwal konversi dan otomatisasi metadata untuk workflow tanpa repot.</p>
+            <div class="mb-3">
+              <label for="scheduleAt" class="form-label">Jadwalkan konversi berikutnya <span class="badge text-bg-warning premium-badge">Premium</span></label>
+              <input type="datetime-local" id="scheduleAt" class="form-control" data-premium-input>
+              <div class="d-flex gap-2 mt-2">
+                <button class="btn btn-outline-primary btn-sm" id="scheduleConvertBtn" type="button" data-premium-input>Jadwalkan</button>
+                <button class="btn btn-outline-danger btn-sm" id="cancelScheduleBtn" type="button" data-premium-input>Batalkan</button>
+              </div>
+              <div id="scheduleStatus" class="mt-2">Belum ada jadwal.</div>
+            </div>
+            <div class="premium-lock-note" id="automationNote">Upgrade ke Premium untuk membuka otomasi dan metadata pintar.</div>
           </div>
         </div>
       </div>
@@ -290,6 +392,11 @@
         <input id="adminBearer" type="text" class="form-control" placeholder="Mis: dhika_sayang123">
         <div class="form-text">Hanya dipakai saat upload cookies.txt.</div>
       </div>
+      <div class="mb-3">
+        <label class="form-label">Google Client ID</label>
+        <input id="googleClientId" type="text" class="form-control" placeholder="contoh: 1234567890-abcdef.apps.googleusercontent.com">
+        <div class="form-text">Diperlukan agar tombol login Google dapat tampil.</div>
+      </div>
       <div class="d-grid gap-2">
         <button class="btn btn-success" id="saveSettings"><i class="bi bi-save2"></i> Simpan</button>
         <button class="btn btn-outline-danger" id="resetSettings"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
@@ -303,6 +410,63 @@
     <div id="cookieStatus" class="small text-secondary"></div>
   </div>
   </div>
+  </div>
+
+  <!-- Account Modal -->
+  <div class="modal fade" id="accountModal" tabindex="-1" aria-labelledby="accountModalLabel">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="accountModalLabel">Manajemen Akun</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <img id="accountModalAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23adb5bd'/%3E%3Ccircle cx='16' cy='12' r='7' fill='%23f8f9fa'/%3E%3Cpath d='M4 28c2.5-5 8-8 12-8s9.5 3 12 8' fill='%23f8f9fa'/%3E%3C/svg%3E" alt="Avatar" width="48" height="48" class="rounded-circle border">
+            <div class="flex-grow-1">
+              <div class="fw-semibold" id="accountModalName">Belum masuk</div>
+              <div class="small text-secondary" id="accountModalEmail">Masuk untuk sinkronisasi pengaturan.</div>
+            </div>
+            <span class="badge text-bg-info" id="accountModalPlanBadge">Basic</span>
+          </div>
+          <p class="small text-secondary">Login dengan akun Google untuk menyinkronkan foto profil dan akses langganan Premium di berbagai perangkat.</p>
+          <div id="googleSignIn" class="mb-3"></div>
+          <div class="d-flex gap-2 mb-4">
+            <button class="btn btn-outline-danger btn-sm" id="signOutBtn" type="button"><i class="bi bi-box-arrow-right"></i> Keluar</button>
+            <button class="btn btn-outline-secondary btn-sm" id="refreshGoogleBtn" type="button"><i class="bi bi-arrow-clockwise"></i> Render ulang tombol Google</button>
+          </div>
+
+          <div class="border rounded-3 p-3 mb-4">
+            <h6 class="fw-semibold mb-2">Status Langganan</h6>
+            <p class="mb-2">Plan aktif: <strong id="accountPlanText">Basic</strong></p>
+            <p class="small text-secondary" id="premiumSinceText"></p>
+            <div class="d-grid gap-2">
+              <button class="btn btn-warning" id="upgradePremiumBtn" type="button"><i class="bi bi-star-fill"></i> Upgrade ke Premium (Rp1.000)</button>
+              <button class="btn btn-outline-secondary" id="downgradeBtn" type="button"><i class="bi bi-arrow-down"></i> Turun ke Basic</button>
+            </div>
+          </div>
+
+          <div class="alert border-warning-subtle bg-warning-subtle text-warning-emphasis" role="alert" id="premiumPerks">
+            <div class="fw-semibold mb-2">Fitur Premium termasuk:</div>
+            <ul class="mb-2">
+              <li>Pola nama file otomatis dan metadata pintar.</li>
+              <li>Preset tanpa batas dengan sinkronisasi lokal.</li>
+              <li>Optimasi antrian dan jadwal konversi.</li>
+            </ul>
+            <p class="mb-0 small">Harga promo Rp1.000 berlaku permanen setelah diaktifkan.</p>
+          </div>
+
+          <div class="border rounded-3 p-3">
+            <h6 class="fw-semibold mb-2">Integrasi</h6>
+            <p class="small mb-1">Masukkan <strong>Google Client ID</strong> melalui Pengaturan untuk menampilkan tombol login Google ini.</p>
+            <p class="small mb-0">Foto profil Anda akan otomatis mengikuti avatar akun Google.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Tutorial Modal -->
@@ -348,6 +512,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
   // ===== Utilities =====
@@ -364,19 +529,325 @@
 
   const state = {
     backendUrl: '',
-    adminBearer: ''
+    adminBearer: '',
+    googleClientId: ''
   };
 
-  const getBackend = () => (state.backendUrl || '').trim();
+  const accountStorage = {
+    key: 'ytmp3.account.v1',
+    load(){ try { return JSON.parse(localStorage.getItem(this.key)) || {}; } catch { return {}; } },
+    save(v){ localStorage.setItem(this.key, JSON.stringify(v||{})); }
+  };
+
+  const presetStorage = {
+    key: 'ytmp3.presets.v1',
+    load(){ try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; } },
+    save(list){ localStorage.setItem(this.key, JSON.stringify(list||[])); }
+  };
+
+  const accountState = {
+    plan: 'basic',
+    user: null,
+    premiumSince: null
+  };
+
+  let presets = [];
+  let lastPreview = { title: '', author: '', channel: '', url: '', id: '', thumbnail: '' };
+  let scheduleTimer = null;
+  let scheduleTarget = null;
+  let googleButtonRendered = false;
+  let accountModalInstance = null;
+
+  const loadPresets = () => {
+    presets = presetStorage.load();
+  };
+
+  const savePresets = () => {
+    presetStorage.save(presets);
+    renderPresets();
+  };
+
+  const collectPresetFromForm = () => ({
+    format: $('#format').value,
+    abr: $('#abr').value,
+    sampleRate: $('#sampleRate').value,
+    noPlaylist: $('#noPlaylist').checked,
+    showLog: $('#showLog').checked,
+    autoDownload: $('#autoDownload').checked,
+    autoClear: $('#autoClear').checked,
+    trimStart: $('#trimStart').value,
+    trimEnd: $('#trimEnd').value,
+    normalize: $('#normalize').checked,
+    atmos: $('#atmos').checked,
+    autoMetadata: $('#autoMetadata').checked,
+    filePattern: $('#filePattern').value,
+    fileName: $('#fileName').value,
+    id3: {
+      title: $('#id3Title').value,
+      artist: $('#id3Artist').value,
+      album: $('#id3Album').value,
+      genre: $('#id3Genre').value,
+      comment: $('#id3Comment').value
+    }
+  });
+
+  const applyPresetData = (data = {}) => {
+    if(!data) return;
+    if(data.format) $('#format').value = data.format;
+    if(data.abr) $('#abr').value = String(data.abr);
+    if(data.sampleRate) $('#sampleRate').value = String(data.sampleRate);
+    if('noPlaylist' in data) $('#noPlaylist').checked = !!data.noPlaylist;
+    if('showLog' in data) $('#showLog').checked = !!data.showLog;
+    if('autoDownload' in data) $('#autoDownload').checked = !!data.autoDownload;
+    if('autoClear' in data) $('#autoClear').checked = !!data.autoClear;
+    if('trimStart' in data) $('#trimStart').value = data.trimStart || '';
+    if('trimEnd' in data) $('#trimEnd').value = data.trimEnd || '';
+    if('normalize' in data) $('#normalize').checked = !!data.normalize;
+    if('atmos' in data) $('#atmos').checked = !!data.atmos;
+    if('autoMetadata' in data && isPremium()) $('#autoMetadata').checked = !!data.autoMetadata;
+    if('filePattern' in data) $('#filePattern').value = data.filePattern || '';
+    if('fileName' in data) $('#fileName').value = data.fileName || '';
+    if(data.id3){
+      if('title' in data.id3) $('#id3Title').value = data.id3.title || '';
+      if('artist' in data.id3) $('#id3Artist').value = data.id3.artist || '';
+      if('album' in data.id3) $('#id3Album').value = data.id3.album || '';
+      if('genre' in data.id3) $('#id3Genre').value = data.id3.genre || '';
+      if('comment' in data.id3) $('#id3Comment').value = data.id3.comment || '';
+    }
+  };
+
+  function renderPresets(){
+    const select = $('#presetSelect');
+    if(!select) return;
+    const current = select.value;
+    select.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = 'default';
+    defaultOption.textContent = 'Preset default (otomatis)';
+    select.appendChild(defaultOption);
+    presets.forEach(preset => {
+      const opt = document.createElement('option');
+      opt.value = preset.id;
+      opt.textContent = preset.name;
+      select.appendChild(opt);
+    });
+    if(presets.some(p => p.id === current)) select.value = current;
+    else select.value = 'default';
+    $('#deletePresetBtn').disabled = select.value === 'default';
+    const limitInfo = $('#presetLimitInfo');
+    if(limitInfo){
+      limitInfo.textContent = isPremium()
+        ? `Preset tersimpan: ${presets.length}. Tidak ada batas untuk Premium.`
+        : `Basic dapat menyimpan 1 preset. Tersimpan: ${presets.length}.`;
+    }
+  }
+
+  const getBackend = () => state.backendUrl || '';
   const api = (path) => {
-    const b = getBackend();
-    return b ? b.replace(/\/$/, '') + path : path; // relative fallback
+    const backend = getBackend();
+    if (!backend) return path;
+    const suffix = path.startsWith('/') ? path : `/${path}`;
+    return `${backend}${suffix}`;
+  };
+
+  const normalizeBackendUrl = (value) => {
+    const raw = (value || '').trim();
+    if (!raw) return '';
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try {
+      const urlObj = new URL(withProtocol);
+      const cleanPath = urlObj.pathname.replace(/\/$/, '');
+      return `${urlObj.origin}${cleanPath}`;
+    } catch {
+      return null;
+    }
   };
 
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
-    const b = getBackend();
-    badge.textContent = b ? new URL(b).host : location.host;
+    if (!badge) return;
+    const backend = getBackend();
+    if (!backend) {
+      badge.textContent = location.host;
+      badge.setAttribute('title', location.origin);
+      return;
+    }
+    try {
+      const urlObj = new URL(backend);
+      const cleanPath = urlObj.pathname.replace(/\/$/, '');
+      const hostLabel = cleanPath ? `${urlObj.host}${cleanPath}` : urlObj.host;
+      badge.textContent = hostLabel;
+      badge.setAttribute('title', `${urlObj.origin}${cleanPath}`);
+    } catch {
+      badge.textContent = backend;
+      badge.setAttribute('title', backend);
+    }
+  };
+
+  const defaultAvatar = $('#accountAvatar')?.src || '';
+
+  const saveAccount = () => accountStorage.save({ ...accountState });
+
+  const loadAccountState = () => {
+    const stored = accountStorage.load();
+    accountState.plan = stored.plan === 'premium' ? 'premium' : 'basic';
+    accountState.user = stored.user || null;
+    accountState.premiumSince = stored.premiumSince || null;
+  };
+
+  const isPremium = () => accountState.plan === 'premium';
+
+  const updatePremiumUI = () => {
+    const premium = isPremium();
+    $$('[data-premium-input]').forEach(el => {
+      if (premium) {
+        el.removeAttribute('disabled');
+      } else {
+        el.setAttribute('disabled', 'true');
+        if (el.type === 'checkbox') el.checked = false;
+      }
+    });
+    $('#filePatternNote')?.toggleAttribute('hidden', premium);
+    $('#automationNote')?.toggleAttribute('hidden', premium);
+    const planBadge = $('#planBadge');
+    if (planBadge) {
+      planBadge.classList.toggle('text-bg-warning', premium);
+      planBadge.classList.toggle('text-bg-info', !premium);
+    }
+    const modalPlan = $('#accountModalPlanBadge');
+    if (modalPlan) {
+      modalPlan.classList.toggle('text-bg-warning', premium);
+      modalPlan.classList.toggle('text-bg-info', !premium);
+    }
+    $('#presetLimitInfo')?.classList.toggle('text-warning', !premium && presets.length >= 1);
+    $('#optimizeQueueBtn')?.classList.toggle('disabled', !premium);
+  };
+
+  const renderAccountUI = () => {
+    const premium = isPremium();
+    const planText = premium ? 'Premium' : 'Basic';
+    $('#planBadgeText')?.textContent = planText;
+    const displayName = accountState.user?.name || 'Masuk';
+    $('#accountNameLabel')?.textContent = displayName;
+    const avatarUrl = accountState.user?.picture || defaultAvatar;
+    if (avatarUrl) {
+      $('#accountAvatar')?.setAttribute('src', avatarUrl);
+      $('#accountModalAvatar')?.setAttribute('src', avatarUrl);
+    }
+    $('#accountModalName')?.textContent = accountState.user?.name || 'Belum masuk';
+    $('#accountModalEmail')?.textContent = accountState.user?.email || 'Masuk untuk sinkronisasi pengaturan.';
+    $('#accountModalPlanBadge')?.textContent = planText;
+    $('#accountPlanText')?.textContent = planText;
+    if (premium && accountState.premiumSince) {
+      $('#premiumSinceText').textContent = `Aktif sejak ${new Date(accountState.premiumSince).toLocaleString()}`;
+    } else {
+      $('#premiumSinceText').textContent = '';
+    }
+    const accountBtn = $('#accountBtn');
+    if (accountBtn) {
+      accountBtn.classList.toggle('btn-outline-warning', premium);
+      accountBtn.classList.toggle('btn-outline-light', !premium);
+    }
+    updatePremiumUI();
+    renderPresets();
+  };
+
+  const requirePremium = (featureName) => {
+    if (isPremium()) return true;
+    setToast(`${featureName} khusus Premium. Upgrade hanya Rp1.000.`);
+    const modalEl = $('#accountModal');
+    if (modalEl) {
+      accountModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+      accountModalInstance.show();
+    }
+    return false;
+  };
+
+  const setPlan = (plan) => {
+    const target = plan === 'premium' ? 'premium' : 'basic';
+    const wasPremium = isPremium();
+    accountState.plan = target;
+    if (target === 'premium') {
+      if (!accountState.premiumSince) accountState.premiumSince = Date.now();
+    } else {
+      accountState.premiumSince = null;
+      if (scheduleTimer) {
+        clearTimeout(scheduleTimer);
+        scheduleTimer = null;
+        scheduleTarget = null;
+        updateScheduleStatus();
+      }
+    }
+    saveAccount();
+    renderAccountUI();
+    if (target === 'premium' && !wasPremium) setToast('Premium aktif! Nikmati semua fitur.');
+    if (target !== 'premium' && wasPremium) setToast('Berhasil kembali ke plan Basic.');
+  };
+
+  const decodeJwtPayload = (token) => {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return null;
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const json = atob(padded);
+      return JSON.parse(json);
+    } catch (err) {
+      console.error('decodeJwtPayload', err);
+      return null;
+    }
+  };
+
+  const handleGoogleCredential = (response) => {
+    if (!response?.credential) return;
+    const payload = decodeJwtPayload(response.credential);
+    if (!payload) {
+      setToast('Gagal membaca token Google');
+      return;
+    }
+    accountState.user = {
+      name: payload.name || payload.given_name || payload.email || 'Pengguna Google',
+      email: payload.email || '',
+      picture: payload.picture || defaultAvatar,
+      sub: payload.sub || ''
+    };
+    saveAccount();
+    renderAccountUI();
+    setToast(`Hai, ${accountState.user.name}!`);
+  };
+
+  const initGoogleButton = (force = false) => {
+    const container = $('#googleSignIn');
+    if (!container) return;
+    if (!state.googleClientId) {
+      container.innerHTML = '<div class="alert alert-secondary small mb-0">Masukkan Google Client ID di Pengaturan untuk mengaktifkan login Google.</div>';
+      return;
+    }
+    if (typeof window.google === 'undefined' || !window.google.accounts?.id) {
+      setTimeout(() => initGoogleButton(force), 600);
+      return;
+    }
+    if (force) googleButtonRendered = false;
+    if (googleButtonRendered) return;
+    try {
+      container.innerHTML = '';
+      window.google.accounts.id.initialize({ client_id: state.googleClientId, callback: handleGoogleCredential });
+      window.google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', type: 'standard', text: 'signin_with' });
+      googleButtonRendered = true;
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<div class="alert alert-danger small mb-0">Tidak dapat merender tombol Google. Periksa Client ID.</div>';
+    }
+  };
+
+  const updateScheduleStatus = () => {
+    const status = $('#scheduleStatus');
+    if (!status) return;
+    if (scheduleTarget) {
+      status.textContent = `Terjadwal pada ${scheduleTarget.toLocaleString()}`;
+    } else {
+      status.textContent = 'Belum ada jadwal.';
+    }
   };
 
   // ===== Queue =====
@@ -391,7 +862,7 @@
       li.innerHTML = `
         <div class="me-2 flex-grow-1 text-break">
           <div class="small fw-semibold">${item.title || 'Memuat judul...'}</div>
-          <div class="small text-secondary">${item.url}</div>
+          <div class="small text-secondary">${item.channel ? item.channel + ' · ' : ''}${item.url}</div>
         </div>
         <button class="btn btn-sm btn-outline-danger" data-idx="${idx}" aria-label="Hapus dari antrian"><i class="bi bi-x"></i></button>`;
       ul.appendChild(li);
@@ -402,6 +873,29 @@
     if(clearBtn) clearBtn.disabled = queue.length === 0;
   }
 
+  async function hydrateQueueItem(item){
+    if(!item?.url) return;
+    try{
+      const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(item.url)}&format=json`);
+      const data = await resp.json();
+      item.title = data.title;
+      item.channel = data.author_name || '';
+      renderQueue();
+    }catch{
+      item.title = item.url;
+      renderQueue();
+    }
+  }
+
+  function addUrlToQueue(url){
+    if(queue.some(q => q.url === url)) return null;
+    const item = { url, title: '', channel: '' };
+    queue.push(item);
+    renderQueue();
+    hydrateQueueItem(item);
+    return item;
+  }
+
 $('#queueList')?.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-idx]');
     if(!btn) return;
@@ -409,41 +903,103 @@ $('#queueList')?.addEventListener('click', (e) => {
     renderQueue();
   });
 
-  $('#addQueueBtn')?.addEventListener('click', async () => {
+  $('#addQueueBtn')?.addEventListener('click', () => {
     const url = $('#queueUrl').value.trim();
     if(!/^https?:\/\//i.test(url)){ setToast('URL tidak valid'); return; }
-    const item = { url, title: '' };
-    queue.push(item);
+    const item = addUrlToQueue(url);
+    if(!item){ setToast('URL sudah ada di antrian'); return; }
     $('#queueUrl').value = '';
-    renderQueue();
-    try{
-      const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
-      const data = await resp.json();
-      item.title = data.title;
-      renderQueue();
-    }catch{
-      item.title = url;
-      renderQueue();
-    }
+    setToast('Ditambahkan ke antrian');
   });
 
   $('#playlist')?.addEventListener('change', async () => {
     queue.length = 0;
     const lines = $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
-    for(const url of lines){
-      const item = { url, title: '' };
-      queue.push(item);
-      renderQueue();
-      try{
-        const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
-        const data = await resp.json();
-        item.title = data.title;
-        renderQueue();
-      }catch{
-        item.title = url;
-        renderQueue();
-      }
+    for(const url of lines){ addUrlToQueue(url); }
+  });
+
+  $('#importQueueBtn')?.addEventListener('click', () => $('#queueImportFile')?.click());
+
+  $('#queueImportFile')?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const text = await file.text().catch(()=>null);
+    e.target.value = '';
+    if(!text){ setToast('Gagal membaca file daftar URL'); return; }
+    const candidates = text.split(/\r?\n|,|;|\s+/).map(s => s.trim()).filter(Boolean);
+    const urls = candidates.filter(u => /^https?:\/\//i.test(u));
+    if(!urls.length){ setToast('Tidak menemukan URL valid dalam file'); return; }
+    let added = 0;
+    urls.forEach(url => { if(addUrlToQueue(url)) added++; });
+    if(added){ setToast(`Import ${added} URL ke antrian`); }
+    else { setToast('Semua URL sudah ada di antrian'); }
+  });
+
+  $('#exportQueueBtn')?.addEventListener('click', () => {
+    if(!queue.length){ setToast('Antrian kosong'); return; }
+    const text = queue.map(item => item.url).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ytmp3-antrian.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setToast('Antrian diexport ke file teks');
+  });
+
+  $('#optimizeQueueBtn')?.addEventListener('click', () => {
+    if(!requirePremium('Optimasi antrian')) return;
+    queue.sort((a, b) => (a.title || a.url).localeCompare(b.title || b.url, 'id'));
+    renderQueue();
+    setToast('Antrian diurutkan berdasarkan judul.');
+  });
+
+  $('#presetSelect')?.addEventListener('change', () => {
+    const id = $('#presetSelect').value;
+    $('#deletePresetBtn').disabled = id === 'default';
+    if(id === 'default') return;
+    const preset = presets.find(p => p.id === id);
+    if(preset){
+      applyPresetData(preset.data);
+      setToast(`Preset "${preset.name}" diterapkan`);
     }
+  });
+
+  $('#savePresetBtn')?.addEventListener('click', () => {
+    const name = prompt('Nama preset baru?', 'Preset cepat');
+    if(!name) return;
+    const cleanName = name.trim();
+    if(!cleanName){ setToast('Nama preset tidak boleh kosong'); return; }
+    const data = collectPresetFromForm();
+    let presetId;
+    if(!isPremium() && presets.length >= 1){
+      if(!confirm('Plan Basic hanya mendukung 1 preset. Timpa preset lama?')) return;
+      presets[0] = { ...presets[0], name: cleanName, data };
+      presetId = presets[0].id;
+    } else {
+      const id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36));
+      presets.push({ id, name: cleanName, data });
+      presetId = id;
+    }
+    savePresets();
+    $('#presetSelect').value = presetId;
+    $('#deletePresetBtn').disabled = presetId === 'default';
+    setToast('Preset tersimpan');
+  });
+
+  $('#deletePresetBtn')?.addEventListener('click', () => {
+    const id = $('#presetSelect').value;
+    if(id === 'default') return;
+    const preset = presets.find(p => p.id === id);
+    if(preset && !confirm(`Hapus preset "${preset.name}"?`)) return;
+    presets = presets.filter(p => p.id !== id);
+    savePresets();
+    $('#presetSelect').value = 'default';
+    $('#deletePresetBtn').disabled = true;
+    setToast('Preset dihapus');
   });
 
   $('#clearQueueBtn')?.addEventListener('click', () => { queue.length = 0; renderQueue(); });
@@ -530,25 +1086,133 @@ $('#queueList')?.addEventListener('click', (e) => {
     setToast('Riwayat dibersihkan');
   });
 
+  $('#exportHistory')?.addEventListener('click', () => {
+    const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    if(!list.length){ setToast('Riwayat kosong'); return; }
+    const header = 'Tanggal,File,Format,Bitrate,URL\n';
+    const rows = list.map(item => {
+      const date = new Date(item.at).toISOString();
+      const file = (item.fileName || '').replace(/"/g, '""');
+      const format = (item.format || '').toUpperCase();
+      const abr = item.abr ? `${item.abr}kbps` : '';
+      const url = (item.downloadUrl || '').replace(/"/g, '""');
+      return `"${date}","${file}","${format}","${abr}","${url}"`;
+    }).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const link = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = link;
+    a.download = 'ytmp3-history.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(link);
+    setToast('Riwayat diexport ke CSV');
+  });
+
+  $('#upgradePremiumBtn')?.addEventListener('click', () => setPlan('premium'));
+
+  $('#downgradeBtn')?.addEventListener('click', () => {
+    if(!confirm('Yakin ingin kembali ke Basic? Fitur Premium akan dikunci.')) return;
+    setPlan('basic');
+  });
+
+  $('#refreshAccount')?.addEventListener('click', () => {
+    loadAccountState();
+    loadPresets();
+    renderAccountUI();
+    setToast('Status akun diperbarui');
+  });
+
+  $('#signOutBtn')?.addEventListener('click', () => {
+    if(!accountState.user){ setToast('Belum ada sesi login'); return; }
+    accountState.user = null;
+    saveAccount();
+    renderAccountUI();
+    setToast('Berhasil keluar dari akun.');
+  });
+
+  $('#refreshGoogleBtn')?.addEventListener('click', () => {
+    googleButtonRendered = false;
+    initGoogleButton(true);
+    setToast('Tombol login Google diperbarui');
+  });
+
+  const accountModalEl = $('#accountModal');
+  accountModalEl?.addEventListener('shown.bs.modal', () => {
+    accountModalInstance = bootstrap.Modal.getOrCreateInstance(accountModalEl);
+    initGoogleButton(true);
+  });
+
+  $('#scheduleConvertBtn')?.addEventListener('click', () => {
+    if(!requirePremium('Jadwal konversi')) return;
+    const currentUrl = $('#url').value.trim();
+    if(!/^https?:\/\//i.test(currentUrl)){ setToast('Masukkan URL valid sebelum menjadwalkan'); return; }
+    const value = $('#scheduleAt').value;
+    if(!value){ setToast('Isi waktu jadwal terlebih dahulu'); return; }
+    const target = new Date(value);
+    if(Number.isNaN(target.getTime())){ setToast('Format waktu tidak valid'); return; }
+    const diff = target.getTime() - Date.now();
+    if(diff <= 0){ setToast('Pilih waktu di masa depan'); return; }
+    if(scheduleTimer) clearTimeout(scheduleTimer);
+    scheduleTarget = target;
+    scheduleTimer = setTimeout(async () => {
+      setToast('Jadwal konversi dimulai');
+      await doConvert(null, $('#autoDownload').checked);
+      scheduleTimer = null;
+      scheduleTarget = null;
+      updateScheduleStatus();
+    }, diff);
+    updateScheduleStatus();
+    setToast('Konversi dijadwalkan');
+  });
+
+  $('#cancelScheduleBtn')?.addEventListener('click', () => {
+    if(scheduleTimer){
+      clearTimeout(scheduleTimer);
+      scheduleTimer = null;
+      scheduleTarget = null;
+      updateScheduleStatus();
+      setToast('Jadwal dibatalkan');
+    } else {
+      setToast('Tidak ada jadwal aktif');
+    }
+  });
+
   // ===== Settings (offcanvas) =====
   const loadSettings = () => {
     const s = storage.load();
-    state.backendUrl = s.backendUrl || '';
-    state.adminBearer = s.adminBearer || '';
+    const normalizedBackend = normalizeBackendUrl(s.backendUrl);
+    state.backendUrl = normalizedBackend ?? '';
+    state.adminBearer = (s.adminBearer || '').trim();
+    state.googleClientId = (s.googleClientId || '').trim();
     $('#backendUrl').value = state.backendUrl;
     $('#adminBearer').value = state.adminBearer;
+    $('#googleClientId').value = state.googleClientId;
     updateBackendBadge();
+    initGoogleButton(true);
   };
 
   $('#saveSettings').addEventListener('click', () => {
-    state.backendUrl = $('#backendUrl').value.trim();
+    const normalizedBackend = normalizeBackendUrl($('#backendUrl').value);
+    if (normalizedBackend === null) {
+      setToast('URL backend tidak valid. Sertakan http(s):// atau gunakan domain yang benar.');
+      $('#backendUrl').focus();
+      return;
+    }
+    state.backendUrl = normalizedBackend;
     state.adminBearer = $('#adminBearer').value.trim();
-    storage.save(state);
+    state.googleClientId = $('#googleClientId').value.trim();
+    storage.save({ ...state });
+    $('#backendUrl').value = state.backendUrl;
     updateBackendBadge();
+    initGoogleButton(true);
     setToast('Pengaturan disimpan');
   });
   $('#resetSettings').addEventListener('click', () => {
-    storage.save({}); loadSettings(); setToast('Pengaturan direset');
+    storage.save({});
+    loadSettings();
+    setToast('Pengaturan direset');
   });
 
   // ===== URL helpers =====
@@ -567,7 +1231,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   async function updatePreview(){
     const url = $('#url').value.trim();
-    if(!/^https?:\/\//i.test(url)){ $('#previewWrap').hidden = true; return; }
+    if(!/^https?:\/\//i.test(url)){ $('#previewWrap').hidden = true; lastPreview = { title:'', author:'', channel:'', url:'', id:'', thumbnail:'' }; return; }
     try{
       const resp = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
       const data = await resp.json();
@@ -577,7 +1241,27 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#id3Artist').value = data.author_name || '';
       $('#id3Album').value = data.title;
       $('#fileName').value = sanitizeFileName(data.title);
-    }catch{ $('#previewWrap').hidden = true; }
+      let videoId = '';
+      try{
+        const u = new URL(url);
+        videoId = u.searchParams.get('v') || u.pathname.split('/').filter(Boolean).pop() || '';
+      }catch{}
+      lastPreview = {
+        title: data.title || '',
+        author: data.author_name || '',
+        channel: data.author_name || '',
+        url,
+        id: videoId,
+        thumbnail: data.thumbnail_url || ''
+      };
+      if(isPremium() && $('#autoMetadata').checked){
+        if(!$('#id3Genre').value) $('#id3Genre').value = 'YouTube';
+        if(!$('#id3Comment').value) $('#id3Comment').value = `Sumber: ${url}`;
+      }
+    }catch{
+      $('#previewWrap').hidden = true;
+      lastPreview = { title:'', author:'', channel:'', url:'', id:'', thumbnail:'' };
+    }
   }
   $('#pasteBtn').addEventListener('click', async () => {
     try { $('#url').value = (await navigator.clipboard.readText() || '').trim(); } catch {}
@@ -648,8 +1332,11 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#id3Title').value='';
     $('#id3Artist').value='';
     $('#id3Album').value='';
+    $('#id3Genre').value='';
+    $('#id3Comment').value='';
     $('#normalize').checked=false;
     $('#atmos').checked=false;
+    $('#autoMetadata').checked=false;
     $('#previewWrap').hidden=true; $('#thumb').src=''; $('#videoTitle').textContent='';
     $('#resultWrap').hidden=true; $('#statusWrap').hidden=true; $('#logWrap').hidden=true; $('#logs').textContent='';
     $('#convertProgWrap').hidden=true;
@@ -659,6 +1346,13 @@ $('#queueList')?.addEventListener('click', (e) => {
   async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
     if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
+    if(isPremium() && $('#autoMetadata').checked){
+      if(lastPreview.title && !$('#id3Title').value) $('#id3Title').value = lastPreview.title;
+      if(lastPreview.author && !$('#id3Artist').value) $('#id3Artist').value = lastPreview.author;
+      if(lastPreview.channel && !$('#id3Album').value) $('#id3Album').value = lastPreview.channel;
+      if(!$('#id3Genre').value) $('#id3Genre').value = 'YouTube';
+      if(!$('#id3Comment').value) $('#id3Comment').value = `Sumber: ${url}`;
+    }
     const body = {
       url,
       format: $('#format').value,
@@ -669,10 +1363,28 @@ $('#queueList')?.addEventListener('click', (e) => {
       atmos: $('#atmos').checked
     };
 
+    if(isPremium()){
+      const pattern = $('#filePattern').value.trim();
+      if(pattern){
+        const tokens = {
+          title: $('#id3Title').value.trim() || lastPreview.title || '',
+          artist: $('#id3Artist').value.trim() || lastPreview.author || '',
+          channel: lastPreview.channel || '',
+          date: new Date().toISOString().slice(0,10),
+          id: lastPreview.id || ''
+        };
+        const generated = pattern.replace(/\{(title|artist|channel|date|id)\}/gi, (_, key) => tokens[key.toLowerCase()] || '');
+        const cleaned = sanitizeFileName(generated);
+        if(cleaned) body.fileName = cleaned;
+      }
+    }
+
     const id3 = {
       title: $('#id3Title').value.trim(),
       artist: $('#id3Artist').value.trim(),
-      album: $('#id3Album').value.trim()
+      album: $('#id3Album').value.trim(),
+      genre: $('#id3Genre').value.trim(),
+      comment: $('#id3Comment').value.trim()
     };
     Object.keys(id3).forEach(k => { if(!id3[k]) delete id3[k]; });
     if(Object.keys(id3).length) body.id3 = id3;
@@ -686,6 +1398,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     body.normalize = $('#normalize').checked;
     if($('#thumb').src) body.coverUrl = $('#thumb').src;
+    else if(lastPreview.thumbnail) body.coverUrl = lastPreview.thumbnail;
 
     $('#statusWrap').hidden = false; $('#resultWrap').hidden = true; $('#logWrap').hidden = !$('#showLog').checked; $('#logs').textContent = '';
     $('#loadingSpinner').style.display = '';
@@ -736,6 +1449,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#id3Title').value='';
       $('#id3Artist').value='';
       $('#id3Album').value='';
+      $('#id3Genre').value='';
+      $('#id3Comment').value='';
       $('#fileName').value='';
       await updatePreview();
       setToast(`Memproses ${i+1}/${urls.length}`);
@@ -757,9 +1472,13 @@ $('#queueList')?.addEventListener('click', (e) => {
     initTheme();
     initWelcome();
     loadSettings();
+    loadAccountState();
+    loadPresets();
+    renderAccountUI();
     renderHistory();
     renderQueue();
     updateBackendBadge();
+    updateScheduleStatus();
     updatePreview();
     if(!localStorage.getItem(tutorialKey)){
       const m = new bootstrap.Modal($('#tutorialModal'));
