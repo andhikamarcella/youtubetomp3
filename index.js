@@ -4601,8 +4601,11 @@ const runYtDlpDownload = ({ args, id, onProgress }) =>
         error.logs = logs;
         return reject(error);
       }
-      const files = readdirSync(JOBS_DIR).filter(
-        (f) => f.startsWith(`${id}.`) && !f.endsWith(".cover.jpg")
+      const files = readdirSync(JOBS_DIR).filter((f) =>
+        f.startsWith(`${id}.`) &&
+        !f.endsWith('.cover.jpg') &&
+        !f.endsWith('.part') &&
+        !f.endsWith('.ytdl')
       );
       if (!files.length) {
         const error = new Error("Output tidak ditemukan");
@@ -4619,7 +4622,6 @@ const runYtDlpDownload = ({ args, id, onProgress }) =>
 const runPythonDownload = ({ url, id, baseLogs = "" }) =>
   new Promise((resolve, reject) => {
     let pyLogs = "";
-    let pyOut = "";
     const py = spawn("python3", [
       join(__dirname, "download_audio.py"),
       url,
@@ -4630,7 +4632,6 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
     py.stdout.on("data", (d) => {
       const s = d.toString();
       pyLogs += s;
-      pyOut += s;
     });
     py.stderr.on("data", (d) => (pyLogs += d.toString()));
 
@@ -4648,15 +4649,24 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
         return reject(error);
       }
       try {
-        const dlPath = pyOut.trim().split("\n").pop().trim();
-        let ext = dlPath.split(".").pop();
-        let filename = `${id}.${ext}`;
-        let fullPath = join(JOBS_DIR, filename);
-        if (dlPath !== fullPath) await fsp.rename(dlPath, fullPath);
+        const entries = await fsp.readdir(JOBS_DIR);
+        const filename = entries.find(
+          (name) =>
+            name.startsWith(`${id}.`) &&
+            !name.endsWith('.cover.jpg') &&
+            !name.endsWith('.part') &&
+            !name.endsWith('.ytdl')
+        );
+        if (!filename) {
+          throw new Error('Downloader helper tidak menghasilkan file');
+        }
+        const fullPath = join(JOBS_DIR, filename);
+        const ext = filename.split('.').pop();
         resolve({ filename, fullPath, ext, logs: baseLogs + pyLogs });
       } catch (err) {
         const error = new Error(err.message || "Downloader helper output tidak valid");
         error.logs = baseLogs + pyLogs;
+        if (!error.cause) error.cause = err;
         reject(error);
       }
     });

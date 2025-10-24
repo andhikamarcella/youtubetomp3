@@ -2255,6 +2255,12 @@
   'Link share disalin': { en: 'Share link copied' },
   'Log tersalin': { en: 'Log copied' },
   'Login admin berhasil': { en: 'Admin login successful' },
+  'Login Google belum dikonfigurasi. Tambahkan GOOGLE_CLIENT_ID di server.': {
+    en: 'Google login is not configured yet. Add GOOGLE_CLIENT_ID on the server.',
+  },
+  'Script login Google diblokir. Izinkan accounts.google.com di browser Anda.': {
+    en: 'The Google sign-in script was blocked. Allow accounts.google.com in your browser.',
+  },
   'Login admin terlebih dahulu untuk upload cookies': { en: 'Log in as admin before uploading cookies' },
   'Logout admin berhasil': { en: 'Admin logged out' },
   'Hapus': { en: 'Delete' },
@@ -2307,6 +2313,8 @@
   'Versi Android siap diunduh.': { en: 'Android version ready to download.' },
   'Versi iPhone siap diunduh.': { en: 'iPhone version ready to download.' },
   'Versi Android & iPhone siap diunduh.': { en: 'Android & iPhone versions ready to download.' },
+  'Memuat tombol Google…': { en: 'Loading Google button…' },
+  'Masuk dengan Google': { en: 'Sign in with Google' },
   'Perintah suara siap digunakan.': { en: 'Voice commands are ready.' },
   'Perintah suara dihentikan.': { en: 'Voice command stopped.' },
   'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.': { en: 'Listening… say “open donation” or “play the game”.' },
@@ -3720,6 +3728,9 @@
       user: null,
       googleClientId: null,
       loading: false,
+      googlePollTimer: null,
+      googleFallbackTimeout: null,
+      googleFallbackNotified: false,
     },
   };
 
@@ -4536,6 +4547,8 @@
 
   function applyUserSummary(summary) {
     state.auth.user = summary || null;
+    state.auth.googleFallbackNotified = false;
+    clearGooglePollTimer();
     if (summary) {
       state.experience.points = Number(summary.xp) || 0;
       const serverBadges = Array.isArray(summary.badges) ? summary.badges : [];
@@ -4548,6 +4561,40 @@
     updateAvatarUi();
     updateAccountUi();
     ensureGoogleButton();
+  }
+
+  function clearGooglePollTimer() {
+    if (state.auth.googlePollTimer) {
+      clearInterval(state.auth.googlePollTimer);
+      state.auth.googlePollTimer = null;
+    }
+    if (state.auth.googleFallbackTimeout) {
+      clearTimeout(state.auth.googleFallbackTimeout);
+      state.auth.googleFallbackTimeout = null;
+    }
+  }
+
+  function renderGoogleFallback(messageKey) {
+    if (!googleSignInButton) return;
+    const message = translateMessage(
+      messageKey || 'Login Google belum dikonfigurasi. Tambahkan GOOGLE_CLIENT_ID di server.'
+    );
+    googleSignInButton.hidden = false;
+    googleSignInButton.dataset.mode = 'fallback';
+    googleSignInButton.innerHTML = `
+      <button type="button" class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center gap-2" id="googleFallbackAction">
+        <i class="bi bi-google"></i>
+        <span>${translateMessage('Masuk dengan Google')}</span>
+      </button>
+      <small class="d-block mt-2 text-secondary">${message}</small>
+    `;
+    const fallbackBtn = googleSignInButton.querySelector('#googleFallbackAction');
+    if (fallbackBtn && !fallbackBtn.dataset.bound) {
+      fallbackBtn.dataset.bound = 'true';
+      fallbackBtn.addEventListener('click', () => {
+        setToast(message);
+      });
+    }
   }
 
   async function handleGoogleCredential(response) {
@@ -4575,19 +4622,56 @@
   function ensureGoogleButton() {
     if (!googleSignInButton) return;
     if (state.auth.user) {
+      googleSignInButton.dataset.mode = 'hidden';
       googleSignInButton.hidden = true;
       googleSignInButton.innerHTML = '';
       return;
     }
     if (!state.auth.googleClientId) {
-      googleSignInButton.hidden = true;
+      clearGooglePollTimer();
+      renderGoogleFallback('Login Google belum dikonfigurasi. Tambahkan GOOGLE_CLIENT_ID di server.');
       return;
     }
     if (!window.google?.accounts?.id) {
-      googleSignInButton.hidden = false;
-      googleSignInButton.innerHTML = '<span class="text-secondary small">Memuat tombol Google…</span>';
+      if (!state.auth.googlePollTimer) {
+        state.auth.googlePollTimer = window.setInterval(() => {
+          if (window.google?.accounts?.id) {
+            clearGooglePollTimer();
+            ensureGoogleButton();
+          }
+        }, 500);
+      }
+      if (!state.auth.googleFallbackTimeout) {
+        state.auth.googleFallbackTimeout = window.setTimeout(() => {
+          state.auth.googleFallbackTimeout = null;
+          if (!window.google?.accounts?.id) {
+            renderGoogleFallback(
+              'Script login Google diblokir. Izinkan accounts.google.com di browser Anda.'
+            );
+            if (!state.auth.googleFallbackNotified) {
+              state.auth.googleFallbackNotified = true;
+              setToast(
+                translateMessage('Script login Google diblokir. Izinkan accounts.google.com di browser Anda.')
+              );
+            }
+          }
+        }, 5000);
+      }
+      if (googleSignInButton.dataset.mode !== 'fallback') {
+        googleSignInButton.hidden = false;
+        googleSignInButton.dataset.mode = 'loading';
+        googleSignInButton.innerHTML = `
+          <span class="text-secondary small">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            ${translateMessage('Memuat tombol Google…')}
+          </span>
+        `;
+      }
       return;
     }
+    clearGooglePollTimer();
+    state.auth.googleFallbackNotified = false;
+    googleSignInButton.dataset.mode = 'google';
     if (!googleClientInitialized) {
       window.google.accounts.id.initialize({
         client_id: state.auth.googleClientId,
@@ -4616,6 +4700,8 @@
         logLabel: 'auth-config',
       });
       state.auth.googleClientId = data?.googleClientId || null;
+      state.auth.googleFallbackNotified = false;
+      clearGooglePollTimer();
       ensureGoogleButton();
     } catch (err) {
       console.warn('Gagal memuat konfigurasi auth', err);
