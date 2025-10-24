@@ -15,6 +15,8 @@ Aplikasi web serbaguna untuk mengunduh audio atau video dari YouTube, Spotify, m
 - Antrian playlist: masukkan banyak URL dan konversi satu per satu.
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
 - Halaman Profil dengan avatar dinamis, XP, badge, dan milestone level yang tumbuh sesuai aktivitas.
+- Login Google OAuth dengan dashboard profil cloud: XP tersinkronisasi lintas perangkat, riwayat konversi yang bisa diunduh ulang tanpa re-convert, serta statistik menit total.
+- Referral link unik, XP bonus, dan pencarian riwayat cloud (“lagu apa saja yang pernah kamu unduh dari TWICE”).
 - Mode progres interaktif dengan status real-time saat konversi berlangsung.
 - Monitor konversi real-time melalui endpoint `/api/progress/:id` lengkap dengan persentase, ETA, dan status tahap.
 - Preset kualitas (High/Medium/Low) untuk MP3, M4A, dan WAV yang otomatis menyesuaikan bitrate/sample rate.
@@ -35,6 +37,7 @@ Aplikasi web serbaguna untuk mengunduh audio atau video dari YouTube, Spotify, m
 - Ekstensi browser yang menambahkan tombol “Convert MP3” langsung di bawah video YouTube.
 - Kartu status tool yang memeriksa versi yt-dlp & ffmpeg terbaru sekaligus memberi badge peringatan bila sudah kedaluwarsa.
 - Auto metadata tagging & AI music tags untuk mengisi judul/artis/genre secara otomatis, lengkap dengan insight genre/mood di UI.
+- AI subtitle translator (dua file original + terjemahan), generator cover art otomatis, serta audio enhancer ringan untuk merapikan rekaman podcast/short-form.
 
 ## Antarmuka Next.js + Bootstrap
 Untuk antarmuka modern berbasis React, repositori ini menyertakan aplikasi [Next.js](./next-app) yang memanfaatkan komponen Bootstrap namun tetap memakai API backend yang sama. Antarmuka ini dapat dijalankan berdampingan dengan UI klasik tanpa memodifikasi fitur yang sudah ada.
@@ -52,6 +55,11 @@ Antarmuka Next.js menyertakan form konversi, pencarian video, serta monitor job 
 - `GET /api/progress/:id` — Mengambil status progres konversi terbaru (tahap, persentase, ETA, dan detail tambahan).
 - `GET /api/tool-versions` — Mengecek versi yt-dlp dan ffmpeg yang terpasang serta rilis terbaru di GitHub.
 - `POST /api/ai-tags` — Menghasilkan saran judul, artis, album, genre, mood, dan energi berdasarkan metadata video.
+- `GET /api/auth/config` — Mengembalikan `googleClientId` publik agar UI bisa merender tombol Google Sign-In.
+- `POST /api/auth/google` — Menukar credential Google One Tap/Sign-In menjadi session token aplikasi.
+- `GET /api/session` & `GET /api/dashboard` — Mengambil ringkasan profil cloud (avatar, XP, level, badge, menit total).
+- `GET /api/history`, `GET /api/history/:id`, `POST /api/history/:id/redownload` — Mengelola riwayat konversi yang tersimpan di cloud, termasuk unduh ulang tanpa re-konversi.
+- `GET /api/referral-code` — Mengambil/membuat kode referral unik yang bisa dibagikan ke teman.
 
 ## Cara Menggunakan
 1. Buka halaman [converter](https://mis-ytmp3-backend.onrender.com).
@@ -59,6 +67,17 @@ Antarmuka Next.js menyertakan form konversi, pencarian video, serta monitor job 
 3. Pilih kualitas, atur nama file, dan lengkapi metadata jika diperlukan.
 4. Klik **Convert** dan tunggu hingga proses selesai, lalu unduh MP3 hasil konversi.
 5. Untuk banyak video, tempelkan beberapa URL di kolom *Playlist* dan gunakan **Convert Antrian**.
+
+## Autentikasi & Riwayat Cloud
+
+Fitur akun memanfaatkan Google OAuth 2.0 Sign-In untuk membuat profil otomatis serta menyimpan riwayat konversi ke penyimpanan cloud ringan (`data/users.json`). Setelah login, XP, badge, total menit audio, dan daftar unduhan akan tersinkronisasi di seluruh perangkat. Riwayat tersebut dapat dicari, diunduh ulang tanpa re-konversi, maupun dipakai ulang untuk playlist/keyword berikutnya. Sistem juga menyediakan kode referral unik dan badge bonus ketika teman mendaftar via tautan tersebut.
+
+Konfigurasi yang perlu disiapkan:
+
+- `GOOGLE_CLIENT_ID` — Client ID dari Google Cloud Console (gunakan tipe *Web* untuk memanfaatkan tombol Sign-In modern). Nilai ini tidak diekspor ke klien sampai endpoint `/api/auth/config` diminta.
+- `USER_SESSION_SECRET` — Secret string untuk menandatangani token sesi pengguna. Ganti dari nilai default sebelum deploy produksi.
+
+Token sesi disimpan di localStorage browser dan dikirim sebagai header `Authorization: Bearer <token>` ke endpoint yang memerlukan autentikasi. Berkas `data/users.json` tidak ikut dalam repository (sudah diabaikan lewat `.gitignore`).
 
 ## Browser Extension
 

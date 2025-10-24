@@ -7,8 +7,20 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
+import { OAuth2Client } from "google-auth-library";
+import {
+  upsertGoogleUser,
+  recordConversionForUser,
+  listUserHistory,
+  getHistoryEntry,
+  updateHistoryEntry,
+  buildUserSummaryById,
+  ensureReferralForUser,
+  getUserById,
+  revokeUserSession,
+} from "./user_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
 try {
@@ -31,6 +43,92 @@ try {
 } catch {
   nodemailer = null;
 }
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const googleOAuthClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+const USER_SESSION_SECRET = process.env.USER_SESSION_SECRET || "dev-user-session-secret";
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+
+const base64Url = (value) => Buffer.from(value).toString("base64url");
+const parseBase64Json = (value) => {
+  try {
+    const json = Buffer.from(value, "base64url").toString("utf8");
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+};
+
+const createSessionToken = (userId) => {
+  const payload = {
+    userId,
+    iat: Date.now(),
+    exp: Date.now() + SESSION_TTL_MS,
+  };
+  const payloadEncoded = base64Url(JSON.stringify(payload));
+  const signature = createHmac("sha256", USER_SESSION_SECRET)
+    .update(payloadEncoded)
+    .digest("base64url");
+  return `${payloadEncoded}.${signature}`;
+};
+
+const verifySessionToken = (token) => {
+  if (!token || typeof token !== "string") return null;
+  const [payloadEncoded, signature] = token.split(".");
+  if (!payloadEncoded || !signature) return null;
+  const expected = createHmac("sha256", USER_SESSION_SECRET)
+    .update(payloadEncoded)
+    .digest("base64url");
+  const sigBuf = Buffer.from(signature, "base64url");
+  const expectedBuf = Buffer.from(expected, "base64url");
+  if (sigBuf.length !== expectedBuf.length) return null;
+  try {
+    if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
+  } catch {
+    return null;
+  }
+  const payload = parseBase64Json(payloadEncoded);
+  if (!payload || !payload.userId) return null;
+  if (payload.exp && payload.exp < Date.now()) return null;
+  return payload;
+};
+
+const getBearerTokenFromRequest = (req) => {
+  const header = req.get("Authorization") || "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+};
+
+const resolveRequestUser = async (req) => {
+  if (typeof req._resolvedUser !== "undefined") return req._resolvedUser;
+  const token = getBearerTokenFromRequest(req);
+  if (!token) {
+    req._resolvedUser = null;
+    return null;
+  }
+  const payload = verifySessionToken(token);
+  if (!payload?.userId) {
+    req._resolvedUser = null;
+    return null;
+  }
+  const user = await getUserById(payload.userId);
+  if (!user) {
+    req._resolvedUser = null;
+    return null;
+  }
+  req._resolvedUser = user;
+  req._resolvedSession = { token, payload };
+  return user;
+};
+
+const requireUserSession = async (req, res) => {
+  const user = await resolveRequestUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Butuh login" });
+    return null;
+  }
+  return user;
+};
 
 const normalizeHeaderInit = (input) => {
   if (!input) return {};
@@ -5146,6 +5244,59 @@ const convertSingle = async (payload = {}) => {
 }
 };
 
+const sanitizeHistoryCommand = (payload = {}) => {
+  const cloned = JSON.parse(JSON.stringify(payload || {}));
+  delete cloned.progressId;
+  delete cloned.noPlaylist;
+  delete cloned._token;
+  delete cloned._session;
+  return cloned;
+};
+
+const computeXpForConversion = (payload = {}, result = {}) => {
+  let xp = 50;
+  const fmt = String(payload.format || result.format || "").toLowerCase();
+  if (["flac", "wav", "alac", "aiff"].includes(fmt)) xp += 25;
+  if (["mp4", "webm", "mkv", "mov"].includes(fmt)) xp += 15;
+  if (payload.soundEffect && payload.soundEffect !== "none") xp += 10;
+  if (payload.enhancer && payload.enhancer !== "none") xp += 15;
+  if (payload.normalize) xp += 5;
+  if (payload.vpnFriendly) xp += 10;
+  if (payload.smartResume) xp += 10;
+  if (payload.keyword) xp += 10;
+  if (Array.isArray(result?.ringtones) && result.ringtones.length) xp += 10;
+  return xp;
+};
+
+const buildConversionContext = (payload = {}, overrides = {}) => {
+  const now = new Date();
+  return {
+    batchSize: Number(overrides.batchSize ?? payload.batchSize ?? 1) || 1,
+    convertHour: now.getHours(),
+  };
+};
+
+const buildHistoryRecordPayload = (payload = {}, result = {}) => {
+  const metadata = result?.metadata || {};
+  const durationSeconds = Number(metadata.duration || payload.durationSeconds || 0) || 0;
+  return {
+    title:
+      metadata.title || metadata.cleanTitle || payload.title || result.baseName || null,
+    artist: metadata.artist || metadata.author || null,
+    album: metadata.album || null,
+    format: result.format || payload.format || null,
+    bitrate: payload.abr || payload.bitrate || null,
+    sourceUrl: metadata.webpageUrl || payload.url || null,
+    downloadUrl: result.downloadUrl || null,
+    durationSeconds,
+    preview: metadata.preview || null,
+    command: sanitizeHistoryCommand(payload),
+    resultId: result.id || null,
+    playlist: payload.playlistId || null,
+    context: payload.context || null,
+  };
+};
+
 const downloadSubtitle = async (payload = {}) => {
   const url = typeof payload.url === "string" ? payload.url.trim() : "";
   if (!/^https?:\/\//i.test(url)) {
@@ -5259,6 +5410,128 @@ app.get("/manifest.webmanifest", (req, res) => {
 app.use("/", express.static(join(__dirname, "public-ui")));
 app.use("/public", express.static(PUBLIC_DIR));
 
+// ==== User accounts ====
+app.post("/api/auth/google", async (req, res) => {
+  if (!googleOAuthClient || !GOOGLE_CLIENT_ID) {
+    return res.status(503).json({ error: "Login Google belum dikonfigurasi" });
+  }
+  try {
+    const credential = req.body?.credential;
+    const referralCode = req.body?.referralCode;
+    if (!credential || typeof credential !== "string") {
+      return res.status(400).json({ error: "Token Google tidak valid" });
+    }
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.sub) {
+      return res.status(400).json({ error: "Token Google tidak valid" });
+    }
+    const summary = await upsertGoogleUser({
+      googleId: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      avatarUrl: payload.picture,
+      referralCode: referralCode,
+    });
+    const token = createSessionToken(summary.id);
+    return res.json({ ok: true, token, user: summary });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "Gagal login" });
+  }
+});
+
+app.get("/api/auth/config", (req, res) => {
+  return res.json({ ok: true, googleClientId: GOOGLE_CLIENT_ID || null });
+});
+
+app.get("/api/session", async (req, res) => {
+  const user = await resolveRequestUser(req);
+  if (!user) return res.status(401).json({ error: "Belum login" });
+  const summary = await buildUserSummaryById(user.id);
+  return res.json({ ok: true, user: summary });
+});
+
+app.post("/api/logout", async (req, res) => {
+  const user = await resolveRequestUser(req);
+  if (user) {
+    await revokeUserSession(user.id);
+  }
+  return res.json({ ok: true });
+});
+
+app.get("/api/dashboard", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const summary = await buildUserSummaryById(user.id);
+  const history = await listUserHistory(user.id, { limit: 10 });
+  return res.json({ ok: true, user: summary, recent: history });
+});
+
+app.get("/api/history", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const query = req.query?.q || req.query?.query;
+  const limitRaw = req.query?.limit;
+  const limit = limitRaw ? Number(limitRaw) : undefined;
+  const history = await listUserHistory(user.id, { query, limit });
+  return res.json({ ok: true, history });
+});
+
+app.get("/api/history/:id", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const entry = await getHistoryEntry(user.id, req.params.id);
+  if (!entry) return res.status(404).json({ error: "Riwayat tidak ditemukan" });
+  return res.json({ ok: true, entry });
+});
+
+app.post("/api/history/:id/redownload", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const entry = await getHistoryEntry(user.id, req.params.id);
+  if (!entry) return res.status(404).json({ error: "Riwayat tidak ditemukan" });
+  if (entry.downloadUrl) {
+    const filePath = resolvePublicPath(entry.downloadUrl);
+    if (filePath) {
+      try {
+        await fsp.access(filePath);
+        return res.json({ ok: true, downloadUrl: entry.downloadUrl, cached: true });
+      } catch {}
+    }
+  }
+  if (entry.payload && typeof entry.payload === "object") {
+    try {
+      const progressId = typeof req.body?.progressId === "string" ? req.body.progressId : "";
+      const payload = { ...entry.payload };
+      if (progressId) payload.progressId = progressId;
+      const result = await convertSingle(payload);
+      if (result?.downloadUrl) {
+        await updateHistoryEntry(user.id, entry.id, {
+          downloadUrl: result.downloadUrl,
+          format: result.format || entry.format,
+          bitrate: result.bitrate || entry.bitrate,
+        });
+        return res.json({ ok: true, downloadUrl: result.downloadUrl, cached: false });
+      }
+      return res.status(500).json({ error: "Gagal mengulang konversi" });
+    } catch (err) {
+      return res.status(500).json({ error: err?.message || "Gagal mengulang konversi" });
+    }
+  }
+  return res.status(404).json({ error: "File tidak tersedia" });
+});
+
+app.get("/api/referral-code", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const code = await ensureReferralForUser(user.id);
+  const summary = await buildUserSummaryById(user.id);
+  return res.json({ ok: true, code, user: summary });
+});
+
 // ==== Assistant chat ====
 app.post("/api/assistant-chat", (req, res) => {
   try {
@@ -5276,8 +5549,21 @@ app.post("/api/assistant-chat", (req, res) => {
 
 // ==== API convert ====
 app.post("/api/convert", async (req, res) => {
+  const user = await resolveRequestUser(req);
   try {
-    const result = await convertSingle(req.body || {});
+    const payload = req.body || {};
+    const result = await convertSingle(payload);
+    if (user) {
+      const historyPayload = buildHistoryRecordPayload(payload, result);
+      const xpGain = computeXpForConversion(payload, result);
+      const context = buildConversionContext(payload);
+      const record = await recordConversionForUser(user.id, {
+        ...historyPayload,
+        xpGain,
+        context,
+      });
+      return res.json({ ...result, userProgress: record });
+    }
     return res.json(result);
   } catch (e) {
     const msg = e?.message || "Gagal memproses";
@@ -5695,6 +5981,7 @@ app.post("/api/subtitle", async (req, res) => {
 
 // ==== API convert playlist (ZIP) ====
 app.post("/api/convert-playlist", async (req, res) => {
+  const user = await resolveRequestUser(req);
   try {
     const body = req.body || {};
     const rawItems = Array.isArray(body.items)
@@ -5719,6 +6006,8 @@ app.post("/api/convert-playlist", async (req, res) => {
     };
 
     const results = [];
+    const contextOverrides = { batchSize: rawItems.length };
+
     for (let i = 0; i < rawItems.length; i += 1) {
       const item = rawItems[i];
       const url = typeof item === "string" ? item : item?.url;
@@ -5727,12 +6016,23 @@ app.post("/api/convert-playlist", async (req, res) => {
       }
       const perId3 = (item && typeof item.id3 === "object") ? item.id3 : body.id3;
       const perFileName = sanitizeFileName(item?.fileName || item?.title || "");
-      const singleResult = await convertSingle({
+      const singlePayload = {
         ...commonOpts,
         url,
         id3: perId3,
         fileName: perFileName,
-      });
+        batchSize: rawItems.length,
+      };
+      const singleResult = await convertSingle(singlePayload);
+      if (user) {
+        const historyPayload = buildHistoryRecordPayload(singlePayload, singleResult);
+        const xpGain = computeXpForConversion(singlePayload, singleResult);
+        await recordConversionForUser(user.id, {
+          ...historyPayload,
+          xpGain,
+          context: buildConversionContext(singlePayload, contextOverrides),
+        });
+      }
       results.push({ ...singleResult, sourceUrl: url, providedName: perFileName });
     }
 
@@ -5790,7 +6090,7 @@ app.post("/api/convert-playlist", async (req, res) => {
       return res.status(400).json({ error: `ZIP melebihi batas ${Math.round(ZIP_SIZE_LIMIT_BYTES / (1024 * 1024))} MB` });
     }
 
-    return res.json({
+    const responseBody = {
       ok: true,
       id: zipId,
       count: results.length,
@@ -5802,7 +6102,11 @@ app.post("/api/convert-playlist", async (req, res) => {
         fileName: `${String(idx + 1).padStart(width, "0")} - ${(sanitizeFileName(item.baseName) || item.providedName || `Track ${idx + 1}`)}.${item.ext}`,
         format: item.format,
       })),
-    });
+    };
+    if (user) {
+      responseBody.user = await buildUserSummaryById(user.id);
+    }
+    return res.json(responseBody);
   } catch (e) {
     const msg = e?.message || "Gagal memproses playlist";
     return res.status(500).json({ error: msg });
