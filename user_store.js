@@ -12,7 +12,34 @@ const MAX_HISTORY_ENTRIES = 100;
 const defaultStore = () => ({
   users: {},
   referralIndex: {},
+  xpEvents: {},
 });
+
+const XP_EVENT_LIMIT = 1000;
+
+const sanitizeEventId = (value) => {
+  if (typeof value !== "string") return "";
+  return value.trim().slice(0, 120);
+};
+
+const ensureXpBucket = (data, userId) => {
+  if (!data.xpEvents || typeof data.xpEvents !== "object") {
+    data.xpEvents = {};
+  }
+  if (!data.xpEvents[userId]) {
+    data.xpEvents[userId] = {};
+  }
+  return data.xpEvents[userId];
+};
+
+const computeXpFromBucket = (bucket) => {
+  if (!bucket || typeof bucket !== "object") return 0;
+  return Object.values(bucket).reduce((total, entry) => {
+    const delta = Number(entry?.delta);
+    if (Number.isFinite(delta)) return total + delta;
+    return total;
+  }, 0);
+};
 
 const readStore = async () => {
   try {
@@ -21,6 +48,7 @@ const readStore = async () => {
     if (!parsed || typeof parsed !== "object") return defaultStore();
     if (!parsed.users || typeof parsed.users !== "object") parsed.users = {};
     if (!parsed.referralIndex || typeof parsed.referralIndex !== "object") parsed.referralIndex = {};
+    if (!parsed.xpEvents || typeof parsed.xpEvents !== "object") parsed.xpEvents = {};
     return parsed;
   } catch (err) {
     if (err?.code === "ENOENT") return defaultStore();
@@ -38,6 +66,53 @@ const writeStore = async (data) => {
 const calculateLevel = (xp = 0) => {
   const total = Number(xp) || 0;
   return Math.max(1, Math.floor(total / 750) + 1);
+};
+
+const applyXpEvent = (data, user, { eventId, delta, reason, metadata }) => {
+  if (!user?.id) {
+    return { applied: false, xp: Number(user?.xp) || 0 };
+  }
+  const normalizedId = sanitizeEventId(eventId || "");
+  if (!normalizedId) {
+    return { applied: false, xp: Number(user.xp) || 0 };
+  }
+  const xpBucket = ensureXpBucket(data, user.id);
+  if (xpBucket[normalizedId]) {
+    const xpTotal = computeXpFromBucket(xpBucket);
+    user.xp = xpTotal;
+    user.level = calculateLevel(xpTotal);
+    return { applied: false, xp: xpTotal, event: xpBucket[normalizedId] };
+  }
+  const createdAt = Date.now();
+  const deltaValue = Number(delta) || 0;
+  xpBucket[normalizedId] = {
+    id: normalizedId,
+    delta: deltaValue,
+    reason: reason || null,
+    metadata: metadata || null,
+    createdAt,
+  };
+  const keys = Object.keys(xpBucket);
+  if (keys.length > XP_EVENT_LIMIT) {
+    const sorted = keys
+      .map((key) => ({ key, createdAt: xpBucket[key]?.createdAt || 0 }))
+      .sort((a, b) => a.createdAt - b.createdAt);
+    const overflow = sorted.length - XP_EVENT_LIMIT;
+    for (let i = 0; i < overflow; i += 1) {
+      const key = sorted[i]?.key;
+      if (key && key !== normalizedId) {
+        delete xpBucket[key];
+      }
+    }
+  }
+  const xpTotal = computeXpFromBucket(xpBucket);
+  user.xp = xpTotal;
+  user.level = calculateLevel(xpTotal);
+  return {
+    applied: true,
+    xp: xpTotal,
+    event: xpBucket[normalizedId],
+  };
 };
 
 const buildUserSummary = (user) => {
@@ -82,6 +157,20 @@ export const getUserById = async (id) => {
   if (!id) return null;
   const data = await readStore();
   return data.users[id] || null;
+};
+
+export const reconcileUserXp = async (userId) => {
+  if (!userId) return null;
+  const data = await readStore();
+  const user = data.users[userId];
+  if (!user) return null;
+  const bucket = ensureXpBucket(data, userId);
+  const xpTotal = computeXpFromBucket(bucket);
+  user.xp = xpTotal;
+  user.level = calculateLevel(xpTotal);
+  user.updatedAt = Date.now();
+  await writeStore(data);
+  return { xp: xpTotal, level: user.level, events: Object.values(bucket) };
 };
 
 export const getUserByGoogleId = async (googleId) => {
@@ -131,6 +220,7 @@ export const upsertGoogleUser = async ({
       referrals: [],
     };
     data.users[id] = user;
+    ensureXpBucket(data, id);
     ensureReferralCode(data, user);
     if (referralCode) {
       const referrerId = data.referralIndex[String(referralCode).trim().toUpperCase()];
@@ -155,6 +245,7 @@ export const upsertGoogleUser = async ({
     user.avatarUrl = avatarUrl || user.avatarUrl || null;
     user.updatedAt = now;
     ensureReferralCode(data, user);
+    ensureXpBucket(data, user.id);
   }
   await writeStore(data);
   return buildUserSummary(user);
@@ -219,10 +310,28 @@ export const recordConversionForUser = async (userId, entryPayload = {}) => {
   }
   user.totalConversions = (user.totalConversions || 0) + 1;
   user.totalMinutes = Math.max(0, (user.totalMinutes || 0) + minutes);
-  user.xp = (user.xp || 0) + xpGain;
+  const xpEventId =
+    sanitizeEventId(entryPayload.xpEventId || entryPayload.eventId || historyEntry.resultId || historyEntry.id);
+  let xpEventResult = null;
+  if (xpGain !== 0 && xpEventId) {
+    xpEventResult = applyXpEvent(data, user, {
+      eventId: xpEventId,
+      delta: xpGain,
+      reason: entryPayload.xpReason || "conversion",
+      metadata: {
+        historyId: historyEntry.id,
+        format: historyEntry.format,
+        sourceUrl: historyEntry.sourceUrl,
+      },
+    });
+  } else {
+    ensureXpBucket(data, user.id);
+    const bucket = data.xpEvents[user.id];
+    user.xp = computeXpFromBucket(bucket) || user.xp || 0;
+    user.level = calculateLevel(user.xp);
+  }
   user.updatedAt = now;
-  const level = calculateLevel(user.xp);
-  user.level = level;
+  const level = user.level;
   const badgesAwarded = deriveBadges(user, entryPayload.context || {});
   await writeStore(data);
   return {
@@ -233,7 +342,34 @@ export const recordConversionForUser = async (userId, entryPayload = {}) => {
     totalMinutes: user.totalMinutes,
     badgesAwarded,
     historyEntry,
+    xpEvent: xpEventResult,
     summary: buildUserSummary(user),
+  };
+};
+
+export const recordXpEventForUser = async (userId, { eventId, delta, reason, metadata } = {}) => {
+  if (!userId) return null;
+  const data = await readStore();
+  const user = data.users[userId];
+  if (!user) return null;
+  const normalizedId = sanitizeEventId(eventId || "");
+  if (!normalizedId) {
+    throw new Error("eventId wajib diisi");
+  }
+  const result = applyXpEvent(data, user, {
+    eventId: normalizedId,
+    delta,
+    reason,
+    metadata,
+  });
+  user.updatedAt = Date.now();
+  await writeStore(data);
+  return {
+    xp: user.xp,
+    level: user.level,
+    applied: result.applied,
+    event: result.event,
+    events: Object.values(ensureXpBucket(data, userId)),
   };
 };
 

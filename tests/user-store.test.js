@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import {
   upsertGoogleUser,
   recordConversionForUser,
+  recordXpEventForUser,
+  reconcileUserXp,
   listUserHistory,
   buildUserSummaryById,
   ensureReferralForUser,
@@ -76,5 +78,67 @@ test("recordConversionForUser menambah riwayat dan xp", async () => {
   await updateHistoryEntry("user-456", history[0].id, { downloadUrl: "/public/jobs/new.mp3" });
   const updated = await getHistoryEntry("user-456", history[0].id);
   assert.equal(updated?.downloadUrl, "/public/jobs/new.mp3");
+});
+
+test("recordConversionForUser idempoten terhadap xpEventId yang sama", async () => {
+  await resetStore();
+  await upsertGoogleUser({
+    googleId: "user-789",
+    email: "dup@example.com",
+    name: "Duplicated",
+  });
+  const xpEventId = "convert-demo-event";
+  const first = await recordConversionForUser("user-789", {
+    id: "hist-1",
+    xpEventId,
+    title: "Track",
+    format: "mp3",
+    sourceUrl: "https://youtu.be/demo",
+    downloadUrl: "/jobs/a.mp3",
+    durationSeconds: 120,
+    xpGain: 60,
+    command: { url: "https://youtu.be/demo" },
+  });
+  const second = await recordConversionForUser("user-789", {
+    id: "hist-2",
+    xpEventId,
+    title: "Track",
+    format: "mp3",
+    sourceUrl: "https://youtu.be/demo",
+    downloadUrl: "/jobs/a.mp3",
+    durationSeconds: 120,
+    xpGain: 60,
+    command: { url: "https://youtu.be/demo" },
+  });
+  assert.equal(first.xp, 60);
+  assert.equal(second.xp, 60);
+  assert.ok(second?.xpEvent);
+  assert.equal(second.xpEvent.applied, false);
+  const history = await listUserHistory("user-789");
+  assert.equal(history.length, 2);
+});
+
+test("recordXpEventForUser menyimpan event dan rekonsiliasi xp", async () => {
+  await resetStore();
+  await upsertGoogleUser({
+    googleId: "user-999",
+    email: "xp@example.com",
+  });
+  const first = await recordXpEventForUser("user-999", {
+    eventId: "bonus-1",
+    delta: 120,
+    reason: "bonus",
+  });
+  assert.equal(first.applied, true);
+  assert.equal(first.xp, 120);
+  const duplicate = await recordXpEventForUser("user-999", {
+    eventId: "bonus-1",
+    delta: 9999,
+  });
+  assert.equal(duplicate.applied, false);
+  assert.equal(duplicate.xp, 120);
+  const reconcile = await reconcileUserXp("user-999");
+  assert.equal(reconcile.xp, 120);
+  assert.equal(reconcile.level, 1);
 });
 

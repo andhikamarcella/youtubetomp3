@@ -2,7 +2,8 @@
   "name": "ytmp3-backend",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "migrate:xp": "node scripts/migrate_xp_events.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

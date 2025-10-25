@@ -79,6 +79,16 @@ Konfigurasi yang perlu disiapkan:
 
 Token sesi disimpan di localStorage browser dan dikirim sebagai header `Authorization: Bearer <token>` ke endpoint yang memerlukan autentikasi. Berkas `data/users.json` tidak ikut dalam repository (sudah diabaikan lewat `.gitignore`).
 
+## Migrasi XP Events
+
+Mulai fase ketiga, XP pengguna disimpan sebagai deretan *XP events* yang idempoten agar tidak berlipat saat terjadi retry. Saat melakukan upgrade ke versi ini, jalankan:
+
+```bash
+npm run migrate:xp
+```
+
+Perintah tersebut membuat file `data/users.json` memiliki `xpEvents` untuk setiap pengguna, menyalin nilai XP lama menjadi event `legacy-bootstrap`, dan memastikan level tersinkronisasi sebelum server dijalankan kembali.
+
 ## Browser Extension
 
 Folder [`browser-extension/`](./browser-extension) berisi manifest dan content script sederhana untuk menambahkan tombol **Convert MP3** di halaman video YouTube (desktop maupun mobile web). Muat ekstensi ini dalam mode developer pada browser Chromium, lalu setiap klik tombol akan membuka konverter dengan URL video yang sedang dibuka.
