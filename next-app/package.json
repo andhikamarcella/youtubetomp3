@@ -8,7 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@google-cloud/translate": "^8.1.4",
     "bootstrap": "^5.3.3",
     "next": "^14.1.0",
     "pg": "^8.11.3",

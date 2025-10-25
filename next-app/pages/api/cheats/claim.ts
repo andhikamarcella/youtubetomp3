@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     });
 
-    return res.status(200).json({ currentXp: result.currentXp, createdEvent: result.createdEvent });
+    return res.status(200).json({ current_xp: result.currentXp, createdEvent: result.createdEvent });
   } catch (error) {
     if ((error as Error).message === 'Cheat already claimed') {
       return res.status(409).json({ error: 'Cheat already claimed' });

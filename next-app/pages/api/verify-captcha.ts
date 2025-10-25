@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'captchaToken is required' });
   }
 
+  // TODO: Add rate limiting to prevent captcha brute force.
   try {
     const verifyResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
       method: 'POST',

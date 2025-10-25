@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       eventId,
     });
 
-    return res.status(200).json({ currentXp: result.currentXp, createdEvent: result.createdEvent });
+    return res.status(200).json({ current_xp: result.currentXp, createdEvent: result.createdEvent });
   } catch (error) {
     console.error('/api/users/[id]/xp error', error);
     return res.status(500).json({ error: 'Internal Server Error' });

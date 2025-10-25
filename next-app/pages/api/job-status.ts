@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getSessionUser } from '../../lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -11,10 +12,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'WORKER_API_BASE not configured' });
   }
 
+  const session = await getSessionUser(req);
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const jobId = Array.isArray(req.query.jobId) ? req.query.jobId[0] : req.query.jobId;
   if (!jobId) {
     return res.status(400).json({ error: 'Missing jobId' });
   }
+
+  // TODO: Verify that the requested jobId belongs to the authenticated user.
+  // TODO: Apply rate limiting to job status polling.
 
   try {
     const workerResponse = await fetch(`${workerBase.replace(/\/$/, '')}/status/${jobId}`);

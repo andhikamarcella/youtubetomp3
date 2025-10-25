@@ -16,12 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userRecord = await ensureUserRecord(session);
     return res.status(200).json({
       id: userRecord.id,
-      displayName: userRecord.display_name,
-      avatarUrl: userRecord.avatar_url,
+      display_name: userRecord.display_name,
+      avatar_url: userRecord.avatar_url,
       role: userRecord.role,
-      currentXp: userRecord.current_xp,
-      email: userRecord.email,
-      createdAt: userRecord.created_at,
+      current_xp: userRecord.current_xp,
     });
   } catch (error) {
     console.error('/api/me error', error);
