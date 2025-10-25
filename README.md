@@ -67,7 +67,6 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | `/api/job-status` | GET | Memeriksa status job di worker. |
 | `/api/job-file` | GET | Mengembalikan `downloadUrl` yang diterbitkan worker untuk job tersebut. |
 | `/api/upload-to-drive` | POST | Mengunggah hasil konversi ke Google Drive pengguna menggunakan token OAuth mereka. |
-| `/api/ai-navigator` | POST | Menghubungkan pertanyaan pengguna ke Gemini dengan konteks XP, riwayat, dan FAQ terbaru. |
 | `/api/faq` | GET | Mengembalikan daftar FAQ terkini agar UI dan AI Navigator berbagi sumber yang sama. |
 | `/api/daily-bonus` | POST | Memberikan XP bonus harian (idempoten per hari per pengguna). |
 | `/api/history` | GET | Mengambil daftar riwayat konversi milik pengguna yang sedang login (mendukung pagination). |
@@ -75,7 +74,7 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | `/api/history/[id]/redownload` | POST | Menghasilkan tautan unduh ulang langsung ke worker untuk konversi tersebut. |
 | `/api/leaderboard` | GET | Mengembalikan daftar pengguna dengan XP tertinggi (opsional parameter `limit`). |
 
-Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, dan `GEMINI_API_KEY`.
+Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`.
 
 ### Contoh Penggunaan API di Frontend
 
@@ -112,22 +111,14 @@ if (jobId) {
   }
 }
 
-// 3. Kirim pertanyaan ke AI Navigator (Gemini)
-const aiReply = await fetch('/api/ai-navigator', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ question: 'Kenapa XP saya tidak bertambah?' }),
-}).then((res) => res.json());
-console.log(aiReply.answer);
-
-// 4. Simpan hasil ke Google Drive
+// 3. Simpan hasil ke Google Drive
 await fetch('/api/upload-to-drive', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ jobId, filename: 'lagu-favorit.mp3' }),
 });
 
-// 5. Ambil FAQ untuk ditampilkan di halaman bantuan
+// 4. Ambil FAQ untuk ditampilkan di halaman bantuan
 const faq = await fetch('/api/faq').then((res) => res.json());
 renderFaq(faq.entries);
 ```

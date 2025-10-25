@@ -50,7 +50,6 @@ const isGoogleLoginConfigured = Boolean(GOOGLE_CLIENT_ID);
 const USER_SESSION_SECRET = process.env.USER_SESSION_SECRET || "dev-user-session-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CHEATS_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ENABLE_CHEATS || ""));
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -2464,129 +2463,6 @@ const dedupeList = (items = []) => {
     result.push(text);
   }
   return result;
-};
-
-const GEMINI_SYSTEM_PROMPT =
-  "You are the AI Navigator for the youtubemp3 audio toolkit. Help users troubleshoot conversions, explain XP/streak mechanics, and guide them to features like Drive uploads, playlists, and accessibility tools. Prefer Indonesian by default but respect the user's language.";
-
-const GEMINI_FAQ_SNIPPETS = [
-  {
-    question: "Bagaimana cara mempercepat proses convert?",
-    answer:
-      "Gunakan Tips Kecepatan, pilih format yang lebih ringan, aktifkan mode background jika antrean panjang, dan pastikan captcha berhasil sebelum memulai.",
-  },
-  {
-    question: "Bagaimana menyimpan hasil konversi ke Google Drive?",
-    answer:
-      "Setelah job selesai, gunakan tombol Simpan ke Drive. Login Google dengan scope drive.file, lalu server akan mengunggah file akhir langsung ke akun pengguna.",
-  },
-  {
-    question: "Apa manfaat login Google di youtubemp3?",
-    answer:
-      "Login menyimpan XP, badge, dan riwayat cloud lintas perangkat. Kamu juga bisa mengklaim referral, cheat khusus tester, serta mengatur ulang unduhan tanpa reconvert.",
-  },
-];
-
-const buildGeminiFaqContext = () =>
-  GEMINI_FAQ_SNIPPETS.map(
-    (entry, index) => `FAQ ${index + 1}: Q: ${entry.question}\nA: ${entry.answer}`
-  ).join("\n\n");
-
-const generateGeminiAssistantReply = async (prompt, { user } = {}) => {
-  if (!GEMINI_API_KEY) return null;
-  const raw = typeof prompt === "string" ? prompt.trim() : "";
-  if (!raw) return null;
-
-  try {
-    const sanitized = raw.slice(0, 1800);
-    let summary = null;
-    let history = [];
-    if (user?.id) {
-      try {
-        [summary, history] = await Promise.all([
-          buildUserSummaryById(user.id).catch((err) => {
-            console.warn("Gagal memuat ringkasan pengguna untuk Gemini", err);
-            return null;
-          }),
-          listUserHistory(user.id, { limit: 1 }).catch((err) => {
-            console.warn("Gagal memuat riwayat pengguna untuk Gemini", err);
-            return [];
-          }),
-        ]);
-      } catch (err) {
-        console.warn("Gagal memuat konteks pengguna untuk Gemini", err);
-      }
-    }
-
-    const xpValue = summary?.xp ?? user?.xp ?? 0;
-    const levelValue = summary?.level ?? user?.level ?? null;
-    const roleValue = summary?.plan === "premium" ? "premium" : user?.plan || user?.role || "user";
-    const lastEntry = Array.isArray(history) && history.length ? history[0] : null;
-    const lastContext = lastEntry
-      ? `Konversi terakhir: ${lastEntry.title || lastEntry.sourceUrl || "tanpa judul"} (${lastEntry.format || "format tidak diketahui"}) pada ${
-          new Date(lastEntry.createdAt || Date.now()).toISOString()
-        }.`
-      : "Pengguna belum memiliki riwayat konversi.";
-    const faqContext = buildGeminiFaqContext();
-
-    const contextParts = [
-      `Peran pengguna: ${roleValue}`,
-      `XP saat ini: ${xpValue}`,
-      levelValue ? `Level: ${levelValue}` : null,
-      lastContext,
-      faqContext ? `Ringkasan FAQ internal:\n${faqContext}` : null,
-      `Pertanyaan pengguna: ${sanitized}`,
-      'Jawab dengan ramah dan akhiri dengan baris yang diawali "Recommended next step:" berisi tindakan konkrit satu kalimat.',
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-
-    const requestBody = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `${GEMINI_SYSTEM_PROMPT}\n\n${contextParts}`,
-            },
-          ],
-        },
-      ],
-    };
-
-    const timeoutCtrl = createTimeoutController(15000);
-    try {
-      const response = await safeFetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${encodeURIComponent(
-          GEMINI_API_KEY
-        )}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-          signal: timeoutCtrl?.controller?.signal,
-        }
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.warn("Gemini API error", response.status, payload);
-        return null;
-      }
-      const candidate = payload?.candidates?.[0];
-      const text = Array.isArray(candidate?.content?.parts)
-        ? candidate.content.parts
-            .map((part) => (typeof part?.text === "string" ? part.text : ""))
-            .join("\n")
-            .trim()
-        : "";
-      return text || null;
-    } finally {
-      if (timeoutCtrl?.timer) clearTimeout(timeoutCtrl.timer);
-    }
-  } catch (err) {
-    console.error("Gemini navigator error", err);
-    return null;
-  }
 };
 
 const keywordScore = (text, keywords = []) => {
@@ -5806,16 +5682,6 @@ app.post("/api/assistant-chat", async (req, res) => {
 
     const responsePayload = buildAssistantResponse(trimmed);
     const user = await resolveRequestUser(req);
-
-    if (GEMINI_API_KEY && !trimmed.startsWith("/")) {
-      const geminiReply = await generateGeminiAssistantReply(trimmed, { user }).catch((err) => {
-        console.warn("Gemini Navigator gagal", err);
-        return null;
-      });
-      if (geminiReply) {
-        responsePayload.reply = geminiReply;
-      }
-    }
 
     return res.json(responsePayload);
   } catch (e) {

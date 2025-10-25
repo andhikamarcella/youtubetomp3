@@ -586,7 +586,7 @@
         </button>
         <button class="btn btn-outline-info assistant-launcher" id="assistantNavBtn" type="button" data-launch="nav">
           <i class="bi bi-robot"></i>
-          <span class="d-none d-sm-inline ms-1" data-i18n="navGemini">Gemini AI</span>
+          <span class="d-none d-sm-inline ms-1" data-i18n="navAssistant">AI Navigator</span>
         </button>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
@@ -2117,7 +2117,8 @@
       navConverter: 'Converter',
       navExperience: 'Experience',
       navProfile: 'Profil',
-      navGemini: 'Gemini AI',
+      'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Login Google aktif. Cookies YouTube otomatis digunakan.',
+      navAssistant: 'AI Navigator',
       sectionTitleConverter: 'Converter',
       sectionSubtitleConverter: 'Konversi video lebih cepat & stabil.',
       sectionTitleExperience: 'Experience Hub',
@@ -2167,7 +2168,8 @@
       navConverter: 'Converter',
       navExperience: 'Experience',
       navProfile: 'Profile',
-      navGemini: 'Gemini AI',
+      'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Google login active. YouTube cookies are handled automatically.',
+      navAssistant: 'AI Navigator',
       sectionTitleConverter: 'Converter',
       sectionSubtitleConverter: 'Convert videos faster & more reliably.',
       sectionTitleExperience: 'Experience Hub',
@@ -7817,6 +7819,7 @@
 
   const updateAdminUi = () => {
     const loggedIn = isAdminLoggedIn();
+    const googleLinked = Boolean(state.auth.user);
     if (adminStatusBadge) {
       adminStatusBadge.textContent = loggedIn ? 'Login aktif' : 'Belum login';
       adminStatusBadge.classList.toggle('text-bg-success', loggedIn);
@@ -7825,14 +7828,25 @@
     if (adminLogoutBtn) adminLogoutBtn.hidden = !loggedIn;
     const dzEl = document.getElementById('dropzone');
     if (dzEl) {
-      dzEl.classList.toggle('requires-login', !loggedIn);
-      dzEl.setAttribute('aria-disabled', String(!loggedIn));
+      const disabled = googleLinked || !loggedIn;
+      dzEl.classList.toggle('requires-login', !loggedIn && !googleLinked);
+      dzEl.classList.toggle('is-disabled', disabled);
+      dzEl.setAttribute('aria-disabled', String(disabled));
+      dzEl.dataset.googleLinked = googleLinked ? 'true' : 'false';
+    }
+    if (pickCookieBtn) {
+      pickCookieBtn.disabled = googleLinked || !loggedIn;
+      pickCookieBtn.classList.toggle('disabled', pickCookieBtn.disabled);
+    }
+    if (googleLinked) {
+      setDropzoneMessage('Login Google aktif. Cookies YouTube otomatis digunakan.', 'success');
+      return;
     }
     if (loggedIn) {
       setDropzoneMessage('Login admin aktif. Siap mengunggah cookies.txt.', 'info');
-    } else {
-      setDropzoneMessage('Login admin diperlukan sebelum upload cookies.', 'info');
+      return;
     }
+    setDropzoneMessage('Login admin diperlukan sebelum upload cookies.', 'info');
   };
 
   const updateBackendBadge = () => {
@@ -10066,6 +10080,12 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   if (pickCookieBtn && cookieFile) {
     pickCookieBtn.addEventListener('click', () => {
+      if (state.auth.user) {
+        const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+        setToast(msg);
+        setDropzoneMessage(msg, 'success');
+        return;
+      }
       if (!isAdminLoggedIn()) {
         setToast('Login admin terlebih dahulu untuk upload cookies');
         if (settingsOffcanvas) {
@@ -10081,6 +10101,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   if (dz) {
     ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
       e.preventDefault();
+      if (state.auth.user) return;
       if (!isAdminLoggedIn()) return;
       dz.classList.add('dragover');
     }));
@@ -10089,6 +10110,12 @@ $('#queueList')?.addEventListener('click', (e) => {
       dz.classList.remove('dragover');
     }));
     dz.addEventListener('drop', (e) => {
+      if (state.auth.user) {
+        const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+        setToast(msg);
+        setDropzoneMessage(msg, 'success');
+        return;
+      }
       if (!isAdminLoggedIn()) {
         setToast('Login admin terlebih dahulu untuk upload cookies');
         return;
@@ -10108,12 +10135,24 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   async function handleCookieFile(file){
     if(!file) return;
+    if(state.auth.user){
+      const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+      setToast(msg);
+      setDropzoneMessage(msg, 'success');
+      return;
+    }
     if(!/\.txt$/i.test(file.name)){ setToast('Pilih file .txt hasil export cookies'); return; }
     const text = await file.text();
     await uploadCookies(text);
   }
 
   async function uploadCookies(text){
+    if(state.auth.user){
+      const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+      setToast(msg);
+      setDropzoneMessage(msg, 'success');
+      return;
+    }
     const bearer = (state.adminBearer || '').trim();
     if(!bearer){
       setToast('Login admin terlebih dahulu untuk upload cookies');
