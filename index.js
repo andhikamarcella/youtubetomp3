@@ -50,6 +50,8 @@ const isGoogleLoginConfigured = Boolean(GOOGLE_CLIENT_ID);
 const USER_SESSION_SECRET = process.env.USER_SESSION_SECRET || "dev-user-session-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CHEATS_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ENABLE_CHEATS || ""));
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || "";
+const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "";
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -417,6 +419,49 @@ const safeFetch = async (...args) => {
     throw new Error("fetch API tidak tersedia di lingkungan ini");
   }
   return fetchImpl(...args);
+};
+
+const verifyRecaptchaToken = async (token, remoteIp) => {
+  if (!RECAPTCHA_SECRET_KEY) {
+    const err = new Error("Captcha server belum dikonfigurasi");
+    err.statusCode = 500;
+    throw err;
+  }
+  const trimmed = typeof token === "string" ? token.trim() : "";
+  if (!trimmed) {
+    const err = new Error("Token captcha wajib diisi");
+    err.statusCode = 400;
+    throw err;
+  }
+  const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: trimmed });
+  if (remoteIp) params.set("remoteip", remoteIp);
+  let response;
+  try {
+    response = await safeFetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+  } catch (err) {
+    const error = new Error("Gagal menghubungi layanan captcha");
+    error.cause = err;
+    throw error;
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch (err) {
+    const error = new Error("Respon captcha tidak valid");
+    error.cause = err;
+    throw error;
+  }
+  if (!data?.success) {
+    const codes = Array.isArray(data?.["error-codes"]) ? data["error-codes"].join(",") : "";
+    const error = new Error(codes ? `Verifikasi captcha gagal (${codes})` : "Verifikasi captcha gagal");
+    error.statusCode = 400;
+    throw error;
+  }
+  return data;
 };
 
 const createTimeoutController = (ms = 15000) => {
@@ -5492,7 +5537,11 @@ app.post("/api/auth/google", async (req, res) => {
 });
 
 app.get("/api/auth/config", (req, res) => {
-  return res.json({ ok: true, googleClientId: GOOGLE_CLIENT_ID || null });
+  return res.json({
+    ok: true,
+    googleClientId: GOOGLE_CLIENT_ID || null,
+    recaptchaSiteKey: RECAPTCHA_SITE_KEY || null,
+  });
 });
 
 app.get("/api/cheats/config", (req, res) => {
@@ -5693,7 +5742,15 @@ app.post("/api/assistant-chat", async (req, res) => {
 app.post("/api/convert", async (req, res) => {
   const user = await resolveRequestUser(req);
   try {
-    const payload = req.body || {};
+    const payload = { ...(req.body || {}) };
+    try {
+      await verifyRecaptchaToken(payload.captchaToken, req.ip);
+    } catch (err) {
+      const status = err?.statusCode || 400;
+      const message = err?.message || "Verifikasi captcha gagal";
+      return res.status(status).json({ error: message });
+    }
+    delete payload.captchaToken;
     const result = await convertSingle(payload);
     if (user) {
       const historyPayload = buildHistoryRecordPayload(payload, result);
@@ -5769,9 +5826,18 @@ app.post("/api/search", async (req, res) => {
   }
 });
 
-app.post("/api/background", (req, res) => {
+app.post("/api/background", async (req, res) => {
   try {
-    const job = enqueueBackgroundJob(req.body || {});
+    const body = { ...(req.body || {}) };
+    try {
+      await verifyRecaptchaToken(body.captchaToken, req.ip);
+    } catch (err) {
+      const status = err?.statusCode || 400;
+      const message = err?.message || "Verifikasi captcha gagal";
+      return res.status(status).json({ error: message });
+    }
+    delete body.captchaToken;
+    const job = enqueueBackgroundJob(body);
     return res.json({ ok: true, job: serializeJob(job) });
   } catch (e) {
     const msg = e?.message || "Gagal membuat job";
@@ -6125,7 +6191,15 @@ app.post("/api/subtitle", async (req, res) => {
 app.post("/api/convert-playlist", async (req, res) => {
   const user = await resolveRequestUser(req);
   try {
-    const body = req.body || {};
+    const body = { ...(req.body || {}) };
+    try {
+      await verifyRecaptchaToken(body.captchaToken, req.ip);
+    } catch (err) {
+      const status = err?.statusCode || 400;
+      const message = err?.message || "Verifikasi captcha gagal";
+      return res.status(status).json({ error: message });
+    }
+    delete body.captchaToken;
     const rawItems = Array.isArray(body.items)
       ? body.items
       : Array.isArray(body.urls)

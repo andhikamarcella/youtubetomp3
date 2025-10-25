@@ -154,11 +154,11 @@
     }
     .exp-section { background: var(--bs-body-bg); border: 1px dashed color-mix(in srgb, var(--bs-border-color) 70%, transparent); border-radius: 1rem; padding: 1rem; height: 100%; display: flex; flex-direction: column; gap: .75rem; transition: border-color .3s ease, transform .3s ease; }
     .exp-section:hover { transform: translateY(-2px); border-color: var(--bs-primary); }
-    .dynamic-avatar { position: relative; display: flex; align-items: center; justify-content: center; border-radius: 1rem; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.22)); min-height: 120px; overflow: hidden; padding: .75rem; }
-    .dynamic-avatar .avatar-btn { border: none; background: transparent; color: inherit; display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: .9rem; transition: transform .35s ease, box-shadow .35s ease; position: relative; }
+    .dynamic-avatar { position: relative; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.22)); min-height: 120px; min-width: 120px; aspect-ratio: 1 / 1; overflow: hidden; padding: .75rem; }
+    .dynamic-avatar .avatar-btn { border: none; background: transparent; color: inherit; display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; transition: transform .35s ease, box-shadow .35s ease; position: relative; }
     .dynamic-avatar .avatar-btn:focus-visible { outline: 3px solid rgba(13,110,253,.45); outline-offset: 4px; }
     .dynamic-avatar .avatar-btn span { font-size: 3.4rem; filter: drop-shadow(0 6px 12px rgba(23,35,63,.25)); transition: transform .45s ease; }
-    .dynamic-avatar .avatar-photo { position: absolute; inset: 12%; border-radius: inherit; object-fit: cover; width: 76%; height: 76%; box-shadow: 0 10px 28px rgba(10,16,34,.35); opacity: 0; transform: scale(.92); transition: opacity .35s ease, transform .35s ease; }
+    .dynamic-avatar .avatar-photo { position: absolute; inset: 12%; border-radius: 50%; object-fit: cover; width: 76%; height: 76%; box-shadow: 0 10px 28px rgba(10,16,34,.35); opacity: 0; transform: scale(.92); transition: opacity .35s ease, transform .35s ease; }
     .dynamic-avatar .avatar-photo.is-visible { opacity: 1; transform: scale(1); }
     .dynamic-avatar.level-up .avatar-btn span { transform: scale(1.12) rotate(-2deg); }
     .dynamic-avatar .avatar-glow { position: absolute; inset: 12%; border-radius: inherit; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.45), transparent 65%); opacity: .35; pointer-events: none; transition: opacity .35s ease; }
@@ -171,6 +171,7 @@
     .avatar-menu .avatar-achievements { max-height: 220px; overflow-y: auto; display: grid; gap: .35rem; padding-right: .35rem; }
     .avatar-menu .avatar-achievements .badge-chip { display: inline-flex; align-items: center; gap: .35rem; border-radius: .65rem; padding: .3rem .6rem; font-size: .75rem; font-weight: 600; letter-spacing: .04em; background: color-mix(in srgb, var(--bs-primary) 14%, transparent); border: 1px dashed color-mix(in srgb, var(--bs-border-color) 60%, transparent); }
     .avatar-status { font-size: .85rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+    .profile-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; box-shadow: 0 12px 24px rgba(14,21,37,.28); border: 2px solid rgba(255,255,255,.25); background: rgba(13,110,253,.1); }
     .reward-meter { width: 100%; height: .8rem; border-radius: 999px; background: color-mix(in srgb, var(--bs-secondary-bg) 70%, transparent); overflow: hidden; }
     .reward-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(135deg, rgba(32,201,151,.85), rgba(111,66,193,.8)); transition: width .6s ease; }
     #rewardBadges { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0; margin: 0; list-style: none; }
@@ -1682,6 +1683,7 @@
             <span class="badge rounded-pill text-bg-primary" id="avatarLevelBadge">Lv.1 Rookie</span>
           </div>
           <div class="d-flex flex-wrap align-items-center gap-3 mb-4" id="profileAccountArea">
+            <img id="profileAccountAvatar" class="profile-avatar" alt="" hidden>
             <div class="flex-grow-1">
               <div class="fw-semibold" id="profileAccountName">Tamu</div>
               <div class="small text-secondary" id="profileAccountStatus">Masuk dengan Google untuk menyimpan riwayat cloud dan XP lintas perangkat.</div>
@@ -1934,6 +1936,17 @@
         </div>
         <div class="form-text mt-2" id="adminLoginHelp">Login diperlukan untuk mengunggah cookies.txt melalui dropzone.</div>
       </form>
+
+      <hr class="my-4">
+      <h6 class="mb-2">Preferensi Converter</h6>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" id="prefConfirmAutoDownload">
+        <label class="form-check-label" for="prefConfirmAutoDownload">Konfirmasi sebelum auto-download</label>
+      </div>
+      <div class="form-check form-switch mb-4">
+        <input class="form-check-input" type="checkbox" id="prefRememberFormat" checked>
+        <label class="form-check-label" for="prefRememberFormat">Ingat format &amp; kualitas terakhir</label>
+      </div>
 
       <hr class="my-4">
       <h6 class="mb-2">Aksesibilitas</h6>
@@ -2288,6 +2301,7 @@
   'Konami code aktif!': { en: 'Konami code activated!' },
   'Koneksi kembali online': { en: 'Connection restored' },
   'Konversi audio dulu sebelum memberi rating': { en: 'Convert audio before rating' },
+  'Konfirmasi sebelum auto-download': { en: 'Confirm before auto-download' },
   'Salin link': { en: 'Copy link' },
   'Link disalin': { en: 'Link copied' },
   'Link share disalin': { en: 'Share link copied' },
@@ -2296,6 +2310,8 @@
   'Login Google belum dikonfigurasi. Tambahkan GOOGLE_CLIENT_ID di server.': {
     en: 'Google login is not configured yet. Add GOOGLE_CLIENT_ID on the server.',
   },
+  'Login Google aktif; cookies YouTube otomatis terhubung.': { en: 'Google login active; YouTube cookies are handled automatically.' },
+  'Login diperlukan untuk mengunggah cookies.txt melalui dropzone.': { en: 'Sign in is required to upload cookies.txt through the dropzone.' },
   'Script login Google diblokir. Izinkan accounts.google.com di browser Anda.': {
     en: 'The Google sign-in script was blocked. Allow accounts.google.com in your browser.',
   },
@@ -2311,6 +2327,10 @@
   'PWA siap dipakai offline ✨': { en: 'PWA ready for offline use ✨' },
   'Panduan audiophile disalin': { en: 'Audiophile guide copied' },
   'Panduan audiophile siap disalin': { en: 'Audiophile guide ready to copy' },
+  'Captcha tidak dapat dimuat. Periksa koneksi atau ekstensi pemblokir.': { en: 'Captcha could not load. Check your connection or blocking extensions.' },
+  'Captcha belum dikonfigurasi di server.': { en: 'Captcha is not configured on the server.' },
+  'Verifikasi captcha gagal. Silakan coba lagi.': { en: 'Captcha verification failed. Please try again.' },
+  'Captcha gagal dijalankan. Coba lagi.': { en: 'Captcha could not run. Try again.' },
   'Pengaturan direset': { en: 'Settings reset' },
   'Pengaturan disimpan': { en: 'Settings saved' },
   'Pilih file .txt hasil export cookies': { en: 'Choose the exported cookies .txt file' },
@@ -2321,6 +2341,7 @@
   'Press kit tersalin ke clipboard': { en: 'Press kit copied to clipboard' },
   'Prompt cover disalin': { en: 'Cover prompt copied' },
   'Prompt cover siap dipakai': { en: 'Cover prompt ready to use' },
+  'Ingat format & kualitas terakhir': { en: 'Remember last format & quality' },
   'Riwayat dibersihkan': { en: 'History cleared' },
   'Simpan ke Google Drive': { en: 'Save to Google Drive' },
   'Google Drive siap menyimpan hasil secara otomatis.': { en: 'Google Drive is ready to store your results automatically.' },
@@ -2346,6 +2367,7 @@
   'URL dari clipboard terpasang otomatis': { en: 'URL pasted from clipboard' },
   'URL ini belum didukung': { en: 'This URL is not supported yet' },
   'URL ditempel dari drag & drop': { en: 'URL pasted from drag & drop' },
+  'Auto-download akan dimulai otomatis. Lanjutkan?': { en: 'Auto-download will start automatically. Continue?' },
   'URL tidak valid': { en: 'Invalid URL' },
   'Walkthrough selesai! Selamat mencoba.': { en: 'Walkthrough complete! Have fun.' },
   'cookies.txt terunggah ✔': { en: 'cookies.txt uploaded ✔' },
@@ -3082,6 +3104,7 @@
   const avatarPreviewMood = $('#avatarPreviewMood');
   const profileMilestones = $('#profileMilestones');
   const badgeCountLabel = $('#badgeCountLabel');
+  const profileAccountAvatar = $('#profileAccountAvatar');
   const profileAccountName = $('#profileAccountName');
   const profileAccountStatus = $('#profileAccountStatus');
   const driveReadyStatus = $('#driveReadyStatus');
@@ -3353,11 +3376,14 @@
   const adminPassInput = $('#adminPass');
   const adminLogoutBtn = $('#adminLogoutBtn');
   const adminStatusBadge = $('#adminStatus');
+  const adminLoginHelp = $('#adminLoginHelp');
   const dropzoneStatus = $('#dropzoneStatus');
   const openLoginBtn = $('#openLoginBtn');
   const accessHighContrast = $('#accessHighContrast');
   const accessLargeText = $('#accessLargeText');
   const accessReduceMotion = $('#accessReduceMotion');
+  const prefConfirmAutoDownload = $('#prefConfirmAutoDownload');
+  const prefRememberFormat = $('#prefRememberFormat');
   const settingsOffcanvasEl = document.getElementById('offcanvasSettings');
   const toolStatusWrap = $('#toolStatusWrap');
   const ytDlpInfo = $('#ytDlpInfo');
@@ -3814,12 +3840,14 @@
       spin: 0
     }
   };
+  const defaultPreferences = { confirmAutoDownload: false, rememberLastFormat: true, lastFormat: null };
 
   const state = {
     backendUrl: '',
     adminBearer: '',
     accessibility: { ...defaultAccessibility },
     experience: { ...defaultExperience },
+    preferences: { ...defaultPreferences },
     narratorEnabled: false,
     assistantHistory: [],
     avatarAura: '',
@@ -3841,9 +3869,96 @@
       lastStatus: '',
     },
     lastDownload: null,
+    captcha: {
+      siteKey: '',
+      loadedSiteKey: '',
+      lastToken: '',
+      lastAction: '',
+      lastFetched: 0,
+    },
   };
 
   let driveTokenClient = null;
+  let recaptchaScriptPromise = null;
+  let recaptchaReadyPromise = null;
+  let recaptchaScriptEl = null;
+
+  function resetRecaptchaState() {
+    if (recaptchaScriptEl) {
+      try { recaptchaScriptEl.remove(); } catch {}
+    }
+    recaptchaScriptEl = null;
+    recaptchaScriptPromise = null;
+    recaptchaReadyPromise = null;
+    state.captcha.loadedSiteKey = '';
+  }
+
+  async function ensureRecaptchaReady(action = 'convert') {
+    const siteKey = state.captcha.siteKey;
+    if (!siteKey) {
+      throw new Error(translateMessage('Captcha belum dikonfigurasi di server.'));
+    }
+    if (!recaptchaScriptPromise || state.captcha.loadedSiteKey !== siteKey) {
+      resetRecaptchaState();
+      recaptchaScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          state.captcha.loadedSiteKey = siteKey;
+          resolve();
+        };
+        script.onerror = () => {
+          const error = new Error(translateMessage('Captcha tidak dapat dimuat. Periksa koneksi atau ekstensi pemblokir.'));
+          reject(error);
+        };
+        recaptchaScriptEl = script;
+        document.head.appendChild(script);
+      });
+    }
+    try {
+      await recaptchaScriptPromise;
+    } catch (err) {
+      resetRecaptchaState();
+      throw err;
+    }
+    if (!window.grecaptcha) {
+      throw new Error(translateMessage('Captcha tidak dapat dimuat. Periksa koneksi atau ekstensi pemblokir.'));
+    }
+    if (!recaptchaReadyPromise) {
+      recaptchaReadyPromise = new Promise((resolve) => {
+        if (window.grecaptcha.ready) {
+          window.grecaptcha.ready(() => resolve());
+        } else {
+          resolve();
+        }
+      });
+    }
+    await recaptchaReadyPromise;
+    return state.captcha.siteKey;
+  }
+
+  async function requestCaptchaToken(action = 'convert') {
+    try {
+      await ensureRecaptchaReady(action);
+      if (!window.grecaptcha?.execute) {
+        throw new Error(translateMessage('Captcha gagal dijalankan. Coba lagi.'));
+      }
+      const token = await window.grecaptcha.execute(state.captcha.siteKey, { action });
+      if (!token) {
+        throw new Error(translateMessage('Captcha gagal dijalankan. Coba lagi.'));
+      }
+      state.captcha.lastToken = token;
+      state.captcha.lastAction = action;
+      state.captcha.lastFetched = Date.now();
+      return token;
+    } catch (err) {
+      const message = err?.message || translateMessage('Verifikasi captcha gagal. Silakan coba lagi.');
+      setToast(message);
+      throw new Error(message);
+    }
+  }
 
   const badgeCatalog = {
     welcome: {
@@ -4685,6 +4800,16 @@
 
   function updateAccountUi() {
     const user = state.auth.user;
+    if (profileAccountAvatar) {
+      const photo = typeof user?.avatarUrl === 'string' ? user.avatarUrl : '';
+      if (photo) {
+        if (profileAccountAvatar.src !== photo) profileAccountAvatar.src = photo;
+        profileAccountAvatar.hidden = false;
+      } else {
+        profileAccountAvatar.hidden = true;
+        profileAccountAvatar.removeAttribute('src');
+      }
+    }
     if (profileAccountName) {
       profileAccountName.textContent = user?.name || user?.email || (user ? 'Pengguna' : 'Tamu');
     }
@@ -4695,6 +4820,13 @@
         profileAccountStatus.textContent = `Lv.${level} · ${xp} XP`;
       } else {
         profileAccountStatus.textContent = 'Masuk dengan Google untuk menyimpan riwayat cloud dan XP lintas perangkat.';
+      }
+    }
+    if (adminLoginHelp) {
+      if (user) {
+        adminLoginHelp.textContent = translateMessage('Login Google aktif; cookies YouTube otomatis terhubung.');
+      } else {
+        adminLoginHelp.textContent = translateMessage('Login diperlukan untuk mengunggah cookies.txt melalui dropzone.');
       }
     }
     if (driveReadyStatus) {
@@ -5282,9 +5414,19 @@
         logLabel: 'auth-config',
       });
       state.auth.googleClientId = data?.googleClientId || null;
+      const previousSiteKey = state.captcha.siteKey;
+      state.captcha.siteKey = data?.recaptchaSiteKey || '';
+      if (state.captcha.siteKey !== previousSiteKey) {
+        resetRecaptchaState();
+      }
       state.auth.googleFallbackNotified = false;
       clearGooglePollTimer();
       ensureGoogleButton();
+      if (state.captcha.siteKey) {
+        ensureRecaptchaReady('init').catch((err) => {
+          console.warn('Captcha init gagal', err);
+        });
+      }
       updateAccountUi();
     } catch (err) {
       console.warn('Gagal memuat konfigurasi auth', err);
@@ -6813,7 +6955,8 @@
       accessibility: state.accessibility,
       experience: state.experience,
       narratorEnabled: state.narratorEnabled,
-      backgroundEmail: state.backgroundEmail
+      backgroundEmail: state.backgroundEmail,
+      preferences: state.preferences,
     });
   };
 
@@ -8707,6 +8850,23 @@ $('#queueList')?.addEventListener('click', (e) => {
     state.adminBearer = s.adminBearer || '';
     state.accessibility = { ...defaultAccessibility, ...(s.accessibility || {}) };
     state.experience = { ...defaultExperience, ...(s.experience || {}) };
+    state.preferences = { ...defaultPreferences, ...(s.preferences || {}) };
+    if (!state.preferences || typeof state.preferences !== 'object') {
+      state.preferences = { ...defaultPreferences };
+    }
+    if (!state.preferences.rememberLastFormat) {
+      state.preferences.lastFormat = null;
+    } else if (state.preferences.lastFormat && typeof state.preferences.lastFormat === 'object') {
+      const last = state.preferences.lastFormat;
+      state.preferences.lastFormat = {
+        format: typeof last.format === 'string' ? last.format : '',
+        abr: Number.isFinite(Number(last.abr)) ? Number(last.abr) : null,
+        sampleRate: Number.isFinite(Number(last.sampleRate)) ? Number(last.sampleRate) : null,
+        videoQuality: typeof last.videoQuality === 'string' ? last.videoQuality : '',
+      };
+    } else {
+      state.preferences.lastFormat = null;
+    }
     if (!Array.isArray(state.experience.legendaryDex)) state.experience.legendaryDex = [];
     if (typeof state.experience.legendaryTarget !== 'string') state.experience.legendaryTarget = '';
     if (!Array.isArray(state.experience.spinHistory)) state.experience.spinHistory = [];
@@ -8730,6 +8890,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#backendUrl').value = state.backendUrl;
     const backgroundEmailInput = $('#backgroundEmail');
     if (backgroundEmailInput) backgroundEmailInput.value = state.backgroundEmail;
+    if (prefConfirmAutoDownload) prefConfirmAutoDownload.checked = !!state.preferences.confirmAutoDownload;
+    if (prefRememberFormat) prefRememberFormat.checked = !!state.preferences.rememberLastFormat;
     updateAccessibilityControls();
     applyAccessibility();
     updateAdminUi();
@@ -8739,6 +8901,39 @@ $('#queueList')?.addEventListener('click', (e) => {
     updateMusicStatus(state.experience.mood === 'auto' ? determineAutoMood() : state.experience.mood);
     if (runnerHighScoreLabel) runnerHighScoreLabel.textContent = String(state.experience.highScore || 0);
     runnerState.highScore = Number(state.experience.highScore) || 0;
+  };
+
+  const applyStoredFormatPreference = () => {
+    if (!state.preferences?.rememberLastFormat) return;
+    const last = state.preferences.lastFormat;
+    if (!last || typeof last !== 'object') return;
+    let updated = false;
+    if (formatSelect && last.format && Array.from(formatSelect.options || []).some((opt) => opt.value === last.format)) {
+      formatSelect.value = last.format;
+      updated = true;
+    }
+    if (abrSelect && Number.isFinite(last.abr)) {
+      const abrValue = String(last.abr);
+      if (Array.from(abrSelect.options || []).some((opt) => opt.value === abrValue)) {
+        abrSelect.value = abrValue;
+        updated = true;
+      }
+    }
+    if (sampleRateSelect && Number.isFinite(last.sampleRate)) {
+      const srValue = String(last.sampleRate);
+      if (Array.from(sampleRateSelect.options || []).some((opt) => opt.value === srValue)) {
+        sampleRateSelect.value = srValue;
+        updated = true;
+      }
+    }
+    if (videoQualitySelect && last.videoQuality && Array.from(videoQualitySelect.options || []).some((opt) => opt.value === last.videoQuality)) {
+      videoQualitySelect.value = last.videoQuality;
+      state.experience.videoQuality = videoQualitySelect.value || 'best';
+      updated = true;
+    }
+    if (updated) {
+      applyFormatPolicy();
+    }
   };
 
   $('#saveSettings').addEventListener('click', () => {
@@ -8763,6 +8958,42 @@ $('#queueList')?.addEventListener('click', (e) => {
   bindAccessibilityToggle('highContrast', accessHighContrast);
   bindAccessibilityToggle('largeText', accessLargeText);
   bindAccessibilityToggle('reduceMotion', accessReduceMotion);
+
+  if (prefConfirmAutoDownload) {
+    prefConfirmAutoDownload.addEventListener('change', () => {
+      state.preferences = {
+        ...state.preferences,
+        confirmAutoDownload: !!prefConfirmAutoDownload.checked,
+      };
+      persistState();
+    });
+  }
+
+  if (prefRememberFormat) {
+    prefRememberFormat.addEventListener('change', () => {
+      const remember = !!prefRememberFormat.checked;
+      let nextPrefs = {
+        ...state.preferences,
+        rememberLastFormat: remember,
+        lastFormat: remember ? state.preferences.lastFormat || null : null,
+      };
+      if (!remember) {
+        nextPrefs.lastFormat = null;
+      } else if (!nextPrefs.lastFormat) {
+        nextPrefs.lastFormat = {
+          format: formatSelect?.value || '',
+          abr: Number.isFinite(Number(abrSelect?.value)) ? Number(abrSelect.value) : null,
+          sampleRate: Number.isFinite(Number(sampleRateSelect?.value)) ? Number(sampleRateSelect.value) : null,
+          videoQuality: videoQualitySelect?.value || '',
+        };
+      }
+      state.preferences = nextPrefs;
+      persistState();
+      if (remember) {
+        applyStoredFormatPreference();
+      }
+    });
+  }
 
   // ===== URL helpers =====
   function parseTime(str){
@@ -10552,6 +10783,13 @@ $('#queueList')?.addEventListener('click', (e) => {
       overrideUrl = target;
     }
 
+    if (forceAutoDownload && state.preferences?.confirmAutoDownload) {
+      const allowAuto = window.confirm(translateMessage('Auto-download akan dimulai otomatis. Lanjutkan?'));
+      if (!allowAuto) {
+        forceAutoDownload = false;
+      }
+    }
+
     const url = (overrideUrl || urlInput?.value || '').trim();
     const keyword = keywordQuery || (!url ? (keywordInput?.value.trim() || '') : '');
     if (!url && !keyword) {
@@ -10651,6 +10889,23 @@ $('#queueList')?.addEventListener('click', (e) => {
     announceNarrator('Konversi dimulai, mohon tunggu.');
     startConvertProgressWatcher(progressId);
 
+    let captchaToken = null;
+    try {
+      captchaToken = await requestCaptchaToken('convert');
+      if (captchaToken) body.captchaToken = captchaToken;
+    } catch (err) {
+      const message = err?.message || translateMessage('Verifikasi captcha gagal. Silakan coba lagi.');
+      $('#status').textContent = message;
+      $('#loadingSpinner').style.display = 'none';
+      $('#resultWrap').hidden = true;
+      convertProgressAnimator.fail(message);
+      setToast(message);
+      announceNarrator(`Konversi dibatalkan: ${message}`);
+      stopConvertProgressWatcher();
+      convertProgressAnimator.hide();
+      return;
+    }
+
     try {
       const resp = await fetch(api('/api/convert'), {
         method: 'POST',
@@ -10728,6 +10983,18 @@ $('#queueList')?.addEventListener('click', (e) => {
         smartResume: convertData.smartResume ?? body.smartResume,
         soundEffect: convertData.soundEffect ?? body.soundEffect,
       });
+      if (state.preferences?.rememberLastFormat) {
+        state.preferences = {
+          ...state.preferences,
+          lastFormat: {
+            format: body.format,
+            abr: Number.isFinite(Number(body.abr)) ? Number(body.abr) : null,
+            sampleRate: Number.isFinite(Number(body.sampleRate)) ? Number(body.sampleRate) : null,
+            videoQuality: body.videoQuality || videoQualitySelect?.value || '',
+          },
+        };
+        persistState();
+      }
       if ($('#autoClear').checked && !overrideUrl) { $('#clearBtn').click(); }
     } catch (err) {
       $('#status').textContent = translateMessage(`Error: ${err.message}`);
@@ -10750,11 +11017,22 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   async function submitBackgroundJob(body){
     try {
+      const payload = { ...body };
+      let captchaToken = null;
+      try {
+        captchaToken = await requestCaptchaToken('background');
+        if (captchaToken) payload.captchaToken = captchaToken;
+      } catch (err) {
+        const message = err?.message || translateMessage('Verifikasi captcha gagal. Silakan coba lagi.');
+        updateAiStatus(message, 'danger');
+        setToast(message);
+        return;
+      }
       updateAiStatus('Mengirim ke background…', 'info');
       const resp = await fetch(api('/api/background'), {
         method: 'POST',
         headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
       const { data: payload } = await resolveJsonResponse(resp, {
         fallbackMessage: translateMessage('Gagal membuat job'),
@@ -10853,6 +11131,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (smartResumeToggle) body.smartResume = !!smartResumeToggle.checked;
 
     try {
+      const captchaToken = await requestCaptchaToken('playlist');
+      if (captchaToken) body.captchaToken = captchaToken;
       const { data: playlistData } = await postJson('/api/convert-playlist', body, {
         fallbackMessage: translateMessage('Gagal membuat ZIP'),
         logLabel: 'convert-playlist',
@@ -10876,6 +11156,18 @@ $('#queueList')?.addEventListener('click', (e) => {
         smartResume: body.smartResume,
         soundEffect: body.soundEffect,
       });
+      if (state.preferences?.rememberLastFormat) {
+        state.preferences = {
+          ...state.preferences,
+          lastFormat: {
+            format: body.format,
+            abr: Number.isFinite(Number(body.abr)) ? Number(body.abr) : null,
+            sampleRate: Number.isFinite(Number(body.sampleRate)) ? Number(body.sampleRate) : null,
+            videoQuality: videoQualitySelect?.value || '',
+          },
+        };
+        persistState();
+      }
       if($('#autoDownload').checked && playlistDownloadLink){ playlistDownloadLink.click(); }
       if($('#autoClear').checked){ queue.length = 0; renderQueue(); $('#playlist').value=''; }
     } catch(err){
@@ -11011,6 +11303,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     initWelcome();
     renderSpinWheel();
     loadSettings();
+    applyStoredFormatPreference();
     hydrateCachedUserSummary();
     loadAuthToken();
     fetchAuthConfig();
