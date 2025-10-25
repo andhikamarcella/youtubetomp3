@@ -85,6 +85,19 @@ export default function Home() {
 
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    console.log(
+      '[DEBUG] NEXT_PUBLIC_RECAPTCHA_SITE_KEY in runtime:',
+      recaptchaSiteKey || '(undefined)'
+    );
+    if (!recaptchaSiteKey) {
+      console.warn(
+        '[captcha] NEXT_PUBLIC_RECAPTCHA_SITE_KEY is missing. reCAPTCHA widgets will not render.'
+      );
+    }
+  }, [recaptchaSiteKey]);
+
   const getApiBase = () => {
     if (API_BASE) return API_BASE;
     if (typeof window !== 'undefined') return window.location.origin;
@@ -207,7 +220,14 @@ export default function Home() {
       if (!widget || typeof widget.executeAsync !== 'function') {
         throw new Error('captcha_unavailable');
       }
-      const captchaToken = await widget.executeAsync();
+
+      let captchaToken = null;
+      try {
+        captchaToken = await widget.executeAsync();
+      } catch (captchaError) {
+        console.error('Captcha execution failed:', captchaError);
+      }
+
       if (!captchaToken) {
         throw new Error('captcha_failed');
       }
