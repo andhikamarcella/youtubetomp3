@@ -387,8 +387,24 @@
 
   const updateBackendBadge = () => {
     const badge = $('#backendBadge');
+    if(!badge) return;
     const b = getBackend();
-    badge.textContent = b ? new URL(b).host : location.host;
+    if(!b){
+      badge.textContent = location.host;
+      badge.removeAttribute('data-invalid');
+      badge.removeAttribute('title');
+      return;
+    }
+    try {
+      const parsed = new URL(b);
+      badge.textContent = parsed.host;
+      badge.title = parsed.href;
+      badge.removeAttribute('data-invalid');
+    } catch {
+      badge.textContent = b;
+      badge.title = 'Backend URL tidak valid, menggunakan jalur relatif';
+      badge.setAttribute('data-invalid', '');
+    }
   };
 
   // ===== Queue =====
