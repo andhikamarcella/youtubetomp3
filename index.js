@@ -54,6 +54,8 @@ const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || "";
 const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "";
 const RECAPTCHA_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.RECAPTCHA_STRICT || ""));
 const isRecaptchaConfigured = Boolean(RECAPTCHA_SECRET_KEY && RECAPTCHA_SITE_KEY);
+const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
+const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -509,6 +511,140 @@ const createTimeoutController = (ms = 15000) => {
   const timer = setTimeout(() => controller.abort(), Math.max(1000, ms));
   if (typeof timer?.unref === "function") timer.unref();
   return { controller, timer };
+};
+
+const parseIso8601DurationSeconds = (value = "") => {
+  if (!value || typeof value !== "string") return null;
+  const match = value
+    .toUpperCase()
+    .match(/^P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/);
+  if (!match) return null;
+  const [, weeks, days, hours, minutes, seconds, fraction] = match;
+  const total =
+    (Number(weeks) || 0) * 604800 +
+    (Number(days) || 0) * 86400 +
+    (Number(hours) || 0) * 3600 +
+    (Number(minutes) || 0) * 60 +
+    (Number(seconds) || 0) +
+    (fraction ? Number(`0.${fraction}`) : 0);
+  return Number.isFinite(total) && total > 0 ? total : null;
+};
+
+const youtubeApiFetch = async (endpoint, params = {}, { timeout = 12000 } = {}) => {
+  if (!isYoutubeApiConfigured) return null;
+  const searchParams = new URLSearchParams({ key: YOUTUBE_API_KEY });
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value == null) return;
+    searchParams.set(key, String(value));
+  });
+  const url = `https://www.googleapis.com/youtube/v3/${endpoint}?${searchParams.toString()}`;
+  const timeoutCtrl = createTimeoutController(timeout);
+  try {
+    const response = await safeFetch(url, {
+      signal: timeoutCtrl?.controller?.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!response?.ok) {
+      const message = await response.text().catch(() => "");
+      console.warn(
+        `[youtube-api] ${endpoint} gagal (${response?.status || ""})`,
+        message ? message.slice(0, 200) : "",
+      );
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn(`[youtube-api] ${endpoint} error:`, err?.message || err);
+    return null;
+  } finally {
+    if (timeoutCtrl?.timer) clearTimeout(timeoutCtrl.timer);
+  }
+};
+
+const buildYoutubeEntryFromApiItem = (item) => {
+  if (!item) return null;
+  const snippet = item.snippet || {};
+  const details = item.contentDetails || {};
+  const id = typeof item.id === "string" ? item.id : item.id?.videoId || null;
+  if (!id) return null;
+  const thumbnails = snippet.thumbnails
+    ? Object.values(snippet.thumbnails)
+        .map((thumb) =>
+          thumb && thumb.url
+            ? {
+                url: String(thumb.url),
+                width: Number.isFinite(thumb.width) ? Number(thumb.width) : undefined,
+                height: Number.isFinite(thumb.height) ? Number(thumb.height) : undefined,
+              }
+            : null,
+        )
+        .filter(Boolean)
+    : [];
+  const duration = parseIso8601DurationSeconds(details.duration);
+  const entry = {
+    id,
+    title: snippet.title || "",
+    fulltitle: snippet.title || "",
+    channel: snippet.channelTitle || "",
+    uploader: snippet.channelTitle || "",
+    channel_id: snippet.channelId || "",
+    duration,
+    thumbnails,
+    tags: Array.isArray(snippet.tags) ? snippet.tags : undefined,
+    description: snippet.description || "",
+    extractor_key: "YouTube",
+    original_url: `https://www.youtube.com/watch?v=${id}`,
+    webpage_url: `https://www.youtube.com/watch?v=${id}`,
+  };
+  return entry;
+};
+
+const fetchYoutubeVideosByIds = async (ids = [], { language } = {}) => {
+  if (!isYoutubeApiConfigured) return [];
+  const unique = Array.from(new Set((ids || []).filter(Boolean)));
+  if (!unique.length) return [];
+  const chunks = [];
+  for (let i = 0; i < unique.length; i += 50) {
+    chunks.push(unique.slice(i, i + 50));
+  }
+  const results = [];
+  for (const batch of chunks) {
+    const params = { part: "snippet,contentDetails", id: batch.join(","), maxResults: String(batch.length) };
+    if (language) params.hl = language;
+    const data = await youtubeApiFetch("videos", params);
+    if (data?.items?.length) results.push(...data.items);
+  }
+  return results;
+};
+
+const fetchVideoInfoFromYoutubeApi = async ({ rawUrl, rawKeyword, language }) => {
+  if (!isYoutubeApiConfigured) return null;
+  const keyword = typeof rawKeyword === "string" ? rawKeyword.trim() : "";
+  let keywordUsed = false;
+  let videoId = extractYouTubeVideoId(rawUrl);
+
+  if (!videoId) {
+    if (!keyword) return null;
+    const params = {
+      part: "snippet",
+      type: "video",
+      maxResults: "1",
+      q: keyword,
+    };
+    if (language) params.relevanceLanguage = language;
+    const searchData = await youtubeApiFetch("search", params);
+    const item = searchData?.items?.find((entry) => entry?.id?.videoId);
+    if (!item) return null;
+    videoId = item.id.videoId;
+    keywordUsed = true;
+  }
+
+  if (!videoId) return null;
+  const [videoItem] = await fetchYoutubeVideosByIds([videoId], { language });
+  if (!videoItem) return null;
+  const entry = buildYoutubeEntryFromApiItem(videoItem);
+  if (!entry) return null;
+  return { entry, keywordUsed };
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1007,6 +1143,42 @@ const buildVideoMetadata = (entry = {}, { requestedUrl = "", keywordUsed = false
       cover,
     },
   };
+};
+
+const searchYoutubeVideosFromApi = async ({ query, limit, language } = {}) => {
+  if (!isYoutubeApiConfigured) return null;
+  const cleanQuery = typeof query === "string" ? query.trim() : "";
+  if (!cleanQuery) return [];
+  const max = clamp(Number(limit) || 6, 1, 15);
+  const params = {
+    part: "snippet",
+    type: "video",
+    maxResults: String(max),
+    q: cleanQuery,
+  };
+  if (language) params.relevanceLanguage = language;
+  const data = await youtubeApiFetch("search", params);
+  if (!data?.items?.length) return [];
+  const ids = data.items
+    .map((item) => item?.id?.videoId)
+    .filter((id) => typeof id === "string" && id);
+  if (!ids.length) return [];
+  const videos = await fetchYoutubeVideosByIds(ids, { language });
+  if (!videos.length) return [];
+  const map = new Map(videos.map((item) => [item.id, item]));
+  return data.items
+    .map((item) => {
+      const videoId = item?.id?.videoId;
+      if (!videoId) return null;
+      const videoItem = map.get(videoId);
+      if (!videoItem) return null;
+      const entry = buildYoutubeEntryFromApiItem(videoItem);
+      if (!entry) return null;
+      const meta = buildVideoMetadata(entry, { keywordUsed: true });
+      if (meta && entry.description) meta.description = entry.description;
+      return meta;
+    })
+    .filter(Boolean);
 };
 
 const buildYtDlpCandidates = () => {
@@ -1516,12 +1688,25 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   }
   args.push(target);
 
-  const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
-  const entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
+  let entry;
+  try {
+    const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
+    entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
+  } catch (err) {
+    const fallback = await fetchVideoInfoFromYoutubeApi({ rawUrl, rawKeyword, language }).catch(() => null);
+    if (!fallback?.entry) {
+      throw err;
+    }
+    entry = fallback.entry;
+    if (fallback.keywordUsed) keywordUsed = true;
+  }
   if (!entry) {
     throw new Error("Video tidak ditemukan");
   }
   const metadata = buildVideoMetadata(entry, { requestedUrl: rawUrl, keywordUsed });
+  if (metadata && entry.description && !metadata.description) {
+    metadata.description = entry.description;
+  }
   if (!metadata?.webpageUrl) {
     metadata.webpageUrl = rawUrl || metadata?.id ? `https://www.youtube.com/watch?v=${metadata.id}` : "";
   }
@@ -1578,13 +1763,21 @@ const searchYoutubeVideos = async ({ query, limit = 6, preferLang } = {}) => {
   }
   args.push(target);
 
-  const json = await runYtDlpJson(args, { label: "search" });
-  const entries = Array.isArray(json?.entries) ? json.entries : [];
-  return entries
-    .filter(Boolean)
-    .slice(0, clamped)
-    .map((entry) => buildVideoMetadata(entry, { keywordUsed: true }))
-    .filter(Boolean);
+  try {
+    const json = await runYtDlpJson(args, { label: "search" });
+    const entries = Array.isArray(json?.entries) ? json.entries : [];
+    return entries
+      .filter(Boolean)
+      .slice(0, clamped)
+      .map((entry) => buildVideoMetadata(entry, { keywordUsed: true }))
+      .filter(Boolean);
+  } catch (err) {
+    const fallback = await searchYoutubeVideosFromApi({ query: rawQuery, limit: clamped, language }).catch(() => null);
+    if (fallback !== null) {
+      return fallback;
+    }
+    throw err;
+  }
 };
 
 const toPositiveInt = (value) => {
