@@ -17,6 +17,7 @@ if (!workerSecret) {
 const selfUrl = process.env.SELF_URL ?? '';
 const normalizedSelfUrl = selfUrl.replace(/\/$/, '');
 
+// TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
 const JOBS = Object.create(null);
 
 const FORMAT_CONFIG = {

@@ -78,6 +78,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // TODO: Apply rate limiting / abuse controls for job creation.
+  // TODO: Ensure /api/job-status, /api/job-file, and /api/upload-to-drive also proxy to the worker
+  //       with WORKER_API_BASE/WORKER_SHARED_SECRET and verify the job belongs to the current user.
 
   const workerUrl = `${workerBase.replace(/\/$/, '')}/create-job`;
 
