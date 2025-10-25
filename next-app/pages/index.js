@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
+
+const ReCAPTCHA = dynamic(() => import('react-google-recaptcha'), { ssr: false });
 
 const API_BASE = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL || '').replace(/\/$/, '');
 const LEGACY_UI_URL = process.env.NEXT_PUBLIC_LEGACY_UI_URL || '/';
@@ -26,6 +29,38 @@ const formatOptions = [
   { value: 'mkv', label: 'MKV Video' },
 ];
 
+const backgroundJobFormats = [
+  { value: 'mp3', label: 'MP3' },
+  { value: 'm4a', label: 'M4A' },
+  { value: 'wav', label: 'WAV' },
+];
+
+function extractYouTubeVideoId(input) {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
+  try {
+    const url = new URL(trimmed);
+    if (url.searchParams.has('v')) {
+      const candidate = url.searchParams.get('v');
+      if (candidate && /^[a-zA-Z0-9_-]{11}$/.test(candidate)) {
+        return candidate;
+      }
+    }
+    if (url.hostname === 'youtu.be') {
+      const pathId = url.pathname.replace(/^\//, '').slice(0, 11);
+      if (pathId && /^[a-zA-Z0-9_-]{11}$/.test(pathId)) {
+        return pathId;
+      }
+    }
+  } catch (err) {
+    // Ignore URL parsing failures; we will fall back to returning null.
+  }
+  return null;
+}
+
 export default function Home() {
   const [convertUrl, setConvertUrl] = useState('');
   const [convertKeyword, setConvertKeyword] = useState('');
@@ -38,6 +73,17 @@ export default function Home() {
 
   const [jobs, setJobs] = useState([]);
   const [jobState, setJobState] = useState({ status: 'idle', error: null });
+  const [jobVideoInput, setJobVideoInput] = useState('');
+  const [jobFormat, setJobFormat] = useState(backgroundJobFormats[0].value);
+  const [createJobState, setCreateJobState] = useState({ status: 'idle', error: null, jobId: null });
+  const recaptchaRef = useRef(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 
   const getApiBase = () => {
     if (API_BASE) return API_BASE;
@@ -135,6 +181,74 @@ export default function Home() {
       setJobState({ status: 'success', error: null });
     } catch (err) {
       setJobState({ status: 'error', error: err.message });
+    }
+  };
+
+  const handleCreateJob = async (event) => {
+    event.preventDefault();
+    if (!jobVideoInput.trim()) {
+      setCreateJobState({ status: 'error', error: 'Masukkan URL atau ID video terlebih dahulu.', jobId: null });
+      return;
+    }
+    const videoId = extractYouTubeVideoId(jobVideoInput);
+    if (!videoId) {
+      setCreateJobState({ status: 'error', error: 'Tidak bisa menemukan ID video YouTube yang valid.', jobId: null });
+      return;
+    }
+    if (!recaptchaSiteKey) {
+      setCreateJobState({ status: 'error', error: 'Captcha belum dikonfigurasi. Hubungi admin.', jobId: null });
+      return;
+    }
+
+    setCreateJobState({ status: 'loading', error: null, jobId: null });
+
+    try {
+      const widget = recaptchaRef.current;
+      if (!widget || typeof widget.executeAsync !== 'function') {
+        throw new Error('captcha_unavailable');
+      }
+      const captchaToken = await widget.executeAsync();
+      if (!captchaToken) {
+        throw new Error('captcha_failed');
+      }
+
+      const payload = await fetchJson('/api/create-job', {
+        method: 'POST',
+        body: JSON.stringify({
+          videoId,
+          format: jobFormat,
+          captchaToken,
+        }),
+      });
+
+      if (!payload?.jobId) {
+        throw new Error('worker_response_invalid');
+      }
+
+      setCreateJobState({ status: 'success', error: null, jobId: payload.jobId });
+      setJobVideoInput('');
+      refreshJobs().catch(() => {});
+    } catch (err) {
+      console.error('Failed to create background job', err);
+      let message = 'Gagal memulai job latar.';
+      if (err?.payload?.error) {
+        message = err.payload.error;
+      } else if (err?.message === 'captcha_unavailable') {
+        message = 'Captcha belum siap. Muat ulang halaman kemudian coba lagi.';
+      } else if (err?.message === 'captcha_failed') {
+        message = 'Verifikasi captcha gagal. Silakan coba lagi.';
+      } else if (err?.message === 'worker_response_invalid') {
+        message = 'Respons worker tidak valid.';
+      } else if (err?.message) {
+        message = err.message;
+      }
+      setCreateJobState({ status: 'error', error: message, jobId: null });
+    } finally {
+      try {
+        recaptchaRef.current?.reset();
+      } catch (resetError) {
+        // Ignore reset failures.
+      }
     }
   };
 
@@ -451,6 +565,81 @@ export default function Home() {
               <p className="text-secondary">
                 Pantau progres konversi latar dan unduh file yang sudah siap.
               </p>
+              <form className="row g-3 mb-4" onSubmit={handleCreateJob}>
+                <div className="col-12">
+                  <label htmlFor="background-video" className="form-label">
+                    Video YouTube
+                  </label>
+                  <input
+                    id="background-video"
+                    type="text"
+                    className="form-control"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={jobVideoInput}
+                    onChange={(event) => setJobVideoInput(event.target.value)}
+                  />
+                  <small className="text-secondary d-block mt-1">
+                    Masukkan URL atau ID video YouTube yang ingin dikonversi.
+                  </small>
+                </div>
+                <div className="col-md-6">
+                  <label htmlFor="background-format" className="form-label">
+                    Format audio
+                  </label>
+                  <select
+                    id="background-format"
+                    className="form-select"
+                    value={jobFormat}
+                    onChange={(event) => setJobFormat(event.target.value)}
+                  >
+                    {backgroundJobFormats.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-6 d-flex align-items-end">
+                  <button
+                    type="submit"
+                    className="btn btn-success w-100"
+                    disabled={createJobState.status === 'loading'}
+                  >
+                    {createJobState.status === 'loading' ? (
+                      <span className="d-flex align-items-center justify-content-center gap-2">
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                        Memulai...
+                      </span>
+                    ) : (
+                      'Mulai job latar'
+                    )}
+                  </button>
+                </div>
+                {createJobState.status === 'error' && (
+                  <div className="col-12">
+                    <span className="text-danger small">{createJobState.error}</span>
+                  </div>
+                )}
+                {createJobState.status === 'success' && createJobState.jobId && (
+                  <div className="col-12">
+                    <span className="text-success small">Job dimulai. ID: {createJobState.jobId}</span>
+                  </div>
+                )}
+              </form>
+              {isClient && recaptchaSiteKey ? (
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={recaptchaSiteKey}
+                  size="invisible"
+                  badge="bottomright"
+                />
+              ) : (
+                !recaptchaSiteKey && (
+                  <p className="text-warning small">
+                    reCAPTCHA belum dikonfigurasi sehingga job latar tidak dapat dimulai.
+                  </p>
+                )
+              )}
               {jobState.status === 'error' && <div className="alert alert-danger">{jobState.error}</div>}
               {jobState.status === 'loading' && (
                 <div className="d-flex align-items-center gap-2 text-secondary">
