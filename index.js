@@ -9,7 +9,6 @@ import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
-import { OAuth2Client } from "google-auth-library";
 import {
   upsertGoogleUser,
   recordConversionForUser,
@@ -21,6 +20,7 @@ import {
   getUserById,
   revokeUserSession,
   claimCheatForUser,
+  recordXpEventForUser,
 } from "./user_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
@@ -46,7 +46,7 @@ try {
 }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const googleOAuthClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+const isGoogleLoginConfigured = Boolean(GOOGLE_CLIENT_ID);
 const USER_SESSION_SECRET = process.env.USER_SESSION_SECRET || "dev-user-session-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CHEATS_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ENABLE_CHEATS || ""));
@@ -197,6 +197,41 @@ const createResponseObject = (urlStr, statusCode, statusMessage, headersObj, bod
     arrayBuffer: async () => arrayBuf,
     clone: () => createResponseObject(urlStr, statusCode, statusMessage, headersObj, Buffer.from(baseBuffer)),
   };
+};
+
+const verifyGoogleIdToken = async (credential) => {
+  if (!isGoogleLoginConfigured) {
+    throw new Error("Login Google belum dikonfigurasi");
+  }
+  const token = typeof credential === "string" ? credential.trim() : "";
+  if (!token) {
+    throw new Error("Token Google tidak valid");
+  }
+
+  const url = new URL("https://oauth2.googleapis.com/tokeninfo");
+  url.searchParams.set("id_token", token);
+
+  try {
+    const response = await safeFetch(url.toString(), {
+      headers: { "User-Agent": "youtubemp3/1.0" },
+    });
+    if (!response.ok) {
+      const details = await response.text().catch(() => "");
+      const err = new Error("Token Google tidak valid");
+      err.details = details;
+      throw err;
+    }
+    const payload = await response.json().catch(() => null);
+    if (!payload?.sub || payload.aud !== GOOGLE_CLIENT_ID) {
+      throw new Error("Token Google tidak valid");
+    }
+    return payload;
+  } catch (err) {
+    if (err?.message === "Token Google tidak valid") throw err;
+    const wrapped = new Error("Validasi token Google gagal");
+    wrapped.cause = err;
+    throw wrapped;
+  }
 };
 
 const createFetchFallback = () => {
@@ -5556,7 +5591,7 @@ app.use("/public", express.static(PUBLIC_DIR));
 
 // ==== User accounts ====
 app.post("/api/auth/google", async (req, res) => {
-  if (!googleOAuthClient || !GOOGLE_CLIENT_ID) {
+  if (!isGoogleLoginConfigured) {
     return res.status(503).json({ error: "Login Google belum dikonfigurasi" });
   }
   try {
@@ -5565,14 +5600,7 @@ app.post("/api/auth/google", async (req, res) => {
     if (!credential || typeof credential !== "string") {
       return res.status(400).json({ error: "Token Google tidak valid" });
     }
-    const ticket = await googleOAuthClient.verifyIdToken({
-      idToken: credential,
-      audience: GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    if (!payload?.sub) {
-      return res.status(400).json({ error: "Token Google tidak valid" });
-    }
+    const payload = await verifyGoogleIdToken(credential);
     const summary = await upsertGoogleUser({
       googleId: payload.sub,
       email: payload.email,
@@ -5625,6 +5653,59 @@ app.post("/api/cheats/claim", async (req, res) => {
   } catch (err) {
     const message = err?.message || "Cheat gagal";
     const status = /wajib|dikenali|pengguna/i.test(message) ? 400 : 500;
+    return res.status(status).json({ error: message });
+  }
+});
+
+app.post("/api/users/:id/xp", async (req, res) => {
+  const sessionUser = await requireUserSession(req, res);
+  if (!sessionUser) return;
+
+  const targetId = String(req.params.id || "").trim();
+  if (!targetId) {
+    return res.status(400).json({ error: "User ID tidak valid" });
+  }
+  if (sessionUser.id !== targetId && sessionUser.role !== "admin") {
+    return res.status(403).json({ error: "Tidak diizinkan" });
+  }
+
+  const { delta, reason, event_id, eventId } = req.body || {};
+  const numericDelta = Number(delta);
+  if (!Number.isFinite(numericDelta)) {
+    return res.status(400).json({ error: "Delta XP tidak valid" });
+  }
+
+  const roundedDelta = Math.trunc(numericDelta);
+  const eventKey = typeof event_id === "string" && event_id.trim()
+    ? event_id.trim()
+    : typeof eventId === "string" && eventId.trim()
+    ? eventId.trim()
+    : `client-sync:${targetId}:${Date.now()}`;
+  const reasonText = typeof reason === "string" && reason.trim() ? reason.trim() : "client-sync";
+
+  try {
+    let applied = false;
+    let xpResult = null;
+    if (roundedDelta !== 0) {
+      xpResult = await recordXpEventForUser(targetId, {
+        eventId: eventKey,
+        delta: roundedDelta,
+        reason: reasonText,
+        metadata: { source: "client-sync" },
+      });
+      applied = Boolean(xpResult?.applied);
+    }
+    const summary = await buildUserSummaryById(targetId);
+    return res.json({
+      ok: true,
+      applied,
+      xp: xpResult?.xp ?? summary?.xp ?? 0,
+      level: xpResult?.level ?? summary?.level ?? 1,
+      user: summary,
+    });
+  } catch (err) {
+    const message = err?.message || "Gagal memperbarui XP";
+    const status = /wajib|tidak valid/i.test(message) ? 400 : 500;
     return res.status(status).json({ error: message });
   }
 });

@@ -2638,6 +2638,42 @@
     return resolveJsonResponse(resp, options);
   };
 
+  const xpSyncTracker = new Set();
+
+  const syncServerXp = async (userId, targetXp, serverXp) => {
+    if (!userId || !state.auth.token) return;
+    const numericTarget = Math.max(0, Math.round(Number(targetXp) || 0));
+    const numericServer = Math.max(0, Math.round(Number(serverXp) || 0));
+    const delta = numericTarget - numericServer;
+    if (!Number.isFinite(delta) || delta <= 0) return;
+
+    const eventId = `client-sync:${userId}:${numericTarget}`;
+    if (xpSyncTracker.has(eventId)) return;
+    xpSyncTracker.add(eventId);
+
+    try {
+      const { data } = await postJson(`/api/users/${encodeURIComponent(userId)}/xp`, {
+        delta,
+        reason: 'client-sync',
+        event_id: eventId,
+      }, {
+        fallbackMessage: translateMessage('Sinkronisasi XP gagal'),
+        logLabel: 'xp-sync',
+      });
+      if (data?.user) {
+        applyUserSummary(data.user, { origin: 'sync' });
+      } else if (Number.isFinite(Number(data?.xp))) {
+        state.experience.points = Math.max(state.experience.points || 0, Number(data.xp));
+      }
+    } catch (err) {
+      console.warn('Sinkronisasi XP gagal', err);
+      xpSyncTracker.delete(eventId);
+      return;
+    }
+
+    xpSyncTracker.delete(eventId);
+  };
+
   const createDebounced = (fn, delay = 200) => {
     let timer = null;
     return (...args) => {
@@ -4559,7 +4595,7 @@
 
   function hydrateCachedUserSummary() {
     const cached = readCachedUserSummary();
-    if (cached) applyUserSummary(cached);
+    if (cached) applyUserSummary(cached, { origin: 'cache' });
   }
 
   function persistAuthToken(token) {
@@ -4662,7 +4698,7 @@
         fallbackMessage: translateMessage('Cheat gagal'),
         logLabel: 'cheat-claim',
       });
-      if (data?.user) applyUserSummary(data.user);
+      if (data?.user) applyUserSummary(data.user, { origin: 'server' });
       if (Array.isArray(data?.badgesAwarded)) {
         data.badgesAwarded.forEach((badge) => {
           const badgeId = badge?.id || badge;
@@ -4708,9 +4744,13 @@
     }
   }
 
-  function applyUserSummary(summary) {
+  function applyUserSummary(summary, options = {}) {
+    const origin = options?.origin || 'unknown';
+    const considerServerDiff = origin === 'server' || origin === 'sync';
     const previousSummary = state.auth.user;
     let nextSummary = summary ? { ...summary } : null;
+    let targetServerXp = 0;
+    let shouldSyncServerXp = false;
 
     if (nextSummary) {
       const cachedSummary = readCachedUserSummary({ silent: true });
@@ -4749,6 +4789,14 @@
       }
       if (cachedSummary && cachedSummary.id === nextSummary.id) {
         mergeCandidate(cachedSummary);
+      }
+
+      if (considerServerDiff && summary && summary.id === nextSummary.id) {
+        const serverXp = Number(summary.xp);
+        if (Number.isFinite(serverXp) && bestXp > serverXp) {
+          shouldSyncServerXp = true;
+          targetServerXp = serverXp;
+        }
       }
 
       const storedPoints = Number(state.experience.points) || 0;
@@ -4807,6 +4855,13 @@
     updateCheatPanelVisibility();
     ensureGoogleButton();
     persistState();
+
+    if (shouldSyncServerXp && nextSummary?.id) {
+      const finalXp = Number(nextSummary.xp) || 0;
+      window.setTimeout(() => {
+        syncServerXp(nextSummary.id, finalXp, targetServerXp);
+      }, 80);
+    }
   }
 
   function clearGooglePollTimer() {
@@ -4856,7 +4911,7 @@
         logLabel: 'auth-login',
       });
       if (data?.token) persistAuthToken(data.token);
-      if (data?.user) applyUserSummary(data.user);
+      if (data?.user) applyUserSummary(data.user, { origin: 'server' });
       setToast(translateMessage('Login berhasil'));
       fetchUserSession({ silent: true });
     } catch (err) {
@@ -4995,7 +5050,7 @@
         fallbackMessage: translateMessage('Gagal memuat profil'),
         logLabel: 'auth-session',
       });
-      applyUserSummary(data?.user || null);
+      applyUserSummary(data?.user || null, { origin: 'server' });
       return data?.user || null;
     } catch (err) {
       if (err?.status === 401) {
@@ -10299,7 +10354,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       renderRingtoneResults(Array.isArray(convertData.ringtones) ? convertData.ringtones : []);
 
       if (convertData.userProgress?.summary) {
-        applyUserSummary(convertData.userProgress.summary);
+        applyUserSummary(convertData.userProgress.summary, { origin: 'server' });
         const xpGain = Number(convertData.userProgress.xpGain) || 0;
         if (xpGain > 0) showRewardToast(`+${xpGain} XP · Cloud sync`);
         if (Array.isArray(convertData.userProgress.badgesAwarded)) {
@@ -10471,7 +10526,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       showPlaylistResult(playlistData, items.length);
       setToast(`Playlist ZIP siap (${items.length} file)`);
       if (playlistData?.user) {
-        applyUserSummary(playlistData.user);
+        applyUserSummary(playlistData.user, { origin: 'server' });
         showRewardToast(translateMessage('XP tersinkronisasi'));
       } else if (!state.auth?.user) {
         const xpGain = Math.max(estimateXpFromConversion(body, {}), 12) + Math.max(0, items.length - 1) * 4;
