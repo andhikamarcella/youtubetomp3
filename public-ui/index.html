@@ -584,6 +584,10 @@
           <i class="bi bi-download"></i>
           <span class="d-none d-sm-inline ms-1">Install</span>
         </button>
+        <button class="btn btn-outline-info assistant-launcher" id="assistantNavBtn" type="button" data-launch="nav">
+          <i class="bi bi-robot"></i>
+          <span class="d-none d-sm-inline ms-1" data-i18n="navGemini">Gemini AI</span>
+        </button>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
@@ -2113,6 +2117,7 @@
       navConverter: 'Converter',
       navExperience: 'Experience',
       navProfile: 'Profil',
+      navGemini: 'Gemini AI',
       sectionTitleConverter: 'Converter',
       sectionSubtitleConverter: 'Konversi video lebih cepat & stabil.',
       sectionTitleExperience: 'Experience Hub',
@@ -2162,6 +2167,7 @@
       navConverter: 'Converter',
       navExperience: 'Experience',
       navProfile: 'Profile',
+      navGemini: 'Gemini AI',
       sectionTitleConverter: 'Converter',
       sectionSubtitleConverter: 'Convert videos faster & more reliably.',
       sectionTitleExperience: 'Experience Hub',
@@ -4537,17 +4543,23 @@
     }
   }
 
-  function hydrateCachedUserSummary() {
+  function readCachedUserSummary({ silent = false } = {}) {
     try {
       const cached = localStorage.getItem(AUTH_SUMMARY_KEY);
-      if (!cached) return;
+      if (!cached) return null;
       const parsed = JSON.parse(cached);
       if (parsed && typeof parsed === 'object') {
-        applyUserSummary(parsed);
+        return parsed;
       }
     } catch (err) {
-      console.warn('Gagal memuat ringkasan akun tersimpan', err);
+      if (!silent) console.warn('Gagal memuat ringkasan akun tersimpan', err);
     }
+    return null;
+  }
+
+  function hydrateCachedUserSummary() {
+    const cached = readCachedUserSummary();
+    if (cached) applyUserSummary(cached);
   }
 
   function persistAuthToken(token) {
@@ -4700,25 +4712,70 @@
     const previousSummary = state.auth.user;
     let nextSummary = summary ? { ...summary } : null;
 
-    if (nextSummary && previousSummary && previousSummary.id === nextSummary.id) {
-      const prevXp = Number(previousSummary.xp) || 0;
-      const nextXp = Number(nextSummary.xp) || 0;
-      if (prevXp > nextXp) {
-        nextSummary.xp = prevXp;
-        const computedLevel = computeLevelFromXp(prevXp);
-        const prevLevel = Number(previousSummary.level) || 1;
-        const nextLevel = Number(nextSummary.level) || 1;
-        nextSummary.level = Math.max(computedLevel, prevLevel, nextLevel);
-        const prevBadges = Array.isArray(previousSummary.badges) ? previousSummary.badges : [];
-        const nextBadges = Array.isArray(nextSummary.badges) ? nextSummary.badges : [];
-        nextSummary.badges = Array.from(new Set([...nextBadges, ...prevBadges]));
-        const prevConversions = Number(previousSummary.totalConversions) || 0;
-        const nextConversions = Number(nextSummary.totalConversions) || 0;
-        nextSummary.totalConversions = Math.max(prevConversions, nextConversions);
-        const prevMinutes = Number(previousSummary.totalMinutes) || 0;
-        const nextMinutes = Number(nextSummary.totalMinutes) || 0;
-        nextSummary.totalMinutes = Math.max(prevMinutes, nextMinutes);
+    if (nextSummary) {
+      const cachedSummary = readCachedUserSummary({ silent: true });
+      const badgePool = Array.isArray(nextSummary.badges) ? [...nextSummary.badges] : [];
+      let bestXp = Number(nextSummary.xp) || 0;
+      let bestLevel = Number(nextSummary.level) || 0;
+      let bestConversions = Number(nextSummary.totalConversions) || 0;
+      let bestMinutes = Number(nextSummary.totalMinutes) || 0;
+
+      const mergeCandidate = (candidate, { enforceId = true } = {}) => {
+        if (!candidate) return;
+        if (enforceId && candidate.id && candidate.id !== nextSummary.id) return;
+        const candidateXp = Number(candidate.xp);
+        if (Number.isFinite(candidateXp) && candidateXp > bestXp) {
+          bestXp = candidateXp;
+        }
+        const candidateLevel = Number(candidate.level);
+        if (Number.isFinite(candidateLevel)) {
+          bestLevel = Math.max(bestLevel, candidateLevel);
+        }
+        if (Array.isArray(candidate.badges)) {
+          candidate.badges.forEach((badge) => badgePool.push(badge));
+        }
+        const candidateConversions = Number(candidate.totalConversions);
+        if (Number.isFinite(candidateConversions) && candidateConversions > bestConversions) {
+          bestConversions = candidateConversions;
+        }
+        const candidateMinutes = Number(candidate.totalMinutes);
+        if (Number.isFinite(candidateMinutes) && candidateMinutes > bestMinutes) {
+          bestMinutes = candidateMinutes;
+        }
+      };
+
+      if (previousSummary && previousSummary.id === nextSummary.id) {
+        mergeCandidate(previousSummary);
       }
+      if (cachedSummary && cachedSummary.id === nextSummary.id) {
+        mergeCandidate(cachedSummary);
+      }
+
+      const storedPoints = Number(state.experience.points) || 0;
+      const hasExperienceExtras =
+        (Array.isArray(state.experience.badges) && state.experience.badges.length > 0) ||
+        Number(state.experience.totalConversions) > 0 ||
+        Number(state.experience.totalMinutes) > 0;
+      if (storedPoints > 0 || hasExperienceExtras) {
+        mergeCandidate(
+          {
+            xp: storedPoints,
+            level: computeLevelFromXp(storedPoints),
+            badges: state.experience.badges || [],
+            totalConversions: state.experience.totalConversions,
+            totalMinutes: state.experience.totalMinutes,
+          },
+          { enforceId: false }
+        );
+      }
+
+      const derivedLevel = computeLevelFromXp(bestXp);
+      bestLevel = Math.max(bestLevel, derivedLevel || 1);
+      nextSummary.xp = bestXp;
+      nextSummary.level = bestLevel;
+      nextSummary.totalConversions = bestConversions;
+      nextSummary.totalMinutes = bestMinutes;
+      nextSummary.badges = Array.from(new Set(badgePool));
     }
 
     state.auth.user = nextSummary;
