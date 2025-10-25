@@ -13,6 +13,25 @@ export interface XpMutationResult {
   createdEvent: boolean;
 }
 
+function parsePremiumMultiplier(): number {
+  const raw = process.env.XP_MULTIPLIER_PREMIUM;
+  if (!raw) {
+    return 1;
+  }
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1;
+  }
+  return parsed;
+}
+
+export function getXpMultiplierForRole(role?: string): number {
+  if (role === 'premium') {
+    return parsePremiumMultiplier();
+  }
+  return 1;
+}
+
 export async function applyXpEvent({ userId, delta, reason, eventId }: XpEventInput, client?: PoolClient): Promise<XpMutationResult> {
   if (!Number.isFinite(delta)) {
     throw new Error('delta must be a finite number');

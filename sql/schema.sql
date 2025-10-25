@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS cheat_claims (
 CREATE TABLE IF NOT EXISTS conversions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  job_id TEXT NOT NULL,
+  job_id TEXT NOT NULL UNIQUE,
   source_video_id TEXT NOT NULL,
   format TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

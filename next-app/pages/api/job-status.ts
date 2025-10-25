@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionUser } from '../../lib/auth';
+import { assertJobOwnership } from '../../lib/conversions';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -22,7 +23,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing jobId' });
   }
 
-  // TODO: Verify that the requested jobId belongs to the authenticated user.
+  try {
+    await assertJobOwnership(jobId, session.id);
+  } catch (error: any) {
+    const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
+    return res.status(status).json({ error: status === 404 ? 'Job not found' : 'Forbidden' });
+  }
+
   // TODO: Apply rate limiting to job status polling.
 
   try {

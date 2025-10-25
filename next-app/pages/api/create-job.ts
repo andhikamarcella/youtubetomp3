@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionUser } from '../../lib/auth';
 import { withTransaction } from '../../lib/db';
-import { applyXpEvent } from '../../lib/xp';
+import { applyXpEvent, getXpMultiplierForRole } from '../../lib/xp';
 
 const ALLOWED_FORMATS = new Set(['mp3', 'm4a', 'wav']);
 
@@ -106,12 +106,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await withTransaction(async (client) => {
       await client.query(
         `INSERT INTO conversions (user_id, job_id, source_video_id, format)
-         VALUES ($1, $2, $3, $4)`,
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (job_id) DO NOTHING`,
         [session.id, jobId, videoId, format]
       );
 
-      const xpDelta = 25; // Base XP for creating a job.
-      // TODO: If user.role === 'premium', multiply xpDelta by XP_MULTIPLIER_PREMIUM env var.
+      const baseXp = 25; // Base XP for creating a job.
+      const multiplier = getXpMultiplierForRole(session.role);
+      const xpDelta = Math.max(1, Math.round(baseXp * multiplier));
       // TODO: Add streak bonus XP calculations.
       await applyXpEvent(
         {

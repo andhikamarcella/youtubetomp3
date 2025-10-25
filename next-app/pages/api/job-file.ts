@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionUser } from '../../lib/auth';
+import { assertJobOwnership } from '../../lib/conversions';
 
 export const config = {
   api: {
@@ -28,7 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing jobId' });
   }
 
-  // TODO: Verify that the jobId belongs to the authenticated user using the conversions table.
+  try {
+    await assertJobOwnership(jobId, session.id);
+  } catch (error: any) {
+    const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
+    return res.status(status).json({ error: status === 404 ? 'Job not found' : 'Forbidden' });
+  }
 
   const targetUrl = `${workerBase.replace(/\/$/, '')}/file/${jobId}`;
   res.writeHead(302, { Location: targetUrl });

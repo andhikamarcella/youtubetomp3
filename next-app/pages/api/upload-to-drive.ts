@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionUser } from '../../lib/auth';
 import { getPool } from '../../lib/db';
+import { assertJobOwnership } from '../../lib/conversions';
 
 interface UploadBody {
   jobId?: string;
@@ -52,12 +53,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: 'Missing drive.file scope' });
     }
 
-    if (tokenRow.expires_at && tokenRow.expires_at < new Date()) {
-      // TODO: Refresh the Google access token using the stored refresh_token.
-      return res.status(401).json({ error: 'Google token expired' });
+    let accessToken = tokenRow.access_token;
+    let refreshToken = tokenRow.refresh_token;
+
+    if (tokenRow.expires_at && tokenRow.expires_at.getTime() - Date.now() < 60_000) {
+      const refreshed = await refreshGoogleToken(session.id, refreshToken);
+      if (!refreshed) {
+        return res.status(401).json({ error: 'Google token expired' });
+      }
+      accessToken = refreshed.accessToken;
+      refreshToken = refreshed.refreshToken ?? refreshToken;
     }
 
-    // TODO: Verify that the requested jobId belongs to the authenticated user.
+    try {
+      await assertJobOwnership(jobId, session.id);
+    } catch (error: any) {
+      const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
+      return res.status(status).json({ error: status === 404 ? 'Job not found' : 'Forbidden' });
+    }
 
     const workerUrl = `${workerBase.replace(/\/$/, '')}/final-url/${jobId}`;
     const workerResponse = await fetch(workerUrl);
@@ -82,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(fileResponse.status).json({ error: 'Unable to download file from worker' });
     }
 
-    const fileBuffer = Buffer.from(await fileResponse.arrayBuffer());
+    const fileArrayBuffer = await fileResponse.arrayBuffer();
     const contentType = fileResponse.headers.get('content-type') ?? 'application/octet-stream';
     const finalName = filename ?? workerJson.suggestedName ?? `${jobId}.mp3`;
 
@@ -92,12 +105,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }), 'metadata.json');
-    form.append('file', new Blob([fileBuffer], { type: contentType }), finalName);
+    form.append('file', new Blob([fileArrayBuffer], { type: contentType }), finalName);
 
     const driveResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${tokenRow.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: form,
     });
@@ -126,5 +139,60 @@ function tryParseJson(raw: string): any {
     return JSON.parse(raw);
   } catch (error) {
     return { raw };
+  }
+}
+
+async function refreshGoogleToken(
+  userId: string,
+  refreshToken: string | null | undefined
+): Promise<{ accessToken: string; refreshToken?: string | null } | null> {
+  if (!refreshToken) {
+    return null;
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.warn('Google token refresh requested but client credentials are missing');
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }).toString(),
+    });
+
+    const json = await response.json();
+    if (!response.ok || !json.access_token) {
+      console.error('Failed to refresh Google token', response.status, json);
+      return null;
+    }
+
+    const expiresAt = typeof json.expires_in === 'number'
+      ? new Date(Date.now() + json.expires_in * 1000)
+      : null;
+
+    const pool = getPool();
+    await pool.query(
+      `UPDATE user_tokens
+          SET access_token = $1,
+              refresh_token = COALESCE($2, refresh_token),
+              expires_at = $3,
+              updated_at = NOW()
+        WHERE user_id = $4 AND provider = 'google'`,
+      [json.access_token, json.refresh_token ?? null, expiresAt, userId]
+    );
+
+    return { accessToken: json.access_token, refreshToken: json.refresh_token ?? refreshToken };
+  } catch (error) {
+    console.error('Unexpected error refreshing Google token', error);
+    return null;
   }
 }
