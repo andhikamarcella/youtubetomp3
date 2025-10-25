@@ -2,12 +2,14 @@
   "name": "ytmp3-backend",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "migrate:xp": "node scripts/migrate_xp_events.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "nanoid": "^5.1.5"
+    "nanoid": "^5.1.5",
+    "nodemailer": "^6.9.15"
   },
   "version": "1.0.0",
   "description": "",
