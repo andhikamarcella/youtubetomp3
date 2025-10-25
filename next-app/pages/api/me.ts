@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       avatar_url: userRecord.avatar_url,
       role: userRecord.role,
       current_xp: userRecord.current_xp,
+      // TODO: Include daily streaks, premium entitlement, and plan limits once available.
     });
   } catch (error) {
     console.error('/api/me error', error);

@@ -15,8 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const workerBase = process.env.WORKER_API_BASE;
-  if (!workerBase) {
-    return res.status(500).json({ error: 'WORKER_API_BASE not configured' });
+  const workerSecret = process.env.WORKER_SHARED_SECRET;
+  if (!workerBase || !workerSecret) {
+    return res.status(500).json({ error: 'Worker configuration missing' });
   }
 
   const session = await getSessionUser(req);
@@ -66,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+      // TODO: Allow privileged support roles to override ownership checks when assisting users.
       await assertJobOwnership(jobId, session.id);
     } catch (error: any) {
       const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
@@ -73,7 +75,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const workerUrl = `${workerBase.replace(/\/$/, '')}/final-url/${jobId}`;
-    const workerResponse = await fetch(workerUrl);
+    const workerResponse = await fetch(workerUrl, {
+      headers: {
+        Authorization: `Bearer ${workerSecret}`,
+      },
+    });
     if (!workerResponse.ok) {
       const text = await workerResponse.text();
       console.error('Worker final-url failed', workerResponse.status, text);
@@ -83,6 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const workerJson = tryParseJson(await workerResponse.text()) as {
       downloadUrl?: string;
       suggestedName?: string;
+      mimeType?: string;
     };
     if (!workerJson.downloadUrl) {
       return res.status(502).json({ error: 'Worker response missing downloadUrl' });
@@ -96,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const fileArrayBuffer = await fileResponse.arrayBuffer();
-    const contentType = fileResponse.headers.get('content-type') ?? 'application/octet-stream';
+    const contentType = workerJson.mimeType ?? fileResponse.headers.get('content-type') ?? 'application/octet-stream';
     const finalName = filename ?? workerJson.suggestedName ?? `${jobId}.mp3`;
 
     const metadata = {
@@ -184,8 +191,7 @@ async function refreshGoogleToken(
       `UPDATE user_tokens
           SET access_token = $1,
               refresh_token = COALESCE($2, refresh_token),
-              expires_at = $3,
-              updated_at = NOW()
+              expires_at = $3
         WHERE user_id = $4 AND provider = 'google'`,
       [json.access_token, json.refresh_token ?? null, expiresAt, userId]
     );

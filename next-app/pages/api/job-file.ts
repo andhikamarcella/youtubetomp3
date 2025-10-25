@@ -2,12 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSessionUser } from '../../lib/auth';
 import { assertJobOwnership } from '../../lib/conversions';
 
-export const config = {
-  api: {
-    externalResolver: true,
-  },
-};
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -15,8 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const workerBase = process.env.WORKER_API_BASE;
-  if (!workerBase) {
-    return res.status(500).json({ error: 'WORKER_API_BASE not configured' });
+  const workerSecret = process.env.WORKER_SHARED_SECRET;
+  if (!workerBase || !workerSecret) {
+    return res.status(500).json({ error: 'Worker configuration missing' });
   }
 
   const session = await getSessionUser(req);
@@ -30,13 +25,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // TODO: Permit admin-controlled overrides for customer support investigations.
     await assertJobOwnership(jobId, session.id);
   } catch (error: any) {
     const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
     return res.status(status).json({ error: status === 404 ? 'Job not found' : 'Forbidden' });
   }
 
-  const targetUrl = `${workerBase.replace(/\/$/, '')}/file/${jobId}`;
-  res.writeHead(302, { Location: targetUrl });
-  res.end();
+  try {
+    const workerUrl = `${workerBase.replace(/\/$/, '')}/file/${jobId}`;
+    const workerResponse = await fetch(workerUrl, {
+      headers: {
+        Authorization: `Bearer ${workerSecret}`,
+      },
+    });
+
+    const payload = await workerResponse.text();
+    if (!workerResponse.ok) {
+      console.error('Worker job-file failed', workerResponse.status, payload);
+      return res
+        .status(workerResponse.status)
+        .json({ error: 'Failed to resolve job file', details: safeJson(payload) });
+    }
+
+    const jsonPayload = safeJson(payload) as { downloadUrl?: string };
+    if (!jsonPayload.downloadUrl) {
+      return res.status(502).json({ error: 'Worker response missing downloadUrl' });
+    }
+
+    return res.status(200).json({ downloadUrl: jsonPayload.downloadUrl });
+  } catch (error) {
+    console.error('/api/job-file error', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+function safeJson(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return { raw };
+  }
 }

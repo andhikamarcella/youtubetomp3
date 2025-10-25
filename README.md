@@ -65,15 +65,72 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | `/api/verify-captcha` | POST | Memvalidasi token reCAPTCHA sebelum memulai konversi. |
 | `/api/create-job` | POST | Meneruskan permintaan konversi ringan ke worker Railway (`WORKER_API_BASE`). |
 | `/api/job-status` | GET | Memeriksa status job di worker. |
-| `/api/job-file` | GET | Redirect ke URL berkas final yang disajikan worker. |
+| `/api/job-file` | GET | Mengembalikan `downloadUrl` yang diterbitkan worker untuk job tersebut. |
 | `/api/upload-to-drive` | POST | Mengunggah hasil konversi ke Google Drive pengguna menggunakan token OAuth mereka. |
+| `/api/ai-navigator` | POST | Menghubungkan pertanyaan pengguna ke Gemini dengan konteks XP, riwayat, dan FAQ terbaru. |
+| `/api/faq` | GET | Mengembalikan daftar FAQ terkini agar UI dan AI Navigator berbagi sumber yang sama. |
 | `/api/daily-bonus` | POST | Memberikan XP bonus harian (idempoten per hari per pengguna). |
 | `/api/history` | GET | Mengambil daftar riwayat konversi milik pengguna yang sedang login (mendukung pagination). |
 | `/api/history/[id]` | GET | Mengambil detail satu konversi milik pengguna (job, format, waktu). |
 | `/api/history/[id]/redownload` | POST | Menghasilkan tautan unduh ulang langsung ke worker untuk konversi tersebut. |
 | `/api/leaderboard` | GET | Mengembalikan daftar pengguna dengan XP tertinggi (opsional parameter `limit`). |
 
-Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`.
+Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, dan `GEMINI_API_KEY`.
+
+### Contoh Penggunaan API di Frontend
+
+```ts
+// 1. Validasi reCAPTCHA kemudian buat job konversi
+const captcha = await grecaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!, { action: 'convert' });
+const captchaResult = await fetch('/api/verify-captcha', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ captchaToken: captcha }),
+}).then((res) => res.json());
+
+let jobId: string | undefined;
+if (captchaResult.ok) {
+  const jobResponse = await fetch('/api/create-job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      videoId: 'dQw4w9WgXcQ',
+      format: 'mp3',
+      captchaToken: captcha,
+    }),
+  }).then((res) => res.json());
+  jobId = jobResponse.jobId;
+  console.log('Job ID', jobId, 'XP +', jobResponse.awardedXp);
+}
+
+// 2. Polling status job dan mengambil tautan unduhan
+if (jobId) {
+  const status = await fetch(`/api/job-status?jobId=${encodeURIComponent(jobId)}`).then((res) => res.json());
+  if (status.done) {
+    const file = await fetch(`/api/job-file?jobId=${encodeURIComponent(jobId)}`).then((res) => res.json());
+    window.open(file.downloadUrl, '_blank');
+  }
+}
+
+// 3. Kirim pertanyaan ke AI Navigator (Gemini)
+const aiReply = await fetch('/api/ai-navigator', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question: 'Kenapa XP saya tidak bertambah?' }),
+}).then((res) => res.json());
+console.log(aiReply.answer);
+
+// 4. Simpan hasil ke Google Drive
+await fetch('/api/upload-to-drive', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ jobId, filename: 'lagu-favorit.mp3' }),
+});
+
+// 5. Ambil FAQ untuk ditampilkan di halaman bantuan
+const faq = await fetch('/api/faq').then((res) => res.json());
+renderFaq(faq.entries);
+```
 
 Skema SQL untuk tabel `users`, `user_tokens`, `xp_events`, `cheat_claims`, dan `conversions` tersedia di `sql/schema.sql` agar XP, token OAuth, serta riwayat job benar-benar persisten di database.
 

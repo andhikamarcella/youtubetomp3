@@ -21,8 +21,6 @@ CREATE TABLE IF NOT EXISTS user_tokens (
   refresh_token TEXT,
   scope TEXT,
   expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, provider)
 );
 
@@ -57,3 +55,10 @@ CREATE INDEX IF NOT EXISTS idx_xp_events_user_id ON xp_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_cheat_claims_user_id ON cheat_claims(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversions_user_id ON conversions(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversions_job_id ON conversions(job_id);
+
+CREATE TABLE IF NOT EXISTS faq_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

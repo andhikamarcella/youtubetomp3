@@ -44,8 +44,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const workerBase = process.env.WORKER_API_BASE;
-  if (!workerBase) {
-    return res.status(500).json({ error: 'WORKER_API_BASE not configured' });
+  const workerSecret = process.env.WORKER_SHARED_SECRET;
+  if (!workerBase || !workerSecret) {
+    return res.status(500).json({ error: 'Worker configuration missing' });
   }
 
   const session = await getSessionUser(req);
@@ -78,7 +79,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const workerResponse = await fetch(workerUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${workerSecret}`,
+      },
       body: JSON.stringify({
         userId: session.id,
         videoId,
@@ -103,6 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const jobId = jobResponse.jobId;
+    let awardedXp = 0;
     await withTransaction(async (client) => {
       await client.query(
         `INSERT INTO conversions (user_id, job_id, source_video_id, format)
@@ -115,6 +120,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const multiplier = getXpMultiplierForRole(session.role);
       const xpDelta = Math.max(1, Math.round(baseXp * multiplier));
       // TODO: Add streak bonus XP calculations.
+      // TODO: Apply per-user rate limiting to prevent XP farming via repeated create-job calls.
+      awardedXp = xpDelta;
       await applyXpEvent(
         {
           userId: session.id,
@@ -126,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     });
 
-    return res.status(200).json({ jobId });
+    return res.status(200).json({ jobId, awardedXp });
   } catch (error) {
     console.error('/api/create-job error', error);
     return res.status(500).json({ error: 'Internal Server Error' });

@@ -9,8 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const workerBase = process.env.WORKER_API_BASE;
-  if (!workerBase) {
-    return res.status(500).json({ error: 'WORKER_API_BASE not configured' });
+  const workerSecret = process.env.WORKER_SHARED_SECRET;
+  if (!workerBase || !workerSecret) {
+    return res.status(500).json({ error: 'Worker configuration missing' });
   }
 
   try {
@@ -27,14 +28,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const conversion = await assertConversionOwnership(conversionId, user.id);
 
-    const downloadUrl = `${workerBase.replace(/\/$/, '')}/file/${encodeURIComponent(conversion.job_id)}`;
+    const workerUrl = `${workerBase.replace(/\/$/, '')}/file/${encodeURIComponent(conversion.job_id)}`;
+    const workerResponse = await fetch(workerUrl, {
+      headers: {
+        Authorization: `Bearer ${workerSecret}`,
+      },
+    });
 
-    return res.status(200).json({ downloadUrl });
+    const payload = await workerResponse.text();
+    if (!workerResponse.ok) {
+      console.error('Worker redownload failed', workerResponse.status, payload);
+      return res
+        .status(workerResponse.status)
+        .json({ error: 'Failed to resolve job file', details: safeJson(payload) });
+    }
+
+    return res.status(200).json(safeJson(payload));
   } catch (error: any) {
     if (error?.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
     console.error('/api/history/[id]/redownload error', error);
     return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+function safeJson(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    return { raw };
   }
 }

@@ -9,8 +9,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const workerBase = process.env.WORKER_API_BASE;
-  if (!workerBase) {
-    return res.status(500).json({ error: 'WORKER_API_BASE not configured' });
+  const workerSecret = process.env.WORKER_SHARED_SECRET;
+  if (!workerBase || !workerSecret) {
+    return res.status(500).json({ error: 'Worker configuration missing' });
   }
 
   const session = await getSessionUser(req);
@@ -24,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // TODO: Allow scoped admin support overrides when diagnosing jobs for other users.
     await assertJobOwnership(jobId, session.id);
   } catch (error: any) {
     const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
@@ -33,7 +35,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // TODO: Apply rate limiting to job status polling.
 
   try {
-    const workerResponse = await fetch(`${workerBase.replace(/\/$/, '')}/status/${jobId}`);
+    const workerResponse = await fetch(`${workerBase.replace(/\/$/, '')}/status/${jobId}`, {
+      headers: {
+        Authorization: `Bearer ${workerSecret}`,
+      },
+    });
     const payload = await workerResponse.text();
     if (!workerResponse.ok) {
       console.error('Worker job-status failed', workerResponse.status, payload);

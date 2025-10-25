@@ -44,6 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       eventId,
     });
 
+    // TODO: Apply premium XP multiplier and streak bonuses when invoked via privileged flows.
+    // TODO: Enforce per-user rate limits to avoid XP mutation abuse.
     return res.status(200).json({ current_xp: result.currentXp, createdEvent: result.createdEvent });
   } catch (error) {
     console.error('/api/users/[id]/xp error', error);
