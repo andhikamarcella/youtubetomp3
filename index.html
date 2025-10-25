@@ -353,8 +353,20 @@
   // ===== Utilities =====
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
-  const toast = new bootstrap.Toast($('#toast'));
-  const setToast = (msg) => { $('#toastText').textContent = msg; toast.show(); };
+  const bootstrapGlobal = window.bootstrap;
+  const toastEl = $('#toast');
+  const toast = (toastEl && bootstrapGlobal?.Toast) ? new bootstrapGlobal.Toast(toastEl) : null;
+  const setToast = (msg) => {
+    if (toastEl) $('#toastText').textContent = msg;
+    if (toast) {
+      toast.show();
+    } else {
+      if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+        console.warn('Toast fallback:', msg);
+      }
+      if (typeof window.alert === 'function') window.alert(msg);
+    }
+  };
 
   const storage = {
     get k(){ return 'ytmp3.settings.v1'; },
@@ -762,9 +774,28 @@ $('#queueList')?.addEventListener('click', (e) => {
     updateBackendBadge();
     updatePreview();
     if(!localStorage.getItem(tutorialKey)){
-      const m = new bootstrap.Modal($('#tutorialModal'));
-      m.show();
-      $('#tutorialModal').addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
+      const modalEl = $('#tutorialModal');
+      if(modalEl){
+        if(bootstrapGlobal?.Modal){
+          const m = new bootstrapGlobal.Modal(modalEl);
+          m.show();
+          modalEl.addEventListener('hidden.bs.modal', ()=>localStorage.setItem(tutorialKey,'1'), { once:true });
+        } else {
+          modalEl.hidden = false;
+          modalEl.style.display = 'block';
+          const closeBtn = modalEl.querySelector('[data-bs-dismiss="modal"], .btn-close');
+          const markSeen = () => localStorage.setItem(tutorialKey,'1');
+          if(closeBtn){
+            closeBtn.addEventListener('click', () => {
+              modalEl.style.display = 'none';
+              modalEl.hidden = true;
+              markSeen();
+            }, { once: true });
+          } else {
+            markSeen();
+          }
+        }
+      }
     }
   })();
   });
