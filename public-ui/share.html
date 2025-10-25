@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mini Player · Share Audio</title>
   <meta name="theme-color" content="#17233f" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="icon" sizes="192x192" href="./icons/icon.svg">
@@ -116,6 +117,7 @@
     </div>
   </div>
 
+  <script src="./vendor/qrcode.js" defer data-qr-lib="local"></script>
   <script>
   (function(){
     const params = new URLSearchParams(location.search);
@@ -309,14 +311,15 @@
           else reject(new Error('QR library belum siap'));
         };
         const onError = () => reject(new Error('Gagal memuat library QR'));
-        const existing = document.querySelector('script[src*="qrcode.min.js"]');
+        const existing = document.querySelector('script[data-qr-lib]');
         if (existing) {
           existing.addEventListener('load', onReady, { once: true });
           existing.addEventListener('error', onError, { once: true });
         } else {
           const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+          script.src = './vendor/qrcode.js';
           script.defer = true;
+          script.dataset.qrLib = 'dynamic';
           script.addEventListener('load', onReady, { once: true });
           script.addEventListener('error', onError, { once: true });
           document.head.appendChild(script);

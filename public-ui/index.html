@@ -7,6 +7,7 @@
   <meta name="description" content="Konversi video YouTube ke MP3/M4A dengan UI cantik berbasis Bootstrap 5, dukung dark-mode, riwayat, dan log proses." />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#17233f" media="(prefers-color-scheme: dark)" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="./manifest.webmanifest">
@@ -2114,7 +2115,7 @@
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+  <script src="./vendor/qrcode.js" defer data-qr-lib="local"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
   // ===== Utilities =====
@@ -8319,14 +8320,15 @@
         else reject(new Error('QR library belum siap'));
       };
       const onError = () => reject(new Error('Gagal memuat library QR'));
-      const existing = document.querySelector('script[src*="qrcode.min.js"]');
+      const existing = document.querySelector('script[data-qr-lib]');
       if (existing) {
         existing.addEventListener('load', onReady, { once: true });
         existing.addEventListener('error', onError, { once: true });
       } else {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+        script.src = './vendor/qrcode.js';
         script.defer = true;
+        script.dataset.qrLib = 'dynamic';
         script.addEventListener('load', onReady, { once: true });
         script.addEventListener('error', onError, { once: true });
         document.head.appendChild(script);
@@ -11049,15 +11051,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload),
       });
-      const { data: payload } = await resolveJsonResponse(resp, {
+      const { data: jobData } = await resolveJsonResponse(resp, {
         fallbackMessage: translateMessage('Gagal membuat job'),
         logLabel: 'background-create',
       });
-      if (payload.job) {
-        updateBackgroundJob(payload.job);
+      if (jobData?.job) {
+        updateBackgroundJob(jobData.job);
         setToast('Job diproses di latar');
-        updateAiStatus(`Job #${payload.job.id.slice(-5)} masuk antrian.`, 'info');
-        scheduleJobPoll(payload.job.id, 1500);
+        updateAiStatus(`Job #${jobData.job.id.slice(-5)} masuk antrian.`, 'info');
+        scheduleJobPoll(jobData.job.id, 1500);
       }
     } catch (err) {
       updateAiStatus(err.message || 'Gagal membuat job', 'danger');
