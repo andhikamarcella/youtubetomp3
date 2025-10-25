@@ -13,6 +13,7 @@ import {
   ensureReferralForUser,
   getHistoryEntry,
   updateHistoryEntry,
+  claimCheatForUser,
 } from "../user_store.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -140,5 +141,34 @@ test("recordXpEventForUser menyimpan event dan rekonsiliasi xp", async () => {
   const reconcile = await reconcileUserXp("user-999");
   assert.equal(reconcile.xp, 120);
   assert.equal(reconcile.level, 1);
+});
+
+test("claimCheatForUser memberikan XP rahasia dan idempoten", async () => {
+  await resetStore();
+  await upsertGoogleUser({
+    googleId: "cheat-user",
+    email: "cheat@example.com",
+    name: "Cheat Tester",
+  });
+  const first = await claimCheatForUser(
+    "cheat-user",
+    "andhikagantengbangetomagadgantengbangetmuachmuach",
+  );
+  assert.equal(first.applied, true);
+  assert.equal(first.alreadyClaimed, false);
+  assert.equal(first.xpDelta, 30000);
+  assert.equal(first.xp, 30000);
+  assert.ok(Array.isArray(first.badgesAwarded));
+  assert.ok(first.badgesAwarded.some((badge) => (badge?.id || badge) === "andhika"));
+  const targetLevel = first.level;
+
+  const second = await claimCheatForUser(
+    "cheat-user",
+    "andhikagantengbangetomagadgantengbangetmuachmuach",
+  );
+  assert.equal(second.applied, false);
+  assert.equal(second.alreadyClaimed, true);
+  assert.equal(second.xp, 30000);
+  assert.equal(second.level, targetLevel);
 });
 

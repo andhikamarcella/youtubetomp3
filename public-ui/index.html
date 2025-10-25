@@ -1673,6 +1673,22 @@
             <div id="googleSignInButton" class="auth-google-btn"></div>
             <button type="button" class="btn btn-outline-secondary btn-sm" id="logoutAccountBtn" hidden><i class="bi bi-box-arrow-right me-1"></i>Keluar</button>
           </div>
+          <div id="cheatPanel" class="cheat-panel border border-warning-subtle rounded-4 p-3 bg-body-tertiary mt-3" hidden>
+            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-lightning-charge-fill text-warning"></i>
+                <h6 class="mb-0 text-warning-emphasis">Debug Tools</h6>
+              </div>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="cheatPanelClose">
+                <i class="bi bi-eye-slash me-1"></i>Sembunyikan
+              </button>
+            </div>
+            <p class="small text-secondary mb-3" id="cheatPanelHint">Panel internal untuk klaim kode rahasia. Tekan <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> untuk menampilkan.</p>
+            <div class="input-group input-group-sm">
+              <input type="password" class="form-control" id="cheatCodeInput" placeholder="Masukkan kode rahasia" autocomplete="off" spellcheck="false">
+              <button class="btn btn-warning" type="button" id="cheatSubmit"><i class="bi bi-lightning-charge me-1"></i>Klaim</button>
+            </div>
+          </div>
           <div class="row g-4 align-items-center">
             <div class="col-lg-5">
               <div class="dynamic-avatar dropdown" id="dynamicAvatar" aria-live="polite">
@@ -2999,6 +3015,10 @@
   const profileAccountStatus = $('#profileAccountStatus');
   const googleSignInButton = $('#googleSignInButton');
   const logoutAccountBtn = $('#logoutAccountBtn');
+  const cheatPanel = $('#cheatPanel');
+  const cheatPanelClose = $('#cheatPanelClose');
+  const cheatCodeInput = $('#cheatCodeInput');
+  const cheatSubmitBtn = $('#cheatSubmit');
   const themeSelect = $('#themeSelect');
   const fontSelect = $('#fontSelect');
   const layoutSelect = $('#layoutSelect');
@@ -3628,6 +3648,15 @@
   }
 
   document.addEventListener('keydown', (evt) => {
+    if (state.cheats.enabled && evt.ctrlKey && evt.altKey && String(evt.key).toLowerCase() === 'c') {
+      evt.preventDefault();
+      if (!state.auth.user) {
+        setToast(translateMessage('Masuk dengan Google untuk membuka panel debug.'));
+        return;
+      }
+      toggleCheatPanel(!state.cheats.visible);
+      return;
+    }
     konamiTracker(evt.key);
     secretCheatTracker(evt.key);
     if (evt.code === 'Space' && !(evt.target instanceof HTMLInputElement) && !(evt.target instanceof HTMLTextAreaElement)) {
@@ -3723,6 +3752,7 @@
     assistantHistory: [],
     avatarAura: '',
     backgroundEmail: '',
+    cheats: { enabled: false, visible: false },
     auth: {
       token: '',
       user: null,
@@ -4545,6 +4575,95 @@
     }
   }
 
+  function updateCheatPanelVisibility() {
+    if (!cheatPanel) return;
+    const shouldShow = Boolean(state.cheats.enabled && state.cheats.visible && state.auth.user);
+    cheatPanel.hidden = !shouldShow;
+    if (!shouldShow) {
+      return;
+    }
+    window.setTimeout(() => {
+      if (document.activeElement !== cheatCodeInput) {
+        cheatCodeInput?.focus();
+        cheatCodeInput?.select?.();
+      }
+    }, 20);
+  }
+
+  function toggleCheatPanel(forceVisible) {
+    if (!state.cheats.enabled) return;
+    const targetVisible = typeof forceVisible === 'boolean' ? forceVisible : !state.cheats.visible;
+    state.cheats.visible = targetVisible;
+    if (!targetVisible && cheatCodeInput) {
+      cheatCodeInput.value = '';
+    }
+    updateCheatPanelVisibility();
+  }
+
+  async function requestCheatClaim(code, { silent = false, fallback } = {}) {
+    const trimmed = typeof code === 'string' ? code.trim() : '';
+    if (!trimmed) return { ok: false };
+    if (!state.cheats.enabled) {
+      if (typeof fallback === 'function') fallback(new Error('Cheat disabled'));
+      if (!silent) setToast(translateMessage('Cheat dinonaktifkan.'));
+      return { ok: false };
+    }
+    if (!state.auth.user) {
+      if (typeof fallback === 'function') fallback(new Error('Auth required'));
+      if (!silent) setToast(translateMessage('Masuk dengan Google untuk menggunakan cheat.'));
+      return { ok: false };
+    }
+    try {
+      const { data } = await postJson('/api/cheats/claim', { code: trimmed }, {
+        fallbackMessage: translateMessage('Cheat gagal'),
+        logLabel: 'cheat-claim',
+      });
+      if (data?.user) applyUserSummary(data.user);
+      if (Array.isArray(data?.badgesAwarded)) {
+        data.badgesAwarded.forEach((badge) => {
+          const badgeId = badge?.id || badge;
+          if (badgeId) showRewardToast(`Badge baru: ${formatBadgeLabel(badgeId)}`);
+        });
+      }
+      if (data?.applied && !silent) {
+        if (Number.isFinite(data?.xpDelta) && data.xpDelta > 0) {
+          showRewardToast(`+${data.xpDelta} XP`);
+        }
+        setToast(translateMessage('Cheat berhasil diklaim'));
+      } else if (data?.alreadyClaimed && !silent) {
+        setToast(translateMessage('Cheat sudah pernah digunakan'));
+      }
+      return { ok: true, data };
+    } catch (err) {
+      if (typeof fallback === 'function') fallback(err);
+      if (!silent) setToast(err?.message || translateMessage('Cheat gagal'));
+      return { ok: false, error: err };
+    }
+  }
+
+  async function submitCheatPanel() {
+    if (!cheatSubmitBtn) return;
+    const code = cheatCodeInput?.value || '';
+    if (!code.trim()) {
+      setToast(translateMessage('Masukkan kode rahasia terlebih dahulu.'));
+      cheatCodeInput?.focus();
+      return;
+    }
+    const previous = cheatSubmitBtn.innerHTML;
+    cheatSubmitBtn.disabled = true;
+    cheatSubmitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>${translateMessage('Memproses…')}`;
+    try {
+      const result = await requestCheatClaim(code, { silent: false });
+      if (result?.ok) {
+        cheatCodeInput.value = '';
+        toggleCheatPanel(false);
+      }
+    } finally {
+      cheatSubmitBtn.innerHTML = previous;
+      cheatSubmitBtn.disabled = false;
+    }
+  }
+
   function applyUserSummary(summary) {
     state.auth.user = summary || null;
     state.auth.googleFallbackNotified = false;
@@ -4557,9 +4676,13 @@
       state.experience.level = summary.level || state.experience.level || 1;
       state.experience.totalConversions = summary.totalConversions || state.experience.totalConversions || 0;
       state.experience.totalMinutes = summary.totalMinutes || state.experience.totalMinutes || 0;
+    } else {
+      state.cheats.visible = false;
+      if (cheatCodeInput) cheatCodeInput.value = '';
     }
     updateAvatarUi();
     updateAccountUi();
+    updateCheatPanelVisibility();
     ensureGoogleButton();
   }
 
@@ -4708,6 +4831,34 @@
     }
   }
 
+  async function fetchCheatConfig() {
+    try {
+      const resp = await fetch(api('/api/cheats/config'), {
+        headers: buildAuthHeaders({ Accept: 'application/json' }),
+      });
+      if (resp.status === 404) {
+        state.cheats.enabled = false;
+        state.cheats.visible = false;
+        updateCheatPanelVisibility();
+        return;
+      }
+      const { data } = await resolveJsonResponse(resp, {
+        fallbackMessage: translateMessage('Konfigurasi cheat tidak tersedia'),
+        logLabel: 'cheat-config',
+      });
+      state.cheats.enabled = !!data?.enabled;
+      if (!state.cheats.enabled) {
+        state.cheats.visible = false;
+      }
+      updateCheatPanelVisibility();
+    } catch (err) {
+      state.cheats.enabled = false;
+      state.cheats.visible = false;
+      updateCheatPanelVisibility();
+      console.warn('Cheat config tidak tersedia', err);
+    }
+  }
+
   async function fetchUserSession({ silent } = {}) {
     if (!state.auth.token) {
       applyUserSummary(null);
@@ -4755,6 +4906,23 @@
 
   if (logoutAccountBtn) {
     logoutAccountBtn.addEventListener('click', () => logoutAccount());
+  }
+
+  if (cheatPanelClose) {
+    cheatPanelClose.addEventListener('click', () => toggleCheatPanel(false));
+  }
+
+  if (cheatSubmitBtn) {
+    cheatSubmitBtn.addEventListener('click', () => submitCheatPanel());
+  }
+
+  if (cheatCodeInput) {
+    cheatCodeInput.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Enter') {
+        evt.preventDefault();
+        submitCheatPanel();
+      }
+    });
   }
 
   window.addEventListener('load', () => {
@@ -6125,20 +6293,36 @@
     const target = 'andhikagantengbangetomagadgantengbangetmuachmuach';
     let buffer = '';
     let unlocked = false;
+    const grantLocalCheat = () => {
+      if (!unlocked) {
+        unlocked = true;
+        incrementPoints(30000, 'Cheat rahasia', { badge: 'andhika' });
+        showRewardToast('XP rahasia +30000!');
+      } else {
+        incrementPoints(1200, 'Cheat rahasia');
+      }
+      setToast('Kode rahasia Andhika aktif!');
+    };
     return (key) => {
       if (!key || key.length > 1) return;
       buffer = (buffer + key.toLowerCase()).slice(-target.length);
-      if (buffer.includes(target)) {
-        buffer = '';
-        if (!unlocked) {
-          unlocked = true;
-          incrementPoints(30000, 'Cheat rahasia', { badge: 'andhika' });
-          showRewardToast('XP rahasia +30000!');
-        } else {
-          incrementPoints(1200, 'Cheat rahasia');
-        }
-        setToast('Kode rahasia Andhika aktif!');
+      if (!buffer.includes(target)) return;
+      buffer = '';
+      if (state.cheats.enabled && state.auth.user) {
+        requestCheatClaim(target, {
+          fallback: () => grantLocalCheat(),
+        }).then((result) => {
+          if (result?.ok) {
+            unlocked = true;
+            setToast('Kode rahasia Andhika aktif!');
+          }
+        });
+        return;
       }
+      if (state.cheats.enabled && !state.auth.user) {
+        setToast(translateMessage('Masuk dengan Google untuk menyimpan XP rahasia.'));
+      }
+      grantLocalCheat();
     };
   })();
 
@@ -10315,6 +10499,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     loadSettings();
     loadAuthToken();
     fetchAuthConfig();
+    fetchCheatConfig();
     fetchUserSession({ silent: true });
     updateSpinUi();
     ensureAssistantWelcome();

@@ -20,6 +20,7 @@ import {
   ensureReferralForUser,
   getUserById,
   revokeUserSession,
+  claimCheatForUser,
 } from "./user_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
@@ -48,6 +49,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const googleOAuthClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 const USER_SESSION_SECRET = process.env.USER_SESSION_SECRET || "dev-user-session-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const CHEATS_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ENABLE_CHEATS || ""));
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -5457,6 +5459,44 @@ app.get("/api/auth/config", (req, res) => {
   return res.json({ ok: true, googleClientId: GOOGLE_CLIENT_ID || null });
 });
 
+app.get("/api/cheats/config", (req, res) => {
+  if (!CHEATS_ENABLED) {
+    return res.status(404).json({ error: "Cheat dimatikan" });
+  }
+  return res.json({ ok: true, enabled: true });
+});
+
+app.post("/api/cheats/claim", async (req, res) => {
+  if (!CHEATS_ENABLED) {
+    return res.status(404).json({ error: "Cheat dimatikan" });
+  }
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+  if (!code) {
+    return res.status(400).json({ error: "Kode cheat wajib diisi" });
+  }
+  try {
+    const result = await claimCheatForUser(user.id, code);
+    const summary = await buildUserSummaryById(user.id);
+    return res.json({
+      ok: true,
+      applied: result.applied,
+      alreadyClaimed: result.alreadyClaimed,
+      xp: result.xp,
+      xpDelta: result.xpDelta ?? 0,
+      level: result.level,
+      cheat: result.cheat,
+      badgesAwarded: result.badgesAwarded || [],
+      user: summary,
+    });
+  } catch (err) {
+    const message = err?.message || "Cheat gagal";
+    const status = /wajib|dikenali|pengguna/i.test(message) ? 400 : 500;
+    return res.status(status).json({ error: message });
+  }
+});
+
 app.get("/api/session", async (req, res) => {
   const user = await resolveRequestUser(req);
   if (!user) return res.status(401).json({ error: "Belum login" });
@@ -6195,4 +6235,5 @@ export {
   finishProgress,
   clearProgress,
   resolveToolVersions,
+  createSessionToken,
 };

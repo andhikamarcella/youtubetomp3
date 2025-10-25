@@ -116,5 +116,11 @@ Railway juga dapat menjalankan proyek ini langsung dari Dockerfile yang sama seh
 
 Setelah build selesai, UI converter, Experience Hub, hingga API dapat diakses di domain Railway (misalnya `https://nama-layanan.up.railway.app`).
 
+## Cheat & Debug Tools
+
+- Set `ENABLE_CHEATS=true` (atau `on/yes/1`) untuk mengaktifkan endpoint `/api/cheats/claim` dan panel debug tersembunyi di tab Profil.
+- Panel dapat dibuka oleh akun yang sudah login Google dengan menekan kombinasi `Ctrl`+`Alt`+`C`. Klaim sukses otomatis mensinkronkan XP, badge, dan log audit.
+- Tanpa variabel tersebut, kode rahasia masih memberi XP lokal (untuk demo) tetapi tidak menulis ke penyimpanan cloud.
+
 ## Lisensi
 Proyek ini dirilis di bawah lisensi MIT.

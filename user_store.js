@@ -7,15 +7,26 @@ import { nanoid } from "nanoid";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "data");
 const USERS_PATH = join(DATA_DIR, "users.json");
+const CHEAT_AUDIT_PATH = join(DATA_DIR, "cheat_audit.log");
 const MAX_HISTORY_ENTRIES = 100;
 
 const defaultStore = () => ({
   users: {},
   referralIndex: {},
   xpEvents: {},
+  cheatClaims: {},
 });
 
 const XP_EVENT_LIMIT = 1000;
+
+const CHEAT_CODES = {
+  "andhikagantengbangetomagadgantengbangetmuachmuach": {
+    xp: 30000,
+    reason: "cheat-secret",
+    badge: "andhika",
+    metadata: { label: "andhika-secret" },
+  },
+};
 
 const sanitizeEventId = (value) => {
   if (typeof value !== "string") return "";
@@ -30,6 +41,16 @@ const ensureXpBucket = (data, userId) => {
     data.xpEvents[userId] = {};
   }
   return data.xpEvents[userId];
+};
+
+const ensureCheatBucket = (data, userId) => {
+  if (!data.cheatClaims || typeof data.cheatClaims !== "object") {
+    data.cheatClaims = {};
+  }
+  if (!data.cheatClaims[userId]) {
+    data.cheatClaims[userId] = {};
+  }
+  return data.cheatClaims[userId];
 };
 
 const computeXpFromBucket = (bucket) => {
@@ -49,6 +70,7 @@ const readStore = async () => {
     if (!parsed.users || typeof parsed.users !== "object") parsed.users = {};
     if (!parsed.referralIndex || typeof parsed.referralIndex !== "object") parsed.referralIndex = {};
     if (!parsed.xpEvents || typeof parsed.xpEvents !== "object") parsed.xpEvents = {};
+    if (!parsed.cheatClaims || typeof parsed.cheatClaims !== "object") parsed.cheatClaims = {};
     return parsed;
   } catch (err) {
     if (err?.code === "ENOENT") return defaultStore();
@@ -63,9 +85,41 @@ const writeStore = async (data) => {
   await fsp.rename(tmpPath, USERS_PATH);
 };
 
+const appendCheatAudit = async (entry) => {
+  if (!entry || typeof entry !== "object") return;
+  try {
+    await fsp.mkdir(DATA_DIR, { recursive: true });
+    const line = JSON.stringify({ ...entry, at: new Date().toISOString() });
+    await fsp.appendFile(CHEAT_AUDIT_PATH, `${line}\n`, "utf8");
+  } catch (err) {
+    console.warn("gagal menulis cheat audit", err);
+  }
+};
+
 const calculateLevel = (xp = 0) => {
   const total = Number(xp) || 0;
   return Math.max(1, Math.floor(total / 750) + 1);
+};
+
+const reconcileUserRecord = (data, userId, { touchUpdatedAt = false } = {}) => {
+  const user = data.users?.[userId];
+  if (!user) return { user: null, changed: false, xp: 0, level: 1 };
+  const bucket = ensureXpBucket(data, userId);
+  const xpTotal = computeXpFromBucket(bucket);
+  const level = calculateLevel(xpTotal);
+  let changed = false;
+  if (!Number.isFinite(user.xp) || user.xp !== xpTotal) {
+    user.xp = xpTotal;
+    changed = true;
+  }
+  if (!Number.isFinite(user.level) || user.level !== level) {
+    user.level = level;
+    changed = true;
+  }
+  if (changed && touchUpdatedAt) {
+    user.updatedAt = Date.now();
+  }
+  return { user, changed, xp: xpTotal, level, bucket };
 };
 
 const applyXpEvent = (data, user, { eventId, delta, reason, metadata }) => {
@@ -156,21 +210,24 @@ const ensureReferralCode = (data, user) => {
 export const getUserById = async (id) => {
   if (!id) return null;
   const data = await readStore();
-  return data.users[id] || null;
+  const { user, changed } = reconcileUserRecord(data, id, { touchUpdatedAt: false });
+  if (changed) {
+    await writeStore(data);
+  }
+  return user || null;
 };
 
 export const reconcileUserXp = async (userId) => {
   if (!userId) return null;
   const data = await readStore();
-  const user = data.users[userId];
+  const { user, bucket, changed, xp, level } = reconcileUserRecord(data, userId, {
+    touchUpdatedAt: true,
+  });
   if (!user) return null;
-  const bucket = ensureXpBucket(data, userId);
-  const xpTotal = computeXpFromBucket(bucket);
-  user.xp = xpTotal;
-  user.level = calculateLevel(xpTotal);
-  user.updatedAt = Date.now();
-  await writeStore(data);
-  return { xp: xpTotal, level: user.level, events: Object.values(bucket) };
+  if (changed) {
+    await writeStore(data);
+  }
+  return { xp, level, events: Object.values(bucket) };
 };
 
 export const getUserByGoogleId = async (googleId) => {
@@ -223,18 +280,36 @@ export const upsertGoogleUser = async ({
     ensureXpBucket(data, id);
     ensureReferralCode(data, user);
     if (referralCode) {
-      const referrerId = data.referralIndex[String(referralCode).trim().toUpperCase()];
+      const normalizedRef = String(referralCode).trim().toUpperCase();
+      const referrerId = data.referralIndex[normalizedRef];
       if (referrerId && referrerId !== user.id) {
         const referrer = data.users[referrerId];
         if (referrer) {
-          referrer.xp = (referrer.xp || 0) + 250;
-          referrer.referralCount = (referrer.referralCount || 0) + 1;
-          referrer.referrals = Array.isArray(referrer.referrals)
-            ? Array.from(new Set([...referrer.referrals, user.id]))
-            : [user.id];
-          if (!Array.isArray(referrer.badges)) referrer.badges = [];
-          if (!referrer.badges.includes("referral-trailblazer")) {
-            referrer.badges.push("referral-trailblazer");
+          ensureXpBucket(data, referrerId);
+          const referralEventId = sanitizeEventId(`referral:${user.id}`);
+          const referralEvent = applyXpEvent(data, referrer, {
+            eventId: referralEventId,
+            delta: 250,
+            reason: "referral-bonus",
+            metadata: { invitee: user.id },
+          });
+          const alreadyListed = Array.isArray(referrer.referrals)
+            ? referrer.referrals.includes(user.id)
+            : false;
+          if (!Array.isArray(referrer.referrals)) {
+            referrer.referrals = alreadyListed ? referrer.referrals : [];
+          }
+          if (!alreadyListed) {
+            referrer.referrals = Array.isArray(referrer.referrals)
+              ? [...new Set([...referrer.referrals, user.id])]
+              : [user.id];
+          }
+          if (referralEvent.applied) {
+            referrer.referralCount = (referrer.referralCount || 0) + 1;
+            if (!Array.isArray(referrer.badges)) referrer.badges = [];
+            if (!referrer.badges.includes("referral-trailblazer")) {
+              referrer.badges.push("referral-trailblazer");
+            }
           }
         }
       }
@@ -412,9 +487,92 @@ export const updateHistoryEntry = async (userId, entryId, patch = {}) => {
   return entry;
 };
 
+export const claimCheatForUser = async (userId, rawCode) => {
+  if (!userId) throw new Error("userId wajib diisi");
+  const normalized = typeof rawCode === "string" ? rawCode.trim().toLowerCase() : "";
+  if (!normalized) throw new Error("Kode cheat wajib diisi");
+  const cheat = CHEAT_CODES[normalized];
+  if (!cheat) throw new Error("Kode cheat tidak dikenali");
+
+  const data = await readStore();
+  const user = data.users[userId];
+  if (!user) throw new Error("Pengguna tidak ditemukan");
+
+  const claims = ensureCheatBucket(data, userId);
+  if (claims[normalized]) {
+    const { xp, level } = reconcileUserRecord(data, userId, { touchUpdatedAt: false });
+    return {
+      applied: false,
+      alreadyClaimed: true,
+      xp,
+      level,
+      cheat: claims[normalized],
+    };
+  }
+
+  const now = Date.now();
+  let xpDelta = Number(cheat.xp) || 0;
+  let xpEvent = null;
+  if (xpDelta !== 0) {
+    xpEvent = applyXpEvent(data, user, {
+      eventId: sanitizeEventId(`cheat:${normalized}`),
+      delta: xpDelta,
+      reason: cheat.reason || "cheat-code",
+      metadata: { code: normalized, ...(cheat.metadata || {}) },
+    });
+    if (!xpEvent.applied) {
+      xpDelta = 0;
+    }
+  } else {
+    const bucket = ensureXpBucket(data, userId);
+    user.xp = computeXpFromBucket(bucket) || user.xp || 0;
+    user.level = calculateLevel(user.xp);
+  }
+
+  const badgeAwards = [];
+  if (cheat.badge) {
+    if (!Array.isArray(user.badges)) user.badges = [];
+    if (!user.badges.includes(cheat.badge)) {
+      user.badges.push(cheat.badge);
+      badgeAwards.push({ id: cheat.badge });
+    }
+  }
+
+  claims[normalized] = {
+    code: normalized,
+    xp: xpDelta,
+    reason: cheat.reason || "cheat-code",
+    claimedAt: now,
+    metadata: cheat.metadata || null,
+  };
+
+  if (xpEvent?.applied) {
+    user.xp = xpEvent.xp;
+    user.level = calculateLevel(user.xp);
+  }
+  user.updatedAt = now;
+  await writeStore(data);
+  await appendCheatAudit({ userId, code: normalized, xpDelta, badge: cheat.badge || null });
+  return {
+    applied: true,
+    alreadyClaimed: false,
+    xp: user.xp,
+    level: user.level,
+    xpDelta,
+    cheat: claims[normalized],
+    badgesAwarded: badgeAwards,
+    event: xpEvent?.event || null,
+  };
+};
+
 export const buildUserSummaryById = async (userId) => {
   if (!userId) return null;
-  const user = await getUserById(userId);
+  const data = await readStore();
+  const { user, changed } = reconcileUserRecord(data, userId, { touchUpdatedAt: true });
+  if (!user) return null;
+  if (changed) {
+    await writeStore(data);
+  }
   return buildUserSummary(user);
 };
 
