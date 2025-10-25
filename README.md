@@ -16,7 +16,9 @@ Aplikasi web serbaguna untuk mengunduh audio atau video dari YouTube, Spotify, m
 - Tombol **Dolby Atmos** untuk mencoba mengambil audio multi-channel bila tersedia.
 - Halaman Profil dengan avatar dinamis, XP, badge, dan milestone level yang tumbuh sesuai aktivitas.
 - Login Google OAuth dengan dashboard profil cloud: XP tersinkronisasi lintas perangkat, riwayat konversi yang bisa diunduh ulang tanpa re-convert, serta statistik menit total.
+- Dashboard cloud kini menampilkan streak harian, status bonus harian, dan daftar riwayat terbaru lengkap dengan tautan unduh ulang.
 - Referral link unik, XP bonus, dan pencarian riwayat cloud (“lagu apa saja yang pernah kamu unduh dari TWICE”).
+- Bonus XP harian dengan tombol **Daily Boost** dan papan peringkat (leaderboard) yang menunjukkan pengguna dengan XP tertinggi.
 - Mode progres interaktif dengan status real-time saat konversi berlangsung.
 - Monitor konversi real-time melalui endpoint `/api/progress/:id` lengkap dengan persentase, ETA, dan status tahap.
 - Preset kualitas (High/Medium/Low) untuk MP3, M4A, dan WAV yang otomatis menyesuaikan bitrate/sample rate.
@@ -56,6 +58,7 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | Endpoint | Metode | Fungsi |
 | --- | --- | --- |
 | `/api/me` | GET | Mengembalikan profil pengguna yang sudah login (otomatis membuat/memperbarui record di tabel `users`). |
+| `/api/dashboard` | GET | Menyajikan ringkasan akun: total konversi, riwayat terbaru, streak harian, dan status bonus harian. |
 | `/api/users/[id]/xp` | POST | Menambah/mengurangi XP dengan token idempoten `event_id` sehingga refresh tidak mengulang XP. |
 | `/api/cheats/claim` | POST | Klaim cheat (misal `free30kxp`) khusus admin/tester saat `ENABLE_CHEATS=true`. |
 | `/api/video-info` | GET | Mengambil metadata YouTube (judul, channel, thumbnail, durasi) memakai `YOUTUBE_API_KEY`. |
@@ -64,6 +67,11 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | `/api/job-status` | GET | Memeriksa status job di worker. |
 | `/api/job-file` | GET | Redirect ke URL berkas final yang disajikan worker. |
 | `/api/upload-to-drive` | POST | Mengunggah hasil konversi ke Google Drive pengguna menggunakan token OAuth mereka. |
+| `/api/daily-bonus` | POST | Memberikan XP bonus harian (idempoten per hari per pengguna). |
+| `/api/history` | GET | Mengambil daftar riwayat konversi milik pengguna yang sedang login (mendukung pagination). |
+| `/api/history/[id]` | GET | Mengambil detail satu konversi milik pengguna (job, format, waktu). |
+| `/api/history/[id]/redownload` | POST | Menghasilkan tautan unduh ulang langsung ke worker untuk konversi tersebut. |
+| `/api/leaderboard` | GET | Mengembalikan daftar pengguna dengan XP tertinggi (opsional parameter `limit`). |
 
 Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`.
 
