@@ -50,6 +50,26 @@ Untuk antarmuka modern berbasis React, repositori ini menyertakan aplikasi [Next
 
 Antarmuka Next.js menyertakan form konversi, pencarian video, serta monitor job latar dan memanfaatkan semua endpoint bawaan (`/api/convert`, `/api/search`, `/api/background`, dll.).
 
+### API Serverless di Next.js
+
+Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang memegang kredensial sensitif:
+
+| Endpoint | Metode | Fungsi |
+| --- | --- | --- |
+| `/api/me` | GET | Mengembalikan profil pengguna yang sudah login (otomatis membuat/memperbarui record di tabel `users`). |
+| `/api/users/[id]/xp` | POST | Menambah/mengurangi XP dengan token idempoten `event_id` sehingga refresh tidak mengulang XP. |
+| `/api/cheats/claim` | POST | Klaim cheat (misal `free30kxp`) khusus admin/tester saat `ENABLE_CHEATS=true`. |
+| `/api/video-info` | GET | Mengambil metadata YouTube (judul, channel, thumbnail, durasi) memakai `YOUTUBE_API_KEY`. |
+| `/api/translate` | POST | Proksi Google Translation API berbasis kredensial `GOOGLE_APPLICATION_CREDENTIALS_JSON`. |
+| `/api/verify-captcha` | POST | Memvalidasi token reCAPTCHA sebelum memulai konversi. |
+| `/api/create-job` | POST | Meneruskan permintaan konversi ringan ke worker Railway (`WORKER_API_BASE`). |
+| `/api/job-status` | GET | Memeriksa status job di worker. |
+| `/api/job-file` | GET | Redirect ke URL berkas final yang disajikan worker. |
+
+Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS_JSON`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `ENABLE_CHEATS`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`.
+
+Skema SQL untuk tabel `users`, `xp_events`, dan `cheat_claims` tersedia di `sql/schema.sql` agar XP benar-benar persisten di database.
+
 ## API Tambahan
 
 - `GET /api/progress/:id` — Mengambil status progres konversi terbaru (tahap, persentase, ETA, dan detail tambahan).
