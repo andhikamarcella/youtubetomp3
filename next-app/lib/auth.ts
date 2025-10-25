@@ -49,6 +49,10 @@ export async function getSessionUser(req: NextApiRequest): Promise<SessionUser |
   return null;
 }
 
+export async function getUserFromSession(req: NextApiRequest): Promise<SessionUser | null> {
+  return getSessionUser(req);
+}
+
 export async function ensureUserRecord(session: SessionUser) {
   if (!session.email) {
     throw new Error('Session is missing email address; required for user record');

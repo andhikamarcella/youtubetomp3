@@ -74,7 +74,7 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | `/api/history/[id]/redownload` | POST | Menghasilkan tautan unduh ulang langsung ke worker untuk konversi tersebut. |
 | `/api/leaderboard` | GET | Mengembalikan daftar pengguna dengan XP tertinggi (opsional parameter `limit`). |
 
-Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`. Opsional: set `RECAPTCHA_STRICT=true` bila ingin memaksa token captcha valid setiap saat; default-nya non-strict sehingga konversi tetap berjalan bila captcha bermasalah.
+Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`. Endpoint `/api/create-job` kini selalu memverifikasi token reCAPTCHA secara server-side, sehingga `RECAPTCHA_SECRET_KEY` wajib terkonfigurasi dengan benar.
 
 ### Contoh Penggunaan API di Frontend
 
@@ -99,7 +99,7 @@ if (captchaResult.ok) {
     }),
   }).then((res) => res.json());
   jobId = jobResponse.jobId;
-  console.log('Job ID', jobId, 'XP +', jobResponse.awardedXp);
+  console.log('Job ID', jobId);
 }
 
 // 2. Polling status job dan mengambil tautan unduhan

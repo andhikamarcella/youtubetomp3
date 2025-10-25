@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSessionUser } from '../../lib/auth';
+import { randomUUID } from 'node:crypto';
+import { getUserFromSession } from '../../lib/auth';
 import { withTransaction } from '../../lib/db';
 import { applyXpEvent, getXpMultiplierForRole } from '../../lib/xp';
 
@@ -18,8 +19,7 @@ interface CreateJobRequest {
 async function verifyCaptcha(token: string): Promise<boolean> {
   const secret = process.env.RECAPTCHA_SECRET_KEY;
   if (!secret) {
-    console.error('RECAPTCHA_SECRET_KEY is missing; cannot verify captcha');
-    return false;
+    throw new Error('RECAPTCHA_SECRET_KEY is missing');
   }
 
   const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'Worker configuration missing' });
   }
 
-  const session = await getSessionUser(req);
+  const session = await getUserFromSession(req);
   if (!session) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -63,13 +63,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!format || typeof format !== 'string' || !ALLOWED_FORMATS.has(format)) {
     return res.status(400).json({ error: 'Unsupported format' });
   }
-  if (!captchaToken) {
-    return res.status(400).json({ error: 'captchaToken is required' });
+  if (!captchaToken || typeof captchaToken !== 'string') {
+    return res.status(400).json({ error: 'captcha_required' });
   }
 
-  const captchaValid = await verifyCaptcha(captchaToken);
-  if (!captchaValid) {
-    return res.status(400).json({ error: 'Captcha verification failed' });
+  try {
+    const captchaValid = await verifyCaptcha(captchaToken);
+    if (!captchaValid) {
+      return res.status(400).json({ error: 'captcha_failed' });
+    }
+  } catch (error) {
+    console.error('Captcha verification threw error', error);
+    return res.status(500).json({ error: 'captcha_verification_error' });
   }
 
   // TODO: Apply rate limiting / abuse controls for job creation.
@@ -94,56 +99,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     });
 
-    const textPayload = await workerResponse.text();
     if (!workerResponse.ok) {
-      console.error('Worker create-job failed', workerResponse.status, textPayload);
-      return res.status(workerResponse.status).json({ error: 'Failed to create job', details: tryParseJson(textPayload) });
+      console.error('Worker create-job failed', workerResponse.status);
+      return res.status(502).json({ error: 'worker_failed' });
     }
 
-    const jobResponse = tryParseJson(textPayload) as { jobId?: string; [key: string]: unknown };
+    let jobResponse: { jobId?: string };
+    try {
+      jobResponse = (await workerResponse.json()) as { jobId?: string };
+    } catch (error) {
+      console.error('Unable to parse worker response as JSON', error);
+      return res.status(502).json({ error: 'worker_failed' });
+    }
+
     if (!jobResponse?.jobId || typeof jobResponse.jobId !== 'string') {
       console.error('Worker response missing jobId', jobResponse);
-      return res.status(502).json({ error: 'Invalid worker response' });
+      return res.status(502).json({ error: 'worker_failed' });
     }
 
     const jobId = jobResponse.jobId;
-    let awardedXp = 0;
     await withTransaction(async (client) => {
+      const conversionId = randomUUID();
       await client.query(
-        `INSERT INTO conversions (user_id, job_id, source_video_id, format)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (job_id) DO NOTHING`,
-        [session.id, jobId, videoId, format]
+        `INSERT INTO conversions (id, user_id, job_id, source_video_id, format, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [conversionId, session.id, jobId, videoId, format]
       );
 
-      const baseXp = 25; // Base XP for creating a job.
+      const baseDelta = 25;
       const multiplier = getXpMultiplierForRole(session.role);
-      const xpDelta = Math.max(1, Math.round(baseXp * multiplier));
-      // TODO: Add streak bonus XP calculations.
-      // TODO: Apply per-user rate limiting to prevent XP farming via repeated create-job calls.
-      awardedXp = xpDelta;
+      const xpDelta = Math.max(1, Math.round(baseDelta * multiplier));
+      // TODO: streak bonus logic here
+      // TODO: rate limit abuse (don't farm XP with spam)
       await applyXpEvent(
         {
           userId: session.id,
           delta: xpDelta,
           reason: 'convert',
-          eventId: `job:${jobId}:create`,
+          eventId: randomUUID(),
         },
         client
       );
     });
 
-    return res.status(200).json({ jobId, awardedXp });
+    return res.status(200).json({ jobId });
   } catch (error) {
     console.error('/api/create-job error', error);
     return res.status(500).json({ error: 'Internal Server Error' });
-  }
-}
-
-function tryParseJson(raw: string): any {
-  try {
-    return JSON.parse(raw);
-  } catch (error) {
-    return { raw };
   }
 }
