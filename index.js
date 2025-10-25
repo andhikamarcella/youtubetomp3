@@ -599,6 +599,23 @@ const buildYoutubeEntryFromApiItem = (item) => {
   return entry;
 };
 
+const YOUTUBE_THUMBNAIL_PRESETS = [
+  { suffix: "maxresdefault", width: 1280, height: 720 },
+  { suffix: "sddefault", width: 640, height: 480 },
+  { suffix: "hqdefault", width: 480, height: 360 },
+  { suffix: "mqdefault", width: 320, height: 180 },
+  { suffix: "default", width: 120, height: 90 },
+];
+
+const createYoutubeThumbnailCandidates = (videoId) => {
+  if (!videoId) return [];
+  return YOUTUBE_THUMBNAIL_PRESETS.map(({ suffix, width, height }) => ({
+    url: `https://i.ytimg.com/vi/${videoId}/${suffix}.jpg`,
+    width,
+    height,
+  }));
+};
+
 const buildMinimalYoutubeEntry = ({ videoId, rawUrl, rawKeyword } = {}) => {
   if (!videoId) return null;
   const baseTitle =
@@ -614,11 +631,67 @@ const buildMinimalYoutubeEntry = ({ videoId, rawUrl, rawKeyword } = {}) => {
     uploader: "",
     extractor_key: "YouTube",
     duration: null,
-    thumbnails: [],
+    thumbnails: createYoutubeThumbnailCandidates(videoId),
     description: "",
     original_url: canonicalUrl,
     webpage_url: canonicalUrl,
   };
+};
+
+const fetchYoutubeOEmbed = async (videoId) => {
+  if (!videoId) return null;
+  const oembedUrl =
+    "https://www.youtube.com/oembed?format=json&url=" +
+    encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`);
+  const timeoutCtrl = createTimeoutController(8000);
+  try {
+    const response = await safeFetch(oembedUrl, {
+      signal: timeoutCtrl?.controller?.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!response?.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn(`[youtube-oembed] gagal: ${err?.message || err}`);
+    return null;
+  } finally {
+    if (timeoutCtrl?.timer) clearTimeout(timeoutCtrl.timer);
+  }
+};
+
+const enrichMinimalYoutubeEntry = async (entry, { rawUrl, rawKeyword } = {}) => {
+  if (!entry?.id) return entry;
+  try {
+    const data = await fetchYoutubeOEmbed(entry.id);
+    if (!data) return entry;
+    const title = data.title || entry.title || entry.fulltitle || "";
+    const author = data.author_name || entry.channel || entry.uploader || "";
+    const thumbnails = [...(entry.thumbnails || [])];
+    if (data.thumbnail_url) {
+      const normalized = String(data.thumbnail_url);
+      const exists = thumbnails.some((thumb) => thumb?.url === normalized);
+      if (!exists) {
+        thumbnails.unshift({
+          url: normalized,
+          width: Number.isFinite(data.thumbnail_width) ? Number(data.thumbnail_width) : undefined,
+          height: Number.isFinite(data.thumbnail_height) ? Number(data.thumbnail_height) : undefined,
+        });
+      }
+    }
+    return {
+      ...entry,
+      title,
+      fulltitle: title,
+      channel: author || entry.channel || "",
+      uploader: author || entry.uploader || "",
+      thumbnails,
+    };
+  } catch (err) {
+    console.warn(`[youtube-oembed] enrich gagal: ${err?.message || err}`);
+    return entry;
+  }
 };
 
 const fetchYoutubeVideosByIds = async (ids = [], { language } = {}) => {
@@ -1723,7 +1796,8 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       const videoId = extractYouTubeVideoId(rawUrl || rawKeyword || "");
       const minimal = buildMinimalYoutubeEntry({ videoId, rawUrl, rawKeyword });
       if (minimal) {
-        entry = minimal;
+        const enriched = await enrichMinimalYoutubeEntry(minimal, { rawUrl, rawKeyword }).catch(() => minimal);
+        entry = enriched || minimal;
         if (!keywordUsed && rawKeyword && !rawUrl) keywordUsed = true;
         console.warn(
           `[video-info] menggunakan metadata minimal untuk ${videoId || rawUrl || rawKeyword}`,
@@ -1812,7 +1886,9 @@ const searchYoutubeVideos = async ({ query, limit = 6, preferLang } = {}) => {
     const fallbackId = extractYouTubeVideoId(rawQuery);
     if (fallbackId) {
       const minimal = buildMinimalYoutubeEntry({ videoId: fallbackId, rawUrl: rawQuery, rawKeyword: rawQuery });
-      const meta = minimal ? buildVideoMetadata(minimal, { keywordUsed: false }) : null;
+      const enriched = minimal ? await enrichMinimalYoutubeEntry(minimal, { rawUrl: rawQuery, rawKeyword: rawQuery }).catch(() => minimal) : null;
+      const source = enriched || minimal;
+      const meta = source ? buildVideoMetadata(source, { keywordUsed: false }) : null;
       if (meta) {
         console.warn(`[search] menggunakan fallback minimal untuk ${fallbackId}`);
         return [meta];
