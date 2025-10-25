@@ -138,6 +138,8 @@ Skema SQL untuk tabel `users`, `user_tokens`, `xp_events`, `cheat_claims`, dan `
 
 - `GET /api/progress/:id` — Mengambil status progres konversi terbaru (tahap, persentase, ETA, dan detail tambahan).
 - `GET /api/tool-versions` — Mengecek versi yt-dlp dan ffmpeg yang terpasang serta rilis terbaru di GitHub.
+- `POST /api/create-batch` — Mengirim antrean playlist/daftar URL sekaligus ke worker Railway dengan verifikasi captcha dan XP otomatis.
+- `POST /api/naming/preview` — Menghasilkan nama file otomatis berdasarkan pola `{artist} - {title} ({bitrate})` yang bisa disesuaikan.
 - `POST /api/ai-tags` — Menghasilkan saran judul, artis, album, genre, mood, dan energi berdasarkan metadata video.
 - `GET /api/auth/config` — Mengembalikan `googleClientId` publik agar UI bisa merender tombol Google Sign-In.
 - `POST /api/auth/google` — Menukar credential Google One Tap/Sign-In menjadi session token aplikasi.

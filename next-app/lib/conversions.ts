@@ -117,3 +117,55 @@ export async function countConversionsForUser(userId: string): Promise<number> {
   const value = result.rows[0]?.count;
   return value ? Number.parseInt(value, 10) : 0;
 }
+
+interface ConversionJobInput {
+  jobId: string;
+  videoId: string;
+  format: string;
+}
+
+export async function recordConversionJobs(
+  userId: string,
+  jobs: ConversionJobInput[],
+  client?: PoolClient
+): Promise<void> {
+  if (!jobs.length) {
+    return;
+  }
+
+  const runner = async (runnerClient: PoolClient) => {
+    const values: any[] = [];
+    const placeholders: string[] = [];
+
+    jobs.forEach((job, index) => {
+      const offset = index * 4;
+      placeholders.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`);
+      values.push(userId, job.jobId, job.videoId, job.format);
+    });
+
+    await runnerClient.query(
+      `INSERT INTO conversions (user_id, job_id, source_video_id, format)
+       VALUES ${placeholders.join(', ')}
+       ON CONFLICT (job_id) DO NOTHING`,
+      values
+    );
+  };
+
+  if (client) {
+    await runner(client);
+    return;
+  }
+
+  const pool = getPool();
+  const pooledClient = await pool.connect();
+  try {
+    await pooledClient.query('BEGIN');
+    await runner(pooledClient);
+    await pooledClient.query('COMMIT');
+  } catch (error) {
+    await pooledClient.query('ROLLBACK');
+    throw error;
+  } finally {
+    pooledClient.release();
+  }
+}
