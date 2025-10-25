@@ -4516,7 +4516,33 @@
   };
 
   const AUTH_TOKEN_KEY = 'ytmp3.auth.token.v1';
+  const AUTH_SUMMARY_KEY = 'ytmp3.auth.summary.v1';
   let googleClientInitialized = false;
+
+  function persistCachedUserSummary(summary) {
+    try {
+      if (summary) {
+        localStorage.setItem(AUTH_SUMMARY_KEY, JSON.stringify(summary));
+      } else {
+        localStorage.removeItem(AUTH_SUMMARY_KEY);
+      }
+    } catch (err) {
+      console.warn('Gagal menyimpan ringkasan akun', err);
+    }
+  }
+
+  function hydrateCachedUserSummary() {
+    try {
+      const cached = localStorage.getItem(AUTH_SUMMARY_KEY);
+      if (!cached) return;
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed === 'object') {
+        applyUserSummary(parsed);
+      }
+    } catch (err) {
+      console.warn('Gagal memuat ringkasan akun tersimpan', err);
+    }
+  }
 
   function persistAuthToken(token) {
     state.auth.token = token || '';
@@ -4667,6 +4693,7 @@
   function applyUserSummary(summary) {
     state.auth.user = summary || null;
     state.auth.googleFallbackNotified = false;
+    persistCachedUserSummary(summary || null);
     clearGooglePollTimer();
     if (summary) {
       state.experience.points = Number(summary.xp) || 0;
@@ -10498,6 +10525,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     initWelcome();
     renderSpinWheel();
     loadSettings();
+    hydrateCachedUserSummary();
     loadAuthToken();
     fetchAuthConfig();
     fetchCheatConfig();

@@ -20,6 +20,12 @@ const defaultStore = () => ({
 const XP_EVENT_LIMIT = 1000;
 
 const CHEAT_CODES = {
+  free30kxp: {
+    xp: 30000,
+    reason: "cheat:free30kxp",
+    badge: "boost",
+    metadata: { label: "free30kxp" },
+  },
   "andhikagantengbangetomagadgantengbangetmuachmuach": {
     xp: 30000,
     reason: "cheat-secret",
