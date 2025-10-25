@@ -682,6 +682,29 @@ export default function Home() {
           Antarmuka Next.js ini memakai React dan Bootstrap. Semua endpoint backend lama tetap tersedia sehingga fitur lanjutan di UI klasik tetap dapat digunakan.
         </p>
       </main>
+      {isClient && recaptchaSiteKey && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.4)',
+            padding: '8px',
+            borderRadius: '6px',
+          }}
+        >
+          <ReCAPTCHA
+            sitekey={recaptchaSiteKey}
+            onChange={(token) => {
+              if (token) {
+                console.log('[debug captcha] token:', token);
+              }
+            }}
+          />
+          <div style={{ color: '#fff', fontSize: '11px', marginTop: '4px' }}>debug captcha mount</div>
+        </div>
+      )}
     </>
   );
 }

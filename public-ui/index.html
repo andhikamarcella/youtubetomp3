@@ -3962,16 +3962,12 @@
       return token;
     } catch (err) {
       const message = err?.message || translateMessage('Verifikasi captcha gagal. Silakan coba lagi.');
-      if (state.captcha.strict) {
-        setToast(message);
-        throw new Error(message);
-      }
       if (!state.captcha.warnedFailure) {
-        setToast(translateMessage('Captcha bermasalah, melanjutkan tanpa verifikasi.'));
+        setToast(message);
         state.captcha.warnedFailure = true;
       }
-      console.warn('Captcha execution skipped (non-strict mode)', err);
-      return null;
+      console.warn('Captcha execution blocked', err);
+      throw new Error(message);
     }
   }
 

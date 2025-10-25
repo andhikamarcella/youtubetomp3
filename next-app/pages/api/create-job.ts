@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Unsupported format' });
   }
   if (!captchaToken || typeof captchaToken !== 'string') {
-    return res.status(400).json({ error: 'captcha_required' });
+    return res.status(400).json({ error: 'captcha_missing' });
   }
 
   try {
