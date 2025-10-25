@@ -4519,6 +4519,12 @@
   const AUTH_SUMMARY_KEY = 'ytmp3.auth.summary.v1';
   let googleClientInitialized = false;
 
+  const computeLevelFromXp = (xpValue) => {
+    const numeric = Number(xpValue);
+    if (!Number.isFinite(numeric) || numeric <= 0) return 1;
+    return Math.max(1, Math.floor(numeric / 750) + 1);
+  };
+
   function persistCachedUserSummary(summary) {
     try {
       if (summary) {
@@ -4691,18 +4697,50 @@
   }
 
   function applyUserSummary(summary) {
-    state.auth.user = summary || null;
+    const previousSummary = state.auth.user;
+    let nextSummary = summary ? { ...summary } : null;
+
+    if (nextSummary && previousSummary && previousSummary.id === nextSummary.id) {
+      const prevXp = Number(previousSummary.xp) || 0;
+      const nextXp = Number(nextSummary.xp) || 0;
+      if (prevXp > nextXp) {
+        nextSummary.xp = prevXp;
+        const computedLevel = computeLevelFromXp(prevXp);
+        const prevLevel = Number(previousSummary.level) || 1;
+        const nextLevel = Number(nextSummary.level) || 1;
+        nextSummary.level = Math.max(computedLevel, prevLevel, nextLevel);
+        const prevBadges = Array.isArray(previousSummary.badges) ? previousSummary.badges : [];
+        const nextBadges = Array.isArray(nextSummary.badges) ? nextSummary.badges : [];
+        nextSummary.badges = Array.from(new Set([...nextBadges, ...prevBadges]));
+        const prevConversions = Number(previousSummary.totalConversions) || 0;
+        const nextConversions = Number(nextSummary.totalConversions) || 0;
+        nextSummary.totalConversions = Math.max(prevConversions, nextConversions);
+        const prevMinutes = Number(previousSummary.totalMinutes) || 0;
+        const nextMinutes = Number(nextSummary.totalMinutes) || 0;
+        nextSummary.totalMinutes = Math.max(prevMinutes, nextMinutes);
+      }
+    }
+
+    state.auth.user = nextSummary;
     state.auth.googleFallbackNotified = false;
-    persistCachedUserSummary(summary || null);
+    persistCachedUserSummary(nextSummary || null);
     clearGooglePollTimer();
-    if (summary) {
-      state.experience.points = Number(summary.xp) || 0;
-      const serverBadges = Array.isArray(summary.badges) ? summary.badges : [];
+    if (nextSummary) {
+      const xpValue = Number(nextSummary.xp) || 0;
+      state.experience.points = xpValue;
+      const serverBadges = Array.isArray(nextSummary.badges) ? nextSummary.badges : [];
       const mergedBadges = new Set([...(state.experience.badges || []), ...serverBadges]);
       state.experience.badges = Array.from(mergedBadges);
-      state.experience.level = summary.level || state.experience.level || 1;
-      state.experience.totalConversions = summary.totalConversions || state.experience.totalConversions || 0;
-      state.experience.totalMinutes = summary.totalMinutes || state.experience.totalMinutes || 0;
+      const derivedLevel = computeLevelFromXp(xpValue);
+      const candidateLevel = Number(nextSummary.level) || 0;
+      const previousLevel = Number(state.experience.level) || 0;
+      state.experience.level = Math.max(derivedLevel, candidateLevel, previousLevel || 1);
+      const summaryConversions = Number(nextSummary.totalConversions) || 0;
+      const currentConversions = Number(state.experience.totalConversions) || 0;
+      state.experience.totalConversions = Math.max(summaryConversions, currentConversions);
+      const summaryMinutes = Number(nextSummary.totalMinutes) || 0;
+      const currentMinutes = Number(state.experience.totalMinutes) || 0;
+      state.experience.totalMinutes = Math.max(summaryMinutes, currentMinutes);
     } else {
       state.cheats.visible = false;
       if (cheatCodeInput) cheatCodeInput.value = '';
