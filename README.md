@@ -125,6 +125,27 @@ renderFaq(faq.entries);
 
 Skema SQL untuk tabel `users`, `user_tokens`, `xp_events`, `cheat_claims`, dan `conversions` tersedia di `sql/schema.sql` agar XP, token OAuth, serta riwayat job benar-benar persisten di database.
 
+## Worker Service Railway
+
+Repositori ini kini menyertakan layanan worker mandiri pada folder [`worker-service/`](./worker-service) untuk menangani proses berat seperti unduhan `yt-dlp`, konversi `ffmpeg`, dan penyajian berkas hasil. Service ini dirancang berjalan sebagai deployment terpisah (misalnya Railway) dan hanya menerima permintaan yang membawa header `Authorization: Bearer <WORKER_SHARED_SECRET>` dari aplikasi utama.
+
+### Menjalankan Worker secara Lokal
+
+1. Masuk ke folder `worker-service` lalu jalankan `npm install`.
+2. Salin `.env.example` menjadi `.env` dan isi nilai `PORT`, `WORKER_SHARED_SECRET`, serta `SELF_URL` (domain publik worker saat deploy).
+3. Jalankan `npm start` untuk mem-boot Express server pada port yang ditentukan.
+
+Worker mengekspos endpoint berikut:
+
+| Endpoint | Metode | Deskripsi |
+| --- | --- | --- |
+| `/create-job` | POST | Membuat job baru dan memulai unduhan/konversi audio. |
+| `/status/:jobId` | GET | Mengembalikan progres job (dengan status selesai atau error). |
+| `/file/:jobId` | GET | Streaming hasil konversi langsung sebagai attachment. |
+| `/final-url/:jobId` | GET | Memberikan URL publik worker untuk unduhan ulang. |
+
+Seluruh endpoint di atas membutuhkan header `Authorization: Bearer ${WORKER_SHARED_SECRET}` sehingga worker tidak bisa diakses sembarang pihak. Untuk produksi, siapkan penyimpanan state dan antrean yang lebih andal (misalnya Redis + worker queue) serta mekanisme pembersihan berkas `/tmp` secara berkala.
+
 ## API Tambahan
 
 - `GET /api/progress/:id` — Mengambil status progres konversi terbaru (tahap, persentase, ETA, dan detail tambahan).
