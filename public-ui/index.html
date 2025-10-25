@@ -3875,6 +3875,8 @@
       lastToken: '',
       lastAction: '',
       lastFetched: 0,
+      strict: false,
+      warnedFailure: false,
     },
   };
 
@@ -3891,6 +3893,7 @@
     recaptchaScriptPromise = null;
     recaptchaReadyPromise = null;
     state.captcha.loadedSiteKey = '';
+    state.captcha.warnedFailure = false;
   }
 
   async function ensureRecaptchaReady(action = 'convert') {
@@ -3958,8 +3961,16 @@
       return token;
     } catch (err) {
       const message = err?.message || translateMessage('Verifikasi captcha gagal. Silakan coba lagi.');
-      setToast(message);
-      throw new Error(message);
+      if (state.captcha.strict) {
+        setToast(message);
+        throw new Error(message);
+      }
+      if (!state.captcha.warnedFailure) {
+        setToast(translateMessage('Captcha bermasalah, melanjutkan tanpa verifikasi.'));
+        state.captcha.warnedFailure = true;
+      }
+      console.warn('Captcha execution skipped (non-strict mode)', err);
+      return null;
     }
   }
 
@@ -5419,6 +5430,7 @@
       state.auth.googleClientId = data?.googleClientId || null;
       const previousSiteKey = state.captcha.siteKey;
       state.captcha.siteKey = data?.recaptchaSiteKey || '';
+      state.captcha.strict = !!data?.recaptchaStrict;
       if (state.captcha.siteKey !== previousSiteKey) {
         resetRecaptchaState();
       }

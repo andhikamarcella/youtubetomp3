@@ -52,6 +52,7 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CHEATS_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ENABLE_CHEATS || ""));
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || "";
 const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "";
+const RECAPTCHA_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.RECAPTCHA_STRICT || ""));
 const isRecaptchaConfigured = Boolean(RECAPTCHA_SECRET_KEY && RECAPTCHA_SITE_KEY);
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
@@ -423,6 +424,14 @@ const safeFetch = async (...args) => {
 };
 
 let recaptchaWarningLogged = false;
+const recaptchaBypassReasons = new Set();
+
+const logRecaptchaBypass = (message) => {
+  if (!message) return;
+  if (recaptchaBypassReasons.has(message)) return;
+  recaptchaBypassReasons.add(message);
+  console.warn(`[captcha] ${message}`);
+};
 
 const verifyRecaptchaToken = async (token, remoteIp) => {
   if (!isRecaptchaConfigured) {
@@ -438,9 +447,13 @@ const verifyRecaptchaToken = async (token, remoteIp) => {
   }
   const trimmed = typeof token === "string" ? token.trim() : "";
   if (!trimmed) {
-    const err = new Error("Token captcha wajib diisi");
-    err.statusCode = 400;
-    throw err;
+    if (RECAPTCHA_STRICT) {
+      const err = new Error("Token captcha wajib diisi");
+      err.statusCode = 400;
+      throw err;
+    }
+    logRecaptchaBypass("Token captcha kosong, melewati verifikasi (mode non-strict)");
+    return null;
   }
   const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: trimmed });
   if (remoteIp) params.set("remoteip", remoteIp);
@@ -452,23 +465,40 @@ const verifyRecaptchaToken = async (token, remoteIp) => {
       body: params.toString(),
     });
   } catch (err) {
-    const error = new Error("Gagal menghubungi layanan captcha");
-    error.cause = err;
-    throw error;
+    if (RECAPTCHA_STRICT) {
+      const error = new Error("Gagal menghubungi layanan captcha");
+      error.cause = err;
+      throw error;
+    }
+    logRecaptchaBypass("Gagal menghubungi layanan captcha, melewati verifikasi (mode non-strict)");
+    return null;
   }
   let data;
   try {
     data = await response.json();
   } catch (err) {
-    const error = new Error("Respon captcha tidak valid");
-    error.cause = err;
-    throw error;
+    if (RECAPTCHA_STRICT) {
+      const error = new Error("Respon captcha tidak valid");
+      error.cause = err;
+      throw error;
+    }
+    logRecaptchaBypass("Respon captcha tidak valid, melewati verifikasi (mode non-strict)");
+    return null;
   }
   if (!data?.success) {
+    if (RECAPTCHA_STRICT) {
+      const codes = Array.isArray(data?.["error-codes"]) ? data["error-codes"].join(",") : "";
+      const error = new Error(codes ? `Verifikasi captcha gagal (${codes})` : "Verifikasi captcha gagal");
+      error.statusCode = 400;
+      throw error;
+    }
     const codes = Array.isArray(data?.["error-codes"]) ? data["error-codes"].join(",") : "";
-    const error = new Error(codes ? `Verifikasi captcha gagal (${codes})` : "Verifikasi captcha gagal");
-    error.statusCode = 400;
-    throw error;
+    logRecaptchaBypass(
+      codes
+        ? `Verifikasi captcha gagal (${codes}), melewati verifikasi (mode non-strict)`
+        : "Verifikasi captcha gagal, melewati verifikasi (mode non-strict)",
+    );
+    return null;
   }
   return data;
 };
@@ -5550,6 +5580,7 @@ app.get("/api/auth/config", (req, res) => {
     ok: true,
     googleClientId: GOOGLE_CLIENT_ID || null,
     recaptchaSiteKey: RECAPTCHA_SITE_KEY || null,
+    recaptchaStrict: RECAPTCHA_STRICT,
   });
 });
 
