@@ -74,7 +74,7 @@ Deploy Next.js ke Vercel untuk mendapatkan endpoint serverless tambahan yang mem
 | `/api/history/[id]/redownload` | POST | Menghasilkan tautan unduh ulang langsung ke worker untuk konversi tersebut. |
 | `/api/leaderboard` | GET | Mengembalikan daftar pengguna dengan XP tertinggi (opsional parameter `limit`). |
 
-Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`. Bila worker perlu memakai cookies YouTube yang sudah diupload admin, set juga `WORKER_COOKIES_PATH` agar aplikasi utama dan worker menunjuk berkas yang sama. Jika worker berjalan di layanan terpisah, gunakan `WORKER_COOKIES_SYNC_URL` dan `WORKER_COOKIES_SYNC_TOKEN` supaya worker dapat menarik `cookies.txt` terbaru secara otomatis. Endpoint `/api/create-job` kini selalu memverifikasi token reCAPTCHA secara server-side, sehingga `RECAPTCHA_SECRET_KEY` wajib terkonfigurasi dengan benar.
+Helper bersama ada di `next-app/lib/` (koneksi PostgreSQL, utilitas auth, dan pengelola XP idempoten). Pastikan environment berikut terpasang saat deploy Vercel: `DATABASE_URL`, `YOUTUBE_API_KEY`, `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `RECAPTCHA_SECRET_KEY`, `WORKER_API_BASE`, `WORKER_SHARED_SECRET`, `ENABLE_CHEATS`, `XP_MULTIPLIER_PREMIUM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_SECRET`, dan `NEXTAUTH_URL`. Bila worker perlu memakai cookies YouTube yang sudah diupload admin, set juga `WORKER_COOKIES_PATH` agar aplikasi utama dan worker menunjuk berkas yang sama. Jika worker berjalan di layanan terpisah, set `WORKER_COOKIES_SYNC_URL` ke endpoint internal `/internal/worker/cookies` dan (opsional) `WORKER_COOKIES_SYNC_TOKEN` bila ingin memakai token berbeda dari `WORKER_SHARED_SECRET`. Worker dapat menyegarkan cookies otomatis memakai `WORKER_COOKIES_REFRESH_INTERVAL_MS` sehingga job berat tetap menggunakan sesi Google terbaru. Endpoint `/api/create-job` kini selalu memverifikasi token reCAPTCHA secara server-side, sehingga `RECAPTCHA_SECRET_KEY` wajib terkonfigurasi dengan benar.
 
 ### Contoh Penggunaan API di Frontend
 
@@ -132,7 +132,7 @@ Repositori ini kini menyertakan layanan worker mandiri pada folder [`worker-serv
 ### Menjalankan Worker secara Lokal
 
 1. Masuk ke folder `worker-service` lalu jalankan `npm install`.
-2. Salin `.env.example` menjadi `.env` dan isi nilai `PORT`, `WORKER_SHARED_SECRET`, `SELF_URL` (domain publik worker saat deploy), serta `WORKER_COOKIES_PATH` bila worker harus membaca cookies.txt hasil unggahan admin (default `/tmp/cookies.txt`).
+2. Salin `.env.example` menjadi `.env` dan isi nilai `PORT`, `WORKER_SHARED_SECRET`, `SELF_URL` (domain publik worker saat deploy), serta `WORKER_COOKIES_PATH` bila worker harus membaca cookies.txt hasil unggahan admin (default `/tmp/cookies.txt`). Bila cookies tinggal di aplikasi utama, isi `WORKER_COOKIES_SYNC_URL` (contoh `https://appmu.up.railway.app/internal/worker/cookies`) dan, jika perlu, `WORKER_COOKIES_SYNC_TOKEN` atau `WORKER_COOKIES_REFRESH_INTERVAL_MS` untuk menyinkronkan secara berkala.
 3. Jalankan `npm start` untuk mem-boot Express server pada port yang ditentukan.
 
 Worker mengekspos endpoint berikut:

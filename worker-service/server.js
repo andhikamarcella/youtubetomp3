@@ -5,6 +5,7 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import ytDlp from 'yt-dlp-exec';
 import ffmpeg from 'fluent-ffmpeg';
+import fetch from 'node-fetch';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -20,6 +21,12 @@ const normalizedSelfUrl = selfUrl.replace(/\/$/, '');
 const COOKIES_PATH = process.env.WORKER_COOKIES_PATH || '/tmp/cookies.txt';
 const COOKIES_SYNC_URL = process.env.WORKER_COOKIES_SYNC_URL || '';
 const COOKIES_SYNC_TOKEN = process.env.WORKER_COOKIES_SYNC_TOKEN || '';
+const COOKIES_REFRESH_INTERVAL_MS = Number.parseInt(
+  process.env.WORKER_COOKIES_REFRESH_INTERVAL_MS ?? '',
+  10
+);
+
+let lastCookiesHydration = 0;
 
 if (COOKIES_PATH) {
   if (!fs.existsSync(COOKIES_PATH)) {
@@ -34,7 +41,14 @@ if (COOKIES_PATH) {
     }
   } else {
     console.log(`Worker will attach cookies from ${COOKIES_PATH} when available.`);
+    lastCookiesHydration = Date.now();
   }
+}
+
+if (COOKIES_PATH && COOKIES_SYNC_URL) {
+  hydrateCookiesFile().catch((error) => {
+    console.warn('Initial cookies hydration failed', error);
+  });
 }
 
 // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
@@ -96,13 +110,16 @@ async function hydrateCookiesFile() {
   }
 
   try {
+    const headers = {
+      Accept: 'text/plain, */*;q=0.1',
+    };
+    const bearerSource = COOKIES_SYNC_TOKEN || workerSecret;
+    if (bearerSource) {
+      headers.Authorization = `Bearer ${bearerSource}`;
+    }
     const response = await fetch(COOKIES_SYNC_URL, {
       method: 'GET',
-      headers: COOKIES_SYNC_TOKEN
-        ? {
-            Authorization: `Bearer ${COOKIES_SYNC_TOKEN}`,
-          }
-        : undefined,
+      headers,
     });
 
     if (!response.ok) {
@@ -118,6 +135,7 @@ async function hydrateCookiesFile() {
 
     await fsPromises.mkdir(path.dirname(COOKIES_PATH), { recursive: true });
     await fsPromises.writeFile(COOKIES_PATH, text, 'utf8');
+    lastCookiesHydration = Date.now();
     console.log(`Fetched cookies from sync URL into ${COOKIES_PATH}`);
     return COOKIES_PATH;
   } catch (error) {
@@ -131,11 +149,30 @@ async function resolveCookiesFile() {
     return null;
   }
 
+  const now = Date.now();
+  const refreshInterval = Number.isFinite(COOKIES_REFRESH_INTERVAL_MS)
+    ? Math.max(30_000, COOKIES_REFRESH_INTERVAL_MS)
+    : 5 * 60_000;
+
+  if (COOKIES_SYNC_URL && (forceHydrationRequired(now, refreshInterval) || !(await fileExists(COOKIES_PATH)))) {
+    const hydrated = await hydrateCookiesFile();
+    if (hydrated) {
+      return hydrated;
+    }
+  }
+
   if (await fileExists(COOKIES_PATH)) {
     return COOKIES_PATH;
   }
 
   return hydrateCookiesFile();
+}
+
+function forceHydrationRequired(now, refreshInterval) {
+  if (!lastCookiesHydration) {
+    return true;
+  }
+  return now - lastCookiesHydration > refreshInterval;
 }
 
 async function processJob(jobId, jobOptions) {

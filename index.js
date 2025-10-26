@@ -6774,6 +6774,25 @@ app.get("/admin/download-cookies", async (req, res) => {
   }
 });
 
+app.get("/internal/worker/cookies", async (req, res) => {
+  try {
+    const workerSecret = process.env.WORKER_SHARED_SECRET;
+    if (!workerSecret) {
+      return res.status(503).json({ error: "worker_secret_missing" });
+    }
+    const auth = req.get("Authorization") || "";
+    if (auth !== `Bearer ${workerSecret}`) {
+      return res.status(401).json({ error: "unauthorized" });
+    }
+    const text = await fsp.readFile(COOKIES_PATH, "utf8");
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.send(text);
+  } catch (e) {
+    if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 const server = app.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
