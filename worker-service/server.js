@@ -5,10 +5,22 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import ytDlp from 'yt-dlp-exec';
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import fetch from 'node-fetch';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
+
+if (ffmpegInstaller?.path) {
+  try {
+    ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+    console.log(`Configured ffmpeg binary from @ffmpeg-installer at ${ffmpegInstaller.path}`);
+  } catch (error) {
+    console.warn('Failed to configure ffmpeg binary from installer package', error);
+  }
+} else {
+  console.warn('No ffmpeg installer path detected; relying on system ffmpeg in PATH');
+}
 
 const workerSecret = process.env.WORKER_SHARED_SECRET;
 if (!workerSecret) {
@@ -80,6 +92,28 @@ function sanitizeFileComponent(input) {
     .replace(/[\\/:*?"<>|]+/g, '_')
     .replace(/\s+/g, ' ')
     .slice(0, 128) || 'audio';
+}
+
+function appendJobLog(jobId, message, error) {
+  if (!JOBS[jobId]) {
+    return;
+  }
+  const timestamp = new Date().toISOString();
+  const formatted = error ? `${timestamp} [error] ${message}` : `${timestamp} ${message}`;
+  if (!Array.isArray(JOBS[jobId].logs)) {
+    JOBS[jobId].logs = [];
+  }
+  JOBS[jobId].logs.push(formatted);
+  if (JOBS[jobId].logs.length > 200) {
+    JOBS[jobId].logs.splice(0, JOBS[jobId].logs.length - 200);
+  }
+  JOBS[jobId].updatedAt = Date.now();
+}
+
+function touchJob(jobId) {
+  if (JOBS[jobId]) {
+    JOBS[jobId].updatedAt = Date.now();
+  }
 }
 
 async function removeFileIfExists(targetPath) {
@@ -214,9 +248,17 @@ async function processJob(jobId, jobOptions) {
       mimeType: config.mimeType,
       userId,
     };
+    touchJob(jobId);
+    appendJobLog(jobId, `Normalized video URL ${normalizedUrl}`);
 
     const cookiesPath = await resolveCookiesFile();
     JOBS[jobId].usingCookies = Boolean(cookiesPath);
+    touchJob(jobId);
+    if (cookiesPath) {
+      appendJobLog(jobId, `Using cookies file at ${cookiesPath}`);
+    } else {
+      appendJobLog(jobId, 'Proceeding without cookies');
+    }
 
     await ytDlp(normalizedUrl, {
       output: downloadTemplate,
@@ -225,8 +267,10 @@ async function processJob(jobId, jobOptions) {
       quiet: true,
       ...(cookiesPath ? { cookies: cookiesPath } : {}),
     });
+    appendJobLog(jobId, 'yt-dlp download finished');
 
     JOBS[jobId].progress = 40;
+    touchJob(jobId);
 
     const downloadEntries = await fsPromises.readdir(DOWNLOAD_DIR);
     const sourceName = downloadEntries.find((entry) => entry.startsWith(`${jobId}.source.`));
@@ -236,6 +280,7 @@ async function processJob(jobId, jobOptions) {
 
     tempDownloadPath = path.join(DOWNLOAD_DIR, sourceName);
 
+    appendJobLog(jobId, 'Starting ffmpeg conversion');
     await new Promise((resolve, reject) => {
       const command = ffmpeg(tempDownloadPath)
         .audioCodec(config.audioCodec)
@@ -265,12 +310,17 @@ async function processJob(jobId, jobOptions) {
         .on('progress', (progress) => {
           if (progress && typeof progress.percent === 'number') {
             JOBS[jobId].progress = Math.min(95, Math.max(0, Math.round(progress.percent)));
+            touchJob(jobId);
           }
         })
         .on('end', resolve)
-        .on('error', reject)
+        .on('error', (error) => {
+          appendJobLog(jobId, `ffmpeg error: ${error?.message || error}`, true);
+          reject(error);
+        })
         .save(finalPath);
     });
+    appendJobLog(jobId, `ffmpeg saved output to ${finalPath}`);
 
     JOBS[jobId] = {
       ...JOBS[jobId],
@@ -280,16 +330,23 @@ async function processJob(jobId, jobOptions) {
       fileName,
       mimeType: config.mimeType,
     };
+    touchJob(jobId);
+    appendJobLog(jobId, 'Job finished successfully');
 
     await removeFileIfExists(tempDownloadPath);
   } catch (error) {
     console.error('Worker failed to process job', jobId, error);
+    appendJobLog(jobId, `Job failed: ${error?.message || error}`, true);
     JOBS[jobId] = {
+      ...JOBS[jobId],
       status: 'error',
       progress: 0,
       error: 'convert_failed',
       userId,
+      errorDetail: error?.message || 'convert_failed',
+      logs: JOBS[jobId]?.logs || [],
     };
+    touchJob(jobId);
 
     if (tempDownloadPath) {
       await removeFileIfExists(tempDownloadPath);
@@ -328,7 +385,12 @@ app.post('/create-job', requireAuth, async (req, res) => {
     status: 'processing',
     progress: 0,
     userId,
+    logs: [],
+    acceptedAt: Date.now(),
+    updatedAt: Date.now(),
   };
+  appendJobLog(jobId, `Job accepted for user ${userId} with video ${videoId}`);
+  touchJob(jobId);
 
   // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
   // TODO: async queue instead of blocking request
@@ -361,7 +423,9 @@ app.get('/status/:jobId', requireAuth, (req, res) => {
   }
 
   if (job.status === 'error') {
-    return res.status(200).json({ progress: 0, done: true, error: 'convert_failed' });
+    return res
+      .status(200)
+      .json({ progress: 0, done: true, error: 'convert_failed', errorDetail: job.errorDetail || null });
   }
 
   return res.status(200).json({ progress: job.progress ?? 0, done: false });
@@ -448,6 +512,56 @@ app.get('/admin/cookies-status', requireAuth, async (_req, res) => {
     console.error('Failed to read cookies status', error);
     return res.status(500).json({ error: 'cookies_status_failed' });
   }
+});
+
+app.post('/admin/refresh-cookies', requireAuth, async (_req, res) => {
+  if (!COOKIES_PATH || !COOKIES_SYNC_URL) {
+    return res.status(400).json({ error: 'sync_not_configured' });
+  }
+
+  try {
+    const hydrated = await hydrateCookiesFile();
+    if (!hydrated) {
+      return res.status(502).json({ error: 'sync_failed' });
+    }
+    const stat = await fsPromises.stat(hydrated);
+    return res.json({ ok: true, path: hydrated, bytes: stat.size, mtime: stat.mtime });
+  } catch (error) {
+    console.error('Manual cookies refresh failed', error);
+    return res.status(500).json({ error: 'sync_failed' });
+  }
+});
+
+app.get('/admin/jobs', requireAuth, (req, res) => {
+  const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit ?? '25', 10) || 25));
+  const entries = Object.entries(JOBS)
+    .sort((a, b) => (JOBS[b[0]].updatedAt ?? 0) - (JOBS[a[0]].updatedAt ?? 0))
+    .slice(0, limit)
+    .map(([jobId, job]) => ({
+      jobId,
+      status: job.status,
+      progress: job.progress ?? 0,
+      usingCookies: Boolean(job.usingCookies),
+      updatedAt: job.updatedAt ?? null,
+      userId: job.userId ?? null,
+      error: job.error ?? null,
+    }));
+
+  return res.json({ jobs: entries, total: entries.length });
+});
+
+app.get('/admin/jobs/:jobId', requireAuth, (req, res) => {
+  const jobId = req.params.jobId;
+  const job = JOBS[jobId];
+  if (!job) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+
+  return res.json({
+    jobId,
+    ...job,
+    logs: job.logs || [],
+  });
 });
 
 app.get('/admin/download-cookies', requireAuth, async (_req, res) => {

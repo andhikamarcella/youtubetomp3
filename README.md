@@ -131,7 +131,7 @@ Repositori ini kini menyertakan layanan worker mandiri pada folder [`worker-serv
 
 ### Menjalankan Worker secara Lokal
 
-1. Masuk ke folder `worker-service` lalu jalankan `npm install`.
+1. Masuk ke folder `worker-service` lalu jalankan `npm install`. Paket ini sudah menyertakan `@ffmpeg-installer/ffmpeg` sehingga worker membawa binary ffmpeg statis tanpa perlu apt-get terpisah.
 2. Salin `.env.example` menjadi `.env` dan isi nilai `PORT`, `WORKER_SHARED_SECRET`, `SELF_URL` (domain publik worker saat deploy), serta `WORKER_COOKIES_PATH` bila worker harus membaca cookies.txt hasil unggahan admin (default `/tmp/cookies.txt`). Bila cookies tinggal di aplikasi utama, isi `WORKER_COOKIES_SYNC_URL` (contoh `https://appmu.up.railway.app/internal/worker/cookies`) dan, jika perlu, `WORKER_COOKIES_SYNC_TOKEN` atau `WORKER_COOKIES_REFRESH_INTERVAL_MS` untuk menyinkronkan secara berkala.
 3. Jalankan `npm start` untuk mem-boot Express server pada port yang ditentukan.
 
@@ -143,6 +143,11 @@ Worker mengekspos endpoint berikut:
 | `/status/:jobId` | GET | Mengembalikan progres job (dengan status selesai atau error). |
 | `/file/:jobId` | GET | Streaming hasil konversi langsung sebagai attachment. |
 | `/final-url/:jobId` | GET | Memberikan URL publik worker untuk unduhan ulang. |
+| `/admin/upload-cookies` | POST | Mengunggah cookies Google secara manual ke worker. |
+| `/admin/cookies-status` | GET | Mengecek ukuran & timestamp cookies yang sedang digunakan worker. |
+| `/admin/refresh-cookies` | POST | Memaksa worker mengambil ulang cookies dari `WORKER_COOKIES_SYNC_URL`. |
+| `/admin/jobs` | GET | Melihat daftar ringkas job terbaru (status, progres, penggunaan cookies). |
+| `/admin/jobs/:jobId` | GET | Mengambil detail job lengkap beserta log debug terbaru. |
 
 Seluruh endpoint di atas membutuhkan header `Authorization: Bearer ${WORKER_SHARED_SECRET}` sehingga worker tidak bisa diakses sembarang pihak. Untuk produksi, siapkan penyimpanan state dan antrean yang lebih andal (misalnya Redis + worker queue) serta mekanisme pembersihan berkas `/tmp` secara berkala.
 
