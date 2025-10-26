@@ -58,38 +58,28 @@ async function removeFileIfExists(targetPath) {
   }
 }
 
-app.post('/create-job', requireAuth, async (req, res) => {
-  const { userId, videoId, format, trimStartSeconds, trimEndSeconds, normalizeAudio, volumeBoostDb } = req.body ?? {};
-
-  if (!videoId || typeof videoId !== 'string') {
-    return res.status(400).json({ error: 'video_id_required' });
-  }
-  if (!format || typeof format !== 'string' || !FORMAT_CONFIG[format]) {
-    return res.status(400).json({ error: 'unsupported_format' });
-  }
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'user_id_required' });
-  }
-
-  const jobId = uuidv4();
-  const downloadTemplate = path.join(DOWNLOAD_DIR, `${jobId}.source.%(ext)s`);
+async function processJob(jobId, jobOptions) {
+  const { videoId, format, trimStartSeconds, trimEndSeconds, normalizeAudio, volumeBoostDb, userId } = jobOptions;
   const config = FORMAT_CONFIG[format];
+  const downloadTemplate = path.join(DOWNLOAD_DIR, `${jobId}.source.%(ext)s`);
   const finalPath = path.join(DOWNLOAD_DIR, `${jobId}.${config.extension}`);
   const fileName = `${sanitizeFileComponent(videoId)}.${config.extension}`;
-
-  JOBS[jobId] = {
-    status: 'processing',
-    progress: 0,
-  };
 
   let tempDownloadPath;
 
   try {
-    // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
-    // TODO: async queue instead of blocking request
-    // TODO: rate limit / abuse prevention
+    if (!JOBS[jobId]) {
+      JOBS[jobId] = { status: 'processing', progress: 0, userId };
+    }
 
-    JOBS[jobId].progress = 5;
+    JOBS[jobId] = {
+      ...JOBS[jobId],
+      status: 'processing',
+      progress: 5,
+      fileName,
+      mimeType: config.mimeType,
+      userId,
+    };
 
     await ytDlp(videoId, {
       output: downloadTemplate,
@@ -145,6 +135,7 @@ app.post('/create-job', requireAuth, async (req, res) => {
     });
 
     JOBS[jobId] = {
+      ...JOBS[jobId],
       status: 'done',
       progress: 100,
       filePath: finalPath,
@@ -153,14 +144,13 @@ app.post('/create-job', requireAuth, async (req, res) => {
     };
 
     await removeFileIfExists(tempDownloadPath);
-
-    return res.status(200).json({ jobId });
   } catch (error) {
     console.error('Worker failed to process job', jobId, error);
     JOBS[jobId] = {
       status: 'error',
       progress: 0,
       error: 'convert_failed',
+      userId,
     };
 
     if (tempDownloadPath) {
@@ -176,10 +166,48 @@ app.post('/create-job', requireAuth, async (req, res) => {
         console.warn('Failed to inspect download directory during cleanup', cleanupError);
       }
     }
-    await removeFileIfExists(finalPath);
 
-    return res.status(500).json({ error: 'convert_failed' });
+    await removeFileIfExists(finalPath);
   }
+}
+
+app.post('/create-job', requireAuth, async (req, res) => {
+  const { userId, videoId, format, trimStartSeconds, trimEndSeconds, normalizeAudio, volumeBoostDb } = req.body ?? {};
+
+  if (!videoId || typeof videoId !== 'string') {
+    return res.status(400).json({ error: 'video_id_required' });
+  }
+  if (!format || typeof format !== 'string' || !FORMAT_CONFIG[format]) {
+    return res.status(400).json({ error: 'unsupported_format' });
+  }
+  if (!userId || typeof userId !== 'string') {
+    return res.status(400).json({ error: 'user_id_required' });
+  }
+
+  const jobId = uuidv4();
+
+  JOBS[jobId] = {
+    status: 'processing',
+    progress: 0,
+    userId,
+  };
+
+  // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
+  // TODO: async queue instead of blocking request
+  // TODO: rate limit / abuse prevention
+  processJob(jobId, {
+    userId,
+    videoId,
+    format,
+    trimStartSeconds,
+    trimEndSeconds,
+    normalizeAudio,
+    volumeBoostDb,
+  }).catch((error) => {
+    console.error('Unhandled error while processing job', jobId, error);
+  });
+
+  return res.status(202).json({ jobId });
 });
 
 app.get('/status/:jobId', requireAuth, (req, res) => {
