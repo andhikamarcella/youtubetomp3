@@ -18,10 +18,20 @@ const selfUrl = process.env.SELF_URL ?? '';
 const normalizedSelfUrl = selfUrl.replace(/\/$/, '');
 
 const COOKIES_PATH = process.env.WORKER_COOKIES_PATH || '/tmp/cookies.txt';
+const COOKIES_SYNC_URL = process.env.WORKER_COOKIES_SYNC_URL || '';
+const COOKIES_SYNC_TOKEN = process.env.WORKER_COOKIES_SYNC_TOKEN || '';
 
 if (COOKIES_PATH) {
   if (!fs.existsSync(COOKIES_PATH)) {
-    console.warn(`Worker cookies file not found at ${COOKIES_PATH}. Age-gated videos may fail until it is uploaded.`);
+    if (COOKIES_SYNC_URL) {
+      console.warn(
+        `Worker cookies file not found at ${COOKIES_PATH}. Will attempt to fetch from WORKER_COOKIES_SYNC_URL when needed.`
+      );
+    } else {
+      console.warn(
+        `Worker cookies file not found at ${COOKIES_PATH}. Age-gated videos may fail until it is uploaded.`
+      );
+    }
   } else {
     console.log(`Worker will attach cookies from ${COOKIES_PATH} when available.`);
   }
@@ -68,6 +78,66 @@ async function removeFileIfExists(targetPath) {
   }
 }
 
+async function fileExists(targetPath) {
+  try {
+    await fsPromises.access(targetPath, fs.constants.R_OK);
+    return true;
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      console.warn('Error while checking file existence', targetPath, error);
+    }
+    return false;
+  }
+}
+
+async function hydrateCookiesFile() {
+  if (!COOKIES_PATH || !COOKIES_SYNC_URL) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(COOKIES_SYNC_URL, {
+      method: 'GET',
+      headers: COOKIES_SYNC_TOKEN
+        ? {
+            Authorization: `Bearer ${COOKIES_SYNC_TOKEN}`,
+          }
+        : undefined,
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to fetch cookies from sync URL', response.status);
+      return null;
+    }
+
+    const text = await response.text();
+    if (!text || !text.trim()) {
+      console.warn('Cookies sync endpoint returned empty body');
+      return null;
+    }
+
+    await fsPromises.mkdir(path.dirname(COOKIES_PATH), { recursive: true });
+    await fsPromises.writeFile(COOKIES_PATH, text, 'utf8');
+    console.log(`Fetched cookies from sync URL into ${COOKIES_PATH}`);
+    return COOKIES_PATH;
+  } catch (error) {
+    console.warn('Unable to hydrate cookies from sync URL', error);
+    return null;
+  }
+}
+
+async function resolveCookiesFile() {
+  if (!COOKIES_PATH) {
+    return null;
+  }
+
+  if (await fileExists(COOKIES_PATH)) {
+    return COOKIES_PATH;
+  }
+
+  return hydrateCookiesFile();
+}
+
 async function processJob(jobId, jobOptions) {
   const { videoId, format, trimStartSeconds, trimEndSeconds, normalizeAudio, volumeBoostDb, userId } = jobOptions;
   const config = FORMAT_CONFIG[format];
@@ -108,7 +178,8 @@ async function processJob(jobId, jobOptions) {
       userId,
     };
 
-    const cookiesPath = COOKIES_PATH && fs.existsSync(COOKIES_PATH) ? COOKIES_PATH : null;
+    const cookiesPath = await resolveCookiesFile();
+    JOBS[jobId].usingCookies = Boolean(cookiesPath);
 
     await ytDlp(normalizedUrl, {
       output: downloadTemplate,
@@ -302,6 +373,62 @@ app.get('/final-url/:jobId', requireAuth, (req, res) => {
     suggestedName: job.fileName,
     mimeType: job.mimeType,
   });
+});
+
+app.post('/admin/upload-cookies', requireAuth, express.text({ type: '*/*', limit: '2mb' }), async (req, res) => {
+  const body = typeof req.body === 'string' ? req.body : '';
+  if (!body.trim()) {
+    return res.status(400).json({ error: 'empty_body' });
+  }
+
+  if (!COOKIES_PATH) {
+    return res.status(500).json({ error: 'cookies_path_missing' });
+  }
+
+  try {
+    await fsPromises.mkdir(path.dirname(COOKIES_PATH), { recursive: true });
+    await fsPromises.writeFile(COOKIES_PATH, body, 'utf8');
+    const stat = await fsPromises.stat(COOKIES_PATH);
+    return res.json({ ok: true, path: COOKIES_PATH, bytes: stat.size, mtime: stat.mtime });
+  } catch (error) {
+    console.error('Failed to persist cookies upload', error);
+    return res.status(500).json({ error: 'cookies_write_failed' });
+  }
+});
+
+app.get('/admin/cookies-status', requireAuth, async (_req, res) => {
+  if (!COOKIES_PATH) {
+    return res.status(500).json({ error: 'cookies_path_missing' });
+  }
+
+  try {
+    const stat = await fsPromises.stat(COOKIES_PATH);
+    return res.json({ exists: true, path: COOKIES_PATH, bytes: stat.size, mtime: stat.mtime });
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return res.json({ exists: false });
+    }
+    console.error('Failed to read cookies status', error);
+    return res.status(500).json({ error: 'cookies_status_failed' });
+  }
+});
+
+app.get('/admin/download-cookies', requireAuth, async (_req, res) => {
+  if (!COOKIES_PATH) {
+    return res.status(500).json({ error: 'cookies_path_missing' });
+  }
+
+  try {
+    const contents = await fsPromises.readFile(COOKIES_PATH, 'utf8');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    return res.send(contents);
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return res.status(404).json({ error: 'not_found' });
+    }
+    console.error('Failed to stream cookies file', error);
+    return res.status(500).json({ error: 'cookies_read_failed' });
+  }
 });
 
 const port = Number.parseInt(process.env.PORT ?? '8080', 10);

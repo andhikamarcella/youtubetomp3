@@ -6723,6 +6723,26 @@ app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), a
 
     await fsp.writeFile(COOKIES_PATH, req.body, "utf8");
     const stat = await fsp.stat(COOKIES_PATH);
+    const workerBase = process.env.WORKER_API_BASE;
+    const workerSecret = process.env.WORKER_SHARED_SECRET;
+    if (workerBase && workerSecret) {
+      const workerUrl = `${workerBase.replace(/\/$/, "")}/admin/upload-cookies`;
+      try {
+        const resp = await fetch(workerUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            Authorization: `Bearer ${workerSecret}`,
+          },
+          body: req.body,
+        });
+        if (!resp.ok) {
+          console.warn("Worker upload-cookies responded with", resp.status);
+        }
+      } catch (err) {
+        console.warn("Failed to forward cookies to worker", err);
+      }
+    }
     return res.json({ ok: true, path: COOKIES_PATH, bytes: stat.size, mtime: stat.mtime });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -6736,6 +6756,20 @@ app.get("/admin/cookies-status", (req, res) => {
     const size = statSync(COOKIES_PATH).size;
     return res.json({ exists: true, path: COOKIES_PATH, bytes: size });
   } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/admin/download-cookies", async (req, res) => {
+  try {
+    const auth = req.get("Authorization") || "";
+    if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
+
+    const text = await fsp.readFile(COOKIES_PATH, "utf8");
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return res.send(text);
+  } catch (e) {
+    if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
     return res.status(500).json({ error: e.message });
   }
 });
