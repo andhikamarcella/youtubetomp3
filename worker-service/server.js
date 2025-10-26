@@ -19,6 +19,7 @@ const normalizedSelfUrl = selfUrl.replace(/\/$/, '');
 
 // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
 const JOBS = Object.create(null);
+const DOWNLOAD_DIR = '/tmp';
 
 const FORMAT_CONFIG = {
   mp3: { extension: 'mp3', mimeType: 'audio/mpeg', ffmpegFormat: 'mp3', audioCodec: 'libmp3lame' },
@@ -71,15 +72,17 @@ app.post('/create-job', requireAuth, async (req, res) => {
   }
 
   const jobId = uuidv4();
-  const tempDownloadPath = path.join('/tmp', `${jobId}.source`);
+  const downloadTemplate = path.join(DOWNLOAD_DIR, `${jobId}.source.%(ext)s`);
   const config = FORMAT_CONFIG[format];
-  const finalPath = path.join('/tmp', `${jobId}.${config.extension}`);
+  const finalPath = path.join(DOWNLOAD_DIR, `${jobId}.${config.extension}`);
   const fileName = `${sanitizeFileComponent(videoId)}.${config.extension}`;
 
   JOBS[jobId] = {
     status: 'processing',
     progress: 0,
   };
+
+  let tempDownloadPath;
 
   try {
     // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
@@ -89,13 +92,21 @@ app.post('/create-job', requireAuth, async (req, res) => {
     JOBS[jobId].progress = 5;
 
     await ytDlp(videoId, {
-      output: tempDownloadPath,
+      output: downloadTemplate,
       format: 'bestaudio/best',
       extractAudio: false,
       quiet: true,
     });
 
     JOBS[jobId].progress = 40;
+
+    const downloadEntries = await fsPromises.readdir(DOWNLOAD_DIR);
+    const sourceName = downloadEntries.find((entry) => entry.startsWith(`${jobId}.source.`));
+    if (!sourceName) {
+      throw new Error('download_missing');
+    }
+
+    tempDownloadPath = path.join(DOWNLOAD_DIR, sourceName);
 
     await new Promise((resolve, reject) => {
       const command = ffmpeg(tempDownloadPath)
@@ -152,7 +163,19 @@ app.post('/create-job', requireAuth, async (req, res) => {
       error: 'convert_failed',
     };
 
-    await removeFileIfExists(tempDownloadPath);
+    if (tempDownloadPath) {
+      await removeFileIfExists(tempDownloadPath);
+    } else {
+      try {
+        const downloadEntries = await fsPromises.readdir(DOWNLOAD_DIR);
+        const sourceName = downloadEntries.find((entry) => entry.startsWith(`${jobId}.source.`));
+        if (sourceName) {
+          await removeFileIfExists(path.join(DOWNLOAD_DIR, sourceName));
+        }
+      } catch (cleanupError) {
+        console.warn('Failed to inspect download directory during cleanup', cleanupError);
+      }
+    }
     await removeFileIfExists(finalPath);
 
     return res.status(500).json({ error: 'convert_failed' });
