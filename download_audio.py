@@ -79,7 +79,13 @@ def _iter_candidates(info) -> Iterable[object]:
         yield info
 
 
-def download_with_ytdlp(url: str, out_dir: str, out_basename: str) -> str:
+def download_with_ytdlp(
+    url: str,
+    out_dir: str,
+    out_basename: str,
+    *,
+    cookies_path: Optional[str] = None,
+) -> str:
     if not ensure_ytdlp():
         raise RuntimeError("yt_dlp unavailable")
 
@@ -95,6 +101,9 @@ def download_with_ytdlp(url: str, out_dir: str, out_basename: str) -> str:
         "cachedir": False,
         "ignoreerrors": False,
     }
+
+    if cookies_path and os.path.isfile(cookies_path):
+        opts["cookiefile"] = cookies_path
 
     with YoutubeDL(opts) as ydl:  # type: ignore[misc]
         info = ydl.extract_info(url, download=True)
@@ -137,17 +146,23 @@ def download_with_pytube(url: str, out_dir: str, out_basename: str) -> str:
 def main() -> None:
     if len(sys.argv) < 4:
         print(
-            "usage: python3 download_audio.py <url> <out_dir> <out_basename>",
+            "usage: python3 download_audio.py <url> <out_dir> <out_basename> [cookies_path]",
             file=sys.stderr,
         )
         sys.exit(2)
 
     url, out_dir, out_basename = sys.argv[1], sys.argv[2], sys.argv[3]
+    cookies_path = sys.argv[4] if len(sys.argv) > 4 else None
     os.makedirs(out_dir, exist_ok=True)
 
     errors = []
     try:
-        path = download_with_ytdlp(url, out_dir, out_basename)
+        path = download_with_ytdlp(
+            url,
+            out_dir,
+            out_basename,
+            cookies_path=cookies_path,
+        )
     except Exception as exc:
         errors.append(f"yt_dlp failed: {exc}")
         path = None

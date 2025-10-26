@@ -5062,12 +5062,16 @@ const runYtDlpDownload = ({ args, id, onProgress }) =>
 const runPythonDownload = ({ url, id, baseLogs = "" }) =>
   new Promise((resolve, reject) => {
     let pyLogs = "";
-    const py = spawn("python3", [
+    const scriptArgs = [
       join(__dirname, "download_audio.py"),
       url,
       JOBS_DIR,
       id,
-    ], { stdio: ["ignore", "pipe", "pipe"] });
+    ];
+    if (existsSync(COOKIES_PATH)) {
+      scriptArgs.push(COOKIES_PATH);
+    }
+    const py = spawn("python3", scriptArgs, { stdio: ["ignore", "pipe", "pipe"] });
 
     py.stdout.on("data", (d) => {
       const s = d.toString();
