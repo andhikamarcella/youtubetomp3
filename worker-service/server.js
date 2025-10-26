@@ -17,6 +17,16 @@ if (!workerSecret) {
 const selfUrl = process.env.SELF_URL ?? '';
 const normalizedSelfUrl = selfUrl.replace(/\/$/, '');
 
+const COOKIES_PATH = process.env.WORKER_COOKIES_PATH || '/tmp/cookies.txt';
+
+if (COOKIES_PATH) {
+  if (!fs.existsSync(COOKIES_PATH)) {
+    console.warn(`Worker cookies file not found at ${COOKIES_PATH}. Age-gated videos may fail until it is uploaded.`);
+  } else {
+    console.log(`Worker will attach cookies from ${COOKIES_PATH} when available.`);
+  }
+}
+
 // TODO: persistent storage instead of in-memory JOBS (e.g. Redis or DB)
 const JOBS = Object.create(null);
 const DOWNLOAD_DIR = '/tmp';
@@ -63,7 +73,24 @@ async function processJob(jobId, jobOptions) {
   const config = FORMAT_CONFIG[format];
   const downloadTemplate = path.join(DOWNLOAD_DIR, `${jobId}.source.%(ext)s`);
   const finalPath = path.join(DOWNLOAD_DIR, `${jobId}.${config.extension}`);
-  const fileName = `${sanitizeFileComponent(videoId)}.${config.extension}`;
+  const normalizedUrl = (() => {
+    if (typeof videoId !== 'string' || !videoId.trim()) {
+      return videoId;
+    }
+    const trimmed = videoId.trim();
+    if (/^https?:/i.test(trimmed)) {
+      return trimmed;
+    }
+    if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+      return `https://www.youtube.com/watch?v=${trimmed}`;
+    }
+    return trimmed;
+  })();
+  const baseLabel =
+    typeof videoId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(videoId.trim())
+      ? videoId.trim()
+      : normalizedUrl;
+  const fileName = `${sanitizeFileComponent(baseLabel)}.${config.extension}`;
 
   let tempDownloadPath;
 
@@ -81,11 +108,14 @@ async function processJob(jobId, jobOptions) {
       userId,
     };
 
-    await ytDlp(videoId, {
+    const cookiesPath = COOKIES_PATH && fs.existsSync(COOKIES_PATH) ? COOKIES_PATH : null;
+
+    await ytDlp(normalizedUrl, {
       output: downloadTemplate,
       format: 'bestaudio/best',
       extractAudio: false,
       quiet: true,
+      ...(cookiesPath ? { cookies: cookiesPath } : {}),
     });
 
     JOBS[jobId].progress = 40;
