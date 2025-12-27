@@ -1906,11 +1906,23 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     // Flow: Spotify URL → Spotify Web API → UI pakai cover Spotify (HD) → searchQuery → YouTube → yt-dlp → hasil MP3/M4A pakai metadata Spotify
     // Mirip dengan SoundCloud - cover dari Spotify, bukan dari YouTube
     if (originalSource.type === "spotify") {
-      // Cover Spotify (HD) - SELALU digunakan, override cover dari YouTube
+      // HAPUS cover dari YouTube terlebih dahulu (jangan pakai cover YouTube untuk Spotify)
+      metadata.cover = "";
+      metadata.thumbnail = "";
+      if (metadata.id3) {
+        metadata.id3.cover = "";
+      }
+      
+      // Cover Spotify (HD) - SELALU digunakan
       // Spotify API returns images sorted by size (largest first), so images[0] is HD
       if (originalSource.cover) {
-        metadata.cover = originalSource.cover; // Untuk UI dan download cover
-        metadata.thumbnail = originalSource.cover; // Untuk UI thumbnail
+        // Set cover Spotify untuk UI dan download cover
+        metadata.cover = originalSource.cover;
+        metadata.thumbnail = originalSource.cover;
+        // Pastikan ID3 juga pakai cover Spotify
+        if (metadata.id3) {
+          metadata.id3.cover = originalSource.cover;
+        }
       }
       // Title, artist, album dari Spotify - SELALU digunakan
       if (originalSource.title) {
@@ -1920,7 +1932,7 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       if (originalSource.artist) metadata.artist = originalSource.artist;
       if (originalSource.album) metadata.album = originalSource.album;
     } else {
-      // Untuk source lain, gunakan fallback seperti sebelumnya
+      // Untuk source lain (YouTube, SoundCloud, dll), gunakan fallback seperti sebelumnya
       if (!metadata.cover && originalSource.cover) metadata.cover = originalSource.cover;
       if (!metadata.artist && originalSource.artist) metadata.artist = originalSource.artist;
       if (!metadata.album && originalSource.album) metadata.album = originalSource.album;
