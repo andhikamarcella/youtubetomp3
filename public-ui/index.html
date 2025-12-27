@@ -594,11 +594,11 @@
           <i class="bi bi-robot"></i>
           <span class="d-none d-sm-inline ms-1" data-i18n="navAssistant">AI Navigator</span>
         </button>
-        <div id="langButtons" class="d-flex flex-wrap gap-2" aria-label="Pilih bahasa">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="en" title="English"><span style="font-size:1.1rem;line-height:1">🇺🇸</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ko" title="한국어"><span style="font-size:1.1rem;line-height:1">🇰🇷</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ja" title="日本語"><span style="font-size:1.1rem;line-height:1">🇯🇵</span></button>
-        </div>
+        <select id="langSelect" class="form-select form-select-sm" style="max-width: 160px;">
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
+          <option value="ja">日本語</option>
+        </select>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
@@ -2270,12 +2270,106 @@
       searchConvert: 'Convertir',
     },
     ja: {
+      navConverter: 'コンバーター',
+      navExperience: 'エクスペリエンス',
+      navProfile: 'プロフィール',
+      'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Googleログインが有効です。YouTubeのクッキーは自動で処理されます。',
+      navAssistant: 'AIナビゲーター',
+      sectionTitleConverter: 'コンバーター',
+      sectionSubtitleConverter: '動画をより速く、そして安定して変換します。',
+      sectionTitleExperience: 'エクスペリエンスハブ',
+      sectionSubtitleExperience: 'ダイナミックなアバター、適応音楽、音声コントロールを試せます。',
+      sectionTitleProfile: 'プロフィール',
+      sectionSubtitleProfile: 'XP、バッジ、アバター履歴を確認できます。',
+      labelUrl: 'メディアURL（YouTube / Spotify / SoundCloud）',
+      placeholderUrl: 'URLを貼り付け（YouTube、Spotify、SoundCloud、…）',
+      buttonSample: 'サンプル',
+      helpUrl: 'YouTube、Spotify、またはSoundCloudのリンクを貼り付けます。「プレイリストを無視」をオンにすると高速化できます。',
+      labelKeyword: '曲名で検索',
+      placeholderKeyword: '曲名またはアーティスト名を入力',
+      buttonKeywordConvert: '自動変換',
+      buttonKeywordSearch: '検索',
+      helpKeyword: 'タイトルを入力するだけで、自動的に検索して変換します。',
+      labelSearchResults: 'YouTubeの結果',
+      labelRingtoneToggle: '着信音バージョンを準備（Android & iPhone）',
+      labelRingtoneLength: '着信音の長さ（秒）',
+      labelRingtoneSummary: '30秒',
+      labelRingtoneFade: 'やさしいフェードイン/フェードアウトを適用',
+      hintRingtone: 'iPhone用に .m4r、Android用に .ogg を生成します。',
+      buttonConvert: '変換',
+      buttonDownloadAll: 'すべてダウンロード',
+      buttonDownloadZip: 'ZIPをダウンロード',
+      buttonClear: 'クリア',
+      ringtoneTitle: '着信音のダウンロード準備完了',
       searchUse: '使用',
       searchConvert: '変換',
+      searchNoResults: '一致する結果がありません。',
+      searchLoading: '検索中…',
+      toastKeywordRequired: 'まず曲のキーワードを入力してください',
+      toastKeywordReady: '動画が見つかりました。変換できます。',
+      toastKeywordError: '動画の検索に失敗しました。別のキーワードを試してください。',
+      toastKeywordQueued: 'キーワードからの変換を準備中…',
+      ringtoneSummaryDefault: '端末に合わせて着信音バージョンを選んでください。',
+      ringtoneSummaryAndroid: 'Android版のダウンロード準備完了。',
+      ringtoneSummaryIphone: 'iPhone版のダウンロード準備完了。',
+      ringtoneSummaryBoth: 'Android & iPhone版のダウンロード準備完了。',
+      voiceStatusReady: '音声コマンドの準備ができました。',
+      voiceStatusListening: 'リスニング中…「寄付を開く」または「ゲームをする」と言ってください。',
+      voiceStatusStopped: '音声コマンドを停止しました。',
+      voiceStatusUnsupported: 'このブラウザは音声認識をサポートしていません。',
+      toastVoiceHandled: '音声コマンド: {value}',
+      toastVoiceUnknown: 'コマンドが認識されません: {value}',
     },
     ko: {
+      navConverter: '컨버터',
+      navExperience: '경험',
+      navProfile: '프로필',
+      'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Google 로그인 활성화됨. YouTube 쿠키가 자동으로 처리됩니다.',
+      navAssistant: 'AI 내비게이터',
+      sectionTitleConverter: '컨버터',
+      sectionSubtitleConverter: '동영상을 더 빠르고 안정적으로 변환합니다.',
+      sectionTitleExperience: '익스피리언스 허브',
+      sectionSubtitleExperience: '동적 아바타, 적응형 음악, 음성 제어를 활용하세요.',
+      sectionTitleProfile: '프로필',
+      sectionSubtitleProfile: 'XP, 배지, 아바타 기록을 확인하세요.',
+      labelUrl: '미디어 URL (YouTube / Spotify / SoundCloud)',
+      placeholderUrl: 'URL 붙여넣기 (YouTube, Spotify, SoundCloud, ...)',
+      buttonSample: '샘플',
+      helpUrl: 'YouTube, Spotify 또는 SoundCloud 링크를 붙여넣으세요. “재생목록 무시”를 체크하면 더 빨라집니다.',
+      labelKeyword: '노래 제목 검색',
+      placeholderKeyword: '노래 제목 또는 아티스트 입력',
+      buttonKeywordConvert: '자동 변환',
+      buttonKeywordSearch: '검색',
+      helpKeyword: '제목만 입력하면 자동으로 검색하고 변환합니다.',
+      labelSearchResults: 'YouTube 결과',
+      labelRingtoneToggle: '벨소리 버전 준비 (Android & iPhone)',
+      labelRingtoneLength: '벨소리 길이 (초)',
+      labelRingtoneSummary: '30초',
+      labelRingtoneFade: '부드러운 페이드 인/아웃 적용',
+      hintRingtone: 'iPhone에는 .m4r, Android에는 .ogg를 생성합니다.',
+      buttonConvert: '변환',
+      buttonDownloadAll: '전체 다운로드',
+      buttonDownloadZip: 'ZIP 다운로드',
+      buttonClear: '지우기',
+      ringtoneTitle: '벨소리 다운로드 준비 완료',
       searchUse: '사용',
       searchConvert: '변환',
+      searchNoResults: '일치하는 결과가 없습니다.',
+      searchLoading: '검색 중…',
+      toastKeywordRequired: '먼저 노래 키워드를 입력하세요',
+      toastKeywordReady: '영상이 발견되었습니다. 변환할 수 있습니다.',
+      toastKeywordError: '영상 검색에 실패했습니다. 다른 키워드를 시도하세요.',
+      toastKeywordQueued: '키워드로 변환을 준비 중…',
+      ringtoneSummaryDefault: '기기 유형에 맞는 벨소리 버전을 선택하세요.',
+      ringtoneSummaryAndroid: 'Android 버전 다운로드 준비 완료.',
+      ringtoneSummaryIphone: 'iPhone 버전 다운로드 준비 완료.',
+      ringtoneSummaryBoth: 'Android & iPhone 버전 다운로드 준비 완료.',
+      voiceStatusReady: '음성 명령 준비 완료.',
+      voiceStatusListening: '청취 중… “기부 열기” 또는 “게임 실행”이라고 말하세요.',
+      voiceStatusStopped: '음성 명령이 중지되었습니다.',
+      voiceStatusUnsupported: '이 브라우저는 음성 인식을 지원하지 않습니다.',
+      toastVoiceHandled: '음성 명령: {value}',
+      toastVoiceUnknown: '명령을 인식하지 못했습니다: {value}',
     },
     ar: {
       searchUse: 'استخدام',
@@ -2307,7 +2401,7 @@
   'Belum ada teaser lirik untuk disalin': { en: 'No lyric teaser to copy yet' },
   'Belum ada teks subtitle': { en: 'No subtitle text yet' },
   'Belum ada timeline rilis untuk disalin': { en: 'No release timeline to copy yet' },
-  'Berhasil diproses': { en: 'Processed successfully' },
+  'Berhasil diproses': { en: 'Processed successfully', ko: '처리가 완료되었습니다', ja: '処理が完了しました' },
   'Menganalisis metadata…': { en: 'Analyzing metadata…' },
   'Menulis caption promosi…': { en: 'Writing promo caption…' },
   'Caption promosi siap digunakan ✨': { en: 'Promo caption ready ✨' },
@@ -2418,12 +2512,12 @@
   'URL tidak valid': { en: 'Invalid URL' },
   'Walkthrough selesai! Selamat mencoba.': { en: 'Walkthrough complete! Have fun.' },
   'cookies.txt terunggah ✔': { en: 'cookies.txt uploaded ✔' },
-  'Mencari…': { en: 'Searching…' },
-  'Tidak ada hasil yang cocok.': { en: 'No matching results.' },
-  'Video ditemukan, siap dikonversi.': { en: 'Video found and ready to convert.' },
-  'Gagal mencari video. Coba kata kunci lain.': { en: 'Failed to find the video. Try another keyword.' },
-  'Sedang menyiapkan konversi dari kata kunci…': { en: 'Preparing conversion from keyword…' },
-  'Masukkan kata kunci lagu terlebih dahulu': { en: 'Enter a song keyword first' },
+  'Mencari…': { en: 'Searching…', ko: '검색 중…', ja: '検索中…' },
+  'Tidak ada hasil yang cocok.': { en: 'No matching results.', ko: '일치하는 결과가 없습니다.', ja: '一致する結果がありません。' },
+  'Video ditemukan, siap dikonversi.': { en: 'Video found and ready to convert.', ko: '영상이 발견되었습니다. 변환할 수 있습니다.', ja: '動画が見つかりました。変換できます。' },
+  'Gagal mencari video. Coba kata kunci lain.': { en: 'Failed to find the video. Try another keyword.', ko: '영상 검색에 실패했습니다. 다른 키워드를 시도하세요.', ja: '動画の検索に失敗しました。別のキーワードを試してください。' },
+  'Sedang menyiapkan konversi dari kata kunci…': { en: 'Preparing conversion from keyword…', ko: '키워드로 변환을 준비 중…', ja: 'キーワードからの変換を準備中…' },
+  'Masukkan kata kunci lagu terlebih dahulu': { en: 'Enter a song keyword first', ko: '먼저 노래 키워드를 입력하세요', ja: '先に曲のキーワードを入力してください' },
   'Ringtone siap diunduh': { en: 'Ringtones ready to download' },
   'Pilih versi ringtone sesuai perangkatmu.': { en: 'Pick the ringtone version for your device.' },
   'Versi Android siap diunduh.': { en: 'Android version ready to download.' },
@@ -2435,10 +2529,10 @@
   'Perintah suara dihentikan.': { en: 'Voice command stopped.' },
   'Mendengarkan… ucapkan “buka donasi” atau “mainkan game”.': { en: 'Listening… say “open donation” or “play the game”.' },
   'Browser belum mendukung voice recognition.': { en: 'This browser does not support voice recognition.' },
-  'Memproses…': { en: 'Processing…' },
+  'Memproses…': { en: 'Processing…', ko: '처리 중…', ja: '処理中…' },
   'Menyiapkan…': { en: 'Preparing…' },
-  'Selesai': { en: 'Done' },
-  'Gagal': { en: 'Failed' },
+  'Selesai': { en: 'Done', ko: '완료', ja: '完了' },
+  'Gagal': { en: 'Failed', ko: '실패', ja: '失敗' },
   'Konversi selesai': { en: 'Conversion complete' },
   'Job selesai': { en: 'Job complete' },
   'Job gagal': { en: 'Job failed' },
@@ -2855,30 +2949,20 @@
   const ratingButtons = $$('#ratingWrap button[data-rating]');
 
   applyTranslations();
-  const langButtonsWrap = document.getElementById('langButtons');
-  if (langButtonsWrap) {
-    const langButtons = Array.from(langButtonsWrap.querySelectorAll('[data-lang]'));
-    const setActiveLangButton = (code) => {
-      langButtons.forEach((btn) => {
-        btn.classList.toggle('active', btn.getAttribute('data-lang') === code);
-      });
-    };
+  const langSelect = document.getElementById('langSelect');
+  if (langSelect) {
     try {
       const stored = localStorage.getItem('app:preferredLang');
       const initial = stored && SUPPORTED_LANGS.includes(stored) ? stored : detectLanguage();
-      currentLang = SUPPORTED_LANGS.includes(initLang) ? initLang : FALLBACK_LANG;
+      currentLang = SUPPORTED_LANGS.includes(initial) ? initial : FALLBACK_LANG;
       persistPreferredLang(currentLang);
-      setActiveLangButton(currentLang);
+      langSelect.value = currentLang;
     } catch {}
-    langButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const val = btn.getAttribute('data-lang');
-        const picked = val;
-        currentLang = SUPPORTED_LANGS.includes(picked) ? picked : FALLBACK_LANG;
-        persistPreferredLang(currentLang);
-        setActiveLangButton(picked);
-        applyTranslations();
-      });
+    langSelect.addEventListener('change', () => {
+      const val = langSelect.value;
+      currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
+      persistPreferredLang(currentLang);
+      applyTranslations();
     });
   }
 
