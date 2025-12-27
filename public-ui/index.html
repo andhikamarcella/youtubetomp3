@@ -594,6 +594,17 @@
           <i class="bi bi-robot"></i>
           <span class="d-none d-sm-inline ms-1" data-i18n="navAssistant">AI Navigator</span>
         </button>
+        <select id="langSelect" class="form-select form-select-sm" style="max-width: 160px;">
+          <option value="auto">Auto</option>
+          <option value="en">English</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="es">Español</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+          <option value="ar">العربية</option>
+          <option value="ru">Русский</option>
+          <option value="de">Deutsch</option>
+        </select>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
@@ -2141,10 +2152,16 @@
     },
   );
 
-  const SUPPORTED_LANGS = ['id', 'en'];
+  const SUPPORTED_LANGS = ['id', 'en', 'es', 'ja', 'ko', 'ar', 'ru', 'de'];
   const LANGUAGE_VARIANTS = {
     id: ['id', 'in', 'ms', 'ms-my', 'ms-id', 'jv', 'jw', 'su'],
     en: ['en', 'en-us', 'en-gb', 'en-au', 'en-ca', 'en-in', 'eng'],
+    es: ['es', 'es-es', 'es-mx', 'es-ar', 'es-cl', 'es-co'],
+    ja: ['ja', 'ja-jp'],
+    ko: ['ko', 'ko-kr'],
+    ar: ['ar', 'ar-eg', 'ar-sa', 'ar-ae'],
+    ru: ['ru', 'ru-ru'],
+    de: ['de', 'de-de', 'de-at', 'de-ch'],
   };
   const FALLBACK_LANG = 'en';
   const I18N_STRINGS = {
@@ -2249,6 +2266,30 @@
       voiceStatusUnsupported: 'This browser does not support voice recognition.',
       toastVoiceHandled: 'Voice command: {value}',
       toastVoiceUnknown: 'Command not recognized: {value}',
+    },
+    es: {
+      searchUse: 'Usar',
+      searchConvert: 'Convertir',
+    },
+    ja: {
+      searchUse: '使用',
+      searchConvert: '変換',
+    },
+    ko: {
+      searchUse: '사용',
+      searchConvert: '변환',
+    },
+    ar: {
+      searchUse: 'استخدام',
+      searchConvert: 'تحويل',
+    },
+    ru: {
+      searchUse: 'Использовать',
+      searchConvert: 'Конвертировать',
+    },
+    de: {
+      searchUse: 'Verwenden',
+      searchConvert: 'Konvertieren',
     },
   };
 
@@ -2563,10 +2604,7 @@
 
   const translate = (key, fallback) => {
     if (!key) return fallback ?? '';
-    const order = currentLang === 'en' ? ['en', 'id'] : ['id', 'en'];
-    if (currentLang && !order.includes(currentLang)) {
-      order.unshift(currentLang);
-    }
+    const order = [currentLang, 'en', 'id'].filter(Boolean);
     const seen = new Set();
     for (const lang of order) {
       if (!lang || seen.has(lang)) continue;
@@ -2819,6 +2857,27 @@
   const ratingButtons = $$('#ratingWrap button[data-rating]');
 
   applyTranslations();
+  const langSelect = document.getElementById('langSelect');
+  if (langSelect) {
+    try {
+      const stored = localStorage.getItem('app:preferredLang');
+      if (stored && SUPPORTED_LANGS.includes(stored)) {
+        langSelect.value = stored;
+      } else {
+        langSelect.value = 'auto';
+      }
+    } catch {}
+    langSelect.addEventListener('change', () => {
+      const val = langSelect.value;
+      if (val === 'auto') {
+        currentLang = detectLanguage();
+      } else {
+        currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
+      }
+      persistPreferredLang(currentLang);
+      applyTranslations();
+    });
+  }
 
   const speedTipButtons = $$('#speedTips .tip-pill');
   const speedTipHint = $('#speedTipHint');
@@ -7767,10 +7826,10 @@
       row.appendChild(infoWrap);
 
       const actions = document.createElement('div');
-      actions.className = 'btn-group btn-group-sm align-self-center';
+      actions.className = 'd-grid gap-2 d-sm-inline-flex align-self-stretch';
       const useBtn = document.createElement('button');
       useBtn.type = 'button';
-      useBtn.className = 'btn btn-outline-secondary';
+      useBtn.className = 'btn btn-outline-secondary w-100';
       useBtn.textContent = translate('searchUse', 'Pakai');
       useBtn.addEventListener('click', (evt) => {
         evt.stopPropagation();
@@ -7778,7 +7837,7 @@
       });
       const convertBtn = document.createElement('button');
       convertBtn.type = 'button';
-      convertBtn.className = 'btn btn-outline-primary';
+      convertBtn.className = 'btn btn-outline-primary w-100';
       convertBtn.textContent = translate('searchConvert', 'Convert');
       convertBtn.addEventListener('click', (evt) => {
         evt.stopPropagation();
