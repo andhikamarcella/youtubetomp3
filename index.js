@@ -1479,6 +1479,51 @@ const extractSpotifyDetails = async (rawUrl) => {
   if (!rawUrl) return null;
   const url = rawUrl.trim();
   const guessedId = extractSpotifyIdFromUrl(url);
+  
+  // Gunakan spotDL HANYA untuk metadata, download akan dilakukan dari YouTube Music/YouTube via yt-dlp
+  let spotdlMetadata = null;
+  try {
+    const { extractSpotifyMetadata } = await import("./lib/spotify-metadata.js");
+    spotdlMetadata = await extractSpotifyMetadata(url);
+  } catch (spotdlErr) {
+    // Fallback ke yt-dlp untuk metadata jika spotDL tidak tersedia
+    console.warn("[spotify] spotDL tidak tersedia untuk metadata, fallback ke yt-dlp:", spotdlErr.message);
+  }
+
+  // Jika spotDL berhasil, gunakan hasilnya untuk metadata
+  if (spotdlMetadata && spotdlMetadata.title) {
+    // Gunakan buildYouTubeSearchQuery untuk query yang lebih baik
+    let searchQuery = "";
+    try {
+      const { buildYouTubeSearchQuery } = await import("./lib/youtube-search-builder.js");
+      const queryResult = buildYouTubeSearchQuery({
+        title: spotdlMetadata.title || "",
+        artist: spotdlMetadata.artist || "",
+        album: spotdlMetadata.album || "",
+      });
+      searchQuery = queryResult.primary || "";
+    } catch {
+      // Fallback ke query sederhana jika builder gagal
+      const queryParts = [spotdlMetadata.artist, spotdlMetadata.title].filter(Boolean);
+      searchQuery = queryParts.join(" - ").trim() || queryParts.join(" ").trim();
+    }
+    
+    return {
+      title: spotdlMetadata.title || "",
+      artist: spotdlMetadata.artist || "",
+      album: spotdlMetadata.album || "",
+      cover: spotdlMetadata.cover || "",
+      duration: spotdlMetadata.duration || null,
+      searchQuery: searchQuery || `${spotdlMetadata.artist || ""} ${spotdlMetadata.title || ""}`.trim(),
+      id: spotdlMetadata.id || guessedId || null,
+      previewUrl: spotdlMetadata.previewUrl || "",
+      previewDuration: spotdlMetadata.duration || null,
+      previewDurationMs: spotdlMetadata.durationMs || null,
+      embedUrl: spotdlMetadata.embedUrl || "",
+    };
+  }
+
+  // Fallback: pakai yt-dlp seperti sebelumnya
   const args = [
     "--dump-single-json",
     "--skip-download",
@@ -1724,12 +1769,13 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const sourceKind = identifyMediaSource(rawUrl);
     if (sourceKind === "spotify") {
       const spotifyDetails = await extractSpotifyDetails(rawUrl).catch(() => null);
-      if (!spotifyDetails) {
+      if (!spotifyDetails || !spotifyDetails.searchQuery) {
         throw new Error("Tidak bisa membaca metadata Spotify");
       }
-      // Gunakan URL Spotify langsung, tidak konversi ke YouTube search
-      target = rawUrl;
-      keywordUsed = false;
+      // Prioritaskan YouTube Music (ytmsearch), fallback ke YouTube biasa (ytsearch)
+      // yt-dlp akan otomatis mencoba ytmsearch terlebih dahulu jika tersedia
+      target = `ytmsearch1:${spotifyDetails.searchQuery}`;
+      keywordUsed = true;
       originalSource = {
         type: "spotify",
         url: rawUrl,
@@ -1789,22 +1835,68 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
     entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
   } catch (err) {
-    const fallback = await fetchVideoInfoFromYoutubeApi({ rawUrl, rawKeyword, language }).catch(() => null);
-    if (fallback?.entry) {
-      entry = fallback.entry;
-      if (fallback.keywordUsed) keywordUsed = true;
+    // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa
+    if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
+      const fallbackTarget = target.replace("ytmsearch", "ytsearch");
+      const fallbackArgs = [
+        "--dump-single-json",
+        "--skip-download",
+        "--no-warnings",
+        "--default-search",
+        "ytsearch",
+        "--no-playlist",
+      ];
+      if (language) {
+        fallbackArgs.push("--sub-lang", language);
+      }
+      if (existsSync(COOKIES_PATH)) {
+        fallbackArgs.push("--cookies", COOKIES_PATH);
+      }
+      fallbackArgs.push(fallbackTarget);
+      
+      try {
+        const fallbackJson = await runYtDlpJson(fallbackArgs, { label: "ytsearch-fallback" });
+        entry = Array.isArray(fallbackJson?.entries) && fallbackJson.entries.length ? fallbackJson.entries[0] : fallbackJson;
+        console.log("[spotify] YouTube Music tidak tersedia, menggunakan YouTube biasa");
+      } catch (fallbackErr) {
+        // Lanjut ke error handling berikutnya
+        const apiFallback = await fetchVideoInfoFromYoutubeApi({ rawUrl, rawKeyword, language }).catch(() => null);
+        if (apiFallback?.entry) {
+          entry = apiFallback.entry;
+          if (apiFallback.keywordUsed) keywordUsed = true;
+        } else {
+          const videoId = extractYouTubeVideoId(rawUrl || rawKeyword || "");
+          const minimal = buildMinimalYoutubeEntry({ videoId, rawUrl, rawKeyword });
+          if (minimal) {
+            const enriched = await enrichMinimalYoutubeEntry(minimal, { rawUrl, rawKeyword }).catch(() => minimal);
+            entry = enriched || minimal;
+            if (!keywordUsed && rawKeyword && !rawUrl) keywordUsed = true;
+            console.warn(
+              `[video-info] menggunakan metadata minimal untuk ${videoId || rawUrl || rawKeyword}`,
+            );
+          } else {
+            throw fallbackErr;
+          }
+        }
+      }
     } else {
-      const videoId = extractYouTubeVideoId(rawUrl || rawKeyword || "");
-      const minimal = buildMinimalYoutubeEntry({ videoId, rawUrl, rawKeyword });
-      if (minimal) {
-        const enriched = await enrichMinimalYoutubeEntry(minimal, { rawUrl, rawKeyword }).catch(() => minimal);
-        entry = enriched || minimal;
-        if (!keywordUsed && rawKeyword && !rawUrl) keywordUsed = true;
-        console.warn(
-          `[video-info] menggunakan metadata minimal untuk ${videoId || rawUrl || rawKeyword}`,
-        );
+      const fallback = await fetchVideoInfoFromYoutubeApi({ rawUrl, rawKeyword, language }).catch(() => null);
+      if (fallback?.entry) {
+        entry = fallback.entry;
+        if (fallback.keywordUsed) keywordUsed = true;
       } else {
-        throw err;
+        const videoId = extractYouTubeVideoId(rawUrl || rawKeyword || "");
+        const minimal = buildMinimalYoutubeEntry({ videoId, rawUrl, rawKeyword });
+        if (minimal) {
+          const enriched = await enrichMinimalYoutubeEntry(minimal, { rawUrl, rawKeyword }).catch(() => minimal);
+          entry = enriched || minimal;
+          if (!keywordUsed && rawKeyword && !rawUrl) keywordUsed = true;
+          console.warn(
+            `[video-info] menggunakan metadata minimal untuk ${videoId || rawUrl || rawKeyword}`,
+          );
+        } else {
+          throw err;
+        }
       }
     }
   }
@@ -5237,7 +5329,6 @@ const convertSingle = async (payload = {}) => {
   }
   const isVideoFormat = VIDEO_FORMATS.has(fmt);
   const previewProvider = (metadata?.preview?.provider || metadata?.originalSource?.type || "").toLowerCase();
-  const isSpotifyUrl = identifyMediaSource(url) === "spotify";
   const spotifyPreviewUrl = !isVideoFormat && previewProvider === "spotify"
     ? (metadata?.preview?.url || metadata?.originalSource?.previewUrl || "")
     : "";
@@ -5427,40 +5518,8 @@ const convertSingle = async (payload = {}) => {
   let logs = "";
   let downloadResult = null;
 
-  // Untuk Spotify, coba download via yt-dlp dulu (untuk track lengkap), fallback ke preview jika gagal
-  if (isSpotifyUrl) {
-    try {
-      // Coba download track lengkap dari Spotify via yt-dlp
-      downloadResult = await runYtDlpDownload({ args, id, onProgress: handleDownloadProgress });
-      logs = downloadResult.logs || "";
-    } catch (err) {
-      // Jika yt-dlp gagal, coba gunakan preview URL
-      if (spotifyPreviewUrl) {
-        try {
-          console.warn("[spotify] yt-dlp gagal, menggunakan preview Spotify", err?.message || err);
-          downloadResult = await downloadSpotifyPreview({ previewUrl: spotifyPreviewUrl, id });
-          logs = [logs, err?.logs, downloadResult?.logs].filter(Boolean).join("\n").slice(-8000);
-        } catch (previewErr) {
-          const error = new Error("Gagal mengunduh dari Spotify (track lengkap dan preview)");
-          error.logs = [logs, err?.logs, previewErr?.logs, previewErr?.message].filter(Boolean).join("\n").slice(-8000);
-          throw error;
-        }
-      } else {
-        const error = new Error("Gagal mengunduh dari Spotify dan preview tidak tersedia");
-        error.logs = [logs, err?.logs, err?.message].filter(Boolean).join("\n").slice(-8000);
-        throw error;
-      }
-    }
-  } else if (spotifyPreviewUrl && !isSpotifyUrl) {
-    // Jika bukan URL Spotify tapi ada preview URL (misalnya dari metadata YouTube)
-    try {
-      downloadResult = await downloadSpotifyPreview({ previewUrl: spotifyPreviewUrl, id });
-      logs = downloadResult.logs || logs;
-    } catch (err) {
-      console.warn("[spotify-preview] fallback ke yt-dlp", err?.message || err);
-      logs = [logs, err?.logs, err?.message].filter(Boolean).join("\n").slice(-8000);
-    }
-  }
+  // Untuk Spotify: metadata dari spotDL, download dari YouTube Music/YouTube via yt-dlp
+  // Preview URL hanya untuk metadata, tidak digunakan untuk download
 
   if (!downloadResult) {
     try {
