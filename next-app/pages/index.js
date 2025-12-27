@@ -596,10 +596,10 @@ export default function Home() {
                           <div className="d-flex flex-column gap-1">
                             <strong>{item.title || item.cleanTitle}</strong>
                             {item.author && <span className="text-secondary">{item.author}</span>}
-                            <div className="d-grid gap-2 d-sm-flex mt-2">
+                            <div className="d-grid gap-2 d-sm-flex flex-sm-wrap mt-2">
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-success w-100 flex-fill"
+                                className="btn btn-sm btn-outline-success w-100 w-sm-auto flex-fill"
                                 onClick={() => {
                                   setConvertUrl(item.webpageUrl || item.url || '');
                                   setConvertKeyword('');
@@ -609,7 +609,7 @@ export default function Home() {
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-info w-100 flex-fill"
+                                className="btn btn-sm btn-outline-info w-100 w-sm-auto flex-fill"
                                 onClick={() => {
                                   setConvertKeyword(item.title || item.cleanTitle || '');
                                   setConvertUrl('');
@@ -619,7 +619,7 @@ export default function Home() {
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-sm btn-primary w-100 flex-fill"
+                                className="btn btn-sm btn-primary w-100 w-sm-auto flex-fill"
                                 onClick={() => convertFromItem(item)}
                               >
                                 Konversi
