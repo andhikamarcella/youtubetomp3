@@ -7,6 +7,24 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+
+// Load .env manual jika ada (pengganti dotenv)
+try {
+  const envPath = join(dirname(fileURLToPath(import.meta.url)), ".env");
+  if (existsSync(envPath)) {
+    const envConfig = readFileSync(envPath, "utf8");
+    envConfig.split(/\r?\n/).forEach(line => {
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match && !line.trim().startsWith("#")) {
+        const key = match[1].trim();
+        const value = match[2].trim().replace(/^["'](.*)["']$/, "$1");
+        if (!process.env[key]) process.env[key] = value;
+      }
+    });
+  }
+} catch (e) {}
+
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
 import {
@@ -50,10 +68,10 @@ const isGoogleLoginConfigured = Boolean(GOOGLE_CLIENT_ID);
 const USER_SESSION_SECRET = process.env.USER_SESSION_SECRET || "dev-user-session-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const CHEATS_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ENABLE_CHEATS || ""));
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || "";
-const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "";
-const RECAPTCHA_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.RECAPTCHA_STRICT || ""));
-const isRecaptchaConfigured = Boolean(RECAPTCHA_SECRET_KEY && RECAPTCHA_SITE_KEY);
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || "";
+const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY || "";
+const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_STRICT || ""));
+const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
 
@@ -425,77 +443,77 @@ const safeFetch = async (...args) => {
   return fetchImpl(...args);
 };
 
-let recaptchaWarningLogged = false;
-const recaptchaBypassReasons = new Set();
+let turnstileWarningLogged = false;
+const turnstileBypassReasons = new Set();
 
-const logRecaptchaBypass = (message) => {
+const logTurnstileBypass = (message) => {
   if (!message) return;
-  if (recaptchaBypassReasons.has(message)) return;
-  recaptchaBypassReasons.add(message);
+  if (turnstileBypassReasons.has(message)) return;
+  turnstileBypassReasons.add(message);
   console.warn(`[captcha] ${message}`);
 };
 
-const verifyRecaptchaToken = async (token, remoteIp) => {
-  if (!isRecaptchaConfigured) {
-    if (!recaptchaWarningLogged) {
-      recaptchaWarningLogged = true;
-      if (!RECAPTCHA_SECRET_KEY) {
-        console.warn("[captcha] RECAPTCHA_SECRET_KEY tidak ditemukan, melewati verifikasi token");
+const verifyTurnstileToken = async (token, remoteIp) => {
+  if (!isTurnstileConfigured) {
+    if (!turnstileWarningLogged) {
+      turnstileWarningLogged = true;
+      if (!TURNSTILE_SECRET_KEY) {
+        console.warn("[captcha] TURNSTILE_SECRET_KEY tidak ditemukan, melewati verifikasi token");
       } else {
-        console.warn("[captcha] RECAPTCHA_SITE_KEY tidak ditemukan, melewati verifikasi token");
+        console.warn("[captcha] TURNSTILE_SITE_KEY tidak ditemukan, melewati verifikasi token");
       }
     }
     return null;
   }
   const trimmed = typeof token === "string" ? token.trim() : "";
   if (!trimmed) {
-    if (RECAPTCHA_STRICT) {
+    if (TURNSTILE_STRICT) {
       const err = new Error("Token captcha wajib diisi");
       err.statusCode = 400;
       throw err;
     }
-    logRecaptchaBypass("Token captcha kosong, melewati verifikasi (mode non-strict)");
+    logTurnstileBypass("Token captcha kosong, melewati verifikasi (mode non-strict)");
     return null;
   }
-  const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: trimmed });
+  const params = new URLSearchParams({ secret: TURNSTILE_SECRET_KEY, response: trimmed });
   if (remoteIp) params.set("remoteip", remoteIp);
   let response;
   try {
-    response = await safeFetch("https://www.google.com/recaptcha/api/siteverify", {
+    response = await safeFetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: params.toString(),
     });
   } catch (err) {
-    if (RECAPTCHA_STRICT) {
+    if (TURNSTILE_STRICT) {
       const error = new Error("Gagal menghubungi layanan captcha");
       error.cause = err;
       throw error;
     }
-    logRecaptchaBypass("Gagal menghubungi layanan captcha, melewati verifikasi (mode non-strict)");
+    logTurnstileBypass("Gagal menghubungi layanan captcha, melewati verifikasi (mode non-strict)");
     return null;
   }
   let data;
   try {
     data = await response.json();
   } catch (err) {
-    if (RECAPTCHA_STRICT) {
+    if (TURNSTILE_STRICT) {
       const error = new Error("Respon captcha tidak valid");
       error.cause = err;
       throw error;
     }
-    logRecaptchaBypass("Respon captcha tidak valid, melewati verifikasi (mode non-strict)");
+    logTurnstileBypass("Respon captcha tidak valid, melewati verifikasi (mode non-strict)");
     return null;
   }
   if (!data?.success) {
-    if (RECAPTCHA_STRICT) {
+    if (TURNSTILE_STRICT) {
       const codes = Array.isArray(data?.["error-codes"]) ? data["error-codes"].join(",") : "";
       const error = new Error(codes ? `Verifikasi captcha gagal (${codes})` : "Verifikasi captcha gagal");
       error.statusCode = 400;
       throw error;
     }
     const codes = Array.isArray(data?.["error-codes"]) ? data["error-codes"].join(",") : "";
-    logRecaptchaBypass(
+    logTurnstileBypass(
       codes
         ? `Verifikasi captcha gagal (${codes}), melewati verifikasi (mode non-strict)`
         : "Verifikasi captcha gagal, melewati verifikasi (mode non-strict)",
@@ -6011,8 +6029,8 @@ app.get("/api/auth/config", (req, res) => {
   return res.json({
     ok: true,
     googleClientId: GOOGLE_CLIENT_ID || null,
-    recaptchaSiteKey: RECAPTCHA_SITE_KEY || null,
-    recaptchaStrict: RECAPTCHA_STRICT,
+    turnstileSiteKey: TURNSTILE_SITE_KEY || null,
+    turnstileStrict: TURNSTILE_STRICT,
   });
 });
 
@@ -6211,12 +6229,20 @@ app.post("/api/assistant-chat", async (req, res) => {
 });
 
 // ==== API convert ====
+app.get("/api/turnstile-config", (req, res) => {
+  return res.json({
+    ok: true,
+    siteKey: TURNSTILE_SITE_KEY,
+    configured: isTurnstileConfigured
+  });
+});
+
 app.post("/api/convert", async (req, res) => {
   const user = await resolveRequestUser(req);
   try {
     const payload = { ...(req.body || {}) };
     try {
-      await verifyRecaptchaToken(payload.captchaToken, req.ip);
+      await verifyTurnstileToken(payload.captchaToken, req.ip);
     } catch (err) {
       const status = err?.statusCode || 400;
       const message = err?.message || "Verifikasi captcha gagal";
@@ -6302,7 +6328,7 @@ app.post("/api/background", async (req, res) => {
   try {
     const body = { ...(req.body || {}) };
     try {
-      await verifyRecaptchaToken(body.captchaToken, req.ip);
+      await verifyTurnstileToken(body.captchaToken, req.ip);
     } catch (err) {
       const status = err?.statusCode || 400;
       const message = err?.message || "Verifikasi captcha gagal";
@@ -6665,7 +6691,7 @@ app.post("/api/convert-playlist", async (req, res) => {
   try {
     const body = { ...(req.body || {}) };
     try {
-      await verifyRecaptchaToken(body.captchaToken, req.ip);
+      await verifyTurnstileToken(body.captchaToken, req.ip);
     } catch (err) {
       const status = err?.statusCode || 400;
       const message = err?.message || "Verifikasi captcha gagal";
