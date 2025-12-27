@@ -35,7 +35,7 @@
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
     .dropzone.dragover { background: rgba(28,38,62,.08); border-color: var(--bs-primary); }
   </style>
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
@@ -199,7 +199,7 @@
             </div>
 
             <div class="mb-3 d-flex justify-content-center justify-content-sm-start">
-              <div class="g-recaptcha" data-sitekey="6Lf64vYrAAAAAIdJydE3ckGkVIrH1SmbiX1fMReW"></div>
+              <div class="cf-turnstile" data-sitekey="0x4AAAAAACJPcwOvzNFeWXfR" data-theme="dark"></div>
             </div>
 
             <div class="d-grid d-sm-flex gap-2 align-items-center">
@@ -699,8 +699,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     const url = (urlOverride || $('#url').value).trim();
 
     let captchaToken = '';
-    if (!urlOverride && typeof grecaptcha !== 'undefined') {
-      try { captchaToken = grecaptcha.getResponse(); } catch(e){}
+    if (!urlOverride && typeof turnstile !== 'undefined') {
+      try { captchaToken = turnstile.getResponse(); } catch(e){}
       if (!captchaToken) { setToast('Mohon selesaikan Captcha terlebih dahulu'); return; }
     }
 
@@ -770,7 +770,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     } finally {
       clearInterval(timer);
       setTimeout(()=>{ progWrap.hidden = true; }, 500);
-      if (!urlOverride && typeof grecaptcha !== 'undefined') { try{ grecaptcha.reset(); }catch(e){} }
+      if (!urlOverride && typeof turnstile !== 'undefined') { try{ turnstile.reset(); }catch(e){} }
     }
   }
 
