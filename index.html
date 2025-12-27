@@ -297,20 +297,6 @@
         <input id="adminBearer" type="text" class="form-control" placeholder="Mis: dhika_sayang123">
         <div class="form-text">Hanya dipakai saat upload cookies.txt.</div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Bahasa UI</label>
-        <select id="preferredLang" class="form-select">
-          <option value="auto">Deteksi otomatis</option>
-          <option value="id">Bahasa Indonesia</option>
-          <option value="en">English</option>
-          <option value="es">Español</option>
-          <option value="ja">日本語</option>
-          <option value="ko">한국어</option>
-          <option value="ar">العربية</option>
-          <option value="ru">Русский</option>
-          <option value="de">Deutsch</option>
-        </select>
-      </div>
       <div class="d-grid gap-2">
         <button class="btn btn-success" id="saveSettings"><i class="bi bi-save2"></i> Simpan</button>
         <button class="btn btn-outline-danger" id="resetSettings"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
@@ -560,11 +546,9 @@ $('#queueList')?.addEventListener('click', (e) => {
           <div class="small text-secondary">${it.format?.toUpperCase()}${it.abr?(' · '+it.abr+'kbps'):''}</div>
         </div>
         <div class="btn-group btn-group-sm">
-          <div class="d-grid gap-2 w-100">
-            <a class="btn btn-outline-primary w-100" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
-            <button class="btn btn-outline-secondary w-100 copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
-            <button class="btn btn-outline-danger w-100 delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
-          </div>
+          <a class="btn btn-outline-primary" href="${it.downloadUrl}" download="${it.fileName || ''}" title="Download"><i class="bi bi-download"></i></a>
+          <button class="btn btn-outline-secondary copy-btn" data-url="${it.downloadUrl}" title="Salin link"><i class="bi bi-clipboard"></i></button>
+          <button class="btn btn-outline-danger delete-btn" data-idx="${idx}" title="Hapus"><i class="bi bi-trash"></i></button>
         </div>`;
       ul.appendChild(li);
     });
@@ -593,7 +577,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     $('#backendUrl').value = state.backendUrl;
     $('#adminBearer').value = state.adminBearer;
     updateBackendBadge();
-    initLang();
   };
 
   $('#saveSettings').addEventListener('click', () => {
@@ -604,40 +587,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     setToast('Pengaturan disimpan');
   });
   $('#resetSettings').addEventListener('click', () => {
-    storage.save({}); localStorage.removeItem(langKey); loadSettings(); setToast('Pengaturan direset');
-  });
-  const langKey = 'ytmp3.lang';
-  function detectLang() {
-    const list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]).map(v => String(v || '').toLowerCase());
-    const map = l => {
-      if (l.startsWith('id')) return 'id';
-      if (l.startsWith('en')) return 'en';
-      if (l.startsWith('es')) return 'es';
-      if (l.startsWith('ja')) return 'ja';
-      if (l.startsWith('ko')) return 'ko';
-      if (l.startsWith('ar')) return 'ar';
-      if (l.startsWith('ru')) return 'ru';
-      if (l.startsWith('de')) return 'de';
-      return null;
-    };
-    const picked = list.map(map).find(Boolean);
-    return picked || 'id';
-  }
-  function applyLang(l) {
-    const lang = l === 'auto' ? detectLang() : l;
-    document.documentElement.setAttribute('lang', lang);
-    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
-  }
-  function initLang() {
-    const stored = localStorage.getItem(langKey) || 'auto';
-    $('#preferredLang').value = stored;
-    applyLang(stored);
-  }
-  $('#preferredLang').addEventListener('change', (e) => {
-    const val = e.target.value;
-    localStorage.setItem(langKey, val);
-    applyLang(val);
-    setToast('Bahasa diperbarui');
+    storage.save({}); loadSettings(); setToast('Pengaturan direset');
   });
 
   // ===== URL helpers =====
