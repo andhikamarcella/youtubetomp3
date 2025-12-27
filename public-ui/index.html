@@ -2386,6 +2386,14 @@
   };
 
   const TEXT_TRANSLATIONS = {
+  'Install': { en: 'Install', ko: '설치', ja: 'インストール' },
+  'Pengaturan': { en: 'Settings', ko: '설정', ja: '設定' },
+  'Menu fitur': { en: 'Feature menu', ko: '기능 메뉴', ja: '機能メニュー' },
+  'Lewati ke konten utama': { en: 'Skip to main content', ko: '메인 콘텐츠로 건너뛰기', ja: 'メインコンテンツへスキップ' },
+  'Offline': { en: 'Offline', ko: '오프라인', ja: 'オフライン' },
+  'AI Navigator': { en: 'AI Navigator', ko: 'AI 내비게이터', ja: 'AIナビゲーター' },
+  'Converter': { en: 'Converter', ko: '컨버터', ja: 'コンバーター' },
+  'Konversi video lebih cepat & stabil.': { en: 'Convert videos faster & more reliably.', ko: '더 빠르고 안정적으로 변환합니다.', ja: '動画をより速く、そして安定して変換します。' },
   'Antrian kosong': { en: 'Queue is empty' },
   'Aplikasi ditambahkan ke layar utama': { en: 'App added to home screen' },
   'Bass+ diterapkan': { en: 'Bass+ applied' },
@@ -2743,6 +2751,18 @@
       if (!key) return;
       const translated = translate(key, el.getAttribute('placeholder'));
       if (translated != null) el.setAttribute('placeholder', translated);
+    });
+    $$('[data-i18n-title]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-title');
+      if (!key) return;
+      const translated = translate(key, el.getAttribute('title'));
+      if (translated != null) el.setAttribute('title', translated);
+    });
+    $$('[data-i18n-aria-label]').forEach((el) => {
+      const key = el.getAttribute('data-i18n-aria-label');
+      if (!key) return;
+      const translated = translate(key, el.getAttribute('aria-label'));
+      if (translated != null) el.setAttribute('aria-label', translated);
     });
     updateRingtoneLengthLabel();
     updateSpotifyPreviewLabel();
