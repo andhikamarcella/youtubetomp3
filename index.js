@@ -1480,46 +1480,46 @@ const extractSpotifyDetails = async (rawUrl) => {
   const url = rawUrl.trim();
   const guessedId = extractSpotifyIdFromUrl(url);
   
-  // Gunakan spotDL HANYA untuk metadata, download akan dilakukan dari YouTube Music/YouTube via yt-dlp
-  let spotdlMetadata = null;
+  // Gunakan Spotify Web API HANYA untuk metadata, download akan dilakukan dari YouTube Music/YouTube via yt-dlp
+  let spotifyMetadata = null;
   try {
     const { extractSpotifyMetadata } = await import("./lib/spotify-metadata.js");
-    spotdlMetadata = await extractSpotifyMetadata(url);
-  } catch (spotdlErr) {
-    // Fallback ke yt-dlp untuk metadata jika spotDL tidak tersedia
-    console.warn("[spotify] spotDL tidak tersedia untuk metadata, fallback ke yt-dlp:", spotdlErr.message);
+    spotifyMetadata = await extractSpotifyMetadata(url);
+  } catch (apiErr) {
+    // Fallback ke yt-dlp untuk metadata jika Spotify Web API tidak tersedia atau gagal
+    console.warn("[spotify] Spotify Web API tidak tersedia untuk metadata, fallback ke yt-dlp:", apiErr.message);
   }
 
-  // Jika spotDL berhasil, gunakan hasilnya untuk metadata
-  if (spotdlMetadata && spotdlMetadata.title) {
+  // Jika Spotify Web API berhasil, gunakan hasilnya untuk metadata
+  if (spotifyMetadata && spotifyMetadata.title) {
     // Gunakan buildYouTubeSearchQuery untuk query yang lebih baik
     let searchQuery = "";
     try {
       const { buildYouTubeSearchQuery } = await import("./lib/youtube-search-builder.js");
       const queryResult = buildYouTubeSearchQuery({
-        title: spotdlMetadata.title || "",
-        artist: spotdlMetadata.artist || "",
-        album: spotdlMetadata.album || "",
+        title: spotifyMetadata.title || "",
+        artist: spotifyMetadata.artist || "",
+        album: spotifyMetadata.album || "",
       });
       searchQuery = queryResult.primary || "";
     } catch {
       // Fallback ke query sederhana jika builder gagal
-      const queryParts = [spotdlMetadata.artist, spotdlMetadata.title].filter(Boolean);
+      const queryParts = [spotifyMetadata.artist, spotifyMetadata.title].filter(Boolean);
       searchQuery = queryParts.join(" - ").trim() || queryParts.join(" ").trim();
     }
     
     return {
-      title: spotdlMetadata.title || "",
-      artist: spotdlMetadata.artist || "",
-      album: spotdlMetadata.album || "",
-      cover: spotdlMetadata.cover || "",
-      duration: spotdlMetadata.duration || null,
-      searchQuery: searchQuery || `${spotdlMetadata.artist || ""} ${spotdlMetadata.title || ""}`.trim(),
-      id: spotdlMetadata.id || guessedId || null,
-      previewUrl: spotdlMetadata.previewUrl || "",
-      previewDuration: spotdlMetadata.duration || null,
-      previewDurationMs: spotdlMetadata.durationMs || null,
-      embedUrl: spotdlMetadata.embedUrl || "",
+      title: spotifyMetadata.title || "",
+      artist: spotifyMetadata.artist || "",
+      album: spotifyMetadata.album || "",
+      cover: spotifyMetadata.cover || "",
+      duration: spotifyMetadata.duration || null,
+      searchQuery: searchQuery || `${spotifyMetadata.artist || ""} ${spotifyMetadata.title || ""}`.trim(),
+      id: spotifyMetadata.id || guessedId || null,
+      previewUrl: spotifyMetadata.previewUrl || "",
+      previewDuration: spotifyMetadata.duration || null,
+      previewDurationMs: spotifyMetadata.durationMs || null,
+      embedUrl: spotifyMetadata.embedUrl || "",
     };
   }
 
