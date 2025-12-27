@@ -35,6 +35,7 @@
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
     .dropzone.dragover { background: rgba(28,38,62,.08); border-color: var(--bs-primary); }
   </style>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
@@ -195,6 +196,10 @@
               <div class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke sini (opsional) untuk bypass age‑gate</div>
               <input type="file" id="cookieFile" accept=".txt" hidden>
               <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="pickCookie">Pilih cookies.txt</button></div>
+            </div>
+
+            <div class="mb-3 d-flex justify-content-center justify-content-sm-start">
+              <div class="g-recaptcha" data-sitekey="6Lf64vYrAAAAAIdJydE3ckGkVIrH1SmbiX1fMReW"></div>
             </div>
 
             <div class="d-grid d-sm-flex gap-2 align-items-center">
@@ -692,9 +697,17 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   async function doConvert(urlOverride, autoDownload = false){
     const url = (urlOverride || $('#url').value).trim();
+
+    let captchaToken = '';
+    if (!urlOverride && typeof grecaptcha !== 'undefined') {
+      try { captchaToken = grecaptcha.getResponse(); } catch(e){}
+      if (!captchaToken) { setToast('Mohon selesaikan Captcha terlebih dahulu'); return; }
+    }
+
     if(!/^https?:\/\//i.test(url)){ setToast('Masukkan URL YouTube yang valid'); $('#url').focus(); return; }
     const body = {
       url,
+      captchaToken,
       format: $('#format').value,
       abr: Number($('#abr').value),
       sampleRate: Number($('#sampleRate').value),
@@ -757,6 +770,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     } finally {
       clearInterval(timer);
       setTimeout(()=>{ progWrap.hidden = true; }, 500);
+      if (!urlOverride && typeof grecaptcha !== 'undefined') { try{ grecaptcha.reset(); }catch(e){} }
     }
   }
 
