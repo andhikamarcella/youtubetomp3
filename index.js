@@ -1902,9 +1902,17 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   }
   if (originalSource) {
     metadata.originalSource = originalSource;
-    // Untuk Spotify: prioritaskan metadata dari Spotify (cover, title, artist, album)
+    // Untuk Spotify: SELALU gunakan metadata dari Spotify (cover HD, title, artist, album)
+    // Flow: Spotify URL → Spotify Web API → UI pakai cover Spotify (HD) → searchQuery → YouTube → yt-dlp → hasil MP3/M4A pakai metadata Spotify
+    // Mirip dengan SoundCloud - cover dari Spotify, bukan dari YouTube
     if (originalSource.type === "spotify") {
-      if (originalSource.cover) metadata.cover = originalSource.cover;
+      // Cover Spotify (HD) - SELALU digunakan, override cover dari YouTube
+      // Spotify API returns images sorted by size (largest first), so images[0] is HD
+      if (originalSource.cover) {
+        metadata.cover = originalSource.cover; // Untuk UI dan download cover
+        metadata.thumbnail = originalSource.cover; // Untuk UI thumbnail
+      }
+      // Title, artist, album dari Spotify - SELALU digunakan
       if (originalSource.title) {
         metadata.title = originalSource.title;
         metadata.cleanTitle = originalSource.title;
@@ -1919,12 +1927,12 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     }
     if (!metadata.id3) metadata.id3 = {};
     if (metadata.id3) {
-      // Untuk Spotify: prioritaskan metadata dari Spotify
+      // Untuk Spotify: SELALU gunakan metadata dari Spotify untuk ID3 tags
       if (originalSource.type === "spotify") {
         if (originalSource.title) metadata.id3.title = originalSource.title;
         if (originalSource.artist) metadata.id3.artist = originalSource.artist;
         if (originalSource.album) metadata.id3.album = originalSource.album;
-        if (originalSource.cover) metadata.id3.cover = originalSource.cover;
+        if (originalSource.cover) metadata.id3.cover = originalSource.cover; // Cover Spotify HD untuk ID3
       } else {
         // Fallback untuk source lain
         if (!metadata.id3.title && originalSource.title) metadata.id3.title = originalSource.title;
