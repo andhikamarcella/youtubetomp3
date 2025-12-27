@@ -1724,11 +1724,12 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const sourceKind = identifyMediaSource(rawUrl);
     if (sourceKind === "spotify") {
       const spotifyDetails = await extractSpotifyDetails(rawUrl).catch(() => null);
-      if (!spotifyDetails?.searchQuery) {
+      if (!spotifyDetails) {
         throw new Error("Tidak bisa membaca metadata Spotify");
       }
-      target = `ytsearch1:${spotifyDetails.searchQuery}`;
-      keywordUsed = true;
+      // Gunakan URL Spotify langsung, tidak konversi ke YouTube search
+      target = rawUrl;
+      keywordUsed = false;
       originalSource = {
         type: "spotify",
         url: rawUrl,
@@ -5236,6 +5237,7 @@ const convertSingle = async (payload = {}) => {
   }
   const isVideoFormat = VIDEO_FORMATS.has(fmt);
   const previewProvider = (metadata?.preview?.provider || metadata?.originalSource?.type || "").toLowerCase();
+  const isSpotifyUrl = identifyMediaSource(url) === "spotify";
   const spotifyPreviewUrl = !isVideoFormat && previewProvider === "spotify"
     ? (metadata?.preview?.url || metadata?.originalSource?.previewUrl || "")
     : "";
@@ -5425,7 +5427,32 @@ const convertSingle = async (payload = {}) => {
   let logs = "";
   let downloadResult = null;
 
-  if (spotifyPreviewUrl) {
+  // Untuk Spotify, coba download via yt-dlp dulu (untuk track lengkap), fallback ke preview jika gagal
+  if (isSpotifyUrl) {
+    try {
+      // Coba download track lengkap dari Spotify via yt-dlp
+      downloadResult = await runYtDlpDownload({ args, id, onProgress: handleDownloadProgress });
+      logs = downloadResult.logs || "";
+    } catch (err) {
+      // Jika yt-dlp gagal, coba gunakan preview URL
+      if (spotifyPreviewUrl) {
+        try {
+          console.warn("[spotify] yt-dlp gagal, menggunakan preview Spotify", err?.message || err);
+          downloadResult = await downloadSpotifyPreview({ previewUrl: spotifyPreviewUrl, id });
+          logs = [logs, err?.logs, downloadResult?.logs].filter(Boolean).join("\n").slice(-8000);
+        } catch (previewErr) {
+          const error = new Error("Gagal mengunduh dari Spotify (track lengkap dan preview)");
+          error.logs = [logs, err?.logs, previewErr?.logs, previewErr?.message].filter(Boolean).join("\n").slice(-8000);
+          throw error;
+        }
+      } else {
+        const error = new Error("Gagal mengunduh dari Spotify dan preview tidak tersedia");
+        error.logs = [logs, err?.logs, err?.message].filter(Boolean).join("\n").slice(-8000);
+        throw error;
+      }
+    }
+  } else if (spotifyPreviewUrl && !isSpotifyUrl) {
+    // Jika bukan URL Spotify tapi ada preview URL (misalnya dari metadata YouTube)
     try {
       downloadResult = await downloadSpotifyPreview({ previewUrl: spotifyPreviewUrl, id });
       logs = downloadResult.logs || logs;
