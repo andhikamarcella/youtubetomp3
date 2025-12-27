@@ -594,17 +594,17 @@
           <i class="bi bi-robot"></i>
           <span class="d-none d-sm-inline ms-1" data-i18n="navAssistant">AI Navigator</span>
         </button>
-        <select id="langSelect" class="form-select form-select-sm" style="max-width: 160px;">
-          <option value="auto">Auto</option>
-          <option value="en">English</option>
-          <option value="id">Bahasa Indonesia</option>
-          <option value="es">Español</option>
-          <option value="ja">日本語</option>
-          <option value="ko">한국어</option>
-          <option value="ar">العربية</option>
-          <option value="ru">Русский</option>
-          <option value="de">Deutsch</option>
-        </select>
+        <div id="langButtons" class="d-flex flex-wrap gap-2" aria-label="Pilih bahasa">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="auto" title="Auto"><span style="font-size:1.1rem;line-height:1">🌐</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="id" title="Bahasa Indonesia"><span style="font-size:1.1rem;line-height:1">🇮🇩</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="en" title="English"><span style="font-size:1.1rem;line-height:1">🇺🇸</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="es" title="Español"><span style="font-size:1.1rem;line-height:1">🇪🇸</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ja" title="日本語"><span style="font-size:1.1rem;line-height:1">🇯🇵</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ko" title="한국어"><span style="font-size:1.1rem;line-height:1">🇰🇷</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ar" title="العربية"><span style="font-size:1.1rem;line-height:1">🇸🇦</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ru" title="Русский"><span style="font-size:1.1rem;line-height:1">🇷🇺</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="de" title="Deutsch"><span style="font-size:1.1rem;line-height:1">🇩🇪</span></button>
+        </div>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
@@ -2857,25 +2857,31 @@
   const ratingButtons = $$('#ratingWrap button[data-rating]');
 
   applyTranslations();
-  const langSelect = document.getElementById('langSelect');
-  if (langSelect) {
+  const langButtonsWrap = document.getElementById('langButtons');
+  if (langButtonsWrap) {
+    const langButtons = Array.from(langButtonsWrap.querySelectorAll('[data-lang]'));
+    const setActiveLangButton = (code) => {
+      langButtons.forEach((btn) => {
+        btn.classList.toggle('active', btn.getAttribute('data-lang') === code);
+      });
+    };
     try {
       const stored = localStorage.getItem('app:preferredLang');
-      if (stored && SUPPORTED_LANGS.includes(stored)) {
-        langSelect.value = stored;
-      } else {
-        langSelect.value = 'auto';
-      }
-    } catch {}
-    langSelect.addEventListener('change', () => {
-      const val = langSelect.value;
-      if (val === 'auto') {
-        currentLang = detectLanguage();
-      } else {
-        currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
-      }
+      const initial = stored && SUPPORTED_LANGS.includes(stored) ? stored : 'auto';
+      const initLang = initial === 'auto' ? detectLanguage() : initial;
+      currentLang = SUPPORTED_LANGS.includes(initLang) ? initLang : FALLBACK_LANG;
       persistPreferredLang(currentLang);
-      applyTranslations();
+      setActiveLangButton(initial === 'auto' ? 'auto' : currentLang);
+    } catch {}
+    langButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-lang');
+        const picked = val === 'auto' ? detectLanguage() : val;
+        currentLang = SUPPORTED_LANGS.includes(picked) ? picked : FALLBACK_LANG;
+        persistPreferredLang(currentLang);
+        setActiveLangButton(val);
+        applyTranslations();
+      });
     });
   }
 
