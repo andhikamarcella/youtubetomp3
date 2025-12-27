@@ -778,13 +778,13 @@
               <div class="form-text" id="qualityPresetHelp">Atur bitrate &amp; sample rate otomatis.</div>
             </div>
             <div class="col-md-3">
-              <label for="speedMode" class="form-label">Mode Kecepatan</label>
+              <label for="speedMode" class="form-label" data-i18n="labelSpeed">Mode Kecepatan</label>
               <select id="speedMode" class="form-select">
                 <option value="normal" selected>Normal</option>
                 <option value="nightcore">Nightcore ⚡</option>
                 <option value="slow_reverb">Slowed + Reverb</option>
               </select>
-              <div class="form-text" id="speedHelp">Beberapa format mungkin membatasi pilihan.</div>
+              <div class="form-text" id="speedHelp" data-i18n="speedHint">Beberapa format mungkin membatasi pilihan.</div>
             </div>
           </div>
 
@@ -844,48 +844,48 @@
 
           <div class="row g-3 mb-3">
             <div class="col-sm-6">
-              <label class="form-label" for="trimStart">Trim Mulai</label>
-              <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+              <label class="form-label" for="trimStart" data-i18n="labelTrimStart">Trim Mulai</label>
+              <input id="trimStart" type="text" class="form-control" placeholder="detik atau hh:mm:ss" data-i18n-placeholder="placeholderTrimStart" />
             </div>
             <div class="col-sm-6">
-              <label class="form-label" for="trimEnd">Trim Selesai</label>
-              <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" />
+              <label class="form-label" for="trimEnd" data-i18n="labelTrimEnd">Trim Selesai</label>
+              <input id="trimEnd" type="text" class="form-control" placeholder="detik atau hh:mm:ss" data-i18n-placeholder="placeholderTrimEnd" />
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label" for="fileName">Nama file</label>
-            <input id="fileName" type="text" class="form-control" placeholder="Nama file output" />
+            <label class="form-label" for="fileName" data-i18n="labelFileName">Nama file</label>
+            <input id="fileName" type="text" class="form-control" placeholder="Nama file output" data-i18n-placeholder="placeholderFileName" />
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Metadata ID3</label>
-            <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" />
-            <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" />
-            <input id="id3Album" type="text" class="form-control mb-2" placeholder="Album" />
-            <input id="id3Genre" type="text" class="form-control" placeholder="Genre" />
+            <label class="form-label" data-i18n="labelMetadataId3">Metadata ID3</label>
+            <input id="id3Title" type="text" class="form-control mb-2" placeholder="Judul" data-i18n-placeholder="placeholderId3Title" />
+            <input id="id3Artist" type="text" class="form-control mb-2" placeholder="Artis" data-i18n-placeholder="placeholderId3Artist" />
+            <input id="id3Album" type="text" class="form-control mb-2" placeholder="Album" data-i18n-placeholder="placeholderId3Album" />
+            <input id="id3Genre" type="text" class="form-control" placeholder="Genre" data-i18n-placeholder="placeholderId3Genre" />
           </div>
 
           <div class="form-check form-switch mb-3">
             <input class="form-check-input" type="checkbox" id="normalize" />
-            <label class="form-check-label" for="normalize">Normalisasi audio</label>
+            <label class="form-check-label" for="normalize" data-i18n="labelNormalize">Normalisasi audio</label>
           </div>
 
           <div class="form-check form-switch mb-3">
             <input class="form-check-input" type="checkbox" id="atmos" />
-            <label class="form-check-label" for="atmos">Dolby Atmos (multi-channel)</label>
+            <label class="form-check-label" for="atmos" data-i18n="labelAtmos">Dolby Atmos (multi-channel)</label>
           </div>
 
           <div class="row g-3 mb-3 align-items-end">
             <div class="col-md-3">
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="denoise">
-                <label class="form-check-label" for="denoise">AI Noise Cleaner</label>
+            <label class="form-check-label" for="denoise" data-i18n="labelDenoise">AI Noise Cleaner</label>
               </div>
             </div>
             <div class="col-md-3">
               <label class="form-label d-flex justify-content-between align-items-center" for="volumeBoost">
-                <span>Volume Booster</span>
+            <span data-i18n="labelVolumeBoost">Volume Booster</span>
                 <span class="badge text-bg-secondary" id="volumeBoostLabel">0 dB</span>
               </label>
               <div class="d-flex align-items-center gap-2" data-range-wrapper>
@@ -2213,6 +2213,24 @@
       voiceStatusUnsupported: 'Browser belum mendukung voice recognition.',
       toastVoiceHandled: 'Perintah suara: {value}',
       toastVoiceUnknown: 'Perintah belum dikenali: {value}',
+      sourcePreviewLabel: 'Preview Spotify',
+      labelSpeed: 'Mode Kecepatan',
+      speedHint: 'Beberapa format mungkin membatasi pilihan.',
+      labelTrimStart: 'Trim Mulai',
+      placeholderTrimStart: 'detik atau hh:mm:ss',
+      labelTrimEnd: 'Trim Selesai',
+      placeholderTrimEnd: 'detik atau hh:mm:ss',
+      labelFileName: 'Nama file',
+      placeholderFileName: 'Nama file output',
+      labelMetadataId3: 'Metadata ID3',
+      placeholderId3Title: 'Judul',
+      placeholderId3Artist: 'Artis',
+      placeholderId3Album: 'Album',
+      placeholderId3Genre: 'Genre',
+      labelNormalize: 'Normalisasi audio',
+      labelAtmos: 'Dolby Atmos (multi-channel)',
+      labelDenoise: 'AI Noise Cleaner',
+      labelVolumeBoost: 'Volume Booster',
     },
     en: {
       navConverter: 'Converter',
@@ -2264,6 +2282,24 @@
       voiceStatusUnsupported: 'This browser does not support voice recognition.',
       toastVoiceHandled: 'Voice command: {value}',
       toastVoiceUnknown: 'Command not recognized: {value}',
+      sourcePreviewLabel: 'Spotify preview',
+      labelSpeed: 'Speed Mode',
+      speedHint: 'Some formats may limit choices.',
+      labelTrimStart: 'Trim Start',
+      placeholderTrimStart: 'seconds or hh:mm:ss',
+      labelTrimEnd: 'Trim End',
+      placeholderTrimEnd: 'seconds or hh:mm:ss',
+      labelFileName: 'File name',
+      placeholderFileName: 'Output file name',
+      labelMetadataId3: 'ID3 Metadata',
+      placeholderId3Title: 'Title',
+      placeholderId3Artist: 'Artist',
+      placeholderId3Album: 'Album',
+      placeholderId3Genre: 'Genre',
+      labelNormalize: 'Normalize audio',
+      labelAtmos: 'Dolby Atmos (multi-channel)',
+      labelDenoise: 'AI Noise Cleaner',
+      labelVolumeBoost: 'Volume Boost',
     },
     es: {
       searchUse: 'Usar',
@@ -2319,6 +2355,24 @@
       voiceStatusUnsupported: 'このブラウザは音声認識をサポートしていません。',
       toastVoiceHandled: '音声コマンド: {value}',
       toastVoiceUnknown: 'コマンドが認識されません: {value}',
+      sourcePreviewLabel: 'Spotifyプレビュー',
+      labelSpeed: '速度モード',
+      speedHint: '一部の形式では選択が制限されます。',
+      labelTrimStart: 'トリム開始',
+      placeholderTrimStart: '秒 または hh:mm:ss',
+      labelTrimEnd: 'トリム終了',
+      placeholderTrimEnd: '秒 または hh:mm:ss',
+      labelFileName: 'ファイル名',
+      placeholderFileName: '出力ファイル名',
+      labelMetadataId3: 'ID3 メタデータ',
+      placeholderId3Title: 'タイトル',
+      placeholderId3Artist: 'アーティスト',
+      placeholderId3Album: 'アルバム',
+      placeholderId3Genre: 'ジャンル',
+      labelNormalize: 'オーディオ正規化',
+      labelAtmos: 'Dolby Atmos（マルチチャンネル）',
+      labelDenoise: 'AI ノイズクリーナー',
+      labelVolumeBoost: 'ボリュームブースト',
     },
     ko: {
       navConverter: '컨버터',
@@ -2370,6 +2424,24 @@
       voiceStatusUnsupported: '이 브라우저는 음성 인식을 지원하지 않습니다.',
       toastVoiceHandled: '음성 명령: {value}',
       toastVoiceUnknown: '명령을 인식하지 못했습니다: {value}',
+      sourcePreviewLabel: 'Spotify 미리보기',
+      labelSpeed: '속도 모드',
+      speedHint: '일부 형식은 선택이 제한됩니다.',
+      labelTrimStart: '트림 시작',
+      placeholderTrimStart: '초 또는 hh:mm:ss',
+      labelTrimEnd: '트림 종료',
+      placeholderTrimEnd: '초 또는 hh:mm:ss',
+      labelFileName: '파일 이름',
+      placeholderFileName: '출력 파일 이름',
+      labelMetadataId3: '메타데이터 ID3',
+      placeholderId3Title: '제목',
+      placeholderId3Artist: '아티스트',
+      placeholderId3Album: '앨범',
+      placeholderId3Genre: '장르',
+      labelNormalize: '오디오 정규화',
+      labelAtmos: 'Dolby Atmos (멀티 채널)',
+      labelDenoise: 'AI 노이즈 클리너',
+      labelVolumeBoost: '볼륨 부스터',
     },
     ar: {
       searchUse: 'استخدام',
@@ -2386,6 +2458,16 @@
   };
 
   const TEXT_TRANSLATIONS = {
+  'Beberapa format mungkin membatasi pilihan.': { en: 'Some formats may limit choices.', ko: '일부 형식은 선택이 제한될 수 있습니다.', ja: '一部の形式では選択が制限される場合があります。' },
+  'Semua mode tersedia.': { en: 'All modes available.', ko: '모든 모드를 사용할 수 있습니다.', ja: 'すべてのモードが利用可能です。' },
+  'Nightcore & Slowed dinonaktifkan.': { en: 'Nightcore & Slowed disabled.', ko: 'Nightcore 및 Slowed 비활성화됨.', ja: 'Nightcore と Slowed は無効です。' },
+  'Mode kecepatan dimatikan demi sinkronisasi.': { en: 'Speed mode disabled for synchronization.', ko: '동기화를 위해 속도 모드가 꺼졌습니다.', ja: '同期のため速度モードは無効です。' },
+  'Gunakan playback normal untuk lossless.': { en: 'Use normal playback for lossless.', ko: '무손실을 위해 일반 재생을 사용하세요.', ja: 'ロスレスには通常再生を使用してください。' },
+  'Tidak ada pengubah kecepatan.': { en: 'No speed modifiers.', ko: '속도 변경 없음.', ja: '速度の変更はありません。' },
+  'Mode kecepatan dimatikan untuk menjaga lossless.': { en: 'Speed mode disabled to preserve lossless.', ko: '무손실을 유지하기 위해 속도 모드가 꺼졌습니다.', ja: 'ロスレス保持のため速度モードは無効です。' },
+  'Tidak ada mode tempo untuk format ini.': { en: 'No tempo modes for this format.', ko: '이 형식에는 템포 모드가 없습니다.', ja: 'この形式にはテンポモードがありません。' },
+  'Nightcore tersedia, Slowed dimatikan.': { en: 'Nightcore available, Slowed disabled.', ko: 'Nightcore 사용 가능, Slowed 비활성화.', ja: 'Nightcore は利用可能、Slowed は無効です。' },
+  'Pengubah kecepatan dimatikan untuk video.': { en: 'Speed modifiers disabled for video.', ko: '비디오에서는 속도 변경이 비활성화됩니다.', ja: '動画では速度変更は無効です。' },
   'Install': { en: 'Install', ko: '설치', ja: 'インストール' },
   'Pengaturan': { en: 'Settings', ko: '설정', ja: '設定' },
   'Menu fitur': { en: 'Feature menu', ko: '기능 메뉴', ja: '機能メニュー' },
@@ -7677,7 +7759,7 @@
     updateSelectForPolicy(sampleRateSelect, policy.sampleRates);
     if (sampleRateHelp) sampleRateHelp.textContent = policy.sampleRateHint || '';
     const appliedSpeed = updateSelectForPolicy(speedModeSelect, policy.speedModes);
-    if (speedHelp) speedHelp.textContent = policy.speedHint || '';
+    if (speedHelp) speedHelp.textContent = translateMessage(policy.speedHint || '');
     if (speedModeSelect && appliedSpeed && policy.speedModes?.length === 1) {
       speedModeSelect.value = policy.speedModes[0];
     }
@@ -7798,7 +7880,8 @@
 
   function updateSpotifyPreviewLabel() {
     if (!sourcePreviewLabel) return;
-    sourcePreviewLabel.textContent = currentLang === 'en' ? 'Spotify preview' : 'Preview Spotify';
+    const fallback = sourcePreviewLabel.textContent || 'Preview Spotify';
+    sourcePreviewLabel.textContent = translate('sourcePreviewLabel', fallback);
   }
 
   function getRingtoneRequest() {
