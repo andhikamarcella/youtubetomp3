@@ -1492,21 +1492,8 @@ const extractSpotifyDetails = async (rawUrl) => {
 
   // Jika Spotify Web API berhasil, gunakan hasilnya untuk metadata
   if (spotifyMetadata && spotifyMetadata.title) {
-    // Gunakan buildYouTubeSearchQuery untuk query yang lebih baik
-    let searchQuery = "";
-    try {
-      const { buildYouTubeSearchQuery } = await import("./lib/youtube-search-builder.js");
-      const queryResult = buildYouTubeSearchQuery({
-        title: spotifyMetadata.title || "",
-        artist: spotifyMetadata.artist || "",
-        album: spotifyMetadata.album || "",
-      });
-      searchQuery = queryResult.primary || "";
-    } catch {
-      // Fallback ke query sederhana jika builder gagal
-      const queryParts = [spotifyMetadata.artist, spotifyMetadata.title].filter(Boolean);
-      searchQuery = queryParts.join(" - ").trim() || queryParts.join(" ").trim();
-    }
+    // Query untuk YouTube Music: "judul lagu audio" (tanpa artist)
+    const searchQuery = `${spotifyMetadata.title} audio`.trim();
     
     return {
       title: spotifyMetadata.title || "",
@@ -1835,9 +1822,12 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
     entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
   } catch (err) {
-    // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa
-    if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
-      const fallbackTarget = target.replace("ytmsearch", "ytsearch");
+      // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa dengan query "judul audio"
+      if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
+        // Update query untuk YouTube biasa: "judul lagu audio"
+        const spotifyTitle = originalSource.title || "";
+        const fallbackQuery = spotifyTitle ? `${spotifyTitle} audio`.trim() : target.replace("ytmsearch1:", "");
+        const fallbackTarget = `ytsearch1:${fallbackQuery}`;
       const fallbackArgs = [
         "--dump-single-json",
         "--skip-download",
@@ -1912,15 +1902,36 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   }
   if (originalSource) {
     metadata.originalSource = originalSource;
-    if (!metadata.cover && originalSource.cover) metadata.cover = originalSource.cover;
-    if (!metadata.artist && originalSource.artist) metadata.artist = originalSource.artist;
-    if (!metadata.album && originalSource.album) metadata.album = originalSource.album;
+    // Untuk Spotify: prioritaskan metadata dari Spotify (cover, title, artist, album)
+    if (originalSource.type === "spotify") {
+      if (originalSource.cover) metadata.cover = originalSource.cover;
+      if (originalSource.title) {
+        metadata.title = originalSource.title;
+        metadata.cleanTitle = originalSource.title;
+      }
+      if (originalSource.artist) metadata.artist = originalSource.artist;
+      if (originalSource.album) metadata.album = originalSource.album;
+    } else {
+      // Untuk source lain, gunakan fallback seperti sebelumnya
+      if (!metadata.cover && originalSource.cover) metadata.cover = originalSource.cover;
+      if (!metadata.artist && originalSource.artist) metadata.artist = originalSource.artist;
+      if (!metadata.album && originalSource.album) metadata.album = originalSource.album;
+    }
     if (!metadata.id3) metadata.id3 = {};
     if (metadata.id3) {
-      if (!metadata.id3.title && originalSource.title) metadata.id3.title = originalSource.title;
-      if (!metadata.id3.artist && originalSource.artist) metadata.id3.artist = originalSource.artist;
-      if (!metadata.id3.album && originalSource.album) metadata.id3.album = originalSource.album;
-      if (!metadata.id3.cover && originalSource.cover) metadata.id3.cover = originalSource.cover;
+      // Untuk Spotify: prioritaskan metadata dari Spotify
+      if (originalSource.type === "spotify") {
+        if (originalSource.title) metadata.id3.title = originalSource.title;
+        if (originalSource.artist) metadata.id3.artist = originalSource.artist;
+        if (originalSource.album) metadata.id3.album = originalSource.album;
+        if (originalSource.cover) metadata.id3.cover = originalSource.cover;
+      } else {
+        // Fallback untuk source lain
+        if (!metadata.id3.title && originalSource.title) metadata.id3.title = originalSource.title;
+        if (!metadata.id3.artist && originalSource.artist) metadata.id3.artist = originalSource.artist;
+        if (!metadata.id3.album && originalSource.album) metadata.id3.album = originalSource.album;
+        if (!metadata.id3.cover && originalSource.cover) metadata.id3.cover = originalSource.cover;
+      }
     }
     if (originalSource.previewUrl) {
       if (!metadata.preview || typeof metadata.preview !== "object") metadata.preview = {};
