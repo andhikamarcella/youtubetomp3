@@ -9,8 +9,14 @@ const LEGACY_UI_URL = process.env.NEXT_PUBLIC_LEGACY_UI_URL || '/';
 
 const languageOptions = [
   { value: 'auto', label: 'Deteksi otomatis' },
-  { value: 'id', label: 'Bahasa Indonesia' },
   { value: 'en', label: 'English' },
+  { value: 'id', label: 'Bahasa Indonesia' },
+  { value: 'es', label: 'Español' },
+  { value: 'ja', label: '日本語' },
+  { value: 'ko', label: '한국어' },
+  { value: 'ar', label: 'العربية' },
+  { value: 'ru', label: 'Русский' },
+  { value: 'de', label: 'Deutsch' },
 ];
 
 const formatOptions = [
@@ -83,6 +89,25 @@ export default function Home() {
     setIsClient(true);
   }, []);
 
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    if (preferredLang !== 'auto') return;
+    const langs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]).map((l) => String(l || '').toLowerCase());
+    const mapLang = (l) => {
+      if (l.startsWith('id')) return 'id';
+      if (l.startsWith('en')) return 'en';
+      if (l.startsWith('es')) return 'es';
+      if (l.startsWith('ja')) return 'ja';
+      if (l.startsWith('ko')) return 'ko';
+      if (l.startsWith('ar')) return 'ar';
+      if (l.startsWith('ru')) return 'ru';
+      if (l.startsWith('de')) return 'de';
+      return null;
+    };
+    const picked = langs.map(mapLang).find(Boolean);
+    if (picked) setPreferredLang(picked);
+  }, [preferredLang]);
+
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 
   useEffect(() => {
@@ -150,6 +175,28 @@ export default function Home() {
     const body = {
       url: convertUrl.trim(),
       keyword: convertKeyword.trim() || undefined,
+      format: convertFormat,
+    };
+    if (preferredLang !== 'auto') body.preferredLang = preferredLang;
+    try {
+      const payload = await fetchJson('/api/convert', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      setConvertState({ status: 'success', error: null, result: payload });
+    } catch (err) {
+      setConvertState({ status: 'error', error: err.message, result: null });
+    }
+  };
+
+  const convertFromItem = async (item) => {
+    const urlCandidate = item.webpageUrl || item.url || '';
+    const keywordCandidate = !urlCandidate ? (item.title || item.cleanTitle || '') : '';
+    if (!urlCandidate && !keywordCandidate) return;
+    setConvertState({ status: 'loading', error: null, result: null });
+    const body = {
+      url: urlCandidate,
+      keyword: keywordCandidate || undefined,
       format: convertFormat,
     };
     if (preferredLang !== 'auto') body.preferredLang = preferredLang;
@@ -549,10 +596,10 @@ export default function Home() {
                           <div className="d-flex flex-column gap-1">
                             <strong>{item.title || item.cleanTitle}</strong>
                             {item.author && <span className="text-secondary">{item.author}</span>}
-                            <div className="d-flex flex-wrap gap-2 mt-2">
+                            <div className="d-grid gap-2 d-sm-flex mt-2">
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-success"
+                                className="btn btn-sm btn-outline-success w-100 flex-fill"
                                 onClick={() => {
                                   setConvertUrl(item.webpageUrl || item.url || '');
                                   setConvertKeyword('');
@@ -562,13 +609,20 @@ export default function Home() {
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-info"
+                                className="btn btn-sm btn-outline-info w-100 flex-fill"
                                 onClick={() => {
                                   setConvertKeyword(item.title || item.cleanTitle || '');
                                   setConvertUrl('');
                                 }}
                               >
                                 Pakai judul ini
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary w-100 flex-fill"
+                                onClick={() => convertFromItem(item)}
+                              >
+                                Konversi
                               </button>
                             </div>
                           </div>
