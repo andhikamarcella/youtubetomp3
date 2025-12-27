@@ -7826,10 +7826,10 @@
       row.appendChild(infoWrap);
 
       const actions = document.createElement('div');
-      actions.className = 'd-grid gap-2 d-sm-inline-flex align-self-stretch';
+      actions.className = 'd-grid gap-2 d-sm-flex flex-sm-wrap align-self-stretch';
       const useBtn = document.createElement('button');
       useBtn.type = 'button';
-      useBtn.className = 'btn btn-outline-secondary w-100';
+      useBtn.className = 'btn btn-sm btn-outline-secondary w-100 w-sm-auto flex-fill';
       useBtn.textContent = translate('searchUse', 'Pakai');
       useBtn.addEventListener('click', (evt) => {
         evt.stopPropagation();
@@ -7837,7 +7837,7 @@
       });
       const convertBtn = document.createElement('button');
       convertBtn.type = 'button';
-      convertBtn.className = 'btn btn-outline-primary w-100';
+      convertBtn.className = 'btn btn-sm btn-outline-primary w-100 w-sm-auto flex-fill';
       convertBtn.textContent = translate('searchConvert', 'Convert');
       convertBtn.addEventListener('click', (evt) => {
         evt.stopPropagation();
