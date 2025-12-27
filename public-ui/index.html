@@ -590,15 +590,6 @@
           <i class="bi bi-download"></i>
           <span class="d-none d-sm-inline ms-1">Install</span>
         </button>
-        <button class="btn btn-outline-info assistant-launcher" id="assistantNavBtn" type="button" data-launch="nav">
-          <i class="bi bi-robot"></i>
-          <span class="d-none d-sm-inline ms-1" data-i18n="navAssistant">AI Navigator</span>
-        </button>
-        <select id="langSelect" class="form-select form-select-sm" style="max-width: 160px;">
-          <option value="en">English</option>
-          <option value="ko">한국어</option>
-          <option value="ja">日本語</option>
-        </select>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
@@ -1929,6 +1920,18 @@
       <div class="d-grid gap-2 mb-4">
         <button class="btn btn-success" id="saveSettings" type="button"><i class="bi bi-save2"></i> Simpan</button>
         <button class="btn btn-outline-danger" id="resetSettings" type="button"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="mb-2">Bahasa UI</h6>
+      <div class="mb-3">
+        <label class="form-label" for="langSelect">Pilih bahasa</label>
+        <select id="langSelect" class="form-select form-select-sm" style="max-width: 180px;">
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
+          <option value="ja">日本語</option>
+        </select>
+        <div class="form-text">Seluruh teks UI akan mengikuti bahasa pilihan.</div>
       </div>
 
       <hr class="my-4">
