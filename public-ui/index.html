@@ -586,7 +586,7 @@
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
         <span class="badge text-bg-warning" id="offlineBadge" hidden><i class="bi bi-wifi-off me-1"></i>Offline</span>
-        <button class="btn btn-outline-success" id="installAppBtn" type="button" hidden>
+        <button class="btn btn-outline-success d-none d-lg-inline-flex" id="installAppBtn" type="button" hidden>
           <i class="bi bi-download"></i>
           <span class="d-none d-sm-inline ms-1">Install</span>
         </button>
@@ -1932,6 +1932,16 @@
           <option value="ja">日本語</option>
         </select>
         <div class="form-text">Seluruh teks UI akan mengikuti bahasa pilihan.</div>
+      </div>
+
+      <div class="mb-3 d-lg-none">
+        <label class="form-label" for="installAppBtnMobile">Install aplikasi (PWA)</label>
+        <div class="d-grid">
+          <button class="btn btn-success" id="installAppBtnMobile" type="button" hidden>
+            <i class="bi bi-download"></i> Install
+          </button>
+        </div>
+        <div class="form-text">Tersedia di perangkat yang mendukung. Setelah install, aplikasi dapat dibuka dari Home Screen.</div>
       </div>
 
       <hr class="my-4">
@@ -3614,6 +3624,7 @@
   const convertProgBar = $('#convertProgress');
   const convertProgLabel = $('#convertProgressLabel');
   const installBtn = $('#installAppBtn');
+  const installBtnMobile = $('#installAppBtnMobile');
   const offlineBadge = $('#offlineBadge');
   const subtitleCopyBtn = $('#subtitleCopyBtn');
   const subtitleShareBtn = $('#subtitleShareBtn');
@@ -7519,6 +7530,10 @@
       installBtn.hidden = false;
       installBtn.disabled = false;
     }
+    if (installBtnMobile) {
+      installBtnMobile.hidden = false;
+      installBtnMobile.disabled = false;
+    }
   });
 
   if (installBtn) {
@@ -7541,9 +7556,30 @@
     });
   }
 
+  if (installBtnMobile) {
+    installBtnMobile.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) {
+        setToast('Install tidak tersedia saat ini');
+        return;
+      }
+      installBtnMobile.disabled = true;
+      try {
+        deferredInstallPrompt.prompt();
+        const result = await deferredInstallPrompt.userChoice;
+        if (result?.outcome === 'accepted') setToast('Aplikasi ditambahkan ke layar utama');
+      } catch (_) {
+        setToast('Gagal memulai instalasi');
+      }
+      installBtnMobile.disabled = false;
+      installBtnMobile.hidden = true;
+      deferredInstallPrompt = null;
+    });
+  }
+
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     if (installBtn) installBtn.hidden = true;
+    if (installBtnMobile) installBtnMobile.hidden = true;
     setToast('PWA siap dipakai offline ✨');
   });
 
