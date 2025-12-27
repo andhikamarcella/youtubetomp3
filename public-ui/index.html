@@ -595,15 +595,9 @@
           <span class="d-none d-sm-inline ms-1" data-i18n="navAssistant">AI Navigator</span>
         </button>
         <div id="langButtons" class="d-flex flex-wrap gap-2" aria-label="Pilih bahasa">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="auto" title="Auto"><span style="font-size:1.1rem;line-height:1">🌐</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="id" title="Bahasa Indonesia"><span style="font-size:1.1rem;line-height:1">🇮🇩</span></button>
           <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="en" title="English"><span style="font-size:1.1rem;line-height:1">🇺🇸</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="es" title="Español"><span style="font-size:1.1rem;line-height:1">🇪🇸</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ja" title="日本語"><span style="font-size:1.1rem;line-height:1">🇯🇵</span></button>
           <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ko" title="한국어"><span style="font-size:1.1rem;line-height:1">🇰🇷</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ar" title="العربية"><span style="font-size:1.1rem;line-height:1">🇸🇦</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ru" title="Русский"><span style="font-size:1.1rem;line-height:1">🇷🇺</span></button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="de" title="Deutsch"><span style="font-size:1.1rem;line-height:1">🇩🇪</span></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-lang="ja" title="日本語"><span style="font-size:1.1rem;line-height:1">🇯🇵</span></button>
         </div>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
@@ -2131,6 +2125,15 @@
     </button>
   </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
+  <footer class="border-top mt-4">
+    <div class="container py-3 small text-secondary d-flex justify-content-between align-items-center flex-wrap">
+      <span>© 2025</span>
+      <div class="d-flex gap-3">
+        <a class="link-secondary" href="#mainContent">Kembali ke atas</a>
+        <a class="link-secondary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings">Pengaturan</a>
+      </div>
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="./vendor/qrcode.js" defer data-qr-lib="local"></script>
@@ -2152,16 +2155,11 @@
     },
   );
 
-  const SUPPORTED_LANGS = ['id', 'en', 'es', 'ja', 'ko', 'ar', 'ru', 'de'];
+  const SUPPORTED_LANGS = ['en', 'ko', 'ja'];
   const LANGUAGE_VARIANTS = {
-    id: ['id', 'in', 'ms', 'ms-my', 'ms-id', 'jv', 'jw', 'su'],
     en: ['en', 'en-us', 'en-gb', 'en-au', 'en-ca', 'en-in', 'eng'],
-    es: ['es', 'es-es', 'es-mx', 'es-ar', 'es-cl', 'es-co'],
-    ja: ['ja', 'ja-jp'],
     ko: ['ko', 'ko-kr'],
-    ar: ['ar', 'ar-eg', 'ar-sa', 'ar-ae'],
-    ru: ['ru', 'ru-ru'],
-    de: ['de', 'de-de', 'de-at', 'de-ch'],
+    ja: ['ja', 'ja-jp'],
   };
   const FALLBACK_LANG = 'en';
   const I18N_STRINGS = {
@@ -2867,19 +2865,18 @@
     };
     try {
       const stored = localStorage.getItem('app:preferredLang');
-      const initial = stored && SUPPORTED_LANGS.includes(stored) ? stored : 'auto';
-      const initLang = initial === 'auto' ? detectLanguage() : initial;
+      const initial = stored && SUPPORTED_LANGS.includes(stored) ? stored : detectLanguage();
       currentLang = SUPPORTED_LANGS.includes(initLang) ? initLang : FALLBACK_LANG;
       persistPreferredLang(currentLang);
-      setActiveLangButton(initial === 'auto' ? 'auto' : currentLang);
+      setActiveLangButton(currentLang);
     } catch {}
     langButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         const val = btn.getAttribute('data-lang');
-        const picked = val === 'auto' ? detectLanguage() : val;
+        const picked = val;
         currentLang = SUPPORTED_LANGS.includes(picked) ? picked : FALLBACK_LANG;
         persistPreferredLang(currentLang);
-        setActiveLangButton(val);
+        setActiveLangButton(picked);
         applyTranslations();
       });
     });
