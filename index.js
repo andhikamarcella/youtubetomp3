@@ -6773,19 +6773,28 @@ app.post("/api/convert-playlist", async (req, res) => {
 
     try {
       await new Promise((resolve, reject) => {
-        const zipProc = spawn("zip", ["-q", "-j", zipPath, ...entryNames], { cwd: tempDir });
+        const isWin = process.platform === "win32";
+        let proc;
         let zipLogs = "";
-        zipProc.stdout.on("data", (d) => (zipLogs += d.toString()));
-        zipProc.stderr.on("data", (d) => (zipLogs += d.toString()));
-        zipProc.on("error", (err) => {
-          const error = new Error("zip command gagal dijalankan");
+        if (isWin) {
+          const quotedDest = zipPath.replace(/'/g, "''");
+          const entriesArg = entryNames.map((n) => `'${n.replace(/'/g, "''")}'`).join(", ");
+          const psCommand = `$ErrorActionPreference='Stop'; Compress-Archive -Path @(${entriesArg}) -DestinationPath '${quotedDest}' -Force`;
+          proc = spawn("powershell", ["-NoProfile", "-Command", psCommand], { cwd: tempDir, windowsHide: true });
+        } else {
+          proc = spawn("zip", ["-q", "-j", zipPath, ...entryNames], { cwd: tempDir });
+        }
+        proc.stdout.on("data", (d) => (zipLogs += d.toString()));
+        proc.stderr.on("data", (d) => (zipLogs += d.toString()));
+        proc.on("error", (err) => {
+          const error = new Error(isWin ? "Compress-Archive gagal dijalankan" : "zip command gagal dijalankan");
           error.logs = zipLogs;
           reject(error);
         });
-        zipProc.on("close", (code) => {
+        proc.on("close", (code) => {
           if (code === 0) resolve();
           else {
-            const error = new Error(`zip keluar dengan kode ${code}`);
+            const error = new Error(`${isWin ? "Compress-Archive" : "zip"} keluar dengan kode ${code}`);
             error.logs = zipLogs;
             reject(error);
           }
