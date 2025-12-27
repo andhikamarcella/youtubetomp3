@@ -1510,8 +1510,8 @@ const extractSpotifyDetails = async (rawUrl) => {
 
   // Jika Spotify Web API berhasil, gunakan hasilnya untuk metadata
   if (spotifyMetadata && spotifyMetadata.title) {
-    // Query untuk YouTube Music: "judul lagu audio" (tanpa artist)
-    const searchQuery = `${spotifyMetadata.title} audio`.trim();
+    // Query untuk YouTube/YouTube Music: "judul lagu artis audio"
+    const searchQuery = `${(spotifyMetadata.title || "").trim()} ${(spotifyMetadata.artist || "").trim()} audio`.trim();
     
     return {
       title: spotifyMetadata.title || "",
@@ -1519,7 +1519,7 @@ const extractSpotifyDetails = async (rawUrl) => {
       album: spotifyMetadata.album || "",
       cover: spotifyMetadata.cover || "",
       duration: spotifyMetadata.duration || null,
-      searchQuery: searchQuery || `${spotifyMetadata.artist || ""} ${spotifyMetadata.title || ""}`.trim(),
+      searchQuery: searchQuery || `${(spotifyMetadata.title || "").trim()} ${(spotifyMetadata.artist || "").trim()} audio`.trim(),
       id: spotifyMetadata.id || guessedId || null,
       previewUrl: spotifyMetadata.previewUrl || "",
       previewDuration: spotifyMetadata.duration || null,
@@ -1840,11 +1840,13 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
     entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
   } catch (err) {
-      // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa dengan query "judul audio"
+      // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa dengan query "judul artis audio"
       if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
-        // Update query untuk YouTube biasa: "judul lagu audio"
-        const spotifyTitle = originalSource.title || "";
-        const fallbackQuery = spotifyTitle ? `${spotifyTitle} audio`.trim() : target.replace("ytmsearch1:", "");
+        // Update query untuk YouTube biasa: "judul artis audio"
+        const spotifyTitle = (originalSource.title || "").trim();
+        const spotifyArtist = (originalSource.artist || "").trim();
+        const joined = [spotifyTitle, spotifyArtist, "audio"].filter(Boolean).join(" ").trim();
+        const fallbackQuery = joined || target.replace("ytmsearch1:", "");
         const fallbackTarget = `ytsearch1:${fallbackQuery}`;
       const fallbackArgs = [
         "--dump-single-json",
