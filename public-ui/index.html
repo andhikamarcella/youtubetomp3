@@ -2846,6 +2846,38 @@
       const translated = translate(key, el.getAttribute('aria-label'));
       if (translated != null) el.setAttribute('aria-label', translated);
     });
+    // Translate common attributes generically (no data-i18n needed)
+    document.querySelectorAll('[title]').forEach((el) => {
+      const val = el.getAttribute('title');
+      if (val) el.setAttribute('title', translateMessage(val));
+    });
+    document.querySelectorAll('[aria-label]').forEach((el) => {
+      const val = el.getAttribute('aria-label');
+      if (val) el.setAttribute('aria-label', translateMessage(val));
+    });
+    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((el) => {
+      const val = el.getAttribute('placeholder');
+      if (val) el.setAttribute('placeholder', translateMessage(val));
+    });
+    document.querySelectorAll('img[alt]').forEach((el) => {
+      const val = el.getAttribute('alt');
+      if (val) el.setAttribute('alt', translateMessage(val));
+    });
+    // Translate all visible text nodes generically (lingui-style, no keys)
+    try {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+      const nodes = [];
+      let current = walker.nextNode();
+      while (current) {
+        nodes.push(current);
+        current = walker.nextNode();
+      }
+      nodes.forEach((node) => {
+        const original = node.nodeValue || '';
+        const next = translateMessage(original);
+        if (next !== original) node.nodeValue = next;
+      });
+    } catch {}
     updateRingtoneLengthLabel();
     updateSpotifyPreviewLabel();
   }
