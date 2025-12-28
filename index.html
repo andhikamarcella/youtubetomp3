@@ -34,6 +34,17 @@
     .history-link { word-break: break-all; }
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; }
     .dropzone.dragover { background: rgba(28,38,62,.08); border-color: var(--bs-primary); }
+    .assistant-fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 1100; display: grid; gap: .5rem; justify-items: end; }
+    .assistant-toggle { display: inline-flex; align-items: center; gap: .5rem; }
+    .assistant-panel { width: 320px; border-radius: .9rem; background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); }
+    .assistant-panel header { padding: .5rem .75rem; border-bottom: 1px solid var(--bs-border-color); font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+    .assistant-panel .status-dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--bs-success); display: inline-block; }
+    .assistant-panel .assistant-body { padding: .75rem; }
+    .assistant-panel .assistant-footer { padding: .5rem .75rem; border-top: 1px solid var(--bs-border-color); font-size: .8rem; color: var(--bs-secondary-color); }
+    .chip { display: inline-block; padding: .25rem .5rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; font-size: .8rem; cursor: pointer; }
+    .chip:hover { background: var(--bs-body-tertiary-bg); }
+    .spotlight-ring { position: absolute; border-radius: .75rem; box-shadow: 0 0 0 9999px rgba(0,0,0,.6); border: 2px solid var(--bs-primary); pointer-events: none; }
+    .spotlight-note { position: absolute; background: var(--bs-body-bg); color: var(--bs-body-color); border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: .5rem .75rem; box-shadow: 0 .25rem .75rem rgba(0,0,0,.25); max-width: 300px; z-index: 1110; }
   </style>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
@@ -340,6 +351,12 @@
             <li><strong>Normalisasi</strong> menyamakan volume.</li>
             <li><strong>Antrian</strong> memproses banyak URL sekaligus.</li>
           </ul>
+          <hr>
+          <p class="mb-0">AI Navigator:</p>
+          <ul class="mb-0">
+            <li>Ketik <strong>/walkthrough</strong> untuk memulai tur otomatis.</li>
+            <li>Klik tombol <strong>AI Navigator</strong> di kanan bawah untuk saran cepat.</li>
+          </ul>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
@@ -356,6 +373,26 @@
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
+  </div>
+ 
+  <!-- AI Navigator -->
+  <div class="assistant-fab" id="assistantFab">
+    <div class="assistant-panel shadow-lg" id="assistantPanel" hidden>
+      <header><span class="status-dot"></span><div>AI Navigator</div></header>
+      <div class="assistant-body">
+        <div id="assistantReply" class="small text-secondary mb-2"></div>
+        <div class="d-flex gap-2">
+          <input type="text" id="assistantInput" class="form-control form-control-sm" placeholder="Tanyakan fitur, ketik /walkthrough">
+          <button type="button" class="btn btn-primary btn-sm" id="assistantSend">Kirim</button>
+        </div>
+        <div id="assistantSuggestions" class="mt-2 d-flex flex-wrap gap-1"></div>
+        <div id="assistantLocal" class="mt-2 d-flex flex-wrap gap-1"></div>
+      </div>
+      <div class="assistant-footer">Tip: ketik “/faq” atau “/walkthrough”</div>
+    </div>
+    <button type="button" class="btn btn-primary rounded-pill assistant-toggle" id="assistantToggle" aria-label="Buka AI Navigator">
+      <i class="bi bi-robot"></i> <span class="d-none d-sm-inline">AI Navigator</span>
+    </button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
@@ -832,6 +869,98 @@ $('#queueList')?.addEventListener('click', (e) => {
           }
         }
       }
+    }
+ 
+    const assistantToggle = $('#assistantToggle');
+    const assistantPanel = $('#assistantPanel');
+    const assistantInput = $('#assistantInput');
+    const assistantSend = $('#assistantSend');
+    const assistantReplyEl = $('#assistantReply');
+    const assistantSugEl = $('#assistantSuggestions');
+    const assistantLocalEl = $('#assistantLocal');
+    const localSpotlights = [
+      { label: 'Sorot URL', selector: '#url', note: 'Tempel URL YouTube' },
+      { label: 'Sorot Format', selector: '#format', note: 'Pilih format audio' },
+      { label: 'Sorot Trim', selector: '#trimStart', note: 'Atur trim mulai/selesai' },
+      { label: 'Sorot Convert', selector: '#convertBtn', note: 'Mulai konversi' },
+      { label: 'Sorot Antrian', selector: '#playlist', note: 'Tambahkan banyak URL' },
+      { label: 'Sorot Pengaturan', selector: "[data-bs-target='#offcanvasSettings']", note: 'Buka pengaturan' }
+    ];
+    function renderLocalSpotlights(){
+      assistantLocalEl.innerHTML = '';
+      localSpotlights.forEach(item => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = item.label;
+        chip.addEventListener('click', () => showSpotlight(item.selector, item.note));
+        assistantLocalEl.appendChild(chip);
+      });
+    }
+    function toggleAssistant(){
+      const hidden = assistantPanel.hasAttribute('hidden');
+      if(hidden){ assistantPanel.removeAttribute('hidden'); assistantInput.focus(); } else { assistantPanel.setAttribute('hidden',''); }
+    }
+    assistantToggle.addEventListener('click', toggleAssistant);
+    function renderSuggestions(list){
+      assistantSugEl.innerHTML = '';
+      (list||[]).forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = s;
+        chip.addEventListener('click', () => {
+          if(/walkthrough/i.test(s)){ const el = $('#tutorialModal'); if(el){ if(bootstrapGlobal?.Modal){ new bootstrapGlobal.Modal(el).show(); } else { el.hidden=false; el.style.display='block'; } } }
+          else { assistantInput.value = s; }
+        });
+        assistantSugEl.appendChild(chip);
+      });
+    }
+    async function sendAssistant(){
+      const text = assistantInput.value.trim();
+      if(!text){ return; }
+      if(/^\/?walkthrough$/i.test(text)){
+        const el = $('#tutorialModal');
+        if(el){ if(bootstrapGlobal?.Modal){ new bootstrapGlobal.Modal(el).show(); } else { el.hidden=false; el.style.display='block'; } }
+        assistantReplyEl.textContent = 'Walkthrough dibuka';
+        renderLocalSpotlights();
+        return;
+      }
+      try{
+        const resp = await fetch(api('/api/assistant-chat'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ prompt: text }) });
+        const data = await resp.json();
+        assistantReplyEl.textContent = data.reply || '';
+        renderSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+        renderLocalSpotlights();
+      }catch{
+        assistantReplyEl.textContent = 'Tidak bisa menghubungi AI Navigator';
+      }
+    }
+    assistantSend.addEventListener('click', sendAssistant);
+    assistantInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendAssistant(); });
+    renderLocalSpotlights();
+ 
+    function showSpotlight(selector, note){
+      const target = document.querySelector(selector);
+      if(!target){ setToast('Elemen tidak ditemukan'); return; }
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        const rect = target.getBoundingClientRect();
+        const ring = document.createElement('div');
+        ring.className = 'spotlight-ring';
+        ring.style.left = (window.scrollX + rect.left - 8) + 'px';
+        ring.style.top = (window.scrollY + rect.top - 8) + 'px';
+        ring.style.width = (rect.width + 16) + 'px';
+        ring.style.height = (rect.height + 16) + 'px';
+        const noteEl = document.createElement('div');
+        noteEl.className = 'spotlight-note';
+        noteEl.textContent = note || '';
+        noteEl.style.left = (window.scrollX + rect.left) + 'px';
+        noteEl.style.top = (window.scrollY + rect.bottom + 12) + 'px';
+        document.body.appendChild(ring);
+        document.body.appendChild(noteEl);
+        const clear = () => { ring.remove(); noteEl.remove(); };
+        noteEl.addEventListener('click', clear);
+        setTimeout(clear, 5000);
+      }, 350);
     }
   })();
   });
