@@ -579,6 +579,14 @@
             <i class="bi bi-stars"></i>
             <span data-i18n="navExperience">Experience</span>
           </button>
+          <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
+            <i class="bi bi-question-circle"></i>
+            <span>FAQ</span>
+          </button>
+          <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria">
+            <i class="bi bi-heart-fill"></i>
+            <span>Saweria</span>
+          </button>
           <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung">
             <i class="bi bi-person-circle"></i>
             <span data-i18n="navProfile">Profil</span>
@@ -1337,123 +1345,7 @@
         </div>
       </div>
 
-      <div class="card shadow-sm mb-4">
-        <div class="card-body p-4">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="d-flex align-items-center gap-2">
-              <i class="bi bi-lightning-charge text-primary"></i>
-              <h5 class="mb-0">Tips Kecepatan</h5>
-            </div>
-            <span class="badge text-bg-primary">Interaktif</span>
-          </div>
-          <div class="d-grid gap-2" id="speedTips">
-            <button type="button" class="tip-pill" data-tip-id="format" data-tip-label="Pilih format cepat">
-              <span class="tip-title">Prioritas Format</span>
-              <span class="tip-desc">Gunakan <strong>M4A</strong> untuk proses tercepat tanpa re-encode.</span>
-            </button>
-            <button type="button" class="tip-pill" data-tip-id="playlist" data-tip-label="Abaikan playlist">
-              <span class="tip-title">Single Video</span>
-              <span class="tip-desc">Centang <strong>Abaikan playlist</strong> agar hanya 1 video diproses.</span>
-            </button>
-            <button type="button" class="tip-pill" data-tip-id="binary" data-tip-label="Perbarui yt-dlp">
-              <span class="tip-title">Binary Terbaru</span>
-              <span class="tip-desc">Pastikan <code>ffmpeg</code> &amp; <code>yt-dlp</code> terbaru di server untuk stabilitas.</span>
-            </button>
-            <button type="button" class="tip-pill" data-tip-id="cookies" data-tip-label="Upload cookies">
-              <span class="tip-title">Cookies Valid</span>
-              <span class="tip-desc">Jika muncul age-gate, unggah <code>cookies.txt</code> valid sebelum convert.</span>
-            </button>
-            <button type="button" class="tip-pill" data-tip-id="background" data-tip-label="Proses di background">
-              <span class="tip-title">Background Task</span>
-              <span class="tip-desc">Aktifkan notifikasi email agar job berat jalan paralel tanpa menunggu tab.</span>
-            </button>
-            <button type="button" class="tip-pill" data-tip-id="resolution" data-tip-label="Gunakan resolusi adaptif">
-              <span class="tip-title">Resolusi Adaptif</span>
-              <span class="tip-desc">Untuk format video pilih <strong>Auto</strong> atau 720p agar unduhan stabil.</span>
-            </button>
-            <button type="button" class="tip-pill" data-tip-id="voice" data-tip-label="Gunakan voice command">
-              <span class="tip-title">Voice Command</span>
-              <span class="tip-desc">Tekan tombol voice untuk jalankan convert tanpa menyentuh keyboard.</span>
-            </button>
-          </div>
-          <div class="small text-secondary mt-2" id="speedTipHint">Ketuk tips untuk menandai prioritasmu.</div>
-        </div>
-      </div>
 
-      <div class="card shadow-sm donation-card mb-4" id="donationCard">
-        <div class="card-body p-4">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h5 class="mb-1">Dukung Saweria</h5>
-              <div class="small text-secondary">XP bonus + server makin stabil.</div>
-            </div>
-            <span class="badge text-bg-dark">XP Boost</span>
-          </div>
-          <div class="donation-actions" id="donationButtons">
-            <button type="button" class="btn btn-donation" data-amount="5000">
-              <span>Starter</span>
-              <strong>Rp 5.000</strong>
-            </button>
-            <button type="button" class="btn btn-donation" data-amount="10000">
-              <span>Favorit</span>
-              <strong>Rp 10.000</strong>
-            </button>
-            <button type="button" class="btn btn-donation" data-amount="25000">
-              <span>Supporter</span>
-              <strong>Rp 25.000</strong>
-            </button>
-            <button type="button" class="btn btn-donation" data-amount="100000">
-              <span>Legend</span>
-              <strong>Rp 100.000</strong>
-            </button>
-          </div>
-          <a id="donationLink" class="btn btn-dark w-100 donation-link mt-3" target="_blank" rel="noopener" href="https://saweria.co/DhikaMarcella?amount=10000">
-            Buka Saweria
-            <small id="donationLinkHint">Rp 10.000 siap diisi otomatis</small>
-          </a>
-          <a class="btn btn-manual-donation w-100 mt-2" id="manualDonationLink" href="https://saweria.co/DhikaMarcella?amount=10000" target="_blank" rel="noopener">Buka manual (Rp 10.000)</a>
-          <div class="donation-status" id="donationStatus">Pop-up akan mencoba dibuka otomatis. Jika diblokir, gunakan tombol di atas.</div>
-        </div>
-      </div>
-
-      <div class="card shadow-sm">
-        <div class="card-body p-4">
-          <div class="d-flex align-items-center mb-2">
-            <i class="bi bi-question-circle me-2"></i>
-            <h5 class="mb-0">FAQ</h5>
-          </div>
-          <div class="d-grid gap-2">
-            <details class="faq-item" open>
-              <summary>Apakah subtitle yang diunduh lengkap?</summary>
-              <p>Ya. Tombol <strong>Ambil subtitle</strong> menarik transkrip penuh dari YouTube, menyimpan berkas <code>.srt</code>, <code>.txt</code>, serta menampilkan teks lengkap yang bisa disalin.</p>
-            </details>
-            <details class="faq-item">
-              <summary>Bagaimana cara mempercepat proses convert?</summary>
-              <p>Gunakan tips interaktif di atas: pilih <strong>M4A</strong>, abaikan playlist, dan pastikan binary terbaru. Aktifkan <em>Auto-download</em> agar hasil langsung tersimpan.</p>
-            </details>
-            <details class="faq-item">
-              <summary>Bisakah hasilnya dibagikan ke perangkat lain?</summary>
-              <p>Setelah convert, buka kartu preview dan pilih tombol QR. Kode tersebut dapat dipindai dari ponsel sehingga file bisa diunduh tanpa menyalin tautan.</p>
-            </details>
-            <details class="faq-item">
-              <summary>Mengapa perlu upload cookies.txt?</summary>
-              <p>Beberapa video dibatasi usia/login. Unggah <code>cookies.txt</code> valid melalui pengaturan agar proses tetap lancar.</p>
-            </details>
-            <details class="faq-item">
-              <summary>Format apa yang cocok untuk kebutuhan saya?</summary>
-              <p>Pilih <strong>M4A/AAC</strong> untuk ukuran kecil, <strong>FLAC/AIFF</strong> untuk mastering, dan <strong>MP4/WEBM</strong> jika butuh video lengkap. Resolusi video dapat diatur pada menu <em>Resolusi Video</em>.</p>
-            </details>
-            <details class="faq-item">
-              <summary>Bisakah situs ini dipakai offline?</summary>
-              <p>Ya. Klik ikon install di browser (Add to Home Screen) untuk memasang versi PWA. Service worker menyimpan shell aplikasi sehingga masih bisa membuka riwayat dan FAQ saat offline.</p>
-            </details>
-            <details class="faq-item">
-              <summary>Bagaimana dengan kontrol suara dan narrator?</summary>
-              <p>Aktifkan switch <strong>Voice &amp; Narrator</strong> di Experience Hub. Narrator akan otomatis membacakan status jika mode otomatis dinyalakan, sedangkan tombol Voice menjalankan perintah seperti “convert sekarang”.</p>
-            </details>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -1677,6 +1569,160 @@
 
     </section>
 
+    <section class="app-section" data-section="faq" id="section-faq" hidden>
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-question-circle text-primary fs-5"></i>
+            <h5 class="mb-0">Pertanyaan Umum</h5>
+          </div>
+          
+          <div class="accordion accordion-flush" id="faqAccordion">
+            <h6 class="mt-4 mb-3 text-secondary title-mono">Umum</h6>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-gen-1">
+                  Apakah layanan ini gratis?
+                </button>
+              </h2>
+              <div id="faq-gen-1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">Ya, 100% gratis selamanya.</div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-gen-2">
+                  Format apa saja yang didukung?
+                </button>
+              </h2>
+              <div id="faq-gen-2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">MP3 (Audio) dan MP4 (Video).</div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-gen-3">
+                  Apakah ada batasan durasi?
+                </button>
+              </h2>
+              <div id="faq-gen-3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">Tidak ada batasan durasi video.</div>
+              </div>
+            </div>
+
+            <h6 class="mt-4 mb-3 text-secondary title-mono">Tutorial Android</h6>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-android">
+                  Cara penggunaan di Android
+                </button>
+              </h2>
+              <div id="faq-android" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <ol class="mb-0 ps-3">
+                    <li>Buka aplikasi YouTube dan pilih video.</li>
+                    <li>Ketuk tombol Bagikan (Share) lalu Salin Link.</li>
+                    <li>Tempel link di kolom input website ini dan tekan Convert.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="mt-4 mb-3 text-secondary title-mono">Tutorial iOS</h6>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-ios">
+                  Cara penggunaan di iPhone/iPad
+                </button>
+              </h2>
+              <div id="faq-ios" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <ol class="mb-0 ps-3">
+                    <li>Gunakan browser Safari atau Chrome.</li>
+                    <li>Buka YouTube, cari video, lalu salin link video.</li>
+                    <li>Tempel di sini dan mulai konversi.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="mt-4 mb-3 text-secondary title-mono">Tutorial PC / Laptop</h6>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-pc">
+                  Cara penggunaan di Komputer
+                </button>
+              </h2>
+              <div id="faq-pc" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <ol class="mb-0 ps-3">
+                    <li>Buka browser dan kunjungi YouTube.</li>
+                    <li>Salin URL video dari address bar.</li>
+                    <li>Paste di kolom input halaman ini untuk download.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="mt-4 mb-3 text-secondary title-mono">Masalah & Solusi</h6>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-tr-1">
+                  Gagal convert?
+                </button>
+              </h2>
+              <div id="faq-tr-1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">Coba refresh halaman atau gunakan browser lain.</div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-tr-2">
+                  Download lambat?
+                </button>
+              </h2>
+              <div id="faq-tr-2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">Cek koneksi internet Anda. Server kami biasanya sangat cepat.</div>
+              </div>
+            </div>
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-tr-3">
+                  Error teknis?
+                </button>
+              </h2>
+              <div id="faq-tr-3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                  <p class="mb-2">Hubungi kami via Telegram:</p>
+                  <a href="https://t.me/@cell_ruru" target="_blank" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-telegram me-1"></i>Chat Admin
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-section" data-section="saweria" id="section-saweria" hidden>
+      <div class="card shadow-sm">
+        <div class="card-body p-4 text-center">
+          <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-warning-subtle text-warning mb-3">
+            <i class="bi bi-heart-fill fs-1"></i>
+          </div>
+          <h4 class="mb-2">Dukung Kami di Saweria</h4>
+          <p class="text-secondary mb-4">Bantu kami menjaga server tetap hidup dan kembangkan fitur baru dengan donasi seikhlasnya.</p>
+          
+          <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="https://saweria.co/DhikaMarcella" target="_blank" class="btn btn-warning btn-lg px-5 rounded-pill fw-bold">
+              <i class="bi bi-gift-fill me-2"></i>Kirim Dukungan
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="app-section" data-section="profile" id="section-profile" hidden>
       <div class="card shadow-sm" id="profileCard">
         <div class="card-body p-4">
@@ -1897,6 +1943,14 @@
         <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub">
           <i class="bi bi-stars"></i>
           <span data-i18n="navExperience">Experience Hub</span>
+        </button>
+        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
+          <i class="bi bi-question-circle"></i>
+          <span>FAQ</span>
+        </button>
+        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria">
+          <i class="bi bi-heart-fill"></i>
+          <span>Saweria</span>
         </button>
         <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung">
           <i class="bi bi-person-circle"></i>
@@ -2189,6 +2243,10 @@
       sectionSubtitleExperience: 'Avatar dinamis, musik adaptif, dan voice control siap dibuka.',
       sectionTitleProfile: 'Profil',
       sectionSubtitleProfile: 'Pantau XP, badge, dan riwayat avatar kamu.',
+      sectionTitleFaq: 'Pertanyaan Umum',
+      sectionSubtitleFaq: 'Jawaban untuk pertanyaan yang sering diajukan.',
+      sectionTitleSaweria: 'Dukung Saweria',
+      sectionSubtitleSaweria: 'Bantu kami berkembang dengan donasi seikhlasnya.',
       labelUrl: 'URL Media (YouTube / Spotify / SoundCloud)',
       placeholderUrl: 'Tempel URL (YouTube, Spotify, SoundCloud, ... )',
       buttonSample: 'Contoh',
@@ -2258,6 +2316,10 @@
       sectionSubtitleExperience: 'Dynamic avatar, adaptive music, and voice control are ready to explore.',
       sectionTitleProfile: 'Profile',
       sectionSubtitleProfile: 'Track your XP, badges, and avatar history.',
+      sectionTitleFaq: 'FAQ',
+      sectionSubtitleFaq: 'Answers to frequently asked questions.',
+      sectionTitleSaweria: 'Support on Saweria',
+      sectionSubtitleSaweria: 'Help us grow with a donation.',
       labelUrl: 'Media URL (YouTube / Spotify / SoundCloud)',
       placeholderUrl: 'Paste URL (YouTube, Spotify, SoundCloud, ... )',
       buttonSample: 'Sample',
@@ -3142,6 +3204,14 @@
     experience: {
       titleKey: 'sectionTitleExperience',
       subtitleKey: 'sectionSubtitleExperience',
+    },
+    faq: {
+      titleKey: 'sectionTitleFaq',
+      subtitleKey: 'sectionSubtitleFaq',
+    },
+    saweria: {
+      titleKey: 'sectionTitleSaweria',
+      subtitleKey: 'sectionSubtitleSaweria',
     },
     profile: {
       titleKey: 'sectionTitleProfile',
