@@ -35,6 +35,8 @@
       src: url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2") format("woff2");
       font-display: swap;
     }
+    .hover-scale { transition: transform .2s ease, box-shadow .2s ease; }
+    .hover-scale:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
   </style>
   <style>
     :root { --radius: 1.2rem; --night-base: #17233f; --night-shadow: rgba(23,35,63,.62); --night-soft: rgba(36,52,86,.5); }
@@ -1570,133 +1572,230 @@
     </section>
 
     <section class="app-section" data-section="faq" id="section-faq" hidden>
-      <div class="card shadow-sm">
+      <div class="card shadow-sm border-0">
         <div class="card-body p-4">
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <i class="bi bi-question-circle text-primary fs-5"></i>
-            <h5 class="mb-0">Pertanyaan Umum</h5>
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="p-3 rounded-circle bg-primary-subtle text-primary">
+              <i class="bi bi-question-circle-fill fs-4"></i>
+            </div>
+            <div>
+              <h4 class="mb-1 fw-bold">Pusat Bantuan & Fitur</h4>
+              <p class="text-secondary mb-0 small">Panduan lengkap fitur, format, dan solusi masalah.</p>
+            </div>
           </div>
+
+          <!-- FAQ Navigation Pills -->
+          <ul class="nav nav-pills nav-fill gap-2 mb-4 p-1 bg-body-tertiary rounded-4" id="faqTab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link rounded-4 active py-2" id="faq-general-tab" data-bs-toggle="pill" data-bs-target="#faq-general" type="button" role="tab" aria-controls="faq-general" aria-selected="true"><i class="bi bi-info-circle me-1"></i>Umum & Format</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link rounded-4 py-2" id="faq-audio-tab" data-bs-toggle="pill" data-bs-target="#faq-audio" type="button" role="tab" aria-controls="faq-audio" aria-selected="false"><i class="bi bi-sliders me-1"></i>Audio Tools</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link rounded-4 py-2" id="faq-ai-tab" data-bs-toggle="pill" data-bs-target="#faq-ai" type="button" role="tab" aria-controls="faq-ai" aria-selected="false"><i class="bi bi-stars me-1"></i>AI Studio</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link rounded-4 py-2" id="faq-trouble-tab" data-bs-toggle="pill" data-bs-target="#faq-trouble" type="button" role="tab" aria-controls="faq-trouble" aria-selected="false"><i class="bi bi-tools me-1"></i>Solusi</button>
+            </li>
+          </ul>
           
-          <div class="accordion accordion-flush" id="faqAccordion">
-            <h6 class="mt-4 mb-3 text-secondary title-mono">Umum</h6>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-gen-1">
-                  Apakah layanan ini gratis?
-                </button>
-              </h2>
-              <div id="faq-gen-1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">Ya, 100% gratis selamanya.</div>
-              </div>
-            </div>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-gen-2">
-                  Format apa saja yang didukung?
-                </button>
-              </h2>
-              <div id="faq-gen-2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">MP3 (Audio) dan MP4 (Video).</div>
-              </div>
-            </div>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-gen-3">
-                  Apakah ada batasan durasi?
-                </button>
-              </h2>
-              <div id="faq-gen-3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">Tidak ada batasan durasi video.</div>
-              </div>
-            </div>
-
-            <h6 class="mt-4 mb-3 text-secondary title-mono">Tutorial Android</h6>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-android">
-                  Cara penggunaan di Android
-                </button>
-              </h2>
-              <div id="faq-android" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  <ol class="mb-0 ps-3">
-                    <li>Buka aplikasi YouTube dan pilih video.</li>
-                    <li>Ketuk tombol Bagikan (Share) lalu Salin Link.</li>
-                    <li>Tempel link di kolom input website ini dan tekan Convert.</li>
-                  </ol>
+          <div class="tab-content" id="faqTabContent">
+            <!-- Tab 1: Umum & Format -->
+            <div class="tab-pane fade show active" id="faq-general" role="tabpanel" aria-labelledby="faq-general-tab" tabindex="0">
+              <div class="accordion accordion-flush" id="accGeneral">
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-gen-1">
+                      <i class="bi bi-currency-dollar me-2 text-success"></i>Apakah layanan ini benar-benar gratis?
+                    </button>
+                  </h2>
+                  <div id="q-gen-1" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                    <div class="accordion-body text-secondary">
+                      Ya, 100% gratis. Kami tidak memungut biaya berlangganan. Jika Anda ingin mendukung operasional server, Anda bisa berdonasi melalui tab <strong>Saweria</strong>.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-gen-2">
+                      <i class="bi bi-file-earmark-music me-2 text-primary"></i>Apa bedanya MP3, M4A, dan FLAC?
+                    </button>
+                  </h2>
+                  <div id="q-gen-2" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                    <div class="accordion-body text-secondary">
+                      <ul>
+                        <li><strong>MP3</strong>: Format paling umum, kompatibel dengan semua perangkat (mobil, speaker lama, HP). Kualitas standar.</li>
+                        <li><strong>M4A (AAC)</strong>: Penerus MP3. Kualitas suara lebih jernih pada ukuran file yang sama. Sangat direkomendasikan untuk pengguna iPhone/Android modern.</li>
+                        <li><strong>FLAC/WAV</strong>: Format <em>Lossless</em> (tanpa kompresi). Kualitas setara studio rekaman, tapi ukuran file sangat besar. Cocok untuk audiophile.</li>
+                        <li><strong>OPUS</strong>: Format streaming modern (digunakan WhatsApp/YouTube). Sangat efisien tapi mungkin tidak jalan di player lama.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-gen-3">
+                      <i class="bi bi-phone me-2 text-info"></i>Cara pakai di iPhone/iPad?
+                    </button>
+                  </h2>
+                  <div id="q-gen-3" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                    <div class="accordion-body text-secondary">
+                      Gunakan browser <strong>Safari</strong> atau <strong>Chrome</strong>.
+                      <ol class="mt-2 mb-0">
+                        <li>Salin link video dari aplikasi YouTube.</li>
+                        <li>Tempel di sini, pilih format (disarankan <strong>M4A</strong> atau <strong>MP3</strong>).</li>
+                        <li>Klik Convert & Download. File akan masuk ke folder "Downloads" di aplikasi <em>Files</em> (iOS).</li>
+                        <li>Untuk Ringtone, pilih opsi "Siapkan versi ringtone" (.m4r).</li>
+                      </ol>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <h6 class="mt-4 mb-3 text-secondary title-mono">Tutorial iOS</h6>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-ios">
-                  Cara penggunaan di iPhone/iPad
-                </button>
-              </h2>
-              <div id="faq-ios" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  <ol class="mb-0 ps-3">
-                    <li>Gunakan browser Safari atau Chrome.</li>
-                    <li>Buka YouTube, cari video, lalu salin link video.</li>
-                    <li>Tempel di sini dan mulai konversi.</li>
-                  </ol>
+            <!-- Tab 2: Audio Tools -->
+            <div class="tab-pane fade" id="faq-audio" role="tabpanel" aria-labelledby="faq-audio-tab" tabindex="0">
+              <div class="accordion accordion-flush" id="accAudio">
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-audio-1">
+                      <i class="bi bi-lightning-charge me-2 text-warning"></i>Apa itu Nightcore dan Slowed+Reverb?
+                    </button>
+                  </h2>
+                  <div id="q-audio-1" class="accordion-collapse collapse" data-bs-parent="#accAudio">
+                    <div class="accordion-body text-secondary">
+                      Fitur ini memodifikasi audio secara otomatis:
+                      <ul class="mt-2">
+                        <li><strong>Nightcore</strong>: Mempercepat tempo dan menaikkan nada (pitch). Memberikan efek suara "chipmunk" atau anime style yang energik.</li>
+                        <li><strong>Slowed + Reverb</strong>: Memperlambat tempo dan menambahkan gema ruangan. Menciptakan suasana sedih, santai, atau <em>aesthetic</em> (Lofi vibe).</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-audio-2">
+                      <i class="bi bi-speaker me-2 text-danger"></i>Bagaimana fungsi Dolby Atmos & 8D?
+                    </button>
+                  </h2>
+                  <div id="q-audio-2" class="accordion-collapse collapse" data-bs-parent="#accAudio">
+                    <div class="accordion-body text-secondary">
+                      Kami menggunakan algoritma spasial untuk mensimulasikan ruang 3D.
+                      <ul>
+                        <li><strong>Dolby Atmos (Virtual)</strong>: Memperluas <em>soundstage</em> agar suara terasa mengelilingi kepala, bukan hanya dari kiri-kanan.</li>
+                        <li><strong>Efek Echo/Reverb</strong>: Menambah kedalaman suara seolah-olah Anda berada di konser atau ruangan besar.</li>
+                      </ul>
+                      <em>Tips: Gunakan headphone/earphone untuk hasil terbaik.</em>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-audio-3">
+                      <i class="bi bi-sliders me-2 text-primary"></i>Fungsi Volume Booster & Normalisasi?
+                    </button>
+                  </h2>
+                  <div id="q-audio-3" class="accordion-collapse collapse" data-bs-parent="#accAudio">
+                    <div class="accordion-body text-secondary">
+                      <ul>
+                        <li><strong>Volume Booster</strong>: Memaksa volume naik hingga +12dB. Berguna untuk video lama yang suaranya kecil. Hati-hati distorsi!</li>
+                        <li><strong>Normalisasi</strong>: Menyeimbangkan volume agar tidak ada bagian yang terlalu pelan atau terlalu keras (standar broadcast).</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <h6 class="mt-4 mb-3 text-secondary title-mono">Tutorial PC / Laptop</h6>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-pc">
-                  Cara penggunaan di Komputer
-                </button>
-              </h2>
-              <div id="faq-pc" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  <ol class="mb-0 ps-3">
-                    <li>Buka browser dan kunjungi YouTube.</li>
-                    <li>Salin URL video dari address bar.</li>
-                    <li>Paste di kolom input halaman ini untuk download.</li>
-                  </ol>
+            <!-- Tab 3: AI Studio -->
+            <div class="tab-pane fade" id="faq-ai" role="tabpanel" aria-labelledby="faq-ai-tab" tabindex="0">
+              <div class="accordion accordion-flush" id="accAi">
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-ai-1">
+                      <i class="bi bi-magic me-2 text-info"></i>Apa kegunaan AI Studio?
+                    </button>
+                  </h2>
+                  <div id="q-ai-1" class="accordion-collapse collapse" data-bs-parent="#accAi">
+                    <div class="accordion-body text-secondary">
+                      AI Studio adalah asisten cerdas untuk konten kreator dan musisi:
+                      <ul>
+                        <li><strong>Auto Tags</strong>: Mencari Cover Art, Artis, dan Album otomatis dari database musik global.</li>
+                        <li><strong>AI Caption</strong>: Membuat caption Instagram/TikTok yang menarik berdasarkan judul lagu.</li>
+                        <li><strong>Playlist Pitch</strong>: Membuat draf email profesional untuk mengajukan lagu ke kurator playlist Spotify.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-ai-2">
+                      <i class="bi bi-robot me-2 text-secondary"></i>Apakah AI ini berbayar?
+                    </button>
+                  </h2>
+                  <div id="q-ai-2" class="accordion-collapse collapse" data-bs-parent="#accAi">
+                    <div class="accordion-body text-secondary">
+                      Saat ini semua fitur AI gratis (beta). Kami menggunakan model bahasa ringan untuk memproses permintaan Anda secara cepat.
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <h6 class="mt-4 mb-3 text-secondary title-mono">Masalah & Solusi</h6>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-tr-1">
-                  Gagal convert?
-                </button>
-              </h2>
-              <div id="faq-tr-1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">Coba refresh halaman atau gunakan browser lain.</div>
-              </div>
-            </div>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-tr-2">
-                  Download lambat?
-                </button>
-              </h2>
-              <div id="faq-tr-2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">Cek koneksi internet Anda. Server kami biasanya sangat cepat.</div>
-              </div>
-            </div>
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-tr-3">
-                  Error teknis?
-                </button>
-              </h2>
-              <div id="faq-tr-3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  <p class="mb-2">Hubungi kami via Telegram:</p>
-                  <a href="https://t.me/@cell_ruru" target="_blank" class="btn btn-outline-info btn-sm">
-                    <i class="bi bi-telegram me-1"></i>Chat Admin
-                  </a>
+            <!-- Tab 4: Troubleshooting -->
+            <div class="tab-pane fade" id="faq-trouble" role="tabpanel" aria-labelledby="faq-trouble-tab" tabindex="0">
+              <div class="accordion accordion-flush" id="accTrouble">
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-tr-1">
+                      <i class="bi bi-wifi-off me-2 text-danger"></i>Gagal convert / Error?
+                    </button>
+                  </h2>
+                  <div id="q-tr-1" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ol>
+                        <li>Coba refresh halaman browser Anda.</li>
+                        <li>Pastikan link video publik (tidak private/unlisted).</li>
+                        <li>Jika video sangat panjang (>2 jam), gunakan format <strong>M4A</strong> atau <strong>WAV</strong> untuk menghindari timeout server.</li>
+                        <li>Matikan VPN jika download macet.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-tr-2">
+                      <i class="bi bi-shield-lock me-2 text-warning"></i>Bypass Age-Gate (Video Dewasa)?
+                    </button>
+                  </h2>
+                  <div id="q-tr-2" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Untuk video dengan batasan usia (YouTube Age Restriction), Anda perlu mengunggah file <code>cookies.txt</code>:
+                      <ol>
+                        <li>Instal ekstensi browser "Get cookies.txt".</li>
+                        <li>Buka YouTube saat login akun dewasa.</li>
+                        <li>Ekspor cookies.txt dan upload di kolom "Dropzone" di bawah tombol format.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-tr-3">
+                      <i class="bi bi-telegram me-2 text-info"></i>Kontak Admin?
+                    </button>
+                  </h2>
+                  <div id="q-tr-3" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Jika error berlanjut, hubungi kami via Telegram:
+                        <div class="mt-2">
+                          <a href="https://t.me/cell_ruru" target="_blank" class="btn btn-info text-white btn-sm rounded-pill">
+                            <i class="bi bi-telegram me-1"></i>Chat Support
+                          </a>
+                        </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1706,19 +1805,76 @@
     </section>
 
     <section class="app-section" data-section="saweria" id="section-saweria" hidden>
-      <div class="card shadow-sm">
-        <div class="card-body p-4 text-center">
-          <div class="d-inline-flex align-items-center justify-content-center p-3 rounded-circle bg-warning-subtle text-warning mb-3">
-            <i class="bi bi-heart-fill fs-1"></i>
+      <div class="card shadow-lg border-0 overflow-hidden" style="background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);">
+        <div class="card-body p-5 text-center position-relative">
+          <!-- Background Decoration -->
+          <div style="position: absolute; top: -20px; right: -20px; font-size: 10rem; opacity: 0.1; transform: rotate(15deg); pointer-events: none;">
+            <i class="bi bi-heart-fill text-warning"></i>
           </div>
-          <h4 class="mb-2">Dukung Kami di Saweria</h4>
-          <p class="text-secondary mb-4">Bantu kami menjaga server tetap hidup dan kembangkan fitur baru dengan donasi seikhlasnya.</p>
+
+          <div class="d-inline-flex align-items-center justify-content-center p-4 rounded-circle bg-white text-warning shadow-sm mb-4" style="width: 80px; height: 80px;">
+            <i class="bi bi-gift-fill fs-1"></i>
+          </div>
           
-          <div class="d-flex justify-content-center gap-3 flex-wrap">
-            <a href="https://saweria.co/DhikaMarcella" target="_blank" class="btn btn-warning btn-lg px-5 rounded-pill fw-bold">
-              <i class="bi bi-gift-fill me-2"></i>Kirim Dukungan
-            </a>
+          <h2 class="fw-bold mb-2 text-dark">Dukung Project Ini</h2>
+          <p class="text-secondary mb-5 mx-auto" style="max-width: 600px;">
+            Server kami berjalan 24/7 tanpa iklan yang mengganggu. Dukungan Anda membantu kami membayar biaya sewa server, bandwidth, dan kopi untuk developer.
+          </p>
+
+          <div class="row g-4 justify-content-center mb-5">
+            <div class="col-md-4">
+              <a href="https://saweria.co/DhikaMarcella" target="_blank" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-scale" style="transition: transform .2s;">
+                  <div class="card-body p-4">
+                    <div class="fs-1 mb-2">☕</div>
+                    <h5 class="fw-bold text-dark">Traktir Kopi</h5>
+                    <p class="small text-secondary mb-0">Rp 10.000</p>
+                    <div class="btn btn-outline-warning btn-sm rounded-pill mt-3 w-100">Pilih</div>
+                  </div>
+                </div>
+              </a>
+            </div>
+            <div class="col-md-4">
+              <a href="https://saweria.co/DhikaMarcella" target="_blank" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-scale bg-warning text-dark" style="transition: transform .2s;">
+                  <div class="card-body p-4">
+                    <div class="fs-1 mb-2">🚀</div>
+                    <h5 class="fw-bold">Server Boost</h5>
+                    <p class="mb-0 opacity-75">Rp 50.000</p>
+                    <div class="btn btn-light btn-sm rounded-pill mt-3 w-100 fw-bold">Populer</div>
+                  </div>
+                </div>
+              </a>
+            </div>
+            <div class="col-md-4">
+              <a href="https://saweria.co/DhikaMarcella" target="_blank" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 hover-scale" style="transition: transform .2s;">
+                  <div class="card-body p-4">
+                    <div class="fs-1 mb-2">👑</div>
+                    <h5 class="fw-bold text-dark">Sultan Mode</h5>
+                    <p class="small text-secondary mb-0">Rp 100.000+</p>
+                    <div class="btn btn-outline-warning btn-sm rounded-pill mt-3 w-100">Pilih</div>
+                  </div>
+                </div>
+              </a>
+            </div>
           </div>
+
+          <div class="d-flex align-items-center justify-content-center gap-2 text-secondary small">
+            <i class="bi bi-shield-check"></i>
+            <span>Transaksi aman via QRIS, GoPay, OVO, Dana, dll.</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Gamification Teaser -->
+      <div class="card border-0 bg-body-tertiary mt-4">
+        <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3 p-4">
+          <div>
+            <h6 class="fw-bold mb-1"><i class="bi bi-stars text-warning me-2"></i>Dapatkan XP & Badge Spesial</h6>
+            <p class="small text-secondary mb-0">Setiap dukungan akan tercatat di Hall of Fame (Coming Soon) dan menambah XP profilmu.</p>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill" disabled>Segera Hadir</button>
         </div>
       </div>
     </section>
