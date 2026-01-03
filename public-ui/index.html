@@ -37,6 +37,13 @@
     }
     .hover-scale { transition: transform .2s ease, box-shadow .2s ease; }
     .hover-scale:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    
+    /* Saweria Theme */
+    .saweria-hero-card { background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%); color: #212529; }
+    [data-bs-theme="dark"] .saweria-hero-card { background: linear-gradient(135deg, #3d2c00 0%, #5c4d00 100%); color: #e0e0e0; }
+    [data-bs-theme="dark"] .saweria-hero-card .text-dark { color: #f8f9fa !important; }
+    [data-bs-theme="dark"] .saweria-hero-card .bg-white { background-color: rgba(255,255,255,0.1) !important; color: #ffc107 !important; }
+    [data-bs-theme="dark"] .saweria-hero-card .btn-light { background: rgba(255,255,255,0.2); border: none; color: #fff; }
   </style>
   <style>
     :root { --radius: 1.2rem; --night-base: #17233f; --night-shadow: rgba(23,35,63,.62); --night-soft: rgba(36,52,86,.5); }
@@ -1773,7 +1780,7 @@
                     <div class="accordion-body text-secondary">
                       Untuk video dengan batasan usia (YouTube Age Restriction), Anda perlu mengunggah file <code>cookies.txt</code>:
                       <ol>
-                        <li>Instal ekstensi browser "Get cookies.txt".</li>
+                        <li>Instal ekstensi browser <a href="https://drive.google.com/file/d/1tcp09OPav74jPqoy_CI2PUeVVB91y0dS/view?usp=sharing" target="_blank" class="text-decoration-none fw-bold">Get cookies.txt</a>.</li>
                         <li>Buka YouTube saat login akun dewasa.</li>
                         <li>Ekspor cookies.txt dan upload di kolom "Dropzone" di bawah tombol format.</li>
                       </ol>
@@ -1805,7 +1812,7 @@
     </section>
 
     <section class="app-section" data-section="saweria" id="section-saweria" hidden>
-      <div class="card shadow-lg border-0 overflow-hidden" style="background: linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%);">
+      <div class="card shadow-lg border-0 overflow-hidden saweria-hero-card">
         <div class="card-body p-5 text-center position-relative">
           <!-- Background Decoration -->
           <div style="position: absolute; top: -20px; right: -20px; font-size: 10rem; opacity: 0.1; transform: rotate(15deg); pointer-events: none;">
@@ -1816,8 +1823,8 @@
             <i class="bi bi-gift-fill fs-1"></i>
           </div>
           
-          <h2 class="fw-bold mb-2 text-dark">Dukung Project Ini</h2>
-          <p class="text-secondary mb-5 mx-auto" style="max-width: 600px;">
+          <h2 class="fw-bold mb-2">Dukung Project Ini</h2>
+          <p class="mb-5 mx-auto opacity-75" style="max-width: 600px;">
             Server kami berjalan 24/7 tanpa iklan yang mengganggu. Dukungan Anda membantu kami membayar biaya sewa server, bandwidth, dan kopi untuk developer.
           </p>
 
@@ -1860,21 +1867,89 @@
             </div>
           </div>
 
-          <div class="d-flex align-items-center justify-content-center gap-2 text-secondary small">
+          <div class="d-flex align-items-center justify-content-center gap-2 small opacity-75">
             <i class="bi bi-shield-check"></i>
             <span>Transaksi aman via QRIS, GoPay, OVO, Dana, dll.</span>
           </div>
         </div>
       </div>
       
-      <!-- Gamification Teaser -->
+      <!-- Hall of Fame -->
       <div class="card border-0 bg-body-tertiary mt-4">
-        <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3 p-4">
-          <div>
-            <h6 class="fw-bold mb-1"><i class="bi bi-stars text-warning me-2"></i>Dapatkan XP & Badge Spesial</h6>
-            <p class="small text-secondary mb-0">Setiap dukungan akan tercatat di Hall of Fame (Coming Soon) dan menambah XP profilmu.</p>
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-trophy-fill text-warning me-2"></i>Hall of Fame</h5>
+            <span class="badge bg-warning text-dark rounded-pill">Top Supporters</span>
           </div>
-          <button class="btn btn-sm btn-outline-secondary rounded-pill" disabled>Segera Hadir</button>
+          
+          <div class="row g-4">
+            <!-- Top Donors (Sultan) -->
+            <div class="col-md-6">
+              <h6 class="text-secondary text-uppercase small fw-bold mb-3">👑 Sultan of the Month</h6>
+              <div class="list-group list-group-flush rounded-4 overflow-hidden shadow-sm">
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="fw-bold text-warning fs-4">1</div>
+                  <div class="avatar-placeholder rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">S</div>
+                  <div class="flex-grow-1">
+                    <div class="fw-bold">Sultan_01</div>
+                    <div class="small text-secondary">Rp 500.000</div>
+                  </div>
+                  <i class="bi bi-crown-fill text-warning"></i>
+                </div>
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="fw-bold text-secondary fs-4">2</div>
+                  <div class="avatar-placeholder rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">B</div>
+                  <div class="flex-grow-1">
+                    <div class="fw-bold">Budi_Santoso</div>
+                    <div class="small text-secondary">Rp 150.000</div>
+                  </div>
+                </div>
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="fw-bold text-secondary fs-4">3</div>
+                  <div class="avatar-placeholder rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">D</div>
+                  <div class="flex-grow-1">
+                    <div class="fw-bold">Dimas_Tech</div>
+                    <div class="small text-secondary">Rp 100.000</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Supporters -->
+            <div class="col-md-6">
+              <h6 class="text-secondary text-uppercase small fw-bold mb-3">✨ Recent Supporters</h6>
+              <div class="list-group list-group-flush rounded-4 overflow-hidden shadow-sm">
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="avatar-placeholder rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;"><i class="bi bi-person-fill"></i></div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">User123</div>
+                    <div class="small text-secondary">Traktir Kopi</div>
+                  </div>
+                  <small class="text-secondary">2m ago</small>
+                </div>
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="avatar-placeholder rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;"><i class="bi bi-heart-fill"></i></div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">Anonim</div>
+                    <div class="small text-secondary">Server Boost</div>
+                  </div>
+                  <small class="text-secondary">1h ago</small>
+                </div>
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="avatar-placeholder rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;"><i class="bi bi-cup-hot-fill"></i></div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">KopiLover</div>
+                    <div class="small text-secondary">Traktir Kopi</div>
+                  </div>
+                  <small class="text-secondary">5h ago</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4 text-center">
+            <p class="small text-secondary mb-0">Terima kasih kepada semua donatur! Nama Anda akan muncul di sini secara otomatis setelah donasi terverifikasi.</p>
+          </div>
         </div>
       </div>
     </section>
