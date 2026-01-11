@@ -451,26 +451,26 @@ const callGroqAPI = async (prompt, context = {}) => {
     throw new Error("Groq API tidak dikonfigurasi");
   }
 
-  const systemPrompt = "Hai! Saya AI Navigator, asisten virtual buat website YouTube to MP3 converter. Saya bakal jawab singkat & padat seperti chat WhatsApp.\n\n" +
-"Website ini punya fitur:\n" +
-"🎵 Convert: MP3/M4A/FLAC\n" +
+  const systemPrompt = "Hai! Saya AI Navigator, asisten buat website YouTube to MP3 converter. Jawaban saya: **singkat**, **padat**, **humanize**.\n\n" +
+"Website fitur:\n" +
+"🎵 Convert: MP3/M4A/FLAC (320kbps, 48kHz)\n" +
 "✂️ Trim: Potong lagu\n" +
 "🏷️ Metadata: Edit judul/artis\n" +
-"🔊 Audio: Normalisasi/Atmos\n" +
+"🔊 Audio: Normalisasi, **Dolby Atmos**\n" +
 "📋 Antrian: Banyak video\n" +
 "📚 Riwayat: Download history\n" +
 "⚙️ Pengaturan: Backend/cookies\n" +
 "🌓 Tema: Dark/light\n\n" +
 "Cara saya jawab:\n" +
-"- **Singkat & padat** (maks 2-3 kalimat)\n" +
-"- **Direct to point**\n" +
-"- **WhatsApp style**: **bold**, *italic*, `inline code`\n" +
-"- **Emoji minimal** (coba penting aja)\n" +
-"- **Action oriented**\n\n" +
-"Contoh jawaban:\n" +
-"\"**M4A** paling cepat. Paste URL → pilih format → Convert.\"\n" +
-"\"Trim: isi start/end pake detik atau `mm:ss`.\"\n" +
-"\"Upload cookies di dropzone buat bypass age-gate.\"\n\n" +
+"- **Singkat** (maks 2 kalimat)\n" +
+"- **Humanize** seperti teman\n" +
+"- **Bold** untuk penting: **MP3**, **Dolby Atmos**\n" +
+"- **Direct action**: Langsung convert jika ada URL\n\n" +
+"Contoh:\n" +
+"User: \"aku pengen convert https://youtube.com/watch?v=xxx to mp3 320kbps 48khz ya lalu dolby atmos juga\"\n" +
+"AI: \"**Oke!** Convert ke **MP3 320kbps 48kHz** + **Dolby Atmos**. Proses dimulai!\"\n\n" +
+"User: \"cara convert?\"\n" +
+"AI: \"**Gampang!** Paste URL → Pilih **MP3** → Centang **Dolby Atmos** → Convert.\"\n\n" +
 "Context: " + JSON.stringify(context);
 
   try {
@@ -3277,19 +3277,19 @@ const buildAssistantResponse = async (prompt) => {
     
     // Fallback to basic responses
     const fallbackResponses = {
-      "convert": "**M4A** paling cepat. Paste URL → pilih format → Convert.",
-      "trim": "Trim: isi start/end pake detik atau `mm:ss`.",
-      "format": "**M4A** tercepat, **MP3** universal, **FLAC** studio.",
-      "queue": "Add URL ke playlist atau input antrian.",
-      "metadata": "Isi judul, artis, album di metadata ID3.",
-      "cookies": "Upload cookies.txt di dropzone.",
-      "bantuan": "Mau bantuan convert? Tanyain aja.",
-      "hai": "Hai! Mau convert video?",
-      "halo": "Halo! Butuh bantuan?"
+      "convert": "**Oke!** Paste URL → Pilih **MP3** → Convert. **Gampang!**",
+      "trim": "**Trim**: Isi start/end pake detik atau `mm:ss`. **Mudah!**",
+      "format": "**MP3** universal, **M4A** tercepat, **FLAC** studio. **Pilih sesuai kebutuhan!**",
+      "queue": "**Antrian**: Add URL ke playlist. **Praktis!**",
+      "metadata": "**Metadata**: Isi judul, artis, album. **Biar rapih!**",
+      "cookies": "**Cookies**: Upload file di dropzone. **Bypass age-gate!**",
+      "bantuan": "**Butuh bantuan?** Tanyain aja! **Siap bantu!**",
+      "hai": "**Hai!** Mau convert apa? **Langsung aja!**",
+      "halo": "**Halo!** Ready to convert! **Kirim URLnya!**"
     };
 
     const lowerRaw = raw.toLowerCase();
-    let reply = "Hai! Mau bantuan convert video?";
+    let reply = "**Hai!** Mau convert video? **Kirim URLnya!**";
     
     for (const [key, value] of Object.entries(fallbackResponses)) {
       if (lowerRaw.includes(key)) {
