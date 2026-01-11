@@ -451,28 +451,26 @@ const callGroqAPI = async (prompt, context = {}) => {
     throw new Error("Groq API tidak dikonfigurasi");
   }
 
-  const systemPrompt = "Hai! Saya adalah AI Navigator, asisten virtual yang siap membantu kamu menggunakan website YouTube to MP3 converter ini. Saya sudah dilatih untuk memahami semua fitur di website ini dan akan memandu kamu seperti teman berbicara.\n\n" +
-"Website ini punya fitur-fitur keren:\n" +
-"🎵 **Konversi Audio**: Ubah video YouTube jadi MP3, M4A, atau FLAC\n" +
-"✂️ **Trim Audio**: Potong lagu sesuai keinginan (misal: chorus saja)\n" +
-"🏷️ **Metadata**: Edit judul, artis, album biar rapih\n" +
-"🔊 **Audio Enhancement**: Normalisasi volume atau Dolby Atmos\n" +
-"📋 **Antrian**: Convert banyak video sekaligus biar praktis\n" +
-"📚 **Riwayat**: Lihat semua yang pernah kamu download\n" +
-"⚙️ **Pengaturan**: Atur backend atau upload cookies\n" +
-"🌓 **Tema**: Switch antara dark/light mode\n\n" +
-"Cara saya bicara:\n" +
-"- Santai dan ramah seperti teman\n" +
-"- Gunakan emoji biar lebih hidup\n" +
-"- Kasih contoh konkret dan praktis\n" +
-"- Arahkan langkah demi langkah\n" +
-"- Suggest fitur yang mungkin kamu butuhkan\n" +
-"- Gunakan markdown: **bold**, *italic*, `code`\n\n" +
-"Kalau kamu bingung, saya bisa:\n" +
-"- Kasih tutorial langkah demi langkah\n" +
-"- Sorot fitur yang kamu butuhkan\n" +
-"- Rekomendasi setting terbaik\n" +
-"- Bantu troubleshooting\n\n" +
+  const systemPrompt = "Hai! Saya AI Navigator, asisten virtual buat website YouTube to MP3 converter. Saya bakal jawab singkat & padat seperti chat WhatsApp.\n\n" +
+"Website ini punya fitur:\n" +
+"🎵 Convert: MP3/M4A/FLAC\n" +
+"✂️ Trim: Potong lagu\n" +
+"🏷️ Metadata: Edit judul/artis\n" +
+"🔊 Audio: Normalisasi/Atmos\n" +
+"📋 Antrian: Banyak video\n" +
+"📚 Riwayat: Download history\n" +
+"⚙️ Pengaturan: Backend/cookies\n" +
+"🌓 Tema: Dark/light\n\n" +
+"Cara saya jawab:\n" +
+"- **Singkat & padat** (maks 2-3 kalimat)\n" +
+"- **Direct to point**\n" +
+"- **WhatsApp style**: **bold**, *italic*, `inline code`\n" +
+"- **Emoji minimal** (coba penting aja)\n" +
+"- **Action oriented**\n\n" +
+"Contoh jawaban:\n" +
+"\"**M4A** paling cepat. Paste URL → pilih format → Convert.\"\n" +
+"\"Trim: isi start/end pake detik atau `mm:ss`.\"\n" +
+"\"Upload cookies di dropzone buat bypass age-gate.\"\n\n" +
 "Context: " + JSON.stringify(context);
 
   try {
@@ -3232,23 +3230,23 @@ const buildAssistantResponse = async (prompt) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
   if (!raw) {
     return {
-      reply: "👋 Hai! Aku AI Navigator, asisten virtual kamu. Mau convert video YouTube atau butuh bantuan fitur-fiturnya? Tanyain aja! 🎵",
-      suggestions: ["🎵 Cara convert", "📝 Pilih format", "✂️ Trim audio", "⚙️ Pengaturan"],
+      reply: "Hai! Mau bantuan convert video?",
+      suggestions: ["Convert", "Format", "Trim", "Antrian"],
     };
   }
 
   // Special commands
   if (/^\/?walkthrough$/i.test(raw)) {
     return {
-      reply: "🚀 **Walkthrough dimulai!** Aku bakal panduin kamu step-by-step pake fitur-fitur keren di website ini. Yuk mulai! 🎯",
-      suggestions: ["📍 Langkah 1: Paste URL", "🎛️ Langkah 2: Pilih format", "🔥 Langkah 3: Convert!"],
+      reply: "**Walkthrough**: 1. Paste URL 2. Pilih format 3. Convert.",
+      suggestions: ["Step 1", "Step 2", "Step 3"],
     };
   }
 
   if (/^\/?faq$/i.test(raw)) {
     return {
-      reply: "❓ **FAQ Quick Answer**: 🎵 **M4A** = tercepat, 🎧 **MP3** = universal, 💎 **FLAC** = kualitas studio. ✅ Centang **Abaikan playlist** buat single video. Butuh info lebih lanjut? Tanyain aja! 😊",
-      suggestions: ["📝 Format M4A vs MP3", "✂️ Cara trim audio", "🍪 Upload cookies"],
+      reply: "**FAQ**: **M4A** tercepat, **MP3** universal, **FLAC** studio.",
+      suggestions: ["Format", "Trim", "Cookies"],
     };
   }
 
@@ -3262,12 +3260,12 @@ const buildAssistantResponse = async (prompt) => {
 
     // Generate contextual suggestions based on the response
     const suggestions = [
-      "🎵 Cara convert video",
-      "📝 Pilih format audio", 
-      "✂️ Trim audio",
-      "🏷️ Metadata ID3",
-      "📋 Antrian processing",
-      "⚙️ Pengaturan backend"
+      "Cara convert", 
+      "Pilih format", 
+      "Trim audio", 
+      "Metadata", 
+      "Antrian", 
+      "Pengaturan"
     ].slice(0, 4);
 
     return {
@@ -3279,19 +3277,19 @@ const buildAssistantResponse = async (prompt) => {
     
     // Fallback to basic responses
     const fallbackResponses = {
-      "convert": "🎵 Mau convert video? Gampang banget! **Cara cepat**: Paste URL YouTube → Pilih format (M4A paling cepat!) → Klik tombol **Convert**. Selesai! 🚀",
-      "trim": "✂️ Mau potong lagu? Isi **Trim Mulai** sama **Trim Selesai** pake format detik (misal: `30` untuk 30 detik) atau `mm:ss` (misal: `01:30`). Suka bagian chorus aja? Potong dari menit ke berapa sampe menit ke berapa! 🎶",
-      "format": "🤔 Bingung pilih format? **M4A** = tercepat (no re-encode), **MP3** = universal (bisa diputar dimana aja), **FLAC** = kualitas studio (buat audiofile!). Buat daily use, aku sarankan **M4A** aja! 💡",
-      "queue": "📋 Mau convert banyak video sekaligus? Add URL ke **Playlist** atau pake input **Tambahkan URL ke antrian**. Nanti diproses satu per satu otomatis. Praktis kan? 😉",
-      "metadata": "🏷️ Biar music library kamu rapih? Isi **Metadata ID3**: judul lagu, artis, album. Nanti pas di player musik, infonya lengkap dan cakep! 📀",
-      "cookies": "🍪 Video diblokir umur? Upload **cookies.txt** di dropzone atau lewat menu **Pengaturan**. Cookies ini kayak kunci buka video yang dibatasi! 🔓",
-      "bantuan": "😊 Butuh bantuan? Tanyain aja apa aja! Mau cara convert, pilih format, atau yang lain? Aku siap bantu! 💪",
-      "hai": "👋 Hai! Ada yang bisa aku bantu? Mau convert video atau butuh tutorial fitur-fiturnya?",
-      "halo": "👋 Halo! Selamat datang! Mau mulai convert video YouTube atau butuh panduan? Aku siap bantu! 🎵"
+      "convert": "**M4A** paling cepat. Paste URL → pilih format → Convert.",
+      "trim": "Trim: isi start/end pake detik atau `mm:ss`.",
+      "format": "**M4A** tercepat, **MP3** universal, **FLAC** studio.",
+      "queue": "Add URL ke playlist atau input antrian.",
+      "metadata": "Isi judul, artis, album di metadata ID3.",
+      "cookies": "Upload cookies.txt di dropzone.",
+      "bantuan": "Mau bantuan convert? Tanyain aja.",
+      "hai": "Hai! Mau convert video?",
+      "halo": "Halo! Butuh bantuan?"
     };
 
     const lowerRaw = raw.toLowerCase();
-    let reply = "🤖 Hai! Aku AI Navigator, asisten virtual kamu. Mau convert video, tanya format, atau butuh bantuan fitur lain? Tanyain aja! 😊";
+    let reply = "Hai! Mau bantuan convert video?";
     
     for (const [key, value] of Object.entries(fallbackResponses)) {
       if (lowerRaw.includes(key)) {
@@ -3302,7 +3300,7 @@ const buildAssistantResponse = async (prompt) => {
 
     return {
       reply,
-      suggestions: ["🎵 Cara convert", "📝 Pilih format", "✂️ Trim audio", "⚙️ Pengaturan"],
+      suggestions: ["Convert", "Format", "Trim", "Pengaturan"],
     };
   }
 };
