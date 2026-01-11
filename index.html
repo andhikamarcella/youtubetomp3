@@ -382,13 +382,13 @@
       <div class="assistant-body">
         <div id="assistantReply" class="small text-secondary mb-2"></div>
         <div class="d-flex gap-2">
-          <input type="text" id="assistantInput" class="form-control form-control-sm" placeholder="Tanyakan fitur, ketik /walkthrough">
+          <input type="text" id="assistantInput" class="form-control form-control-sm" placeholder="🤖 Tanyain apa aja! Mau bantuan convert?">
           <button type="button" class="btn btn-primary btn-sm" id="assistantSend">Kirim</button>
         </div>
         <div id="assistantSuggestions" class="mt-2 d-flex flex-wrap gap-1"></div>
         <div id="assistantLocal" class="mt-2 d-flex flex-wrap gap-1"></div>
       </div>
-      <div class="assistant-footer">Tip: ketik “/faq” atau “/walkthrough”</div>
+      <div class="assistant-footer">💡 Tip: ketik "/faq" atau "/walkthrough" • atau tanyain apa aja! 🎵</div>
     </div>
     <button type="button" class="btn btn-primary rounded-pill assistant-toggle" id="assistantToggle" aria-label="Buka AI Navigator">
       <i class="bi bi-robot"></i> <span class="d-none d-sm-inline">AI Navigator</span>
@@ -396,6 +396,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
   // ===== Utilities =====
@@ -879,12 +880,12 @@ $('#queueList')?.addEventListener('click', (e) => {
     const assistantSugEl = $('#assistantSuggestions');
     const assistantLocalEl = $('#assistantLocal');
     const localSpotlights = [
-      { label: 'Sorot URL', selector: '#url', note: 'Tempel URL YouTube' },
-      { label: 'Sorot Format', selector: '#format', note: 'Pilih format audio' },
-      { label: 'Sorot Trim', selector: '#trimStart', note: 'Atur trim mulai/selesai' },
-      { label: 'Sorot Convert', selector: '#convertBtn', note: 'Mulai konversi' },
-      { label: 'Sorot Antrian', selector: '#playlist', note: 'Tambahkan banyak URL' },
-      { label: 'Sorot Pengaturan', selector: "[data-bs-target='#offcanvasSettings']", note: 'Buka pengaturan' }
+      { label: '📍 Sorot URL', selector: '#url', note: '🎵 Tempel URL YouTube di sini!' },
+      { label: '📝 Sorot Format', selector: '#format', note: '🎛️ Pilih format audio (M4A/MP3/FLAC)' },
+      { label: '✂️ Sorot Trim', selector: '#trimStart', note: '⏱️ Atur trim mulai/selesai' },
+      { label: '🔥 Sorot Convert', selector: '#convertBtn', note: '🚀 Klik untuk mulai konversi!' },
+      { label: '📋 Sorot Antrian', selector: '#playlist', note: '➕ Tambahkan banyak URL' },
+      { label: '⚙️ Sorot Pengaturan', selector: "[data-bs-target='#offcanvasSettings']", note: '🔧 Buka pengaturan lanjutan' }
     ];
     function renderLocalSpotlights(){
       assistantLocalEl.innerHTML = '';
@@ -927,7 +928,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       try{
         const resp = await fetch(api('/api/assistant-chat'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ prompt: text }) });
         const data = await resp.json();
-        assistantReplyEl.textContent = data.reply || '';
+        // Parse markdown and render as HTML
+        const markdownHtml = window.marked ? window.marked.parse(data.reply || '') : data.reply || '';
+        assistantReplyEl.innerHTML = markdownHtml;
         renderSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
         renderLocalSpotlights();
       }catch{
