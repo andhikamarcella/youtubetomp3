@@ -136,6 +136,26 @@
       background: #3c3c3c; 
       color: white;
     }
+    
+    /* Markdown styling */
+    .message-bubble strong {
+      font-weight: 700;
+      color: inherit;
+    }
+    .message-bubble em {
+      font-style: italic;
+      color: inherit;
+    }
+    .message-bubble code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    html[data-bs-theme='dark'] .message-bubble code {
+      background: rgba(255,255,255,0.1);
+    }
   </style>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
@@ -497,9 +517,18 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
+  // ===== Initialize marked.js =====
+  if (window.marked) {
+    marked.setOptions({
+      gfm: true,
+      breaks: true,
+      sanitize: false // Allow HTML for styling
+    });
+  }
+  
   // ===== Utilities =====
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -1028,8 +1057,22 @@ $('#queueList')?.addEventListener('click', (e) => {
         bubble.textContent = content;
       } else {
         // Parse markdown for assistant messages
-        const markdownHtml = window.marked ? window.marked.parse(content) : content;
-        bubble.innerHTML = markdownHtml;
+        try {
+          if (window.marked) {
+            const markdownHtml = window.marked.parse(content);
+            bubble.innerHTML = markdownHtml;
+          } else {
+            // Fallback: manual bold parsing
+            let htmlContent = content
+              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/`(.*?)`/g, '<code>$1</code>');
+            bubble.innerHTML = htmlContent;
+          }
+        } catch (e) {
+          console.error('Markdown parsing error:', e);
+          bubble.textContent = content;
+        }
       }
       
       const time = document.createElement('span');
