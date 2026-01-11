@@ -27,11 +27,17 @@ AI telah dilatih untuk memahami semua fitur website:
 - `/walkthrough` - Memulai panduan langkah demi langkah
 - `/faq` - Menampilkan pertanyaan yang sering diajukan
 
-### 3. Respons Cerdas
+### 3. Respons Cerdas dengan Markdown
 AI memberikan jawaban yang:
 - Helpful dan action-oriented
 - Contextual dengan fitur website
 - Concise dan mudah dipahami
+- **Mendukung markdown formatting**:
+  - **Bold text** dengan `**text**`
+  - *Italic text* dengan `*text*`
+  - `Inline code` dengan backticks
+  - Bullet points dengan `-`
+  - Heading dengan `##`
 - Dilengkapi saran relevan
 
 ## Implementasi Teknis
