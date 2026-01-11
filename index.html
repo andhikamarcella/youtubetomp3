@@ -1192,17 +1192,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
     
     function addMessage(content, isUser = false) {
-      // Debug: Test markdown parsing
-      if (!isUser) {
-        console.log('Original content:', content);
-        let testContent = content
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/`(.*?)`/g, '<code>$1</code>')
-          .replace(/\n/g, '<br>');
-        console.log('Parsed content:', testContent);
-      }
-      
       const messageDiv = document.createElement('div');
       messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
       
@@ -1226,11 +1215,11 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (isUser) {
         bubble.textContent = content;
       } else {
-        // Direct markdown parsing for basic formatting
+        // Enhanced markdown parsing with better bold support
         let htmlContent = content
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/`(.*?)`/g, '<code>$1</code>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 800; color: inherit;">$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em style="font-style: italic; color: inherit;">$1</em>')
+          .replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.15); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>')
           .replace(/\n/g, '<br>');
         bubble.innerHTML = htmlContent;
       }
@@ -1325,6 +1314,36 @@ $('#queueList')?.addEventListener('click', (e) => {
       // Add user message
       addMessage(text, true);
       assistantInput.value = '';
+      
+      // Check for convert command with URL
+      const urlMatch = text.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+)/);
+      const formatMatch = text.match(/\b(mp3|m4a|flac)\b/i);
+      const qualityMatch = text.match(/(\d+)kbps/i);
+      const atmosMatch = text.toLowerCase().includes('dolby atmos') || text.toLowerCase().includes('atmos');
+      
+      if (urlMatch) {
+        const url = urlMatch[1];
+        const format = formatMatch ? formatMatch[1].toLowerCase() : 'mp3';
+        const quality = qualityMatch ? qualityMatch[1] : '320';
+        
+        // Auto-fill form and start convert
+        $('#url').value = url;
+        $('#format').value = format;
+        $('#quality').value = quality + 'kbps';
+        $('#dolbyAtmos').checked = atmosMatch;
+        
+        addMessage(`**Oke!** Convert ke **${format.toUpperCase()} ${quality}kbps**${atmosMatch ? ' + **Dolby Atmos**' : ''}. Proses dimulai!`, false);
+        
+        // Start conversion
+        setTimeout(() => {
+          if (typeof doConvert === 'function') {
+            doConvert(url);
+          }
+        }, 1000);
+        
+        renderLocalSpotlights();
+        return;
+      }
       
       // Special commands
       if(/^\/?walkthrough$/i.test(text)){
