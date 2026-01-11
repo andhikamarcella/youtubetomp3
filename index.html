@@ -48,10 +48,28 @@
     
     /* WhatsApp-style chat */
     .assistant-panel header { 
-      background: linear-gradient(135deg, #075e54, #128c7e); 
+      background: #075e54; 
       color: white; 
-      padding: .75rem; 
+      padding: .75rem 1rem; 
       border-radius: .9rem .9rem 0 0;
+      border-bottom: 1px solid #054d44;
+    }
+    .assistant-panel {
+      width: 350px; 
+      height: 500px;
+      border-radius: .9rem; 
+      background: var(--bs-body-bg); 
+      color: var(--bs-body-color); 
+      border: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+    .assistant-panel .assistant-body {
+      padding: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     .assistant-avatar {
       width: 40px; 
@@ -64,16 +82,19 @@
       font-size: 1.2rem;
     }
     .chat-messages {
-      max-height: 300px; 
+      flex: 1;
       overflow-y: auto; 
       padding: 1rem;
       background: #e5ddd5;
       background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
+      display: flex;
+      flex-direction: column;
     }
     .message {
-      margin-bottom: 1rem; 
+      margin-bottom: .5rem; 
       display: flex; 
       align-items: flex-end;
+      max-width: 100%;
     }
     .message.user {
       justify-content: flex-end;
@@ -82,11 +103,13 @@
       justify-content: flex-start;
     }
     .message-bubble {
-      max-width: 70%; 
+      max-width: 75%; 
       padding: .5rem .75rem; 
       border-radius: .75rem; 
       word-wrap: break-word;
       position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      line-height: 1.4;
     }
     .message.user .message-bubble {
       background: #dcf8c6; 
@@ -100,9 +123,19 @@
     }
     .message-time {
       font-size: .7rem; 
-      color: #999; 
-      margin-top: .25rem; 
+      color: rgba(255,255,255,0.7); 
       display: block;
+      margin-top: .25rem;
+      text-align: right;
+    }
+    .message.user .message-time {
+      color: rgba(0,0,0,0.5);
+    }
+    .message.assistant .message-time {
+      color: rgba(0,0,0,0.5);
+    }
+    html[data-bs-theme='dark'] .message-time {
+      color: rgba(255,255,255,0.5);
     }
     .message-avatar {
       width: 32px; 
@@ -115,25 +148,56 @@
       align-items: center; 
       justify-content: center; 
       font-size: .8rem;
+      flex-shrink: 0;
     }
     .user-avatar {
       background: #3498db; 
     }
     .assistant-input-area {
-      padding: .75rem; 
-      border-top: 1px solid var(--bs-border-color);
-      background: var(--bs-body-bg);
+      padding: .75rem 1rem; 
+      border-top: 1px solid #e5ddd5;
+      background: #f0f0f0;
+    }
+    .assistant-input-area .form-control {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 1.5rem;
+      padding: .5rem 1rem;
+    }
+    .assistant-input-area .btn {
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #25d366;
+      border-color: #25d366;
+    }
+    .assistant-input-area .btn:hover {
+      background: #128c7e;
+      border-color: #128c7e;
     }
     html[data-bs-theme='dark'] .chat-messages {
-      background: #2b2b2b;
-      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%232b2b2b"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.02)"/></svg>');
+      background: #0a141f;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a141f"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.02)"/></svg>');
     }
     html[data-bs-theme='dark'] .message.user .message-bubble {
       background: #005c4b; 
       color: white;
     }
     html[data-bs-theme='dark'] .message.assistant .message-bubble {
-      background: #3c3c3c; 
+      background: #1f2c34; 
+      color: white;
+    }
+    html[data-bs-theme='dark'] .assistant-input-area {
+      background: #0a141f;
+      border-top-color: #1f2c34;
+    }
+    html[data-bs-theme='dark'] .assistant-input-area .form-control {
+      background: #1f2c34;
+      border-color: #2f3c44;
       color: white;
     }
     
@@ -503,6 +567,9 @@
           <div class="fw-semibold">AI Navigator</div>
           <div class="small text-success">Online</div>
         </div>
+        <div id="googleSignInBtn" style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; cursor: pointer;" title="Login dengan Google">
+          <img src="https://ui-avatars.com/api/?name=User&background=ccc&color=666&size=32" alt="Login" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
         <button type="button" class="btn-close btn-close-white" id="assistantClose"></button>
       </header>
       <div class="assistant-body">
@@ -524,6 +591,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
   // ===== Initialize marked.js =====
@@ -1026,6 +1094,83 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
     } catch (e) {}
     
+    // Function to get profile photo
+    function getUserProfilePhoto() {
+      if (currentUser?.photoURL) {
+        return currentUser.photoURL;
+      }
+      if (currentUser?.email) {
+        // Generate avatar from email
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.email)}&background=3498db&color=fff&size=32`;
+      }
+      return null;
+    }
+    
+    // Update profile photo display
+    function updateProfilePhoto() {
+      const signInBtn = $('#googleSignInBtn');
+      if (signInBtn) {
+        if (currentUser?.photoURL) {
+          signInBtn.innerHTML = `<img src="${currentUser.photoURL}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+          signInBtn.title = `${currentUser.name} (Logout)`;
+        } else if (currentUser?.email) {
+          const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.email)}&background=3498db&color=fff&size=32`;
+          signInBtn.innerHTML = `<img src="${avatarUrl}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+          signInBtn.title = `${currentUser.email} (Logout)`;
+        } else {
+          signInBtn.innerHTML = `<img src="https://ui-avatars.com/api/?name=User&background=ccc&color=666&size=32" alt="Login" style="width: 100%; height: 100%; object-fit: cover;">`;
+          signInBtn.title = "Login dengan Google";
+        }
+      }
+    }
+    
+    // Google Sign-In
+    function initGoogleSignIn() {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
+          callback: handleGoogleSignIn
+        });
+        
+        const signInBtn = $('#googleSignInBtn');
+        if (signInBtn) {
+          window.google.accounts.id.renderButton(signInBtn, {
+            theme: 'outline',
+            size: 'small',
+            type: 'icon'
+          });
+        }
+      }
+    }
+    
+    function handleGoogleSignIn(response) {
+      try {
+        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        currentUser = {
+          name: payload.name,
+          email: payload.email,
+          photoURL: payload.picture,
+          sub: payload.sub
+        };
+        localStorage.setItem('userSession', JSON.stringify(currentUser));
+        updateProfilePhoto();
+        setToast(`Login berhasil sebagai ${currentUser.name}`);
+      } catch (e) {
+        console.error('Google sign-in error:', e);
+        setToast('Login gagal');
+      }
+    }
+    
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('userSession');
+      updateProfilePhoto();
+      setToast('Logout berhasil');
+    }
+    
+    // Initialize profile photo on load
+    updateProfilePhoto();
+    
     const localSpotlights = [
       { label: 'Sorot URL', selector: '#url', note: 'Tempel URL YouTube' },
       { label: 'Sorot Format', selector: '#format', note: 'Pilih format audio' },
@@ -1063,9 +1208,17 @@ $('#queueList')?.addEventListener('click', (e) => {
       
       const avatar = document.createElement('div');
       avatar.className = `message-avatar ${isUser ? 'user-avatar' : ''}`;
-      avatar.innerHTML = isUser ? 
-        (currentUser?.name?.charAt(0)?.toUpperCase() || 'U') : 
-        '<i class="bi bi-robot"></i>';
+      
+      if (isUser) {
+        const profilePhoto = getUserProfilePhoto();
+        if (profilePhoto) {
+          avatar.innerHTML = `<img src="${profilePhoto}" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        } else {
+          avatar.innerHTML = (currentUser?.name?.charAt(0)?.toUpperCase() || 'U');
+        }
+      } else {
+        avatar.innerHTML = '<i class="bi bi-robot"></i>';
+      }
       
       const bubble = document.createElement('div');
       bubble.className = 'message-bubble';
@@ -1086,12 +1239,12 @@ $('#queueList')?.addEventListener('click', (e) => {
       time.className = 'message-time';
       time.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
       
-      bubble.appendChild(time);
-      
       if (isUser) {
+        bubble.appendChild(time);
         messageDiv.appendChild(bubble);
         messageDiv.appendChild(avatar);
       } else {
+        bubble.appendChild(time);
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(bubble);
       }
@@ -1118,6 +1271,26 @@ $('#queueList')?.addEventListener('click', (e) => {
     assistantClose?.addEventListener('click', () => {
       assistantPanel.setAttribute('hidden','');
     });
+    
+    // Google Sign-In button click handler
+    const signInBtn = $('#googleSignInBtn');
+    if (signInBtn) {
+      signInBtn.addEventListener('click', () => {
+        if (currentUser) {
+          logout();
+        } else {
+          // For demo, create a mock user
+          currentUser = {
+            name: 'Demo User',
+            email: 'demo@example.com',
+            photoURL: 'https://picsum.photos/seed/demo/32/32.jpg'
+          };
+          localStorage.setItem('userSession', JSON.stringify(currentUser));
+          updateProfilePhoto();
+          setToast('Login demo berhasil');
+        }
+      });
+    }
     
     function renderSuggestions(list){
       assistantSugEl.innerHTML = '';
