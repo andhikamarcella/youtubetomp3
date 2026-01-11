@@ -674,7 +674,7 @@
   let wavesurfer = null;
   
   function initWaveform() {
-    if (window.WaveSurfer) {
+    if (window.WaveSurfer && !wavesurfer) {
       wavesurfer = WaveSurfer.create({
         container: '#waveform',
         waveColor: '#4a90e2',
@@ -696,6 +696,7 @@
       
       // WaveSurfer event listeners
       wavesurfer.on('ready', () => {
+        console.log('Waveform ready');
         const duration = wavesurfer.getDuration();
         $('#duration').textContent = formatTime(duration);
       });
@@ -717,6 +718,10 @@
         $('#playBtn').innerHTML = '<i class="bi bi-play-fill"></i> Play';
         wavesurfer.seekTo(0);
       });
+      
+      wavesurfer.on('error', (error) => {
+        console.error('WaveSurfer error:', error);
+      });
     }
   }
   
@@ -726,11 +731,37 @@
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
   
-  function loadWaveform(audioUrl) {
-    if (wavesurfer) {
+  // Make loadWaveform globally accessible
+  window.loadWaveform = function(audioUrl) {
+    console.log('Loading waveform:', audioUrl);
+    
+    // Show loading state
+    const waveformContainer = $('#waveformContainer');
+    if (waveformContainer) {
+      waveformContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    }
+    
+    if (!wavesurfer) {
+      initWaveform();
+      setTimeout(() => {
+        if (wavesurfer) {
+          // Restore waveform container
+          const container = $('#waveformContainer');
+          if (container) {
+            container.innerHTML = '<div id="waveform" style="width: 100%; height: 100%;"></div>';
+          }
+          wavesurfer.load(audioUrl);
+        }
+      }, 500);
+    } else {
+      // Restore waveform container
+      const container = $('#waveformContainer');
+      if (container) {
+        container.innerHTML = '<div id="waveform" style="width: 100%; height: 100%;"></div>';
+      }
       wavesurfer.load(audioUrl);
     }
-  }
+  };
   
   // Waveform controls
   function setupWaveformControls() {
@@ -765,8 +796,22 @@
   }
   
   // Initialize waveform when DOM is ready
-  initWaveform();
-  setupWaveformControls();
+  setTimeout(() => {
+    if (window.WaveSurfer) {
+      initWaveform();
+      setupWaveformControls();
+    } else {
+      console.log('WaveSurfer not loaded, retrying...');
+      setTimeout(() => {
+        if (window.WaveSurfer) {
+          initWaveform();
+          setupWaveformControls();
+        } else {
+          console.error('WaveSurfer failed to load');
+        }
+      }, 2000);
+    }
+  }, 1000);
   
   // ===== Utilities =====
   const $ = (sel) => document.querySelector(sel);
@@ -1164,8 +1209,11 @@ $('#queueList')?.addEventListener('click', (e) => {
       fake = 100; progBar.style.width='100%'; progBar.textContent='100%';
       
       // Load waveform for preview
-      if (data.downloadUrl && window.loadWaveform) {
-        loadWaveform(data.downloadUrl);
+      if (data.downloadUrl) {
+        console.log('Convert completed, loading waveform:', data.downloadUrl);
+        setTimeout(() => {
+          window.loadWaveform(data.downloadUrl);
+        }, 1000);
       }
       if(data.logs && $('#showLog').checked){ $('#logs').textContent = data.logs; }
       if(autoDownload) $('#downloadLink').click();
