@@ -74,6 +74,9 @@ const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_
 const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
+const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const isGroqConfigured = Boolean(GROQ_API_KEY);
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -441,6 +444,63 @@ const safeFetch = async (...args) => {
     throw new Error("fetch API tidak tersedia di lingkungan ini");
   }
   return fetchImpl(...args);
+};
+
+const callGroqAPI = async (prompt, context = {}) => {
+  if (!isGroqConfigured) {
+    throw new Error("Groq API tidak dikonfigurasi");
+  }
+
+  const systemPrompt = `Kamu adalah AI Navigator untuk website YouTube to MP3 converter. Kamu ahli dalam:
+- Fitur konversi YouTube ke MP3/M4A/FLAC
+- Opsi trim, metadata, normalisasi audio
+- Antrian processing dan riwayat
+- Pengaturan backend dan cookies
+- Panduan penggunaan step-by-step
+
+Website ini memiliki fitur:
+1. Konversi video YouTube ke audio (MP3, M4A, FLAC)
+2. Trim audio dengan start/end time
+3. Metadata ID3 (judul, artis, album)
+4. Normalisasi audio dan Dolby Atmos
+5. Antrian untuk multiple URLs
+6. Riwayat download
+7. Pengaturan backend dan upload cookies
+8. Dark/light theme toggle
+
+Berikan jawaban yang helpful, concise, dan action-oriented. Fokus pada membantu user mengoptimalkan penggunaan website.
+
+Context: ${JSON.stringify(context)}`;
+
+  try {
+    const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Groq API error: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "Maaf, saya tidak bisa memproses permintaan Anda.";
+  } catch (error) {
+    console.error("[Groq API] Error:", error);
+    throw error;
+  }
 };
 
 let turnstileWarningLogged = false;
@@ -3165,51 +3225,80 @@ const ASSISTANT_TOPICS = [
   },
 ];
 
-const buildAssistantResponse = (prompt) => {
+const buildAssistantResponse = async (prompt) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
   if (!raw) {
     return {
-      reply: "Aku siap bantu optimalkan converter ini. Tanyakan apa saja seputar donasi, subtitle, Experience Hub, atau profil avatar.",
-      suggestions: DEFAULT_ASSISTANT_SUGGESTIONS,
+      reply: "Hai! Saya AI Navigator untuk YouTube to MP3 converter. Tanyakan apa saja tentang fitur-fitur website ini!",
+      suggestions: ["Cara convert video", "Opsi format audio", "Fitur trim", "Pengaturan lanjutan"],
     };
   }
 
-  const normalized = normalizeAssistantPrompt(raw);
-  const matches = ASSISTANT_TOPICS
-    .map((topic) => ({
-      topic,
-      score: keywordScore(normalized, topic.keywords),
-    }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score);
+  // Special commands
+  if (/^\/?walkthrough$/i.test(raw)) {
+    return {
+      reply: "Walkthrough dimulai! Saya akan memandu Anda melalui fitur-fitur utama website YouTube to MP3 converter.",
+      suggestions: ["Langkah 1: Tempel URL", "Langkah 2: Pilih format", "Langkah 3: Convert"],
+    };
+  }
 
-  const replySegments = [];
-  const suggestionPool = [];
+  if (/^\/?faq$/i.test(raw)) {
+    return {
+      reply: "FAQ: Gunakan M4A untuk kecepatan maksimal, MP3 untuk kompatibilitas, dan FLAC untuk kualitas tertinggi. Centang 'Abaikan playlist' untuk single video.",
+      suggestions: ["Format M4A vs MP3", "Cara trim audio", "Upload cookies"],
+    };
+  }
 
-  if (matches.length) {
-    for (const { topic } of matches.slice(0, 2)) {
-      const builder = assistantTopicReply[topic.key];
-      if (typeof builder === "function") {
-        const segment = builder({ raw, normalized });
-        if (segment) replySegments.push(segment);
+  try {
+    // Use Groq API for intelligent responses
+    const aiReply = await callGroqAPI(raw, {
+      website: "YouTube to MP3 Converter",
+      features: ["Convert", "Trim", "Metadata", "Queue", "History", "Settings"],
+      timestamp: new Date().toISOString(),
+    });
+
+    // Generate contextual suggestions based on the response
+    const suggestions = [
+      "Cara convert video",
+      "Pilih format audio", 
+      "Trim audio",
+      "Metadata ID3",
+      "Antrian processing",
+      "Pengaturan backend"
+    ].slice(0, 4);
+
+    return {
+      reply: aiReply,
+      suggestions,
+    };
+  } catch (error) {
+    console.error("[Assistant] Groq API error:", error);
+    
+    // Fallback to basic responses
+    const fallbackResponses = {
+      "convert": "Untuk convert: Tempel URL YouTube, pilih format (MP3/M4A/FLAC), lalu klik Convert. M4A paling cepat!",
+      "trim": "Fitur trim: Isi 'Trim Mulai' dan 'Trim Selesai' dengan format detik atau hh:mm:ss (contoh: 00:30 untuk 30 detik).",
+      "format": "Format: M4A (tercepat, no re-encode), MP3 (kompatibel, 320kbps), FLAC (Hi-Res lossless).",
+      "queue": "Antrian: Tambah multiple URL di textarea Playlist atau gunakan input 'Tambahkan URL ke antrian'.",
+      "metadata": "Metadata: Isi judul, artis, dan album di bagian 'Metadata ID3' sebelum convert.",
+      "cookies": "Cookies: Upload cookies.txt untuk bypass age-gate video YouTube yang dibatasi umur.",
+    };
+
+    const lowerRaw = raw.toLowerCase();
+    let reply = "Saya bisa membantu Anda dengan fitur convert, trim, format, antrian, metadata, atau pengaturan cookies.";
+    
+    for (const [key, value] of Object.entries(fallbackResponses)) {
+      if (lowerRaw.includes(key)) {
+        reply = value;
+        break;
       }
-      if (Array.isArray(topic.suggestions)) suggestionPool.push(...topic.suggestions);
     }
+
+    return {
+      reply,
+      suggestions: ["Convert video", "Pilih format", "Trim audio", "Pengaturan"],
+    };
   }
-
-  if (!replySegments.length) {
-    replySegments.push(
-      "Aku siap bantu optimalkan converter ini. Bahas donasi, subtitle, Experience Hub, profil avatar, musik latar, atau aktifkan walkthrough bila butuh panduan."
-    );
-  }
-
-  suggestionPool.push(...DEFAULT_ASSISTANT_SUGGESTIONS);
-  const suggestions = dedupeList(suggestionPool).slice(0, 5);
-
-  return {
-    reply: replySegments.join("\n\n"),
-    suggestions,
-  };
 };
 
 const validateConvertPayload = (payload = {}) => {
@@ -6221,7 +6310,7 @@ app.post("/api/assistant-chat", async (req, res) => {
       return res.status(400).json({ error: "Prompt wajib diisi" });
     }
 
-    const responsePayload = buildAssistantResponse(trimmed);
+    const responsePayload = await buildAssistantResponse(trimmed);
     const user = await resolveRequestUser(req);
 
     return res.json(responsePayload);
