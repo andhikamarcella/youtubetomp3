@@ -139,22 +139,28 @@
     
     /* Markdown styling */
     .message-bubble strong {
-      font-weight: 700;
-      color: inherit;
+      font-weight: 800 !important;
+      color: inherit !important;
+      display: inline;
     }
     .message-bubble em {
-      font-style: italic;
-      color: inherit;
+      font-style: italic !important;
+      color: inherit !important;
     }
     .message-bubble code {
-      background: rgba(0,0,0,0.1);
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-family: monospace;
-      font-size: 0.9em;
+      background: rgba(0,0,0,0.15) !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
+      font-family: 'Courier New', monospace !important;
+      font-size: 0.85em !important;
+      font-weight: 600 !important;
     }
     html[data-bs-theme='dark'] .message-bubble code {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.15) !important;
+      color: #fff !important;
+    }
+    html[data-bs-theme='dark'] .message-bubble strong {
+      color: #fff !important;
     }
   </style>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
@@ -1041,6 +1047,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
     
     function addMessage(content, isUser = false) {
+      // Debug: Test markdown parsing
+      if (!isUser) {
+        console.log('Original content:', content);
+        let testContent = content
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`(.*?)`/g, '<code>$1</code>')
+          .replace(/\n/g, '<br>');
+        console.log('Parsed content:', testContent);
+      }
+      
       const messageDiv = document.createElement('div');
       messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
       
@@ -1056,23 +1073,13 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (isUser) {
         bubble.textContent = content;
       } else {
-        // Parse markdown for assistant messages
-        try {
-          if (window.marked) {
-            const markdownHtml = window.marked.parse(content);
-            bubble.innerHTML = markdownHtml;
-          } else {
-            // Fallback: manual bold parsing
-            let htmlContent = content
-              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>')
-              .replace(/`(.*?)`/g, '<code>$1</code>');
-            bubble.innerHTML = htmlContent;
-          }
-        } catch (e) {
-          console.error('Markdown parsing error:', e);
-          bubble.textContent = content;
-        }
+        // Direct markdown parsing for basic formatting
+        let htmlContent = content
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`(.*?)`/g, '<code>$1</code>')
+          .replace(/\n/g, '<br>');
+        bubble.innerHTML = htmlContent;
       }
       
       const time = document.createElement('span');
