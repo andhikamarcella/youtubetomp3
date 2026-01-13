@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Music Streaming</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --yt-red: #FF0000;
+            --yt-dark-bg: #030303;
+            --yt-surface: #121212;
+            --yt-surface-elevated: #1a1a1a;
+            --yt-text-primary: #ffffff;
+            --yt-text-secondary: #aaaaaa;
+            --yt-accent: #3ea6ff;
+        }
+
+        body {
+            background: var(--yt-dark-bg);
+            color: var(--yt-text-primary);
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .main-layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--yt-surface);
+            padding: 16px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--yt-surface);
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .player-bar {
+            background: var(--yt-surface-elevated);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: var(--yt-text-primary);
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-item.active {
+            background: var(--yt-accent);
+        }
+
+        .search-box {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 24px;
+            padding: 8px 16px;
+            color: var(--yt-text-primary);
+            width: 400px;
+        }
+
+        .search-box::placeholder {
+            color: var(--yt-text-secondary);
+        }
+
+        .music-card {
+            background: var(--yt-surface);
+            border-radius: 8px;
+            padding: 16px;
+            transition: transform 0.2s, background 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .music-card:hover {
+            background: var(--yt-surface-elevated);
+            transform: translateY(-2px);
+        }
+
+        .music-thumbnail {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-bottom: 12px;
+        }
+
+        .player-progress {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .player-progress-filled {
+            height: 100%;
+            background: var(--yt-accent);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .announcement-banner {
+            background: linear-gradient(90deg, var(--yt-accent), var(--yt-red));
+            color: white;
+            padding: 12px 24px;
+            text-align: center;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .announcement-close {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--yt-text-primary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .control-btn.play-pause {
+            background: var(--yt-text-primary);
+            color: var(--yt-dark-bg);
+            font-size: 32px;
+        }
+
+        .volume-slider {
+            width: 100px;
+            accent-color: var(--yt-accent);
+        }
+
+        .track-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .track-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-artist {
+            color: var(--yt-text-secondary);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .playlist-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .playlist-item.playing {
+            background: rgba(62, 166, 255, 0.1);
+        }
+
+        .playlist-thumbnail {
+            width: 56px;
+            height: 56px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .playlist-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .playlist-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .playlist-artist {
+            color: var(--yt-text-secondary);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .playlist-duration {
+            color: var(--yt-text-secondary);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .search-box {
+                width: 200px;
+            }
+            
+            .player-bar {
+                flex-wrap: wrap;
+            }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--yt-accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--yt-text-primary);
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Announcement Banner -->
+    <div id="announcementBanner" class="announcement-banner" style="display: none;">
+        <span id="announcementText">🎉 Selamat datang di YouTube Music Streaming! Nikmati musik tanpa batas.</span>
+        <button class="announcement-close" onclick="closeAnnouncement()">×</button>
+    </div>
+
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="mb-4">
+                <h5 class="text-danger mb-3">
+                    <i class="bi bi-youtube"></i> YouTube Music
+                </h5>
+            </div>
+            
+            <nav class="mb-4">
+                <a href="#" class="nav-item active" data-page="home">
+                    <i class="bi bi-house-door"></i>
+                    <span>Beranda</span>
+                </a>
+                <a href="#" class="nav-item" data-page="explore">
+                    <i class="bi bi-compass"></i>
+                    <span>Jelajahi</span>
+                </a>
+                <a href="#" class="nav-item" data-page="library">
+                    <i class="bi bi-collection"></i>
+                    <span>Perpustakaan</span>
+                </a>
+            </nav>
+
+            <div class="mb-3">
+                <h6 class="text-secondary mb-2">Musik Saya</h6>
+                <a href="#" class="nav-item" data-page="favorites">
+                    <i class="bi bi-heart"></i>
+                    <span>Favorit</span>
+                </a>
+                <a href="#" class="nav-item" data-page="history">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Riwayat</span>
+                </a>
+                <a href="#" class="nav-item" data-page="playlists">
+                    <i class="bi bi-music-note-list"></i>
+                    <span>Playlist</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <button class="control-btn" onclick="toggleSidebar()">
+                    <i class="bi bi-list"></i>
+                </button>
+                
+                <div class="search-container">
+                    <input type="text" class="search-box" id="searchInput" placeholder="Cari lagu, artis, atau playlist...">
+                </div>
+
+                <div class="ms-auto d-flex align-items-center gap-3">
+                    <button class="control-btn" onclick="showSettings()">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                    <button class="control-btn" onclick="toggleTheme()">
+                        <i class="bi bi-moon" id="themeIcon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area" id="contentArea">
+                <!-- Home Content -->
+                <div id="homeContent">
+                    <h2 class="section-title">Direkomendasikan untuk Anda</h2>
+                    <div class="grid-container" id="recommendedGrid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+
+                    <h2 class="section-title">Trending Sekarang</h2>
+                    <div class="grid-container" id="trendingGrid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+
+                    <h2 class="section-title">Playlist Populer</h2>
+                    <div class="grid-container" id="playlistGrid">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Bar -->
+            <div class="player-bar" id="playerBar">
+                <div class="track-info">
+                    <div class="track-title" id="currentTrackTitle">Pilih lagu untuk memulai</div>
+                    <div class="track-artist" id="currentTrackArtist">-</div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <button class="control-btn" onclick="previousTrack()">
+                        <i class="bi bi-skip-start-fill"></i>
+                    </button>
+                    <button class="control-btn play-pause" onclick="togglePlayPause()" id="playPauseBtn">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                    <button class="control-btn" onclick="nextTrack()">
+                        <i class="bi bi-skip-end-fill"></i>
+                    </button>
+                </div>
+
+                <div class="player-progress" onclick="seekTrack(event)" id="progressBar">
+                    <div class="player-progress-filled" id="progressFilled"></div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-secondary" id="currentTime">0:00</span>
+                    <span class="text-secondary">/</span>
+                    <span class="text-secondary" id="totalTime">0:00</span>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <button class="control-btn" onclick="toggleMute()">
+                        <i class="bi bi-volume-up" id="volumeIcon"></i>
+                    </button>
+                    <input type="range" class="volume-slider" min="0" max="100" value="70" id="volumeSlider" onchange="changeVolume(this.value)">
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Audio Element -->
+    <audio id="audioPlayer"></audio>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="youtube-api.js"></script>
+    <script src="announcement-system.js"></script>
+    <script src="music-stream.js"></script>
+</body>
+</html>
