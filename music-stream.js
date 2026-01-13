@@ -67,55 +67,55 @@ class YouTubeMusicStreamer {
         // Fallback sample music data if API is not available
         if (!this.sampleTracks || this.sampleTracks.length === 0) {
             this.sampleTracks = [
-            {
-                id: '1',
-                title: 'Shape of You',
-                artist: 'Ed Sheeran',
-                thumbnail: 'https://picsum.photos/seed/shapeofyou/300/300',
-                duration: '3:54',
-                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
-            },
-            {
-                id: '2',
-                title: 'Blinding Lights',
-                artist: 'The Weeknd',
-                thumbnail: 'https://picsum.photos/seed/blindinglights/300/300',
-                duration: '3:20',
-                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
-            },
-            {
-                id: '3',
-                title: 'Levitating',
-                artist: 'Dua Lipa',
-                thumbnail: 'https://picsum.photos/seed/levitating/300/300',
-                duration: '3:23',
-                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
-            },
-            {
-                id: '4',
-                title: 'Stay',
-                artist: 'The Kid LAROI & Justin Bieber',
-                thumbnail: 'https://picsum.photos/seed/stay/300/300',
-                duration: '2:21',
-                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
-            },
-            {
-                id: '5',
-                title: 'Good 4 U',
-                artist: 'Olivia Rodrigo',
-                thumbnail: 'https://picsum.photos/seed/good4u/300/300',
-                duration: '2:58',
-                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
-            },
-            {
-                id: '6',
-                title: 'Peaches',
-                artist: 'Justin Bieber ft. Daniel Caesar',
-                thumbnail: 'https://picsum.photos/seed/peaches/300/300',
-                duration: '3:18',
-                url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
-            }
-        ];
+                {
+                    id: 'dQw4w9WgXcQ',
+                    title: 'Never Gonna Give You Up',
+                    artist: 'Rick Astley',
+                    thumbnail: 'https://picsum.photos/seed/rickroll/300/300',
+                    duration: '3:33',
+                    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+                },
+                {
+                    id: 'jNQXAC9IVRw',
+                    title: 'Me at the zoo',
+                    artist: 'jawed',
+                    thumbnail: 'https://picsum.photos/seed/zoo/300/300',
+                    duration: '0:18',
+                    url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw'
+                },
+                {
+                    id: '9bZkp7q19f0',
+                    title: 'Gangnam Style',
+                    artist: 'PSY',
+                    thumbnail: 'https://picsum.photos/seed/gangnam/300/300',
+                    duration: '4:13',
+                    url: 'https://www.youtube.com/watch?v=9bZkp7q19f0'
+                },
+                {
+                    id: 'kJQP7kiw5Fk',
+                    title: 'Despacito',
+                    artist: 'Luis Fonsi ft. Daddy Yankee',
+                    thumbnail: 'https://picsum.photos/seed/despacito/300/300',
+                    duration: '4:41',
+                    url: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk'
+                },
+                {
+                    id: 'RgKAFK5djSk',
+                    title: 'Shape of You',
+                    artist: 'Ed Sheeran',
+                    thumbnail: 'https://picsum.photos/seed/shapeofyou/300/300',
+                    duration: '3:54',
+                    url: 'https://www.youtube.com/watch?v=RgKAFK5djSk'
+                },
+                {
+                    id: 'kTJczUoc26U',
+                    title: 'Perfect',
+                    artist: 'Ed Sheeran',
+                    thumbnail: 'https://picsum.photos/seed/perfect/300/300',
+                    duration: '4:23',
+                    url: 'https://www.youtube.com/watch?v=kTJczUoc26U'
+                }
+            ];
         }
     }
 
@@ -163,13 +163,23 @@ class YouTubeMusicStreamer {
         this.currentPlaylist = this.sampleTracks;
         this.currentIndex = this.currentPlaylist.findIndex(t => t.id === trackId);
 
-        const audioPlayer = document.getElementById('audioPlayer');
-        audioPlayer.src = track.url;
+        // Use YouTube embed instead of audio
+        this.playYouTubeVideo(trackId);
         
         this.updatePlayerUI();
-        audioPlayer.play();
         this.isPlaying = true;
         this.updatePlayPauseButton();
+    }
+
+    playYouTubeVideo(videoId) {
+        const youtubeContainer = document.getElementById('youtubeContainer');
+        const youtubePlayer = document.getElementById('youtubePlayer');
+        
+        // Show YouTube player
+        youtubeContainer.style.display = 'block';
+        
+        // Set YouTube embed URL with autoplay and enable JS API
+        youtubePlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&showinfo=0&controls=1&modestbranding=1&enablejsapi=1&origin=${window.location.origin}`;
     }
 
     updatePlayerUI() {
@@ -180,16 +190,18 @@ class YouTubeMusicStreamer {
     }
 
     togglePlayPause() {
-        const audioPlayer = document.getElementById('audioPlayer');
+        const youtubePlayer = document.getElementById('youtubePlayer');
         
         if (this.isPlaying) {
-            audioPlayer.pause();
+            // Pause YouTube video
+            youtubePlayer.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
         } else {
+            // Play YouTube video
             if (!this.currentTrack && this.sampleTracks.length > 0) {
                 this.playTrack(this.sampleTracks[0].id);
                 return;
             }
-            audioPlayer.play();
+            youtubePlayer.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
         }
         
         this.isPlaying = !this.isPlaying;
@@ -405,16 +417,20 @@ class YouTubeMusicStreamer {
 // Global functions
 function closeAnnouncement() {
     const banner = document.getElementById('announcementBanner');
-    const announcementId = banner.dataset.announcementId;
-    
-    // Save to localStorage
-    const closedAnnouncements = JSON.parse(localStorage.getItem('closedAnnouncements') || '[]');
-    if (!closedAnnouncements.includes(parseInt(announcementId))) {
-        closedAnnouncements.push(parseInt(announcementId));
-        localStorage.setItem('closedAnnouncements', JSON.stringify(closedAnnouncements));
-    }
-    
     banner.style.display = 'none';
+}
+
+function closeYouTubePlayer() {
+    const youtubeContainer = document.getElementById('youtubeContainer');
+    const youtubePlayer = document.getElementById('youtubePlayer');
+    
+    youtubeContainer.style.display = 'none';
+    youtubePlayer.src = '';
+    
+    if (musicStreamer) {
+        musicStreamer.isPlaying = false;
+        musicStreamer.updatePlayPauseButton();
+    }
 }
 
 function toggleSidebar() {
