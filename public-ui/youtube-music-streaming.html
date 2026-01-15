@@ -319,7 +319,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Popular Section -->
-        <section id="popularSection">
+        <section id="popularSection" style="display:none;">
             <h2 class="section-title">
                 <i class="bi bi-fire"></i>
                 Lagu Populer
@@ -330,7 +330,7 @@
         </section>
 
         <!-- Trending Section -->
-        <section id="trendingSection">
+        <section id="trendingSection" style="display:none;">
             <h2 class="section-title">
                 <i class="bi bi-graph-up"></i>
                 Trending Sekarang
@@ -346,9 +346,7 @@
                 <i class="bi bi-search"></i>
                 Hasil Pencarian
             </h2>
-            <div class="music-grid" id="searchGrid">
-                <!-- Will be populated by JavaScript -->
-            </div>
+            <div id="searchList" class="list-group"></div>
         </section>
 
         <!-- Loading State -->
@@ -369,6 +367,7 @@
         <audio id="audioPlayer"></audio>
     </div>
 
+    <script src="../youtube-api.js"></script>
     <script>
         // Sample YouTube Music Data
         const musicData = {
@@ -450,24 +449,24 @@
             ]
         };
 
-        // Initialize the app
+        // Initialize: fokus ke pencarian saja
         document.addEventListener('DOMContentLoaded', function() {
-            renderMusicGrid('popularGrid', musicData.popular);
-            renderMusicGrid('trendingGrid', musicData.trending);
+            document.getElementById('searchSection').style.display = 'block';
+            document.getElementById('popularSection').style.display = 'none';
+            document.getElementById('trendingSection').style.display = 'none';
         });
 
-        // Render music grid
-        function renderMusicGrid(gridId, tracks) {
-            const grid = document.getElementById(gridId);
-            grid.innerHTML = tracks.map(track => `
-                <div class="music-card" onclick="playAudio('${track.id}', '${track.title}', '${track.artist}', '${track.thumbnail}')">
-                    <img src="${track.thumbnail}" alt="${track.title}" class="music-thumbnail">
-                    <div class="music-title">${track.title}</div>
-                    <div class="music-artist">${track.artist}</div>
-                    <button class="play-button">
-                        <i class="bi bi-play-fill"></i> Putar
-                    </button>
-                </div>
+        function renderResultList(tracks = []) {
+            const list = document.getElementById('searchList');
+            list.innerHTML = tracks.map(track => `
+                <a href="#" class="list-group-item list-group-item-action d-flex align-items-center gap-3" onclick="playAudio('${track.id}', '${track.title.replace(/'/g, "\\'")}', '${(track.artist||'').replace(/'/g, "\\'")}', '${track.thumbnail}')">
+                    <img src="${track.thumbnail}" alt="${track.title}" class="rounded" style="width:56px;height:56px;object-fit:cover;">
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">${track.title}</div>
+                        <div class="text-secondary small">${track.artist || track.channelTitle || ''}</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm"><i class="bi bi-play-fill"></i> Play</button>
+                </a>
             `).join('');
         }
 
@@ -590,7 +589,7 @@
                 }
             } catch {}
         })();
-        // Search functionality
+        // Search functionality (YouTube API bila tersedia)
         function handleSearch(event) {
             const query = event.target.value.trim();
             const searchSection = document.getElementById('searchSection');
@@ -607,21 +606,25 @@
             // Show loading
             showLoading();
             
-            // Simulate search delay
-            setTimeout(() => {
-                const allTracks = [...musicData.popular, ...musicData.trending];
-                const results = allTracks.filter(track => 
-                    track.title.toLowerCase().includes(query.toLowerCase()) ||
-                    track.artist.toLowerCase().includes(query.toLowerCase())
-                );
-                
-                renderMusicGrid('searchGrid', results);
-                
-                hideLoading();
-                searchSection.style.display = 'block';
-                popularSection.style.display = 'none';
-                trendingSection.style.display = 'none';
-            }, 500);
+            (async () => {
+                try {
+                    const api = new YouTubeMusicAPI();
+                    const results = await api.searchMusic(query, 20);
+                    renderResultList(results || []);
+                } catch {
+                    const allTracks = [...musicData.popular, ...musicData.trending];
+                    const results = allTracks.filter(track => 
+                        track.title.toLowerCase().includes(query.toLowerCase()) ||
+                        track.artist.toLowerCase().includes(query.toLowerCase())
+                    );
+                    renderResultList(results);
+                } finally {
+                    hideLoading();
+                    searchSection.style.display = 'block';
+                    popularSection.style.display = 'none';
+                    trendingSection.style.display = 'none';
+                }
+            })();
         }
 
         // Show popular
