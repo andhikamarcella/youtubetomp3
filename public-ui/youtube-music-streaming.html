@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YT Music Streaming</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root { --yt-red:#FF0000; --yt-surface:#121212; --yt-elev:#1a1a1a; --yt-text:#fff; --yt-muted:#aaaaaa; --yt-accent:#3ea6ff; }
+    body { background:#030303; color:var(--yt-text); font-family:'Roboto', system-ui, -apple-system, sans-serif; }
+    .header { background:var(--yt-surface); border-bottom:1px solid rgba(255,255,255,.1); padding:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .logo { display:flex; align-items:center; gap:8px; font-weight:700; color:var(--yt-red); }
+    .search-box { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:24px; padding:8px 16px; color:var(--yt-text); width:360px; }
+    .main { padding:24px; }
+    .section-title { display:flex; align-items:center; gap:10px; font-size:22px; font-weight:700; margin-bottom:16px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:18px; }
+    .card { background:var(--yt-surface); border-radius:10px; padding:14px; transition:.2s; text-align:center; border:1px solid transparent; }
+    .card:hover { background:var(--yt-elev); transform:translateY(-2px); border-color:var(--yt-accent); }
+    .thumb { width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; margin-bottom:10px; }
+    .title { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .artist { color:var(--yt-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .play { background:var(--yt-accent); color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+    .modal-backdrop { background:rgba(0,0,0,.85); position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999; }
+    .player-box { background:var(--yt-elev); border-radius:12px; padding:16px; max-width:90vw; }
+    @media (max-width:768px){ .search-box{ width:220px; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo"><i class="bi bi-youtube"></i><span>YT Music</span></div>
+    <input id="searchInput" class="search-box flex-grow-1" placeholder="Cari lagu atau artis..." />
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-outline-light btn-sm" id="btnPopular"><i class="bi bi-fire"></i> Popular</button>
+      <button class="btn btn-outline-light btn-sm" id="btnTrending"><i class="bi bi-graph-up"></i> Trending</button>
+      <div id="googleSignInMusic"></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section id="popular">
+      <h2 class="section-title"><i class="bi bi-fire"></i> Lagu Populer</h2>
+      <div class="grid" id="popularGrid"></div>
+    </section>
+    <section id="trending">
+      <h2 class="section-title"><i class="bi bi-graph-up"></i> Trending</h2>
+      <div class="grid" id="trendingGrid"></div>
+    </section>
+    <section id="search" hidden>
+      <h2 class="section-title"><i class="bi bi-search"></i> Hasil Pencarian</h2>
+      <div class="grid" id="searchGrid"></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="playerModal">
+    <div class="player-box">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div id="playerTitle" class="fw-semibold">Memutar...</div>
+        <button class="btn btn-danger btn-sm" id="closePlayer">Tutup</button>
+      </div>
+      <div class="ratio ratio-16x9">
+        <iframe id="ytFrame" allow="autoplay; fullscreen"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const data = {
+    popular: [
+      { id:'dQw4w9WgXcQ', title:'Never Gonna Give You Up', artist:'Rick Astley' },
+      { id:'kJQP7kiw5Fk', title:'Despacito', artist:'Luis Fonsi ft. Daddy Yankee' },
+      { id:'RgKAFK5djSk', title:'Shape of You', artist:'Ed Sheeran' },
+      { id:'YQHsXMglC9A', title:'Hello', artist:'Adele' },
+      { id:'OpQFFLBMEPI', title:'Blank Space', artist:'Taylor Swift' }
+    ],
+    trending: [
+      { id:'09R8_2nJtjg', title:'Sugar', artist:'Maroon 5' },
+      { id:'kyLZT-3sjPI', title:'Uptown Funk', artist:'Mark Ronson ft. Bruno Mars' },
+      { id:'kTJczUoc26U', title:'Perfect', artist:'Ed Sheeran' },
+      { id:'hTWKbfoikeg', title:'Sorry', artist:'Justin Bieber' }
+    ]
+  };
+
+  function renderGrid(elId, tracks){
+    const el = document.getElementById(elId);
+    el.innerHTML = tracks.map(t => `
+      <div class="card" onclick="play('${t.id}', '${t.title}', '${t.artist}')">
+        <img class="thumb" src="https://img.youtube.com/vi/${t.id}/hqdefault.jpg" alt="${t.title}">
+        <div class="title">${t.title}</div>
+        <div class="artist">${t.artist}</div>
+        <button class="play"><i class="bi bi-play-fill"></i> Putar</button>
+      </div>
+    `).join('');
+  }
+
+  function play(id, title, artist){
+    document.getElementById('playerTitle').textContent = `${title} — ${artist}`;
+    const frame = document.getElementById('ytFrame');
+    frame.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`;
+    document.getElementById('playerModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+  document.getElementById('closePlayer').addEventListener('click', () => {
+    document.getElementById('playerModal').style.display = 'none';
+    document.getElementById('ytFrame').src = '';
+    document.body.style.overflow = 'auto';
+  });
+
+  function handleSearch(q){
+    const query = q.trim().toLowerCase();
+    const s = document.getElementById('search');
+    if (query.length < 2){ s.hidden = true; return; }
+    const all = [...data.popular, ...data.trending];
+    const res = all.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
+    renderGrid('searchGrid', res);
+    s.hidden = false;
+  }
+  document.getElementById('searchInput').addEventListener('keyup', (e)=>handleSearch(e.target.value));
+  document.getElementById('btnPopular').addEventListener('click', ()=>{
+    document.getElementById('search').hidden = true;
+    renderGrid('popularGrid', data.popular);
+    renderGrid('trendingGrid', data.trending);
+  });
+  document.getElementById('btnTrending').addEventListener('click', ()=>{
+    document.getElementById('search').hidden = true;
+    renderGrid('popularGrid', data.popular);
+    renderGrid('trendingGrid', data.trending);
+  });
+
+  function init(){
+    renderGrid('popularGrid', data.popular);
+    renderGrid('trendingGrid', data.trending);
+    try {
+      const settings = JSON.parse(localStorage.getItem('ytmp3.settings.v1') || '{}');
+      const clientId = settings.googleClientId || '';
+      if (window.google && clientId) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: function(resp){
+            try {
+              const payload = JSON.parse(atob(String(resp.credential||'').split('.')[1]||''));
+              const user = { name: payload.name, email: payload.email, photoURL: payload.picture, sub: payload.sub };
+              localStorage.setItem('userSession', JSON.stringify(user));
+              const el = document.getElementById('googleSignInMusic');
+              if (el && user.photoURL) el.innerHTML = '<img src="'+user.photoURL+'" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover">';
+            } catch {}
+          }
+        });
+        const btn = document.getElementById('googleSignInMusic');
+        if (btn) window.google.accounts.id.renderButton(btn, { theme:'outline', size:'medium', shape:'pill' });
+      }
+    } catch {}
+  }
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
