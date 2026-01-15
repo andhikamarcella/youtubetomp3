@@ -1,158 +1,642 @@
 <!DOCTYPE html>
 <html lang="id" data-bs-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YT Music Streaming</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <style>
-    :root { --yt-red:#FF0000; --yt-surface:#121212; --yt-elev:#1a1a1a; --yt-text:#fff; --yt-muted:#aaaaaa; --yt-accent:#3ea6ff; }
-    body { background:#030303; color:var(--yt-text); font-family:'Roboto', system-ui, -apple-system, sans-serif; }
-    .header { background:var(--yt-surface); border-bottom:1px solid rgba(255,255,255,.1); padding:16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-    .logo { display:flex; align-items:center; gap:8px; font-weight:700; color:var(--yt-red); }
-    .search-box { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:24px; padding:8px 16px; color:var(--yt-text); width:360px; }
-    .main { padding:24px; }
-    .section-title { display:flex; align-items:center; gap:10px; font-size:22px; font-weight:700; margin-bottom:16px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:18px; }
-    .card { background:var(--yt-surface); border-radius:10px; padding:14px; transition:.2s; text-align:center; border:1px solid transparent; }
-    .card:hover { background:var(--yt-elev); transform:translateY(-2px); border-color:var(--yt-accent); }
-    .thumb { width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; margin-bottom:10px; }
-    .title { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .artist { color:var(--yt-muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .play { background:var(--yt-accent); color:#fff; border:none; border-radius:999px; padding:6px 14px; font-size:12px; display:inline-flex; align-items:center; gap:6px; }
-    .modal-backdrop { background:rgba(0,0,0,.85); position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999; }
-    .player-box { background:var(--yt-elev); border-radius:12px; padding:16px; max-width:90vw; }
-    @media (max-width:768px){ .search-box{ width:220px; } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Music Streaming - Free Music Player</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --yt-red: #FF0000;
+            --yt-dark-bg: #030303;
+            --yt-surface: #121212;
+            --yt-surface-elevated: #1a1a1a;
+            --yt-text-primary: #ffffff;
+            --yt-text-secondary: #aaaaaa;
+            --yt-accent: #3ea6ff;
+        }
+
+        body {
+            background: var(--yt-dark-bg);
+            color: var(--yt-text-primary);
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Announcement Banner */
+        .announcement-banner {
+            background: linear-gradient(90deg, var(--yt-accent), var(--yt-red));
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 500;
+            position: relative;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        .announcement-close {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        .announcement-close:hover {
+            opacity: 1;
+        }
+
+        /* Header */
+        .header {
+            background: var(--yt-surface);
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--yt-red);
+        }
+
+        .search-box {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 24px;
+            padding: 8px 16px;
+            color: var(--yt-text-primary);
+            width: 400px;
+            transition: all 0.2s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            background: rgba(255,255,255,0.15);
+            border-color: var(--yt-accent);
+        }
+
+        .search-box::placeholder {
+            color: var(--yt-text-secondary);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 24px;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--yt-text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Music Cards */
+        .music-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .music-card {
+            background: var(--yt-surface);
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 1px solid transparent;
+            text-align: center;
+        }
+
+        .music-card:hover {
+            background: var(--yt-surface-elevated);
+            transform: translateY(-4px);
+            border-color: var(--yt-accent);
+            box-shadow: 0 8px 25px rgba(62, 166, 255, 0.2);
+        }
+
+        .music-thumbnail {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-bottom: 12px;
+        }
+
+        .music-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .music-artist {
+            color: var(--yt-text-secondary);
+            font-size: 12px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .play-button {
+            background: var(--yt-accent);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .play-button:hover {
+            background: #2d8fcc;
+            transform: scale(1.05);
+        }
+
+        /* YouTube Player Modal */
+        .youtube-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .youtube-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--yt-surface-elevated);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .youtube-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .youtube-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--yt-text-primary);
+        }
+
+        .close-modal {
+            background: var(--yt-red);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            background: #cc0000;
+            transform: scale(1.1);
+        }
+
+        .youtube-player {
+            width: 560px;
+            height: 315px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .search-box {
+                width: 200px;
+            }
+            
+            .music-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 16px;
+            }
+            
+            .youtube-player {
+                width: 100%;
+                max-width: 400px;
+                height: 225px;
+            }
+        }
+
+        /* Animations */
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--yt-text-secondary);
+        }
+
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid var(--yt-accent);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-  <header class="header">
-    <div class="logo"><i class="bi bi-youtube"></i><span>YT Music</span></div>
-    <input id="searchInput" class="search-box flex-grow-1" placeholder="Cari lagu atau artis..." />
-    <div class="d-flex align-items-center gap-2">
-      <button class="btn btn-outline-light btn-sm" id="btnPopular"><i class="bi bi-fire"></i> Popular</button>
-      <button class="btn btn-outline-light btn-sm" id="btnTrending"><i class="bi bi-graph-up"></i> Trending</button>
-      <div id="googleSignInMusic"></div>
+    <!-- Announcement Banner -->
+    <div id="announcementBanner" class="announcement-banner">
+        <span id="announcementText">🎉 Selamat datang di YouTube Music Streaming! Nikmati musik gratis tanpa login - Cari & Putar langsung!</span>
+        <button class="announcement-close" onclick="closeAnnouncement()">×</button>
     </div>
-  </header>
 
-  <main class="main">
-    <section id="popular">
-      <h2 class="section-title"><i class="bi bi-fire"></i> Lagu Populer</h2>
-      <div class="grid" id="popularGrid"></div>
-    </section>
-    <section id="trending">
-      <h2 class="section-title"><i class="bi bi-graph-up"></i> Trending</h2>
-      <div class="grid" id="trendingGrid"></div>
-    </section>
-    <section id="search" hidden>
-      <h2 class="section-title"><i class="bi bi-search"></i> Hasil Pencarian</h2>
-      <div class="grid" id="searchGrid"></div>
-    </section>
-  </main>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <i class="bi bi-youtube"></i>
+            <span>YouTube Music Streaming</span>
+        </div>
+        
+        <div class="search-container flex-grow-1">
+            <input type="text" class="search-box" id="searchInput" placeholder="Cari lagu, artis, atau playlist..." onkeyup="handleSearch(event)">
+        </div>
 
-  <div class="modal-backdrop" id="playerModal">
-    <div class="player-box">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div id="playerTitle" class="fw-semibold">Memutar...</div>
-        <button class="btn btn-danger btn-sm" id="closePlayer">Tutup</button>
-      </div>
-      <div class="ratio ratio-16x9">
-        <iframe id="ytFrame" allow="autoplay; fullscreen"></iframe>
-      </div>
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light btn-sm" onclick="showPopular()">
+                <i class="bi bi-fire"></i> Popular
+            </button>
+            <button class="btn btn-outline-light btn-sm" onclick="showTrending()">
+                <i class="bi bi-graph-up"></i> Trending
+            </button>
+            <div id="googleSignInMusic"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Popular Section -->
+        <section id="popularSection">
+            <h2 class="section-title">
+                <i class="bi bi-fire"></i>
+                Lagu Populer
+            </h2>
+            <div class="music-grid" id="popularGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Trending Section -->
+        <section id="trendingSection">
+            <h2 class="section-title">
+                <i class="bi bi-graph-up"></i>
+                Trending Sekarang
+            </h2>
+            <div class="music-grid" id="trendingGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Search Results -->
+        <section id="searchSection" style="display: none;">
+            <h2 class="section-title">
+                <i class="bi bi-search"></i>
+                Hasil Pencarian
+            </h2>
+            <div class="music-grid" id="searchGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Sedang memuat...</p>
+        </div>
+    </main>
+
+    <!-- YouTube Player Modal -->
+    <div id="youtubeModal" class="youtube-modal">
+        <div class="youtube-modal-content">
+            <div class="youtube-modal-header">
+                <div class="youtube-modal-title" id="modalTitle">Sedang Memutar...</div>
+                <button class="close-modal" onclick="closeYouTubePlayer()">×</button>
+            </div>
+            <div class="youtube-player">
+                <iframe id="youtubePlayer" width="560" height="315" frameborder="0" allowfullscreen></iframe>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script>
-  const data = {
-    popular: [
-      { id:'dQw4w9WgXcQ', title:'Never Gonna Give You Up', artist:'Rick Astley' },
-      { id:'kJQP7kiw5Fk', title:'Despacito', artist:'Luis Fonsi ft. Daddy Yankee' },
-      { id:'RgKAFK5djSk', title:'Shape of You', artist:'Ed Sheeran' },
-      { id:'YQHsXMglC9A', title:'Hello', artist:'Adele' },
-      { id:'OpQFFLBMEPI', title:'Blank Space', artist:'Taylor Swift' }
-    ],
-    trending: [
-      { id:'09R8_2nJtjg', title:'Sugar', artist:'Maroon 5' },
-      { id:'kyLZT-3sjPI', title:'Uptown Funk', artist:'Mark Ronson ft. Bruno Mars' },
-      { id:'kTJczUoc26U', title:'Perfect', artist:'Ed Sheeran' },
-      { id:'hTWKbfoikeg', title:'Sorry', artist:'Justin Bieber' }
-    ]
-  };
+    <script>
+        // Sample YouTube Music Data
+        const musicData = {
+            popular: [
+                {
+                    id: 'dQw4w9WgXcQ',
+                    title: 'Never Gonna Give You Up',
+                    artist: 'Rick Astley',
+                    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg'
+                },
+                {
+                    id: '9bZkp7q19f0',
+                    title: 'Gangnam Style',
+                    artist: 'PSY',
+                    thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg'
+                },
+                {
+                    id: 'kJQP7kiw5Fk',
+                    title: 'Despacito',
+                    artist: 'Luis Fonsi ft. Daddy Yankee',
+                    thumbnail: 'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg'
+                },
+                {
+                    id: 'RgKAFK5djSk',
+                    title: 'Shape of You',
+                    artist: 'Ed Sheeran',
+                    thumbnail: 'https://img.youtube.com/vi/RgKAFK5djSk/hqdefault.jpg'
+                },
+                {
+                    id: 'kTJczUoc26U',
+                    title: 'Perfect',
+                    artist: 'Ed Sheeran',
+                    thumbnail: 'https://img.youtube.com/vi/kTJczUoc26U/hqdefault.jpg'
+                },
+                {
+                    id: '3fNmPqijLgA',
+                    title: 'Baby Shark',
+                    artist: 'Pinkfong',
+                    thumbnail: 'https://img.youtube.com/vi/3fNmPqijLgA/hqdefault.jpg'
+                }
+            ],
+            trending: [
+                {
+                    id: 'YQHsXMglC9A',
+                    title: 'Hello',
+                    artist: 'Adele',
+                    thumbnail: 'https://img.youtube.com/vi/YQHsXMglC9A/hqdefault.jpg'
+                },
+                {
+                    id: 'kyLZT-3sjPI',
+                    title: 'Uptown Funk',
+                    artist: 'Mark Ronson ft. Bruno Mars',
+                    thumbnail: 'https://img.youtube.com/vi/kyLZT-3sjPI/hqdefault.jpg'
+                },
+                {
+                    id: 'hTWKbfoikeg',
+                    title: 'Sorry',
+                    artist: 'Justin Bieber',
+                    thumbnail: 'https://img.youtube.com/vi/hTWKbfoikeg/hqdefault.jpg'
+                },
+                {
+                    id: '09R8_2nJtjg',
+                    title: 'Sugar',
+                    artist: 'Maroon 5',
+                    thumbnail: 'https://img.youtube.com/vi/09R8_2nJtjg/hqdefault.jpg'
+                },
+                {
+                    id: 'l3whRz8Cj_A',
+                    title: 'Thinking Out Loud',
+                    artist: 'Ed Sheeran',
+                    thumbnail: 'https://img.youtube.com/vi/l3whRz8Cj_A/hqdefault.jpg'
+                },
+                {
+                    id: 'OpQFFLBMEPI',
+                    title: 'Blank Space',
+                    artist: 'Taylor Swift',
+                    thumbnail: 'https://img.youtube.com/vi/OpQFFLBMEPI/hqdefault.jpg'
+                }
+            ]
+        };
 
-  function renderGrid(elId, tracks){
-    const el = document.getElementById(elId);
-    el.innerHTML = tracks.map(t => `
-      <div class="card" onclick="play('${t.id}', '${t.title}', '${t.artist}')">
-        <img class="thumb" src="https://img.youtube.com/vi/${t.id}/hqdefault.jpg" alt="${t.title}">
-        <div class="title">${t.title}</div>
-        <div class="artist">${t.artist}</div>
-        <button class="play"><i class="bi bi-play-fill"></i> Putar</button>
-      </div>
-    `).join('');
-  }
-
-  function play(id, title, artist){
-    document.getElementById('playerTitle').textContent = `${title} — ${artist}`;
-    const frame = document.getElementById('ytFrame');
-    frame.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`;
-    document.getElementById('playerModal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-  }
-  document.getElementById('closePlayer').addEventListener('click', () => {
-    document.getElementById('playerModal').style.display = 'none';
-    document.getElementById('ytFrame').src = '';
-    document.body.style.overflow = 'auto';
-  });
-
-  function handleSearch(q){
-    const query = q.trim().toLowerCase();
-    const s = document.getElementById('search');
-    if (query.length < 2){ s.hidden = true; return; }
-    const all = [...data.popular, ...data.trending];
-    const res = all.filter(t => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query));
-    renderGrid('searchGrid', res);
-    s.hidden = false;
-  }
-  document.getElementById('searchInput').addEventListener('keyup', (e)=>handleSearch(e.target.value));
-  document.getElementById('btnPopular').addEventListener('click', ()=>{
-    document.getElementById('search').hidden = true;
-    renderGrid('popularGrid', data.popular);
-    renderGrid('trendingGrid', data.trending);
-  });
-  document.getElementById('btnTrending').addEventListener('click', ()=>{
-    document.getElementById('search').hidden = true;
-    renderGrid('popularGrid', data.popular);
-    renderGrid('trendingGrid', data.trending);
-  });
-
-  function init(){
-    renderGrid('popularGrid', data.popular);
-    renderGrid('trendingGrid', data.trending);
-    try {
-      const settings = JSON.parse(localStorage.getItem('ytmp3.settings.v1') || '{}');
-      const clientId = settings.googleClientId || '';
-      if (window.google && clientId) {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: function(resp){
-            try {
-              const payload = JSON.parse(atob(String(resp.credential||'').split('.')[1]||''));
-              const user = { name: payload.name, email: payload.email, photoURL: payload.picture, sub: payload.sub };
-              localStorage.setItem('userSession', JSON.stringify(user));
-              const el = document.getElementById('googleSignInMusic');
-              if (el && user.photoURL) el.innerHTML = '<img src="'+user.photoURL+'" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover">';
-            } catch {}
-          }
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMusicGrid('popularGrid', musicData.popular);
+            renderMusicGrid('trendingGrid', musicData.trending);
         });
-        const btn = document.getElementById('googleSignInMusic');
-        if (btn) window.google.accounts.id.renderButton(btn, { theme:'outline', size:'medium', shape:'pill' });
-      }
-    } catch {}
-  }
-  document.addEventListener('DOMContentLoaded', init);
-  </script>
+
+        // Render music grid
+        function renderMusicGrid(gridId, tracks) {
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = tracks.map(track => `
+                <div class="music-card" onclick="playYouTubeVideo('${track.id}', '${track.title}', '${track.artist}')">
+                    <img src="${track.thumbnail}" alt="${track.title}" class="music-thumbnail">
+                    <div class="music-title">${track.title}</div>
+                    <div class="music-artist">${track.artist}</div>
+                    <button class="play-button">
+                        <i class="bi bi-play-fill"></i> Putar
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Play YouTube video
+        function playYouTubeVideo(videoId, title, artist) {
+            const modal = document.getElementById('youtubeModal');
+            const player = document.getElementById('youtubePlayer');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            // Update modal title
+            modalTitle.textContent = `${title} - ${artist}`;
+            
+            // Set YouTube embed URL with autoplay
+            player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&showinfo=0&controls=1&modestbranding=1`;
+            
+            // Show modal
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close YouTube player
+        function closeYouTubePlayer() {
+            const modal = document.getElementById('youtubeModal');
+            const player = document.getElementById('youtubePlayer');
+            
+            modal.style.display = 'none';
+            player.src = '';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Search functionality
+        function handleSearch(event) {
+            const query = event.target.value.trim();
+            const searchSection = document.getElementById('searchSection');
+            const popularSection = document.getElementById('popularSection');
+            const trendingSection = document.getElementById('trendingSection');
+            
+            if (query.length < 2) {
+                searchSection.style.display = 'none';
+                popularSection.style.display = 'block';
+                trendingSection.style.display = 'block';
+                return;
+            }
+            
+            // Show loading
+            showLoading();
+            
+            // Simulate search delay
+            setTimeout(() => {
+                const allTracks = [...musicData.popular, ...musicData.trending];
+                const results = allTracks.filter(track => 
+                    track.title.toLowerCase().includes(query.toLowerCase()) ||
+                    track.artist.toLowerCase().includes(query.toLowerCase())
+                );
+                
+                renderMusicGrid('searchGrid', results);
+                
+                hideLoading();
+                searchSection.style.display = 'block';
+                popularSection.style.display = 'none';
+                trendingSection.style.display = 'none';
+            }, 500);
+        }
+
+        // Show popular
+        function showPopular() {
+            document.getElementById('searchSection').style.display = 'none';
+            document.getElementById('popularSection').style.display = 'block';
+            document.getElementById('trendingSection').style.display = 'block';
+            document.getElementById('searchInput').value = '';
+        }
+
+        // Show trending
+        function showTrending() {
+            document.getElementById('searchSection').style.display = 'none';
+            document.getElementById('popularSection').style.display = 'block';
+            document.getElementById('trendingSection').style.display = 'block';
+            document.getElementById('searchInput').value = '';
+        }
+
+        // Close announcement
+        function closeAnnouncement() {
+            const banner = document.getElementById('announcementBanner');
+            banner.style.animation = 'slideDown 0.3s ease-out reverse';
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 300);
+        }
+
+        // Loading functions
+        function showLoading() {
+            document.getElementById('loadingState').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingState').style.display = 'none';
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeYouTubePlayer();
+            }
+        });
+
+        // Close modal on background click
+        document.getElementById('youtubeModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeYouTubePlayer();
+            }
+        });
+        
+        (function initGoogleSignInMusic(){
+            try {
+                const raw = localStorage.getItem('ytmp3.settings.v1') || '{}';
+                const settings = JSON.parse(raw);
+                const clientId = settings.googleClientId || '';
+                if (window.google && clientId) {
+                    window.google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: function (response) {
+                            try {
+                                const payload = JSON.parse(atob(String(response.credential || '').split('.')[1] || ''));
+                                const user = {
+                                    name: payload.name,
+                                    email: payload.email,
+                                    photoURL: payload.picture,
+                                    sub: payload.sub
+                                };
+                                localStorage.setItem('userSession', JSON.stringify(user));
+                                const el = document.getElementById('googleSignInMusic');
+                                if (el && user.photoURL) {
+                                    el.innerHTML = '<img src="'+user.photoURL+'" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover">';
+                                }
+                            } catch {}
+                        }
+                    });
+                    const el = document.getElementById('googleSignInMusic');
+                    if (el) {
+                        window.google.accounts.id.renderButton(el, {
+                            theme: 'outline',
+                            size: 'medium',
+                            shape: 'pill'
+                        });
+                    }
+                }
+            } catch {}
+        })();
+    </script>
 </body>
 </html>
