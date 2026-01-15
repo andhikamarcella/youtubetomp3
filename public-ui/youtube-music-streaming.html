@@ -311,7 +311,8 @@
             <button class="btn btn-outline-light btn-sm" onclick="showTrending()">
                 <i class="bi bi-graph-up"></i> Trending
             </button>
-            <div id="googleSignInMusic"></div>
+            <div id="googleSignInMusic" class="d-inline-block"></div>
+            <span id="loginHint" class="text-secondary small"></span>
         </div>
     </header>
 
@@ -471,7 +472,19 @@
         }
 
         let current = { id: '', url: '', title: '', artist: '', thumb: '' };
+        function isLoggedIn() {
+            try {
+                const raw = localStorage.getItem('userSession');
+                return !!raw;
+            } catch { return false; }
+        }
         async function playAudio(videoId, title, artist, thumbnail) {
+            if (!isLoggedIn()) {
+                const hint = document.getElementById('loginHint');
+                if (hint) hint.textContent = 'Masuk Google dulu untuk streaming';
+                document.getElementById('googleSignInMusic')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
             current = { id: videoId, url: '', title, artist, thumb: thumbnail };
             document.getElementById('playerTitle').textContent = title;
             document.getElementById('playerArtist').textContent = artist;
@@ -533,6 +546,50 @@
             if (value) navigator.clipboard && navigator.clipboard.writeText(value);
         });
 
+        (function initGoogleSignInMusic(){
+            try {
+                const raw = localStorage.getItem('ytmp3.settings.v1') || '{}';
+                const settings = JSON.parse(raw);
+                const clientId = settings.googleClientId || '';
+                const hint = document.getElementById('loginHint');
+                if (hint) hint.textContent = isLoggedIn() ? '' : 'Masuk Google dulu untuk streaming';
+                if (window.google && clientId) {
+                    window.google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: function (response) {
+                            try {
+                                const payload = JSON.parse(atob(String(response.credential || '').split('.')[1] || ''));
+                                const user = {
+                                    name: payload.name,
+                                    email: payload.email,
+                                    photoURL: payload.picture,
+                                    sub: payload.sub
+                                };
+                                localStorage.setItem('userSession', JSON.stringify(user));
+                                if (hint) hint.textContent = '';
+                                const el = document.getElementById('googleSignInMusic');
+                                if (el && user.photoURL) {
+                                    el.innerHTML = '<img src="'+user.photoURL+'" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover">';
+                                }
+                            } catch {}
+                        }
+                    });
+                    const el = document.getElementById('googleSignInMusic');
+                    if (el) {
+                        window.google.accounts.id.renderButton(el, {
+                            theme: 'outline',
+                            size: 'medium',
+                            shape: 'pill'
+                        });
+                    }
+                } else {
+                    const el = document.getElementById('googleSignInMusic');
+                    if (el) {
+                        el.innerHTML = '<button class="btn btn-primary btn-sm">Masuk Google</button>';
+                    }
+                }
+            } catch {}
+        })();
         // Search functionality
         function handleSearch(event) {
             const query = event.target.value.trim();
