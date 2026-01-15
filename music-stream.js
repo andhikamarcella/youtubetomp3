@@ -163,23 +163,25 @@ class YouTubeMusicStreamer {
         this.currentPlaylist = this.sampleTracks;
         this.currentIndex = this.currentPlaylist.findIndex(t => t.id === trackId);
 
-        // Use YouTube embed instead of audio
-        this.playYouTubeVideo(trackId);
-        
         this.updatePlayerUI();
-        this.isPlaying = true;
-        this.updatePlayPauseButton();
+        this.playAudioForTrack(track);
     }
 
-    playYouTubeVideo(videoId) {
-        const youtubeContainer = document.getElementById('youtubeContainer');
-        const youtubePlayer = document.getElementById('youtubePlayer');
-        
-        // Show YouTube player
-        youtubeContainer.style.display = 'block';
-        
-        // Set YouTube embed URL with autoplay and enable JS API
-        youtubePlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&showinfo=0&controls=1&modestbranding=1&enablejsapi=1&origin=${window.location.origin}`;
+    async playAudioForTrack(track) {
+        const audioPlayer = document.getElementById('audioPlayer');
+        try {
+            document.getElementById('currentTrackArtist').textContent = track.artist || 'Memuat audio…';
+            let src = track.url && /^https?:/i.test(track.url) ? track.url : '';
+            if (!src) {
+                src = await this.resolveAudioUrl(track);
+            }
+            audioPlayer.src = src;
+            await audioPlayer.play().catch(() => {});
+            this.isPlaying = true;
+        } catch {
+            this.isPlaying = false;
+        }
+        this.updatePlayPauseButton();
     }
 
     updatePlayerUI() {
@@ -190,18 +192,16 @@ class YouTubeMusicStreamer {
     }
 
     togglePlayPause() {
-        const youtubePlayer = document.getElementById('youtubePlayer');
-        
         if (this.isPlaying) {
-            // Pause YouTube video
-            youtubePlayer.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.pause();
         } else {
-            // Play YouTube video
+            const audioPlayer = document.getElementById('audioPlayer');
             if (!this.currentTrack && this.sampleTracks.length > 0) {
                 this.playTrack(this.sampleTracks[0].id);
                 return;
             }
-            youtubePlayer.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+            audioPlayer.play().catch(() => {});
         }
         
         this.isPlaying = !this.isPlaying;
@@ -289,30 +289,12 @@ class YouTubeMusicStreamer {
     }
 
     handleSearch(query) {
-        if (!query.trim()) {
+        const q = String(query || '').trim();
+        if (!q) {
             this.renderHomePage();
             return;
         }
-
-        const filtered = this.sampleTracks.filter(track => 
-            track.title.toLowerCase().includes(query.toLowerCase()) ||
-            track.artist.toLowerCase().includes(query.toLowerCase())
-        );
-
-        const contentArea = document.getElementById('contentArea');
-        contentArea.innerHTML = `
-            <h2 class="section-title">Hasil Pencarian: "${query}"</h2>
-            <div class="grid-container">
-                ${filtered.map(track => `
-                    <div class="music-card" onclick="musicStreamer.playTrack('${track.id}')">
-                        <img src="${track.thumbnail}" alt="${track.title}" class="music-thumbnail">
-                        <h6 class="mb-1">${track.title}</h6>
-                        <p class="text-secondary mb-0">${track.artist}</p>
-                        <small class="text-secondary">${track.duration}</small>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        this.searchMusic(q);
     }
 
     navigateTo(page) {
@@ -412,6 +394,70 @@ class YouTubeMusicStreamer {
             this.playTrackFromPlaylist(this.sampleTracks[0].id, 0);
         }
     }
+
+    async searchMusic(query) {
+        const contentArea = document.getElementById('contentArea');
+        const results = await this.youtubeAPI.searchMusic(query).catch(() => []);
+        const tracks = Array.isArray(results) ? results : [];
+        this.sampleTracks = tracks.map(t => ({ ...t, duration: '-', url: '' }));
+        contentArea.innerHTML = `
+            <h2 class="section-title">Hasil Pencarian: "${query}"</h2>
+            <div class="grid-container">
+                ${this.sampleTracks.map(track => `
+                    <div class="music-card" onclick="musicStreamer.playTrack('${track.id}')">
+                        <img src="${track.thumbnail}" alt="${track.title}" class="music-thumbnail">
+                        <h6 class="mb-1">${track.title}</h6>
+                        <p class="text-secondary mb-0">${track.artist}</p>
+                        <small class="text-secondary">${track.duration}</small>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    async resolveAudioUrl(track) {
+        const jobId = await this.createAudioJob(track.id, 'm4a');
+        const url = await this.waitForJobAndGetUrl(jobId);
+        return url;
+    }
+
+    async createAudioJob(videoId, format) {
+        const res = await fetch('/api/create-job', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoId, format })
+        }).catch(() => null);
+        if (!res || !res.ok) throw new Error('create_job_failed');
+        const data = await res.json().catch(() => ({}));
+        if (!data?.jobId) throw new Error('job_missing');
+        return data.jobId;
+    }
+
+    async waitForJobAndGetUrl(jobId) {
+        const started = Date.now();
+        while (Date.now() - started < 120000) {
+            const st = await fetch(`/api/job-status?jobId=${encodeURIComponent(jobId)}`).catch(() => null);
+            if (st && st.ok) {
+                const payload = await st.json().catch(() => ({}));
+                if (payload?.done) {
+                    const rf = await fetch(`/api/job-file?jobId=${encodeURIComponent(jobId)}`).catch(() => null);
+                    if (rf && rf.ok) {
+                        const info = await rf.json().catch(() => ({}));
+                        if (info?.downloadUrl) return info.downloadUrl;
+                    }
+                    throw new Error('download_url_missing');
+                }
+            }
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        throw new Error('job_timeout');
+    }
+
+    copyCurrentLink() {
+        const audioPlayer = document.getElementById('audioPlayer');
+        const link = audioPlayer?.src || (this.currentTrack ? `https://www.youtube.com/watch?v=${this.currentTrack.id}` : '');
+        if (link) navigator.clipboard?.writeText(link);
+    }
 }
 
 // Global functions
@@ -481,3 +527,7 @@ function toggleMute() {
 
 // Initialize the app
 const musicStreamer = new YouTubeMusicStreamer();
+
+function copyCurrentLink() {
+    musicStreamer.copyCurrentLink();
+}
