@@ -410,6 +410,9 @@
                     <button class="control-btn" onclick="nextTrack()">
                         <i class="bi bi-skip-end-fill"></i>
                     </button>
+                    <button class="control-btn" onclick="copyCurrentLink()" title="Salin tautan">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
 
                 <div class="player-progress" onclick="seekTrack(event)" id="progressBar">
@@ -430,12 +433,6 @@
                 </div>
             </div>
         </main>
-    </div>
-
-    <!-- YouTube Embed Container -->
-    <div id="youtubeContainer" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: var(--yt-surface-elevated); padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.8);">
-        <button class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="closeYouTubePlayer()">×</button>
-        <iframe id="youtubePlayer" width="560" height="315" frameborder="0" allowfullscreen src=""></iframe>
     </div>
 
     <!-- Audio Element -->
