@@ -270,6 +270,8 @@
     <div class="container">
       <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
       <div class="d-flex gap-2 ms-auto">
+        <a class="btn btn-danger" id="ytMusicBtn" href="youtube-music-streaming.html" target="_blank"><i class="bi bi-youtube me-1"></i><span class="d-none d-sm-inline">YT Music</span></a>
+        <div id="googleSignInNav" class="d-inline-block"></div>
         <button class="btn btn-outline-secondary" id="themeToggle" type="button" aria-label="Toggle theme"><i class="bi bi-moon-stars"></i></button>
         <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-label="Buka pengaturan"><i class="bi bi-gear"></i> <span class="d-none d-sm-inline">Pengaturan</span></button>
       </div>
@@ -565,6 +567,11 @@
         <label class="form-label">Admin Bearer (upload cookies)</label>
         <input id="adminBearer" type="text" class="form-control" placeholder="Mis: dhika_sayang123">
         <div class="form-text">Hanya dipakai saat upload cookies.txt.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Google Client ID</label>
+        <input id="googleClientId" type="text" class="form-control" placeholder="Contoh: 123.apps.googleusercontent.com">
+        <div class="form-text">Opsional, isi untuk mengaktifkan Login Google.</div>
       </div>
       <div class="d-grid gap-2">
         <button class="btn btn-success" id="saveSettings"><i class="bi bi-save2"></i> Simpan</button>
@@ -940,7 +947,8 @@
 
   const state = {
     backendUrl: '',
-    adminBearer: ''
+    adminBearer: '',
+    googleClientId: ''
   };
 
   const getBackend = () => (state.backendUrl || '').trim();
@@ -1127,14 +1135,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     const s = storage.load();
     state.backendUrl = s.backendUrl || '';
     state.adminBearer = s.adminBearer || '';
+    state.googleClientId = s.googleClientId || '';
     $('#backendUrl').value = state.backendUrl;
     $('#adminBearer').value = state.adminBearer;
+    const gEl = $('#googleClientId'); if (gEl) gEl.value = state.googleClientId;
     updateBackendBadge();
   };
 
   $('#saveSettings').addEventListener('click', () => {
     state.backendUrl = $('#backendUrl').value.trim();
     state.adminBearer = $('#adminBearer').value.trim();
+    const gEl = $('#googleClientId'); state.googleClientId = gEl ? gEl.value.trim() : state.googleClientId;
     storage.save(state);
     updateBackendBadge();
     setToast('Pengaturan disimpan');
@@ -1447,7 +1458,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     function initGoogleSignIn() {
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
+        client_id: state.googleClientId || ($('#googleClientId')?.value || ''),
           callback: handleGoogleSignIn
         });
         
@@ -1459,6 +1470,14 @@ $('#queueList')?.addEventListener('click', (e) => {
             type: 'icon'
           });
         }
+      const signInNav = $('#googleSignInNav');
+      if (signInNav) {
+        window.google.accounts.id.renderButton(signInNav, {
+          theme: 'outline',
+          size: 'medium',
+          shape: 'pill'
+        });
+      }
       }
     }
     
@@ -1489,6 +1508,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     
     // Initialize profile photo on load
     updateProfilePhoto();
+  initGoogleSignIn();
     
     const localSpotlights = [
       { label: 'Sorot URL', selector: '#url', note: 'Tempel URL YouTube' },
