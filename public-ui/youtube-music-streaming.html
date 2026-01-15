@@ -180,69 +180,49 @@
             transform: scale(1.05);
         }
 
-        /* YouTube Player Modal */
-        .youtube-modal {
-            display: none;
+        .player-bar {
             position: fixed;
-            top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 9999;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .youtube-modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            right: 0;
+            bottom: 0;
             background: var(--yt-surface-elevated);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
-            max-width: 90%;
-            max-height: 90%;
-        }
-
-        .youtube-modal-header {
-            display: flex;
-            justify-content: space-between;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 16px;
+            display: none;
             align-items: center;
-            margin-bottom: 16px;
+            gap: 12px;
+            z-index: 1000;
         }
-
-        .youtube-modal-title {
-            font-size: 18px;
+        .player-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
+            object-fit: cover;
+        }
+        .player-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .player-title {
             font-weight: 600;
-            color: var(--yt-text-primary);
-        }
-
-        .close-modal {
-            background: var(--yt-red);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .close-modal:hover {
-            background: #cc0000;
-            transform: scale(1.1);
-        }
-
-        .youtube-player {
-            width: 560px;
-            height: 315px;
-            border-radius: 8px;
+            white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-artist {
+            font-size: 12px;
+            color: var(--yt-text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .control-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--yt-text-primary);
+            border-radius: 999px;
+            padding: 6px 12px;
+            cursor: pointer;
         }
 
         @media (max-width: 768px) {
@@ -377,17 +357,15 @@
         </div>
     </main>
 
-    <!-- YouTube Player Modal -->
-    <div id="youtubeModal" class="youtube-modal">
-        <div class="youtube-modal-content">
-            <div class="youtube-modal-header">
-                <div class="youtube-modal-title" id="modalTitle">Sedang Memutar...</div>
-                <button class="close-modal" onclick="closeYouTubePlayer()">×</button>
-            </div>
-            <div class="youtube-player">
-                <iframe id="youtubePlayer" width="560" height="315" frameborder="0" allowfullscreen></iframe>
-            </div>
+    <div id="playerBar" class="player-bar">
+        <img id="playerThumb" class="player-thumb" src="" alt="">
+        <div class="player-info">
+            <div id="playerTitle" class="player-title"></div>
+            <div id="playerArtist" class="player-artist"></div>
         </div>
+        <button id="toggleBtn" class="control-btn"><i class="bi bi-play-fill"></i></button>
+        <button id="copyBtn" class="control-btn"><i class="bi bi-clipboard"></i></button>
+        <audio id="audioPlayer"></audio>
     </div>
 
     <script>
@@ -481,7 +459,7 @@
         function renderMusicGrid(gridId, tracks) {
             const grid = document.getElementById(gridId);
             grid.innerHTML = tracks.map(track => `
-                <div class="music-card" onclick="playYouTubeVideo('${track.id}', '${track.title}', '${track.artist}')">
+                <div class="music-card" onclick="playAudio('${track.id}', '${track.title}', '${track.artist}', '${track.thumbnail}')">
                     <img src="${track.thumbnail}" alt="${track.title}" class="music-thumbnail">
                     <div class="music-title">${track.title}</div>
                     <div class="music-artist">${track.artist}</div>
@@ -492,32 +470,68 @@
             `).join('');
         }
 
-        // Play YouTube video
-        function playYouTubeVideo(videoId, title, artist) {
-            const modal = document.getElementById('youtubeModal');
-            const player = document.getElementById('youtubePlayer');
-            const modalTitle = document.getElementById('modalTitle');
-            
-            // Update modal title
-            modalTitle.textContent = `${title} - ${artist}`;
-            
-            // Set YouTube embed URL with autoplay
-            player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&showinfo=0&controls=1&modestbranding=1`;
-            
-            // Show modal
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
+        let current = { id: '', url: '', title: '', artist: '', thumb: '' };
+        async function playAudio(videoId, title, artist, thumbnail) {
+            current = { id: videoId, url: '', title, artist, thumb: thumbnail };
+            document.getElementById('playerTitle').textContent = title;
+            document.getElementById('playerArtist').textContent = artist;
+            document.getElementById('playerThumb').src = thumbnail;
+            document.getElementById('playerBar').style.display = 'flex';
+            document.getElementById('toggleBtn').innerHTML = '<i class="bi bi-hourglass-split"></i>';
+            const url = await resolveAudioUrl(videoId).catch(() => '');
+            if (!url) {
+                document.getElementById('toggleBtn').innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+                return;
+            }
+            current.url = url;
+            const audio = document.getElementById('audioPlayer');
+            audio.src = url;
+            audio.play().catch(() => {});
+            document.getElementById('toggleBtn').innerHTML = '<i class="bi bi-pause-fill"></i>';
         }
-
-        // Close YouTube player
-        function closeYouTubePlayer() {
-            const modal = document.getElementById('youtubeModal');
-            const player = document.getElementById('youtubePlayer');
-            
-            modal.style.display = 'none';
-            player.src = '';
-            document.body.style.overflow = 'auto';
+        async function resolveAudioUrl(videoId) {
+            const res = await fetch('/api/create-job', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoId, format: 'm4a' })
+            });
+            if (!res.ok) return '';
+            const data = await res.json().catch(() => ({}));
+            const jobId = data.jobId || '';
+            if (!jobId) return '';
+            const started = Date.now();
+            while (Date.now() - started < 120000) {
+                const st = await fetch(`/api/job-status?jobId=${encodeURIComponent(jobId)}`).catch(() => null);
+                if (st && st.ok) {
+                    const payload = await st.json().catch(() => ({}));
+                    if (payload && payload.done) {
+                        const rf = await fetch(`/api/job-file?jobId=${encodeURIComponent(jobId)}`).catch(() => null);
+                        if (rf && rf.ok) {
+                            const info = await rf.json().catch(() => ({}));
+                            if (info && info.downloadUrl) return info.downloadUrl;
+                        }
+                        return '';
+                    }
+                }
+                await new Promise(r => setTimeout(r, 800));
+            }
+            return '';
         }
+        document.getElementById('toggleBtn').addEventListener('click', function() {
+            const audio = document.getElementById('audioPlayer');
+            if (!audio.src) return;
+            if (audio.paused) {
+                audio.play().catch(() => {});
+                this.innerHTML = '<i class="bi bi-pause-fill"></i>';
+            } else {
+                audio.pause();
+                this.innerHTML = '<i class="bi bi-play-fill"></i>';
+            }
+        });
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const value = current.url || (current.id ? `https://www.youtube.com/watch?v=${current.id}` : '');
+            if (value) navigator.clipboard && navigator.clipboard.writeText(value);
+        });
 
         // Search functionality
         function handleSearch(event) {
@@ -587,19 +601,7 @@
             document.getElementById('loadingState').style.display = 'none';
         }
 
-        // Close modal on escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeYouTubePlayer();
-            }
-        });
-
-        // Close modal on background click
-        document.getElementById('youtubeModal').addEventListener('click', function(event) {
-            if (event.target === this) {
-                closeYouTubePlayer();
-            }
-        });
+        
         
         (function initGoogleSignInMusic(){
             try {
