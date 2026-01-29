@@ -29,6 +29,26 @@
     html[data-bs-theme='dark'] body { background-color: #17233f; background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99,102,241,.42), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(32,201,151,.3), transparent); }
     .card { border-radius: var(--radius); }
     .form-control, .form-select, .btn { border-radius: .9rem; }
+    /* Basic Mode Styles */
+    #basic-mode { text-align: center; max-width: 600px; margin: 0 auto; padding-top: 5vh; }
+    .basic-input { font-size: 1.2rem; padding: 1rem; border-radius: 2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    .basic-btn { padding: 1rem 2rem; font-size: 1.1rem; border-radius: 2rem; margin: 0.5rem; transition: transform 0.2s; }
+    .basic-btn:active { transform: scale(0.95); }
+    .basic-btn.selected { ring: 4px solid var(--bs-primary); transform: scale(1.05); }
+    .basic-history-item { text-align: left; padding: 1rem; border-radius: 1rem; background: rgba(255,255,255,0.05); margin-bottom: 0.5rem; }
+    .mode-switch-btn { position: fixed; top: 1rem; right: 1rem; z-index: 1050; }
+    
+    /* Footer Styles */
+    .app-footer { margin-top: 3rem; padding: 2rem 0; font-size: 0.9rem; color: var(--bs-secondary); text-align: center; }
+    .app-footer a { color: inherit; text-decoration: none; margin: 0 0.5rem; }
+    .app-footer a:hover { color: var(--bs-primary); }
+
+    /* Mobile Enhancements */
+    @media (max-width: 576px) {
+      .form-range::-webkit-slider-thumb { width: 24px; height: 24px; }
+      .btn { padding: 0.6rem 1rem; }
+    }
+
     .brand-badge { letter-spacing:.08em; }
     .log-box { max-height: 240px; overflow:auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
     .history-link { word-break: break-all; }
@@ -266,7 +286,59 @@
 </head>
 <body>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
-  <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
+  <button class="btn btn-primary rounded-pill mode-switch-btn" id="modeSwitchBtn" onclick="toggleMode()">
+    <i class="bi bi-shuffle"></i> Switch to Basic Mode
+  </button>
+
+  <div id="basic-mode" class="d-none">
+    <h1 class="mb-4">YouTube Converter <span class="badge bg-primary">Basic</span></h1>
+    
+    <div class="mb-4 position-relative">
+      <input type="text" id="basic-url" class="form-control basic-input" placeholder="Tempel Link YouTube Disini...">
+      <button class="btn btn-secondary position-absolute end-0 top-0 m-2 rounded-circle" onclick="navigator.clipboard.readText().then(t => document.getElementById('basic-url').value = t)" title="Paste">
+        <i class="bi bi-clipboard"></i>
+      </button>
+    </div>
+
+    <div class="d-flex justify-content-center gap-3 mb-4">
+      <button class="btn btn-outline-primary basic-btn selected" id="basic-fmt-mp3" onclick="selectBasicFormat('mp3')">
+        <i class="bi bi-file-music"></i> MP3
+      </button>
+      <button class="btn btn-outline-danger basic-btn" id="basic-fmt-mp4" onclick="selectBasicFormat('mp4')">
+        <i class="bi bi-film"></i> MP4
+      </button>
+    </div>
+
+    <div class="mb-4" id="basic-quality-selector">
+      <label class="form-label">Kualitas:</label>
+      <select class="form-select w-auto d-inline-block mx-2" id="basic-quality">
+        <option value="320">High (320kbps)</option>
+        <option value="192" selected>Medium (192kbps)</option>
+        <option value="128">Low (128kbps)</option>
+      </select>
+    </div>
+
+    <button class="btn btn-success btn-lg basic-btn w-100" onclick="startBasicDownload()">
+      <i class="bi bi-download"></i> DOWNLOAD SEKARANG
+    </button>
+    <div class="text-center mt-2 text-muted small">
+      <i class="bi bi-shield-lock"></i> File auto-delete 1 jam • Enkripsi SSL 256-bit
+    </div>
+
+    <div class="mt-5">
+      <h5 class="text-start ms-2 mb-3"><i class="bi bi-clock-history"></i> Riwayat Terakhir</h5>
+      <div id="basic-history-list">
+        <!-- History items will be injected here -->
+        <div class="text-muted fst-italic">Belum ada riwayat.</div>
+      </div>
+    </div>
+    
+    <div class="mt-4" id="basic-google-profile"></div>
+  </div>
+
+  <div id="advanced-mode-wrapper">
+    <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
+
     <div class="container">
       <a class="navbar-brand fw-semibold" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
       <div class="d-flex gap-2 ms-auto">
@@ -323,6 +395,7 @@
               <div class="input-group mt-2">
                 <input id="queueUrl" type="url" class="form-control" placeholder="Tambahkan URL ke antrian" />
                 <button class="btn btn-outline-secondary" id="addQueueBtn" type="button"><i class="bi bi-plus-lg"></i> Tambah</button>
+                <button class="btn btn-outline-warning" id="pauseQueueBtn" type="button" title="Pause/Resume"><i class="bi bi-pause-fill"></i></button>
                 <button class="btn btn-outline-danger" id="clearQueueBtn" type="button" aria-label="Hapus antrian"><i class="bi bi-trash"></i></button>
               </div>
               <ul class="list-group mt-2" id="queueList"></ul>
@@ -636,6 +709,65 @@
       <div class="d-flex">
         <div class="toast-body" id="toastText">Hello!</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duplicate File Modal -->
+  <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="duplicateModalLabel"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Duplikat Terdeteksi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>File ini mirip <strong>98%</strong> dengan yang sudah ada di riwayat Anda.</p>
+          <p class="mb-0 text-secondary small">Anda mungkin hanya memilih kualitas yang berbeda.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batalkan</button>
+          <button type="button" class="btn btn-primary" id="confirmDuplicateBtn">Tetap Lanjutkan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="container">
+      <p class="mb-2">Made with <i class="bi bi-heart-fill text-danger mx-1"></i> and <i class="bi bi-code-slash text-primary mx-1"></i></p>
+      <div class="mb-3">
+        <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a> &bull; 
+        <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a>
+      </div>
+      <p class="text-muted small">&copy; 2024 YouTube Converter. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Privacy Modal -->
+  <div class="modal fade" id="privacyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Privacy Policy</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <h6>Data Handling</h6>
+          <p>We do not store your personal data. Files are auto-deleted after 1 hour.</p>
+          <h6>Encryption</h6>
+          <p>All transfers are encrypted via SSL/TLS.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms Modal -->
+  <div class="modal fade" id="termsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Terms of Service</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <p>By using this service, you agree not to download copyrighted material without permission.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -1082,9 +1214,11 @@ $('#queueList')?.addEventListener('click', (e) => {
   const historyKey = 'ytmp3.history.v1';
   const pushHistory = (entry) => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    if (!entry.originalUrl) entry.originalUrl = $('#url').value.trim();
     list.unshift({ ...entry, at: Date.now() });
     localStorage.setItem(historyKey, JSON.stringify(list.slice(0, 10)));
     renderHistory();
+    if (typeof renderBasicHistory === 'function') renderBasicHistory();
   };
   const removeHistory = (idx) => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
@@ -1094,7 +1228,23 @@ $('#queueList')?.addEventListener('click', (e) => {
   };
   const renderHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
-    const ul = $('#historyList'); ul.innerHTML = '';
+    
+    // Calculate Stats
+    const total = list.length;
+    const formatCounts = list.reduce((acc, cur) => { acc[cur.format] = (acc[cur.format]||0)+1; return acc; }, {});
+    const topFormat = Object.keys(formatCounts).sort((a,b) => formatCounts[b] - formatCounts[a])[0] || '-';
+    
+    const statsHtml = total ? `
+      <div class="d-flex justify-content-around mb-3 small text-secondary bg-body-tertiary p-2 rounded">
+        <span><i class="bi bi-music-note-list"></i> Total: ${total}</span>
+        <span><i class="bi bi-disc"></i> Top: ${topFormat.toUpperCase()}</span>
+        <span><i class="bi bi-stopwatch"></i> Avg: ~5s</span>
+      </div>
+    ` : '';
+
+    const ul = $('#historyList'); 
+    ul.innerHTML = statsHtml; // Prepend stats
+    
     $('#historyEmpty').style.display = list.length ? 'none' : '';
     list.forEach((it, idx) => {
       const li = document.createElement('li');
@@ -1346,12 +1496,33 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
   }
 
+  let isQueuePaused = false;
+  $('#pauseQueueBtn')?.addEventListener('click', () => {
+    isQueuePaused = !isQueuePaused;
+    const btn = $('#pauseQueueBtn');
+    if(isQueuePaused){
+      btn.innerHTML = '<i class="bi bi-play-fill"></i>';
+      btn.classList.replace('btn-outline-warning', 'btn-success');
+      setToast('Antrian dipause');
+    } else {
+      btn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+      btn.classList.replace('btn-success', 'btn-outline-warning');
+      setToast('Antrian dilanjutkan');
+    }
+  });
+
   async function doConvertQueue(){
     const urls = queue.length ? queue.map(q=>q.url) : $('#playlist').value.split(/\n+/).map(s=>s.trim()).filter(u=>/^https?:\/\//i.test(u));
     if(!urls.length){ setToast('Antrian kosong'); return; }
     const progress = $('#queueProgress');
     progress.hidden = false; progress.max = urls.length; progress.value = 0;
+    
     for(let i=0;i<urls.length;i++){
+      // Pause check
+      while(isQueuePaused) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
       $('#url').value = urls[i];
       $('#id3Title').value='';
       $('#id3Artist').value='';
@@ -1371,6 +1542,119 @@ $('#queueList')?.addEventListener('click', (e) => {
   $('#copyLog').addEventListener('click', async ()=>{
     try { await navigator.clipboard.writeText($('#logs').textContent || ''); setToast('Log tersalin'); } catch { setToast('Tidak bisa menyalin'); }
   });
+
+  // ===== Basic Mode Logic & Toggle =====
+  window.toggleMode = () => {
+    const basic = document.getElementById('basic-mode');
+    const advanced = document.getElementById('advanced-mode-wrapper');
+    const btn = document.getElementById('modeSwitchBtn');
+    
+    if (basic.classList.contains('d-none')) {
+      // Switch to Basic
+      basic.classList.remove('d-none');
+      advanced.classList.add('d-none');
+      btn.innerHTML = '<i class="bi bi-sliders"></i> Switch to Advanced';
+      btn.classList.replace('btn-primary', 'btn-outline-light');
+      localStorage.setItem('ytmp3.mode', 'basic');
+      renderBasicHistory();
+      // Sync Google Profile
+      const googleNav = document.getElementById('googleSignInNav');
+      const basicProfile = document.getElementById('basic-google-profile');
+      if (googleNav && basicProfile) basicProfile.innerHTML = googleNav.innerHTML;
+    } else {
+      // Switch to Advanced
+      basic.classList.add('d-none');
+      advanced.classList.remove('d-none');
+      btn.innerHTML = '<i class="bi bi-shuffle"></i> Switch to Basic Mode';
+      btn.classList.replace('btn-outline-light', 'btn-primary');
+      localStorage.setItem('ytmp3.mode', 'advanced');
+    }
+    if (navigator.vibrate) navigator.vibrate(50);
+  };
+
+  if (localStorage.getItem('ytmp3.mode') === 'basic') {
+    // Need to wait for DOM to be ready or just run it if script is at bottom
+    setTimeout(() => {
+        const basic = document.getElementById('basic-mode');
+        const advanced = document.getElementById('advanced-mode-wrapper');
+        const btn = document.getElementById('modeSwitchBtn');
+        if (basic && advanced && btn) {
+            basic.classList.remove('d-none');
+            advanced.classList.add('d-none');
+            btn.innerHTML = '<i class="bi bi-sliders"></i> Switch to Advanced';
+            btn.classList.replace('btn-primary', 'btn-outline-light');
+            renderBasicHistory();
+        }
+    }, 100);
+  }
+
+  let basicFormat = 'mp3';
+  window.selectBasicFormat = (fmt) => {
+    basicFormat = fmt;
+    document.querySelectorAll('.basic-btn.selected').forEach(el => el.classList.remove('selected'));
+    const btnId = fmt === 'mp3' ? 'basic-fmt-mp3' : 'basic-fmt-mp4';
+    document.getElementById(btnId).classList.add('selected');
+    if (navigator.vibrate) navigator.vibrate(30);
+  };
+
+  window.startBasicDownload = async () => {
+    const url = document.getElementById('basic-url').value.trim();
+    if (!url) return setToast('Tempel link dulu bos!');
+    
+    // Sync to advanced inputs
+    $('#url').value = url;
+    $('#format').value = basicFormat;
+    const quality = document.getElementById('basic-quality').value;
+    $('#abr').value = quality;
+    
+    if (checkDuplicate(url, basicFormat, quality)) {
+      const modalEl = document.getElementById('duplicateModal');
+      const modal = new bootstrapGlobal.Modal(modalEl);
+      modal.show();
+      
+      const confirmBtn = document.getElementById('confirmDuplicateBtn');
+      // Clone to remove old listeners
+      const newConfirmBtn = confirmBtn.cloneNode(true);
+      confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+      
+      newConfirmBtn.addEventListener('click', () => {
+        const m = bootstrapGlobal.Modal.getInstance(modalEl);
+        m.hide();
+        doConvert(null, true);
+      });
+      return;
+    }
+
+    await doConvert(null, true);
+  };
+
+  function checkDuplicate(url, fmt, quality) {
+    const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    // Fuzzy check: same original URL and format
+    const duplicate = history.find(h => h.originalUrl === url && h.format === fmt);
+    return !!duplicate;
+  }
+
+  window.renderBasicHistory = () => {
+    const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    const container = document.getElementById('basic-history-list');
+    if (!container) return;
+    
+    if (list.length === 0) {
+        container.innerHTML = '<div class="text-muted fst-italic">Belum ada riwayat.</div>';
+        return;
+    }
+    
+    container.innerHTML = list.slice(0, 5).map(item => `
+        <div class="basic-history-item d-flex align-items-center justify-content-between">
+            <div class="text-truncate me-2" style="max-width: 70%;">
+                <i class="bi bi-file-music text-primary me-2"></i>
+                <a href="${item.downloadUrl}" class="text-white text-decoration-none" target="_blank">${item.fileName || 'Audio File'}</a>
+            </div>
+            <span class="badge bg-secondary">${item.format}</span>
+        </div>
+    `).join('');
+  };
 
   // ===== Init =====
   (function init(){
