@@ -7,7 +7,7 @@ AI Navigator telah diintegrasikan dengan Groq API menggunakan model Llama-3.3-70
 ### Environment Variables
 Tambahkan ke file `.env`:
 ```bash
-GROQ_API_KEY=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
+GROQ_API_KEY=gsk_************************************************
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
