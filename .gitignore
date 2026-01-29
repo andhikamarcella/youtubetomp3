@@ -5,3 +5,5 @@ public/jobs/
 cookies.txt
 next-app/.next/
 next-app/node_modules/
+.env
+
