@@ -5,7 +5,7 @@ import { join } from "path";
 const router = express.Router();
 const COOKIE_PATH = join(process.cwd(), "cookies.txt");
 const WORKER_BASE = process.env.WORKER_API_BASE || "";
-const WORKER_SECRET = process.env.WORKER_SHARED_SECRET || "";
+const WORKER_SECRET = (process.env.WORKER_SHARED_SECRET || "").trim();
 
 router.use((req, res, next) => {
   const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
