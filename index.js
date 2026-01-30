@@ -5362,7 +5362,7 @@ const downloadSpotifyPreview = async ({ previewUrl, id }) => {
   };
 };
 
-const COOKIES_PATH = join(__dirname, "cookies.txt"); // endpoint admin di bawah akan nulis ke sini
+const COOKIES_PATH = join(process.cwd(), "cookies.txt"); // endpoint admin di bawah akan nulis ke sini
 
 const parseEtaString = (value = "") => {
   const text = String(value || "").trim();
