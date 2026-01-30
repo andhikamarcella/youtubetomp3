@@ -9,7 +9,12 @@ const WORKER_SECRET = (process.env.WORKER_SHARED_SECRET || "").trim();
 
 router.use((req, res, next) => {
   const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  if (!process.env.ADMIN_TOKEN || token === process.env.ADMIN_TOKEN) return next();
+  // Fallback to match index.js default if env is missing
+  const expected = process.env.ADMIN_TOKEN || process.env.ADMIN_BEARER || "dhika_sayang123!";
+  
+  if (!expected || token === expected) return next();
+  
+  console.warn(`[Admin Auth Fail] Received: "${token}" (len=${token.length}), Expected: "${expected ? expected.substring(0, 3) + '...' : 'null'}" (len=${expected ? expected.length : 0})`);
   return res.status(401).json({ error: "unauthorized" });
 });
 
