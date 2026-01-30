@@ -3801,30 +3801,6 @@
   if (keywordConvertBtn) keywordConvertBtn.addEventListener('click', () => handleKeywordConvert());
   if (keywordSearchBtn) keywordSearchBtn.addEventListener('click', () => handleKeywordSearch());
 
-  if (videoPreviewToggle) {
-    videoPreviewToggle.addEventListener('change', () => {
-      state.experience.previewEmbed = !!videoPreviewToggle.checked;
-      persistState();
-      if (!videoPreviewToggle.checked && videoPreviewFrame) {
-        videoPreviewFrame.src = '';
-        videoPreviewFrame.hidden = true;
-        if (thumbEl) thumbEl.hidden = false;
-      } else if (lastVideoInfo) {
-        applyVideoMetadata(lastVideoInfo, { setUrl: false, autoFillId3: false, fillEmptyId3: false });
-      }
-    });
-  }
-  if (videoQualitySelect) {
-    videoQualitySelect.addEventListener('change', () => {
-      state.experience.videoQuality = videoQualitySelect.value || 'best';
-      persistState();
-      updateEstSize();
-    });
-  }
-
-  if (abrSelect) abrSelect.addEventListener('change', updateEstSize);
-  if (formatSelect) formatSelect.addEventListener('change', updateEstSize);
-
   
   const donationLinkHint = $('#donationLinkHint');
   const faqItems = $$('#faqList details');
@@ -4194,6 +4170,32 @@
   const abrHelp = $('#abrHelp');
   const sampleRateHelp = $('#sampleRateHelp');
   const speedHelp = $('#speedHelp');
+
+  // Moved event listeners here to avoid ReferenceError
+  if (videoPreviewToggle) {
+    videoPreviewToggle.addEventListener('change', () => {
+      state.experience.previewEmbed = !!videoPreviewToggle.checked;
+      persistState();
+      if (!videoPreviewToggle.checked && videoPreviewFrame) {
+        videoPreviewFrame.src = '';
+        videoPreviewFrame.hidden = true;
+        if (thumbEl) thumbEl.hidden = false;
+      } else if (lastVideoInfo) {
+        applyVideoMetadata(lastVideoInfo, { setUrl: false, autoFillId3: false, fillEmptyId3: false });
+      }
+    });
+  }
+  if (videoQualitySelect) {
+    videoQualitySelect.addEventListener('change', () => {
+      state.experience.videoQuality = videoQualitySelect.value || 'best';
+      persistState();
+      updateEstSize();
+    });
+  }
+
+  if (abrSelect) abrSelect.addEventListener('change', updateEstSize);
+  if (formatSelect) formatSelect.addEventListener('change', updateEstSize);
+
   const abrLabel = document.querySelector('label[for="abr"]');
   const sampleRateLabel = document.querySelector('label[for="sampleRate"]');
   const speedLabel = document.querySelector('label[for="speedMode"]');
@@ -4292,8 +4294,17 @@
     }
     if (ytDlpBadge) ytDlpBadge.hidden = true;
     if (ffmpegBadge) ffmpegBadge.hidden = true;
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
     try {
-      const resp = await fetch(api('/api/tool-versions'), { cache: 'no-store' });
+      const resp = await fetch(api('/api/tool-versions'), { 
+          cache: 'no-store',
+          signal: controller.signal
+      });
+      clearTimeout(timeout);
+      
       const { data } = await resolveJsonResponse(resp, {
         fallbackMessage: translateMessage('Gagal memeriksa tool'),
         logLabel: 'tool-versions',
@@ -4303,7 +4314,7 @@
       applyToolInfo(ffmpegInfo, ffmpegBadge, tools.ffmpeg);
     } catch (err) {
       console.warn('tool-versions', err);
-      if (ytDlpInfo) ytDlpInfo.textContent = err.message || translateMessage('Tidak dapat memeriksa versi');
+      if (ytDlpInfo) ytDlpInfo.textContent = err.name === 'AbortError' ? 'Timeout' : (err.message || translateMessage('Tidak dapat memeriksa versi'));
       if (ffmpegInfo) ffmpegInfo.textContent = translateMessage('Coba lagi nanti');
       if (manual) setToast(`${translateMessage('Gagal memeriksa tool')}: ${err.message || 'Error'}`);
     } finally {
@@ -8895,7 +8906,7 @@
     }
   }
 
-  const updateEstSize = () => {
+  function updateEstSize() {
     if (!lastVideoInfo || !lastVideoInfo.duration || !videoEstSizeEl) {
       if (videoEstSizeEl) videoEstSizeEl.textContent = '';
       return;
@@ -13140,50 +13151,63 @@ $('#queueList')?.addEventListener('click', (e) => {
       // Initial History Render
       if (typeof renderBasicHistory === 'function') renderBasicHistory();
     };
-    setupModeSwitcher();
+    
+    try {
+      setupModeSwitcher();
+    } catch (err) {
+      console.error('Mode switcher init failed:', err);
+    }
   };
 
   // ===== Init =====
   (function init(){
-    initTheme();
-    initWelcome();
-    renderSpinWheel();
-    loadSettings();
-    applyStoredFormatPreference();
-    hydrateCachedUserSummary();
-    loadAuthToken();
-    fetchAuthConfig();
-    fetchCheatConfig();
-    fetchUserSession({ silent: true });
-    updateSpinUi();
-    ensureAssistantWelcome();
-    updateMascotMood('default');
-    initExtras();
-    initBasicMode();
-    
-    // Version Badge
-    const verBadge = document.getElementById('appVersionBadge');
-    if(verBadge) {
-        verBadge.textContent = APP_VERSION;
-        verBadge.title = `Klik untuk info versi (${APP_VERSION})`;
-        verBadge.addEventListener('click', () => {
-             setToast(`YouTube To MP3 ${APP_VERSION} - Updated & Stable`);
-             vibrate(50);
-        });
-    }
-
-    if (state.experience.narratorAuto) narrateGuide();
-    renderHistory();
-    renderQueue();
-    applyFormatPolicy();
-    updateBackendBadge();
-    refreshToolStatus();
-    updatePreview();
-    renderBackgroundJobs();
-    loadStoredJobs();
-    refreshBackgroundJobs();
-    if(!localStorage.getItem(tutorialKey) && tutorialModalEl){
-      showWalkthrough(true);
+    try {
+      initTheme();
+      initWelcome();
+      renderSpinWheel();
+      loadSettings();
+      applyStoredFormatPreference();
+      hydrateCachedUserSummary();
+      loadAuthToken();
+      fetchAuthConfig();
+      fetchCheatConfig();
+      fetchUserSession({ silent: true });
+      updateSpinUi();
+      ensureAssistantWelcome();
+      updateMascotMood('default');
+      initExtras();
+      
+      try {
+        initBasicMode();
+      } catch (e) { console.error('Basic mode init failed', e); }
+      
+      // Version Badge
+      const verBadge = document.getElementById('appVersionBadge');
+      if(verBadge) {
+          verBadge.textContent = APP_VERSION;
+          verBadge.title = `Klik untuk info versi (${APP_VERSION})`;
+          verBadge.addEventListener('click', () => {
+               setToast(`YouTube To MP3 ${APP_VERSION} - Updated & Stable`);
+               vibrate(50);
+          });
+      }
+  
+      if (state.experience.narratorAuto) narrateGuide();
+      renderHistory();
+      renderQueue();
+      applyFormatPolicy();
+      updateBackendBadge();
+      refreshToolStatus();
+      updatePreview();
+      renderBackgroundJobs();
+      loadStoredJobs();
+      refreshBackgroundJobs();
+      if(!localStorage.getItem(tutorialKey) && tutorialModalEl){
+        showWalkthrough(true);
+      }
+    } catch (fatalError) {
+      console.error('App Initialization Failed:', fatalError);
+      alert('Aplikasi gagal memuat. Silakan refresh halaman.');
     }
   })();
   });
