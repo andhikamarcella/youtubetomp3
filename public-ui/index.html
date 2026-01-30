@@ -693,10 +693,10 @@
         <i class="bi bi-grid-3x3-gap"></i>
         <span class="ms-2">Menu fitur</span>
       </button>
-      <a class="app-nav-btn d-inline-flex ms-2" href="./youtube-music-streaming.html" target="_blank" rel="noopener" aria-label="Buka YT Music">
+      <button class="app-nav-btn d-inline-flex ms-2" type="button" id="ytMusicBtn" aria-label="Buka YT Music">
         <i class="bi bi-youtube"></i>
         <span class="ms-2">YT Music</span>
-      </a>
+      </button>
       <button class="app-nav-btn d-inline-flex ms-2" type="button" id="headerModeToggle" aria-label="Ganti Mode">
         <i class="bi bi-magic"></i>
         <span class="ms-2 d-none d-sm-inline" id="headerModeLabel">Basic Mode</span>
@@ -2756,6 +2756,28 @@
   
   document.addEventListener('DOMContentLoaded', () => {
   const APP_VERSION = 'v2.5.0';
+
+  // YT Music Button Logic
+  const ytMusicBtn = document.getElementById('ytMusicBtn');
+  if (ytMusicBtn) {
+    ytMusicBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const isAndroid = /android/i.test(userAgent);
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+
+        if (isAndroid) {
+            // Android Intent: Try to open app, fallback to Play Store
+            window.location.href = 'intent://music.youtube.com/#Intent;scheme=https;package=com.google.android.apps.youtube.music;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.google.android.apps.youtube.music;end';
+        } else if (isIOS) {
+             // iOS: Open link, let OS handle app opening
+             window.location.href = 'https://music.youtube.com/';
+        } else {
+             // PC/Desktop: New Tab
+             window.open('https://music.youtube.com/', '_blank');
+        }
+    });
+  }
 
   // ===== Utilities =====
   const $ = (sel) => document.querySelector(sel);
