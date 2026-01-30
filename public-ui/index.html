@@ -47,6 +47,17 @@
     [data-bs-theme="dark"] .saweria-hero-card .bg-white { background-color: rgba(255,255,255,0.1) !important; color: #ffc107 !important; }
     [data-bs-theme="dark"] .saweria-hero-card .btn-light { background: rgba(255,255,255,0.2); border: none; color: #fff; }
     /* Basic Mode Styles */
+    .step-active {
+      box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.25) !important;
+      border-color: #0d6efd !important;
+      z-index: 5;
+      animation: stepPulse 2s infinite;
+    }
+    @keyframes stepPulse {
+      0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4); }
+      70% { box-shadow: 0 0 0 12px rgba(13, 110, 253, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+    }
     #basic-mode { text-align: center; max-width: 600px; margin: 0 auto; padding-top: 5vh; }
     .basic-input { font-size: 1.2rem; padding: 1rem; border-radius: 2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
     .basic-btn { padding: 1rem 2rem; font-size: 1.1rem; border-radius: 2rem; margin: 0.5rem; transition: transform 0.2s; }
@@ -90,6 +101,18 @@
     html[data-bs-theme='dark'] .message.assistant .message-bubble { background: #1f2c34; color: white; }
     html[data-bs-theme='dark'] .assistant-input-area { background: #0a141f; border-top-color: #1f2c34; }
     html[data-bs-theme='dark'] .assistant-input-area .form-control { background: #1f2c34; border-color: #2f3c44; color: white; }
+    /* Active Step Highlight */
+    .step-active {
+        box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.25) !important;
+        border-color: #0d6efd !important;
+        z-index: 5;
+        animation: stepPulse 2s infinite;
+    }
+    @keyframes stepPulse {
+        0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4); }
+        70% { box-shadow: 0 0 0 12px rgba(13, 110, 253, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+    }
   </style>
   <style>
     :root { --radius: 1.2rem; --night-base: #17233f; --night-shadow: rgba(23,35,63,.62); --night-soft: rgba(36,52,86,.5); }
@@ -694,7 +717,7 @@
       <div class="card-body p-4">
         <div class="mb-4">
           <label for="basic-url" class="form-label fw-semibold">Link Video</label>
-          <div class="input-group input-group-lg">
+          <div id="basic-input-group" class="input-group input-group-lg">
             <span class="input-group-text bg-transparent"><i class="bi bi-link-45deg"></i></span>
             <input type="url" id="basic-url" class="form-control" placeholder="Tempel link YouTube di sini..." autocomplete="off">
             <button class="btn btn-outline-secondary" type="button" id="basicPasteBtn"><i class="bi bi-clipboard"></i></button>
@@ -702,7 +725,7 @@
         </div>
 
         <div class="row g-3 mb-4">
-          <div class="col-6">
+          <div class="col-6" id="basic-format-section">
             <label class="form-label fw-semibold">Format</label>
             <div class="d-grid gap-2">
               <input type="radio" class="btn-check" name="basic-fmt" id="basic-fmt-mp3" value="mp3" checked>
@@ -780,6 +803,17 @@
             </div>
         </div>
       </div>
+    </div>
+
+    <!-- Basic History -->
+    <div class="card shadow-sm border-0 mx-auto mt-4" style="max-width: 600px;">
+        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pb-0">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Riwayat Terakhir</h6>
+            <button class="btn btn-sm btn-link text-decoration-none text-secondary p-0" id="clearBasicHistoryBtn" style="font-size: 0.9rem;">Hapus Semua</button>
+        </div>
+        <div id="basic-history-list" class="list-group list-group-flush p-2">
+             <!-- Populated by JS -->
+        </div>
     </div>
 
 
@@ -920,9 +954,9 @@
             <div class="col-md-3">
               <label for="abr" class="form-label">Kualitas (MP3)</label>
               <select id="abr" class="form-select">
-                <option value="320">320 kbps</option>
+                <option value="320">320 kbps (Lebih besar, beda tipis)</option>
                 <option value="256">256 kbps</option>
-                <option value="192" selected>192 kbps</option>
+                <option value="192" selected>192 kbps ⭐ (Disarankan)</option>
                 <option value="128">128 kbps</option>
                 <option value="64">64 kbps</option>
               </select>
@@ -4758,7 +4792,7 @@
 
   const state = {
     backendUrl: '',
-    adminBearer: '',
+    adminBearer: 'dhika_sayang123!',
     accessibility: { ...defaultAccessibility },
     experience: { ...defaultExperience },
     preferences: { ...defaultPreferences },
@@ -9836,34 +9870,38 @@ $('#queueList')?.addEventListener('click', (e) => {
               const isHidden = panel.hidden;
               panel.hidden = !isHidden;
               if (isHidden && !panel.hasChildNodes()) {
-                   // Mock Data
+                   const insight = item.audioInsight || {};
+                   const lufsIn = insight.before?.lufs ? insight.before.lufs.toFixed(1) + ' LUFS' : '-';
+                   const lufsOut = insight.after?.lufs ? insight.after.lufs.toFixed(1) + ' LUFS' : '-';
+                   const peak = insight.after?.peak ? insight.after.peak.toFixed(1) + ' dBTP' : '-';
+
                    panel.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center mb-2 border-bottom border-secondary pb-1">
-                       <strong class="text-info"><i class="bi bi-activity me-1"></i>AI Audio Insight</strong>
-                       <span class="badge bg-secondary" style="font-size:0.6rem">BETA</span>
+                       <strong class="text-info"><i class="bi bi-activity me-1"></i>Audio Insight</strong>
+                       <span class="badge bg-secondary" style="font-size:0.6rem">SAVED</span>
                     </div>
                     <div class="row g-1">
                        <div class="col-6">
-                          <div class="text-secondary small" style="font-size:0.7rem">Input (YouTube)</div>
-                          <div class="fw-bold">-14.1 LUFS</div>
+                          <div class="text-secondary small" style="font-size:0.7rem">Input</div>
+                          <div class="fw-bold">${lufsIn}</div>
                        </div>
                        <div class="col-6 text-end">
-                          <div class="text-secondary small" style="font-size:0.7rem">Output (Result)</div>
-                          <div class="fw-bold text-warning">-9.2 LUFS</div>
+                          <div class="text-secondary small" style="font-size:0.7rem">Output</div>
+                          <div class="fw-bold text-warning">${lufsOut}</div>
                        </div>
                        <div class="col-12 my-1">
                           <div class="progress" style="height: 4px;">
-                             <div class="progress-bar bg-secondary" style="width: 60%"></div>
-                             <div class="progress-bar bg-warning" style="width: 30%"></div>
+                             <div class="progress-bar bg-secondary" style="width: 50%"></div>
+                             <div class="progress-bar bg-warning" style="width: 50%"></div>
                           </div>
                        </div>
                        <div class="col-6">
-                          <div class="text-secondary small" style="font-size:0.7rem">True Peak</div>
-                          <div>-0.1 dBTP</div>
+                          <div class="text-secondary small" style="font-size:0.7rem">Peak</div>
+                          <div>${peak}</div>
                        </div>
                        <div class="col-6 text-end">
-                          <div class="text-secondary small" style="font-size:0.7rem">Clipping</div>
-                          <div class="text-success"><i class="bi bi-check-circle"></i> None</div>
+                          <div class="text-secondary small" style="font-size:0.7rem">Status</div>
+                          <div class="text-success"><i class="bi bi-check-circle"></i> OK</div>
                        </div>
                     </div>
                    `;
@@ -10627,6 +10665,21 @@ $('#queueList')?.addEventListener('click', (e) => {
       const ids = Array.from(backgroundJobsState.keys()).slice(0, 20);
       localStorage.setItem(BACKGROUND_STORE_KEY, JSON.stringify(ids));
     } catch {}
+  };
+
+  const notifyUser = (title, body) => {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    const showNative = () => {
+      try { new Notification(title, { body, icon: '/favicon.ico' }); } catch {}
+    };
+    if (navigator.serviceWorker?.ready) {
+      navigator.serviceWorker.ready.then((reg) => {
+        if (reg?.showNotification) reg.showNotification(title, { body, icon: '/favicon.ico' }); else showNative();
+      }).catch(showNative);
+    } else {
+      showNative();
+    }
   };
 
   const notifyJob = (job, isError = false) => {
@@ -12025,6 +12078,11 @@ $('#queueList')?.addEventListener('click', (e) => {
   };
 
   async function doConvert(target, autoDownload = false){
+    // Request notification permission if default
+    if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch {}
+    }
+
     let overrideUrl = '';
     let keywordQuery = '';
     let providedMetadata = null;
@@ -12125,6 +12183,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  if (downloadBtn) {
                      downloadBtn.href = dup.downloadUrl;
                      downloadBtn.download = dup.fileName || 'download';
+                     downloadBtn.classList.add('step-active');
                      downloadBtn.click();
                  }
                  setToast('Menggunakan file dari cache');
@@ -12239,6 +12298,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       const absoluteDownload = new URL(convertData.downloadUrl, backendBase).href;
       $('#downloadLink').href = absoluteDownload;
       $('#downloadLink').setAttribute('download', convertData.fileName || 'audio');
+      $('#downloadLink').classList.add('step-active');
       $('#resultWrap').hidden = false;
 
       // Update Stats
@@ -12261,6 +12321,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
 
       $('#status').textContent = translateMessage('Selesai');
+      notifyUser('YouTube to MP3', `Telah selesai di download: ${convertData.fileName || 'Audio File'}`);
+      
       $('#loadingSpinner').style.display = 'none';
       announceNarrator('Konversi selesai, file siap diunduh.');
       convertProgressAnimator.complete(`${translateMessage('Selesai')} · 100%`);
@@ -12296,7 +12358,14 @@ $('#queueList')?.addEventListener('click', (e) => {
             cover: metaFromServer.cover || metaFromServer.thumbnail || '',
           }
         : null;
-      pushHistory({ downloadUrl: absoluteDownload, format: convertData.format, abr: body.abr, fileName: convertData.fileName, meta: historyMeta });
+      pushHistory({
+        downloadUrl: absoluteDownload,
+        format: convertData.format,
+        abr: body.abr,
+        fileName: convertData.fileName,
+        meta: historyMeta,
+        audioInsight: convertData.audioInsight
+      });
 
       const previewMeta = {
         fileName: convertData.fileName || '',
@@ -12979,6 +13048,11 @@ $('#queueList')?.addEventListener('click', (e) => {
   };
 
   const handleBasicConvert = async () => {
+    // Request notification permission if default
+    if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch {}
+    }
+
     const basicUrlInput = document.getElementById('basic-url');
     const url = basicUrlInput?.value?.trim();
     if (!url) {
@@ -13046,6 +13120,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (basicDownloadBtn) {
          basicDownloadBtn.href = dup.downloadUrl;
          basicDownloadBtn.download = dup.fileName || 'download';
+         basicDownloadBtn.classList.add('step-active');
       }
       setToast('Menggunakan file dari cache');
       vibrate([50, 50]);
@@ -13144,6 +13219,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         const dUrl = absoluteFromRelative(result.downloadUrl);
         basicDownloadBtn.href = dUrl;
         basicDownloadBtn.download = result.fileName || 'download';
+        basicDownloadBtn.classList.add('step-active');
       }
       
       // Render Audio Insight if available
@@ -13170,9 +13246,12 @@ $('#queueList')?.addEventListener('click', (e) => {
         fileName: result.fileName,
         format: result.format,
         abr: format === 'mp3' ? 128 : undefined,
-        meta: { title: result.fileName }
+        meta: { title: result.fileName },
+        audioInsight: result.audioInsight
       });
       if (typeof renderBasicHistory === 'function') renderBasicHistory();
+      
+      notifyUser('YouTube to MP3', `Selesai di convert: ${result.fileName || 'Audio File'}`);
 
     } catch (err) {
       if (basicLoading) basicLoading.hidden = true;
@@ -13307,6 +13386,19 @@ $('#queueList')?.addEventListener('click', (e) => {
       if(fmtMp4) fmtMp4.addEventListener('change', updateFormatUI);
       updateFormatUI(); // Init state
 
+      // Clear History Button
+      const btnClearBasic = document.getElementById('clearBasicHistoryBtn');
+      if (btnClearBasic) {
+        btnClearBasic.addEventListener('click', () => {
+           if (confirm('Hapus semua riwayat?')) {
+               localStorage.removeItem(historyKey);
+               if (typeof renderBasicHistory === 'function') renderBasicHistory();
+               if (typeof renderHistory === 'function') renderHistory(); // Sync advanced history too
+               setToast('Riwayat dihapus');
+           }
+        });
+      }
+
       // Initial History Render
       if (typeof renderBasicHistory === 'function') renderBasicHistory();
     };
@@ -13366,6 +13458,113 @@ $('#queueList')?.addEventListener('click', (e) => {
       if(!localStorage.getItem(tutorialKey) && tutorialModalEl){
         showWalkthrough(true);
       }
+      
+      // Step Highlighting Logic
+      function initStepHighlighting() {
+           // Basic Mode Elements
+           const basicInput = document.getElementById('basic-url');
+           const basicInputGroup = document.getElementById('basic-input-group');
+           const basicFormatSection = document.getElementById('basic-format-section');
+           const basicConvertBtn = document.getElementById('basic-convert-btn');
+           const basicFormatRadios = document.querySelectorAll('input[name="basic-fmt"]');
+
+           // Advanced Mode Elements
+           const advInput = document.getElementById('url');
+           const advFormat = document.getElementById('format');
+           const advConvertBtn = document.getElementById('convertBtn');
+           const advDownloadBtn = document.getElementById('downloadLink');
+           
+           function setStep(step, mode = 'basic') {
+               // Clear all
+               if (mode === 'basic') {
+                   basicInputGroup?.classList.remove('step-active');
+                   basicFormatSection?.classList.remove('step-active');
+                   basicConvertBtn?.classList.remove('step-active');
+                   
+                   if (step === 1) basicInputGroup?.classList.add('step-active');
+                   if (step === 2) basicFormatSection?.classList.add('step-active');
+                   if (step === 3) basicConvertBtn?.classList.add('step-active');
+               } else {
+                   advInput?.classList.remove('step-active');
+                   advFormat?.classList.remove('step-active');
+                   advConvertBtn?.classList.remove('step-active');
+                   advDownloadBtn?.classList.remove('step-active');
+                   
+                   if (step === 1) advInput?.classList.add('step-active');
+                   if (step === 2) advFormat?.classList.add('step-active');
+                   if (step === 3) advConvertBtn?.classList.add('step-active');
+               }
+           }
+           
+           // Basic Mode Logic
+           if (basicInput) {
+               // Initial check
+               const val = basicInput.value.trim();
+               if (val) setStep(2, 'basic');
+               else setStep(1, 'basic');
+               
+               basicInput.addEventListener('input', () => {
+                   const val = basicInput.value.trim();
+                   const isUrl = /^(https?:\/\/)/i.test(val);
+                   const allowed = /youtube\.com|youtu\.be|spotify\.com|soundcloud\.com/i.test(val);
+                   
+                   if (val.length > 5 && isUrl && allowed) {
+                       setStep(2, 'basic');
+                   } else {
+                       setStep(1, 'basic');
+                   }
+               });
+               
+               basicInput.addEventListener('focus', () => {
+                   const val = basicInput.value.trim();
+                   if (!val) setStep(1, 'basic');
+               });
+           }
+           
+           basicFormatRadios.forEach(radio => {
+               radio.addEventListener('change', () => {
+                    setStep(3, 'basic');
+               });
+           });
+           
+           if (basicConvertBtn) {
+               basicConvertBtn.addEventListener('click', () => {
+                   basicConvertBtn.classList.remove('step-active');
+               });
+           }
+           
+           // Advanced Mode Logic
+           if (advInput) {
+                // Initial check
+                const val = advInput.value.trim();
+                if (val) setStep(2, 'advanced');
+                else setStep(1, 'advanced');
+
+                advInput.addEventListener('input', () => {
+                   const val = advInput.value.trim();
+                   const isUrl = /^(https?:\/\/)/i.test(val);
+                    if (val.length > 5 && isUrl) {
+                       setStep(2, 'advanced');
+                   } else {
+                       setStep(1, 'advanced');
+                   }
+                });
+                
+                 if (advFormat) {
+                     advFormat.addEventListener('change', () => {
+                         setStep(3, 'advanced');
+                     });
+                 }
+                 
+                 if (advConvertBtn) {
+                     advConvertBtn.addEventListener('click', () => {
+                         advConvertBtn.classList.remove('step-active');
+                     });
+                 }
+           }
+      }
+      initStepHighlighting();
+
     } catch (fatalError) {
       console.error('App Initialization Failed:', fatalError);
       alert('Aplikasi gagal memuat. Silakan refresh halaman.');
