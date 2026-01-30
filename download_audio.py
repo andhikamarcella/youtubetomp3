@@ -91,7 +91,7 @@ def download_with_ytdlp(
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
     opts = {
-        "format": "bestaudio/best",
+        "format": "bestaudio/bestvideo+bestaudio/best",
         "outtmpl": template,
         "restrictfilenames": False,
         "noplaylist": True,
