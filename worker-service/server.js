@@ -7,6 +7,24 @@ import ytDlp from 'yt-dlp-exec';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import fetch from 'node-fetch';
+import { fileURLToPath } from 'node:url';
+
+// Load .env manual dari root jika ada (untuk local dev)
+try {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const envPath = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    const envConfig = fs.readFileSync(envPath, 'utf8');
+    envConfig.split(/\r?\n/).forEach(line => {
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match && !line.trim().startsWith("#")) {
+        const key = match[1].trim();
+        const value = match[2].trim().replace(/^["'](.*)["']$/, "$1");
+        if (!process.env[key]) process.env[key] = value;
+      }
+    });
+  }
+} catch (e) {}
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -22,7 +40,7 @@ if (ffmpegInstaller?.path) {
   console.warn('No ffmpeg installer path detected; relying on system ffmpeg in PATH');
 }
 
-const workerSecret = process.env.WORKER_SHARED_SECRET;
+const workerSecret = (process.env.WORKER_SHARED_SECRET || "").trim();
 if (!workerSecret) {
   console.warn('WORKER_SHARED_SECRET is not set. Requests will be rejected until it is configured.');
 }
