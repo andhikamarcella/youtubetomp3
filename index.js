@@ -7210,8 +7210,8 @@ app.post("/api/convert-playlist", async (req, res) => {
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
 const BEARER = process.env.ADMIN_BEARER || "dhika_sayang123!";
-const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || "03be2f61c7e05a997da38f9d365a0d948df08b44fcd7acb5c3d94ba31cef78f2";
-const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || "d5a500a4b29869a056a0b5a5e7b26bd295a4b264560b66a16a9dccf9bad7ef45";
+const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"; // admin
+const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || "3b91a34e79361751547c104b9d26f1719aa28eddc28fd216d4d14be57edbdd1e"; // dhika_sayang123!
 
 const hashText = (value) => createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
 
