@@ -12838,6 +12838,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     });
   };
 
+  let activeTurnstileWidgetId = null;
+
   const requestTurnstileVerification = () => {
     return new Promise((resolve, reject) => {
       const modalEl = document.getElementById('turnstileModal');
@@ -12859,20 +12861,18 @@ $('#queueList')?.addEventListener('click', (e) => {
         const modal = new bootstrapGlobal.Modal(modalEl);
         modal.show();
 
-        // Clear previous
+        // Clear previous widget properly
+        if (activeTurnstileWidgetId !== null) {
+            try { window.turnstile.remove(activeTurnstileWidgetId); } catch(e){}
+            activeTurnstileWidgetId = null;
+        }
         widgetContainer.innerHTML = '';
         
         // Render Turnstile
-        // Using a dummy sitekey for testing or real one if available. 
-        // Cloudflare Testing Sitekey: 1x00000000000000000000AA
-        // I will use the testing key for now, as I don't have the user's key. 
-        // Wait, the user asked to "use cloudflare turnstile". They might expect it to work.
-        // I should use the sitekey if defined in config, or fall back to testing key.
-        // I'll use a placeholder variable or the testing key.
-        const siteKey = '0x4AAAAAACJPcwOvzNFeWXfR'; // Example Sitekey, should be replaced with real one or config
+        const siteKey = '0x4AAAAAACJPcwOvzNFeWXfR'; 
 
         try {
-            window.turnstile.render(widgetContainer, {
+            activeTurnstileWidgetId = window.turnstile.render(widgetContainer, {
               sitekey: siteKey, 
               callback: (token) => {
                 setTimeout(() => modal.hide(), 500);
@@ -13042,7 +13042,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     poll();
   };
 
-  const executeBasicConvert = async (url) => {
+  const executeBasicConvert = async (url, explicitToken = null) => {
     const basicLoading = document.getElementById('basic-progress-wrap');
     const basicSuccess = document.getElementById('basic-result');
     const basicConvertBtn = document.getElementById('basic-convert-btn');
@@ -13066,7 +13066,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       payload.progressId = progressId;
       startBasicProgressWatcher(progressId);
       try {
-        const token = await requestCaptchaToken('convert');
+        const token = explicitToken || await requestCaptchaToken('convert');
         if (token) payload.captchaToken = token;
         else throw new Error('Captcha token missing');
       } catch (e) {
