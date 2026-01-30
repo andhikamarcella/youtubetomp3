@@ -451,6 +451,8 @@ const callGroqAPI = async (prompt, context = {}) => {
     throw new Error("Groq API tidak dikonfigurasi");
   }
 
+  const history = Array.isArray(context.history) ? context.history : [];
+
   const systemPrompt = "Hai! Saya AI Navigator, asisten buat website YouTube to MP3 converter. Jawaban saya: **singkat**, **padat**, **humanize**.\n\n" +
 "Website fitur:\n" +
 "🎵 Convert: MP3/M4A/FLAC (320kbps, 48kHz)\n" +
@@ -470,12 +472,22 @@ const callGroqAPI = async (prompt, context = {}) => {
 "- **Humanize** seperti teman\n" +
 "- **Bold** untuk penting: **MP3**, **Dolby Atmos**\n" +
 "- **Direct action**: Langsung convert jika ada URL\n\n" +
-"Contoh:\n" +
-"User: \"aku pengen convert https://youtube.com/watch?v=xxx to mp3 320kbps 48khz ya lalu dolby atmos juga\"\n" +
-"AI: \"**Oke!** Convert ke **MP3 320kbps 48kHz** + **Dolby Atmos**. Proses dimulai!\"\n\n" +
-"User: \"kok error 403?\"\n" +
-"AI: \"Waduh, **Cookies expired**! Admin harus upload cookies baru di menu Settings biar lancar lagi.\"\n\n" +
-"Context: " + JSON.stringify(context);
+  "FORMAT JSON (WAJIB JIKA ADA URL ATAU COMMAND):\n" +
+  "Jika user memberikan URL untuk convert, kembalikan JSON:\n" +
+  "{ \"reply\": \"Oke, memulai convert...\", \"action\": \"convert\", \"url\": \"https://...\", \"params\": { \"format\": \"mp3\" } }\n\n" +
+  "Jika chat biasa, kembalikan JSON:\n" +
+  "{ \"reply\": \"Jawaban kamu...\" }\n\n" +
+  "Context: " + JSON.stringify({ ...context, history: undefined });
+
+  // Build messages array
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map(msg => ({ 
+      role: msg.role === 'bot' ? 'assistant' : 'user', 
+      content: msg.text || "" 
+    })),
+    { role: "user", content: prompt }
+  ];
 
   try {
     const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -486,12 +498,10 @@ const callGroqAPI = async (prompt, context = {}) => {
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
-        ],
+        messages: messages,
         temperature: 0.7,
         max_tokens: 500,
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -501,7 +511,13 @@ const callGroqAPI = async (prompt, context = {}) => {
     }
 
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "Maaf, saya tidak bisa memproses permintaan Anda.";
+    const content = data.choices?.[0]?.message?.content || "{}";
+    
+    try {
+      return JSON.parse(content);
+    } catch (e) {
+      return { reply: content };
+    }
   } catch (error) {
     console.error("[Groq API] Error:", error);
     throw error;
@@ -2186,6 +2202,88 @@ const probeAudioStream = async (inputPath) => {
   });
 };
 
+const probeAudioLoudness = async (inputPath) => {
+  if (!inputPath) return null;
+  const args = [
+    "-nostats",
+    "-i", inputPath,
+    "-map", "a:0",
+    "-filter:a", "ebur128=peak=true",
+    "-f", "null",
+    "-"
+  ];
+  return await new Promise((resolve) => {
+    const bin = ffmpegPath || "ffmpeg";
+    const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    let stderr = "";
+    proc.stderr.on("data", (d) => stderr += d.toString());
+    proc.on("error", () => resolve(null));
+    proc.on("close", (code) => {
+      // Allow code 0 or generic error if we can parse stats
+      // ffmpeg might exit with non-zero on some warnings but still output stats
+      try {
+        const iMatch = /Integrated loudness:\s+I:\s+([-\d\.]+)\s+LUFS/.exec(stderr);
+        const peakMatch = /True peak:\s+Peak:\s+([-\d\.]+)\s+dBTP/.exec(stderr);
+        const lraMatch = /Loudness range:\s+LRA:\s+([-\d\.]+)\s+LU/.exec(stderr);
+        
+        if (!iMatch) return resolve(null);
+        
+        resolve({
+          lufs: parseFloat(iMatch[1]),
+          peak: peakMatch ? parseFloat(peakMatch[1]) : null,
+          lra: lraMatch ? parseFloat(lraMatch[1]) : null
+        });
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+};
+
+const generateWaveformData = async (inputPath, points = 100) => {
+  if (!inputPath) return [];
+  const args = [
+    "-nostats",
+    "-i", inputPath,
+    "-ac", "1",
+    "-filter:a", "aresample=20",
+    "-map", "0:a",
+    "-c:a", "pcm_u8",
+    "-f", "data",
+    "-"
+  ];
+  
+  return await new Promise((resolve) => {
+    const bin = ffmpegPath || "ffmpeg";
+    const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "ignore"] });
+    const chunks = [];
+    
+    proc.stdout.on("data", (chunk) => chunks.push(chunk));
+    proc.on("error", () => resolve([]));
+    
+    proc.on("close", () => {
+      const buffer = Buffer.concat(chunks);
+      if (buffer.length === 0) return resolve([]);
+      
+      const data = [];
+      const step = Math.ceil(buffer.length / points);
+      
+      for (let i = 0; i < points; i++) {
+        let max = 0;
+        const start = i * step;
+        const end = Math.min(start + step, buffer.length);
+        
+        for (let j = start; j < end; j++) {
+           const val = Math.abs(buffer[j] - 128);
+           if (val > max) max = val;
+        }
+        data.push(parseFloat((max / 128).toFixed(2)));
+      }
+      resolve(data);
+    });
+  });
+};
+
 const GENRE_KEYWORDS = [
   { rx: /(lo[-\s]?fi|study|chillhop|coffee shop)/i, value: "Lo-Fi" },
   { rx: /(hip\s?hop|rap)/i, value: "Hip-Hop" },
@@ -3230,7 +3328,7 @@ const ASSISTANT_TOPICS = [
   },
 ];
 
-const buildAssistantResponse = async (prompt) => {
+const buildAssistantResponse = async (prompt, history = []) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
   if (!raw) {
     return {
@@ -3256,25 +3354,44 @@ const buildAssistantResponse = async (prompt) => {
 
   try {
     // Use Groq API for intelligent responses
-    const aiReply = await callGroqAPI(raw, {
+    const aiResponse = await callGroqAPI(raw, {
       website: "YouTube to MP3 Converter",
       features: ["Convert", "Trim", "Metadata", "Queue", "History", "Settings"],
       timestamp: new Date().toISOString(),
+      history: history
     });
 
-    // Generate contextual suggestions based on the response
-    const suggestions = [
-      "Cara convert", 
-      "Pilih format", 
-      "Trim audio", 
-      "Metadata", 
-      "Antrian", 
-      "Pengaturan"
-    ].slice(0, 4);
+    let reply = "";
+    let action = null;
+    let params = null;
+    let suggestions = [];
+
+    if (typeof aiResponse === 'object') {
+        reply = aiResponse.reply || "Maaf, ada kendala.";
+        action = aiResponse.action;
+        params = aiResponse.params;
+        suggestions = aiResponse.suggestions || [];
+    } else {
+        reply = String(aiResponse);
+    }
+
+    // Default suggestions if none provided
+    if (!suggestions || suggestions.length === 0) {
+        suggestions = [
+          "Cara convert", 
+          "Pilih format", 
+          "Trim audio", 
+          "Metadata", 
+          "Antrian", 
+          "Pengaturan"
+        ].slice(0, 4);
+    }
 
     return {
-      reply: aiReply,
+      reply,
       suggestions,
+      action,
+      params
     };
   } catch (error) {
     console.error("[Assistant] Groq API error:", error);
@@ -5706,6 +5823,10 @@ const convertSingle = async (payload = {}) => {
   emitProgress({ stage: "processing", message: "Memproses audio", percent: 82 });
 
   const audioProbe = await probeAudioStream(fullPath).catch(() => null);
+  // Calculate LUFS before conversion (for "Original" stats)
+  // Note: This might add some processing time
+  const audioInsightBefore = await probeAudioLoudness(fullPath).catch(() => null);
+  
   const detectedSampleRate = audioProbe?.sampleRate;
   const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
   const filters = buildAudioFilters({
@@ -5854,6 +5975,14 @@ const convertSingle = async (payload = {}) => {
 
   if (coverPath) try { await fsp.unlink(coverPath); } catch {}
 
+  const audioInsightAfter = await probeAudioLoudness(fullPath).catch(() => null);
+  const audioInsight = {
+    lufs: audioInsightAfter?.lufs ?? audioInsightBefore?.lufs,
+    peak: audioInsightAfter?.peak ?? audioInsightBefore?.peak,
+    dr: audioInsightAfter?.lra ?? audioInsightBefore?.lra,
+    targetLufs: normalize ? '-14 LUFS' : 'Original',
+  };
+
   const downloadUrl = `/public/jobs/${filename}`;
   const finalExt = ext;
   const downloadFileName = `${baseName}.${finalExt}`;
@@ -5900,6 +6029,39 @@ const convertSingle = async (payload = {}) => {
     emitProgress({ stage: "ringtone", message: "Ringtone siap", percent: 97 });
   }
 
+  // Handle Output Folder Management (Auto-save)
+  const outputDir = payload.outputDir ? String(payload.outputDir).trim() : null;
+  const organizeBy = payload.organizeBy ? String(payload.organizeBy).trim() : 'none';
+  let savedPath = null;
+
+  if (outputDir) {
+    try {
+      emitProgress({ stage: "saving", message: "Menyimpan ke folder tujuan", percent: 98 });
+      let targetDir = outputDir;
+      
+      // Sanitization helper
+      const sanitizeName = (name) => (name || 'Unknown').replace(/[<>:"/\\|?*]+/g, '_').trim();
+
+      if (organizeBy === 'artist') {
+        const artistName = sanitizeName(metadata?.artist || metadata?.author || 'Unknown Artist');
+        targetDir = join(outputDir, artistName);
+      } else if (organizeBy === 'playlist') {
+        const playlistName = sanitizeName(metadata?.playlist || metadata?.album || 'Unknown Playlist');
+        targetDir = join(outputDir, playlistName);
+      }
+
+      await fsp.mkdir(targetDir, { recursive: true });
+      const targetPath = join(targetDir, downloadFileName);
+      
+      // Copy instead of move to keep downloadUrl valid for browser
+      await fsp.copyFile(fullPath, targetPath);
+      savedPath = targetPath;
+      logs += `\n[Info] File saved to: ${targetPath}`;
+    } catch (err) {
+      logs += `\n[Warning] Gagal menyimpan ke folder output: ${err.message}`;
+    }
+  }
+
   const response = {
     ok: true,
     id,
@@ -5920,6 +6082,8 @@ const convertSingle = async (payload = {}) => {
     spotifyPreview: downloadResult?.source === "spotify-preview",
     metadata: metadataResponse,
     ringtones: ringtoneVariants,
+    audioInsight,
+    savedPath,
     progressId: progressId || null,
   };
   if (progressId) {
@@ -6312,13 +6476,13 @@ app.get("/api/referral-code", async (req, res) => {
 // ==== Assistant chat ====
 app.post("/api/assistant-chat", async (req, res) => {
   try {
-    const { prompt = "" } = req.body || {};
+    const { prompt = "", messages = [] } = req.body || {};
     const trimmed = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
     if (!trimmed) {
       return res.status(400).json({ error: "Prompt wajib diisi" });
     }
 
-    const responsePayload = await buildAssistantResponse(trimmed);
+    const responsePayload = await buildAssistantResponse(trimmed, messages);
     const user = await resolveRequestUser(req);
 
     return res.json(responsePayload);
