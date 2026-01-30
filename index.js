@@ -5472,7 +5472,9 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
     if (existsSync(COOKIES_PATH)) {
       scriptArgs.push(COOKIES_PATH);
     }
-    const py = spawn("python3", scriptArgs, { stdio: ["ignore", "pipe", "pipe"] });
+    
+    const pyCmd = process.platform === "win32" ? "python" : "python3";
+    const py = spawn(pyCmd, scriptArgs, { stdio: ["ignore", "pipe", "pipe"] });
 
     py.stdout.on("data", (d) => {
       const s = d.toString();
