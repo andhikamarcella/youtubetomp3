@@ -2259,23 +2259,33 @@ const probeAudioLoudness = async (inputPath) => {
     const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
     let stderr = "";
     proc.stderr.on("data", (d) => stderr += d.toString());
-    proc.on("error", () => resolve(null));
+    proc.on("error", (err) => {
+      console.error(`[Probe Error] Failed to spawn ffmpeg for ${inputPath}:`, err);
+      resolve(null);
+    });
     proc.on("close", (code) => {
       // Allow code 0 or generic error if we can parse stats
       // ffmpeg might exit with non-zero on some warnings but still output stats
       try {
         const iMatch = /Integrated loudness:\s+I:\s+([-\d\.]+)\s+LUFS/.exec(stderr);
-        const peakMatch = /True peak:\s+Peak:\s+([-\d\.]+)\s+dBTP/.exec(stderr);
+        const peakMatch = /True peak:\s+Peak:\s+([-\d\.]+)\s+(dBTP|dBFS)/.exec(stderr);
         const lraMatch = /Loudness range:\s+LRA:\s+([-\d\.]+)\s+LU/.exec(stderr);
         
-        if (!iMatch) return resolve(null);
+        if (!iMatch) {
+          console.log(`[Probe Warning] No loudness stats found for ${inputPath}`);
+          console.log('Stderr dump:', stderr.slice(-1000));
+          return resolve(null);
+        }
         
-        resolve({
+        const result = {
           lufs: parseFloat(iMatch[1]),
           peak: peakMatch ? parseFloat(peakMatch[1]) : null,
           lra: lraMatch ? parseFloat(lraMatch[1]) : null
-        });
-      } catch {
+        };
+        console.log(`[Probe Success] Analyzed ${inputPath}:`, JSON.stringify(result));
+        resolve(result);
+      } catch (e) {
+        console.error(`[Probe Exception] Error parsing output for ${inputPath}:`, e);
         resolve(null);
       }
     });
@@ -2288,7 +2298,7 @@ const generateWaveformData = async (inputPath, points = 100) => {
     "-nostats",
     "-i", inputPath,
     "-ac", "1",
-    "-filter:a", "aresample=20",
+    "-filter:a", "aresample=200",
     "-map", "0:a",
     "-c:a", "pcm_u8",
     "-f", "data",
@@ -3906,7 +3916,7 @@ const buildAudioFilters = ({
       filters.push("aresample=12000", "acrusher=bits=8:mode=log:mix=0.6");
     }
   }
-  if (normalize) filters.push("loudnorm");
+  if (normalize) filters.push("loudnorm=I=-14:TP=-1.5:LRA=11");
   return filters;
 };
 
@@ -5494,7 +5504,13 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
 
     py.on("close", async (code) => {
       if (code !== 0) {
-        const error = new Error("Downloader helper gagal");
+        const lines = pyLogs.trim().split(/\r?\n/);
+        const lastLines = lines.slice(-3).join('; ');
+        let msg = `Downloader helper gagal (Code: ${code}): ${lastLines}`;
+        if (/Sign in|cookies|restricted|private|confirm your age/i.test(pyLogs)) {
+             msg += " [HINT: Video mungkin dibatasi. Coba upload cookies terbaru di Admin Panel]";
+        }
+        const error = new Error(msg);
         error.logs = baseLogs + pyLogs;
         return reject(error);
       }
@@ -5621,6 +5637,7 @@ const convertSingle = async (payload = {}) => {
   const cacheKey = createHash("md5").update(JSON.stringify(cacheKeyPayload)).digest("hex");
   
   const cached = CacheStore.get(cacheKey);
+  /* Cache disabled for debugging Audio Insight
   if (cached && cached.fileName) {
      const cachedPath = join(process.cwd(), 'public/jobs', cached.fileName);
      if (existsSync(cachedPath)) {
@@ -5629,6 +5646,7 @@ const convertSingle = async (payload = {}) => {
         return { ...cached, isDuplicate: true, logs: cached.logs + '\n[Info] Retrieved from cache.' };
      }
   }
+  */
   // === END DUPLICATE DETECTOR ===
 
   if (metadata?.originalSource) {
@@ -7225,7 +7243,10 @@ app.post("/admin/login", (req, res) => {
 app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
   try {
     const auth = req.get("Authorization") || "";
-    if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
+    if (auth !== `Bearer ${BEARER}`) {
+      console.warn(`[Admin Auth Fail] Received: "${auth}" (len=${auth.length}), Expected: "Bearer ${BEARER.substring(0,3)}..." (len=${BEARER.length + 7})`);
+      return res.status(401).json({ error: "unauthorized" });
+    }
 
     await fsp.writeFile(COOKIES_PATH, req.body, "utf8");
     const stat = await fsp.stat(COOKIES_PATH);
