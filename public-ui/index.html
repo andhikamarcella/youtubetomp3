@@ -7554,7 +7554,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: text,
-          messages: historyToSend
+          messages: historyToSend,
+          clientState: {
+            preferences: state.preferences,
+            experience: state.experience,
+            mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced'
+          }
         }),
       });
       if (response.ok) {
@@ -7853,6 +7858,7 @@
       narratorEnabled: state.narratorEnabled,
       backgroundEmail: state.backgroundEmail,
       preferences: state.preferences,
+      assistantHistory: state.assistantHistory, // Save chat history
     });
   };
 
@@ -10013,6 +10019,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     const s = storage.load();
     state.backendUrl = s.backendUrl || '';
     state.adminBearer = s.adminBearer || '';
+    state.assistantHistory = Array.isArray(s.assistantHistory) ? s.assistantHistory : [];
     state.accessibility = { ...defaultAccessibility, ...(s.accessibility || {}) };
     state.experience = { ...defaultExperience, ...(s.experience || {}) };
     state.preferences = { ...defaultPreferences, ...(s.preferences || {}) };
