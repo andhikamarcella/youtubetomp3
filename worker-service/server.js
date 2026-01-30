@@ -280,7 +280,7 @@ async function processJob(jobId, jobOptions) {
 
     await ytDlp(normalizedUrl, {
       output: downloadTemplate,
-      format: 'bestaudio/best',
+      format: 'bestaudio/bestvideo+bestaudio/best',
       extractAudio: false,
       quiet: true,
       ...(cookiesPath ? { cookies: cookiesPath } : {}),
