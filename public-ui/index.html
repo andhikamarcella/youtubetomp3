@@ -12897,22 +12897,22 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (!input) return;
       input.addEventListener('input', () => {
           const val = input.value;
-          if (!val) return;
+          if (!val) {
+              input.classList.remove('is-invalid');
+              return;
+          }
           
-          // Allow empty or partial typing? No, "bukan text".
-          // But if they type "h", it's text. Hard to prevent typing.
-          // Better to validate on paste or blur?
-          // "typefieldnya itu khusus link yt aja... bukan text"
-          // If I block typing, they can't type a URL.
-          // I will validate patterns.
-          
+          const isAdmin = isAdminLoggedIn();
+          if (isAdmin) {
+             input.classList.remove('is-invalid');
+             return;
+          }
+
           const isUrl = /^(https?:\/\/)/i.test(val);
           const allowed = /youtube\.com|youtu\.be|spotify\.com|soundcloud\.com/i.test(val);
           
           if (val.length > 8 && (!isUrl || !allowed)) {
-              // Show warning state?
               input.classList.add('is-invalid');
-              // Optional: Toast? Too annoying on every keystroke.
           } else {
               input.classList.remove('is-invalid');
           }
@@ -12920,7 +12920,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       
       input.addEventListener('change', () => {
           const val = input.value;
-          if (val && !/youtube\.com|youtu\.be|spotify\.com|soundcloud\.com/i.test(val)) {
+          const isAdmin = isAdminLoggedIn();
+          if (!isAdmin && val && !/youtube\.com|youtu\.be|spotify\.com|soundcloud\.com/i.test(val)) {
               setToast('Hanya link YouTube, Spotify, atau SoundCloud yang valid');
               input.value = ''; // Clear invalid input
           }
