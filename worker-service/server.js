@@ -30,7 +30,7 @@ if (!workerSecret) {
 const selfUrl = process.env.SELF_URL ?? '';
 const normalizedSelfUrl = selfUrl.replace(/\/$/, '');
 
-const COOKIES_PATH = process.env.WORKER_COOKIES_PATH || '/tmp/cookies.txt';
+const COOKIES_PATH = process.env.WORKER_COOKIES_PATH || path.join(process.cwd(), 'cookies.txt');
 const COOKIES_SYNC_URL = process.env.WORKER_COOKIES_SYNC_URL || '';
 const COOKIES_SYNC_TOKEN = process.env.WORKER_COOKIES_SYNC_TOKEN || '';
 const COOKIES_REFRESH_INTERVAL_MS = Number.parseInt(
