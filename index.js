@@ -5362,7 +5362,7 @@ const downloadSpotifyPreview = async ({ previewUrl, id }) => {
   };
 };
 
-const COOKIES_PATH = "/tmp/cookies.txt"; // endpoint admin di bawah akan nulis ke sini
+const COOKIES_PATH = join(__dirname, "cookies.txt"); // endpoint admin di bawah akan nulis ke sini
 
 const parseEtaString = (value = "") => {
   const text = String(value || "").trim();
@@ -5399,7 +5399,10 @@ const parseYtDlpProgressLine = (line = "") => {
 
 const runYtDlpDownload = ({ args, id, onProgress }) =>
   new Promise((resolve, reject) => {
-    const proc = spawn("yt-dlp", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const isWin = process.platform === "win32";
+    const cmd = isWin ? "python" : "yt-dlp";
+    const spawnArgs = isWin ? ["-m", "yt_dlp", ...args] : args;
+    const proc = spawn(cmd, spawnArgs, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     let stdoutBuffer = "";
     const handleLine = (line) => {
