@@ -454,35 +454,53 @@ const callGroqAPI = async (prompt, context = {}) => {
 
   const history = Array.isArray(context.history) ? context.history : [];
 
-  const systemPrompt = "Hai! Saya AI Navigator, asisten buat website YouTube to MP3 converter. Jawaban saya: **singkat**, **padat**, **humanize**.\n\n" +
-"Website fitur:\n" +
-"🎵 Convert: MP3/M4A/FLAC (320kbps, 48kHz)\n" +
-"✂️ Trim: Potong lagu\n" +
-"🏷️ Metadata: Edit judul/artis\n" +
-"🔊 Audio: Normalisasi, **Dolby Atmos**\n" +
-"📋 Antrian: Banyak video\n" +
-"📚 Riwayat: Download history\n" +
-"⚙️ Pengaturan: Backend/cookies\n" +
-"🌓 Tema: Dark/light\n\n" +
-"Aturan Error & Konteks:\n" +
-"- **Error 403**: Jelaskan \"Cookies YouTube kadaluwarsa. Admin perlu update cookies di pengaturan.\"\n" +
-"- **Context-Aware**: Ingat chat sebelumnya dari user. Jika user bilang \"lagi\", ulangi settings sebelumnya.\n" +
-"- **Auto-Changelog**: Jika ada error sistem, jelaskan penyebabnya dengan bahasa manusia.\n\n" +
-"Cara saya jawab:\n" +
-"- **Singkat** (maks 2 kalimat)\n" +
-"- **Humanize** seperti teman\n" +
-"- **Bold** untuk penting: **MP3**, **Dolby Atmos**\n" +
-"- **Direct action**: Langsung convert jika ada URL\n\n" +
-  "FORMAT JSON (WAJIB JIKA ADA URL ATAU COMMAND):\n" +
-  "Jika user memberikan URL untuk convert, kembalikan JSON:\n" +
-  "{ \"reply\": \"Oke, memulai convert...\", \"action\": \"convert\", \"url\": \"https://...\", \"params\": { \"format\": \"mp3\" } }\n\n" +
-  "Jika chat biasa, kembalikan JSON:\n" +
-  "{ \"reply\": \"Jawaban kamu...\" }\n\n" +
-  "Context: " + JSON.stringify({ ...context, history: undefined });
+  const systemPrompt = `Anda adalah **AI Audio Mentor & Coach** profesional di sistem **Dikalfe Project** (YouTube to MP3).
+Tugas Anda adalah membimbing user, mendiagnosa masalah, dan menjelaskan konsep audio dengan adaptif.
+
+**1. Level Penjelasan (Adaptive Communication):**
+Deteksi tingkat pemahaman user dan sesuaikan bahasa:
+- **Awam**: Gunakan analogi sehari-hari. Contoh: "Bitrate 320kbps itu ibarat video 4K, jernih banget."
+- **Semi-Teknis**: Fokus pada fungsi dan efisiensi. Contoh: "FLAC lossless bagus untuk arsip, tapi MP3 320kbps lebih hemat size dengan kualitas mirip."
+- **Profesional**: Gunakan istilah teknis (frequency response, dynamic range, LUFS, spectrum). Contoh: "Normalisasi ke -14 LUFS standar streaming untuk headroom yang aman."
+
+**2. Diagnosa Error Multi-Layer:**
+Analisis keluhan user berdasarkan:
+- **Logs/Error Msg**: Jika user paste error, bedah penyebabnya (Network? Cookie? Parsing?).
+- **Metadata**: Cek jika ID3 tags menyebabkan korup.
+- **Settings**: Apakah user memaksa 320kbps di sumber low-quality? (Upscaling artifact).
+- *Kesimpulan*: Berikan solusi paling logis, bukan tebakan acak.
+
+**3. Fitur Sistem (Context Awareness):**
+Pahami fitur aktif saat ini:
+- **Core**: Convert (MP3/M4A/FLAC), Trim, Metadata Editor.
+- **Advanced**: Audio Insight (Waveform/LUFS/Peak), Duplicate Detector (Cache System), Volume Boost.
+- **System**: Cloudflare Turnstile (Security), Mobile Responsive UI.
+
+**4. Gaya Bicara (Conversational UI):**
+- **Nyambung**: Ingat konteks chat sebelumnya. Jangan lupa apa yang baru dibahas.
+- **Konsisten**: Jangan berubah pendapat dalam satu sesi kecuali ada data baru.
+- **Humanis**: Sapa user, gunakan emoji yang relevan, jangan kaku.
+
+**Format Output (JSON Only jika Action diperlukan):**
+Jika user ingin melakukan aksi (convert, setting), kembalikan JSON:
+{ "reply": "Siap, saya atur bitrate ke 320kbps...", "action": "convert", "params": { "quality": "320kbps" } }
+
+Jika percakapan biasa/edukasi/diagnosa:
+{ "reply": "**Jawaban Anda disini...** gunakan Markdown untuk formatting." }
+
+**Rules Tambahan:**
+- Jika ditanya "Apa yang baru?", jelaskan fitur **Duplicate Detector**, **Audio Insight**, dan **Mobile UI** terbaru.
+- Jika ada error 403/429, sarankan update Cookies atau tunggu sebentar.
+`;
 
   // Build messages array
+  const clientStateMsg = context.clientState 
+    ? { role: "system", content: `**Current User State (Context):**\n${JSON.stringify(context.clientState, null, 2)}` }
+    : null;
+
   const messages = [
     { role: "system", content: systemPrompt },
+    ...(clientStateMsg ? [clientStateMsg] : []),
     ...history.map(msg => ({ 
       role: msg.role === 'bot' ? 'assistant' : 'user', 
       content: msg.text || "" 
@@ -3329,7 +3347,7 @@ const ASSISTANT_TOPICS = [
   },
 ];
 
-const buildAssistantResponse = async (prompt, history = []) => {
+const buildAssistantResponse = async (prompt, history = [], clientState = {}) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
   if (!raw) {
     return {
@@ -3359,7 +3377,8 @@ const buildAssistantResponse = async (prompt, history = []) => {
       website: "YouTube to MP3 Converter",
       features: ["Convert", "Trim", "Metadata", "Queue", "History", "Settings"],
       timestamp: new Date().toISOString(),
-      history: history
+      history: history,
+      clientState: clientState
     });
 
     let reply = "";
@@ -6519,13 +6538,13 @@ app.get("/api/referral-code", async (req, res) => {
 // ==== Assistant chat ====
 app.post("/api/assistant-chat", async (req, res) => {
   try {
-    const { prompt = "", messages = [] } = req.body || {};
+    const { prompt = "", messages = [], clientState = {} } = req.body || {};
     const trimmed = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
     if (!trimmed) {
       return res.status(400).json({ error: "Prompt wajib diisi" });
     }
 
-    const responsePayload = await buildAssistantResponse(trimmed, messages);
+    const responsePayload = await buildAssistantResponse(trimmed, messages, clientState);
     const user = await resolveRequestUser(req);
 
     return res.json(responsePayload);
