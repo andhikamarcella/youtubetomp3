@@ -6260,12 +6260,17 @@
     }
     if (!window.google?.accounts?.id) {
       if (!state.auth.googlePollTimer) {
-        state.auth.googlePollTimer = window.setInterval(() => {
-          if (window.google?.accounts?.id) {
-            clearGooglePollTimer();
-            ensureGoogleButton();
-          }
-        }, 500);
+        let googlePollAttempts = 0;
+      state.auth.googlePollTimer = window.setInterval(() => {
+        googlePollAttempts++;
+        if (window.google?.accounts?.id) {
+          clearGooglePollTimer();
+          ensureGoogleButton();
+        } else if (googlePollAttempts > 60) { // Stop after ~30 seconds
+          clearGooglePollTimer();
+          // Optional: fallback if Google fails to load
+        }
+      }, 500);
       }
       if (!state.auth.googleFallbackTimeout) {
         state.auth.googleFallbackTimeout = window.setTimeout(() => {
@@ -13328,12 +13333,23 @@ $('#queueList')?.addEventListener('click', (e) => {
         });
       }
 
+      // Admin Login Form - Prevent Auto Submit/Refresh
+      const adminForm = document.getElementById('adminLoginForm');
+      if (adminForm) {
+        adminForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          // Logic login admin akan ditambahkan nanti
+          setToast('Fitur login admin belum diaktifkan.');
+        });
+      }
+
       // Reset Mode Button
       const btnResetMode = document.getElementById('resetModePrefBtn');
       if(btnResetMode) {
         btnResetMode.addEventListener('click', () => {
           localStorage.removeItem(modeKey);
-          location.reload(); 
+          setMode('basic');
+          setToast('Mode direset ke Basic');
         });
       }
 
