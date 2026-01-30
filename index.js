@@ -40,6 +40,7 @@ import {
   claimCheatForUser,
   recordXpEventForUser,
 } from "./user_store.js";
+import { CacheStore } from "./lib/cache_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
 try {
@@ -5552,6 +5553,36 @@ const convertSingle = async (payload = {}) => {
 
   emitProgress({ stage: "metadata", message: "Metadata siap", percent: 12 });
 
+  // === DUPLICATE DETECTOR / CACHE CHECK ===
+  const cacheKeyPayload = {
+    videoId: metadata?.id || metadata?.videoId || url,
+    format,
+    abr,
+    sampleRate,
+    trim,
+    normalize,
+    atmos,
+    speedMode,
+    denoise,
+    volumeBoost,
+    enhancer,
+    soundEffect,
+    smartResume,
+    videoQuality: videoQualityPreference
+  };
+  const cacheKey = createHash("md5").update(JSON.stringify(cacheKeyPayload)).digest("hex");
+  
+  const cached = CacheStore.get(cacheKey);
+  if (cached && cached.fileName) {
+     const cachedPath = join(process.cwd(), 'public/jobs', cached.fileName);
+     if (existsSync(cachedPath)) {
+        emitProgress({ stage: "encoding", message: "Mengambil dari cache", percent: 100 });
+        // Return cached result with duplicate flag
+        return { ...cached, isDuplicate: true, logs: cached.logs + '\n[Info] Retrieved from cache.' };
+     }
+  }
+  // === END DUPLICATE DETECTOR ===
+
   if (metadata?.originalSource) {
     originalSource = originalSource
       ? { ...originalSource, ...metadata.originalSource }
@@ -5826,6 +5857,9 @@ const convertSingle = async (payload = {}) => {
   // Calculate LUFS before conversion (for "Original" stats)
   // Note: This might add some processing time
   const audioInsightBefore = await probeAudioLoudness(fullPath).catch(() => null);
+  if (audioInsightBefore) {
+    audioInsightBefore.waveform = await generateWaveformData(fullPath).catch(() => []);
+  }
   
   const detectedSampleRate = audioProbe?.sampleRate;
   const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
@@ -5976,7 +6010,13 @@ const convertSingle = async (payload = {}) => {
   if (coverPath) try { await fsp.unlink(coverPath); } catch {}
 
   const audioInsightAfter = await probeAudioLoudness(fullPath).catch(() => null);
+  if (audioInsightAfter) {
+    audioInsightAfter.waveform = await generateWaveformData(fullPath).catch(() => []);
+  }
+  
   const audioInsight = {
+    before: audioInsightBefore || null,
+    after: audioInsightAfter || null,
     lufs: audioInsightAfter?.lufs ?? audioInsightBefore?.lufs,
     peak: audioInsightAfter?.peak ?? audioInsightBefore?.peak,
     dr: audioInsightAfter?.lra ?? audioInsightBefore?.lra,
@@ -6086,6 +6126,9 @@ const convertSingle = async (payload = {}) => {
     savedPath,
     progressId: progressId || null,
   };
+  
+  CacheStore.set(cacheKey, response);
+  
   if (progressId) {
     finalizeProgress("complete", { message: "Konversi selesai" });
   }
