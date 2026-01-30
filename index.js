@@ -1092,19 +1092,27 @@ const clearProgress = (id) => {
   convertProgressMap.delete(id);
 };
 
-const runCommandCapture = (command, args = []) =>
+const runCommandCapture = (command, args = [], timeoutMs = 5000) =>
   new Promise((resolve, reject) => {
     try {
       const proc = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
       let stdout = "";
       let stderr = "";
+      
+      const timer = setTimeout(() => {
+        proc.kill();
+        reject(new Error("Command timed out"));
+      }, timeoutMs);
+
       proc.stdout.on("data", (d) => { stdout += d.toString(); });
       proc.stderr.on("data", (d) => { stderr += d.toString(); });
       proc.on("error", (err) => {
+        clearTimeout(timer);
         err.stderr = stderr;
         reject(err);
       });
       proc.on("close", (code) => {
+        clearTimeout(timer);
         if (code !== 0) {
           const error = new Error(`command exited with code ${code}`);
           error.code = code;
@@ -1175,8 +1183,13 @@ const detectFfmpegVersion = async () => {
 
 const fetchGithubLatestTag = async (repo) => {
   const headers = { "User-Agent": "youtubetomp3-update-checker" };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const releaseResp = await safeFetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers });
+    const releaseResp = await safeFetch(`https://api.github.com/repos/${repo}/releases/latest`, { 
+      headers,
+      signal: controller.signal 
+    });
     if (releaseResp?.ok) {
       const json = await releaseResp.json().catch(() => null);
       const tag = json?.tag_name || json?.name;
@@ -1185,15 +1198,25 @@ const fetchGithubLatestTag = async (repo) => {
     if (releaseResp?.status && releaseResp.status !== 404) {
       return null;
     }
-  } catch {}
+  } catch {} finally {
+    clearTimeout(timeout);
+  }
+  
+  const controllerTags = new AbortController();
+  const timeoutTags = setTimeout(() => controllerTags.abort(), 5000);
   try {
-    const tagsResp = await safeFetch(`https://api.github.com/repos/${repo}/tags?per_page=1`, { headers });
+    const tagsResp = await safeFetch(`https://api.github.com/repos/${repo}/tags?per_page=1`, { 
+      headers,
+      signal: controllerTags.signal
+    });
     if (!tagsResp?.ok) return null;
     const tags = await tagsResp.json().catch(() => []);
     const first = Array.isArray(tags) ? tags[0] : null;
     return first?.name ? String(first.name).trim() : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeoutTags);
   }
 };
 
@@ -5587,7 +5610,8 @@ const convertSingle = async (payload = {}) => {
     enhancer,
     soundEffect,
     smartResume,
-    videoQuality: videoQualityPreference
+    videoQuality: videoQualityPreference,
+    id3: id3 || {} // Include metadata in cache key to distinguish custom tags
   };
   const cacheKey = createHash("md5").update(JSON.stringify(cacheKeyPayload)).digest("hex");
   
