@@ -16241,20 +16241,15 @@ $('#queueList')?.addEventListener('click', (e) => {
                     id: user.uid,
                     name: user.displayName,
                     avatar: user.photoURL,
-                    email: user.email // Store email too
+                    email: user.email
                 };
                 
-                // 1. Update Global State / LocalStorage immediately
+                // Update UI immediately
                 window.currentUser = googleSummary;
                 if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
                 
-                // 2. Switch to Shadow Account for Firestore Access
-                // We pass the Google Info so the shadow profile can be updated to match
-                // Don't await this to block UI, let it happen in background
-                ensureShadowAccount(googleSummary).catch(e => console.error("Shadow Account Setup Failed", e));
-                
-                // Optional: Show success toast
-                // alert("Login Chat Berhasil!");
+                // NO Shadow Account - Use Direct Google Auth
+                // This ensures the user appears in Firebase Console correctly
             }
         }).catch((error) => {
             console.error("Firebase Auth: Redirect Login Error", error);
@@ -16456,32 +16451,17 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (user) {
             console.log("Firebase Auth State: Logged In", user.uid, user.email);
             
-            // Check if this is a Shadow Account (has specific domain)
-            const isShadow = user.email && user.email.endsWith('@forum-warga.temp');
-            
-            // Use existing global user (from Google Login) if available, 
-            // otherwise use the Firebase User (which might be the Shadow one masquerading)
-            // Ideally, we want the Google Info.
-            
+            // Standard User Summary
             const userSummary = {
-                id: user.uid, // This will be shadow ID if shadow logged in
+                id: user.uid,
                 name: user.displayName || 'Warga',
                 avatar: user.photoURL || ''
             };
             
-            // If we have a cached Google User (from Redirect), prefer its ID/Name/Avatar for UI display
-            // BUT, for sendMessage, we might want the Shadow UID or Google Name.
-            // Let's rely on window.currentUser if it's "better" (has Google ID).
+            // Just use the logged in user
+            window.currentUser = userSummary;
+            if (window.updateForumAuthUI) window.updateForumAuthUI(userSummary);
             
-            if (window.currentUser && window.currentUser.email && !window.currentUser.email.endsWith('@forum-warga.temp')) {
-                 // Keep the Google Identity in UI
-                 console.log("Maintaining Google Identity in UI despite Shadow Auth");
-                 if (window.updateForumAuthUI) window.updateForumAuthUI(window.currentUser);
-            } else {
-                 // Fallback to what we have (e.g. fresh load with persistent shadow session)
-                 window.currentUser = userSummary;
-                 if (window.updateForumAuthUI) window.updateForumAuthUI(userSummary);
-            }
         } else {
             console.log("Firebase Auth State: Logged Out");
             window.updateForumAuthUI(null);
