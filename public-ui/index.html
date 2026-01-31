@@ -117,31 +117,30 @@
     }
 
     /* Forum Chat Overrides */
-    #forumChatArea {
-      background-color: #e5ddd5;
-      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
-      scrollbar-width: thin;
-    }
-    [data-bs-theme="dark"] #forumChatArea {
-      background-color: #0b141a;
-      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230b141a"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.02)"/></svg>');
-    }
+  #forumChatArea {
+    background-color: #e5ddd5;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
+    scrollbar-width: thin;
+  }
+  [data-bs-theme="dark"] #forumChatArea {
+    background-color: #0b141a;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230b141a"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.02)"/></svg>');
+  }
 
-    .message.admin .message-bubble {
-      border-radius: 0 12px 12px 12px;
-      border: 2px solid transparent;
-      background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8);
-      background-origin: border-box;
-      background-clip: padding-box, border-box;
-      color: #111b21;
-      box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
-    }
-    
-    [data-bs-theme="dark"] .message.admin .message-bubble {
-      background-image: linear-gradient(#202c33, #202c33), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8);
-      color: #e9edef;
-      box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
-    }
+  .message.admin .message-bubble {
+    border-radius: 0 12px 12px 12px;
+    border: 1px solid rgba(0,0,0,0.1);
+    background-color: #ffffff;
+    color: #111b21;
+    box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+  }
+  
+  [data-bs-theme="dark"] .message.admin .message-bubble {
+    background-color: #202c33;
+    border-color: rgba(255,255,255,0.1);
+    color: #e9edef;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
+  }
     
     /* Assistant & Chat Styles */
     .assistant-fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 1100; display: grid; gap: .5rem; justify-items: end; }
@@ -2926,7 +2925,14 @@
                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
                <div class="message-bubble">
                   <div class="small fw-bold text-primary mb-1">Admin <i class="bi bi-patch-check-fill"></i></div>
-                  <div class="small">Selamat datang di Forum Warga! Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
+                  <div class="small">Selamat datang di Forum Warga!
+<br><br>
+<b>Rules:</b>
+<br>1. Dilarang SARA & Spam.
+<br>2. Gunakan bahasa sopan.
+<br>3. Hormati sesama warga.
+<br><br>
+Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
                   <div class="text-end text-body-tertiary mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
                     <i class="bi bi-pin-angle-fill"></i> Pinned
                   </div>
@@ -15933,6 +15939,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     const firebaseConfig = { 
       apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo", 
       authDomain: "forum-warga.firebaseapp.com", 
+      databaseURL: "https://forum-warga-default-rtdb.firebaseio.com",
       projectId: "forum-warga", 
       storageBucket: "forum-warga.firebasestorage.app", 
       messagingSenderId: "317910503290", 
@@ -15949,6 +15956,31 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose to window for global access
     window.firebaseApp = app;
     window.firebaseAnalytics = analytics;
+
+    // Check for existing session immediately to avoid "Me" appearing as "Other"
+    try {
+        const cachedSession = localStorage.getItem('userSession'); // Assuming app uses this key
+        if (cachedSession) {
+             // In main app logic, userSession is usually { token: ..., user: ... } or just user object?
+             // Let's try to parse
+             const session = JSON.parse(cachedSession);
+             // Note: Main app stores user summary in 'ytmp3.auth.summary' or similar?
+             // Let's check 'ytmp3.settings.v1' if that's where state is.
+             // Actually, the main app logic uses `persistAuthToken` and `persistCachedUserSummary`.
+             // `persistCachedUserSummary` saves to `ytmp3.user.summary`.
+             const userSummary = localStorage.getItem('ytmp3.user.summary');
+             if (userSummary) {
+                 const u = JSON.parse(userSummary);
+                 window.currentUser = {
+                     id: u.id || u.email,
+                     name: u.name,
+                     avatar: u.avatar
+                 };
+             }
+        }
+    } catch (e) {
+        console.warn('Failed to restore chat session', e);
+    }
 
     // Chat Logic
     const chatArea = document.getElementById('forumChatArea');
