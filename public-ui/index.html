@@ -763,7 +763,8 @@
       "imports": {
         "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
         "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
       }
     }
   </script>
@@ -2952,7 +2953,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
         </div>
         <div class="modal-footer bg-body-tertiary border-top-0 p-3">
           <div class="input-group">
-            <input type="text" id="forumInput" class="form-control rounded-start-pill bg-light border-0 ps-3" placeholder="Tulis pesan..." disabled autocomplete="off">
+            <input type="text" id="forumInput" class="form-control rounded-start-pill bg-light border-0 ps-3 text-dark" style="color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
             <button class="btn btn-primary rounded-end-pill px-4" type="button" id="forumSendBtn" disabled><i class="bi bi-send-fill"></i></button>
           </div>
         </div>
@@ -16105,6 +16106,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Import the functions you need from the SDKs you need 
     import { initializeApp } from "firebase/app"; 
     import { getAnalytics } from "firebase/analytics"; 
+    import { getAuth, signInAnonymously } from "firebase/auth";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
 
     // Your web app's Firebase configuration 
@@ -16122,6 +16124,13 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Initialize Firebase 
     const app = initializeApp(firebaseConfig); 
     const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    
+    // Sign in anonymously to allow Firestore access
+    signInAnonymously(auth).catch((error) => {
+        console.error("Firebase Auth Error:", error);
+    });
+
     const db = getFirestore(app);
     const messagesRef = collection(db, 'forum-messages');
     
@@ -16210,7 +16219,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         // Content
         bubble.innerHTML = `
             <div class="small fw-bold ${isMe ? 'text-dark' : 'text-primary'} mb-1">${msg.name || 'Warga'}</div>
-            <div class="small text-break" style="min-width: 120px;">${msg.text}</div>
+            <div class="small text-break ${isMe ? 'text-dark' : ''}" style="min-width: 120px;">${msg.text}</div>
             <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">
                 ${formatTime(msg.timestamp)}
             </div>
