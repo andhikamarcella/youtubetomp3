@@ -51,6 +51,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   </noscript>
   <style>
+    /* iOS Emoji Support & Font Stack */
+    @font-face {
+      font-family: "Apple Color Emoji";
+      src: local("Apple Color Emoji");
+      unicode-range: U+1F000-1F644, U+203C-3299;
+    }
+    :root {
+      --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body, .message-bubble, .emoji-picker {
+      font-family: var(--bs-font-sans-serif) !important;
+    }
+
     @font-face {
       font-family: "bootstrap-icons";
       src: url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2") format("woff2");
@@ -16900,14 +16913,21 @@ $('#queueList')?.addEventListener('click', (e) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 currentImageBase64 = ev.target.result;
-                // Show preview
+                // Show preview with WhatsApp-like quote style
                 previewContainer.classList.remove('d-none');
                 previewContainer.innerHTML = `
-                    <div class="preview-item d-flex align-items-center justify-content-center bg-body-tertiary">
-                        <img src="${currentImageBase64}">
-                        <button class="btn-remove shadow-sm" onclick="clearForumImage()"><i class="bi bi-x"></i></button>
+                    <div class="d-flex align-items-center p-2 rounded-3 bg-body-secondary border-start border-4 border-success position-relative w-100">
+                        <div class="flex-shrink-0 rounded overflow-hidden shadow-sm" style="width: 50px; height: 50px;">
+                            <img src="${currentImageBase64}" class="w-100 h-100 object-fit-cover">
+                        </div>
+                        <div class="ms-3 flex-grow-1 overflow-hidden">
+                            <div class="small fw-bold text-success mb-0"><i class="bi bi-image me-1"></i>Gambar</div>
+                            <div class="small text-body-secondary text-truncate">Siap untuk dikirim</div>
+                        </div>
+                        <button class="btn btn-sm btn-light rounded-circle shadow-sm border ms-2" onclick="clearForumImage()" style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-x"></i>
+                        </button>
                     </div>
-                    <div class="small text-secondary ms-2 align-self-center fst-italic">Gambar akan dikirim...</div>
                 `;
             };
             reader.readAsDataURL(file);
