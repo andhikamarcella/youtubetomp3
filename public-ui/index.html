@@ -16112,7 +16112,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Import the functions you need from the SDKs you need 
     import { initializeApp } from "firebase/app"; 
     import { getAnalytics } from "firebase/analytics"; 
-    import { getAuth, GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+    import { 
+        getAuth, 
+        GoogleAuthProvider, 
+        signInWithCredential, 
+        signInAnonymously,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        updateProfile,
+        browserLocalPersistence,
+        setPersistence
+    } from "firebase/auth";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
 
     // Your web app's Firebase configuration 
@@ -16131,17 +16141,95 @@ $('#queueList')?.addEventListener('click', (e) => {
     const analytics = getAnalytics(app);
     const auth = getAuth(app);
     
+    // Set persistence to LOCAL so the shadow user stays logged in
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
+
     // Expose auth to window for debugging
     window.firebaseAuth = auth;
 
+    // Helper: Create or Login Shadow Account
+    async function ensureShadowAccount(googleUser) {
+        // Deterministic but secure-ish credentials for this specific device/user combo
+        // We can't generate deterministic password from Google Token (it changes), 
+        // so we generate a random one and store it.
+        const shadowKey = 'ytmp3.firebase.shadow_cred';
+        let cred = localStorage.getItem(shadowKey);
+        let email, password;
+
+        if (cred) {
+            try {
+                const parsed = JSON.parse(cred);
+                email = parsed.email;
+                password = parsed.password;
+            } catch { cred = null; }
+        }
+
+        if (!cred) {
+            // Create new shadow credentials
+            const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            email = `user_${randomId}@forum-warga.temp`;
+            password = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "Strong!1";
+            localStorage.setItem(shadowKey, JSON.stringify({ email, password }));
+        }
+
+        try {
+            // Try signing in
+            await signInWithEmailAndPassword(auth, email, password);
+            console.log("Firebase Auth: Signed in with Shadow Account (Email/Pass)");
+        } catch (error) {
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                // User doesn't exist, create it
+                try {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    console.log("Firebase Auth: Created and signed in Shadow Account");
+                } catch (createError) {
+                    console.error("Firebase Auth: Failed to create Shadow Account", createError);
+                    throw createError;
+                }
+            } else {
+                console.error("Firebase Auth: Shadow Login Error", error);
+                throw error;
+            }
+        }
+
+        // Update profile to match Google User if provided
+        if (auth.currentUser && googleUser) {
+            try {
+                await updateProfile(auth.currentUser, {
+                    displayName: googleUser.name,
+                    photoURL: googleUser.picture || googleUser.avatar
+                });
+            } catch (e) { console.warn("Failed to update shadow profile", e); }
+        }
+    }
+
     // Global function to sign in to Firebase with Google Credential
     window.firebaseSignInWithGoogle = async (idToken) => {
+        // Try Standard Google Auth first (in case config is fixed later)
         try {
             const credential = GoogleAuthProvider.credential(idToken);
             await signInWithCredential(auth, credential);
-            console.log("Firebase Auth: Signed in with Google");
+            console.log("Firebase Auth: Signed in with Google Credential (Standard)");
+            return;
         } catch (error) {
-            console.error("Firebase Auth Error:", error);
+            console.warn("Firebase Auth: Standard Google Auth failed (likely cross-project issue). Falling back to Shadow Account.", error.code);
+            
+            // Fallback: Shadow Account Strategy
+            // We need to decode the token to get user info for the profile
+            try {
+                 const payload = JSON.parse(atob(idToken.split('.')[1]));
+                 await ensureShadowAccount(payload);
+            } catch (shadowError) {
+                console.error("Firebase Auth: All login methods failed.", shadowError);
+                
+                // Last resort: Anonymous (if enabled by admin)
+                try {
+                    await signInAnonymously(auth);
+                    console.log("Firebase Auth: Signed in Anonymously (Last Resort)");
+                } catch (anonError) {
+                    console.error("Firebase Auth: Anonymous login also failed.", anonError);
+                }
+            }
         }
     };
 
