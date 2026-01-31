@@ -4575,7 +4575,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     return found;
   };
 
-  // DELEGATED NAVIGATION HANDLER (Fix for Mobile/Offcanvas issues)
+  // DELEGATED NAVIGATION HANDLER (Fix for Mobile/Offcanvas issues + URL Hash)
   // Replaces all individual event listeners to ensure robust handling
   document.addEventListener('click', (e) => {
     // 1. Check if clicked element is a navigation button (or inside one)
@@ -4593,6 +4593,13 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
 
     // 3. Execute Navigation Logic
     const success = setActiveSection(target);
+    
+    // Update URL Hash for bookmarking/refresh
+    if (success) {
+        // Use replaceState to avoid cluttering history if needed, or hash assign
+        // window.location.hash = target; 
+        history.pushState(null, null, `#${target}`);
+    }
     
     // 4. Handle Mobile Offcanvas (Force Close)
     // Only if navigation was successful or we just want to close the menu anyway
@@ -4628,16 +4635,41 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   openProfileButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       setActiveSection('profile');
+      history.pushState(null, null, '#profile');
       updateAvatarUi();
     });
   });
 
   openExperienceButtons.forEach((btn) => {
-    btn.addEventListener('click', () => setActiveSection('experience'));
+    btn.addEventListener('click', () => {
+        setActiveSection('experience');
+        history.pushState(null, null, '#experience');
+    });
   });
 
-  const savedSection = localStorage.getItem('app:activeSection');
-  if (!setActiveSection(savedSection)) setActiveSection('converter');
+  // INITIALIZATION: Priority Hash > LocalStorage > Default
+  const getInitialSection = () => {
+      // 1. Check URL Hash
+      const hash = window.location.hash.substring(1); // remove #
+      if (hash && ['converter', 'experience', 'faq', 'saweria', 'profile'].includes(hash)) {
+          return hash;
+      }
+      // 2. Check LocalStorage
+      const saved = localStorage.getItem('app:activeSection');
+      if (saved) return saved;
+      
+      // 3. Default
+      return 'converter';
+  };
+
+  const initialSection = getInitialSection();
+  if (!setActiveSection(initialSection)) setActiveSection('converter');
+
+  // Listen for manual hash changes (Back/Forward button)
+  window.addEventListener('hashchange', () => {
+      const hash = window.location.hash.substring(1);
+      if (hash) setActiveSection(hash);
+  });
 
   setTimeout(() => { tryPrefillClipboard({ forceToast: false, overrideExisting: false }); }, 600);
   window.addEventListener('focus', () => { tryPrefillClipboard({ forceToast: false, overrideExisting: false }); });
