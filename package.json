@@ -6,11 +6,11 @@
     "migrate:xp": "node scripts/migrate_xp_events.js"
   },
   "dependencies": {
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "nanoid": "^5.1.5",
     "nodemailer": "^6.9.15"
-    "cloudinary": "^2.9.0"
   },
   "version": "1.0.0",
   "description": "",
