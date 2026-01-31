@@ -3287,12 +3287,12 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
              <li><a href="#" class="text-decoration-none text-secondary hover-primary" onclick="showShortcutHints()">Shortcut Keyboard</a></li>
            </ul>
            <div class="mt-3">
-             <a href="https://wa.me/6281234567890?text=Halo%20Admin%2C%20saya%20mau%20lapor%20masalah%20di%20YouTube%20To%20MP3..." target="_blank" class="btn btn-sm btn-outline-success rounded-pill me-1">
+             <a href="https://api.whatsapp.com/send/?phone=6285163207556&text=Halo+Admin%2C+saya+mau+lapor+masalah+di+YouTube+To+MP3...&type=phone_number&app_absent=0" target="_blank" class="btn btn-sm btn-outline-success rounded-pill me-1">
                <i class="bi bi-whatsapp"></i> Lapor
              </a>
-             <a href="mailto:support@dikalfe.com?subject=Laporan%20Masalah%20YouTube%20To%20MP3" class="btn btn-sm btn-outline-secondary rounded-pill">
+             <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#emailModal">
                <i class="bi bi-envelope"></i> Email
-             </a>
+             </button>
            </div>
         </div>
       </div>
@@ -16121,13 +16121,12 @@ $('#queueList')?.addEventListener('click', (e) => {
               </div>
            </div>
            <h4 class="fw-bold mb-2 title-mono">YouTube to MP3</h4>
-           <div class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill mb-3">v2.5.0 Codex</div>
+           <div class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill mb-3">v2.5.0</div>
            <p class="text-secondary mb-4">
               Platform konversi media modern dengan teknologi AI-Enhanced. Cepat, aman, dan dirancang untuk pengalaman terbaik.
            </p>
            <div class="d-flex justify-content-center gap-2">
-              <a href="#" class="btn btn-sm btn-dark rounded-pill px-3"><i class="bi bi-github me-1"></i> GitHub</a>
-              <a href="#" class="btn btn-sm btn-danger rounded-pill px-3"><i class="bi bi-heart-fill me-1"></i> Support</a>
+              <a href="https://ytconv.up.railway.app/#saweria" target="_blank" class="btn btn-sm btn-danger rounded-pill px-3"><i class="bi bi-heart-fill me-1"></i> Support</a>
            </div>
         </div>
       </div>
@@ -16630,6 +16629,104 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     // Initial check (in case already logged in)
     // We need to bridge the main script's state to here.
+  </script>
+  <!-- Email Contact Modal -->
+  <div class="modal fade" id="emailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold"><i class="bi bi-envelope-paper-heart-fill text-primary me-2"></i>Hubungi Kami</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <form id="emailForm">
+            <div class="mb-3">
+              <label for="emailName" class="form-label small fw-semibold text-secondary">Nama</label>
+              <input type="text" class="form-control rounded-pill bg-body-tertiary" name="name" id="emailName" placeholder="Nama kamu" required>
+            </div>
+            <div class="mb-3">
+              <label for="emailAddr" class="form-label small fw-semibold text-secondary">Email</label>
+              <input type="email" class="form-control rounded-pill bg-body-tertiary" name="email" id="emailAddr" placeholder="email@contoh.com" required>
+            </div>
+            <div class="mb-3">
+              <label for="emailMsg" class="form-label small fw-semibold text-secondary">Pesan</label>
+              <textarea class="form-control bg-body-tertiary" name="message" id="emailMsg" rows="4" style="border-radius: 1rem;" placeholder="Ceritakan masalah atau saranmu..." required></textarea>
+            </div>
+            <!-- Hidden Date Field -->
+            <input type="hidden" name="date" id="emailDate">
+            
+            <button type="submit" id="emailSubmitBtn" class="btn btn-primary w-100 rounded-pill fw-bold py-2 mt-2">
+              <i class="bi bi-send-fill me-2"></i> Kirim Pesan
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function() {
+      // Initialize EmailJS
+      try {
+        emailjs.init('jT-4e85nCgIpRJak5');
+      } catch(e) { console.error('EmailJS init failed', e); }
+
+      const form = document.getElementById('emailForm');
+      const btn = document.getElementById('emailSubmitBtn');
+      const dateInput = document.getElementById('emailDate');
+
+      if(form && btn) {
+        form.addEventListener('submit', function(event) {
+          event.preventDefault();
+          
+          // Set date automatically
+          if(dateInput) dateInput.value = new Date().toLocaleString('id-ID');
+
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...';
+          btn.disabled = true;
+
+          const serviceID = 'default_service';
+          const templateID = 'template_rdmekih';
+
+          emailjs.sendForm(serviceID, templateID, this)
+            .then(() => {
+              btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Terkirim!';
+              btn.classList.replace('btn-primary', 'btn-success');
+              
+              // Show toast using existing function if available, or alert
+              if(typeof setToast === 'function') setToast('Pesan berhasil dikirim!');
+              else alert('Pesan berhasil dikirim!');
+              
+              setTimeout(() => {
+                const modalEl = document.getElementById('emailModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if(modal) modal.hide();
+                
+                // Reset form
+                form.reset();
+                btn.innerHTML = originalText;
+                btn.classList.replace('btn-success', 'btn-primary');
+                btn.disabled = false;
+              }, 1500);
+            }, (err) => {
+              console.error('EmailJS Error:', err);
+              btn.innerHTML = '<i class="bi bi-exclamation-circle-fill me-2"></i>Gagal';
+              btn.classList.replace('btn-primary', 'btn-danger');
+              
+              alert('Gagal mengirim pesan: ' + JSON.stringify(err));
+              
+              setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.replace('btn-danger', 'btn-primary');
+                btn.disabled = false;
+              }, 3000);
+            });
+        });
+      }
+    })();
   </script>
 </body>
 </html>
