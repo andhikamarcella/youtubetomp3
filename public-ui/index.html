@@ -16347,42 +16347,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
 
-    // Auth State Integration (Polling for state.auth.user or window.currentUser)
-    setInterval(() => {
-        // Check if global state has user (from main app logic)
-        // Accessing the global 'state' object might be tricky from module scope if not exposed.
-        // But we saw 'window.currentUser' or 'state.auth.user' usage in main script.
-        // Let's rely on the localStorage 'userSession' or checking UI state.
-        
-        // Strategy: Check if the main app has updated the user session
-        // We can hook into the 'updateAccountUi' function if possible, or just poll the global 'state' variable if it's on window.
-        // Based on previous code: "state.auth.user = nextSummary;"
-        // Let's assume 'state' is NOT global. But 'localStorage' is.
-        // Or better, let's expose a hook.
-        
-        // However, since we are in a module, we can't easily access the non-module 'state' unless it's on window.
-        // Let's try to access window.state if available, or just check if login overlay should be hidden.
-        
-        const isForumOpen = document.getElementById('forumModal').classList.contains('show');
-        if (isForumOpen) {
-             // Basic check: if profile button has image, we are logged in.
-             // Or better: window.firebaseApp is now set.
-             
-             // Let's try to find the user from the DOM or LocalStorage as fallback
-             // The main app uses 'state.auth.user'.
-             // Let's check if the overlay is still visible.
-             
-             // Hack: If the main app updates the UI, it might not hide the overlay automatically because it doesn't know about it (unless I added it).
-             // I need to add logic to hide the overlay.
-             
-             // Let's look at the main script's 'updateAccountUi'.
-             // It updates 'accountBtn'.
-             
-             // I will add a global function that the main script can call, or I just poll for existence of user.
-        }
-    }, 1000);
-
-    // Expose logic to hide overlay
+    // Expose logic to hide overlay (Defined before listener to ensure availability)
     window.updateForumAuthUI = (user) => {
         if (user) {
             loginOverlay.classList.add('d-none');
@@ -16400,6 +16365,26 @@ $('#queueList')?.addEventListener('click', (e) => {
             window.currentUser = null;
         }
     };
+
+    // Auth State Integration
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            console.log("Firebase Auth State: Logged In", user.uid);
+            const userSummary = {
+                id: user.uid,
+                name: user.displayName || 'Warga',
+                avatar: user.photoURL || ''
+            };
+            // Force update UI
+            window.updateForumAuthUI(userSummary);
+            // Also update global currentUser for consistency
+            window.currentUser = userSummary;
+        } else {
+            console.log("Firebase Auth State: Logged Out");
+            window.updateForumAuthUI(null);
+            window.currentUser = null;
+        }
+    });
 
     // Initial check (in case already logged in)
     // We need to bridge the main script's state to here.
