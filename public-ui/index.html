@@ -4577,10 +4577,14 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
 
   // DELEGATED NAVIGATION HANDLER (Fix for Mobile/Offcanvas issues + URL Hash)
   // Replaces all individual event listeners to ensure robust handling
+  // Use capture=true to catch event BEFORE Bootstrap's data-bs-dismiss
   document.addEventListener('click', (e) => {
     // 1. Check if clicked element is a navigation button (or inside one)
     const btn = e.target.closest('[data-section-target]');
     if (!btn) return;
+    
+    // Flag to prevent offcanvas auto-back
+    window.isNavigatingSection = true;
     
     // DO NOT prevent default or propagation - let Bootstrap data-bs-dismiss work!
     // e.preventDefault(); 
@@ -4595,12 +4599,13 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     
     // 3. Update URL Hash for bookmarking/refresh
     if (success) {
-        history.pushState(null, null, `#${target}`);
+        history.pushState({ section: target }, '', `#${target}`);
     }
     
     // 4. Fallback: Manual Mobile Offcanvas Close (only if data-bs-dismiss fails)
     // We check after a small delay to see if Bootstrap closed it
     setTimeout(() => {
+        window.isNavigatingSection = false; // Reset flag
         const navDrawerEl = document.getElementById('offcanvasNav');
         if (navDrawerEl && navDrawerEl.classList.contains('show')) {
              console.log('[Nav] Fallback closing offcanvas...');
@@ -15394,7 +15399,9 @@ $('#queueList')?.addEventListener('click', (e) => {
             
             // Go back when closing manually
             const onHide = (e) => {
-                if (isBackNavigation) return;
+                // If this closing is triggered by a navigation click, DO NOT go back!
+                if (isBackNavigation || window.isNavigatingSection) return;
+
                 // If the current history state is THIS modal, go back
                 if (history.state?.modal === e.target.id) {
                     history.back();
