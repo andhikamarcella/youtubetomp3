@@ -9,10 +9,15 @@ import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 
+console.log("Initializing application...");
+console.log("Node version:", process.version);
+console.log("Platform:", process.platform);
+
 // Load .env manual jika ada (pengganti dotenv)
 try {
   const envPath = join(dirname(fileURLToPath(import.meta.url)), ".env");
   if (existsSync(envPath)) {
+    console.log("Loading .env file from:", envPath);
     const envConfig = readFileSync(envPath, "utf8");
     envConfig.split(/\r?\n/).forEach(line => {
       const match = line.match(/^([^=]+)=(.*)$/);
@@ -22,8 +27,13 @@ try {
         if (!process.env[key]) process.env[key] = value;
       }
     });
+    console.log("Environment variables loaded.");
+  } else {
+    console.log("No .env file found at:", envPath);
   }
-} catch (e) {}
+} catch (e) {
+  console.error("Error loading .env:", e);
+}
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { nanoid } from "nanoid";
@@ -7357,6 +7367,10 @@ export {
   initProgress,
   updateProgress,
   finishProgress,
+  clearProgress,
+  resolveToolVersions,
+  createSessionToken,
+};
   clearProgress,
   resolveToolVersions,
   createSessionToken,
