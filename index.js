@@ -36,8 +36,7 @@ try {
 }
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import cloudinaryPkg from "cloudinary";
-const { v2: cloudinary } = cloudinaryPkg;
+import { v2 as cloudinary } from "cloudinary";
 import { nanoid } from "nanoid";
 import {
   upsertGoogleUser,
