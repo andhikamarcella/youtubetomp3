@@ -97,7 +97,65 @@
       .container { padding-left: 1rem; padding-right: 1rem; }
       
       /* Better Mobile Typography */
-      h1, .h1 { font-size: 1.75rem; }
+    h1, .h1 { font-size: 1.75rem; }
+
+    /* Cute Clock Styles */
+    .cute-clock {
+      background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+      color: #fff;
+      border-radius: 50rem;
+      padding: 0.5rem 1.25rem;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      font-family: 'Comfortaa', cursive;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      cursor: default;
+    }
+    
+    [data-bs-theme="dark"] .cute-clock {
+        background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+        box-shadow: 0 4px 15px rgba(161, 140, 209, 0.4);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .cute-clock:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 8px 25px rgba(255, 154, 158, 0.6);
+    }
+    
+    [data-bs-theme="dark"] .cute-clock:hover {
+        box-shadow: 0 8px 25px rgba(161, 140, 209, 0.6);
+    }
+
+    .cute-clock i {
+      font-size: 1.2em;
+      animation: tick-tock 2s infinite ease-in-out;
+      display: inline-block;
+    }
+    
+    .cute-clock .seconds {
+        font-size: 0.85em;
+        opacity: 0.9;
+        font-weight: 600;
+        margin-left: 2px;
+        background: rgba(255,255,255,0.2);
+        padding: 0.1rem 0.4rem;
+        border-radius: 1rem;
+    }
+
+    @keyframes tick-tock {
+      0% { transform: rotate(-15deg); }
+      50% { transform: rotate(15deg); }
+      100% { transform: rotate(-15deg); }
+    }
       h2, .h2 { font-size: 1.5rem; }
       
       /* Mobile Footer */
@@ -777,7 +835,7 @@
         <button class="btn btn-outline-primary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNav" aria-label="Buka menu navigasi">
           <i class="bi bi-list"></i>
         </button>
-        <a class="navbar-brand fw-semibold me-2" href="#"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
+        <a class="navbar-brand fw-semibold me-2" href="/"><i class="bi bi-music-note-beamed me-2"></i>YT → MP3/M4A</a>
         <div class="app-tabbar" id="sectionTabbar">
           <button type="button" class="app-nav-btn active" data-section-target="converter" data-section-label="Converter">
             <i class="bi bi-cpu"></i>
@@ -802,7 +860,11 @@
         </div>
       </div>
       <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-        <span class="badge text-bg-info" id="serverTimeBadge"><i class="bi bi-clock me-1"></i>--:--:--</span>
+        <div class="cute-clock" id="serverTimeBadge" role="timer" aria-label="Waktu Lokal">
+            <i class="bi bi-clock-fill"></i>
+            <span class="time-text">--:--</span>
+            <span class="seconds">00</span>
+        </div>
         <span class="badge text-bg-warning" id="offlineBadge" hidden><i class="bi bi-wifi-off me-1"></i>Offline</span>
         <button class="btn btn-outline-success d-none d-lg-inline-flex" id="installAppBtn" type="button" hidden>
           <i class="bi bi-download"></i>
@@ -3534,6 +3596,10 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   document.addEventListener('DOMContentLoaded', () => {
   checkStorageAndWarn();
   const APP_VERSION = 'v.3.2';
+  
+  // Sync About Modal Version
+  const aboutVerEl = document.getElementById('aboutVersionBadge');
+  if(aboutVerEl) aboutVerEl.textContent = APP_VERSION;
 
   // --- Footer Logic (New) ---
   function updateLocalTime() {
@@ -4397,6 +4463,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     }
     announceNarrator(text);
   };
+  window.setToast = setToast;
 
   const readJsonSafe = async (resp) => {
     if (!resp) return { data: null, rawText: '', parseError: null };
@@ -7374,7 +7441,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     if (googleSignInForum) {
         googleSignInForum.dataset.mode = 'custom';
         googleSignInForum.innerHTML = `
-          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" onclick="if(window.loginForumWithRedirect) window.loginForumWithRedirect(); else alert('Sistem chat sedang dimuat, coba sesaat lagi...')">
+          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" onclick="if(window.loginForumWithRedirect) window.loginForumWithRedirect(); else if(window.setToast) window.setToast('Sistem chat sedang dimuat, coba sesaat lagi...'); else alert('Sistem chat sedang dimuat...')">
              <i class="bi bi-google"></i>
              <span>Login Google (Chat)</span>
           </button>
@@ -12079,8 +12146,9 @@ $('#queueList')?.addEventListener('click', (e) => {
     fetch(api('/api/server-time'))
       .then(r => r.json())
       .then(d => {
-        const el = document.getElementById('serverTimeBadge');
-        if (el && d.time) el.innerHTML = `<i class="bi bi-clock me-1"></i>${d.time}`;
+        // Disabled to prefer local cute clock
+        // const el = document.getElementById('serverTimeBadge');
+        // if (el && d.time) el.innerHTML = `<i class="bi bi-clock me-1"></i>${d.time}`;
       })
       .catch(() => {});
     setTimeout(updateServerTime, 1000); // Update every second
@@ -14761,6 +14829,177 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
   };
 
+  // ===== Gaptek (Simple) Mode Logic =====
+  const startGaptekProgressWatcher = (id) => {
+    if (!id) return;
+    const progWrap = document.getElementById('gaptek-progress-wrap');
+    const progBar = document.getElementById('gaptek-progress-bar');
+    const statusText = document.getElementById('gaptek-status-text');
+    
+    if (progWrap) { progWrap.hidden = false; }
+    let timer = 0;
+    
+    const poll = async () => {
+      try {
+        const resp = await fetch(api(`/api/progress/${id}?t=${Date.now()}`), { cache: 'no-store' });
+        if (!resp.ok) {
+          if (resp.status === 404) {
+            timer = window.setTimeout(poll, 900);
+            return;
+          }
+          throw new Error(`HTTP ${resp.status}`);
+        }
+        const safe = await readJsonSafe(resp);
+        const info = safe.data?.progress || {};
+        const percent = Number(info.percent ?? 0);
+        
+        if (progBar) {
+            progBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+            progBar.setAttribute('aria-valuenow', percent);
+        }
+        
+        if (statusText) {
+             const parts = [];
+             if (info.message) parts.push(info.message);
+             else {
+                 parts.push(`${percent.toFixed(0)}%`);
+                 if (info.etaLabel) parts.push(`Sisa: ${info.etaLabel}`);
+             }
+             statusText.textContent = parts.join(' · ') || 'Memproses...';
+        }
+
+        const stage = String(info.stage || '').toLowerCase();
+        if (stage === 'complete' || stage === 'error') {
+          if (timer) clearTimeout(timer);
+          timer = 0;
+          return;
+        }
+      } catch {}
+      timer = window.setTimeout(poll, 900);
+    };
+    poll();
+  };
+
+  const executeGaptekConvert = async (url) => {
+    const loadingEl = document.getElementById('gaptek-status');
+    const resultEl = document.getElementById('gaptek-result');
+    const btn = document.getElementById('gaptek-convert-btn');
+    const downloadBtn = document.getElementById('gaptek-download-link');
+    const progWrap = document.getElementById('gaptek-progress-wrap');
+    
+    if (loadingEl) loadingEl.hidden = false;
+    if (resultEl) resultEl.hidden = true;
+    if (progWrap) progWrap.hidden = true; // Hide old progress
+    if (btn) btn.disabled = true;
+
+    try {
+      const payload = { 
+          url, 
+          format: 'mp3', 
+          abr: 128 // Default for simple mode
+      };
+      
+      const progressId = createProgressId();
+      payload.progressId = progressId;
+      
+      // Start polling
+      startGaptekProgressWatcher(progressId);
+
+      // Turnstile
+      try {
+        const token = await requestCaptchaToken('convert');
+        if (token) payload.captchaToken = token;
+      } catch (e) {
+         console.warn('Gaptek captcha skipped', e);
+      }
+
+      const resp = await fetch(api('/api/convert'), {
+        method: 'POST',
+        headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(payload),
+      });
+      
+      const { data: result } = await resolveJsonResponse(resp, {
+        fallbackMessage: 'Gagal memproses lagu',
+        logLabel: 'gaptek-convert',
+      });
+      
+      if (loadingEl) loadingEl.hidden = true;
+      if (resultEl) resultEl.hidden = false;
+      
+      if (downloadBtn) {
+        const dUrl = absoluteFromRelative(result.downloadUrl);
+        downloadBtn.href = dUrl;
+        downloadBtn.download = result.fileName || 'lagu-mp3';
+        downloadBtn.onclick = () => { if (navigator.vibrate) navigator.vibrate(20); };
+      }
+      
+      setToast('Berhasil! Lagu siap disimpan.');
+      vibrate([50, 50, 50]);
+      
+      // Add to history (reuse basic history logic)
+      pushHistory({
+        originalUrl: url,
+        downloadUrl: result.downloadUrl,
+        fileName: result.fileName,
+        fileSize: result.fileSize || 0,
+        format: 'mp3',
+        abr: 128,
+        meta: { title: result.fileName }
+      });
+      if (typeof renderBasicHistory === 'function') renderBasicHistory();
+
+    } catch (err) {
+      if (loadingEl) loadingEl.hidden = true;
+      setToast('Gagal: ' + err.message);
+      vibrate(200);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  const handleGaptekConvert = async () => {
+      const input = document.getElementById('gaptek-url');
+      const url = input?.value?.trim();
+      
+      if (!url) {
+          setToast('Tempel link-nya dulu ya!');
+          vibrate(100);
+          return;
+      }
+      
+      if (!/^(https?:\/\/)/i.test(url)) {
+          setToast('Link tidak valid. Pastikan link YouTube/Spotify.');
+          return;
+      }
+      
+      await executeGaptekConvert(url);
+  };
+
+  const initGaptekMode = () => {
+      const btn = document.getElementById('gaptek-convert-btn');
+      if (btn) btn.addEventListener('click', handleGaptekConvert);
+      
+      const resetBtn = document.getElementById('gaptek-reset-btn');
+      if (resetBtn) {
+          resetBtn.addEventListener('click', () => {
+              const input = document.getElementById('gaptek-url');
+              const resultEl = document.getElementById('gaptek-result');
+              const progWrap = document.getElementById('gaptek-progress-wrap');
+              
+              if (input) input.value = '';
+              if (resultEl) resultEl.hidden = true;
+              if (progWrap) progWrap.hidden = true;
+              
+              vibrate(50);
+          });
+      }
+      
+      // Input Validation
+      const input = document.getElementById('gaptek-url');
+      if(input && typeof validateLinkInput === 'function') validateLinkInput(input);
+  };
+
   const initBasicMode = () => {
     // Mode Switcher Logic
     const setupModeSwitcher = () => {
@@ -14941,6 +15180,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       
       try {
         initBasicMode();
+        initGaptekMode();
         const advUrl = document.getElementById('url');
         if(advUrl && typeof validateLinkInput === 'function') validateLinkInput(advUrl);
       } catch (e) { console.error('Basic mode init failed', e); }
@@ -15591,23 +15831,21 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         function updateClock() {
             const now = new Date();
-            // Format time as HH:mm:ss
-            const timeString = now.toLocaleTimeString('id-ID', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit',
-                hour12: false
-            });
-            // Ensure colon separator for digital clock look
-            const formatted = timeString.replace(/\./g, ':');
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
             
-            // Optional: Get timezone name (e.g., WIB, WITA) if supported, or just show time
-            // Simple approach: Just time
-            clockEl.innerHTML = `<i class="bi bi-clock me-1"></i>${formatted}`;
+            // Use new structure if available
+            if (clockEl.classList.contains('cute-clock')) {
+                const timeText = clockEl.querySelector('.time-text');
+                const secondsText = clockEl.querySelector('.seconds');
+                if(timeText) timeText.textContent = `${h}:${m}`;
+                if(secondsText) secondsText.textContent = s;
+            } else {
+                 // Fallback
+                 clockEl.innerHTML = `<i class="bi bi-clock-fill me-1"></i>${h}:${m}:${s}`;
+            }
             
-            // Remove 'text-bg-info' and add a dynamic class based on time?
-            // User just asked for "real local clock".
-            // Let's keep existing style but ensure it's visible.
             clockEl.removeAttribute('hidden');
         }
 
@@ -16121,7 +16359,7 @@ $('#queueList')?.addEventListener('click', (e) => {
               </div>
            </div>
            <h4 class="fw-bold mb-2 title-mono">YouTube to MP3</h4>
-           <div class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill mb-3">v2.5.0</div>
+           <div id="aboutVersionBadge" class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill mb-3">v.3.2</div>
            <p class="text-secondary mb-4">
               Platform konversi media modern dengan teknologi AI-Enhanced. Cepat, aman, dan dirancang untuk pengalaman terbaik.
            </p>
@@ -16395,7 +16633,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             }
         }).catch((error) => {
             console.error("Firebase Auth: Redirect Login Error", error);
-            alert("Login Gagal (Redirect): " + error.message);
+            if(window.setToast) window.setToast("Login Gagal: " + error.message);
         });
 
     // Global function to trigger Login for Forum (Popup preferred for local dev, Redirect for Mobile)
@@ -16410,7 +16648,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  return; // Page will redirect
              } catch (err) {
                  console.error("Firebase Auth: Redirect failed", err);
-                 alert("Gagal memulai login (Redirect): " + err.message);
+                 if(window.setToast) window.setToast("Gagal memulai login: " + err.message);
                  return;
              }
         }
@@ -16716,7 +16954,7 @@ $('#queueList')?.addEventListener('click', (e) => {
               btn.innerHTML = '<i class="bi bi-exclamation-circle-fill me-2"></i>Gagal';
               btn.classList.replace('btn-primary', 'btn-danger');
               
-              alert('Gagal mengirim pesan: ' + JSON.stringify(err));
+              if(typeof window.setToast === 'function') window.setToast('Gagal mengirim pesan: ' + (err.text || 'Kesalahan jaringan'));
               
               setTimeout(() => {
                 btn.innerHTML = originalText;
