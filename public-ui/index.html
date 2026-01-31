@@ -2722,27 +2722,27 @@
     <div class="offcanvas-body">
       <p class="menu-meta">Pilih tab untuk berpindah antar area converter.</p>
       <div class="d-grid gap-2">
-        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter">
+        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter" data-bs-dismiss="offcanvas">
           <i class="bi bi-cpu"></i>
           <span data-i18n="navConverter">Converter</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub">
+        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub" data-bs-dismiss="offcanvas">
           <i class="bi bi-stars"></i>
           <span data-i18n="navExperience">Experience Hub</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
+        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ" data-bs-dismiss="offcanvas">
           <i class="bi bi-question-circle"></i>
           <span>FAQ</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria">
+        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria" data-bs-dismiss="offcanvas">
           <i class="bi bi-heart-fill"></i>
           <span>Saweria</span>
         </button>
-        <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()">
+        <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()" data-bs-dismiss="offcanvas">
           <i class="bi bi-person-circle"></i>
           <span data-i18n="navProfile">Profil</span>
         </button>
-        <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#aboutModal">
+        <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#aboutModal" data-bs-dismiss="offcanvas">
           <i class="bi bi-info-circle"></i>
           <span>About</span>
         </button>
@@ -4582,47 +4582,33 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     const btn = e.target.closest('[data-section-target]');
     if (!btn) return;
     
-    // 2. Prevent default behavior (stops unexpected reloads/jumps)
-    e.preventDefault();
-    e.stopPropagation();
-
+    // DO NOT prevent default or propagation - let Bootstrap data-bs-dismiss work!
+    // e.preventDefault(); 
+    
     const target = btn.dataset.sectionTarget;
     if (!target) return;
 
     console.log('[Nav] Button clicked:', target);
 
-    // 3. Execute Navigation Logic
+    // 2. Execute Navigation Logic
     const success = setActiveSection(target);
     
-    // Update URL Hash for bookmarking/refresh
+    // 3. Update URL Hash for bookmarking/refresh
     if (success) {
-        // Use replaceState to avoid cluttering history if needed, or hash assign
-        // window.location.hash = target; 
         history.pushState(null, null, `#${target}`);
     }
     
-    // 4. Handle Mobile Offcanvas (Force Close)
-    // Only if navigation was successful or we just want to close the menu anyway
-    const navDrawerEl = document.getElementById('offcanvasNav');
-    if (navDrawerEl && navDrawerEl.classList.contains('show')) {
-        console.log('[Nav] Closing offcanvas...');
-        // Try Bootstrap Instance
-        const drawer = bs?.Offcanvas?.getInstance(navDrawerEl) || bs?.Offcanvas?.getOrCreateInstance(navDrawerEl);
-        if (drawer) {
-            drawer.hide();
-        } else {
-            // Fallback: Simulate close button click
-            const closeBtn = navDrawerEl.querySelector('.btn-close');
-            if (closeBtn) closeBtn.click();
-            else navDrawerEl.classList.remove('show'); // Last resort CSS manipulation
+    // 4. Fallback: Manual Mobile Offcanvas Close (only if data-bs-dismiss fails)
+    // We check after a small delay to see if Bootstrap closed it
+    setTimeout(() => {
+        const navDrawerEl = document.getElementById('offcanvasNav');
+        if (navDrawerEl && navDrawerEl.classList.contains('show')) {
+             console.log('[Nav] Fallback closing offcanvas...');
+             const closeBtn = navDrawerEl.querySelector('.btn-close');
+             if (closeBtn) closeBtn.click();
         }
-        
-        // Remove backdrop if stuck
-        const backdrop = document.querySelector('.offcanvas-backdrop');
-        if (backdrop) backdrop.remove();
-        document.body.style.overflow = ''; // Restore scrolling
-        document.body.style.paddingRight = '';
-    }
+    }, 200);
+
   }, true); // Use Capture phase to ensure we catch it first
 
   // REMOVED: Old individual event listeners to avoid conflicts
@@ -15377,6 +15363,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         let isBackNavigation = false;
 
         // 1. Handle Section Navigation
+        /* REMOVED: Handled by global delegated handler
         const navButtons = document.querySelectorAll('[data-section-target]');
         navButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -15388,6 +15375,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 }
             });
         });
+        */
 
         // 2. Handle Modals & Offcanvas
         // Use capture to ensure we catch dynamic ones if attached to body, but simple querySelectorAll is usually enough for static
@@ -15439,24 +15427,13 @@ $('#queueList')?.addEventListener('click', (e) => {
             
             // B. Restore Section
             if (e.state?.section) {
-                const btn = document.querySelector(`[data-section-target="${e.state.section}"]`);
-                if (btn) btn.click();
+                // Directly set section without clicking button (avoids loop)
+                setActiveSection(e.state.section);
             } else {
-                // Default or Hash fallback
-                const hash = location.hash.replace('#', '');
-                let target = 'converter'; // Default
-                if (hash) {
-                    const btn = document.querySelector(`[data-section-target="${hash}"]`);
-                    if(btn) target = hash;
-                }
-                
-                // If no state and we are at root/converter, ensure we are on converter
-                // Check if current active is NOT converter
-                const current = document.querySelector('.app-section.is-active');
-                if (current && current.dataset.section !== target) {
-                     const btn = document.querySelector(`[data-section-target="${target}"]`);
-                     if (btn) btn.click();
-                }
+                // Default if no state
+                const hash = window.location.hash.substring(1);
+                if(hash) setActiveSection(hash);
+                else setActiveSection('converter');
             }
 
             setTimeout(() => { isBackNavigation = false; }, 100);
@@ -16256,13 +16233,35 @@ $('#queueList')?.addEventListener('click', (e) => {
     //    client_id: '...' 
     // });
 
+    // Expose logic to hide overlay (Defined EARLY to ensure availability)
+    window.updateForumAuthUI = (user) => {
+        const loginOverlay = document.getElementById('forumLoginOverlay');
+        if (!loginOverlay) return; // Safety check
+
+        if (user) {
+            loginOverlay.classList.add('d-none');
+            chatInput.disabled = false;
+            sendBtn.disabled = false;
+            window.currentUser = {
+                id: user.id || user.email, // Fallback ID
+                name: user.name,
+                avatar: user.avatar
+            };
+        } else {
+            loginOverlay.classList.remove('d-none');
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
+            window.currentUser = null;
+        }
+    };
+
     // Handle Redirect Result on Page Load
     getRedirectResult(auth)
         .then(async (result) => {
             if (result) {
                 const user = result.user;
                 console.log("Firebase Auth: Login successful via Redirect", user);
-                alert(`Login Berhasil!\nSelamat datang, ${user.displayName}\nEmail: ${user.email}`);
+                // alert(`Login Berhasil!\nSelamat datang, ${user.displayName}\nEmail: ${user.email}`);
                 
                 const googleSummary = {
                     id: user.uid,
@@ -16278,7 +16277,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             }
         }).catch((error) => {
             console.error("Firebase Auth: Redirect Login Error", error);
-            alert("Login Gagal: " + error.message);
+            alert("Login Gagal (Redirect): " + error.message);
         });
 
     // Global function to trigger Login for Forum (Popup preferred for local dev)
@@ -16288,11 +16287,16 @@ $('#queueList')?.addEventListener('click', (e) => {
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Firebase Auth: Popup failed, trying Redirect...", error);
-            try {
-                await signInWithRedirect(auth, provider);
-            } catch (err) {
-                 console.error("Firebase Auth: All login methods failed", err);
-                 alert("Gagal login: " + err.message);
+            // If popup blocked or mobile, fallback to redirect
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+                 try {
+                    await signInWithRedirect(auth, provider);
+                } catch (err) {
+                     console.error("Firebase Auth: All login methods failed", err);
+                     alert("Gagal login: " + err.message);
+                }
+            } else {
+                 alert("Login Error: " + error.message);
             }
         }
     };
@@ -16464,24 +16468,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
 
-    // Expose logic to hide overlay (Defined before listener to ensure availability)
-    window.updateForumAuthUI = (user) => {
-        if (user) {
-            loginOverlay.classList.add('d-none');
-            chatInput.disabled = false;
-            sendBtn.disabled = false;
-            window.currentUser = {
-                id: user.id || user.email, // Fallback ID
-                name: user.name,
-                avatar: user.avatar
-            };
-        } else {
-            loginOverlay.classList.remove('d-none');
-            chatInput.disabled = true;
-            sendBtn.disabled = true;
-            window.currentUser = null;
-        }
-    };
+
 
     // Auth State Integration
     onAuthStateChanged(auth, (user) => {
