@@ -6311,7 +6311,17 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     const streak = Number(state.experience.streak) || 0;
     const levelInfo = getLevelInfo(points);
     const nextLevel = avatarLevels.find((lvl) => lvl.threshold > points);
-    const user = state.auth.user;
+    
+    // Combine state auth and firebase auth
+    let user = state.auth.user;
+    if (!user && window.currentUser) {
+        user = {
+            name: window.currentUser.name,
+            email: window.currentUser.email,
+            avatarUrl: window.currentUser.avatar || window.currentUser.photoURL
+        };
+    }
+
 
     // Avatar
     const avatarEl = document.getElementById('profileModalAvatar');
@@ -16157,73 +16167,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose auth to window for debugging
     window.firebaseAuth = auth;
 
-    // Helper: Shadow Account Strategy (Restored for Firestore Permissions)
-    async function ensureShadowAccount(googleUser) {
-        const shadowKey = 'ytmp3.firebase.shadow_cred';
-        let cred = localStorage.getItem(shadowKey);
-        let email, password;
-
-        if (cred) {
-            try {
-                const parsed = JSON.parse(cred);
-                email = parsed.email;
-                password = parsed.password;
-            } catch { cred = null; }
-        }
-
-        if (!cred) {
-            // Create new shadow credentials with the specific domain required by rules
-            const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            email = `user_${randomId}@forum-warga.temp`;
-            password = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "Strong!1";
-            localStorage.setItem(shadowKey, JSON.stringify({ email, password }));
-        }
-
-        try {
-            // Sign in as Shadow User
-            await signInWithEmailAndPassword(auth, email, password);
-            console.log("Firebase Auth: Switched to Shadow Account (for Firestore access)");
-        } catch (error) {
-            console.warn("Firebase Auth: Shadow Login Error", error.code);
-            
-            // If login failed (wrong password, user not found, etc.), try to create a NEW one
-            // We don't care about preserving the old shadow account since it's just a proxy
-            const retryNewShadow = async () => {
-                const newRandomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                email = `user_${newRandomId}@forum-warga.temp`;
-                password = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "Strong!1";
-                localStorage.setItem(shadowKey, JSON.stringify({ email, password }));
-                
-                try {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    console.log("Firebase Auth: Created NEW Shadow Account after login failure");
-                } catch (createError) {
-                    console.error("Firebase Auth: Critical - Failed to create Shadow Account", createError);
-                    // Last resort: Stay with Google Auth (if active) or Anonymous
-                    // If we are here, we might be logged out. 
-                }
-            };
-
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                await retryNewShadow();
-            } else {
-                 // Try one more time with new account for any other error
-                 await retryNewShadow();
-            }
-        }
-
-        // Apply Google User's profile to the Shadow Account
-        if (auth.currentUser && googleUser) {
-            try {
-                await updateProfile(auth.currentUser, {
-                    displayName: googleUser.name,
-                    photoURL: googleUser.picture || googleUser.avatar
-                });
-                console.log("Firebase Auth: Synced Shadow Profile with Google Info");
-            } catch (e) { console.warn("Failed to update shadow profile", e); }
-        }
-    }
-
     // Configure Google Provider with the specific Client ID requested
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
@@ -16402,6 +16345,13 @@ $('#queueList')?.addEventListener('click', (e) => {
             // We must use the authenticated user's UID to pass Firestore rules (request.auth.uid == resource.data.uid)
             // But we can use the Google Profile (window.currentUser) for display name and avatar.
             const authUser = auth.currentUser;
+            
+            if (!authUser) {
+                 throw new Error("Auth User lost before send.");
+            }
+
+            console.log("Attempting to send message as:", authUser.uid, authUser.email);
+
             const displayUser = window.currentUser || authUser;
 
             await addDoc(messagesRef, {
@@ -16414,10 +16364,12 @@ $('#queueList')?.addEventListener('click', (e) => {
             chatInput.value = '';
         } catch (e) {
             console.error("Error sending message: ", e);
+            console.error("Auth State at Failure:", auth.currentUser);
+            
             if (e.code === 'permission-denied') {
-                 alert("Gagal mengirim: Izin ditolak. Coba logout dan login lagi.");
+                 alert("Gagal mengirim: Izin ditolak oleh server.\nUID: " + (auth.currentUser ? auth.currentUser.uid : 'null'));
             } else {
-                 alert("Gagal mengirim pesan. Pastikan internet lancar.");
+                 alert("Gagal mengirim pesan: " + e.message);
             }
         }
     };
