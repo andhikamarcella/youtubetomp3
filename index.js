@@ -6406,6 +6406,28 @@ app.get("/api/auth/config", (req, res) => {
   });
 });
 
+app.get("/api/server-time", (req, res) => {
+  const now = new Date();
+  const time = now.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Jakarta'
+  });
+  return res.json({ time });
+});
+
+app.get("/api/health", (req, res) => {
+  return res.json({
+    ok: true,
+    status: "online",
+    maintenance: process.env.MAINTENANCE_MODE === "true",
+    uptime: process.uptime(),
+    timestamp: Date.now()
+  });
+});
+
 app.get("/api/cheats/config", (req, res) => {
   if (!CHEATS_ENABLED) {
     return res.status(404).json({ error: "Cheat dimatikan" });
