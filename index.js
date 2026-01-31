@@ -78,6 +78,7 @@ const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const isGroqConfigured = Boolean(GROQ_API_KEY);
+const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -5372,7 +5373,7 @@ const downloadSpotifyPreview = async ({ previewUrl, id }) => {
   };
 };
 
-const COOKIES_PATH = join(process.cwd(), "cookies.txt"); // endpoint admin di bawah akan nulis ke sini
+
 
 const parseEtaString = (value = "") => {
   const text = String(value || "").trim();
