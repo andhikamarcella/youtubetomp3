@@ -2722,19 +2722,19 @@
     <div class="offcanvas-body">
       <p class="menu-meta">Pilih tab untuk berpindah antar area converter.</p>
       <div class="d-grid gap-2">
-        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter">
+        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter" data-bs-dismiss="offcanvas">
           <i class="bi bi-cpu"></i>
           <span data-i18n="navConverter">Converter</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub">
+        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub" data-bs-dismiss="offcanvas">
           <i class="bi bi-stars"></i>
           <span data-i18n="navExperience">Experience Hub</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
+        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ" data-bs-dismiss="offcanvas">
           <i class="bi bi-question-circle"></i>
           <span>FAQ</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria">
+        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria" data-bs-dismiss="offcanvas">
           <i class="bi bi-heart-fill"></i>
           <span>Saweria</span>
         </button>
@@ -4513,9 +4513,6 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   const sectionTitle = $('#activeSectionTitle');
   const sectionSubtitle = $('#activeSectionSubtitle');
   const navDrawerEl = $('#offcanvasNav');
-  const navDrawer = navDrawerEl && bs?.Offcanvas?.getOrCreateInstance
-    ? bs.Offcanvas.getOrCreateInstance(navDrawerEl)
-    : null;
   const assistantBridge = { autoOpen: () => {} };
   let assistantAutoOpenQueued = false;
 
@@ -4562,7 +4559,12 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
       localStorage.setItem('app:activeSection', target);
       visitedSections.add(target);
       if (visitedSections.size >= 3) awardBadge('explorer');
-      if (navDrawer && navDrawerEl.classList.contains('show')) navDrawer.hide();
+      
+      if (navDrawerEl && navDrawerEl.classList.contains('show')) {
+         const drawer = bs?.Offcanvas?.getOrCreateInstance ? bs.Offcanvas.getOrCreateInstance(navDrawerEl) : null;
+         if (drawer) drawer.hide();
+      }
+
       if (target === 'experience') {
         assistantAutoOpenQueued = true;
         assistantBridge.autoOpen();
