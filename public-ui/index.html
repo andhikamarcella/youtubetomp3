@@ -16665,9 +16665,12 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Listen for Auth State Changes (Critical for Mobile/Redirect flow)
     onAuthStateChanged(auth, (user) => {
         const statusText = document.getElementById('loginStatusText');
+        const btn = document.getElementById('btnForumLoginAction');
         
         if (user) {
             console.log("Firebase Auth: State Changed -> Logged In", user.uid);
+            sessionStorage.removeItem('isFirebaseRedirecting'); // Ensure flag is cleared
+            
             if(statusText) statusText.textContent = "Berhasil login!";
             
             const googleSummary = {
@@ -16680,8 +16683,17 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
         } else {
             console.log("Firebase Auth: State Changed -> Logged Out");
-             if(statusText) statusText.classList.add('d-none');
-             
+            
+            // Only hide status if we are NOT waiting for a redirect
+            const isRedirecting = sessionStorage.getItem('isFirebaseRedirecting');
+            if (!isRedirecting) {
+                 if(statusText) statusText.classList.add('d-none');
+                 if(btn) {
+                     btn.disabled = false;
+                     btn.innerHTML = `<i class="bi bi-google"></i><span>Login Google (Chat)</span>`;
+                 }
+            }
+              
             window.currentUser = null;
             if (window.updateForumAuthUI) window.updateForumAuthUI(null);
         }
@@ -16697,27 +16709,6 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose logic to hide overlay (Defined EARLY to ensure availability)
     window.updateForumAuthUI = (user) => {
         const loginOverlay = document.getElementById('forumLoginOverlay');
-
-    // Ensure Forum Login Button is rendered (moved from main script to ensure availability)
-    const forumLoginContainer = document.getElementById('googleSignInForum');
-    if (forumLoginContainer) {
-        forumLoginContainer.innerHTML = `
-          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" id="btnForumLoginAction">
-             <i class="bi bi-google"></i>
-             <span>Login Google (Chat)</span>
-          </button>
-        `;
-        const btn = document.getElementById('btnForumLoginAction');
-        if(btn) {
-            btn.addEventListener('click', async () => {
-                if(window.loginForumWithRedirect) {
-                    await window.loginForumWithRedirect();
-                } else {
-                    alert("Sistem sedang memuat...");
-                }
-            });
-        }
-    }
         if (!loginOverlay) return; // Safety check
 
         if (user) {
@@ -16736,6 +16727,59 @@ $('#queueList')?.addEventListener('click', (e) => {
             window.currentUser = null;
         }
     };
+
+    // Initialize Forum Login Button (One-time setup)
+    const initForumLoginButton = () => {
+        const forumLoginContainer = document.getElementById('googleSignInForum');
+        if (forumLoginContainer) {
+            forumLoginContainer.innerHTML = `
+              <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" id="btnForumLoginAction">
+                 <i class="bi bi-google"></i>
+                 <span>Login Google (Chat)</span>
+              </button>
+              <div id="loginStatusText" class="text-center mt-2 small text-muted d-none">Memeriksa status login...</div>
+              <div id="loginErrorText" class="text-center mt-2 small text-danger d-none" style="word-break: break-word;"></div>
+            `;
+            
+            // Check if we are returning from a redirect attempt
+            const isRedirecting = sessionStorage.getItem('isFirebaseRedirecting');
+            const statusText = document.getElementById('loginStatusText');
+            const btn = document.getElementById('btnForumLoginAction');
+            
+            if (isRedirecting === 'true' && statusText && btn) {
+                statusText.textContent = "Memverifikasi login dari Google...";
+                statusText.classList.remove('d-none');
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Memuat...`;
+            }
+
+            if(btn) {
+                btn.addEventListener('click', async () => {
+                    const statusText = document.getElementById('loginStatusText');
+                    const errorText = document.getElementById('loginErrorText');
+                    
+                    if(statusText) {
+                        statusText.textContent = "Mengalihkan ke Google...";
+                        statusText.classList.remove('d-none');
+                    }
+                    if(errorText) errorText.classList.add('d-none');
+                    
+                    if(window.loginForumWithRedirect) {
+                        sessionStorage.setItem('isFirebaseRedirecting', 'true');
+                        await window.loginForumWithRedirect();
+                    } else {
+                        alert("Sistem sedang memuat...");
+                    }
+                });
+            }
+        }
+    };
+    // Run initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initForumLoginButton);
+    } else {
+        initForumLoginButton();
+    }
 
     // Handle Redirect Result on Page Load
     getRedirectResult(auth)
