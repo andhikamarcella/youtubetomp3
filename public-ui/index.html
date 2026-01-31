@@ -9,16 +9,19 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://ytconv.up.railway.app/" />
-  <meta property="og:title" content="Dilarang Masuk ⛔ Kecuali Mau Download MP3 Ngebut! 🚀🎶" />
-  <meta property="og:description" content="Sstt... Rahasia download lagu YouTube tanpa iklan judi ada di sini! 100% Aman, Gratis, & Gak Bikin Emosi. Cobain deh, awas ketagihan! 🤪✨" />
-  <meta property="og:image" content="https://ytconv.up.railway.app/icons/icon.svg" />
+  <meta property="og:title" content="YouTube to MP3 - Download Cepat & Aman 🚀" />
+  <meta property="og:description" content="Convert video YouTube, Spotify, SoundCloud ke MP3 gratis. Tanpa iklan, kualitas HD, support Dolby Audio." />
+  <meta property="og:image" content="https://ytconv.up.railway.app/icons/icon.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:image:type" content="image/png" />
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />
   <meta property="twitter:url" content="https://ytconv.up.railway.app/" />
-  <meta property="twitter:title" content="Dilarang Masuk ⛔ Kecuali Mau Download MP3 Ngebut! 🚀🎶" />
-  <meta property="twitter:description" content="Sstt... Rahasia download lagu YouTube tanpa iklan judi ada di sini! 100% Aman, Gratis, & Gak Bikin Emosi. Cobain deh, awas ketagihan! 🤪✨" />
-  <meta property="twitter:image" content="https://ytconv.up.railway.app/icons/icon.svg" />
+  <meta property="twitter:title" content="YouTube to MP3 - Download Cepat & Aman 🚀" />
+  <meta property="twitter:description" content="Convert video YouTube, Spotify, SoundCloud ke MP3 gratis. Tanpa iklan, kualitas HD, support Dolby Audio." />
+  <meta property="twitter:image" content="https://ytconv.up.railway.app/icons/icon.png" />
 
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#17233f" media="(prefers-color-scheme: dark)" />
@@ -1659,8 +1662,16 @@
                     </div>
                     <div class="share-app-buttons mt-2" id="shareAppButtons">
                       <span class="small text-secondary">Kirim cepat:</span>
-                      <button class="btn btn-outline-success btn-sm" type="button" data-app="wa"><i class="bi bi-whatsapp"></i> WhatsApp</button>
-                      <button class="btn btn-outline-info btn-sm" type="button" data-app="tg"><i class="bi bi-telegram"></i> Telegram</button>
+                      <button class="btn btn-outline-success btn-sm" type="button" data-app="wa" title="WhatsApp"><i class="bi bi-whatsapp"></i></button>
+                      <button class="btn btn-outline-info btn-sm" type="button" data-app="tg" title="Telegram"><i class="bi bi-telegram"></i></button>
+                      <button class="btn btn-outline-primary btn-sm" type="button" data-app="fb" title="Facebook"><i class="bi bi-facebook"></i></button>
+                      <button class="btn btn-outline-dark btn-sm" type="button" data-app="tw" title="X (Twitter)"><i class="bi bi-twitter-x"></i></button>
+                      <button class="btn btn-outline-secondary btn-sm" type="button" data-app="email" title="Email"><i class="bi bi-envelope"></i></button>
+                    </div>
+                    <div class="alert alert-light border shadow-sm mt-3 p-2 d-flex align-items-center gap-2 small fade show" role="alert" id="bookmarkReminder">
+                      <i class="bi bi-bookmark-heart text-danger fs-5"></i>
+                      <div class="flex-grow-1">Suka tool ini? <strong>Bookmark (Ctrl+D)</strong> biar nggak lupa!</div>
+                      <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                     <div class="small text-secondary mt-2" id="shareInfo"></div>
                   </div>
@@ -3056,7 +3067,16 @@
            <ul class="list-unstyled small d-flex flex-column gap-2 align-items-md-end">
              <li><a href="#" class="text-decoration-none text-secondary hover-primary" data-bs-toggle="modal" data-bs-target="#privacyModal">Kebijakan Privasi</a></li>
              <li><a href="#" class="text-decoration-none text-secondary hover-primary" data-bs-toggle="modal" data-bs-target="#tosModal">Syarat & Ketentuan</a></li>
+             <li><a href="#" class="text-decoration-none text-secondary hover-primary" onclick="showShortcutHints()">Shortcut Keyboard</a></li>
            </ul>
+           <div class="mt-3">
+             <a href="https://wa.me/6281234567890?text=Halo%20Admin%2C%20saya%20mau%20lapor%20masalah%20di%20YouTube%20To%20MP3..." target="_blank" class="btn btn-sm btn-outline-success rounded-pill me-1">
+               <i class="bi bi-whatsapp"></i> Lapor
+             </a>
+             <a href="mailto:support@dikalfe.com?subject=Laporan%20Masalah%20YouTube%20To%20MP3" class="btn btn-sm btn-outline-secondary rounded-pill">
+               <i class="bi bi-envelope"></i> Email
+             </a>
+           </div>
         </div>
       </div>
 
@@ -3125,21 +3145,25 @@
       </div>
 
       <div class="border-top mt-4 pt-3 text-center small text-secondary">
-         © 2026 Dikalfe Project
-         <span id="appVersionBadge" class="badge rounded-pill bg-light text-dark border ms-2" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.classList.add('shadow-sm')" onmouseout="this.classList.remove('shadow-sm')">
-            Loading...
-         </span>
-         <span id="serverStatusDot" class="badge rounded-pill bg-secondary border ms-2" title="Status Server">
-            <i class="bi bi-activity me-1"></i>Checking...
-         </span>
-         <!-- Task 8: Remember Device Badge -->
-         <span id="deviceIdentityBadge" class="badge rounded-pill bg-dark text-light border border-secondary ms-2" title="ID Perangkat Unik">
-            <i class="bi bi-phone me-1"></i>...
-         </span>
-         <!-- Task 7: CDN Badge -->
-         <span id="cdnStatusBadge" class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle ms-2" title="Jaringan Server">
-            <i class="bi bi-hdd-network-fill me-1"></i>CDN: Auto
-         </span>
+         <div class="mb-2">
+            © 2026 Dikalfe Project
+            <span id="appVersionBadge" class="badge rounded-pill bg-light text-dark border ms-2">Loading...</span>
+            <span id="serverStatusDot" class="badge rounded-pill bg-secondary border ms-2"><i class="bi bi-activity me-1"></i>Checking...</span>
+         </div>
+         <div class="d-flex justify-content-center flex-wrap gap-2">
+            <span id="localTimeBadge" class="badge rounded-pill bg-dark text-light border border-secondary" title="Waktu Lokal Server">
+               <i class="bi bi-clock me-1"></i>...
+            </span>
+            <span id="cdnStatusBadge" class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle" title="Jaringan Server">
+               <i class="bi bi-hdd-network-fill me-1"></i>CDN: Auto
+            </span>
+            <span id="storageDurationBadge" class="badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle" title="Durasi Penyimpanan Sementara">
+               <i class="bi bi-hourglass-split me-1"></i>File: 1h
+            </span>
+            <span id="lastUpdatedBadge" class="badge rounded-pill bg-success-subtle text-success-emphasis border border-success-subtle" title="Terakhir Diupdate">
+               <i class="bi bi-git me-1"></i>Upd: Today
+            </span>
+         </div>
       </div>
     </div>
   </footer>
@@ -3192,6 +3216,18 @@
           
           if (res.ok) {
               const data = await res.json();
+
+              if (data.startTime) {
+                 const start = new Date(data.startTime);
+                 const lastUpdEl = document.getElementById('lastUpdatedBadge');
+                 if(lastUpdEl) lastUpdEl.innerHTML = `<i class="bi bi-clock-history me-1"></i>Start: ${start.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`;
+              }
+
+              if (data.storageDuration) {
+                  const storageEl = document.getElementById('storageDurationBadge');
+                  if(storageEl) storageEl.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>File: ${data.storageDuration}`;
+              }
+
               if (data.maintenance) {
                   // Maintenance Mode
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-warning text-dark border ms-2';
@@ -3270,6 +3306,74 @@
   document.addEventListener('DOMContentLoaded', () => {
   checkStorageAndWarn();
   const APP_VERSION = 'v2.5.0';
+
+  // --- Footer Logic (New) ---
+  function updateLocalTime() {
+      const el = document.getElementById('localTimeBadge');
+      if(el) {
+           const now = new Date();
+           const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
+           el.innerHTML = `<i class="bi bi-clock me-1"></i>${now.toLocaleTimeString('id-ID', options)}`;
+      }
+  }
+  setInterval(updateLocalTime, 1000);
+  updateLocalTime();
+
+  // Last Updated & Storage Duration (Dynamic from /api/health)
+  // Logic moved to checkServerStatus()
+  
+  // Global function for Shortcut Hints
+  window.showShortcutHints = function() {
+      const modalHtml = `
+      <div class="modal fade" id="shortcutModal" tabindex="-1">
+          <div class="modal-dialog modal-sm modal-dialog-centered">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <h6 class="modal-title fw-bold"><i class="bi bi-keyboard me-2"></i>Shortcuts</h6>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body small">
+                      <ul class="list-group list-group-flush">
+                          <li class="list-group-item d-flex justify-content-between"><span>Focus Input</span> <kbd>/</kbd></li>
+                          <li class="list-group-item d-flex justify-content-between"><span>Convert</span> <kbd>Enter</kbd></li>
+                          <li class="list-group-item d-flex justify-content-between"><span>Settings</span> <kbd>Ctrl+,</kbd></li>
+                          <li class="list-group-item d-flex justify-content-between"><span>AI Chat</span> <kbd>Ctrl+Space</kbd></li>
+                      </ul>
+                  </div>
+              </div>
+          </div>
+      </div>`;
+      
+      let m = document.getElementById('shortcutModal');
+      if(!m) {
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+          m = document.getElementById('shortcutModal');
+      }
+      const bsModal = new window.bootstrap.Modal(m);
+      bsModal.show();
+  };
+
+  // Keyboard listener for shortcuts
+  document.addEventListener('keydown', (e) => {
+      if(e.ctrlKey && e.key === ',') {
+          e.preventDefault();
+          const offcanvas = document.getElementById('offcanvasSettings');
+          if(offcanvas) {
+              const bsOffcanvas = new window.bootstrap.Offcanvas(offcanvas);
+              bsOffcanvas.toggle();
+          }
+      }
+      if(e.ctrlKey && e.key === ' ') {
+          e.preventDefault();
+          const aiToggle = document.getElementById('assistantToggle');
+          if(aiToggle) aiToggle.click();
+      }
+      if(e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          const input = document.getElementById('urlInput');
+          if(input) input.focus();
+      }
+  });
 
   // YT Music Button Logic
   const ytMusicBtn = document.getElementById('ytMusicBtn');
@@ -11255,6 +11359,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (link){
         if (app === 'wa') target = `https://wa.me/?text=${encodeURIComponent(`${title} ${link}`.trim())}`;
         if (app === 'tg') target = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(title || 'Hasil konversi YouTube')}`;
+        if (app === 'fb') target = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;
+        if (app === 'tw') target = `https://twitter.com/intent/tweet?url=${encodeURIComponent(link)}&text=${encodeURIComponent(title)}`;
+        if (app === 'email') target = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(link)}`;
       }
       if (target){
         btn.dataset.href = target;
