@@ -16241,29 +16241,40 @@ $('#queueList')?.addEventListener('click', (e) => {
     window.firebaseAnalytics = analytics;
 
     // Check for existing session immediately to avoid "Me" appearing as "Other"
-    try {
-        const cachedSession = localStorage.getItem('userSession'); // Assuming app uses this key
-        if (cachedSession) {
-             // In main app logic, userSession is usually { token: ..., user: ... } or just user object?
-             // Let's try to parse
-             const session = JSON.parse(cachedSession);
-             // Note: Main app stores user summary in 'ytmp3.auth.summary' or similar?
-             // Let's check 'ytmp3.settings.v1' if that's where state is.
-             // Actually, the main app logic uses `persistAuthToken` and `persistCachedUserSummary`.
-             // `persistCachedUserSummary` saves to `ytmp3.user.summary`.
-             const userSummary = localStorage.getItem('ytmp3.user.summary');
-             if (userSummary) {
-                 const u = JSON.parse(userSummary);
-                 window.currentUser = {
-                     id: u.id || u.email,
-                     name: u.name,
-                     avatar: u.avatar
-                 };
-             }
+    (async function initSession() {
+        try {
+            const cachedSession = localStorage.getItem('userSession');
+            if (cachedSession) {
+                 const session = JSON.parse(cachedSession);
+                 // Try to restore user info from main app storage
+                 const userSummary = localStorage.getItem('ytmp3.user.summary');
+                 if (userSummary) {
+                     const u = JSON.parse(userSummary);
+                     window.currentUser = {
+                         id: u.id || u.email,
+                         name: u.name,
+                         avatar: u.avatar
+                     };
+                 }
+                 
+                 // AUTO-LOGIN FIREBASE using Shadow Account if available
+                 const shadowKey = 'ytmp3.firebase.shadow_cred';
+                 if (localStorage.getItem(shadowKey)) {
+                     console.log("Attempting auto-login to Firebase via Shadow Account...");
+                     try {
+                         // We don't have the Google User object here easily unless we parse it from somewhere, 
+                         // but ensureShadowAccount only needs it for profile update. 
+                         // For just login, we can pass null.
+                         await ensureShadowAccount(null);
+                     } catch (e) {
+                         console.warn("Auto-shadow login failed", e);
+                     }
+                 }
+            }
+        } catch (e) {
+            console.warn('Failed to restore chat session', e);
         }
-    } catch (e) {
-        console.warn('Failed to restore chat session', e);
-    }
+    })();
 
     // Chat Logic
     const chatArea = document.getElementById('forumChatArea');
@@ -16344,20 +16355,36 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Send Message
     const sendMessage = async () => {
         const text = chatInput.value.trim();
-        if (!text || !window.currentUser) return;
+        if (!text) return;
+        
+        // Ensure auth before sending
+        if (!auth.currentUser) {
+            console.warn("Not logged in to Firebase. Attempting recovery...");
+            const shadowKey = 'ytmp3.firebase.shadow_cred';
+            if (localStorage.getItem(shadowKey)) {
+                await ensureShadowAccount(null);
+            } else {
+                alert("Anda belum terhubung ke chat. Silakan login ulang via Google.");
+                return;
+            }
+        }
 
         try {
             await addDoc(messagesRef, {
                 text: text,
-                uid: window.currentUser.id || 'anon',
-                name: window.currentUser.name || 'Warga',
-                photoURL: window.currentUser.avatar || '',
+                uid: window.currentUser?.id || auth.currentUser.uid, // Use Firebase UID if main ID missing
+                name: window.currentUser?.name || auth.currentUser.displayName || 'Warga',
+                photoURL: window.currentUser?.avatar || auth.currentUser.photoURL || '',
                 timestamp: serverTimestamp()
             });
             chatInput.value = '';
         } catch (e) {
             console.error("Error sending message: ", e);
-            alert("Gagal mengirim pesan. Pastikan internet lancar.");
+            if (e.code === 'permission-denied') {
+                 alert("Gagal mengirim: Izin ditolak. Coba logout dan login lagi.");
+            } else {
+                 alert("Gagal mengirim pesan. Pastikan internet lancar.");
+            }
         }
     };
 
