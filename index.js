@@ -6429,13 +6429,17 @@ app.get("/api/server-time", (req, res) => {
   return res.json({ time });
 });
 
+const startTime = Date.now();
+
 app.get("/api/health", (req, res) => {
   return res.json({
     ok: true,
     status: "online",
     maintenance: process.env.MAINTENANCE_MODE === "true",
     uptime: process.uptime(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    startTime: startTime,
+    storageDuration: "24h" // Default ephemeral storage policy
   });
 });
 
@@ -7367,10 +7371,6 @@ export {
   initProgress,
   updateProgress,
   finishProgress,
-  clearProgress,
-  resolveToolVersions,
-  createSessionToken,
-};
   clearProgress,
   resolveToolVersions,
   createSessionToken,
