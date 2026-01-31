@@ -2722,19 +2722,19 @@
     <div class="offcanvas-body">
       <p class="menu-meta">Pilih tab untuk berpindah antar area converter.</p>
       <div class="d-grid gap-2">
-        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter" data-bs-dismiss="offcanvas">
+        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter">
           <i class="bi bi-cpu"></i>
           <span data-i18n="navConverter">Converter</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub" data-bs-dismiss="offcanvas">
+        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub">
           <i class="bi bi-stars"></i>
           <span data-i18n="navExperience">Experience Hub</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ" data-bs-dismiss="offcanvas">
+        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
           <i class="bi bi-question-circle"></i>
           <span>FAQ</span>
         </button>
-        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria" data-bs-dismiss="offcanvas">
+        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria">
           <i class="bi bi-heart-fill"></i>
           <span>Saweria</span>
         </button>
@@ -16137,13 +16137,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         GoogleAuthProvider, 
         signInWithCredential, 
         signInWithRedirect,
+        signInWithPopup,
         getRedirectResult,
         signOut,
         updateProfile,
         browserLocalPersistence,
         setPersistence,
         signInWithEmailAndPassword,
-        createUserWithEmailAndPassword
+        createUserWithEmailAndPassword,
+        onAuthStateChanged
     } from "firebase/auth";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
 
@@ -16201,14 +16203,19 @@ $('#queueList')?.addEventListener('click', (e) => {
             alert("Login Gagal: " + error.message);
         });
 
-    // Global function to trigger Redirect Login for Forum
+    // Global function to trigger Login for Forum (Popup preferred for local dev)
     window.loginForumWithRedirect = async () => {
         try {
-            console.log("Firebase Auth: Starting Redirect Flow...");
-            await signInWithRedirect(auth, provider);
+            console.log("Firebase Auth: Starting Popup Flow...");
+            await signInWithPopup(auth, provider);
         } catch (error) {
-            console.error("Firebase Auth: Failed to start redirect", error);
-            alert("Gagal memulai login: " + error.message);
+            console.error("Firebase Auth: Popup failed, trying Redirect...", error);
+            try {
+                await signInWithRedirect(auth, provider);
+            } catch (err) {
+                 console.error("Firebase Auth: All login methods failed", err);
+                 alert("Gagal login: " + err.message);
+            }
         }
     };
 
@@ -16399,7 +16406,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     };
 
     // Auth State Integration
-    auth.onAuthStateChanged((user) => {
+    onAuthStateChanged(auth, (user) => {
         if (user) {
             console.log("Firebase Auth State: Logged In", user.uid, user.email);
             
