@@ -43,6 +43,19 @@
       .range-control .btn-range { width: 2.2rem; height: 2.2rem; font-size: 1rem; }
     }
     .muted { color: var(--bs-secondary); }
+
+    /* Global Button Animations */
+    button, .btn, .btn-range {
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    button:not(:disabled):hover, .btn:not(:disabled):not(.disabled):hover, .btn-range:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    button:not(:disabled):active, .btn:not(:disabled):not(.disabled):active, .btn-range:active {
+      transform: scale(0.95) translateY(0);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
