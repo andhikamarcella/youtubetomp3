@@ -16811,35 +16811,28 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     // Global function to trigger Login for Forum (Popup preferred for local dev, Redirect for Mobile)
     window.loginForumWithRedirect = async () => {
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        // const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         
         if(window.setToast) window.setToast("Memproses login...", "info");
 
-        // Mobile: Force Redirect immediately to avoid Popup blocking issues
-        if (isMobile) {
-             console.log("Firebase Auth: Mobile detected, forcing Redirect Flow...");
-             try {
-                 await signInWithRedirect(auth, provider);
-                 return; // Page will redirect
-             } catch (err) {
-                 console.error("Firebase Auth: Redirect failed", err);
-                 if(window.setToast) window.setToast("Gagal memulai login: " + err.message);
-                 return;
-             }
-        }
-
-        // Desktop: Try Popup first
+        // Try Popup FIRST for ALL devices (Desktop & Mobile)
+        // Modern mobile browsers support popups better when triggered by user action
         try {
             console.log("Firebase Auth: Starting Popup Flow...");
             await signInWithPopup(auth, provider);
+            // Success! onAuthStateChanged will handle the UI
         } catch (error) {
             console.error("Firebase Auth: Popup failed, trying Redirect...", error);
-            // If popup blocked, fallback to redirect
-            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+            
+            // Only fallback to Redirect if Popup is strictly blocked/failed
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
                  try {
+                    console.log("Firebase Auth: Fallback to Redirect Flow...");
+                    sessionStorage.setItem('isFirebaseRedirecting', 'true'); // Set flag
                     await signInWithRedirect(auth, provider);
                 } catch (err) {
                      console.error("Firebase Auth: All login methods failed", err);
+                     sessionStorage.removeItem('isFirebaseRedirecting'); // Clear flag if failed immediately
                      alert("Gagal login: " + err.message);
                 }
             } else {
