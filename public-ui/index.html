@@ -16129,7 +16129,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         signOut,
         updateProfile,
         browserLocalPersistence,
-        setPersistence
+        setPersistence,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword
     } from "firebase/auth";
     import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
 
@@ -16155,6 +16157,61 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose auth to window for debugging
     window.firebaseAuth = auth;
 
+    // Helper: Shadow Account Strategy (Restored for Firestore Permissions)
+    async function ensureShadowAccount(googleUser) {
+        const shadowKey = 'ytmp3.firebase.shadow_cred';
+        let cred = localStorage.getItem(shadowKey);
+        let email, password;
+
+        if (cred) {
+            try {
+                const parsed = JSON.parse(cred);
+                email = parsed.email;
+                password = parsed.password;
+            } catch { cred = null; }
+        }
+
+        if (!cred) {
+            // Create new shadow credentials with the specific domain required by rules
+            const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            email = `user_${randomId}@forum-warga.temp`;
+            password = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "Strong!1";
+            localStorage.setItem(shadowKey, JSON.stringify({ email, password }));
+        }
+
+        try {
+            // Sign in as Shadow User
+            // Note: This replaces the current Google Auth session, which is what we want
+            // because Firestore only accepts this specific domain.
+            await signInWithEmailAndPassword(auth, email, password);
+            console.log("Firebase Auth: Switched to Shadow Account (for Firestore access)");
+        } catch (error) {
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                try {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    console.log("Firebase Auth: Created new Shadow Account");
+                } catch (createError) {
+                    console.error("Firebase Auth: Failed to create Shadow Account", createError);
+                    throw createError;
+                }
+            } else {
+                console.error("Firebase Auth: Shadow Login Error", error);
+                throw error;
+            }
+        }
+
+        // Apply Google User's profile to the Shadow Account
+        if (auth.currentUser && googleUser) {
+            try {
+                await updateProfile(auth.currentUser, {
+                    displayName: googleUser.name,
+                    photoURL: googleUser.picture || googleUser.avatar
+                });
+                console.log("Firebase Auth: Synced Shadow Profile with Google Info");
+            } catch (e) { console.warn("Failed to update shadow profile", e); }
+        }
+    }
+
     // Configure Google Provider with the specific Client ID requested
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
@@ -16163,16 +16220,26 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     // Handle Redirect Result on Page Load
     getRedirectResult(auth)
-        .then((result) => {
+        .then(async (result) => {
             if (result) {
                 const user = result.user;
                 console.log("Firebase Auth: Login successful via Redirect", user);
-                // Sync to local session if needed, or just let the auth state listener handle it
-                window.currentUser = {
+                
+                const googleSummary = {
                     id: user.uid,
                     name: user.displayName,
-                    avatar: user.photoURL
+                    avatar: user.photoURL,
+                    email: user.email // Store email too
                 };
+                
+                // 1. Update Global State / LocalStorage immediately
+                window.currentUser = googleSummary;
+                if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
+                
+                // 2. Switch to Shadow Account for Firestore Access
+                // We pass the Google Info so the shadow profile can be updated to match
+                await ensureShadowAccount(googleSummary);
+                
                 // Optional: Show success toast
                 // alert("Login Chat Berhasil!");
             }
@@ -16324,11 +16391,16 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
 
         try {
+            // We must use the authenticated user's UID to pass Firestore rules (request.auth.uid == resource.data.uid)
+            // But we can use the Google Profile (window.currentUser) for display name and avatar.
+            const authUser = auth.currentUser;
+            const displayUser = window.currentUser || authUser;
+
             await addDoc(messagesRef, {
                 text: text,
-                uid: window.currentUser?.id || auth.currentUser.uid, // Use Firebase UID if main ID missing
-                name: window.currentUser?.name || auth.currentUser.displayName || 'Warga',
-                photoURL: window.currentUser?.avatar || auth.currentUser.photoURL || '',
+                uid: authUser.uid, // MUST match the auth token
+                name: displayUser.name || authUser.displayName || 'Warga',
+                photoURL: displayUser.avatar || authUser.photoURL || '',
                 timestamp: serverTimestamp()
             });
             chatInput.value = '';
@@ -16369,16 +16441,34 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Auth State Integration
     auth.onAuthStateChanged((user) => {
         if (user) {
-            console.log("Firebase Auth State: Logged In", user.uid);
+            console.log("Firebase Auth State: Logged In", user.uid, user.email);
+            
+            // Check if this is a Shadow Account (has specific domain)
+            const isShadow = user.email && user.email.endsWith('@forum-warga.temp');
+            
+            // Use existing global user (from Google Login) if available, 
+            // otherwise use the Firebase User (which might be the Shadow one masquerading)
+            // Ideally, we want the Google Info.
+            
             const userSummary = {
-                id: user.uid,
+                id: user.uid, // This will be shadow ID if shadow logged in
                 name: user.displayName || 'Warga',
                 avatar: user.photoURL || ''
             };
-            // Force update UI
-            window.updateForumAuthUI(userSummary);
-            // Also update global currentUser for consistency
-            window.currentUser = userSummary;
+            
+            // If we have a cached Google User (from Redirect), prefer its ID/Name/Avatar for UI display
+            // BUT, for sendMessage, we might want the Shadow UID or Google Name.
+            // Let's rely on window.currentUser if it's "better" (has Google ID).
+            
+            if (window.currentUser && window.currentUser.email && !window.currentUser.email.endsWith('@forum-warga.temp')) {
+                 // Keep the Google Identity in UI
+                 console.log("Maintaining Google Identity in UI despite Shadow Auth");
+                 if (window.updateForumAuthUI) window.updateForumAuthUI(window.currentUser);
+            } else {
+                 // Fallback to what we have (e.g. fresh load with persistent shadow session)
+                 window.currentUser = userSummary;
+                 if (window.updateForumAuthUI) window.updateForumAuthUI(userSummary);
+            }
         } else {
             console.log("Firebase Auth State: Logged Out");
             window.updateForumAuthUI(null);
