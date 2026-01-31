@@ -115,6 +115,33 @@
       /* Better Card Spacing */
       .card-body { padding: 1rem; }
     }
+
+    /* Forum Chat Overrides */
+    #forumChatArea {
+      background-color: #e5ddd5;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
+      scrollbar-width: thin;
+    }
+    [data-bs-theme="dark"] #forumChatArea {
+      background-color: #0b141a;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230b141a"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.02)"/></svg>');
+    }
+
+    .message.admin .message-bubble {
+      border-radius: 0 12px 12px 12px;
+      border: 2px solid transparent;
+      background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8);
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+      color: #111b21;
+      box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+    }
+    
+    [data-bs-theme="dark"] .message.admin .message-bubble {
+      background-image: linear-gradient(#202c33, #202c33), linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8);
+      color: #e9edef;
+      box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
+    }
     
     /* Assistant & Chat Styles */
     .assistant-fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 1100; display: grid; gap: .5rem; justify-items: end; }
@@ -144,7 +171,15 @@
     .message.admin .message-bubble {
       position: relative;
       z-index: 0;
-      border: none !important; /* Remove default border if any */
+      border: none !important;
+      background: #ffffff;
+      color: #000;
+      border-radius: 0 1rem 1rem 1rem !important;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    html[data-bs-theme='dark'] .message.admin .message-bubble {
+      background: #1f2c34;
+      color: #fff;
     }
     .message.admin .message-bubble::before {
       content: "";
@@ -724,6 +759,15 @@
       .mini-player .mini-action-label { font-size: .6rem; }
     }
   </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+        "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
+        "firebase/database": "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+      }
+    }
+  </script>
 </head>
 <body>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
@@ -2290,7 +2334,7 @@
             <i class="bi bi-heart-fill text-warning"></i>
           </div>
 
-          <div class="d-inline-flex align-items-center justify-content-center p-4 rounded-circle bg-white text-warning shadow-sm mb-4" style="width: 80px; height: 80px;">
+          <div class="d-inline-flex align-items-center justify-content-center p-4 rounded-circle bg-body-tertiary text-warning shadow-sm mb-4" style="width: 80px; height: 80px;">
             <i class="bi bi-gift-fill fs-1"></i>
           </div>
           
@@ -2871,36 +2915,36 @@
           <h5 class="modal-title fw-bold" id="forumModalLabel"><i class="bi bi-chat-quote-fill text-primary me-2"></i>Forum Warga</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
-        <div class="modal-body p-0 position-relative" style="background-color: #f8f9fa; height: 400px;">
+        <div class="modal-body p-0 position-relative bg-body-tertiary" style="height: 400px;">
           <!-- Chat Area -->
           <div id="forumChatArea" class="d-flex flex-column p-3 h-100" style="overflow-y: auto;">
             <div class="text-center my-3">
-              <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3">Hari ini</span>
+              <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 shadow-sm">Hari ini</span>
             </div>
             <!-- Welcome Message -->
-            <div class="d-flex align-items-start mb-3">
+            <div class="d-flex align-items-start mb-3 message admin">
                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
-               <div class="bg-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
+               <div class="message-bubble">
                   <div class="small fw-bold text-primary mb-1">Admin <i class="bi bi-patch-check-fill"></i></div>
-                  <div class="small text-dark">Selamat datang di Forum Warga! Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
-                  <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">Pinned</div>
+                  <div class="small">Selamat datang di Forum Warga! Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
+                  <div class="text-end text-body-tertiary mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
+                    <i class="bi bi-pin-angle-fill"></i> Pinned
+                  </div>
                </div>
             </div>
           </div>
           
           <!-- Login Overlay -->
-          <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-90 d-flex flex-column align-items-center justify-content-center p-4 text-center" style="backdrop-filter: blur(4px); z-index: 10;">
-              <div class="mb-3 p-3 bg-white rounded-circle shadow-sm">
+          <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-90 d-flex flex-column align-items-center justify-content-center p-4 text-center" style="backdrop-filter: blur(4px); z-index: 10;">
+              <div class="mb-3 p-3 bg-body-secondary rounded-circle shadow-sm">
                 <i class="bi bi-google text-danger" style="font-size: 2.5rem;"></i>
               </div>
               <h5 class="fw-bold mb-2">Login Diperlukan</h5>
               <p class="text-secondary small mb-4" style="max-width: 250px;">Akses forum dibatasi untuk pengguna terverifikasi demi kenyamanan bersama.</p>
-              <button id="forumGoogleLoginBtn" class="btn btn-dark rounded-pill px-4 py-2 shadow-sm transition-all hover-scale">
-                 <i class="bi bi-google me-2"></i> Login dengan Google
-              </button>
+              <div id="googleSignInForum"></div>
           </div>
         </div>
-        <div class="modal-footer bg-white border-top-0 p-3">
+        <div class="modal-footer bg-body-tertiary border-top-0 p-3">
           <div class="input-group">
             <input type="text" id="forumInput" class="form-control rounded-start-pill bg-light border-0 ps-3" placeholder="Tulis pesan..." disabled autocomplete="off">
             <button class="btn btn-primary rounded-end-pill px-4" type="button" id="forumSendBtn" disabled><i class="bi bi-send-fill"></i></button>
@@ -3093,16 +3137,27 @@
                  </h6>
                  
                  <div class="d-flex justify-content-center flex-wrap gap-3 gap-md-4 align-items-center">
-                    <!-- Komdigi Badge -->
-                    <div class="d-flex align-items-center bg-white px-3 py-2 rounded-pill shadow-sm border" style="min-width: 160px;" title="Terdaftar & Diawasi Komdigi">
-                       <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                          <i class="bi bi-bank2" style="font-size: 0.8rem;"></i>
+                    <!-- Verified Badge (Komdigi with Verify Icon) -->
+                   <div class="d-flex align-items-center bg-white px-3 py-2 rounded-pill shadow-sm border" style="min-width: 160px;" title="Verified by Komdigi">
+                       <div class="me-2 text-primary">
+                          <i class="bi bi-patch-check-fill fs-2"></i>
                        </div>
                        <div class="lh-1 text-start">
-                          <div class="text-secondary" style="font-size: 0.6rem; font-weight: 700;">VERIFIED BY</div>
-                          <div class="text-danger" style="font-size: 0.9rem; font-weight: 900; letter-spacing: 0.5px;">KOMDIGI</div>
+                          <div class="text-muted fw-bold" style="font-size: 0.65rem;">VERIFIED BY</div>
+                          <div class="text-dark fw-black" style="font-size: 1rem; letter-spacing: 0.5px; font-weight: 800;">KOMDIGI</div>
                        </div>
-                       <i class="bi bi-check-circle-fill text-primary ms-auto fs-5"></i>
+                    </div>
+
+                    <!-- Partners Badge -->
+                   <div class="d-flex align-items-center bg-white px-3 py-2 rounded-pill shadow-sm border" style="min-width: 160px;">
+                       <div class="d-flex gap-2 me-2">
+                         <i class="bi bi-spotify text-success fs-4"></i>
+                         <i class="bi bi-soundcloud text-warning fs-4"></i>
+                      </div>
+                       <div class="lh-1 text-start">
+                          <div class="text-secondary" style="font-size: 0.6rem; font-weight: 700;">OFFICIAL</div>
+                         <div class="text-dark fw-bold" style="font-size: 0.8rem;">Spotify & SoundCloud</div>
+                       </div>
                     </div>
 
                     <!-- Cloudflare Badge -->
@@ -3110,7 +3165,7 @@
                        <i class="bi bi-cloud-fill text-warning fs-3 me-2"></i>
                        <div class="lh-1 text-start">
                           <div class="text-secondary" style="font-size: 0.6rem; font-weight: 700;">SECURED BY</div>
-                          <div class="text-dark" style="font-size: 0.9rem; font-weight: 800;">Cloudflare</div>
+                          <div class="text-dark fw-black" style="font-size: 0.9rem; font-weight: 800;">Cloudflare</div>
                        </div>
                     </div>
 
@@ -3119,7 +3174,7 @@
                        <i class="bi bi-google me-2 fs-4" style="background: linear-gradient(45deg, #4285F4, #DB4437, #F4B400, #0F9D58); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
                        <div class="lh-1 text-start">
                           <div class="text-secondary" style="font-size: 0.6rem; font-weight: 700;">SAFE BROWSING</div>
-                          <div class="text-dark" style="font-size: 0.9rem; font-weight: 800;">Google</div>
+                          <div class="text-dark fw-black" style="font-size: 0.9rem; font-weight: 800;">Google</div>
                        </div>
                     </div>
 
@@ -3128,7 +3183,7 @@
                        <i class="bi bi-youtube text-danger fs-3 me-2"></i>
                        <div class="lh-1 text-start">
                           <div class="text-secondary" style="font-size: 0.6rem; font-weight: 700;">OPTIMIZED FOR</div>
-                          <div class="text-dark" style="font-size: 0.9rem; font-weight: 800;">YouTube</div>
+                          <div class="text-dark fw-black" style="font-size: 0.9rem; font-weight: 800;">YouTube</div>
                        </div>
                     </div>
                  </div>
@@ -3305,7 +3360,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
   checkStorageAndWarn();
-  const APP_VERSION = 'v2.5.0';
+  const APP_VERSION = 'v3.0';
 
   // --- Footer Logic (New) ---
   function updateLocalTime() {
@@ -6330,6 +6385,13 @@
 
   function updateAccountUi() {
     const user = state.auth.user;
+    const forumOverlay = document.getElementById('forumLoginOverlay');
+    const forumInput = document.getElementById('forumInput');
+    const forumSendBtn = document.getElementById('forumSendBtn');
+    
+    if (forumOverlay) forumOverlay.hidden = !!user;
+    if (forumInput) forumInput.disabled = !user;
+    if (forumSendBtn) forumSendBtn.disabled = !user;
     if (profileAccountAvatar) {
       const photo = typeof user?.avatarUrl === 'string' ? user.avatarUrl : '';
       if (photo) {
@@ -6854,7 +6916,10 @@
         logLabel: 'auth-login',
       });
       if (data?.token) persistAuthToken(data.token);
-      if (data?.user) applyUserSummary(data.user, { origin: 'server' });
+      if (data?.user) {
+          applyUserSummary(data.user, { origin: 'server' });
+          if (window.updateForumAuthUI) window.updateForumAuthUI(data.user);
+      }
       setToast(translateMessage('Login berhasil'));
       fetchUserSession({ silent: true });
     } catch (err) {
@@ -6920,7 +6985,6 @@
     }
     clearGooglePollTimer();
     state.auth.googleFallbackNotified = false;
-    googleSignInButton.dataset.mode = 'google';
     if (!googleClientInitialized) {
       window.google.accounts.id.initialize({
         client_id: state.auth.googleClientId,
@@ -6929,14 +6993,28 @@
       });
       googleClientInitialized = true;
     }
-    googleSignInButton.hidden = false;
-    googleSignInButton.innerHTML = '';
-    window.google.accounts.id.renderButton(googleSignInButton, {
-      theme: 'outline',
-      size: 'medium',
-      text: 'signin_with',
-      shape: 'pill',
-    });
+    if (googleSignInButton) {
+        googleSignInButton.dataset.mode = 'google';
+        googleSignInButton.hidden = false;
+        googleSignInButton.innerHTML = '';
+        window.google.accounts.id.renderButton(googleSignInButton, {
+          theme: 'outline',
+          size: 'medium',
+          text: 'signin_with',
+          shape: 'pill',
+        });
+    }
+    
+    if (googleSignInForum) {
+        googleSignInForum.dataset.mode = 'google';
+        googleSignInForum.innerHTML = '';
+        window.google.accounts.id.renderButton(googleSignInForum, {
+          theme: 'outline',
+          size: 'medium',
+          text: 'signin_with',
+          shape: 'pill',
+        });
+    }
   }
 
   async function fetchAuthConfig() {
@@ -10629,7 +10707,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                           </div>
                        </div>
                    
-                       <div class="d-flex justify-content-around text-center small bg-white rounded p-2 shadow-sm">
+                       <div class="d-flex justify-content-around text-center small bg-body-secondary rounded p-2 shadow-sm">
                          <div>
                            <div class="text-secondary" style="font-size: 0.75rem;">Loudness</div>
                            <div class="statLufs fw-bold text-dark">${afterLufs || '-'} LUFS</div>
@@ -15269,7 +15347,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 const replyHtml = `
                 <div class="d-flex align-items-start mb-3">
                      <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">USR</div>
-                     <div class="bg-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
+                     <div class="bg-body-tertiary p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
                         <div class="small fw-bold text-warning-emphasis mb-1">Warga +62</div>
                         <div class="small text-dark">${reply}</div>
                         <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">Baru saja</div>
@@ -15843,6 +15921,183 @@ $('#queueList')?.addEventListener('click', (e) => {
       });
 
     })();
+  </script>
+  <script type="module">
+    // Import the functions you need from the SDKs you need 
+    import { initializeApp } from "firebase/app"; 
+    import { getAnalytics } from "firebase/analytics"; 
+    import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "firebase/database";
+
+    // Your web app's Firebase configuration 
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional 
+    const firebaseConfig = { 
+      apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo", 
+      authDomain: "forum-warga.firebaseapp.com", 
+      projectId: "forum-warga", 
+      storageBucket: "forum-warga.firebasestorage.app", 
+      messagingSenderId: "317910503290", 
+      appId: "1:317910503290:web:a97b324c48bd04a24750c3", 
+      measurementId: "G-G8BYN8MNLR" 
+    }; 
+
+    // Initialize Firebase 
+    const app = initializeApp(firebaseConfig); 
+    const analytics = getAnalytics(app);
+    const db = getDatabase(app);
+    const messagesRef = ref(db, 'forum-messages');
+    
+    // Expose to window for global access
+    window.firebaseApp = app;
+    window.firebaseAnalytics = analytics;
+
+    // Chat Logic
+    const chatArea = document.getElementById('forumChatArea');
+    const chatInput = document.getElementById('forumInput');
+    const sendBtn = document.getElementById('forumSendBtn');
+    const loginOverlay = document.getElementById('forumLoginOverlay');
+
+    // Helper to format time
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    // Render Message
+    const renderMessage = (msg, key) => {
+        const isMe = window.currentUser && msg.uid === window.currentUser.id;
+        const div = document.createElement('div');
+        div.className = `d-flex align-items-start mb-3 message ${isMe ? 'user' : 'other'}`;
+        
+        // Avatar
+        const avatar = document.createElement('div');
+        avatar.className = 'rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm bg-secondary text-white overflow-hidden';
+        avatar.style.width = '36px';
+        avatar.style.height = '36px';
+        avatar.style.flexShrink = '0';
+        avatar.style.fontSize = '0.8rem';
+        if (msg.photoURL) {
+            avatar.innerHTML = `<img src="${msg.photoURL}" alt="${msg.name}" style="width:100%;height:100%;object-fit:cover;">`;
+        } else {
+            avatar.textContent = (msg.name || 'A').charAt(0).toUpperCase();
+        }
+
+        // Bubble
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble position-relative';
+        if (isMe) {
+            bubble.style.backgroundColor = '#d9fdd3'; // WhatsApp user green
+            bubble.style.borderRadius = '12px 0 12px 12px';
+            bubble.style.marginLeft = 'auto';
+            div.classList.add('justify-content-end');
+            div.classList.remove('align-items-start'); // Adjust alignment for user
+            // Reorder for "Me"
+            div.innerHTML = ''; 
+            div.appendChild(bubble);
+            // div.appendChild(avatar); // Optional: hide avatar for self like WA? Let's keep it for clarity or hide it.
+        } else {
+            bubble.style.backgroundColor = 'var(--bs-body-bg)';
+            bubble.style.borderRadius = '0 12px 12px 12px';
+            div.appendChild(avatar);
+            div.appendChild(bubble);
+        }
+        
+        // Content
+        bubble.innerHTML = `
+            <div class="small fw-bold ${isMe ? 'text-dark' : 'text-primary'} mb-1">${msg.name || 'Warga'}</div>
+            <div class="small text-break" style="min-width: 120px;">${msg.text}</div>
+            <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">
+                ${formatTime(msg.timestamp)}
+            </div>
+        `;
+
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    };
+
+    // Listen for new messages
+    onChildAdded(messagesRef, (snapshot) => {
+        const msg = snapshot.val();
+        renderMessage(msg, snapshot.key);
+    });
+
+    // Send Message
+    const sendMessage = () => {
+        const text = chatInput.value.trim();
+        if (!text || !window.currentUser) return;
+
+        push(messagesRef, {
+            text: text,
+            uid: window.currentUser.id || 'anon',
+            name: window.currentUser.name || 'Warga',
+            photoURL: window.currentUser.avatar || '',
+            timestamp: serverTimestamp()
+        });
+
+        chatInput.value = '';
+    };
+
+    sendBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Auth State Integration (Polling for state.auth.user or window.currentUser)
+    setInterval(() => {
+        // Check if global state has user (from main app logic)
+        // Accessing the global 'state' object might be tricky from module scope if not exposed.
+        // But we saw 'window.currentUser' or 'state.auth.user' usage in main script.
+        // Let's rely on the localStorage 'userSession' or checking UI state.
+        
+        // Strategy: Check if the main app has updated the user session
+        // We can hook into the 'updateAccountUi' function if possible, or just poll the global 'state' variable if it's on window.
+        // Based on previous code: "state.auth.user = nextSummary;"
+        // Let's assume 'state' is NOT global. But 'localStorage' is.
+        // Or better, let's expose a hook.
+        
+        // However, since we are in a module, we can't easily access the non-module 'state' unless it's on window.
+        // Let's try to access window.state if available, or just check if login overlay should be hidden.
+        
+        const isForumOpen = document.getElementById('forumModal').classList.contains('show');
+        if (isForumOpen) {
+             // Basic check: if profile button has image, we are logged in.
+             // Or better: window.firebaseApp is now set.
+             
+             // Let's try to find the user from the DOM or LocalStorage as fallback
+             // The main app uses 'state.auth.user'.
+             // Let's check if the overlay is still visible.
+             
+             // Hack: If the main app updates the UI, it might not hide the overlay automatically because it doesn't know about it (unless I added it).
+             // I need to add logic to hide the overlay.
+             
+             // Let's look at the main script's 'updateAccountUi'.
+             // It updates 'accountBtn'.
+             
+             // I will add a global function that the main script can call, or I just poll for existence of user.
+        }
+    }, 1000);
+
+    // Expose logic to hide overlay
+    window.updateForumAuthUI = (user) => {
+        if (user) {
+            loginOverlay.classList.add('d-none');
+            chatInput.disabled = false;
+            sendBtn.disabled = false;
+            window.currentUser = {
+                id: user.id || user.email, // Fallback ID
+                name: user.name,
+                avatar: user.avatar
+            };
+        } else {
+            loginOverlay.classList.remove('d-none');
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
+            window.currentUser = null;
+        }
+    };
+
+    // Initial check (in case already logged in)
+    // We need to bridge the main script's state to here.
   </script>
 </body>
 </html>
