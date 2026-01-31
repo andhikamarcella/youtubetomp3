@@ -7179,14 +7179,22 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     }
     
     if (googleSignInForum) {
-        googleSignInForum.dataset.mode = 'google';
-        googleSignInForum.innerHTML = '';
+        googleSignInForum.dataset.mode = 'custom';
+        googleSignInForum.innerHTML = `
+          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" onclick="if(window.loginForumWithRedirect) window.loginForumWithRedirect(); else alert('Sistem chat sedang dimuat, coba sesaat lagi...')">
+             <i class="bi bi-google"></i>
+             <span>Login Google (Chat)</span>
+          </button>
+        `;
+        // Removed GIS render for Forum to use Firebase Redirect Flow directly
+        /*
         window.google.accounts.id.renderButton(googleSignInForum, {
           theme: 'outline',
           size: 'medium',
           text: 'signin_with',
           shape: 'pill',
         });
+        */
     }
 
     if (profileGoogleLoginBtn) {
@@ -16116,9 +16124,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         getAuth, 
         GoogleAuthProvider, 
         signInWithCredential, 
-        signInAnonymously,
-        createUserWithEmailAndPassword,
-        signInWithEmailAndPassword,
+        signInWithRedirect,
+        getRedirectResult,
+        signOut,
         updateProfile,
         browserLocalPersistence,
         setPersistence
@@ -16141,96 +16149,55 @@ $('#queueList')?.addEventListener('click', (e) => {
     const analytics = getAnalytics(app);
     const auth = getAuth(app);
     
-    // Set persistence to LOCAL so the shadow user stays logged in
+    // Set persistence to LOCAL
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
     // Expose auth to window for debugging
     window.firebaseAuth = auth;
 
-    // Helper: Create or Login Shadow Account
-    async function ensureShadowAccount(googleUser) {
-        // Deterministic but secure-ish credentials for this specific device/user combo
-        // We can't generate deterministic password from Google Token (it changes), 
-        // so we generate a random one and store it.
-        const shadowKey = 'ytmp3.firebase.shadow_cred';
-        let cred = localStorage.getItem(shadowKey);
-        let email, password;
+    // Configure Google Provider with the specific Client ID requested
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+        client_id: '284178469971-32adtvdfo6d5jsot9mt7bqu52kg1q34j.apps.googleusercontent.com'
+    });
 
-        if (cred) {
-            try {
-                const parsed = JSON.parse(cred);
-                email = parsed.email;
-                password = parsed.password;
-            } catch { cred = null; }
-        }
-
-        if (!cred) {
-            // Create new shadow credentials
-            const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            email = `user_${randomId}@forum-warga.temp`;
-            password = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "Strong!1";
-            localStorage.setItem(shadowKey, JSON.stringify({ email, password }));
-        }
-
-        try {
-            // Try signing in
-            await signInWithEmailAndPassword(auth, email, password);
-            console.log("Firebase Auth: Signed in with Shadow Account (Email/Pass)");
-        } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                // User doesn't exist, create it
-                try {
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    console.log("Firebase Auth: Created and signed in Shadow Account");
-                } catch (createError) {
-                    console.error("Firebase Auth: Failed to create Shadow Account", createError);
-                    throw createError;
-                }
-            } else {
-                console.error("Firebase Auth: Shadow Login Error", error);
-                throw error;
+    // Handle Redirect Result on Page Load
+    getRedirectResult(auth)
+        .then((result) => {
+            if (result) {
+                const user = result.user;
+                console.log("Firebase Auth: Login successful via Redirect", user);
+                // Sync to local session if needed, or just let the auth state listener handle it
+                window.currentUser = {
+                    id: user.uid,
+                    name: user.displayName,
+                    avatar: user.photoURL
+                };
+                // Optional: Show success toast
+                // alert("Login Chat Berhasil!");
             }
-        }
+        }).catch((error) => {
+            console.error("Firebase Auth: Redirect Login Error", error);
+            if (error.code === 'auth/account-exists-with-different-credential') {
+                alert("Akun ini sudah terdaftar dengan metode login lain.");
+            }
+        });
 
-        // Update profile to match Google User if provided
-        if (auth.currentUser && googleUser) {
-            try {
-                await updateProfile(auth.currentUser, {
-                    displayName: googleUser.name,
-                    photoURL: googleUser.picture || googleUser.avatar
-                });
-            } catch (e) { console.warn("Failed to update shadow profile", e); }
+    // Global function to trigger Redirect Login for Forum
+    window.loginForumWithRedirect = async () => {
+        try {
+            console.log("Firebase Auth: Starting Redirect Flow...");
+            await signInWithRedirect(auth, provider);
+        } catch (error) {
+            console.error("Firebase Auth: Failed to start redirect", error);
+            alert("Gagal memulai login: " + error.message);
         }
-    }
+    };
 
-    // Global function to sign in to Firebase with Google Credential
+    // Deprecated: Standard Google Auth (One Tap) is incompatible with this Firebase project setup
+    // We keep the function signature to prevent errors in main app, but it does nothing/logs only.
     window.firebaseSignInWithGoogle = async (idToken) => {
-        // Try Standard Google Auth first (in case config is fixed later)
-        try {
-            const credential = GoogleAuthProvider.credential(idToken);
-            await signInWithCredential(auth, credential);
-            console.log("Firebase Auth: Signed in with Google Credential (Standard)");
-            return;
-        } catch (error) {
-            console.warn("Firebase Auth: Standard Google Auth failed (likely cross-project issue). Falling back to Shadow Account.", error.code);
-            
-            // Fallback: Shadow Account Strategy
-            // We need to decode the token to get user info for the profile
-            try {
-                 const payload = JSON.parse(atob(idToken.split('.')[1]));
-                 await ensureShadowAccount(payload);
-            } catch (shadowError) {
-                console.error("Firebase Auth: All login methods failed.", shadowError);
-                
-                // Last resort: Anonymous (if enabled by admin)
-                try {
-                    await signInAnonymously(auth);
-                    console.log("Firebase Auth: Signed in Anonymously (Last Resort)");
-                } catch (anonError) {
-                    console.error("Firebase Auth: Anonymous login also failed.", anonError);
-                }
-            }
-        }
+        console.log("Firebase Auth: Ignoring One Tap token (using Redirect Flow for Forum instead).");
     };
 
     const db = getFirestore(app);
@@ -16257,19 +16224,9 @@ $('#queueList')?.addEventListener('click', (e) => {
                      };
                  }
                  
-                 // AUTO-LOGIN FIREBASE using Shadow Account if available
-                 const shadowKey = 'ytmp3.firebase.shadow_cred';
-                 if (localStorage.getItem(shadowKey)) {
-                     console.log("Attempting auto-login to Firebase via Shadow Account...");
-                     try {
-                         // We don't have the Google User object here easily unless we parse it from somewhere, 
-                         // but ensureShadowAccount only needs it for profile update. 
-                         // For just login, we can pass null.
-                         await ensureShadowAccount(null);
-                     } catch (e) {
-                         console.warn("Auto-shadow login failed", e);
-                     }
-                 }
+                 // AUTO-LOGIN FIREBASE: Check if redirect just happened (handled above)
+                 // or if persistence is working.
+                 // We don't need shadow account logic anymore.
             }
         } catch (e) {
             console.warn('Failed to restore chat session', e);
@@ -16359,14 +16316,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         
         // Ensure auth before sending
         if (!auth.currentUser) {
-            console.warn("Not logged in to Firebase. Attempting recovery...");
-            const shadowKey = 'ytmp3.firebase.shadow_cred';
-            if (localStorage.getItem(shadowKey)) {
-                await ensureShadowAccount(null);
-            } else {
-                alert("Anda belum terhubung ke chat. Silakan login ulang via Google.");
-                return;
-            }
+            console.warn("Not logged in to Firebase.");
+            alert("Anda belum terhubung ke chat. Silakan login ulang.");
+            // Trigger login flow if needed, or just return
+            // window.loginForumWithRedirect(); // Optional: auto-trigger? Better ask user.
+            return;
         }
 
         try {
