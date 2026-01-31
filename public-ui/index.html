@@ -2714,38 +2714,146 @@
     </div>
   </div>
 
-  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNav">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title"><i class="bi bi-columns-gap me-2"></i>Navigasi Fitur</h5>
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNav" style="border-radius: 0 25px 25px 0; overflow: hidden; border: none;">
+    <!-- Custom Header with Gradient -->
+    <div class="offcanvas-header" style="background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%); color: #555;">
+      <h5 class="offcanvas-title fw-bold" style="font-family: 'Fredoka', sans-serif;"><i class="bi bi-stars me-2 text-danger"></i>Menu Ajaib ✨</h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
     </div>
-    <div class="offcanvas-body">
-      <p class="menu-meta">Pilih tab untuk berpindah antar area converter.</p>
-      <div class="d-grid gap-2">
-        <button type="button" class="app-nav-btn" data-section-target="converter" data-section-label="Converter" data-bs-dismiss="offcanvas">
-          <i class="bi bi-cpu"></i>
-          <span data-i18n="navConverter">Converter</span>
-        </button>
-        <button type="button" class="app-nav-btn" data-section-target="experience" data-section-label="Experience Hub" data-bs-dismiss="offcanvas">
-          <i class="bi bi-stars"></i>
-          <span data-i18n="navExperience">Experience Hub</span>
-        </button>
-        <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ" data-bs-dismiss="offcanvas">
-          <i class="bi bi-question-circle"></i>
-          <span>FAQ</span>
-        </button>
-        <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria" data-bs-dismiss="offcanvas">
-          <i class="bi bi-heart-fill"></i>
-          <span>Saweria</span>
-        </button>
-        <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()" data-bs-dismiss="offcanvas">
-          <i class="bi bi-person-circle"></i>
-          <span data-i18n="navProfile">Profil</span>
-        </button>
-        <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#aboutModal" data-bs-dismiss="offcanvas">
-          <i class="bi bi-info-circle"></i>
-          <span>About</span>
-        </button>
+    
+    <div class="offcanvas-body p-0" style="background-color: #FFF5F7;">
+      <!-- Inline Style for this Menu -->
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+        .cute-nav-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+          padding: 20px;
+        }
+        .cute-nav-item {
+          background: white;
+          border: none;
+          border-radius: 20px;
+          padding: 20px 10px;
+          text-align: center;
+          box-shadow: 0 8px 20px rgba(255, 154, 158, 0.15);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          height: 100%;
+        }
+        .cute-nav-item:active {
+          transform: scale(0.95);
+        }
+        .cute-nav-item:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 12px 25px rgba(255, 154, 158, 0.25);
+        }
+        .cute-nav-item.active {
+          background: linear-gradient(135deg, #FFF0F5, #FFFFFF);
+          border: 2px solid #FF9A9E;
+          box-shadow: 0 8px 20px rgba(255, 154, 158, 0.3);
+        }
+        .cute-nav-item.active .cute-nav-icon {
+          transform: scale(1.2) rotate(10deg);
+        }
+        .cute-nav-icon {
+          font-size: 2.2rem;
+          background: linear-gradient(45deg, #FF9A9E, #FECFEF);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 2px;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+        .cute-nav-label {
+          font-family: 'Fredoka', sans-serif;
+          font-weight: 600;
+          color: #666;
+          font-size: 0.95rem;
+          line-height: 1.2;
+        }
+        /* Specific Gradients/Colors per item */
+        .item-converter .cute-nav-icon { background: linear-gradient(45deg, #a18cd1, #fbc2eb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .item-experience .cute-nav-icon { background: linear-gradient(45deg, #ff9a9e, #fecfef); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .item-faq .cute-nav-icon { background: linear-gradient(45deg, #84fab0, #8fd3f4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .item-saweria .cute-nav-icon { background: linear-gradient(45deg, #fccb90, #d57eeb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .item-profile .cute-nav-icon { background: linear-gradient(45deg, #e0c3fc, #8ec5fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .item-about .cute-nav-icon { background: linear-gradient(45deg, #f093fb, #f5576c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .menu-mascot {
+          text-align: center;
+          padding: 20px;
+          background: white;
+          margin: 20px 20px 5px 20px;
+          border-radius: 20px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+          border: 2px dashed #FECFEF;
+        }
+        .menu-mascot-emoji {
+            font-size: 3.5rem; 
+            animation: float 3s ease-in-out infinite;
+            display: inline-block;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+      </style>
+
+      <div class="menu-mascot">
+         <div class="menu-mascot-emoji">🐰</div>
+         <div class="fw-bold text-dark mt-2" style="font-family: 'Fredoka', sans-serif;">Halo, Warga!</div>
+         <div class="small text-secondary">Mau ngapain hari ini?</div>
+      </div>
+
+      <div class="cute-nav-grid">
+          <!-- Converter -->
+          <button type="button" class="cute-nav-item item-converter" data-section-target="converter" data-section-label="Converter" data-bs-dismiss="offcanvas">
+            <i class="bi bi-music-note-beamed cute-nav-icon"></i>
+            <span class="cute-nav-label" data-i18n="navConverter">Ubah MP3</span>
+          </button>
+
+          <!-- Experience -->
+          <button type="button" class="cute-nav-item item-experience" data-section-target="experience" data-section-label="Experience Hub" data-bs-dismiss="offcanvas">
+            <i class="bi bi-controller cute-nav-icon"></i>
+            <span class="cute-nav-label" data-i18n="navExperience">Main Game</span>
+          </button>
+          
+          <!-- Saweria -->
+          <button type="button" class="cute-nav-item item-saweria" data-section-target="saweria" data-section-label="Dukung Saweria" data-bs-dismiss="offcanvas">
+            <i class="bi bi-heart-fill cute-nav-icon"></i>
+            <span class="cute-nav-label">Traktir</span>
+          </button>
+
+          <!-- FAQ -->
+          <button type="button" class="cute-nav-item item-faq" data-section-target="faq" data-section-label="FAQ" data-bs-dismiss="offcanvas">
+            <i class="bi bi-chat-heart-fill cute-nav-icon"></i>
+            <span class="cute-nav-label">Kepo Dulu</span>
+          </button>
+
+          <!-- Profile -->
+          <button type="button" class="cute-nav-item item-profile" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()" data-bs-dismiss="offcanvas">
+            <i class="bi bi-person-heart cute-nav-icon"></i>
+            <span class="cute-nav-label" data-i18n="navProfile">KTP Warga</span>
+          </button>
+
+          <!-- About -->
+          <button type="button" class="cute-nav-item item-about" data-bs-toggle="modal" data-bs-target="#aboutModal" data-bs-dismiss="offcanvas">
+            <i class="bi bi-info-circle-fill cute-nav-icon"></i>
+            <span class="cute-nav-label">Rahasia</span>
+          </button>
+      </div>
+      
+      <div class="text-center pb-4">
+          <small class="text-muted" style="font-size: 0.75rem;">✨ Dibuat dengan 💖 dan Kopi ✨</small>
       </div>
     </div>
   </div>
