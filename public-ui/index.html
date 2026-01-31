@@ -4575,8 +4575,30 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     return found;
   };
 
+  // Enhanced Navigation Handler (Mobile/Offcanvas Support)
   navButtons.forEach((btn) => {
-    btn.addEventListener('click', () => setActiveSection(btn.dataset.sectionTarget));
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = btn.dataset.sectionTarget;
+      if (target) {
+        // 1. Activate Section
+        setActiveSection(target);
+        
+        // 2. Force Close Offcanvas (Robust)
+        const navDrawerEl = document.getElementById('offcanvasNav');
+        if (navDrawerEl && navDrawerEl.classList.contains('show')) {
+            // Try Bootstrap Instance first
+            const drawer = bs?.Offcanvas?.getInstance(navDrawerEl) || bs?.Offcanvas?.getOrCreateInstance(navDrawerEl);
+            if (drawer) {
+                drawer.hide();
+            } else {
+                // Fallback: Click the close button
+                const closeBtn = navDrawerEl.querySelector('.btn-close');
+                if (closeBtn) closeBtn.click();
+            }
+        }
+      }
+    });
   });
 
   openProfileButtons.forEach((btn) => {
