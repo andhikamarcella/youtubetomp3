@@ -16167,11 +16167,12 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose auth to window for debugging
     window.firebaseAuth = auth;
 
-    // Configure Google Provider with the specific Client ID requested
+    // Configure Google Provider
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-        client_id: '284178469971-32adtvdfo6d5jsot9mt7bqu52kg1q34j.apps.googleusercontent.com'
-    });
+    // REMOVED custom client_id to prevent Firebase project mismatch
+    // provider.setCustomParameters({
+    //    client_id: '...' 
+    // });
 
     // Handle Redirect Result on Page Load
     getRedirectResult(auth)
@@ -16179,6 +16180,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (result) {
                 const user = result.user;
                 console.log("Firebase Auth: Login successful via Redirect", user);
+                alert(`Login Berhasil!\nSelamat datang, ${user.displayName}\nEmail: ${user.email}`);
                 
                 const googleSummary = {
                     id: user.uid,
@@ -16191,14 +16193,10 @@ $('#queueList')?.addEventListener('click', (e) => {
                 window.currentUser = googleSummary;
                 if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
                 
-                // NO Shadow Account - Use Direct Google Auth
-                // This ensures the user appears in Firebase Console correctly
             }
         }).catch((error) => {
             console.error("Firebase Auth: Redirect Login Error", error);
-            if (error.code === 'auth/account-exists-with-different-credential') {
-                alert("Akun ini sudah terdaftar dengan metode login lain.");
-            }
+            alert("Login Gagal: " + error.message);
         });
 
     // Global function to trigger Redirect Login for Forum
