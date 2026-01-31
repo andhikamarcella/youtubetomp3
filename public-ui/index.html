@@ -4575,31 +4575,55 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     return found;
   };
 
-  // Enhanced Navigation Handler (Mobile/Offcanvas Support)
-  navButtons.forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = btn.dataset.sectionTarget;
-      if (target) {
-        // 1. Activate Section
-        setActiveSection(target);
-        
-        // 2. Force Close Offcanvas (Robust)
-        const navDrawerEl = document.getElementById('offcanvasNav');
-        if (navDrawerEl && navDrawerEl.classList.contains('show')) {
-            // Try Bootstrap Instance first
-            const drawer = bs?.Offcanvas?.getInstance(navDrawerEl) || bs?.Offcanvas?.getOrCreateInstance(navDrawerEl);
-            if (drawer) {
-                drawer.hide();
-            } else {
-                // Fallback: Click the close button
-                const closeBtn = navDrawerEl.querySelector('.btn-close');
-                if (closeBtn) closeBtn.click();
-            }
+  // DELEGATED NAVIGATION HANDLER (Fix for Mobile/Offcanvas issues)
+  // Replaces all individual event listeners to ensure robust handling
+  document.addEventListener('click', (e) => {
+    // 1. Check if clicked element is a navigation button (or inside one)
+    const btn = e.target.closest('[data-section-target]');
+    if (!btn) return;
+    
+    // 2. Prevent default behavior (stops unexpected reloads/jumps)
+    e.preventDefault();
+    e.stopPropagation();
+
+    const target = btn.dataset.sectionTarget;
+    if (!target) return;
+
+    console.log('[Nav] Button clicked:', target);
+
+    // 3. Execute Navigation Logic
+    const success = setActiveSection(target);
+    
+    // 4. Handle Mobile Offcanvas (Force Close)
+    // Only if navigation was successful or we just want to close the menu anyway
+    const navDrawerEl = document.getElementById('offcanvasNav');
+    if (navDrawerEl && navDrawerEl.classList.contains('show')) {
+        console.log('[Nav] Closing offcanvas...');
+        // Try Bootstrap Instance
+        const drawer = bs?.Offcanvas?.getInstance(navDrawerEl) || bs?.Offcanvas?.getOrCreateInstance(navDrawerEl);
+        if (drawer) {
+            drawer.hide();
+        } else {
+            // Fallback: Simulate close button click
+            const closeBtn = navDrawerEl.querySelector('.btn-close');
+            if (closeBtn) closeBtn.click();
+            else navDrawerEl.classList.remove('show'); // Last resort CSS manipulation
         }
-      }
-    });
+        
+        // Remove backdrop if stuck
+        const backdrop = document.querySelector('.offcanvas-backdrop');
+        if (backdrop) backdrop.remove();
+        document.body.style.overflow = ''; // Restore scrolling
+        document.body.style.paddingRight = '';
+    }
+  }, true); // Use Capture phase to ensure we catch it first
+
+  // REMOVED: Old individual event listeners to avoid conflicts
+  /*
+  navButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => { ... });
   });
+  */
 
   openProfileButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
