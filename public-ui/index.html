@@ -57,11 +57,10 @@
       src: local("Apple Color Emoji");
       unicode-range: U+1F000-1F644, U+203C-3299;
     }
-    :root {
-      --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    }
-    body, .message-bubble, .emoji-picker {
-      font-family: var(--bs-font-sans-serif) !important;
+    
+    /* Apply iOS Emoji Font ONLY to Forum Chat */
+    .message-bubble, .emoji-picker, #forumInput, .preview-item {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     }
 
     @font-face {
@@ -7535,22 +7534,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     }
     
     if (googleSignInForum) {
-        googleSignInForum.dataset.mode = 'custom';
-        googleSignInForum.innerHTML = `
-          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" onclick="if(window.loginForumWithRedirect) window.loginForumWithRedirect(); else if(window.setToast) window.setToast('Sistem chat sedang dimuat, coba sesaat lagi...'); else alert('Sistem chat sedang dimuat...')">
-             <i class="bi bi-google"></i>
-             <span>Login Google (Chat)</span>
-          </button>
-        `;
-        // Removed GIS render for Forum to use Firebase Redirect Flow directly
-        /*
-        window.google.accounts.id.renderButton(googleSignInForum, {
-          theme: 'outline',
-          size: 'medium',
-          text: 'signin_with',
-          shape: 'pill',
-        });
-        */
+       // Logic moved to Firebase module script to ensure availability
     }
 
     if (profileGoogleLoginBtn) {
@@ -16688,6 +16672,27 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose logic to hide overlay (Defined EARLY to ensure availability)
     window.updateForumAuthUI = (user) => {
         const loginOverlay = document.getElementById('forumLoginOverlay');
+
+    // Ensure Forum Login Button is rendered (moved from main script to ensure availability)
+    const forumLoginContainer = document.getElementById('googleSignInForum');
+    if (forumLoginContainer) {
+        forumLoginContainer.innerHTML = `
+          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" id="btnForumLoginAction">
+             <i class="bi bi-google"></i>
+             <span>Login Google (Chat)</span>
+          </button>
+        `;
+        const btn = document.getElementById('btnForumLoginAction');
+        if(btn) {
+            btn.addEventListener('click', async () => {
+                if(window.loginForumWithRedirect) {
+                    await window.loginForumWithRedirect();
+                } else {
+                    alert("Sistem sedang memuat...");
+                }
+            });
+        }
+    }
         if (!loginOverlay) return; // Safety check
 
         if (user) {
@@ -16813,6 +16818,27 @@ $('#queueList')?.addEventListener('click', (e) => {
     const chatInput = document.getElementById('forumInput');
     const sendBtn = document.getElementById('forumSendBtn');
     const loginOverlay = document.getElementById('forumLoginOverlay');
+
+    // Ensure Forum Login Button is rendered (moved from main script to ensure availability)
+    const forumLoginContainer = document.getElementById('googleSignInForum');
+    if (forumLoginContainer) {
+        forumLoginContainer.innerHTML = `
+          <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100" id="btnForumLoginAction">
+             <i class="bi bi-google"></i>
+             <span>Login Google (Chat)</span>
+          </button>
+        `;
+        const btn = document.getElementById('btnForumLoginAction');
+        if(btn) {
+            btn.addEventListener('click', async () => {
+                if(window.loginForumWithRedirect) {
+                    await window.loginForumWithRedirect();
+                } else {
+                    alert("Sistem sedang memuat...");
+                }
+            });
+        }
+    }
 
     // Helper to format time
     const formatTime = (timestamp) => {
