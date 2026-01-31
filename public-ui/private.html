@@ -19,6 +19,18 @@
     .badge-mono { font-family: "IBM Plex Mono", monospace; letter-spacing: .08em; }
     .form-control, .btn { border-radius: .85rem; }
     #downloadActions { display: none; }
+    /* Global Button Animations */
+    button, .btn {
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    button:not(:disabled):hover, .btn:not(:disabled):not(.disabled):hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    button:not(:disabled):active, .btn:not(:disabled):not(.disabled):active {
+      transform: scale(0.95) translateY(0);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -53,6 +65,31 @@
             </form>
             <div id="downloadActions" class="bg-body rounded-4 border border-primary-subtle p-4">
               <h2 class="h5 mb-2">File siap diunduh</h2>
+              
+              <!-- Mini Player YouTube Style -->
+              <div id="miniPlayer" class="bg-dark text-white rounded-3 overflow-hidden mb-3 position-relative" style="display:none;">
+                  <div class="d-flex align-items-center">
+                      <div class="position-relative" style="width: 80px; height: 80px; flex-shrink: 0;">
+                           <img id="playerThumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect width='1' height='1' fill='%23212529'/%3E" class="w-100 h-100 object-fit-cover" alt="Thumb">
+                           <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-25"></div>
+                           <button id="playerPlayBtn" class="btn btn-light rounded-circle position-absolute top-50 start-50 translate-middle shadow-sm p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; z-index: 2;">
+                              <i class="bi bi-play-fill fs-5 ms-1"></i>
+                           </button>
+                      </div>
+                      <div class="p-2 flex-grow-1 min-w-0">
+                           <h6 id="playerTitle" class="mb-1 text-truncate fw-bold" style="font-size: 0.9rem;">Unknown Title</h6>
+                           <p id="playerArtist" class="mb-1 small text-white-50 text-truncate" style="font-size: 0.75rem;">Unknown Artist</p>
+                           <div class="d-flex align-items-center gap-2">
+                               <span id="playerTime" class="small font-monospace text-white-50" style="font-size: 0.65rem; min-width: 55px;">0:00 / 0:00</span>
+                               <div class="progress flex-grow-1 bg-secondary bg-opacity-50" style="height: 4px; cursor: pointer;" id="playerProgressContainer">
+                                   <div id="playerProgressBar" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                               </div>
+                           </div>
+                      </div>
+                  </div>
+                  <audio id="audioPlayer"></audio>
+              </div>
+
               <p class="small text-secondary mb-3" id="fileMeta"></p>
               <div class="d-grid gap-2">
                 <a class="btn btn-success" id="downloadBtn" href="#" download>
@@ -84,8 +121,105 @@
       const copyDownloadBtn = document.getElementById('copyDownloadBtn');
       const fileMeta = document.getElementById('fileMeta');
 
+      // Mini Player Elements
+      const miniPlayer = document.getElementById('miniPlayer');
+      const playerThumb = document.getElementById('playerThumb');
+      const playerTitle = document.getElementById('playerTitle');
+      const playerArtist = document.getElementById('playerArtist');
+      const playerPlayBtn = document.getElementById('playerPlayBtn');
+      const audioPlayer = document.getElementById('audioPlayer');
+      const playerTime = document.getElementById('playerTime');
+      const playerProgressContainer = document.getElementById('playerProgressContainer');
+      const playerProgressBar = document.getElementById('playerProgressBar');
+
       let cachedMeta = null;
       let downloadToken = '';
+
+      // Player Logic
+      const formatTime = (seconds) => {
+        if (!seconds || isNaN(seconds)) return '0:00';
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      };
+
+      const parseFilename = (filename) => {
+          if (!filename) return { title: 'Unknown Title', artist: 'Unknown Artist' };
+          const name = filename.replace(/\.[^/.]+$/, "");
+          const parts = name.split(/\s+-\s+/);
+          if (parts.length >= 2) {
+              return { artist: parts[0], title: parts.slice(1).join(' - ') };
+          }
+          return { title: name, artist: 'Unknown Artist' };
+      };
+
+      if (audioPlayer) {
+          // Thumbnail error fallback
+          playerThumb.addEventListener('error', () => {
+              // Revert to default SVG pattern if image fails
+              playerThumb.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect width='1' height='1' fill='%23212529'/%3E";
+          });
+
+          playerPlayBtn.addEventListener('click', () => {
+              if (audioPlayer.paused) audioPlayer.play();
+              else audioPlayer.pause();
+          });
+
+          audioPlayer.addEventListener('play', () => {
+              playerPlayBtn.innerHTML = '<i class="bi bi-pause-fill fs-5"></i>';
+          });
+
+          audioPlayer.addEventListener('pause', () => {
+              playerPlayBtn.innerHTML = '<i class="bi bi-play-fill fs-5 ms-1"></i>';
+          });
+
+          audioPlayer.addEventListener('waiting', () => {
+              playerPlayBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+          });
+
+          audioPlayer.addEventListener('playing', () => {
+              playerPlayBtn.innerHTML = '<i class="bi bi-pause-fill fs-5"></i>';
+          });
+
+          audioPlayer.addEventListener('canplay', () => {
+              if (audioPlayer.paused) {
+                  playerPlayBtn.innerHTML = '<i class="bi bi-play-fill fs-5 ms-1"></i>';
+              } else {
+                  playerPlayBtn.innerHTML = '<i class="bi bi-pause-fill fs-5"></i>';
+              }
+          });
+
+          audioPlayer.addEventListener('error', () => {
+               playerPlayBtn.innerHTML = '<i class="bi bi-exclamation-circle text-danger"></i>';
+               playerPlayBtn.disabled = true;
+          });
+
+          audioPlayer.addEventListener('timeupdate', () => {
+              const current = audioPlayer.currentTime;
+              const duration = audioPlayer.duration || 0;
+              const percent = duration ? (current / duration) * 100 : 0;
+              playerProgressBar.style.width = `${percent}%`;
+              playerTime.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
+          });
+
+          audioPlayer.addEventListener('ended', () => {
+              playerPlayBtn.innerHTML = '<i class="bi bi-play-fill fs-5 ms-1"></i>';
+              playerProgressBar.style.width = '0%';
+              playerTime.textContent = `0:00 / ${formatTime(audioPlayer.duration)}`;
+          });
+          
+          audioPlayer.addEventListener('loadedmetadata', () => {
+              playerTime.textContent = `0:00 / ${formatTime(audioPlayer.duration)}`;
+          });
+
+          playerProgressContainer.addEventListener('click', (e) => {
+              const rect = playerProgressContainer.getBoundingClientRect();
+              const pos = (e.clientX - rect.left) / rect.width;
+              if (audioPlayer.duration) {
+                  audioPlayer.currentTime = pos * audioPlayer.duration;
+              }
+          });
+      }
 
       const api = (path) => {
         const base = window.location.origin.replace(/\/$/, '');
@@ -181,8 +315,26 @@
           if (data?.fileName || data?.size) updateMeta({ ...cachedMeta, ...data });
           const downloadUrl = api(`/api/private-share/${encodeURIComponent(roomId)}/download?token=${encodeURIComponent(downloadToken)}`);
           downloadBtn.href = downloadUrl;
-          downloadBtn.setAttribute('download', (data?.fileName || cachedMeta?.fileName || 'audio')); 
+          const fName = data?.fileName || cachedMeta?.fileName || 'audio';
+          downloadBtn.setAttribute('download', fName); 
           downloadActions.style.display = 'block';
+
+          // Update Mini Player
+          if (miniPlayer && /\.(mp3|m4a|aac|ogg|wav|flac|opus|mp4|webm)$/i.test(fName)) {
+              audioPlayer.src = downloadUrl;
+              
+              const parsed = parseFilename(fName);
+              playerTitle.textContent = data.title || cachedMeta?.title || parsed.title;
+              playerArtist.textContent = data.artist || cachedMeta?.artist || parsed.artist;
+              
+              if (data.thumbnail || cachedMeta?.thumbnail) {
+                  playerThumb.src = data.thumbnail || cachedMeta.thumbnail;
+              }
+              miniPlayer.style.display = 'block';
+          } else {
+              miniPlayer.style.display = 'none';
+          }
+
           showStatus('Berhasil! File siap diunduh.', 'success');
         } catch (err) {
           console.error('unlock error', err);
