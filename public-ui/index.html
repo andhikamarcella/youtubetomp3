@@ -763,7 +763,7 @@
       "imports": {
         "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
         "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-        "firebase/database": "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
       }
     }
   </script>
@@ -794,7 +794,7 @@
             <i class="bi bi-heart-fill"></i>
             <span>Saweria</span>
           </button>
-          <button type="button" class="app-nav-btn" data-section-target="profile" data-section-label="Profil Pengunjung">
+          <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()">
             <i class="bi bi-person-circle"></i>
             <span data-i18n="navProfile">Profil</span>
           </button>
@@ -2960,6 +2960,75 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     </div>
   </div>
 
+  <!-- Profile Modal (Task 15) -->
+  <div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg" style="border-radius: 1.5rem; overflow: hidden;">
+        <div class="modal-body p-0">
+          <div class="position-relative bg-dark text-white text-center p-5" style="background: radial-gradient(circle at center, #1e2a4a 0%, #0d121f 100%);">
+             <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"></button>
+             <div class="position-relative d-inline-block mb-3">
+               <div style="width: 120px; height: 120px; border-radius: 50%; padding: 4px; background: linear-gradient(45deg, #0d6efd, #6f42c1);">
+                 <img id="profileModalAvatar" src="https://lh3.googleusercontent.com/a/default-user=s96-c" alt="Avatar" class="w-100 h-100 rounded-circle object-fit-cover border border-4 border-dark">
+               </div>
+               <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-primary border border-2 border-dark">
+                 <i class="bi bi-star-fill text-warning"></i>
+               </span>
+             </div>
+             <h4 class="fw-bold mb-1" id="profileModalName">Tamu</h4>
+             <p class="text-white-50 small mb-4" id="profileModalEmail">Belum Login</p>
+             <div class="row g-2 justify-content-center mb-4">
+               <div class="col-4">
+                 <div class="p-2 rounded bg-white bg-opacity-10">
+                   <div class="small text-white-50" style="font-size: 0.7rem;">XP SAAT INI</div>
+                   <div class="fw-bold">0 XP</div>
+                 </div>
+               </div>
+               <div class="col-4">
+                 <div class="p-2 rounded bg-white bg-opacity-10">
+                   <div class="small text-white-50" style="font-size: 0.7rem;">RENTANG LEVEL</div>
+                   <div class="fw-bold">Pemula</div>
+                 </div>
+               </div>
+               <div class="col-4">
+                 <div class="p-2 rounded bg-white bg-opacity-10">
+                   <div class="small text-white-50" style="font-size: 0.7rem;">DAILY STREAK</div>
+                   <div class="fw-bold">0 hari</div>
+                 </div>
+               </div>
+             </div>
+             <div class="text-start px-2">
+                <p class="small font-monospace text-info mb-1"><i class="bi bi-quote"></i> Masuk Google untuk simpan progress.</p>
+                <div class="progress" style="height: 6px; background: rgba(255,255,255,0.1);">
+                  <div class="progress-bar bg-gradient-primary" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div class="d-flex justify-content-between mt-1">
+                  <span class="small text-white-50" style="font-size: 0.7rem;">Level 1</span>
+                  <span class="small text-white-50" style="font-size: 0.7rem;">Level 2</span>
+                </div>
+             </div>
+          </div>
+          <div class="p-4 bg-body">
+             <div class="d-grid gap-2">
+               <div id="profileGoogleLoginBtn"></div>
+               <button class="btn btn-primary" id="openExpBtn" style="background: linear-gradient(90deg, #0d6efd, #6f42c1); border: none;" data-bs-dismiss="modal" onclick="document.querySelector('[data-section-target=\'experience\']').click()">
+                 <i class="bi bi-stars me-2"></i> Buka Experience
+               </button>
+             </div>
+             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                <button class="btn btn-sm btn-light text-primary fw-bold rounded-pill px-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings">
+                  <i class="bi bi-gear-fill me-1"></i> Settings
+                </button>
+                <button class="btn btn-sm btn-light text-danger fw-bold rounded-pill px-3" id="profileLogoutBtn" hidden>
+                  <i class="bi bi-box-arrow-right me-1"></i> Logout
+                </button>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Tutorial Modal -->
   <div class="modal fade walkthrough-modal" id="tutorialModal" tabindex="-1" aria-labelledby="tutorialModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -3149,7 +3218,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                           <i class="bi bi-patch-check-fill fs-2"></i>
                        </div>
                        <div class="lh-1 text-start">
-                          <div class="text-muted fw-bold" style="font-size: 0.65rem;">VERIFIED BY</div>
+                          <div class="text-dark fw-bold" style="font-size: 0.65rem;">VERIFIED BY</div>
                           <div class="text-dark fw-black" style="font-size: 1rem; letter-spacing: 0.5px; font-weight: 800;">KOMDIGI</div>
                        </div>
                     </div>
@@ -3195,7 +3264,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                  </div>
                  
                  <div class="mt-4 pt-3 border-top d-inline-block px-5">
-                    <small class="text-muted fw-semibold">
+                    <small class="text-dark fw-semibold">
                         <i class="bi bi-lock-fill text-success me-1"></i> 
                         Enkripsi SSL 256-bit Grade Militer • 100% Bebas Malware • Privasi Terjamin
                     </small>
@@ -3366,7 +3435,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
 
   document.addEventListener('DOMContentLoaded', () => {
   checkStorageAndWarn();
-  const APP_VERSION = 'v3.0';
+  const APP_VERSION = 'v.3.2';
 
   // --- Footer Logic (New) ---
   function updateLocalTime() {
@@ -4714,6 +4783,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   const profileAccountStatus = $('#profileAccountStatus');
   const driveReadyStatus = $('#driveReadyStatus');
   const googleSignInButton = $('#googleSignInButton');
+  const googleSignInForum = $('#googleSignInForum');
   const logoutAccountBtn = $('#logoutAccountBtn');
   const cheatPanel = $('#cheatPanel');
   const cheatPanelClose = $('#cheatPanelClose');
@@ -5398,8 +5468,8 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
       toggleCheatPanel(!state.cheats.visible);
       return;
     }
-    konamiTracker(evt.key);
-    secretCheatTracker(evt.key);
+    konamiTracker(evt.key || '');
+    secretCheatTracker(evt.key || '');
     if (evt.code === 'Space' && !(evt.target instanceof HTMLInputElement) && !(evt.target instanceof HTMLTextAreaElement)) {
       evt.preventDefault();
       jumpRunner();
@@ -6235,6 +6305,90 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     return active;
   };
 
+  window.updateProfileModal = () => {
+    const points = Number(state.experience.points) || 0;
+    const streak = Number(state.experience.streak) || 0;
+    const levelInfo = getLevelInfo(points);
+    const nextLevel = avatarLevels.find((lvl) => lvl.threshold > points);
+    const user = state.auth.user;
+
+    // Avatar
+    const avatarEl = document.getElementById('profileModalAvatar');
+    if (avatarEl) {
+       if (user && user.avatarUrl) {
+          avatarEl.src = user.avatarUrl;
+       } else {
+          avatarEl.src = 'https://lh3.googleusercontent.com/a/default-user=s96-c';
+       }
+    }
+
+    // Name & Email
+    const nameEl = document.getElementById('profileModalName');
+    const emailEl = document.getElementById('profileModalEmail');
+    if (nameEl) nameEl.textContent = user ? (user.name || 'Pengguna') : 'Tamu';
+    if (emailEl) emailEl.textContent = user ? (user.email || 'Sudah Login') : 'Belum Login';
+
+    // Stats
+    const xpEl = document.querySelector('#profileModal .col-4:nth-child(1) .fw-bold');
+    if (xpEl) xpEl.textContent = `${points} XP`;
+
+    const levelEl = document.querySelector('#profileModal .col-4:nth-child(2) .fw-bold');
+    if (levelEl) levelEl.textContent = levelInfo.title;
+
+    const streakEl = document.querySelector('#profileModal .col-4:nth-child(3) .fw-bold');
+    if (streakEl) streakEl.textContent = `${streak} hari`;
+
+    // Progress Bar
+    const progressContainer = document.querySelector('#profileModal .progress-bar');
+    const currentLevelLabel = document.querySelector('#profileModal .d-flex span:first-child');
+    const nextLevelLabel = document.querySelector('#profileModal .d-flex span:last-child');
+
+    if (progressContainer) {
+       let progress = 100;
+       if (nextLevel) {
+         const span = nextLevel.threshold - levelInfo.threshold || 1;
+         progress = Math.min(100, Math.round(((points - levelInfo.threshold) / span) * 100));
+       }
+       progressContainer.style.width = `${progress}%`;
+    }
+
+    if (currentLevelLabel) {
+       const levelIndex = avatarLevels.indexOf(levelInfo) + 1;
+       currentLevelLabel.textContent = `Lv.${levelIndex}`;
+    }
+
+    if (nextLevelLabel) {
+       if (nextLevel) {
+          const levelIndex = avatarLevels.indexOf(nextLevel) + 1;
+          nextLevelLabel.textContent = `Lv.${levelIndex}`;
+       } else {
+          nextLevelLabel.textContent = 'MAX';
+       }
+    }
+
+    // Auth Buttons
+    const loginBtn = document.getElementById('profileGoogleLoginBtn');
+    const logoutBtn = document.getElementById('profileLogoutBtn');
+    const loginHint = document.querySelector('#profileModal .text-info');
+
+    if (user) {
+       if (loginBtn) loginBtn.hidden = true;
+       if (logoutBtn) {
+           logoutBtn.hidden = false;
+           logoutBtn.onclick = () => {
+              const modal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
+              if (modal) modal.hide();
+              logoutAccount();
+           };
+       }
+       if (loginHint) loginHint.hidden = true;
+    } else {
+       if (loginBtn) loginBtn.hidden = false;
+       if (logoutBtn) logoutBtn.hidden = true;
+       if (loginHint) loginHint.hidden = false;
+    }
+  };
+
   const updateAvatarUi = () => {
     const points = Number(state.experience.points) || 0;
     const levelInfo = getLevelInfo(points);
@@ -6313,6 +6467,9 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     renderLevelMilestones(points);
     renderBadges();
     updateStreakUi();
+    if (window.updateProfileModal) {
+      window.updateProfileModal();
+    }
   };
 
   const updateStreakUi = () => {
@@ -6865,6 +7022,9 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     updateAccountUi();
     updateCheatPanelVisibility();
     ensureGoogleButton();
+    if (window.updateForumAuthUI) {
+      window.updateForumAuthUI(nextSummary);
+    }
     persistState();
 
     if (shouldSyncServerXp && nextSummary?.id) {
@@ -7019,6 +7179,18 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
           size: 'medium',
           text: 'signin_with',
           shape: 'pill',
+        });
+    }
+
+    if (profileGoogleLoginBtn) {
+        profileGoogleLoginBtn.dataset.mode = 'google';
+        profileGoogleLoginBtn.innerHTML = '';
+        window.google.accounts.id.renderButton(profileGoogleLoginBtn, {
+          theme: 'filled_blue',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'pill',
+          width: '300'
         });
     }
   }
@@ -8614,6 +8786,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     const sequence = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
     let buffer = [];
     return (key) => {
+      if (!key) return;
       buffer.push(key.toLowerCase());
       buffer = buffer.slice(-sequence.length);
       if (sequence.every((v, idx) => buffer[idx] === v)) {
@@ -15932,14 +16105,13 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Import the functions you need from the SDKs you need 
     import { initializeApp } from "firebase/app"; 
     import { getAnalytics } from "firebase/analytics"; 
-    import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "firebase/database";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
 
     // Your web app's Firebase configuration 
     // For Firebase JS SDK v7.20.0 and later, measurementId is optional 
     const firebaseConfig = { 
       apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo", 
       authDomain: "forum-warga.firebaseapp.com", 
-      databaseURL: "https://forum-warga-default-rtdb.firebaseio.com",
       projectId: "forum-warga", 
       storageBucket: "forum-warga.firebasestorage.app", 
       messagingSenderId: "317910503290", 
@@ -15950,8 +16122,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Initialize Firebase 
     const app = initializeApp(firebaseConfig); 
     const analytics = getAnalytics(app);
-    const db = getDatabase(app);
-    const messagesRef = ref(db, 'forum-messages');
+    const db = getFirestore(app);
+    const messagesRef = collection(db, 'forum-messages');
     
     // Expose to window for global access
     window.firebaseApp = app;
@@ -15991,7 +16163,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Helper to format time
     const formatTime = (timestamp) => {
         if (!timestamp) return '';
-        const date = new Date(timestamp);
+        // Handle Firestore Timestamp or Date/Number
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
         return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     };
 
@@ -16047,26 +16220,34 @@ $('#queueList')?.addEventListener('click', (e) => {
         chatArea.scrollTop = chatArea.scrollHeight;
     };
 
-    // Listen for new messages
-    onChildAdded(messagesRef, (snapshot) => {
-        const msg = snapshot.val();
-        renderMessage(msg, snapshot.key);
+    // Listen for new messages (Firestore)
+    const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(50));
+    onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+                renderMessage(change.doc.data(), change.doc.id);
+            }
+        });
     });
 
     // Send Message
-    const sendMessage = () => {
+    const sendMessage = async () => {
         const text = chatInput.value.trim();
         if (!text || !window.currentUser) return;
 
-        push(messagesRef, {
-            text: text,
-            uid: window.currentUser.id || 'anon',
-            name: window.currentUser.name || 'Warga',
-            photoURL: window.currentUser.avatar || '',
-            timestamp: serverTimestamp()
-        });
-
-        chatInput.value = '';
+        try {
+            await addDoc(messagesRef, {
+                text: text,
+                uid: window.currentUser.id || 'anon',
+                name: window.currentUser.name || 'Warga',
+                photoURL: window.currentUser.avatar || '',
+                timestamp: serverTimestamp()
+            });
+            chatInput.value = '';
+        } catch (e) {
+            console.error("Error sending message: ", e);
+            alert("Gagal mengirim pesan. Pastikan internet lancar.");
+        }
     };
 
     sendBtn.addEventListener('click', sendMessage);
