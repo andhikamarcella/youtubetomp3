@@ -36,6 +36,7 @@ try {
 }
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { v2 as cloudinary } from "cloudinary";
 import { nanoid } from "nanoid";
 import {
   upsertGoogleUser,
@@ -876,8 +877,15 @@ const __dirname  = dirname(__filename);
 
 const app = express();
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(cors());
+
+// Configure Cloudinary
+cloudinary.config({ 
+  cloud_name: 'dgbal8btf', 
+  api_key: '422728616314883', 
+  api_secret: 'Nh3_vvxXVaQSEyJXqguIiI5YTbE' 
+});
 
 // ==== Direktori publik & jobs ====
 const PUBLIC_DIR = join(__dirname, "public");
@@ -6377,6 +6385,31 @@ const downloadSubtitle = async (payload = {}) => {
 app.get("/manifest.webmanifest", (req, res) => {
   res.setHeader("Content-Type", "application/manifest+json");
   res.sendFile(join(__dirname, "public-ui", "manifest.webmanifest"));
+});
+
+// ==== Cloudinary Upload ====
+app.post("/api/upload-forum-image", async (req, res) => {
+  try {
+    const { image } = req.body; // Expecting base64 string
+    if (!image) {
+      return res.status(400).json({ error: "No image provided" });
+    }
+    
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(image, {
+      folder: "forum_uploads",
+      resource_type: "image"
+    });
+    
+    return res.json({ 
+      ok: true, 
+      url: result.secure_url,
+      public_id: result.public_id 
+    });
+  } catch (err) {
+    console.error("Cloudinary upload error:", err);
+    return res.status(500).json({ error: "Upload failed: " + (err.message || err) });
+  }
 });
 
 app.use("/", express.static(join(__dirname, "public-ui")));
