@@ -4587,30 +4587,42 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     window.isNavigatingSection = true;
     
     // DO NOT prevent default or propagation - let Bootstrap data-bs-dismiss work!
-    // e.preventDefault(); 
     
     const target = btn.dataset.sectionTarget;
     if (!target) return;
 
     console.log('[Nav] Button clicked:', target);
 
-    // 2. Execute Navigation Logic
+    // 2. Update History FIRST to prevent onHide from seeing 'modal' state
+    // This ensures that when the offcanvas closes (triggering onHide),
+    // history.state.modal will be undefined, so it won't try to go back.
+    history.pushState({ section: target }, '', `#${target}`);
+
+    // 3. Execute Navigation Logic (which might close offcanvas)
     const success = setActiveSection(target);
     
-    // 3. Update URL Hash for bookmarking/refresh
-    if (success) {
-        history.pushState({ section: target }, '', `#${target}`);
+    if (!success) {
+        console.warn('[Nav] Target section not found:', target);
+        history.back(); // Revert if failed
+        window.isNavigatingSection = false;
+        return;
     }
     
     // 4. Fallback: Manual Mobile Offcanvas Close (only if data-bs-dismiss fails)
     // We check after a small delay to see if Bootstrap closed it
     setTimeout(() => {
-        window.isNavigatingSection = false; // Reset flag
         const navDrawerEl = document.getElementById('offcanvasNav');
         if (navDrawerEl && navDrawerEl.classList.contains('show')) {
              console.log('[Nav] Fallback closing offcanvas...');
              const closeBtn = navDrawerEl.querySelector('.btn-close');
+             // We are closing it now, so KEEP the flag true until it's done
              if (closeBtn) closeBtn.click();
+             
+             // Reset flag after enough time for transition
+             setTimeout(() => { window.isNavigatingSection = false; }, 350);
+        } else {
+             // Already closed, reset flag
+             window.isNavigatingSection = false;
         }
     }, 200);
 
@@ -16287,15 +16299,31 @@ $('#queueList')?.addEventListener('click', (e) => {
             alert("Login Gagal (Redirect): " + error.message);
         });
 
-    // Global function to trigger Login for Forum (Popup preferred for local dev)
+    // Global function to trigger Login for Forum (Popup preferred for local dev, Redirect for Mobile)
     window.loginForumWithRedirect = async () => {
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        // Mobile: Force Redirect immediately to avoid Popup blocking issues
+        if (isMobile) {
+             console.log("Firebase Auth: Mobile detected, forcing Redirect Flow...");
+             try {
+                 await signInWithRedirect(auth, provider);
+                 return; // Page will redirect
+             } catch (err) {
+                 console.error("Firebase Auth: Redirect failed", err);
+                 alert("Gagal memulai login (Redirect): " + err.message);
+                 return;
+             }
+        }
+
+        // Desktop: Try Popup first
         try {
             console.log("Firebase Auth: Starting Popup Flow...");
             await signInWithPopup(auth, provider);
         } catch (error) {
             console.error("Firebase Auth: Popup failed, trying Redirect...", error);
-            // If popup blocked or mobile, fallback to redirect
-            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+            // If popup blocked, fallback to redirect
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
                  try {
                     await signInWithRedirect(auth, provider);
                 } catch (err) {
