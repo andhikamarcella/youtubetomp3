@@ -227,29 +227,49 @@
     /* Admin Message Style - Rainbow Stroke Only */
     .message.admin .message-bubble {
       position: relative;
-      z-index: 1; /* Ensure text is above background */
+      z-index: 1;
       border: none !important;
-      background: #ffffff; /* Solid background for light mode */
+      background: transparent !important; /* Move background to ::after */
       color: #000;
       border-radius: 0 1rem 1rem 1rem !important;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      overflow: visible; /* Allow rainbow glow to show */
+      overflow: visible;
     }
     html[data-bs-theme='dark'] .message.admin .message-bubble {
-      background: #1f2c34; /* Solid background for dark mode */
       color: #fff;
     }
+    /* Rainbow Layer (Bottom) */
     .message.admin .message-bubble::before {
       content: "";
       position: absolute;
-      inset: -3px; /* Thickness of the rainbow stroke */
-      border-radius: inherit;
+      inset: -3px;
+      border-radius: 1.2rem; /* Slightly larger radius */
       background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
-      z-index: -1; /* Behind the solid bubble */
+      z-index: -2;
       animation: rainbow-spin 5s linear infinite;
       background-size: 200% 200%;
     }
+    /* Solid Background Layer (Middle) */
+    .message.admin .message-bubble::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 0 1rem 1rem 1rem;
+      background: #ffffff;
+      z-index: -1;
+    }
+    html[data-bs-theme='dark'] .message.admin .message-bubble::after {
+      background: #1f2c34;
+    }
     
+    /* Timestamp Visibility Fix */
+    .message.user .text-body-tertiary {
+        color: rgba(0,0,0,0.6) !important;
+    }
+    html[data-bs-theme='dark'] .message.user .text-body-tertiary {
+        color: rgba(255,255,255,0.6) !important;
+    }
+
     /* WhatsApp-like Quote Style */
     .reply-quote {
       border-left: 4px solid var(--skin-secondary, #6f42c1);
@@ -16858,6 +16878,51 @@ $('#queueList')?.addEventListener('click', (e) => {
         });
     });
 
+    // Image Upload Logic
+    let currentImageBase64 = null;
+    const attachBtn = document.getElementById('forumAttachBtn');
+    const imageInput = document.getElementById('forumImageInput');
+    const previewContainer = document.getElementById('forumPreviewContainer');
+
+    if(attachBtn && imageInput) {
+        attachBtn.addEventListener('click', () => imageInput.click());
+        
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            // Limit size (e.g., 1MB)
+            if(file.size > 1024 * 1024) {
+                setToast('Ukuran gambar maksimal 1MB', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                currentImageBase64 = ev.target.result;
+                // Show preview
+                previewContainer.classList.remove('d-none');
+                previewContainer.innerHTML = `
+                    <div class="preview-item d-flex align-items-center justify-content-center bg-body-tertiary">
+                        <img src="${currentImageBase64}">
+                        <button class="btn-remove shadow-sm" onclick="clearForumImage()"><i class="bi bi-x"></i></button>
+                    </div>
+                    <div class="small text-secondary ms-2 align-self-center fst-italic">Gambar akan dikirim...</div>
+                `;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    window.clearForumImage = function() {
+        currentImageBase64 = null;
+        if(imageInput) imageInput.value = '';
+        if(previewContainer) {
+            previewContainer.classList.add('d-none');
+            previewContainer.innerHTML = '';
+        }
+    };
+
     // Send Message
     const sendMessage = async () => {
         const text = chatInput.value.trim();
@@ -16877,6 +16942,25 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (!authUser) {
                  throw new Error("Auth User lost before send.");
             }
+            
+            let imageUrl = null;
+            if (currentImageBase64) {
+                // Upload to Cloudinary via our backend
+                // Note: Using relative path assumes backend is serving this file or on same origin
+                const uploadResp = await fetch('/api/upload-forum-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: currentImageBase64 })
+                });
+                
+                if (!uploadResp.ok) {
+                    const errData = await uploadResp.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Gagal mengupload gambar');
+                }
+                
+                const uploadResult = await uploadResp.json();
+                imageUrl = uploadResult.url;
+            }
 
             console.log("Attempting to send message as:", authUser.uid, authUser.email);
 
@@ -16884,7 +16968,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
             await addDoc(messagesRef, {
                 text: text,
-                image: currentImageBase64 || null,
+                image: imageUrl, // Use the URL
                 uid: authUser.uid, 
                 name: displayUser.name || authUser.displayName || 'Warga',
                 photoURL: displayUser.avatar || authUser.photoURL || '',
