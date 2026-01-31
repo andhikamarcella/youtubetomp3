@@ -16662,6 +16662,31 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Expose auth to window for debugging
     window.firebaseAuth = auth;
 
+    // Listen for Auth State Changes (Critical for Mobile/Redirect flow)
+    onAuthStateChanged(auth, (user) => {
+        const statusText = document.getElementById('loginStatusText');
+        
+        if (user) {
+            console.log("Firebase Auth: State Changed -> Logged In", user.uid);
+            if(statusText) statusText.textContent = "Berhasil login!";
+            
+            const googleSummary = {
+                id: user.uid,
+                name: user.displayName,
+                avatar: user.photoURL,
+                email: user.email
+            };
+            window.currentUser = googleSummary;
+            if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
+        } else {
+            console.log("Firebase Auth: State Changed -> Logged Out");
+             if(statusText) statusText.classList.add('d-none');
+             
+            window.currentUser = null;
+            if (window.updateForumAuthUI) window.updateForumAuthUI(null);
+        }
+    });
+
     // Configure Google Provider
     const provider = new GoogleAuthProvider();
     // REMOVED custom client_id to prevent Firebase project mismatch
@@ -16718,7 +16743,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (result) {
                 const user = result.user;
                 console.log("Firebase Auth: Login successful via Redirect", user);
-                // alert(`Login Berhasil!\nSelamat datang, ${user.displayName}\nEmail: ${user.email}`);
+                if(window.setToast) window.setToast("Login Berhasil!", "success");
                 
                 const googleSummary = {
                     id: user.uid,
@@ -16727,19 +16752,24 @@ $('#queueList')?.addEventListener('click', (e) => {
                     email: user.email
                 };
                 
-                // Update UI immediately
                 window.currentUser = googleSummary;
                 if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
-                
+            } else {
+                // No redirect result found. This is normal on standard page load.
+                // But if we just came from Google, it might mean we lost the state.
+                console.log("Firebase Auth: No redirect result found.");
             }
         }).catch((error) => {
             console.error("Firebase Auth: Redirect Login Error", error);
-            if(window.setToast) window.setToast("Login Gagal: " + error.message);
+            if(window.setToast) window.setToast("Login Gagal (Redirect): " + error.message, "error");
+            alert("Login Gagal: " + error.message); // Force alert on mobile
         });
 
     // Global function to trigger Login for Forum (Popup preferred for local dev, Redirect for Mobile)
     window.loginForumWithRedirect = async () => {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if(window.setToast) window.setToast("Memproses login...", "info");
 
         // Mobile: Force Redirect immediately to avoid Popup blocking issues
         if (isMobile) {
