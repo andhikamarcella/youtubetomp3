@@ -16181,22 +16181,34 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         try {
             // Sign in as Shadow User
-            // Note: This replaces the current Google Auth session, which is what we want
-            // because Firestore only accepts this specific domain.
             await signInWithEmailAndPassword(auth, email, password);
             console.log("Firebase Auth: Switched to Shadow Account (for Firestore access)");
         } catch (error) {
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+            console.warn("Firebase Auth: Shadow Login Error", error.code);
+            
+            // If login failed (wrong password, user not found, etc.), try to create a NEW one
+            // We don't care about preserving the old shadow account since it's just a proxy
+            const retryNewShadow = async () => {
+                const newRandomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                email = `user_${newRandomId}@forum-warga.temp`;
+                password = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + "Strong!1";
+                localStorage.setItem(shadowKey, JSON.stringify({ email, password }));
+                
                 try {
                     await createUserWithEmailAndPassword(auth, email, password);
-                    console.log("Firebase Auth: Created new Shadow Account");
+                    console.log("Firebase Auth: Created NEW Shadow Account after login failure");
                 } catch (createError) {
-                    console.error("Firebase Auth: Failed to create Shadow Account", createError);
-                    throw createError;
+                    console.error("Firebase Auth: Critical - Failed to create Shadow Account", createError);
+                    // Last resort: Stay with Google Auth (if active) or Anonymous
+                    // If we are here, we might be logged out. 
                 }
+            };
+
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                await retryNewShadow();
             } else {
-                console.error("Firebase Auth: Shadow Login Error", error);
-                throw error;
+                 // Try one more time with new account for any other error
+                 await retryNewShadow();
             }
         }
 
@@ -16238,7 +16250,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                 
                 // 2. Switch to Shadow Account for Firestore Access
                 // We pass the Google Info so the shadow profile can be updated to match
-                await ensureShadowAccount(googleSummary);
+                // Don't await this to block UI, let it happen in background
+                ensureShadowAccount(googleSummary).catch(e => console.error("Shadow Account Setup Failed", e));
                 
                 // Optional: Show success toast
                 // alert("Login Chat Berhasil!");
