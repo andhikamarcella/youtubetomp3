@@ -224,29 +224,87 @@
     html[data-bs-theme='dark'] .message.assistant .message-bubble { background: #1f2c34; color: white; }
     html[data-bs-theme='dark'] .assistant-input-area { background: #0a141f; border-top-color: #1f2c34; }
     html[data-bs-theme='dark'] .assistant-input-area .form-control { background: #1f2c34; border-color: #2f3c44; color: white; }
-    /* Admin Message Style */
+    /* Admin Message Style - Rainbow Stroke Only */
     .message.admin .message-bubble {
       position: relative;
-      z-index: 0;
+      z-index: 1; /* Ensure text is above background */
       border: none !important;
-      background: #ffffff;
+      background: #ffffff; /* Solid background for light mode */
       color: #000;
       border-radius: 0 1rem 1rem 1rem !important;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      overflow: visible; /* Allow rainbow glow to show */
     }
     html[data-bs-theme='dark'] .message.admin .message-bubble {
-      background: #1f2c34;
+      background: #1f2c34; /* Solid background for dark mode */
       color: #fff;
     }
     .message.admin .message-bubble::before {
       content: "";
       position: absolute;
-      inset: -3px; /* Thickness of the rainbow border */
+      inset: -3px; /* Thickness of the rainbow stroke */
       border-radius: inherit;
       background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
-      z-index: -1;
+      z-index: -1; /* Behind the solid bubble */
       animation: rainbow-spin 5s linear infinite;
       background-size: 200% 200%;
+    }
+    
+    /* WhatsApp-like Quote Style */
+    .reply-quote {
+      border-left: 4px solid var(--skin-secondary, #6f42c1);
+      background: color-mix(in srgb, var(--skin-secondary, #6f42c1) 15%, transparent);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.85em;
+      position: relative;
+    }
+    .reply-quote::before {
+      content: "\F5D5"; /* bi-quote-alt-left */
+      font-family: "bootstrap-icons";
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      opacity: 0.3;
+    }
+    .reply-quote .quote-name { font-weight: bold; color: var(--skin-secondary, #6f42c1); font-size: 0.8em; margin-bottom: 0.2rem; }
+    
+    /* Image Preview in Chat Input */
+    #forumPreviewContainer {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: var(--bs-body-bg);
+        border-top: 1px solid var(--bs-border-color);
+        overflow-x: auto;
+    }
+    .preview-item {
+        position: relative;
+        width: 70px;
+        height: 70px;
+        flex-shrink: 0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        border: 1px solid var(--bs-border-color);
+        /* WhatsApp-like quote line */
+        border-left: 5px solid #25d366; 
+        background: rgba(37, 211, 102, 0.08);
+    }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-item .btn-remove {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        font-size: 10px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        border: none;
+        display: flex; align-items: center; justify-content: center;
     }
     @keyframes rainbow-spin {
       0% { background-position: 0% 50%; }
@@ -3110,9 +3168,14 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
               <div id="googleSignInForum"></div>
           </div>
         </div>
+        <!-- Image Preview Container -->
+        <div id="forumPreviewContainer" class="d-none"></div>
+        
         <div class="modal-footer bg-body-tertiary border-top-0 p-3">
           <div class="input-group">
-            <input type="text" id="forumInput" class="form-control rounded-start-pill bg-light border-0 ps-3 text-dark" style="color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
+            <button class="btn btn-outline-secondary rounded-start-pill ps-3" type="button" id="forumAttachBtn"><i class="bi bi-paperclip"></i></button>
+            <input type="file" id="forumImageInput" hidden accept="image/*">
+            <input type="text" id="forumInput" class="form-control bg-light border-0 text-dark" style="color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
             <button class="btn btn-primary rounded-end-pill px-4" type="button" id="forumSendBtn" disabled><i class="bi bi-send-fill"></i></button>
           </div>
         </div>
@@ -16766,11 +16829,18 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
         
         // Content
+        let contentHtml = '';
+        if(msg.image) {
+             contentHtml += `<div class="mb-2"><img src="${msg.image}" class="img-fluid rounded" style="max-height: 200px; width: auto; display: block;"></div>`;
+        }
+        contentHtml += `<div class="small text-break ${isMe ? 'text-dark' : ''}" style="min-width: 120px;">${msg.text || ''}</div>`;
+
         bubble.innerHTML = `
             <div class="small fw-bold ${isMe ? 'text-dark' : 'text-primary'} mb-1">${msg.name || 'Warga'}</div>
-            <div class="small text-break ${isMe ? 'text-dark' : ''}" style="min-width: 120px;">${msg.text}</div>
-            <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">
+            ${contentHtml}
+            <div class="text-end text-body-tertiary mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
                 ${formatTime(msg.timestamp)}
+                ${isMe ? '<i class="bi bi-check2-all text-primary" style="font-size: 0.9rem;"></i>' : ''}
             </div>
         `;
 
@@ -16791,20 +16861,17 @@ $('#queueList')?.addEventListener('click', (e) => {
     // Send Message
     const sendMessage = async () => {
         const text = chatInput.value.trim();
-        if (!text) return;
+        // Allow send if text OR image exists
+        if (!text && !currentImageBase64) return;
         
         // Ensure auth before sending
         if (!auth.currentUser) {
             console.warn("Not logged in to Firebase.");
-            alert("Anda belum terhubung ke chat. Silakan login ulang.");
-            // Trigger login flow if needed, or just return
-            // window.loginForumWithRedirect(); // Optional: auto-trigger? Better ask user.
+            setToast("Anda belum terhubung ke chat. Silakan login ulang.", "error");
             return;
         }
 
         try {
-            // We must use the authenticated user's UID to pass Firestore rules (request.auth.uid == resource.data.uid)
-            // But we can use the Google Profile (window.currentUser) for display name and avatar.
             const authUser = auth.currentUser;
             
             if (!authUser) {
@@ -16817,20 +16884,23 @@ $('#queueList')?.addEventListener('click', (e) => {
 
             await addDoc(messagesRef, {
                 text: text,
-                uid: authUser.uid, // MUST match the auth token
+                image: currentImageBase64 || null,
+                uid: authUser.uid, 
                 name: displayUser.name || authUser.displayName || 'Warga',
                 photoURL: displayUser.avatar || authUser.photoURL || '',
                 timestamp: serverTimestamp()
             });
+            
             chatInput.value = '';
+            window.clearForumImage();
+            
         } catch (e) {
             console.error("Error sending message: ", e);
-            console.error("Auth State at Failure:", auth.currentUser);
             
             if (e.code === 'permission-denied') {
-                 alert("Gagal mengirim: Izin ditolak oleh server.\nUID: " + (auth.currentUser ? auth.currentUser.uid : 'null'));
+                 setToast("Gagal mengirim: Izin ditolak oleh server.", "error");
             } else {
-                 alert("Gagal mengirim pesan: " + e.message);
+                 setToast("Gagal mengirim pesan: " + e.message, "error");
             }
         }
     };
