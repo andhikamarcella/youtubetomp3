@@ -3791,53 +3791,61 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                           <!-- Live Clock -->
                           <div id="maintenanceClock" class="display-5 fw-bold text-dark my-3 font-monospace">00:00:00</div>
 
-                          <button class="btn btn-outline-primary rounded-pill px-4 btn-sm" onclick="location.reload()">
-                              <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
-                          </button>
+                          <div class="d-flex gap-2 justify-content-center">
+                              <button class="btn btn-outline-primary rounded-pill px-4 btn-sm" onclick="location.reload()">
+                                  <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
+                              </button>
+                              <button class="btn btn-outline-success rounded-pill px-4 btn-sm" onclick="toggleMaintenanceGame()">
+                                  <i class="bi bi-controller me-2"></i>Main Game
+                              </button>
+                          </div>
                       </div>
                       
-                      <!-- Game Container -->
-                      <div class="card border-0 shadow-sm bg-dark text-white rounded-4 overflow-hidden mt-2" style="max-width: 320px; width: 100%;">
-                           <div class="card-header bg-transparent border-0 pt-3 pb-0 text-center">
-                              <small class="text-white-50 text-uppercase fw-bold" style="letter-spacing: 1px;">Mini Game: Snake</small>
-                           </div>
-                           <div class="card-body p-0 position-relative bg-black d-flex flex-column align-items-center justify-content-center mt-2" style="min-height: 300px;">
-                                <div id="gameContainer" class="position-relative" style="width: 300px; height: 300px;">
-                                    <canvas id="gameCanvas" width="300" height="300" class="d-block bg-dark rounded-3 border border-secondary border-opacity-25"></canvas>
-                                    
-                                    <!-- Start Overlay -->
-                                    <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75 rounded-3" style="z-index: 10;">
-                                        <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
-                                            <i class="bi bi-play-fill me-1"></i> MULAI
-                                        </button>
+                      <!-- Game Container (Hidden by Default) -->
+                      <div id="maintenanceGameWrapper" class="d-none w-100 d-flex justify-content-center">
+                          <div class="card border-0 shadow-sm bg-dark text-white rounded-4 overflow-hidden mt-2" style="max-width: 320px; width: 100%;">
+                               <div class="card-header bg-transparent border-0 pt-3 pb-0 text-center position-relative">
+                                  <small class="text-white-50 text-uppercase fw-bold" style="letter-spacing: 1px;">Mini Game: Snake</small>
+                                  <button class="btn btn-link text-white-50 position-absolute top-0 end-0 p-3" onclick="toggleMaintenanceGame()" style="text-decoration: none;"><i class="bi bi-x-lg"></i></button>
+                               </div>
+                               <div class="card-body p-0 position-relative bg-black d-flex flex-column align-items-center justify-content-center mt-2" style="min-height: 300px;">
+                                    <div id="gameContainer" class="position-relative" style="width: 300px; height: 300px;">
+                                        <canvas id="gameCanvas" width="300" height="300" class="d-block bg-dark rounded-3 border border-secondary border-opacity-25"></canvas>
+                                        
+                                        <!-- Start Overlay -->
+                                        <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75 rounded-3" style="z-index: 10;">
+                                            <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
+                                                <i class="bi bi-play-fill me-1"></i> MULAI
+                                            </button>
+                                        </div>
+      
+                                        <!-- Game Over Overlay -->
+                                        <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90 rounded-3" style="z-index: 20;">
+                                            <h4 class="text-danger fw-bold mb-1">GAME OVER</h4>
+                                            <div class="text-white-50 mb-3 small">Score: <span id="finalScore" class="text-warning fw-bold">0</span></div>
+                                            <button class="btn btn-outline-light rounded-pill px-3 btn-sm" onclick="startMaintenanceGame()">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Main Lagi
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Live Score -->
+                                        <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded bg-white bg-opacity-10 text-white fw-bold small" style="z-index: 5;">
+                                            <span id="gameScore">0</span>
+                                        </div>
                                     </div>
-  
-                                    <!-- Game Over Overlay -->
-                                    <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90 rounded-3" style="z-index: 20;">
-                                        <h4 class="text-danger fw-bold mb-1">GAME OVER</h4>
-                                        <div class="text-white-50 mb-3 small">Score: <span id="finalScore" class="text-warning fw-bold">0</span></div>
-                                        <button class="btn btn-outline-light rounded-pill px-3 btn-sm" onclick="startMaintenanceGame()">
-                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Main Lagi
-                                        </button>
+                               </div>
+                               <!-- D-Pad Controls -->
+                               <div class="card-footer bg-secondary bg-opacity-10 border-0 py-3">
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('up')"><i class="bi bi-caret-up-fill"></i></button>
+                                        <div class="d-flex gap-3">
+                                            <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('left')"><i class="bi bi-caret-left-fill"></i></button>
+                                            <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('right')"><i class="bi bi-caret-right-fill"></i></button>
+                                        </div>
+                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('down')"><i class="bi bi-caret-down-fill"></i></button>
                                     </div>
-                                    
-                                    <!-- Live Score -->
-                                    <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded bg-white bg-opacity-10 text-white fw-bold small" style="z-index: 5;">
-                                        <span id="gameScore">0</span>
-                                    </div>
-                                </div>
-                           </div>
-                           <!-- D-Pad Controls -->
-                           <div class="card-footer bg-secondary bg-opacity-10 border-0 py-3">
-                                <div class="d-flex flex-column align-items-center gap-1">
-                                    <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('up')"><i class="bi bi-caret-up-fill"></i></button>
-                                    <div class="d-flex gap-3">
-                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('left')"><i class="bi bi-caret-left-fill"></i></button>
-                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('right')"><i class="bi bi-caret-right-fill"></i></button>
-                                    </div>
-                                    <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('down')"><i class="bi bi-caret-down-fill"></i></button>
-                                </div>
-                           </div>
+                               </div>
+                          </div>
                       </div>
                   </div>
               `;
@@ -3853,6 +3861,18 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
               if(window.maintClockInterval) clearInterval(window.maintClockInterval);
               window.maintClockInterval = setInterval(updateMaintClock, 1000);
               updateMaintClock();
+
+              // Toggle Game Logic
+              window.toggleMaintenanceGame = function() {
+                  const wrapper = document.getElementById('maintenanceGameWrapper');
+                  if(wrapper) {
+                      wrapper.classList.toggle('d-none');
+                      if(!wrapper.classList.contains('d-none')) {
+                          // Scroll to game if opened
+                          setTimeout(() => wrapper.scrollIntoView({ behavior: 'smooth' }), 100);
+                      }
+                  }
+              };
 
               // Initialize Game Logic Global
               window.startMaintenanceGame = function() {
