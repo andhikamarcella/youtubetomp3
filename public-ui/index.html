@@ -3765,73 +3765,94 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
 
               let icon = 'bi-cone-striped text-warning';
               let title = 'Sedang Dalam Perbaikan';
-              let desc = 'Server sedang menjalani maintenance rutin. Silakan kembali dalam beberapa menit.';
+              let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin.';
+              let est = 'Estimasi selesai: 2 Jam';
               
               if (type === 'deploying') {
                   icon = 'bi-cloud-arrow-up-fill text-info';
                   title = 'Server Sedang Update';
-                  desc = 'Aplikasi sedang diperbarui ke versi terbaru (Deployment). Estimasi waktu: 1-2 menit.';
+                  desc = 'Mohon maaf, aplikasi sedang diperbarui ke versi terbaru. Layanan akan segera kembali.';
+                  est = 'Estimasi selesai: 5 Menit';
               } else if (type === 'offline') {
                   icon = 'bi-router-fill text-danger';
                   title = 'Koneksi Terputus';
-                  desc = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                  desc = 'Mohon maaf, tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                  est = 'Silakan coba lagi nanti.';
               }
               
               overlay.innerHTML = `
                   <div class="container d-flex flex-column align-items-center justify-content-center h-100 py-5">
                       <div class="text-center mb-4">
-                          <i class="bi ${icon} mb-3" style="font-size: 5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));"></i>
-                          <h1 class="display-5 fw-bold text-dark mb-2">${title}</h1>
-                          <p class="text-secondary lead mx-auto" style="max-width: 600px;">${desc}</p>
-                          <button class="btn btn-primary rounded-pill px-5 py-2 mt-3 shadow-sm fw-bold" onclick="location.reload()">
+                          <i class="bi ${icon} mb-3" style="font-size: 4rem;"></i>
+                          <h1 class="display-6 fw-bold text-dark mb-2">${title}</h1>
+                          <p class="text-secondary lead mx-auto mb-1" style="max-width: 600px;">${desc}</p>
+                          <p class="text-muted small fw-bold mb-3"><i class="bi bi-stopwatch me-1"></i>${est}</p>
+                          
+                          <!-- Live Clock -->
+                          <div id="maintenanceClock" class="display-5 fw-bold text-dark my-3 font-monospace">00:00:00</div>
+
+                          <button class="btn btn-outline-primary rounded-pill px-4 btn-sm" onclick="location.reload()">
                               <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                           </button>
                       </div>
                       
-                      <!-- Maintenance Game Console Style -->
-                      <div class="card border-0 shadow-lg bg-dark text-white rounded-4 overflow-hidden mt-3" style="max-width: 340px; width: 100%; transform: scale(1);">
-                          <div class="card-header bg-secondary bg-opacity-25 border-0 py-3">
-                              <h6 class="fw-bold mb-0 text-center text-white-50"><i class="bi bi-controller me-2"></i>MINI GAME: SNAKE</h6>
-                          </div>
-                          <div class="card-body p-0 position-relative bg-black d-flex justify-content-center align-items-center" style="min-height: 300px;">
-                              <div id="gameContainer" class="position-relative" style="width: 300px; height: 300px;">
-                                  <canvas id="gameCanvas" width="300" height="300" class="d-block bg-dark"></canvas>
-                                  
-                                  <!-- Start Overlay -->
-                                  <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75" style="z-index: 10;">
-                                      <div class="mb-3 text-center">
-                                          <i class="bi bi-dpad-fill fs-1 text-white-50"></i>
-                                      </div>
-                                      <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
-                                          <i class="bi bi-play-fill me-1"></i> MULAI MAIN
-                                      </button>
-                                      <p class="small text-white-50 mt-3 mb-0">Geser / Panah untuk gerak</p>
-                                  </div>
-
-                                  <!-- Game Over Overlay -->
-                                  <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90" style="z-index: 20;">
-                                      <h2 class="text-danger fw-black mb-1 text-uppercase" style="letter-spacing: 2px;">GAME OVER</h2>
-                                      <div class="bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-4 text-center">
-                                          <small class="text-white-50 d-block text-uppercase" style="font-size: 0.7rem;">Final Score</small>
-                                          <span id="finalScore" class="text-warning fw-bold fs-2">0</span>
-                                      </div>
-                                      <button class="btn btn-outline-light rounded-pill px-4 btn-sm" onclick="startMaintenanceGame()">
-                                          <i class="bi bi-arrow-counterclockwise me-1"></i> Coba Lagi
-                                      </button>
-                                  </div>
-                                  
-                                  <!-- Live Score -->
-                                  <div class="position-absolute top-0 end-0 m-3 px-2 py-1 rounded bg-white bg-opacity-25 text-white fw-bold small" style="z-index: 5; backdrop-filter: blur(2px);">
-                                      SCORE: <span id="gameScore">0</span>
-                                  </div>
-                              </div>
-                          </div>
-                          <div class="card-footer bg-secondary bg-opacity-25 border-0 py-2 text-center">
-                              <small class="text-white-50" style="font-size: 0.7rem;">Gunakan Arrow Keys (PC) atau Swipe (HP)</small>
-                          </div>
+                      <!-- Game Container -->
+                      <div class="card border-0 shadow-sm bg-dark text-white rounded-4 overflow-hidden mt-2" style="max-width: 320px; width: 100%;">
+                           <div class="card-header bg-transparent border-0 pt-3 pb-0 text-center">
+                              <small class="text-white-50 text-uppercase fw-bold" style="letter-spacing: 1px;">Mini Game: Snake</small>
+                           </div>
+                           <div class="card-body p-0 position-relative bg-black d-flex flex-column align-items-center justify-content-center mt-2" style="min-height: 300px;">
+                                <div id="gameContainer" class="position-relative" style="width: 300px; height: 300px;">
+                                    <canvas id="gameCanvas" width="300" height="300" class="d-block bg-dark rounded-3 border border-secondary border-opacity-25"></canvas>
+                                    
+                                    <!-- Start Overlay -->
+                                    <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75 rounded-3" style="z-index: 10;">
+                                        <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
+                                            <i class="bi bi-play-fill me-1"></i> MULAI
+                                        </button>
+                                    </div>
+  
+                                    <!-- Game Over Overlay -->
+                                    <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90 rounded-3" style="z-index: 20;">
+                                        <h4 class="text-danger fw-bold mb-1">GAME OVER</h4>
+                                        <div class="text-white-50 mb-3 small">Score: <span id="finalScore" class="text-warning fw-bold">0</span></div>
+                                        <button class="btn btn-outline-light rounded-pill px-3 btn-sm" onclick="startMaintenanceGame()">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Main Lagi
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Live Score -->
+                                    <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded bg-white bg-opacity-10 text-white fw-bold small" style="z-index: 5;">
+                                        <span id="gameScore">0</span>
+                                    </div>
+                                </div>
+                           </div>
+                           <!-- D-Pad Controls -->
+                           <div class="card-footer bg-secondary bg-opacity-10 border-0 py-3">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('up')"><i class="bi bi-caret-up-fill"></i></button>
+                                    <div class="d-flex gap-3">
+                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('left')"><i class="bi bi-caret-left-fill"></i></button>
+                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('right')"><i class="bi bi-caret-right-fill"></i></button>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('down')"><i class="bi bi-caret-down-fill"></i></button>
+                                </div>
+                           </div>
                       </div>
                   </div>
               `;
+
+              // Clock Logic
+              function updateMaintClock() {
+                  const el = document.getElementById('maintenanceClock');
+                  if(el) {
+                      const now = new Date();
+                      el.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+                  }
+              }
+              if(window.maintClockInterval) clearInterval(window.maintClockInterval);
+              window.maintClockInterval = setInterval(updateMaintClock, 1000);
+              updateMaintClock();
 
               // Initialize Game Logic Global
               window.startMaintenanceGame = function() {
@@ -3866,6 +3887,16 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                   
                   if(scoreEl) scoreEl.textContent = '0';
                   
+                  // Global Direction Handler
+                  window.snakeDir = function(dir) {
+                      switch(dir) {
+                          case 'left': if(velocityX !== 1) { velocityX = -1; velocityY = 0; } break;
+                          case 'up': if(velocityY !== 1) { velocityX = 0; velocityY = -1; } break;
+                          case 'right': if(velocityX !== -1) { velocityX = 1; velocityY = 0; } break;
+                          case 'down': if(velocityY !== -1) { velocityX = 0; velocityY = 1; } break;
+                      }
+                  };
+                  
                   // Main Game Loop
                   function gameLoop() {
                       playerX += velocityX;
@@ -3894,7 +3925,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                           ctx.lineTo(canvas.width, i*gridSize);
                           ctx.stroke();
                       }
-
+ 
                       // Draw Apple
                       ctx.fillStyle = '#ff4d4d'; // Bright Red
                       ctx.shadowBlur = 10;
@@ -3910,7 +3941,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                           // Head is different color?
                           if(i === trail.length - 1) ctx.fillStyle = '#4da3ff';
                           else ctx.fillStyle = '#0d6efd';
-
+ 
                           ctx.fillRect(trail[i].x * gridSize + 1, trail[i].y * gridSize + 1, gridSize-2, gridSize-2);
                           
                           // Self collision check
@@ -3954,10 +3985,10 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                   
                   function keyPush(evt) {
                       switch(evt.keyCode) {
-                          case 37: if(velocityX !== 1) { velocityX = -1; velocityY = 0; } break; // Left
-                          case 38: if(velocityY !== 1) { velocityX = 0; velocityY = -1; } break; // Up
-                          case 39: if(velocityX !== -1) { velocityX = 1; velocityY = 0; } break; // Right
-                          case 40: if(velocityY !== -1) { velocityX = 0; velocityY = 1; } break; // Down
+                          case 37: window.snakeDir('left'); break;
+                          case 38: window.snakeDir('up'); break;
+                          case 39: window.snakeDir('right'); break;
+                          case 40: window.snakeDir('down'); break;
                       }
                   }
                   
@@ -3965,7 +3996,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                   document.removeEventListener('keydown', keyPush);
                   document.addEventListener('keydown', keyPush);
                   
-                  // Touch Logic
+                  // Touch Logic (Keep swipe as alternative)
                   let touchStartX = 0;
                   let touchStartY = 0;
                   
@@ -3986,11 +4017,11 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                       let dy = touchEndY - touchStartY;
                       
                       if(Math.abs(dx) > Math.abs(dy)) {
-                          if(dx > 0 && velocityX !== -1) { velocityX = 1; velocityY = 0; }
-                          else if(dx < 0 && velocityX !== 1) { velocityX = -1; velocityY = 0; }
+                          if(dx > 0) window.snakeDir('right');
+                          else window.snakeDir('left');
                       } else {
-                          if(dy > 0 && velocityY !== -1) { velocityX = 0; velocityY = 1; }
-                          else if(dy < 0 && velocityY !== 1) { velocityX = 0; velocityY = -1; }
+                          if(dy > 0) window.snakeDir('down');
+                          else window.snakeDir('up');
                       }
                       evt.preventDefault();
                   };
