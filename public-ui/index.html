@@ -906,6 +906,9 @@
       .mini-player .mini-action-label { font-size: .6rem; }
     }
   </style>
+  <!-- Cropper.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script type="importmap">
     {
       "imports": {
@@ -1050,6 +1053,12 @@
      
      <div class="text-center text-muted fs-5 mt-5">
        <i class="bi bi-info-circle me-2"></i>Lagu akan otomatis jadi MP3 kualitas jernih.
+     </div>
+
+     <div class="text-center mt-5 mb-3">
+        <button id="gaptek-exit-btn" class="btn btn-sm btn-outline-secondary rounded-pill px-3 opacity-75 hover-opacity-100">
+            <i class="bi bi-arrow-left me-2"></i>Reset Pilihan Mode
+        </button>
      </div>
   </div>
 
@@ -15054,28 +15063,39 @@ $('#queueList')?.addEventListener('click', (e) => {
       const labelToggle = document.getElementById('headerModeLabel');
       const containerBasic = document.getElementById('basic-mode');
       const containerAdvanced = document.getElementById('advanced-mode');
+      const containerGaptek = document.getElementById('gaptek-mode');
       const welcomeModalEl = document.getElementById('welcomeModeModal');
       const selectBasic = document.getElementById('selectBasicMode');
       const selectAdvanced = document.getElementById('selectAdvancedMode');
+      const selectGaptek = document.getElementById('selectGaptekMode');
       const modeKey = 'ytmp3_mode_pref';
       
       const setMode = (mode) => {
         const isBasic = mode === 'basic';
+        const isGaptek = mode === 'gaptek';
+        const isAdvanced = !isBasic && !isGaptek;
+
         if(containerBasic) containerBasic.hidden = !isBasic;
-        if(containerAdvanced) containerAdvanced.hidden = isBasic;
+        if(containerAdvanced) containerAdvanced.hidden = !isAdvanced;
+        if(containerGaptek) containerGaptek.hidden = !isGaptek;
         
-        if(labelToggle) labelToggle.textContent = isBasic ? 'Mode: Basic' : 'Mode: Advanced';
+        if(labelToggle) {
+            if(isBasic) labelToggle.textContent = 'Mode: Basic';
+            else if(isGaptek) labelToggle.textContent = 'Mode: Gaptek';
+            else labelToggle.textContent = 'Mode: Advanced';
+        }
         if(btnToggle) {
            const icon = btnToggle.querySelector('i');
-           if(icon) icon.className = isBasic ? 'bi bi-magic' : 'bi bi-sliders';
-           // Update button style
-           if(isBasic) {
-             btnToggle.classList.add('text-primary');
-             btnToggle.classList.remove('text-secondary');
-           } else {
-             btnToggle.classList.add('text-secondary');
-             btnToggle.classList.remove('text-primary');
+           if(icon) {
+               if(isBasic) icon.className = 'bi bi-magic';
+               else if(isGaptek) icon.className = 'bi bi-emoji-smile';
+               else icon.className = 'bi bi-sliders';
            }
+           // Update button style
+           btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success');
+           if(isBasic) btnToggle.classList.add('text-primary');
+           else if(isGaptek) btnToggle.classList.add('text-success');
+           else btnToggle.classList.add('text-secondary');
         }
         localStorage.setItem(modeKey, mode);
         vibrate(30);
@@ -15086,9 +15106,17 @@ $('#queueList')?.addEventListener('click', (e) => {
       if (btnToggle) {
         btnToggle.addEventListener('click', () => {
           const now = localStorage.getItem(modeKey) || 'basic';
-          const next = now === 'basic' ? 'advanced' : 'basic';
+          // Cycle: Basic -> Advanced -> Gaptek -> Basic
+          let next = 'basic';
+          if(now === 'basic') next = 'advanced';
+          else if(now === 'advanced') next = 'gaptek';
+          else next = 'basic';
+          
           setMode(next);
-          setToast(next === 'basic' ? 'Basic Mode aktif' : 'Advanced Mode aktif');
+          let msg = 'Basic Mode aktif';
+          if(next === 'advanced') msg = 'Advanced Mode aktif';
+          if(next === 'gaptek') msg = 'Gaptek Mode aktif';
+          setToast(msg);
         });
       }
 
@@ -15112,6 +15140,19 @@ $('#queueList')?.addEventListener('click', (e) => {
         });
       }
 
+      // Gaptek Exit Button
+      const gaptekExitBtn = document.getElementById('gaptek-exit-btn');
+      if (gaptekExitBtn) {
+          gaptekExitBtn.addEventListener('click', () => {
+            localStorage.removeItem(modeKey);
+            setMode('basic');
+            if (welcomeModalEl && bootstrapGlobal?.Modal) {
+                 const modal = new bootstrapGlobal.Modal(welcomeModalEl);
+                 modal.show();
+            }
+          });
+      }
+
       // Welcome Modal
       if (welcomeModalEl && !currentMode) {
         if (bootstrapGlobal?.Modal) {
@@ -15119,6 +15160,7 @@ $('#queueList')?.addEventListener('click', (e) => {
           modal.show();
           if(selectBasic) selectBasic.addEventListener('click', () => { setMode('basic'); modal.hide(); });
           if(selectAdvanced) selectAdvanced.addEventListener('click', () => { setMode('advanced'); modal.hide(); });
+          if(selectGaptek) selectGaptek.addEventListener('click', () => { setMode('gaptek'); modal.hide(); });
         } else {
           // Fallback: force basic mode silently if JS missing
           setMode('basic'); 
@@ -16463,171 +16505,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
     })();
   </script>
-  <!-- Mini Player Popup -->
-  <div id="miniPlayer" class="card shadow-lg position-fixed bottom-0 start-50 translate-middle-x mb-3 d-none" style="width: 90%; max-width: 450px; z-index: 9999 !important; border-radius: 1rem; backdrop-filter: blur(15px); background: rgba(var(--bs-body-bg-rgb), 0.85); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);">
-    <div class="card-body p-2 d-flex align-items-center gap-3">
-      <div class="position-relative flex-shrink-0">
-          <img id="miniPlayerThumb" src="" class="rounded-3 shadow-sm" style="width: 56px; height: 56px; object-fit: cover; background: #222;">
-          <div class="position-absolute top-50 start-50 translate-middle" id="miniPlayerLoading" hidden>
-             <div class="spinner-border spinner-border-sm text-light" role="status"></div>
-          </div>
-      </div>
-      <div class="flex-grow-1 overflow-hidden" style="min-width: 0;">
-        <div id="miniPlayerTitle" class="fw-bold text-truncate" style="font-size: 0.9rem;">Start Playing</div>
-        <div id="miniPlayerArtist" class="small text-secondary text-truncate" style="font-size: 0.75rem;">Select from history</div>
-        <div class="d-flex align-items-center gap-2 mt-1">
-             <span id="miniPlayerTime" class="text-secondary font-monospace" style="font-size: 0.65rem; min-width: 25px;">0:00</span>
-             <div class="progress flex-grow-1 bg-secondary-subtle rounded-pill" style="height: 4px; cursor: pointer;" id="miniPlayerProgressWrap">
-                <div id="miniPlayerProgress" class="progress-bar bg-primary rounded-pill" style="width: 0%; transition: width 0.1s linear;"></div>
-             </div>
-             <span id="miniPlayerDuration" class="text-secondary font-monospace" style="font-size: 0.65rem; min-width: 25px;">0:00</span>
-        </div>
-      </div>
-      <div class="d-flex align-items-center gap-2 flex-shrink-0">
-         <!-- Volume Control -->
-         <div class="dropup-center dropup">
-            <button class="btn btn-sm btn-link text-secondary p-1 rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Volume">
-              <i class="bi bi-volume-up-fill fs-5" id="miniVolumeIcon"></i>
-            </button>
-            <div class="dropdown-menu p-3 border-0 shadow-lg" style="min-width: 200px; border-radius: 1rem; background: rgba(var(--bs-body-bg-rgb), 0.95); backdrop-filter: blur(10px);">
-               <label class="form-label small mb-2 fw-bold text-secondary d-flex justify-content-between">
-                  <span>Volume</span>
-                  <span id="miniVolumeVal">100%</span>
-               </label>
-               <input type="range" class="form-range" id="miniPlayerVolume" min="0" max="1" step="0.01" value="1">
-            </div>
-         </div>
 
-         <button id="miniPlayerPlayBtn" class="btn btn-sm btn-primary text-white p-0 rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;"><i class="bi bi-play-fill fs-4 ms-1"></i></button>
-         <button id="miniPlayerCloseBtn" class="btn btn-sm btn-link text-secondary p-1 rounded-circle"><i class="bi bi-x-lg fs-5"></i></button>
-      </div>
-      <audio id="miniPlayerAudio" style="display:none;" preload="none"></audio>
-    </div>
-  </div>
-
-  <script>
-    (function() {
-      const player = document.getElementById('miniPlayer');
-      const audio = document.getElementById('miniPlayerAudio');
-      const thumb = document.getElementById('miniPlayerThumb');
-      const titleEl = document.getElementById('miniPlayerTitle');
-      const artistEl = document.getElementById('miniPlayerArtist');
-      const playBtn = document.getElementById('miniPlayerPlayBtn');
-      const closeBtn = document.getElementById('miniPlayerCloseBtn');
-      const progressBar = document.getElementById('miniPlayerProgress');
-      const progressWrap = document.getElementById('miniPlayerProgressWrap');
-      const timeEl = document.getElementById('miniPlayerTime');
-      const durationEl = document.getElementById('miniPlayerDuration');
-      const loading = document.getElementById('miniPlayerLoading');
-      const volumeSlider = document.getElementById('miniPlayerVolume');
-      const volumeIcon = document.getElementById('miniVolumeIcon');
-      const volumeVal = document.getElementById('miniVolumeVal');
-
-      if (!player || !audio) return;
-
-      // Restore volume
-      const savedVol = localStorage.getItem('miniPlayerVol');
-      if(savedVol !== null) {
-          audio.volume = parseFloat(savedVol);
-          if(volumeSlider) volumeSlider.value = savedVol;
-          updateVolumeUI(audio.volume);
-      }
-
-      window.openMiniPlayer = function(url, title, artist, cover) {
-        player.classList.remove('d-none');
-        titleEl.textContent = title || 'Unknown Title';
-        artistEl.textContent = artist || 'Unknown Artist';
-        thumb.src = cover || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect width='1' height='1' fill='%23333'/%3E";
-        
-        audio.src = url;
-        audio.play().catch(e => console.error("Audio play failed:", e));
-        updatePlayIcon(true);
-      };
-
-      function updatePlayIcon(isPlaying) {
-        playBtn.innerHTML = isPlaying ? '<i class="bi bi-pause-fill fs-4"></i>' : '<i class="bi bi-play-fill fs-4 ms-1"></i>';
-      }
-
-      function formatTime(s) {
-        if (!s || isNaN(s)) return '0:00';
-        const m = Math.floor(s / 60);
-        const sc = Math.floor(s % 60);
-        return m + ':' + sc.toString().padStart(2, '0');
-      }
-
-      function updateVolumeUI(vol) {
-          if(!volumeIcon) return;
-          if(vol === 0) volumeIcon.className = 'bi bi-volume-mute-fill fs-5';
-          else if(vol < 0.5) volumeIcon.className = 'bi bi-volume-down-fill fs-5';
-          else volumeIcon.className = 'bi bi-volume-up-fill fs-5';
-          
-          if(volumeVal) volumeVal.textContent = Math.round(vol * 100) + '%';
-      }
-
-      if(volumeSlider) {
-          volumeSlider.addEventListener('input', (e) => {
-              const vol = parseFloat(e.target.value);
-              audio.volume = vol;
-              localStorage.setItem('miniPlayerVol', vol);
-              updateVolumeUI(vol);
-          });
-      }
-
-      playBtn.addEventListener('click', () => {
-        if (audio.paused) {
-          audio.play();
-        } else {
-          audio.pause();
-        }
-      });
-
-      closeBtn.addEventListener('click', () => {
-        audio.pause();
-        player.classList.add('d-none');
-        audio.src = ''; // Stop buffering
-      });
-
-      audio.addEventListener('play', () => updatePlayIcon(true));
-      audio.addEventListener('pause', () => updatePlayIcon(false));
-      audio.addEventListener('ended', () => updatePlayIcon(false));
-      
-      audio.addEventListener('waiting', () => {
-         if (loading) loading.hidden = false;
-      });
-      audio.addEventListener('playing', () => {
-         if (loading) loading.hidden = true;
-      });
-
-      audio.addEventListener('timeupdate', () => {
-        if (!audio.duration) return;
-        const pct = (audio.currentTime / audio.duration) * 100;
-        progressBar.style.width = pct + '%';
-        timeEl.textContent = formatTime(audio.currentTime);
-        durationEl.textContent = formatTime(audio.duration);
-      });
-
-      audio.addEventListener('loadedmetadata', () => {
-         durationEl.textContent = formatTime(audio.duration);
-      });
-
-      progressWrap.addEventListener('click', (e) => {
-        if (!audio.duration) return;
-        const rect = progressWrap.getBoundingClientRect();
-        const pos = (e.clientX - rect.left) / rect.width;
-        audio.currentTime = pos * audio.duration;
-      });
-      
-      // Error handling
-      audio.addEventListener('error', () => {
-         if (loading) loading.hidden = true;
-         if (audio.error && audio.src) {
-             titleEl.textContent = 'Error loading audio';
-             updatePlayIcon(false);
-         }
-      });
-
-    })();
-  </script>
   <script type="module">
     // Import the functions you need from the SDKs you need 
     import { initializeApp } from "firebase/app"; 
@@ -17042,15 +16920,20 @@ $('#queueList')?.addEventListener('click', (e) => {
             const file = e.target.files[0];
             if(!file) return;
             
-            // Limit size (e.g., 1MB)
-            if(file.size > 1024 * 1024) {
-                setToast('Ukuran gambar maksimal 1MB', 'error');
+            // Limit size (e.g., 5MB - increased for editing)
+            if(file.size > 5 * 1024 * 1024) {
+                setToast('Ukuran gambar maksimal 5MB', 'error');
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                currentImageBase64 = ev.target.result;
+            // Open Editor instead of direct preview
+            if(window.openImageEditor) {
+                window.openImageEditor(file);
+            }
+
+            // Handle Result from Editor
+            window.handleEditorResult = (base64) => {
+                currentImageBase64 = base64;
                 // Show preview with WhatsApp-like quote style
                 previewContainer.classList.remove('d-none');
                 previewContainer.innerHTML = `
@@ -17068,7 +16951,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                     </div>
                 `;
             };
-            reader.readAsDataURL(file);
         });
     }
     
@@ -17281,17 +17163,17 @@ $('#queueList')?.addEventListener('click', (e) => {
   <!-- Mini Player Overlay -->
   <div id="miniPlayerOverlay" class="mini-player-overlay">
       <div class="mini-player-card">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="mb-0 text-white-50 text-uppercase small ls-1">Now Playing</h6>
-              <button type="button" class="btn-close btn-close-white" id="closeMiniPlayer"></button>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="mb-0 text-white-50 text-uppercase small ls-1" style="font-size: 0.7rem;">Now Playing</h6>
+              <button type="button" class="btn-close btn-close-white" id="closeMiniPlayer" style="font-size: 0.8rem;"></button>
           </div>
           
           <div class="text-center">
               <img id="mpThumbnail" src="" alt="Album Art" class="mini-player-art">
               
-              <div class="mb-4">
-                  <h5 id="mpTitle" class="fw-bold mb-1 text-truncate">Title</h5>
-                  <p id="mpArtist" class="text-white-50 small mb-0 text-truncate">Artist</p>
+              <div class="mb-3">
+                  <h5 id="mpTitle" class="fw-bold mb-1 text-truncate" style="font-size: 1rem;">Title</h5>
+                  <p id="mpArtist" class="text-white-50 small mb-0 text-truncate" style="font-size: 0.8rem;">Artist</p>
               </div>
 
               <!-- Progress -->
@@ -17302,25 +17184,25 @@ $('#queueList')?.addEventListener('click', (e) => {
               </div>
 
               <!-- Main Controls -->
-              <div class="d-flex align-items-center justify-content-center gap-4 mb-4 mt-3">
+              <div class="d-flex align-items-center justify-content-center gap-3 mb-3 mt-2">
                   <button class="btn btn-link text-white p-0 opacity-75 hover-opacity-100" id="mpSeekBack">
-                      <i class="bi bi-skip-backward-fill fs-3"></i>
+                      <i class="bi bi-skip-backward-fill fs-4"></i>
                   </button>
                   <button class="player-btn-primary shadow" id="mpPlayPause">
                       <i class="bi bi-play-fill"></i>
                   </button>
                   <button class="btn btn-link text-white p-0 opacity-75 hover-opacity-100" id="mpSeekFwd">
-                      <i class="bi bi-skip-forward-fill fs-3"></i>
+                      <i class="bi bi-skip-forward-fill fs-4"></i>
                   </button>
               </div>
 
               <!-- Footer Actions -->
-              <div class="d-flex align-items-center justify-content-between bg-white bg-opacity-10 p-3 rounded-4">
+              <div class="d-flex align-items-center justify-content-between bg-white bg-opacity-10 p-2 rounded-4">
                    <div class="d-flex align-items-center gap-2" style="width: 50%;">
-                      <i class="bi bi-volume-up text-white-50"></i>
+                      <i class="bi bi-volume-up text-white-50 small"></i>
                       <input type="range" class="form-range form-range-sm" id="mpVolume" min="0" max="1" step="0.05" value="1">
                    </div>
-                   <a id="mpDownloadBtn" href="#" class="btn btn-sm btn-outline-light rounded-pill px-3" download target="_blank">
+                   <a id="mpDownloadBtn" href="#" class="btn btn-sm btn-outline-light rounded-pill px-3 py-1" download target="_blank" style="font-size: 0.8rem;">
                       <i class="bi bi-download me-1"></i> Save
                    </a>
               </div>
@@ -17351,11 +17233,11 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     .mini-player-card {
         width: 90%;
-        max-width: 380px;
+        max-width: 320px;
         background: linear-gradient(145deg, #1e1e1e, #121212);
         border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 28px;
-        padding: 24px;
+        border-radius: 24px;
+        padding: 20px;
         box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
         transform: scale(0.9);
         transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -17369,9 +17251,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         width: 100%;
         aspect-ratio: 1/1;
         object-fit: cover;
-        border-radius: 20px;
-        margin-bottom: 24px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border-radius: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
     /* Mobile Bottom Sheet Override */
@@ -17382,9 +17264,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         .mini-player-card {
             width: 100%;
             max-width: 100%;
-            border-radius: 32px 32px 0 0;
+            border-radius: 24px 24px 0 0;
             margin: 0;
-            padding-bottom: 40px;
+            padding-bottom: 30px;
             transform: translateY(100%);
             border-bottom: none;
             border-left: none;
@@ -17397,8 +17279,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
 
     .player-btn-primary {
-        width: 64px;
-        height: 64px;
+        width: 56px;
+        height: 56px;
         border-radius: 50%;
         background: white;
         color: black;
@@ -17406,7 +17288,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 32px;
+        font-size: 28px;
         transition: transform 0.1s, background-color 0.2s;
     }
     .player-btn-primary:active {
@@ -17414,10 +17296,10 @@ $('#queueList')?.addEventListener('click', (e) => {
         background-color: #e0e0e0;
     }
     .time-label {
-        font-size: 11px;
+        font-size: 10px;
         font-family: monospace;
         color: rgba(255,255,255,0.5);
-        min-width: 35px;
+        min-width: 30px;
     }
     
     /* Range Slider Styling */
@@ -17436,11 +17318,11 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
     input[type=range]::-webkit-slider-thumb {
         -webkit-appearance: none;
-        height: 12px;
-        width: 12px;
+        height: 10px;
+        width: 10px;
         border-radius: 50%;
         background: white;
-        margin-top: -4px;
+        margin-top: -3px;
         box-shadow: 0 0 10px rgba(255,255,255,0.5);
     }
   </style>
@@ -17568,6 +17450,313 @@ $('#queueList')?.addEventListener('click', (e) => {
                 document.body.style.overflow = '';
             }
         });
+    })();
+  </script>
+  <!-- Image Editor Modal -->
+  <div id="imageEditorModal" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-black" style="z-index: 10000 !important;">
+    <!-- Toolbar -->
+    <div class="d-flex justify-content-between align-items-center p-3 text-white position-absolute top-0 w-100" style="background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index: 20;">
+        <button class="btn btn-link text-white text-decoration-none" id="editorCloseBtn"><i class="bi bi-x-lg fs-4"></i></button>
+        <div class="d-flex gap-4">
+             <button class="btn btn-link text-white p-0" id="editorCropBtn" title="Potong"><i class="bi bi-crop fs-4"></i></button>
+             <button class="btn btn-link text-white p-0" id="editorPenBtn" title="Coret"><i class="bi bi-pencil fs-4"></i></button>
+             <button class="btn btn-link text-white p-0" id="editorUndoBtn" title="Undo"><i class="bi bi-arrow-counterclockwise fs-4"></i></button>
+        </div>
+        <button class="btn btn-link text-white fw-bold text-decoration-none" id="editorDoneBtn">Selesai</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-black overflow-hidden" id="editorWorkspace" style="padding-top: 60px; padding-bottom: 80px;">
+        <div id="editorImageWrapper" class="position-relative" style="line-height: 0;">
+            <img id="editorImage" src="" style="max-width: 100%; max-height: 80vh; display: block;">
+            <canvas id="editorCanvas" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; touch-action: none;"></canvas>
+        </div>
+    </div>
+
+    <!-- Tools/Color Palette (Bottom) -->
+    <div id="editorTools" class="position-absolute bottom-0 w-100 p-4 d-flex flex-column align-items-center gap-3" style="background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); z-index: 20;">
+         <div id="editorColors" class="d-flex gap-3 d-none">
+             <div class="color-dot rounded-circle border border-2 border-white" data-color="#ff0000" style="width: 24px; height: 24px; background: #ff0000; cursor: pointer;"></div>
+             <div class="color-dot rounded-circle" data-color="#ffff00" style="width: 24px; height: 24px; background: #ffff00; cursor: pointer;"></div>
+             <div class="color-dot rounded-circle" data-color="#00ff00" style="width: 24px; height: 24px; background: #00ff00; cursor: pointer;"></div>
+             <div class="color-dot rounded-circle" data-color="#0000ff" style="width: 24px; height: 24px; background: #0000ff; cursor: pointer;"></div>
+             <div class="color-dot rounded-circle" data-color="#ffffff" style="width: 24px; height: 24px; background: #ffffff; cursor: pointer;"></div>
+             <div class="color-dot rounded-circle" data-color="#000000" style="width: 24px; height: 24px; background: #000000; cursor: pointer;"></div>
+         </div>
+         <div id="editorCropActions" class="d-flex gap-3 d-none">
+             <button class="btn btn-sm btn-outline-light rounded-pill px-3" id="editorRotateLeft"><i class="bi bi-arrow-counterclockwise"></i> Putar</button>
+             <button class="btn btn-sm btn-primary rounded-pill px-4" id="editorApplyCrop">Terapkan Potongan</button>
+         </div>
+    </div>
+  </div>
+
+  <script>
+    // Image Editor Logic
+    (function(){
+        const modal = document.getElementById('imageEditorModal');
+        const img = document.getElementById('editorImage');
+        const canvas = document.getElementById('editorCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('editorImageWrapper');
+        
+        let cropper = null;
+        let isDrawing = false;
+        let currentMode = 'view'; // view, crop, pen
+        let currentColor = '#ff0000';
+        let drawingHistory = []; // To store canvas states for undo (simplified)
+        
+        // Buttons
+        const btnClose = document.getElementById('editorCloseBtn');
+        const btnDone = document.getElementById('editorDoneBtn');
+        const btnCrop = document.getElementById('editorCropBtn');
+        const btnPen = document.getElementById('editorPenBtn');
+        const btnUndo = document.getElementById('editorUndoBtn');
+        const btnApplyCrop = document.getElementById('editorApplyCrop');
+        const btnRotate = document.getElementById('editorRotateLeft');
+        
+        const colorsContainer = document.getElementById('editorColors');
+        const cropActions = document.getElementById('editorCropActions');
+        const colorDots = document.querySelectorAll('.color-dot');
+
+        // State
+        let originalFile = null;
+
+        // Open Editor
+        window.openImageEditor = (file) => {
+            originalFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img.src = e.target.result;
+                img.onload = () => {
+                    modal.classList.remove('d-none');
+                    resetEditor();
+                };
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function resetEditor() {
+            // Destroy cropper if exists
+            if(cropper) { cropper.destroy(); cropper = null; }
+            
+            // Reset Canvas matches Image natural size
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawingHistory = [];
+            
+            setMode('view');
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // UI Updates
+            colorsContainer.classList.add('d-none');
+            cropActions.classList.add('d-none');
+            canvas.style.pointerEvents = 'none';
+            btnPen.classList.remove('text-warning');
+            btnCrop.classList.remove('text-warning');
+
+            if(mode === 'crop') {
+                btnCrop.classList.add('text-warning');
+                cropActions.classList.remove('d-none');
+                
+                // Init Cropper
+                if(!cropper) {
+                    cropper = new Cropper(img, {
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 1,
+                        background: false,
+                        ready() {
+                            // Hide canvas while cropping because it won't align
+                            canvas.classList.add('d-none');
+                        }
+                    });
+                }
+            } else if (mode === 'pen') {
+                btnPen.classList.add('text-warning');
+                colorsContainer.classList.remove('d-none');
+                canvas.style.pointerEvents = 'auto';
+                canvas.classList.remove('d-none');
+                
+                if(cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+            } else {
+                // View
+                canvas.classList.remove('d-none');
+                if(cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+            }
+        }
+
+        // Tools
+        btnCrop.addEventListener('click', () => {
+            if(currentMode === 'crop') setMode('view');
+            else setMode('crop');
+        });
+
+        btnPen.addEventListener('click', () => {
+            if(currentMode === 'pen') setMode('view');
+            else setMode('pen');
+        });
+
+        btnApplyCrop.addEventListener('click', () => {
+            if(!cropper) return;
+            // Get cropped result
+            const croppedCanvas = cropper.getCroppedCanvas();
+            const newDataUrl = croppedCanvas.toDataURL();
+            
+            // Set onload BEFORE src to ensure we catch it
+            img.onload = () => {
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawingHistory = []; // Clear history
+                setMode('view');
+            };
+            
+            // Update Image
+            img.src = newDataUrl;
+        });
+        
+        btnRotate.addEventListener('click', () => {
+            if(cropper) cropper.rotate(-90);
+        });
+
+        // Drawing Logic
+        // We need to map screen coordinates to canvas coordinates
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            
+            if(e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        let isDrawingAction = false;
+        let lastPos = {x:0, y:0};
+
+        const startDraw = (e) => {
+            if(currentMode !== 'pen') return;
+            isDrawingAction = true;
+            lastPos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastPos.x, lastPos.y);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 5 * (canvas.width / 500); // Scale line width
+            ctx.strokeStyle = currentColor;
+            
+            // Save state for undo (simple)
+            saveHistory();
+        };
+
+        const draw = (e) => {
+            if(!isDrawingAction || currentMode !== 'pen') return;
+            e.preventDefault(); // Stop scrolling
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            lastPos = pos;
+        };
+
+        const endDraw = () => {
+            isDrawingAction = false;
+        };
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('mouseout', endDraw);
+        
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', endDraw);
+
+        // Colors
+        colorDots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                // Update UI
+                colorDots.forEach(d => d.classList.remove('border-2', 'border-white'));
+                dot.classList.add('border-2', 'border-white');
+                currentColor = dot.dataset.color;
+            });
+        });
+
+        // Undo
+        function saveHistory() {
+             if(drawingHistory.length > 5) drawingHistory.shift();
+             drawingHistory.push(canvas.toDataURL());
+        }
+
+        btnUndo.addEventListener('click', () => {
+             // Simple clear for now as full undo stack is complex with images
+             // Actually, let's just clear last stroke? No, canvas doesn't work that way.
+             // We need to restore previous image state.
+             // For now: "Clear All" logic if history not implemented fully?
+             // Or just Clear Canvas.
+             // Let's implement basic "Clear Scribbles" for simplicity or last state if feasible.
+             if(drawingHistory.length > 0) {
+                 const last = drawingHistory.pop();
+                 const imgObj = new Image();
+                 imgObj.src = last;
+                 imgObj.onload = () => {
+                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+                     ctx.drawImage(imgObj, 0, 0);
+                 };
+             } else {
+                 // Clear all
+                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+             }
+        });
+
+        // Finish
+        btnDone.addEventListener('click', () => {
+             // 1. Create a temp canvas to merge Image + Scribble
+             const tempCanvas = document.createElement('canvas');
+             tempCanvas.width = img.naturalWidth;
+             tempCanvas.height = img.naturalHeight;
+             const tCtx = tempCanvas.getContext('2d');
+             
+             // Draw Image
+             tCtx.drawImage(img, 0, 0);
+             
+             // Draw Scribbles
+             tCtx.drawImage(canvas, 0, 0);
+             
+             // Export
+             const finalBase64 = tempCanvas.toDataURL('image/jpeg', 0.85);
+             
+             // Pass back to main logic
+             if(window.handleEditorResult) {
+                 window.handleEditorResult(finalBase64);
+             }
+             
+             modal.classList.add('d-none');
+             setMode('view');
+        });
+        
+        btnClose.addEventListener('click', () => {
+             modal.classList.add('d-none');
+        });
+
     })();
   </script>
 </body>
