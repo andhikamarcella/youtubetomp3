@@ -2831,40 +2831,7 @@
     </div>
   </div>
 
-  <div id="miniPlayer" class="mini-player" hidden>
-    <div class="mini-player-card card shadow-lg border-0">
-      <div class="card-body mini-player-body py-3">
-        <button class="mini-btn mini-btn-play" id="miniPlayBtn" type="button" aria-label="Putar / jeda" title="Putar / jeda">
-          <i class="bi bi-play-fill" aria-hidden="true"></i>
-          <span class="visually-hidden mini-btn-label">Putar</span>
-        </button>
-        <div class="mini-player-main">
-          <div class="d-flex align-items-center justify-content-between gap-2">
-            <div class="fw-semibold mini-player-title text-truncate" id="miniTitle">Audio Preview</div>
-            <div class="small text-secondary" id="miniTime">00:00</div>
-          </div>
-          <div class="mini-player-subtitle text-truncate" id="miniSubtitle"></div>
-          <input type="range" class="form-range mt-2" id="miniSeek" min="0" max="1000" value="0" aria-label="Seek audio">
-        </div>
-        <div class="mini-actions">
-          <div class="mini-action">
-            <button class="mini-btn mini-btn-ghost" id="miniShareBtn" type="button" aria-label="Bagikan mini player" title="Bagikan mini player">
-              <i class="bi bi-qr-code" aria-hidden="true"></i>
-              <span class="visually-hidden">Bagikan mini player</span>
-            </button>
-            <span class="mini-action-label">QR</span>
-          </div>
-          <div class="mini-action">
-            <button class="mini-btn mini-btn-ghost" id="miniCloseBtn" type="button" aria-label="Tutup mini player" title="Tutup mini player">
-              <i class="bi bi-x-lg" aria-hidden="true"></i>
-              <span class="visually-hidden">Tutup mini player</span>
-            </button>
-            <span class="mini-action-label">Tutup</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
   <div class="offcanvas offcanvas-start border-0 shadow-lg" tabindex="-1" id="offcanvasNav" style="border-radius: 0 16px 16px 0;">
     <div class="offcanvas-header border-bottom bg-body-tertiary py-3">
@@ -16497,28 +16464,42 @@ $('#queueList')?.addEventListener('click', (e) => {
     })();
   </script>
   <!-- Mini Player Popup -->
-  <div id="miniPlayer" class="card shadow-lg position-fixed bottom-0 start-50 translate-middle-x mb-3 d-none" style="width: 90%; max-width: 400px; z-index: 9999 !important; border-radius: 1rem; backdrop-filter: blur(10px); background: rgba(var(--bs-body-bg-rgb), 0.95); border: 1px solid rgba(255,255,255,0.1);">
+  <div id="miniPlayer" class="card shadow-lg position-fixed bottom-0 start-50 translate-middle-x mb-3 d-none" style="width: 90%; max-width: 450px; z-index: 9999 !important; border-radius: 1rem; backdrop-filter: blur(15px); background: rgba(var(--bs-body-bg-rgb), 0.85); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);">
     <div class="card-body p-2 d-flex align-items-center gap-3">
       <div class="position-relative flex-shrink-0">
-          <img id="miniPlayerThumb" src="" class="rounded-3" style="width: 48px; height: 48px; object-fit: cover; background: #333;">
+          <img id="miniPlayerThumb" src="" class="rounded-3 shadow-sm" style="width: 56px; height: 56px; object-fit: cover; background: #222;">
           <div class="position-absolute top-50 start-50 translate-middle" id="miniPlayerLoading" hidden>
              <div class="spinner-border spinner-border-sm text-light" role="status"></div>
           </div>
       </div>
       <div class="flex-grow-1 overflow-hidden" style="min-width: 0;">
-        <div id="miniPlayerTitle" class="fw-bold text-truncate small">Start Playing</div>
-        <div id="miniPlayerArtist" class="small text-secondary text-truncate">Select from history</div>
+        <div id="miniPlayerTitle" class="fw-bold text-truncate" style="font-size: 0.9rem;">Start Playing</div>
+        <div id="miniPlayerArtist" class="small text-secondary text-truncate" style="font-size: 0.75rem;">Select from history</div>
         <div class="d-flex align-items-center gap-2 mt-1">
-             <span id="miniPlayerTime" class="text-secondary" style="font-size: 0.65rem; min-width: 25px;">0:00</span>
-             <div class="progress flex-grow-1 bg-secondary-subtle" style="height: 3px; cursor: pointer;" id="miniPlayerProgressWrap">
-                <div id="miniPlayerProgress" class="progress-bar bg-primary" style="width: 0%"></div>
+             <span id="miniPlayerTime" class="text-secondary font-monospace" style="font-size: 0.65rem; min-width: 25px;">0:00</span>
+             <div class="progress flex-grow-1 bg-secondary-subtle rounded-pill" style="height: 4px; cursor: pointer;" id="miniPlayerProgressWrap">
+                <div id="miniPlayerProgress" class="progress-bar bg-primary rounded-pill" style="width: 0%; transition: width 0.1s linear;"></div>
              </div>
-             <span id="miniPlayerDuration" class="text-secondary" style="font-size: 0.65rem; min-width: 25px;">0:00</span>
+             <span id="miniPlayerDuration" class="text-secondary font-monospace" style="font-size: 0.65rem; min-width: 25px;">0:00</span>
         </div>
       </div>
-      <div class="d-flex align-items-center gap-1 flex-shrink-0">
-         <button id="miniPlayerPlayBtn" class="btn btn-sm btn-link text-body p-1 rounded-circle"><i class="bi bi-play-fill fs-4"></i></button>
-         <button id="miniPlayerCloseBtn" class="btn btn-sm btn-link text-secondary p-1 rounded-circle"><i class="bi bi-x-lg"></i></button>
+      <div class="d-flex align-items-center gap-2 flex-shrink-0">
+         <!-- Volume Control -->
+         <div class="dropup-center dropup">
+            <button class="btn btn-sm btn-link text-secondary p-1 rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Volume">
+              <i class="bi bi-volume-up-fill fs-5" id="miniVolumeIcon"></i>
+            </button>
+            <div class="dropdown-menu p-3 border-0 shadow-lg" style="min-width: 200px; border-radius: 1rem; background: rgba(var(--bs-body-bg-rgb), 0.95); backdrop-filter: blur(10px);">
+               <label class="form-label small mb-2 fw-bold text-secondary d-flex justify-content-between">
+                  <span>Volume</span>
+                  <span id="miniVolumeVal">100%</span>
+               </label>
+               <input type="range" class="form-range" id="miniPlayerVolume" min="0" max="1" step="0.01" value="1">
+            </div>
+         </div>
+
+         <button id="miniPlayerPlayBtn" class="btn btn-sm btn-primary text-white p-0 rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;"><i class="bi bi-play-fill fs-4 ms-1"></i></button>
+         <button id="miniPlayerCloseBtn" class="btn btn-sm btn-link text-secondary p-1 rounded-circle"><i class="bi bi-x-lg fs-5"></i></button>
       </div>
       <audio id="miniPlayerAudio" style="display:none;" preload="none"></audio>
     </div>
@@ -16538,8 +16519,19 @@ $('#queueList')?.addEventListener('click', (e) => {
       const timeEl = document.getElementById('miniPlayerTime');
       const durationEl = document.getElementById('miniPlayerDuration');
       const loading = document.getElementById('miniPlayerLoading');
+      const volumeSlider = document.getElementById('miniPlayerVolume');
+      const volumeIcon = document.getElementById('miniVolumeIcon');
+      const volumeVal = document.getElementById('miniVolumeVal');
 
       if (!player || !audio) return;
+
+      // Restore volume
+      const savedVol = localStorage.getItem('miniPlayerVol');
+      if(savedVol !== null) {
+          audio.volume = parseFloat(savedVol);
+          if(volumeSlider) volumeSlider.value = savedVol;
+          updateVolumeUI(audio.volume);
+      }
 
       window.openMiniPlayer = function(url, title, artist, cover) {
         player.classList.remove('d-none');
@@ -16553,7 +16545,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       };
 
       function updatePlayIcon(isPlaying) {
-        playBtn.innerHTML = isPlaying ? '<i class="bi bi-pause-fill fs-4"></i>' : '<i class="bi bi-play-fill fs-4"></i>';
+        playBtn.innerHTML = isPlaying ? '<i class="bi bi-pause-fill fs-4"></i>' : '<i class="bi bi-play-fill fs-4 ms-1"></i>';
       }
 
       function formatTime(s) {
@@ -16561,6 +16553,24 @@ $('#queueList')?.addEventListener('click', (e) => {
         const m = Math.floor(s / 60);
         const sc = Math.floor(s % 60);
         return m + ':' + sc.toString().padStart(2, '0');
+      }
+
+      function updateVolumeUI(vol) {
+          if(!volumeIcon) return;
+          if(vol === 0) volumeIcon.className = 'bi bi-volume-mute-fill fs-5';
+          else if(vol < 0.5) volumeIcon.className = 'bi bi-volume-down-fill fs-5';
+          else volumeIcon.className = 'bi bi-volume-up-fill fs-5';
+          
+          if(volumeVal) volumeVal.textContent = Math.round(vol * 100) + '%';
+      }
+
+      if(volumeSlider) {
+          volumeSlider.addEventListener('input', (e) => {
+              const vol = parseFloat(e.target.value);
+              audio.volume = vol;
+              localStorage.setItem('miniPlayerVol', vol);
+              updateVolumeUI(vol);
+          });
       }
 
       playBtn.addEventListener('click', () => {
@@ -16610,7 +16620,6 @@ $('#queueList')?.addEventListener('click', (e) => {
       // Error handling
       audio.addEventListener('error', () => {
          if (loading) loading.hidden = true;
-         // Don't show error text immediately on load start, only real errors
          if (audio.error && audio.src) {
              titleEl.textContent = 'Error loading audio';
              updatePlayIcon(false);
@@ -16800,23 +16809,59 @@ $('#queueList')?.addEventListener('click', (e) => {
                 if (window.updateForumAuthUI) window.updateForumAuthUI(googleSummary);
             } else {
                 // No redirect result found. This is normal on standard page load.
-                // But if we just came from Google, it might mean we lost the state.
-                console.log("Firebase Auth: No redirect result found.");
+                // But if we just came from Google (flag set), it means we lost the state or user cancelled.
+                if (sessionStorage.getItem('isFirebaseRedirecting')) {
+                    console.warn("Firebase Auth: Expected redirect result but got none. Clearing flag.");
+                    sessionStorage.removeItem('isFirebaseRedirecting');
+                    
+                    // Force reset UI
+                    const btn = document.getElementById('btnForumLoginAction');
+                    const statusText = document.getElementById('loginStatusText');
+                    if(btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = `<i class="bi bi-google"></i><span>Login Google (Chat)</span>`;
+                    }
+                    if(statusText) statusText.classList.add('d-none');
+                    if(window.setToast) window.setToast("Login dibatalkan atau gagal memuat data.", "warning");
+                }
             }
         }).catch((error) => {
             console.error("Firebase Auth: Redirect Login Error", error);
+            sessionStorage.removeItem('isFirebaseRedirecting'); // Ensure flag is cleared on error
+            
+            // Force reset UI
+            const btn = document.getElementById('btnForumLoginAction');
+            if(btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="bi bi-google"></i><span>Login Google (Chat)</span>`;
+            }
+
             if(window.setToast) window.setToast("Login Gagal (Redirect): " + error.message, "error");
             alert("Login Gagal: " + error.message); // Force alert on mobile
         });
 
     // Global function to trigger Login for Forum (Popup preferred for local dev, Redirect for Mobile)
     window.loginForumWithRedirect = async () => {
-        // const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
         if(window.setToast) window.setToast("Memproses login...", "info");
 
-        // Try Popup FIRST for ALL devices (Desktop & Mobile)
-        // Modern mobile browsers support popups better when triggered by user action
+        // Force Redirect for Mobile to avoid Popup issues (Looping/Blocked)
+        if (isMobile) {
+             try {
+                console.log("Firebase Auth: Mobile detected, using Redirect Flow directly...");
+                sessionStorage.setItem('isFirebaseRedirecting', 'true'); // Set flag
+                await signInWithRedirect(auth, provider);
+                return; // End here, redirect will happen
+            } catch (err) {
+                 console.error("Firebase Auth: Mobile Redirect failed", err);
+                 sessionStorage.removeItem('isFirebaseRedirecting');
+                 alert("Gagal login: " + err.message);
+                 return;
+            }
+        }
+
+        // Try Popup FIRST for Desktop
         try {
             console.log("Firebase Auth: Starting Popup Flow...");
             await signInWithPopup(auth, provider);
@@ -17231,6 +17276,298 @@ $('#queueList')?.addEventListener('click', (e) => {
             });
         });
       }
+    })();
+  </script>
+  <!-- Mini Player Overlay -->
+  <div id="miniPlayerOverlay" class="mini-player-overlay">
+      <div class="mini-player-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0 text-white-50 text-uppercase small ls-1">Now Playing</h6>
+              <button type="button" class="btn-close btn-close-white" id="closeMiniPlayer"></button>
+          </div>
+          
+          <div class="text-center">
+              <img id="mpThumbnail" src="" alt="Album Art" class="mini-player-art">
+              
+              <div class="mb-4">
+                  <h5 id="mpTitle" class="fw-bold mb-1 text-truncate">Title</h5>
+                  <p id="mpArtist" class="text-white-50 small mb-0 text-truncate">Artist</p>
+              </div>
+
+              <!-- Progress -->
+              <div class="d-flex align-items-center gap-2 mb-2">
+                  <span id="mpCurrentTime" class="time-label">0:00</span>
+                  <input type="range" class="form-range" id="mpProgressBar" value="0" min="0" step="0.1">
+                  <span id="mpDuration" class="time-label">0:00</span>
+              </div>
+
+              <!-- Main Controls -->
+              <div class="d-flex align-items-center justify-content-center gap-4 mb-4 mt-3">
+                  <button class="btn btn-link text-white p-0 opacity-75 hover-opacity-100" id="mpSeekBack">
+                      <i class="bi bi-skip-backward-fill fs-3"></i>
+                  </button>
+                  <button class="player-btn-primary shadow" id="mpPlayPause">
+                      <i class="bi bi-play-fill"></i>
+                  </button>
+                  <button class="btn btn-link text-white p-0 opacity-75 hover-opacity-100" id="mpSeekFwd">
+                      <i class="bi bi-skip-forward-fill fs-3"></i>
+                  </button>
+              </div>
+
+              <!-- Footer Actions -->
+              <div class="d-flex align-items-center justify-content-between bg-white bg-opacity-10 p-3 rounded-4">
+                   <div class="d-flex align-items-center gap-2" style="width: 50%;">
+                      <i class="bi bi-volume-up text-white-50"></i>
+                      <input type="range" class="form-range form-range-sm" id="mpVolume" min="0" max="1" step="0.05" value="1">
+                   </div>
+                   <a id="mpDownloadBtn" href="#" class="btn btn-sm btn-outline-light rounded-pill px-3" download target="_blank">
+                      <i class="bi bi-download me-1"></i> Save
+                   </a>
+              </div>
+          </div>
+      </div>
+  </div>
+  <audio id="globalAudioPlayer" style="display:none;"></audio>
+
+  <style>
+    /* Mini Player Styles */
+    .mini-player-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(12px);
+        z-index: 1060;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .mini-player-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .mini-player-card {
+        width: 90%;
+        max-width: 380px;
+        background: linear-gradient(145deg, #1e1e1e, #121212);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 28px;
+        padding: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        color: white;
+    }
+    .mini-player-overlay.show .mini-player-card {
+        transform: scale(1);
+    }
+
+    .mini-player-art {
+        width: 100%;
+        aspect-ratio: 1/1;
+        object-fit: cover;
+        border-radius: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* Mobile Bottom Sheet Override */
+    @media (max-width: 576px) {
+        .mini-player-overlay {
+            align-items: flex-end;
+        }
+        .mini-player-card {
+            width: 100%;
+            max-width: 100%;
+            border-radius: 32px 32px 0 0;
+            margin: 0;
+            padding-bottom: 40px;
+            transform: translateY(100%);
+            border-bottom: none;
+            border-left: none;
+            border-right: none;
+            background: #121212;
+        }
+        .mini-player-overlay.show .mini-player-card {
+            transform: translateY(0);
+        }
+    }
+
+    .player-btn-primary {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: white;
+        color: black;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        transition: transform 0.1s, background-color 0.2s;
+    }
+    .player-btn-primary:active {
+        transform: scale(0.95);
+        background-color: #e0e0e0;
+    }
+    .time-label {
+        font-size: 11px;
+        font-family: monospace;
+        color: rgba(255,255,255,0.5);
+        min-width: 35px;
+    }
+    
+    /* Range Slider Styling */
+    input[type=range] {
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent; 
+        height: 6px;
+        cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 2px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 12px;
+        width: 12px;
+        border-radius: 50%;
+        background: white;
+        margin-top: -4px;
+        box-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
+  </style>
+
+  <script>
+    // Mini Player Logic
+    (function() {
+        const overlay = document.getElementById('miniPlayerOverlay');
+        const audio = document.getElementById('globalAudioPlayer');
+        const playBtn = document.getElementById('mpPlayPause');
+        const closeBtn = document.getElementById('closeMiniPlayer');
+        const progress = document.getElementById('mpProgressBar');
+        const currentTimeEl = document.getElementById('mpCurrentTime');
+        const durationEl = document.getElementById('mpDuration');
+        const volumeSlider = document.getElementById('mpVolume');
+        const downloadBtn = document.getElementById('mpDownloadBtn');
+        const thumbnail = document.getElementById('mpThumbnail');
+        const titleEl = document.getElementById('mpTitle');
+        const artistEl = document.getElementById('mpArtist');
+        const seekBackBtn = document.getElementById('mpSeekBack');
+        const seekFwdBtn = document.getElementById('mpSeekFwd');
+
+        let isDragging = false;
+
+        // Format Time
+        const fmtTime = (s) => {
+            if(isNaN(s)) return "0:00";
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${m}:${sec < 10 ? '0'+sec : sec}`;
+        };
+
+        // Open Player
+        window.openMiniPlayer = (url, title, artist, cover) => {
+            if(!url) return alert("URL audio tidak valid.");
+            
+            // Set Info
+            titleEl.textContent = title || "Unknown Title";
+            artistEl.textContent = artist || "Unknown Artist";
+            thumbnail.src = cover || "https://placehold.co/400x400/222/FFF?text=Music";
+            downloadBtn.href = url;
+            
+            // Set Audio
+            if(audio.src !== url) {
+                audio.src = url;
+                audio.load();
+                audio.play().catch(e => console.warn("Autoplay blocked", e));
+            } else {
+                // If same song, just show player
+            }
+
+            // Show UI
+            overlay.classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        };
+
+        // Close Player
+        closeBtn.addEventListener('click', () => {
+            overlay.classList.remove('show');
+            document.body.style.overflow = '';
+            // Optional: Pause on close? No, usually mini players keep playing.
+            // But this is a "modal" player. Let's keep it playing in background?
+            // User requested "pop up". If they close the popup, they might expect it to stop or just hide.
+            // Spotify keeps playing. But since we don't have a minimized bar, let's keep playing but maybe show a toast?
+            // For now, let's just hide.
+        });
+
+        // Play/Pause
+        playBtn.addEventListener('click', () => {
+            if(audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        });
+
+        audio.addEventListener('play', () => {
+            playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+        });
+        audio.addEventListener('pause', () => {
+            playBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+        });
+
+        // Progress
+        audio.addEventListener('timeupdate', () => {
+            if(!isDragging) {
+                progress.value = audio.currentTime;
+                currentTimeEl.textContent = fmtTime(audio.currentTime);
+                // Update gradient for progress bar
+                const val = (audio.currentTime / audio.duration) * 100;
+                progress.style.background = `linear-gradient(to right, white ${val}%, rgba(255,255,255,0.2) ${val}%)`;
+            }
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            progress.max = audio.duration;
+            durationEl.textContent = fmtTime(audio.duration);
+        });
+
+        progress.addEventListener('input', () => {
+            isDragging = true;
+            currentTimeEl.textContent = fmtTime(progress.value);
+            const val = (progress.value / progress.max) * 100;
+            progress.style.background = `linear-gradient(to right, white ${val}%, rgba(255,255,255,0.2) ${val}%)`;
+        });
+
+        progress.addEventListener('change', () => {
+            isDragging = false;
+            audio.currentTime = progress.value;
+        });
+
+        // Volume
+        volumeSlider.addEventListener('input', (e) => {
+            audio.volume = e.target.value;
+        });
+
+        // Seek Buttons
+        seekBackBtn.addEventListener('click', () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
+        seekFwdBtn.addEventListener('click', () => { audio.currentTime = Math.min(audio.duration, audio.currentTime + 10); });
+
+        // Close on backdrop click
+        overlay.addEventListener('click', (e) => {
+            if(e.target === overlay) {
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        });
     })();
   </script>
 </body>
