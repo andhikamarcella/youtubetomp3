@@ -211,6 +211,65 @@
     color: #e9edef;
     box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
   }
+
+  /* Improved Chat Bubbles & Dark Mode */
+  .message-bubble-me {
+      background-color: #d9fdd3;
+      border-radius: 12px 0 12px 12px;
+      margin-left: auto;
+      color: #111b21;
+      box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+  }
+  [data-bs-theme="dark"] .message-bubble-me {
+      background-color: #005c4b; /* WhatsApp Dark Green */
+      color: #e9edef;
+      box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
+  }
+
+  .message-bubble-other {
+      background-color: #ffffff;
+      border-radius: 0 12px 12px 12px;
+      color: #111b21;
+      box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+  }
+  [data-bs-theme="dark"] .message-bubble-other {
+      background-color: #202c33; /* WhatsApp Dark Gray */
+      color: #e9edef;
+      box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
+  }
+  
+  /* Stickers */
+  .sticker-message {
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+  }
+  .sticker-img {
+      max-width: 140px;
+      height: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  }
+  
+  /* View Once */
+  .view-once-content {
+      cursor: pointer;
+      border: 1px dashed currentColor;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+  }
+
+  /* Custom Color Picker for Bubble */
+  .bubble-color-picker {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      cursor: pointer;
+  }
     
     /* Assistant & Chat Styles */
     .assistant-fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 1100; display: grid; gap: .5rem; justify-items: end; }
@@ -3181,7 +3240,11 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
         
         <div class="modal-footer bg-body-tertiary border-top-0 p-3">
           <div class="input-group">
-            <button class="btn btn-outline-secondary rounded-start-pill ps-3" type="button" id="forumAttachBtn"><i class="bi bi-paperclip"></i></button>
+            <button class="btn btn-outline-secondary rounded-start-pill ps-3" type="button" id="forumAttachBtn" title="Kirim Gambar"><i class="bi bi-paperclip"></i></button>
+            <button class="btn btn-outline-secondary border-start-0" type="button" id="forumStickerBtn" title="Stiker"><i class="bi bi-emoji-smile"></i></button>
+            <div class="input-group-text bg-light border-0 px-2">
+                <input type="color" class="bubble-color-picker" id="bubbleColorPicker" title="Warna Bubble Chat" value="#d9fdd3">
+            </div>
             <input type="file" id="forumImageInput" hidden accept="image/*">
             <input type="text" id="forumInput" class="form-control bg-light border-0 text-dark" style="color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
             <button class="btn btn-primary rounded-end-pill px-4" type="button" id="forumSendBtn" disabled><i class="bi bi-send-fill"></i></button>
@@ -3189,6 +3252,64 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Sticker Modal -->
+  <div class="modal fade" id="stickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg" style="height: 500px; display: flex; flex-direction: column;">
+        <div class="modal-header border-0 pb-0">
+          <ul class="nav nav-tabs border-0" id="stickerTabs" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active rounded-top-3 text-secondary" id="sticker-recent-tab" data-bs-toggle="tab" data-bs-target="#sticker-recent" type="button"><i class="bi bi-clock-history"></i></button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link rounded-top-3 text-secondary" id="sticker-custom-tab" data-bs-toggle="tab" data-bs-target="#sticker-custom" type="button"><i class="bi bi-person-hearts"></i> Koleksi Saya</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link rounded-top-3 text-secondary" id="sticker-pack-tab" data-bs-toggle="tab" data-bs-target="#sticker-pack" type="button"><i class="bi bi-emoji-smile"></i> Umum</button>
+            </li>
+          </ul>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-3 bg-body-tertiary flex-grow-1 overflow-hidden">
+          <div class="tab-content h-100" id="stickerTabContent">
+             <!-- Recent -->
+             <div class="tab-pane fade show active h-100 overflow-y-auto" id="sticker-recent">
+                <div class="text-center text-secondary small mt-5">Belum ada stiker yang dipakai.</div>
+             </div>
+             <!-- Custom -->
+             <div class="tab-pane fade h-100 d-flex flex-column" id="sticker-custom">
+                <div class="mb-3 d-flex gap-2">
+                   <button class="btn btn-primary btn-sm w-100 rounded-pill" id="btnCreateSticker"><i class="bi bi-plus-lg me-1"></i> Buat Stiker Baru</button>
+                   <input type="file" id="stickerUploadInput" hidden accept="image/*">
+                </div>
+                <div class="sticker-grid flex-grow-1 overflow-y-auto" id="customStickerGrid">
+                    <!-- Custom stickers go here -->
+                </div>
+             </div>
+             <!-- Packs (Placeholder) -->
+             <div class="tab-pane fade h-100 overflow-y-auto" id="sticker-pack">
+                <div class="sticker-grid">
+                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/3o7TKSjRrfIPjeiVyM/giphy.gif" class="sticker-item sticker-img" onclick="sendSticker(this.src)">
+                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/l0HlHJGHe3yAMhdQY/giphy.gif" class="sticker-item sticker-img" onclick="sendSticker(this.src)">
+                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/26BRL7YrutHKs/giphy.gif" class="sticker-item sticker-img" onclick="sendSticker(this.src)">
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal (Lightbox) -->
+  <div id="imagePreviewModal" class="modal fade" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen bg-black">
+          <div class="modal-content bg-black h-100 position-relative d-flex align-items-center justify-content-center">
+              <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-4 z-3" data-bs-dismiss="modal"></button>
+              <img id="previewModalImage" src="" class="img-fluid" style="max-height: 100vh; max-width: 100vw; object-fit: contain;">
+          </div>
+      </div>
   </div>
 
   <!-- Profile Modal (Task 15) -->
@@ -3634,6 +3755,13 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
           overlay.hidden = !show;
           document.body.style.overflow = show ? 'hidden' : ''; // Lock body scroll when maintenance is active
           if(show) {
+              // Check if already showing same type to avoid reset (preserves game state)
+              if (overlay.dataset.type === type && overlay.dataset.rendered === 'true') {
+                  return;
+              }
+              overlay.dataset.type = type;
+              overlay.dataset.rendered = 'true';
+
               let icon = 'bi-cone-striped text-warning';
               let title = 'Sedang Dalam Perbaikan';
               let desc = 'Server sedang menjalani maintenance rutin. Silakan kembali dalam beberapa menit.';
@@ -3649,13 +3777,179 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
               }
               
               overlay.innerHTML = `
-                  <div class="p-4" style="max-width:500px;">
+                  <div class="p-4" style="max-width:500px; width: 100%;">
                       <i class="bi ${icon}" style="font-size: 4rem;"></i>
                       <h2 class="mt-3 fw-bold text-dark">${title}</h2>
                       <p class="text-secondary lead">${desc}</p>
-                      <button class="btn btn-primary rounded-pill px-4 mt-2" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-2"></i>Cek Status</button>
+                      <button class="btn btn-primary rounded-pill px-4 mt-2 mb-4" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-2"></i>Cek Status</button>
+                      
+                      <!-- Maintenance Game -->
+                      <div class="card shadow-sm border-0 bg-light mt-3 mx-auto" style="max-width: 350px;">
+                          <div class="card-body p-3">
+                              <h6 class="fw-bold mb-2 text-muted"><i class="bi bi-controller me-1"></i> Bosan Nunggu? Main Snake Yuk!</h6>
+                              <div id="gameContainer" class="position-relative bg-dark rounded overflow-hidden mx-auto" style="width: 280px; height: 280px;">
+                                  <canvas id="gameCanvas" width="280" height="280" class="d-block"></canvas>
+                                  <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75" style="z-index: 2;">
+                                      <button class="btn btn-success rounded-pill shadow" onclick="startMaintenanceGame()"><i class="bi bi-play-fill me-1"></i> Main Game</button>
+                                  </div>
+                                  <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none align-items-center justify-content-center bg-dark bg-opacity-90 flex-column" style="z-index: 3;">
+                                      <h3 class="text-white fw-bold mb-1">Game Over</h3>
+                                      <p class="text-white-50 mb-3">Skor: <span id="finalScore" class="text-warning fw-bold">0</span></p>
+                                      <button class="btn btn-outline-light rounded-pill btn-sm px-4" onclick="startMaintenanceGame()">Main Lagi</button>
+                                  </div>
+                                  <div class="position-absolute top-0 end-0 p-2 text-white fw-bold" style="z-index: 1; font-size: 0.8rem; opacity: 0.8; text-shadow: 1px 1px 2px black;">Score: <span id="gameScore">0</span></div>
+                              </div>
+                              <p class="small text-muted mt-2 mb-0 fst-italic">Gunakan panah keyboard atau swipe layar.</p>
+                          </div>
+                      </div>
                   </div>
               `;
+
+              // Initialize Game Logic Global
+              window.startMaintenanceGame = function() {
+                  const canvas = document.getElementById('gameCanvas');
+                  if(!canvas) return;
+                  const ctx = canvas.getContext('2d');
+                  const startOverlay = document.getElementById('gameStartOverlay');
+                  const gameOverOverlay = document.getElementById('gameOverOverlay');
+                  const scoreEl = document.getElementById('gameScore');
+                  const finalScoreEl = document.getElementById('finalScore');
+                  
+                  // Hide overlays
+                  if(startOverlay) startOverlay.classList.add('d-none');
+                  if(gameOverOverlay) {
+                      gameOverOverlay.classList.add('d-none');
+                      gameOverOverlay.classList.remove('d-flex');
+                  }
+                  
+                  // Game Configuration
+                  const gridSize = 20; // Size of one tile
+                  const tileCount = canvas.width / gridSize; // 280 / 20 = 14 tiles
+                  let velocityX = 1; // Start moving right
+                  let velocityY = 0;
+                  let playerX = 5;
+                  let playerY = 5;
+                  let trail = [];
+                  let tail = 5;
+                  let appleX = 10;
+                  let appleY = 10;
+                  let score = 0;
+                  let gameInterval;
+                  
+                  if(scoreEl) scoreEl.textContent = '0';
+                  
+                  // Main Game Loop
+                  function gameLoop() {
+                      playerX += velocityX;
+                      playerY += velocityY;
+                      
+                      // Wrap around logic
+                      if(playerX < 0) playerX = tileCount - 1;
+                      if(playerX > tileCount - 1) playerX = 0;
+                      if(playerY < 0) playerY = tileCount - 1;
+                      if(playerY > tileCount - 1) playerY = 0;
+                      
+                      // Draw Background
+                      ctx.fillStyle = '#212529'; // Dark
+                      ctx.fillRect(0, 0, canvas.width, canvas.height);
+                      
+                      // Draw Snake
+                      ctx.fillStyle = '#0d6efd'; // Primary Blue
+                      for(let i=0; i<trail.length; i++) {
+                          ctx.fillRect(trail[i].x * gridSize, trail[i].y * gridSize, gridSize-2, gridSize-2);
+                          // Self collision check
+                          if(trail[i].x === playerX && trail[i].y === playerY && (trail.length > 5)) {
+                              gameOver();
+                              return;
+                          }
+                      }
+                      
+                      trail.push({x: playerX, y: playerY});
+                      while(trail.length > tail) {
+                          trail.shift();
+                      }
+                      
+                      // Draw Apple
+                      ctx.fillStyle = '#dc3545'; // Danger Red
+                      ctx.beginPath();
+                      ctx.arc((appleX * gridSize) + gridSize/2, (appleY * gridSize) + gridSize/2, gridSize/2 - 2, 0, Math.PI*2);
+                      ctx.fill();
+                      
+                      // Eat Apple
+                      if(appleX === playerX && appleY === playerY) {
+                          tail++;
+                          score++;
+                          if(scoreEl) scoreEl.textContent = score;
+                          // Spawn new apple ensuring not on snake
+                          let validSpawn = false;
+                          while(!validSpawn) {
+                             appleX = Math.floor(Math.random() * tileCount);
+                             appleY = Math.floor(Math.random() * tileCount);
+                             validSpawn = true;
+                             for(let t of trail) {
+                                 if(t.x === appleX && t.y === appleY) validSpawn = false;
+                             }
+                          }
+                      }
+                  }
+                  
+                  function gameOver() {
+                      clearInterval(gameInterval);
+                      if(finalScoreEl) finalScoreEl.textContent = score;
+                      if(gameOverOverlay) {
+                          gameOverOverlay.classList.remove('d-none');
+                          gameOverOverlay.classList.add('d-flex');
+                      }
+                  }
+                  
+                  function keyPush(evt) {
+                      switch(evt.keyCode) {
+                          case 37: if(velocityX !== 1) { velocityX = -1; velocityY = 0; } break; // Left
+                          case 38: if(velocityY !== 1) { velocityX = 0; velocityY = -1; } break; // Up
+                          case 39: if(velocityX !== -1) { velocityX = 1; velocityY = 0; } break; // Right
+                          case 40: if(velocityY !== -1) { velocityX = 0; velocityY = 1; } break; // Down
+                      }
+                  }
+                  
+                  // Cleanup old listeners to avoid dupes (if any)
+                  document.removeEventListener('keydown', keyPush);
+                  document.addEventListener('keydown', keyPush);
+                  
+                  // Touch Logic
+                  let touchStartX = 0;
+                  let touchStartY = 0;
+                  
+                  canvas.ontouchstart = function(evt) {
+                      touchStartX = evt.changedTouches[0].screenX;
+                      touchStartY = evt.changedTouches[0].screenY;
+                      evt.preventDefault();
+                  };
+                  
+                  canvas.ontouchmove = function(evt) {
+                       evt.preventDefault();
+                  };
+                  
+                  canvas.ontouchend = function(evt) {
+                      let touchEndX = evt.changedTouches[0].screenX;
+                      let touchEndY = evt.changedTouches[0].screenY;
+                      let dx = touchEndX - touchStartX;
+                      let dy = touchEndY - touchStartY;
+                      
+                      if(Math.abs(dx) > Math.abs(dy)) {
+                          if(dx > 0 && velocityX !== -1) { velocityX = 1; velocityY = 0; }
+                          else if(dx < 0 && velocityX !== 1) { velocityX = -1; velocityY = 0; }
+                      } else {
+                          if(dy > 0 && velocityY !== -1) { velocityX = 0; velocityY = 1; }
+                          else if(dy < 0 && velocityY !== 1) { velocityX = 0; velocityY = -1; }
+                      }
+                      evt.preventDefault();
+                  };
+                  
+                  // Start Game Loop (10 FPS)
+                  if(window.maintenanceGameInterval) clearInterval(window.maintenanceGameInterval);
+                  gameInterval = setInterval(gameLoop, 100);
+                  window.maintenanceGameInterval = gameInterval;
+              };
           }
       }
   }
@@ -16859,36 +17153,57 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         // Bubble
         const bubble = document.createElement('div');
-        bubble.className = 'message-bubble position-relative';
+        bubble.className = isMe ? 'message-bubble-me position-relative p-2' : 'message-bubble-other position-relative p-2';
+        
+        // Custom Bubble Color for Me
         if (isMe) {
-            bubble.style.backgroundColor = '#d9fdd3'; // WhatsApp user green
-            bubble.style.borderRadius = '12px 0 12px 12px';
-            bubble.style.marginLeft = 'auto';
+            const customColor = localStorage.getItem('chat_bubble_color');
+            if(customColor) bubble.style.backgroundColor = customColor;
+            
             div.classList.add('justify-content-end');
-            div.classList.remove('align-items-start'); // Adjust alignment for user
-            // Reorder for "Me"
+            div.classList.remove('align-items-start');
             div.innerHTML = ''; 
             div.appendChild(bubble);
-            // div.appendChild(avatar); // Optional: hide avatar for self like WA? Let's keep it for clarity or hide it.
         } else {
-            bubble.style.backgroundColor = 'var(--bs-body-bg)';
-            bubble.style.borderRadius = '0 12px 12px 12px';
             div.appendChild(avatar);
             div.appendChild(bubble);
         }
         
+        // Sticker Handling
+        if(msg.isSticker) {
+            bubble.className = 'sticker-message position-relative';
+            bubble.style.backgroundColor = 'transparent !important';
+            bubble.style.boxShadow = 'none !important';
+        }
+        
         // Content
         let contentHtml = '';
-        if(msg.image) {
-             contentHtml += `<div class="mb-2"><img src="${msg.image}" class="img-fluid rounded" style="max-height: 200px; width: auto; display: block;"></div>`;
+        
+        if (msg.isSticker && msg.image) {
+             contentHtml += `<img src="${msg.image}" class="sticker-img" onclick="openLightbox(this.src)" style="cursor: pointer;">`;
+        } else if(msg.image) {
+             if(msg.isViewOnce) {
+                 contentHtml += `
+                    <div class="view-once-content" onclick="openLightbox('${msg.image}', true)">
+                        <i class="bi bi-eye-fill text-primary"></i>
+                        <span class="small fw-bold">Foto - Sekali Lihat</span>
+                    </div>
+                 `;
+             } else {
+                 contentHtml += `<div class="mb-2"><img src="${msg.image}" class="img-fluid rounded" style="max-height: 200px; width: auto; display: block; cursor: pointer;" onclick="openLightbox(this.src)"></div>`;
+             }
         }
-        contentHtml += `<div class="small text-break ${isMe ? 'text-dark' : ''}" style="min-width: 120px;">${msg.text || ''}</div>`;
+        
+        if(msg.text) {
+             // Let CSS handle text color based on theme
+             contentHtml += `<div class="small text-break" style="min-width: 120px;">${msg.text}</div>`;
+        }
 
         bubble.innerHTML = `
-            <div class="small fw-bold ${isMe ? 'text-dark' : 'text-primary'} mb-1">${msg.name || 'Warga'}</div>
+            <div class="small fw-bold ${isMe ? '' : 'text-primary'} mb-1">${msg.name || 'Warga'}</div>
             ${contentHtml}
-            <div class="text-end text-body-tertiary mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
-                ${formatTime(msg.timestamp)}
+            <div class="text-end mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem; opacity: 0.7;">
+                <span>${formatTime(msg.timestamp)}</span>
                 ${isMe ? '<i class="bi bi-check2-all text-primary" style="font-size: 0.9rem;"></i>' : ''}
             </div>
         `;
@@ -16896,6 +17211,128 @@ $('#queueList')?.addEventListener('click', (e) => {
         chatArea.appendChild(div);
         chatArea.scrollTop = chatArea.scrollHeight;
     };
+    
+    // Helper Functions
+    window.openLightbox = (src, isViewOnce = false) => {
+        const modalEl = document.getElementById('imagePreviewModal');
+        const modal = new bootstrap.Modal(modalEl);
+        const img = document.getElementById('previewModalImage');
+        img.src = src;
+        modal.show();
+        
+        // Reset src on close to stop video/etc if we had them
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            img.src = '';
+        }, { once: true });
+    };
+
+    // Sticker Logic
+    const btnSticker = document.getElementById('forumStickerBtn');
+    const stickerModalEl = document.getElementById('stickerModal');
+    let stickerModal = null;
+    if(stickerModalEl) stickerModal = new bootstrap.Modal(stickerModalEl);
+    
+    const btnCreateSticker = document.getElementById('btnCreateSticker');
+    const stickerUploadInput = document.getElementById('stickerUploadInput');
+    const customStickerGrid = document.getElementById('customStickerGrid');
+
+    if(btnSticker && stickerModal) {
+        btnSticker.addEventListener('click', () => stickerModal.show());
+    }
+
+    if(btnCreateSticker) {
+        btnCreateSticker.addEventListener('click', () => stickerUploadInput.click());
+    }
+
+    if(stickerUploadInput) {
+        stickerUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            // Use existing image editor for cropping sticker!
+            if(window.openImageEditor) {
+                window.openImageEditor(file);
+                stickerModal.hide(); // Hide sticker modal temporarily
+                
+                // Override handleEditorResult for sticker
+                window.handleEditorResult = (base64) => {
+                    // Save to local storage
+                    const name = prompt("Beri nama stiker ini:", "Stiker Saya");
+                    if(name) {
+                        saveSticker(name, base64);
+                        stickerModal.show(); // Show sticker modal again
+                        loadCustomStickers();
+                    }
+                    
+                    // Reset handleEditorResult to default behavior
+                    window.handleEditorResult = standardHandleEditorResult;
+                };
+            }
+        });
+    }
+
+    function saveSticker(name, base64) {
+        const stickers = JSON.parse(localStorage.getItem('my_stickers') || '[]');
+        stickers.push({ id: Date.now(), name, url: base64 });
+        localStorage.setItem('my_stickers', JSON.stringify(stickers));
+    }
+
+    function loadCustomStickers() {
+        if(!customStickerGrid) return;
+        const stickers = JSON.parse(localStorage.getItem('my_stickers') || '[]');
+        customStickerGrid.innerHTML = '';
+        stickers.forEach(s => {
+            const img = document.createElement('img');
+            img.src = s.url;
+            img.className = 'sticker-item sticker-img m-1';
+            img.style.maxWidth = '80px';
+            img.style.objectFit = 'contain';
+            img.title = s.name;
+            img.onclick = () => sendSticker(s.url);
+            customStickerGrid.appendChild(img);
+        });
+    }
+    
+    // Initial load
+    loadCustomStickers();
+
+    window.sendSticker = async (url) => {
+        if (!auth.currentUser) {
+            setToast('Login dulu untuk kirim stiker', 'error');
+            return;
+        }
+        
+        const authUser = auth.currentUser;
+        const displayUser = window.currentUser || { id: authUser.uid, name: authUser.displayName, avatar: authUser.photoURL };
+        
+        try {
+             await addDoc(messagesRef, {
+                text: '', // No text
+                image: url,
+                isSticker: true,
+                uid: authUser.uid,
+                name: displayUser.name || 'Warga',
+                photoURL: displayUser.avatar || '',
+                timestamp: serverTimestamp()
+            });
+            if(stickerModal) stickerModal.hide();
+        } catch(e) {
+            console.error("Error sending sticker:", e);
+            setToast('Gagal mengirim stiker', 'error');
+        }
+    };
+    
+    // Color Picker Logic
+    const bubbleColorPicker = document.getElementById('bubbleColorPicker');
+    if(bubbleColorPicker) {
+        const savedColor = localStorage.getItem('chat_bubble_color') || '#d9fdd3';
+        bubbleColorPicker.value = savedColor;
+        
+        bubbleColorPicker.addEventListener('change', (e) => {
+            localStorage.setItem('chat_bubble_color', e.target.value);
+            setToast('Warna bubble disimpan! Pesan baru akan menggunakan warna ini.', 'success');
+        });
+    }
 
     // Listen for new messages (Firestore)
     const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(50));
@@ -16909,9 +17346,42 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     // Image Upload Logic
     let currentImageBase64 = null;
+    let currentIsViewOnce = false;
     const attachBtn = document.getElementById('forumAttachBtn');
     const imageInput = document.getElementById('forumImageInput');
     const previewContainer = document.getElementById('forumPreviewContainer');
+
+    // Standard handler for Forum Image
+    const standardHandleEditorResult = (base64, isViewOnce = false) => {
+        currentImageBase64 = base64;
+        currentIsViewOnce = isViewOnce;
+        // Show preview with WhatsApp-like quote style
+        previewContainer.classList.remove('d-none');
+        
+        const viewOnceBadge = isViewOnce ? 
+            `<span class="badge rounded-pill bg-success ms-2"><i class="bi bi-1-circle-fill me-1"></i>View Once</span>` : '';
+
+        previewContainer.innerHTML = `
+            <div class="d-flex align-items-center p-2 rounded-3 bg-body-secondary border-start border-4 border-success position-relative w-100">
+                <div class="flex-shrink-0 rounded overflow-hidden shadow-sm" style="width: 50px; height: 50px;">
+                    <img src="${currentImageBase64}" class="w-100 h-100 object-fit-cover">
+                </div>
+                <div class="ms-3 flex-grow-1 overflow-hidden">
+                    <div class="d-flex align-items-center mb-0">
+                        <div class="small fw-bold text-success"><i class="bi bi-image me-1"></i>Gambar</div>
+                        ${viewOnceBadge}
+                    </div>
+                    <div class="small text-body-secondary text-truncate">Siap untuk dikirim</div>
+                </div>
+                <button class="btn btn-sm btn-light rounded-circle shadow-sm border ms-2" onclick="clearForumImage()" style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+    };
+    
+    // Set default
+    window.handleEditorResult = standardHandleEditorResult;
 
     if(attachBtn && imageInput) {
         attachBtn.addEventListener('click', () => imageInput.click());
@@ -16926,36 +17396,19 @@ $('#queueList')?.addEventListener('click', (e) => {
                 return;
             }
 
+            // Ensure we are using the standard handler
+            window.handleEditorResult = standardHandleEditorResult;
+
             // Open Editor instead of direct preview
             if(window.openImageEditor) {
                 window.openImageEditor(file);
             }
-
-            // Handle Result from Editor
-            window.handleEditorResult = (base64) => {
-                currentImageBase64 = base64;
-                // Show preview with WhatsApp-like quote style
-                previewContainer.classList.remove('d-none');
-                previewContainer.innerHTML = `
-                    <div class="d-flex align-items-center p-2 rounded-3 bg-body-secondary border-start border-4 border-success position-relative w-100">
-                        <div class="flex-shrink-0 rounded overflow-hidden shadow-sm" style="width: 50px; height: 50px;">
-                            <img src="${currentImageBase64}" class="w-100 h-100 object-fit-cover">
-                        </div>
-                        <div class="ms-3 flex-grow-1 overflow-hidden">
-                            <div class="small fw-bold text-success mb-0"><i class="bi bi-image me-1"></i>Gambar</div>
-                            <div class="small text-body-secondary text-truncate">Siap untuk dikirim</div>
-                        </div>
-                        <button class="btn btn-sm btn-light rounded-circle shadow-sm border ms-2" onclick="clearForumImage()" style="width: 24px; height: 24px; padding: 0; display: flex; align-items: center; justify-content: center;">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    </div>
-                `;
-            };
         });
     }
     
     window.clearForumImage = function() {
         currentImageBase64 = null;
+        currentIsViewOnce = false;
         if(imageInput) imageInput.value = '';
         if(previewContainer) {
             previewContainer.classList.add('d-none');
@@ -17006,14 +17459,18 @@ $('#queueList')?.addEventListener('click', (e) => {
 
             const displayUser = window.currentUser || authUser;
 
-            await addDoc(messagesRef, {
+            const msgData = {
                 text: text,
                 image: imageUrl, // Use the URL
                 uid: authUser.uid, 
                 name: displayUser.name || authUser.displayName || 'Warga',
                 photoURL: displayUser.avatar || authUser.photoURL || '',
                 timestamp: serverTimestamp()
-            });
+            };
+            
+            if(currentIsViewOnce) msgData.isViewOnce = true;
+
+            await addDoc(messagesRef, msgData);
             
             chatInput.value = '';
             window.clearForumImage();
@@ -17457,16 +17914,22 @@ $('#queueList')?.addEventListener('click', (e) => {
     <!-- Toolbar -->
     <div class="d-flex justify-content-between align-items-center p-3 text-white position-absolute top-0 w-100" style="background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); z-index: 20;">
         <button class="btn btn-link text-white text-decoration-none" id="editorCloseBtn"><i class="bi bi-x-lg fs-4"></i></button>
-        <div class="d-flex gap-4">
+        <div class="d-flex gap-3 align-items-center">
              <button class="btn btn-link text-white p-0" id="editorCropBtn" title="Potong"><i class="bi bi-crop fs-4"></i></button>
              <button class="btn btn-link text-white p-0" id="editorPenBtn" title="Coret"><i class="bi bi-pencil fs-4"></i></button>
+             <button class="btn btn-link text-white p-0" id="editorEraserBtn" title="Penghapus"><i class="bi bi-eraser fs-4"></i></button>
+             <button class="btn btn-link text-white p-0" id="editorTextBtn" title="Teks"><i class="bi bi-type fs-4"></i></button>
+             <div class="vr bg-white opacity-50 mx-1" style="height: 20px;"></div>
+             <button class="btn btn-link text-white p-0 position-relative" id="editorViewOnceBtn" title="View Once">
+                <i class="bi bi-1-circle fs-4"></i>
+             </button>
              <button class="btn btn-link text-white p-0" id="editorUndoBtn" title="Undo"><i class="bi bi-arrow-counterclockwise fs-4"></i></button>
         </div>
         <button class="btn btn-link text-white fw-bold text-decoration-none" id="editorDoneBtn">Selesai</button>
     </div>
 
     <!-- Main Content -->
-    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-black overflow-hidden" id="editorWorkspace" style="padding-top: 60px; padding-bottom: 80px;">
+    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-black" id="editorWorkspace" style="padding-top: 60px; padding-bottom: 80px;">
         <div id="editorImageWrapper" class="position-relative" style="line-height: 0;">
             <img id="editorImage" src="" style="max-width: 100%; max-height: 80vh; display: block;">
             <canvas id="editorCanvas" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; touch-action: none;"></canvas>
@@ -17501,15 +17964,19 @@ $('#queueList')?.addEventListener('click', (e) => {
         
         let cropper = null;
         let isDrawing = false;
-        let currentMode = 'view'; // view, crop, pen
+        let currentMode = 'view'; // view, crop, pen, eraser
         let currentColor = '#ff0000';
-        let drawingHistory = []; // To store canvas states for undo (simplified)
+        let drawingHistory = []; 
+        let isViewOnce = false;
         
         // Buttons
         const btnClose = document.getElementById('editorCloseBtn');
         const btnDone = document.getElementById('editorDoneBtn');
         const btnCrop = document.getElementById('editorCropBtn');
         const btnPen = document.getElementById('editorPenBtn');
+        const btnEraser = document.getElementById('editorEraserBtn');
+        const btnText = document.getElementById('editorTextBtn');
+        const btnViewOnce = document.getElementById('editorViewOnceBtn');
         const btnUndo = document.getElementById('editorUndoBtn');
         const btnApplyCrop = document.getElementById('editorApplyCrop');
         const btnRotate = document.getElementById('editorRotateLeft');
@@ -17545,7 +18012,25 @@ $('#queueList')?.addEventListener('click', (e) => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawingHistory = [];
             
+            // Reset View Once
+            isViewOnce = false;
+            updateViewOnceUI();
+
             setMode('view');
+        }
+
+        function updateViewOnceUI() {
+            if(!btnViewOnce) return;
+            const icon = btnViewOnce.querySelector('i');
+            if(isViewOnce) {
+                icon.className = 'bi bi-1-circle-fill text-success fs-4';
+                btnViewOnce.classList.add('text-success');
+                btnViewOnce.classList.remove('text-white');
+            } else {
+                icon.className = 'bi bi-1-circle fs-4';
+                btnViewOnce.classList.add('text-white');
+                btnViewOnce.classList.remove('text-success');
+            }
         }
 
         function setMode(mode) {
@@ -17556,6 +18041,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             cropActions.classList.add('d-none');
             canvas.style.pointerEvents = 'none';
             btnPen.classList.remove('text-warning');
+            btnEraser.classList.remove('text-warning');
             btnCrop.classList.remove('text-warning');
 
             if(mode === 'crop') {
@@ -17565,19 +18051,27 @@ $('#queueList')?.addEventListener('click', (e) => {
                 // Init Cropper
                 if(!cropper) {
                     cropper = new Cropper(img, {
-                        viewMode: 1,
-                        dragMode: 'move',
-                        autoCropArea: 1,
+                        viewMode: 1, // Restrict crop box to canvas
+                        dragMode: 'crop', 
+                        autoCropArea: 0.8,
                         background: false,
+                        movable: true,
+                        zoomable: true,
+                        rotatable: true,
+                        scalable: true,
                         ready() {
                             // Hide canvas while cropping because it won't align
                             canvas.classList.add('d-none');
                         }
                     });
                 }
-            } else if (mode === 'pen') {
-                btnPen.classList.add('text-warning');
-                colorsContainer.classList.remove('d-none');
+            } else if (mode === 'pen' || mode === 'eraser') {
+                if(mode === 'pen') btnPen.classList.add('text-warning');
+                if(mode === 'eraser') btnEraser.classList.add('text-warning');
+                
+                // Show colors only for pen
+                if(mode === 'pen') colorsContainer.classList.remove('d-none');
+                
                 canvas.style.pointerEvents = 'auto';
                 canvas.classList.remove('d-none');
                 
@@ -17604,6 +18098,38 @@ $('#queueList')?.addEventListener('click', (e) => {
         btnPen.addEventListener('click', () => {
             if(currentMode === 'pen') setMode('view');
             else setMode('pen');
+        });
+
+        btnEraser.addEventListener('click', () => {
+            if(currentMode === 'eraser') setMode('view');
+            else setMode('eraser');
+        });
+
+        btnText.addEventListener('click', () => {
+             const text = prompt("Masukkan teks:");
+             if(text) {
+                 saveHistory();
+                 ctx.save();
+                 ctx.font = "bold 40px sans-serif";
+                 ctx.textAlign = "center";
+                 ctx.textBaseline = "middle";
+                 ctx.fillStyle = currentColor;
+                 ctx.strokeStyle = "white";
+                 ctx.lineWidth = 2;
+                 
+                 // Center text
+                 const x = canvas.width / 2;
+                 const y = canvas.height / 2;
+                 
+                 ctx.strokeText(text, x, y);
+                 ctx.fillText(text, x, y);
+                 ctx.restore();
+             }
+        });
+
+        btnViewOnce.addEventListener('click', () => {
+            isViewOnce = !isViewOnce;
+            updateViewOnceUI();
         });
 
         btnApplyCrop.addEventListener('click', () => {
@@ -17654,22 +18180,33 @@ $('#queueList')?.addEventListener('click', (e) => {
         let lastPos = {x:0, y:0};
 
         const startDraw = (e) => {
-            if(currentMode !== 'pen') return;
+            if(currentMode !== 'pen' && currentMode !== 'eraser') return;
             isDrawingAction = true;
             lastPos = getPos(e);
+            ctx.save(); // Save state for restoring composite op
             ctx.beginPath();
             ctx.moveTo(lastPos.x, lastPos.y);
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.lineWidth = 5 * (canvas.width / 500); // Scale line width
-            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = 15 * (canvas.width / 800); // Scale line width
+            
+            if(currentMode === 'eraser') {
+                 ctx.globalCompositeOperation = 'destination-out';
+                 ctx.lineWidth = 30 * (canvas.width / 800); // Eraser bigger
+            } else {
+                 ctx.globalCompositeOperation = 'source-over';
+                 ctx.strokeStyle = currentColor;
+            }
             
             // Save state for undo (simple)
+            // Note: History saving logic needs optimization but works for basic steps
+            // We do it on mouseup usually to avoid lag, but for simplicity here on mousedown
+            // Actually, pushing history on every stroke start is better
             saveHistory();
         };
 
         const draw = (e) => {
-            if(!isDrawingAction || currentMode !== 'pen') return;
+            if(!isDrawingAction || (currentMode !== 'pen' && currentMode !== 'eraser')) return;
             e.preventDefault(); // Stop scrolling
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
@@ -17678,7 +18215,10 @@ $('#queueList')?.addEventListener('click', (e) => {
         };
 
         const endDraw = () => {
-            isDrawingAction = false;
+            if(isDrawingAction) {
+                isDrawingAction = false;
+                ctx.restore(); // Restore context (composite op)
+            }
         };
 
         canvas.addEventListener('mousedown', startDraw);
@@ -17697,6 +18237,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                 colorDots.forEach(d => d.classList.remove('border-2', 'border-white'));
                 dot.classList.add('border-2', 'border-white');
                 currentColor = dot.dataset.color;
+                // If picking color, switch to pen automatically
+                if(currentMode !== 'pen') setMode('pen');
             });
         });
 
@@ -17707,12 +18249,6 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
 
         btnUndo.addEventListener('click', () => {
-             // Simple clear for now as full undo stack is complex with images
-             // Actually, let's just clear last stroke? No, canvas doesn't work that way.
-             // We need to restore previous image state.
-             // For now: "Clear All" logic if history not implemented fully?
-             // Or just Clear Canvas.
-             // Let's implement basic "Clear Scribbles" for simplicity or last state if feasible.
              if(drawingHistory.length > 0) {
                  const last = drawingHistory.pop();
                  const imgObj = new Image();
@@ -17746,7 +18282,7 @@ $('#queueList')?.addEventListener('click', (e) => {
              
              // Pass back to main logic
              if(window.handleEditorResult) {
-                 window.handleEditorResult(finalBase64);
+                 window.handleEditorResult(finalBase64, isViewOnce);
              }
              
              modal.classList.add('d-none');
