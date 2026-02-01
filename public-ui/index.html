@@ -3747,7 +3747,8 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
       if (!overlay && show) {
           overlay = document.createElement('div');
           overlay.id = 'maintenanceOverlay';
-          overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;overflow-y:auto;';
+          // Changed to solid background (opacity 1) to hide underlying content clutter
+          overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#ffffff;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;overflow-y:auto;';
           document.body.appendChild(overlay);
       }
       
@@ -3777,29 +3778,56 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
               }
               
               overlay.innerHTML = `
-                  <div class="p-4" style="max-width:500px; width: 100%;">
-                      <i class="bi ${icon}" style="font-size: 4rem;"></i>
-                      <h2 class="mt-3 fw-bold text-dark">${title}</h2>
-                      <p class="text-secondary lead">${desc}</p>
-                      <button class="btn btn-primary rounded-pill px-4 mt-2 mb-4" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-2"></i>Cek Status</button>
+                  <div class="container d-flex flex-column align-items-center justify-content-center h-100 py-5">
+                      <div class="text-center mb-4">
+                          <i class="bi ${icon} mb-3" style="font-size: 5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));"></i>
+                          <h1 class="display-5 fw-bold text-dark mb-2">${title}</h1>
+                          <p class="text-secondary lead mx-auto" style="max-width: 600px;">${desc}</p>
+                          <button class="btn btn-primary rounded-pill px-5 py-2 mt-3 shadow-sm fw-bold" onclick="location.reload()">
+                              <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
+                          </button>
+                      </div>
                       
-                      <!-- Maintenance Game -->
-                      <div class="card shadow-sm border-0 bg-light mt-3 mx-auto" style="max-width: 350px;">
-                          <div class="card-body p-3">
-                              <h6 class="fw-bold mb-2 text-muted"><i class="bi bi-controller me-1"></i> Bosan Nunggu? Main Snake Yuk!</h6>
-                              <div id="gameContainer" class="position-relative bg-dark rounded overflow-hidden mx-auto" style="width: 280px; height: 280px;">
-                                  <canvas id="gameCanvas" width="280" height="280" class="d-block"></canvas>
-                                  <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75" style="z-index: 2;">
-                                      <button class="btn btn-success rounded-pill shadow" onclick="startMaintenanceGame()"><i class="bi bi-play-fill me-1"></i> Main Game</button>
+                      <!-- Maintenance Game Console Style -->
+                      <div class="card border-0 shadow-lg bg-dark text-white rounded-4 overflow-hidden mt-3" style="max-width: 340px; width: 100%; transform: scale(1);">
+                          <div class="card-header bg-secondary bg-opacity-25 border-0 py-3">
+                              <h6 class="fw-bold mb-0 text-center text-white-50"><i class="bi bi-controller me-2"></i>MINI GAME: SNAKE</h6>
+                          </div>
+                          <div class="card-body p-0 position-relative bg-black d-flex justify-content-center align-items-center" style="min-height: 300px;">
+                              <div id="gameContainer" class="position-relative" style="width: 300px; height: 300px;">
+                                  <canvas id="gameCanvas" width="300" height="300" class="d-block bg-dark"></canvas>
+                                  
+                                  <!-- Start Overlay -->
+                                  <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75" style="z-index: 10;">
+                                      <div class="mb-3 text-center">
+                                          <i class="bi bi-dpad-fill fs-1 text-white-50"></i>
+                                      </div>
+                                      <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
+                                          <i class="bi bi-play-fill me-1"></i> MULAI MAIN
+                                      </button>
+                                      <p class="small text-white-50 mt-3 mb-0">Geser / Panah untuk gerak</p>
                                   </div>
-                                  <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none align-items-center justify-content-center bg-dark bg-opacity-90 flex-column" style="z-index: 3;">
-                                      <h3 class="text-white fw-bold mb-1">Game Over</h3>
-                                      <p class="text-white-50 mb-3">Skor: <span id="finalScore" class="text-warning fw-bold">0</span></p>
-                                      <button class="btn btn-outline-light rounded-pill btn-sm px-4" onclick="startMaintenanceGame()">Main Lagi</button>
+
+                                  <!-- Game Over Overlay -->
+                                  <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90" style="z-index: 20;">
+                                      <h2 class="text-danger fw-black mb-1 text-uppercase" style="letter-spacing: 2px;">GAME OVER</h2>
+                                      <div class="bg-white bg-opacity-10 rounded-3 px-4 py-2 mb-4 text-center">
+                                          <small class="text-white-50 d-block text-uppercase" style="font-size: 0.7rem;">Final Score</small>
+                                          <span id="finalScore" class="text-warning fw-bold fs-2">0</span>
+                                      </div>
+                                      <button class="btn btn-outline-light rounded-pill px-4 btn-sm" onclick="startMaintenanceGame()">
+                                          <i class="bi bi-arrow-counterclockwise me-1"></i> Coba Lagi
+                                      </button>
                                   </div>
-                                  <div class="position-absolute top-0 end-0 p-2 text-white fw-bold" style="z-index: 1; font-size: 0.8rem; opacity: 0.8; text-shadow: 1px 1px 2px black;">Score: <span id="gameScore">0</span></div>
+                                  
+                                  <!-- Live Score -->
+                                  <div class="position-absolute top-0 end-0 m-3 px-2 py-1 rounded bg-white bg-opacity-25 text-white fw-bold small" style="z-index: 5; backdrop-filter: blur(2px);">
+                                      SCORE: <span id="gameScore">0</span>
+                                  </div>
                               </div>
-                              <p class="small text-muted mt-2 mb-0 fst-italic">Gunakan panah keyboard atau swipe layar.</p>
+                          </div>
+                          <div class="card-footer bg-secondary bg-opacity-25 border-0 py-2 text-center">
+                              <small class="text-white-50" style="font-size: 0.7rem;">Gunakan Arrow Keys (PC) atau Swipe (HP)</small>
                           </div>
                       </div>
                   </div>
@@ -3824,7 +3852,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                   
                   // Game Configuration
                   const gridSize = 20; // Size of one tile
-                  const tileCount = canvas.width / gridSize; // 280 / 20 = 14 tiles
+                  const tileCount = canvas.width / gridSize; // 300 / 20 = 15 tiles
                   let velocityX = 1; // Start moving right
                   let velocityY = 0;
                   let playerX = 5;
@@ -3853,10 +3881,38 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                       ctx.fillStyle = '#212529'; // Dark
                       ctx.fillRect(0, 0, canvas.width, canvas.height);
                       
+                      // Draw Grid (Optional, subtle)
+                      ctx.strokeStyle = '#2c3035';
+                      ctx.lineWidth = 0.5;
+                      for(let i=0; i<tileCount; i++) {
+                          ctx.beginPath();
+                          ctx.moveTo(i*gridSize, 0);
+                          ctx.lineTo(i*gridSize, canvas.height);
+                          ctx.stroke();
+                          ctx.beginPath();
+                          ctx.moveTo(0, i*gridSize);
+                          ctx.lineTo(canvas.width, i*gridSize);
+                          ctx.stroke();
+                      }
+
+                      // Draw Apple
+                      ctx.fillStyle = '#ff4d4d'; // Bright Red
+                      ctx.shadowBlur = 10;
+                      ctx.shadowColor = '#ff4d4d';
+                      ctx.beginPath();
+                      ctx.arc((appleX * gridSize) + gridSize/2, (appleY * gridSize) + gridSize/2, gridSize/2 - 3, 0, Math.PI*2);
+                      ctx.fill();
+                      ctx.shadowBlur = 0;
+                      
                       // Draw Snake
                       ctx.fillStyle = '#0d6efd'; // Primary Blue
                       for(let i=0; i<trail.length; i++) {
-                          ctx.fillRect(trail[i].x * gridSize, trail[i].y * gridSize, gridSize-2, gridSize-2);
+                          // Head is different color?
+                          if(i === trail.length - 1) ctx.fillStyle = '#4da3ff';
+                          else ctx.fillStyle = '#0d6efd';
+
+                          ctx.fillRect(trail[i].x * gridSize + 1, trail[i].y * gridSize + 1, gridSize-2, gridSize-2);
+                          
                           // Self collision check
                           if(trail[i].x === playerX && trail[i].y === playerY && (trail.length > 5)) {
                               gameOver();
@@ -3868,12 +3924,6 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                       while(trail.length > tail) {
                           trail.shift();
                       }
-                      
-                      // Draw Apple
-                      ctx.fillStyle = '#dc3545'; // Danger Red
-                      ctx.beginPath();
-                      ctx.arc((appleX * gridSize) + gridSize/2, (appleY * gridSize) + gridSize/2, gridSize/2 - 2, 0, Math.PI*2);
-                      ctx.fill();
                       
                       // Eat Apple
                       if(appleX === playerX && appleY === playerY) {
