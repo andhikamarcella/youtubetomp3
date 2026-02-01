@@ -3781,71 +3781,82 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
               }
               
               overlay.innerHTML = `
-                  <div class="container d-flex flex-column align-items-center justify-content-center h-100 py-5">
-                      <div class="text-center mb-4">
-                          <i class="bi ${icon} mb-3" style="font-size: 4rem;"></i>
-                          <h1 class="display-6 fw-bold text-dark mb-2">${title}</h1>
-                          <p class="text-secondary lead mx-auto mb-1" style="max-width: 600px;">${desc}</p>
-                          <p class="text-muted small fw-bold mb-3"><i class="bi bi-stopwatch me-1"></i>${est}</p>
-                          
-                          <!-- Live Clock -->
-                          <div id="maintenanceClock" class="display-5 fw-bold text-dark my-3 font-monospace">00:00:00</div>
-
-                          <div class="d-flex gap-2 justify-content-center">
-                              <button class="btn btn-outline-primary rounded-pill px-4 btn-sm" onclick="location.reload()">
-                                  <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
-                              </button>
-                              <button class="btn btn-outline-success rounded-pill px-4 btn-sm" onclick="toggleMaintenanceGame()">
-                                  <i class="bi bi-controller me-2"></i>Main Game
-                              </button>
-                          </div>
-                      </div>
+              overlay.innerHTML = `
+                  <div class="position-relative w-100 h-100" style="overflow: hidden; background: #fff;">
                       
-                      <!-- Game Container (Hidden by Default) -->
-                      <div id="maintenanceGameWrapper" class="d-none w-100 d-flex justify-content-center">
-                          <div class="card border-0 shadow-sm bg-dark text-white rounded-4 overflow-hidden mt-2" style="max-width: 320px; width: 100%;">
-                               <div class="card-header bg-transparent border-0 pt-3 pb-0 text-center position-relative">
-                                  <small class="text-white-50 text-uppercase fw-bold" style="letter-spacing: 1px;">Mini Game: Snake</small>
-                                  <button class="btn btn-link text-white-50 position-absolute top-0 end-0 p-3" onclick="toggleMaintenanceGame()" style="text-decoration: none;"><i class="bi bi-x-lg"></i></button>
+                      <!-- Carousel Track -->
+                      <div id="maintCarouselTrack" class="d-flex h-100" style="width: 200%; transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);">
+                          
+                          <!-- SLIDE 1: INFO -->
+                          <div class="w-50 h-100 d-flex flex-column align-items-center justify-content-center position-relative">
+                               <div class="text-center px-4" style="max-width: 600px;">
+                                  <i class="bi ${icon} mb-4" style="font-size: 5rem;"></i>
+                                  <h1 class="display-5 fw-bold text-dark mb-3">${title}</h1>
+                                  <p class="text-secondary lead mb-2">${desc}</p>
+                                  <p class="text-muted small fw-bold mb-4"><i class="bi bi-stopwatch me-1"></i>${est}</p>
+                                  
+                                  <div id="maintenanceClock" class="display-4 fw-bold text-dark mb-4 font-monospace">00:00:00</div>
+        
+                                  <button class="btn btn-primary rounded-pill px-5 py-2 shadow-sm fw-bold" onclick="location.reload()">
+                                      <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
+                                  </button>
                                </div>
-                               <div class="card-body p-0 position-relative bg-black d-flex flex-column align-items-center justify-content-center mt-2" style="min-height: 300px;">
-                                    <div id="gameContainer" class="position-relative" style="width: 300px; height: 300px;">
-                                        <canvas id="gameCanvas" width="300" height="300" class="d-block bg-dark rounded-3 border border-secondary border-opacity-25"></canvas>
-                                        
-                                        <!-- Start Overlay -->
-                                        <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75 rounded-3" style="z-index: 10;">
-                                            <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
-                                                <i class="bi bi-play-fill me-1"></i> MULAI
-                                            </button>
-                                        </div>
-      
-                                        <!-- Game Over Overlay -->
-                                        <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90 rounded-3" style="z-index: 20;">
-                                            <h4 class="text-danger fw-bold mb-1">GAME OVER</h4>
-                                            <div class="text-white-50 mb-3 small">Score: <span id="finalScore" class="text-warning fw-bold">0</span></div>
-                                            <button class="btn btn-outline-light rounded-pill px-3 btn-sm" onclick="startMaintenanceGame()">
-                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Main Lagi
-                                            </button>
-                                        </div>
-                                        
-                                        <!-- Live Score -->
-                                        <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded bg-white bg-opacity-10 text-white fw-bold small" style="z-index: 5;">
-                                            <span id="gameScore">0</span>
-                                        </div>
+
+                               <!-- Navigation Arrow (Right) -->
+                               <button class="btn btn-light position-absolute top-50 end-0 translate-middle-y me-3 rounded-circle shadow p-3 d-flex align-items-center justify-content-center" onclick="window.switchMaintSlide(1)" style="width: 60px; height: 60px; z-index: 10;" title="Main Game">
+                                   <i class="bi bi-chevron-right fs-3"></i>
+                               </button>
+                          </div>
+
+                          <!-- SLIDE 2: GAME -->
+                          <div class="w-50 h-100 d-flex flex-column align-items-center justify-content-center position-relative bg-dark text-white">
+                               <!-- Navigation Arrow (Left) -->
+                               <button class="btn btn-outline-light position-absolute top-50 start-0 translate-middle-y ms-3 rounded-circle p-3 d-flex align-items-center justify-content-center" onclick="window.switchMaintSlide(0)" style="width: 60px; height: 60px; z-index: 10; border-width: 2px;" title="Kembali ke Info">
+                                   <i class="bi bi-chevron-left fs-3"></i>
+                               </button>
+
+                               <div class="text-center mb-3">
+                                   <h4 class="fw-bold mb-0"><i class="bi bi-controller me-2"></i>SNAKE GAME</h4>
+                                   <small class="text-white-50">Hilangkan bosan sambil menunggu!</small>
+                               </div>
+                               
+                               <!-- Game Wrapper -->
+                               <div class="position-relative shadow-lg rounded-3 overflow-hidden">
+                                    <canvas id="gameCanvas" width="300" height="300" class="d-block bg-black"></canvas>
+                                    
+                                    <!-- Start Overlay -->
+                                    <div id="gameStartOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-black bg-opacity-75" style="z-index: 10;">
+                                        <button class="btn btn-success rounded-pill px-4 py-2 shadow fw-bold" onclick="startMaintenanceGame()">
+                                            <i class="bi bi-play-fill me-1"></i> MULAI
+                                        </button>
+                                    </div>
+
+                                    <!-- Game Over Overlay -->
+                                    <div id="gameOverOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column align-items-center justify-content-center bg-black bg-opacity-90" style="z-index: 20;">
+                                        <h4 class="text-danger fw-bold mb-1">GAME OVER</h4>
+                                        <div class="text-white-50 mb-3 small">Score: <span id="finalScore" class="text-warning fw-bold">0</span></div>
+                                        <button class="btn btn-outline-light rounded-pill px-3 btn-sm" onclick="startMaintenanceGame()">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Main Lagi
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Live Score -->
+                                    <div class="position-absolute top-0 end-0 m-2 px-2 py-1 rounded bg-white bg-opacity-10 text-white fw-bold small" style="z-index: 5;">
+                                        <span id="gameScore">0</span>
                                     </div>
                                </div>
-                               <!-- D-Pad Controls -->
-                               <div class="card-footer bg-secondary bg-opacity-10 border-0 py-3">
-                                    <div class="d-flex flex-column align-items-center gap-1">
-                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('up')"><i class="bi bi-caret-up-fill"></i></button>
-                                        <div class="d-flex gap-3">
-                                            <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('left')"><i class="bi bi-caret-left-fill"></i></button>
-                                            <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('right')"><i class="bi bi-caret-right-fill"></i></button>
-                                        </div>
-                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #3d4146;" onclick="window.snakeDir('down')"><i class="bi bi-caret-down-fill"></i></button>
+
+                               <!-- D-Pad -->
+                               <div class="mt-4 d-flex flex-column align-items-center gap-1">
+                                    <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; background: #3d4146;" onclick="window.snakeDir('up')"><i class="bi bi-caret-up-fill fs-5"></i></button>
+                                    <div class="d-flex gap-3">
+                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; background: #3d4146;" onclick="window.snakeDir('left')"><i class="bi bi-caret-left-fill fs-5"></i></button>
+                                        <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; background: #3d4146;" onclick="window.snakeDir('right')"><i class="bi bi-caret-right-fill fs-5"></i></button>
                                     </div>
+                                    <button class="btn btn-secondary btn-sm rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; background: #3d4146;" onclick="window.snakeDir('down')"><i class="bi bi-caret-down-fill fs-5"></i></button>
                                </div>
                           </div>
+
                       </div>
                   </div>
               `;
@@ -3862,15 +3873,11 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
               window.maintClockInterval = setInterval(updateMaintClock, 1000);
               updateMaintClock();
 
-              // Toggle Game Logic
-              window.toggleMaintenanceGame = function() {
-                  const wrapper = document.getElementById('maintenanceGameWrapper');
-                  if(wrapper) {
-                      wrapper.classList.toggle('d-none');
-                      if(!wrapper.classList.contains('d-none')) {
-                          // Scroll to game if opened
-                          setTimeout(() => wrapper.scrollIntoView({ behavior: 'smooth' }), 100);
-                      }
+              // Carousel Logic
+              window.switchMaintSlide = function(index) {
+                  const track = document.getElementById('maintCarouselTrack');
+                  if(track) {
+                      track.style.transform = `translateX(-${index * 50}%)`;
                   }
               };
 
