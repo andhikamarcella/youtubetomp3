@@ -17308,10 +17308,8 @@ $('#queueList')?.addEventListener('click', (e) => {
              }, (error) => {
                  console.error("Error getting chats:", error);
                  if (error.code === 'permission-denied') {
-                     setToast('Koneksi terputus. Menyegarkan...', 'warning');
-                     // Auto logout & reload untuk memperbaiki sesi
-                     if (auth) auth.signOut();
-                     setTimeout(() => location.reload(), 1500);
+                     // Hapus auto-logout yang menyebabkan loop
+                     setToast('Koneksi terputus. Silakan refresh halaman atau login ulang.', 'danger');
                  }
              });
         }
@@ -17462,10 +17460,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             } catch (e) {
                 console.error(e);
                 if (e.code === 'permission-denied') {
-                    setToast('Gagal kirim: Izin ditolak database. Otomatis logout...', 'danger');
-                    // Force logout to clean state
-                    if(auth) auth.signOut();
-                    setTimeout(() => location.reload(), 1500);
+                    setToast('Gagal kirim: Izin ditolak. Silakan login ulang.', 'danger');
                 } else {
                     setToast('Gagal kirim pesan: ' + e.message, 'danger');
                 }
