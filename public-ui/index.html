@@ -17212,6 +17212,9 @@ $('#queueList')?.addEventListener('click', (e) => {
                         }
                     } catch (e) {
                          console.warn("User doc update failed:", e);
+                         if (e.code === 'permission-denied') {
+                             setToast('Gagal menyimpan profil user. Cek Rules Database!', 'danger');
+                         }
                     }
 
                     forumLoginOverlay.classList.remove('d-flex');
@@ -17333,8 +17336,9 @@ $('#queueList')?.addEventListener('click', (e) => {
                      const retryHtml = `
                         <div class="text-center my-3">
                             <div class="alert alert-danger d-inline-block p-2 small shadow-sm">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Koneksi database ditolak.
-                                <br>Pastikan Anda login dengan akun Google yang valid.
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> <b>Akses Ditolak Database</b>
+                                <br>Admin wajib mengatur "Firestore Rules" di Console Firebase agar bisa chat.
+                                <br><small>Buka Console > Firestore > Rules, lalu set:<br><code>allow read, write: if request.auth != null;</code></small>
                                 <br><button class="btn btn-sm btn-danger mt-2 rounded-pill px-3" onclick="location.reload()">
                                     <i class="bi bi-arrow-clockwise me-1"></i> Refresh Halaman
                                 </button>
