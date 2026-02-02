@@ -18021,7 +18021,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
 
         function loadGeneralStickers() {
-            // Populate General Stickers (Pack) - Fetch from Firestore 'stickers' collection
+            // Populate General Stickers (Pack) - Fetch from Firestore 'stickers' collection OR Cloudinary Fallback
             const packTab = document.getElementById('sticker-pack');
             if(packTab && (!packTab.querySelector('.sticker-grid') || packTab.querySelector('.sticker-grid').children.length === 0)) {
                 // Loading State
@@ -18029,6 +18029,21 @@ $('#queueList')?.addEventListener('click', (e) => {
                 
                 const { db, collection, getDocs } = window.firebaseModules;
                 
+                // Helper to render grid
+                const renderStickers = (urls) => {
+                    if(urls.length > 0) {
+                        let gridHtml = '<div class="sticker-grid">';
+                        urls.forEach(s => {
+                            gridHtml += `<img src="${s}" class="sticker-item sticker-img" loading="lazy" onclick="sendSticker('${s}')">`;
+                        });
+                        gridHtml += '</div>';
+                        packTab.innerHTML = gridHtml;
+                    } else {
+                        packTab.innerHTML = '<div class="text-center text-secondary p-3">Tidak ada stiker.</div>';
+                    }
+                };
+
+                // 1. Try Firestore First
                 getDocs(collection(db, "stickers"))
                     .then((querySnapshot) => {
                         let urls = [];
@@ -18038,21 +18053,61 @@ $('#queueList')?.addEventListener('click', (e) => {
                         });
                         
                         if(urls.length > 0) {
-                            let gridHtml = '<div class="sticker-grid">';
-                            urls.forEach(s => {
-                                gridHtml += `<img src="${s}" class="sticker-item sticker-img" loading="lazy" onclick="sendSticker('${s}')">`;
-                            });
-                            gridHtml += '</div>';
-                            packTab.innerHTML = gridHtml;
+                            renderStickers(urls);
                         } else {
-                            packTab.innerHTML = '<div class="text-center text-secondary p-3">Tidak ada stiker.</div>';
+                            // 2. Firestore Empty? Try Cloudinary Direct Listing (Fallback)
+                            console.warn("Firestore stickers empty, trying Cloudinary fallback...");
+                            fetchCloudinaryStickers().then(renderStickers).catch(err => {
+                                console.error(err);
+                                packTab.innerHTML = '<div class="text-center text-secondary p-3">Tidak ada stiker ditemukan.</div>';
+                            });
                         }
                     })
                     .catch((error) => {
-                        console.error("Error getting stickers:", error);
-                        packTab.innerHTML = '<div class="text-center text-danger p-3">Gagal memuat stiker.</div>';
+                        console.error("Error getting stickers from Firestore:", error);
+                        // 3. Firestore Error? Try Cloudinary Fallback
+                        fetchCloudinaryStickers().then(renderStickers).catch(err => {
+                             packTab.innerHTML = '<div class="text-center text-danger p-3">Gagal memuat stiker.</div>';
+                        });
                     });
             }
+        }
+        
+        // Cloudinary Fetcher (Client-Side Signed List)
+        async function fetchCloudinaryStickers() {
+            const cloudName = 'dgbal8btf';
+            const apiKey = '422728616314883';
+            const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE'; 
+            const timestamp = Math.round((new Date()).getTime() / 1000);
+            
+            const params = {
+                timestamp: timestamp,
+                type: 'upload',
+                prefix: 'stickers/umum', 
+                max_results: 100
+            };
+            
+            // Signature
+            const sortedKeys = Object.keys(params).sort();
+            let signatureStr = '';
+            sortedKeys.forEach(key => { signatureStr += `${key}=${params[key]}&`; });
+            signatureStr = signatureStr.slice(0, -1) + apiSecret;
+            
+            const enc = new TextEncoder();
+            const hash = await crypto.subtle.digest('SHA-1', enc.encode(signatureStr));
+            const signature = Array.from(new Uint8Array(hash)).map(v => v.toString(16).padStart(2, '0')).join('');
+            
+            const queryParams = new URLSearchParams(params);
+            queryParams.append('api_key', apiKey);
+            queryParams.append('signature', signature);
+            
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/resources/image?${queryParams.toString()}`);
+            const data = await res.json();
+            
+            if(data.resources && data.resources.length > 0) {
+                return data.resources.map(r => r.secure_url);
+            }
+            return [];
         }
     }
     initForumChat();
