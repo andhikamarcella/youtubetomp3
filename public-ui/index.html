@@ -3188,7 +3188,10 @@
       <div class="modal-content border-0 shadow-lg bg-dark">
         <div class="modal-header border-bottom-0" style="background-color: #1a1d21; color: white;">
           <h5 class="modal-title fw-bold" id="forumModalLabel"><i class="bi bi-chat-quote-fill text-primary me-2"></i>Forum Warga</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          <div class="d-flex align-items-center gap-2">
+            <button id="forumLogoutBtn" class="btn btn-sm btn-outline-danger d-none" title="Keluar"><i class="bi bi-box-arrow-right"></i></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
         </div>
         <div class="modal-body p-0 position-relative" style="height: 400px; background-color: #121417;">
           <!-- Chat Area -->
@@ -17416,19 +17419,24 @@ $('#queueList')?.addEventListener('click', (e) => {
                 // Ensure fresh token if needed
                 if(auth && auth.currentUser) await auth.currentUser.getIdToken(true);
 
-                await addDoc(collection(db, "forum-messages"), {
+                const msgData = {
                     text: text,
                     uid: currentUser.uid,
                     name: currentUser.displayName || 'Warga',
-                    email: currentUser.email || null,
-                    photoURL: currentUser.photoURL || null,
                     timestamp: serverTimestamp()
-                });
+                };
+                if(currentUser.email) msgData.email = currentUser.email;
+                if(currentUser.photoURL) msgData.photoURL = currentUser.photoURL;
+
+                await addDoc(collection(db, "forum-messages"), msgData);
                 forumInput.value = '';
             } catch (e) {
                 console.error(e);
                 if (e.code === 'permission-denied') {
-                    setToast('Gagal kirim: Izin ditolak database. Coba relogin.', 'danger');
+                    setToast('Gagal kirim: Izin ditolak database. Otomatis logout...', 'danger');
+                    // Force logout to clean state
+                    if(auth) auth.signOut();
+                    setTimeout(() => location.reload(), 1500);
                 } else {
                     setToast('Gagal kirim pesan: ' + e.message, 'danger');
                 }
