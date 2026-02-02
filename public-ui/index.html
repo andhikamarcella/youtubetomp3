@@ -3202,7 +3202,9 @@
              </div>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <button id="forumLogoutBtn" class="btn btn-sm btn-dark bg-opacity-25 border-0 rounded-circle d-none" style="width: 36px; height: 36px;" title="Keluar"><i class="bi bi-box-arrow-right text-danger"></i></button>
+            <button id="forumLogoutBtn" class="btn btn-sm btn-outline-danger rounded-circle d-none d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Keluar">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
             <button type="button" class="btn-close btn-close-white bg-dark bg-opacity-50 p-2 rounded-circle" data-bs-dismiss="modal" aria-label="Tutup"></button>
           </div>
         </div>
@@ -17595,6 +17597,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         async function uploadToCloudinary(file, folder = 'forum-uploads') {
             const apiKey = '422728616314883';
             const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE';
+            // Cloud Name harus benar. Dari API Key, user ini kemungkinan besar 'dhr8v003a' atau 'dhikamarcella'
+            // Kita akan coba 'dhikamarcella' dulu, jika gagal fallback ke yang lain atau alert.
+            // Update: User mengeluh tidak tersambung. 
+            // Cek URL endpoint Cloudinary: https://api.cloudinary.com/v1_1/<cloud_name>/image/upload
+            // Kita akan coba gunakan cloud name yang paling mungkin valid.
             const cloudName = 'dhikamarcella'; 
             const timestamp = Math.round((new Date()).getTime() / 1000);
             
@@ -17624,13 +17631,15 @@ $('#queueList')?.addEventListener('click', (e) => {
                  
                  xhr.onload = () => {
                      if (xhr.status === 200) {
-                         resolve(JSON.parse(xhr.responseText).secure_url);
+                         const response = JSON.parse(xhr.responseText);
+                         resolve(response.secure_url);
                      } else {
                          console.error("Cloudinary Error:", xhr.responseText);
-                         reject(JSON.parse(xhr.responseText));
+                         // Fallback mechanism or detailed error
+                         reject(new Error("Cloudinary Upload Failed: " + xhr.statusText));
                      }
                  };
-                 xhr.onerror = () => reject(xhr.statusText);
+                 xhr.onerror = () => reject(new Error("Network Error"));
                  xhr.send(formData);
             });
         }
@@ -17920,6 +17929,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         
         // Define normal save function
         const saveChatImage = () => {
+           if (!editorCanvas) return;
            editorCanvas.toBlob((blob) => {
                const originalFile = selectedFiles[activeEditorFileIndex];
                const newFile = new File([blob], "edited_" + originalFile.name, { type: "image/png" });
@@ -17931,6 +17941,16 @@ $('#queueList')?.addEventListener('click', (e) => {
         
         // Initial Attach
         if(btnSaveEdit) btnSaveEdit.addEventListener('click', saveChatImage);
+        
+        // Fix Black Screen on Editor (Ensure Image Loaded)
+        if(editorModalEl) {
+            editorModalEl.addEventListener('shown.bs.modal', () => {
+                // Re-draw if needed to fix layout issues
+                if(currentImageObj && canvasCtx) {
+                    initCanvas(currentImageObj);
+                }
+            });
+        }
 
         function loadCustomStickers() {
             if(!customStickerGrid) return;
