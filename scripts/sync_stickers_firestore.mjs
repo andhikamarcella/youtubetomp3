@@ -142,6 +142,10 @@ async function main() {
       2
     )
   );
+
+  console.log(
+    `SUKSES: Sync stiker selesai (folder="${folder}", category="${category}", totalFound=${resources.length}, upserted=${upserted}, dryRun=${dryRun}).`
+  );
 }
 
 main().catch((err) => {
