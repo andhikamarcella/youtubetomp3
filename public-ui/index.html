@@ -17337,16 +17337,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             reader.readAsDataURL(file);
         };
 
-        function initCanvas(img) {
-            if(!editorCanvas) return;
-            canvasCtx = editorCanvas.getContext('2d');
-            
-            // Set canvas size to fit container but maintain aspect ratio
-            const container = editorCanvas.parentElement;
-            const maxWidth = container.clientWidth;
-            const maxHeight = container.clientHeight;
-            
-            let width = img.width;
+
         // Initialize Canvas with High Resolution
         function initCanvas(img) {
             // Set canvas size to match image's natural dimensions for high quality
@@ -17412,13 +17403,18 @@ $('#queueList')?.addEventListener('click', (e) => {
         // Editor Tools State
         window.editorStrokes = [];
         window.editorTexts = [];
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+        // Variables redeclared fix: use window or remove 'let' if already declared
+        // Actually, let's just reuse the ones declared at the top or reset them.
+        // We declared `let isDrawing` at line ~17223. We should NOT redeclare it here.
+        // We will just reset them.
+        
+        // Reset state when opening editor usually happens in initCanvas or openImageEditor
+        
         let currentStroke = null;
         let draggingTextIndex = -1;
-
+        
         // Mouse Events
+
         editorCanvas.addEventListener('mousedown', (e) => {
             // Scale mouse coordinates to canvas resolution
             const rect = editorCanvas.getBoundingClientRect();
