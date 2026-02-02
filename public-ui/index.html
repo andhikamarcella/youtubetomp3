@@ -4147,7 +4147,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js";
   import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+  import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo",
@@ -4175,6 +4175,8 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     limit,
     serverTimestamp,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     onAuthStateChanged
   };
@@ -17112,10 +17114,22 @@ $('#queueList')?.addEventListener('click', (e) => {
         let unsubscribe = null;
         let currentUser = null;
 
-        // 1. Setup Auth Listener
+        // 1. Setup Auth Listener & Handle Redirect
         function initAuth() {
             if (!window.firebaseModules || !window.firebaseModules.auth) return;
-            const { auth, onAuthStateChanged } = window.firebaseModules;
+            const { auth, onAuthStateChanged, getRedirectResult } = window.firebaseModules;
+
+            // Handle Redirect Result (if returning from Google)
+            getRedirectResult(auth)
+                .then((result) => {
+                    if (result) {
+                        setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
+                    }
+                })
+                .catch((error) => {
+                    console.error("Redirect login failed", error);
+                    setToast('Gagal login: ' + error.message, 'danger');
+                });
 
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
@@ -17265,16 +17279,19 @@ $('#queueList')?.addEventListener('click', (e) => {
                  setToast('Firebase belum siap, coba refresh.', 'warning');
                  return;
             }
-            const { auth, signInWithPopup, GoogleAuthProvider } = window.firebaseModules;
+            const { auth, signInWithRedirect, GoogleAuthProvider } = window.firebaseModules;
             const provider = new GoogleAuthProvider();
+            // User requested Client ID
+            provider.setCustomParameters({
+                'client_id': '284178469971-32adtvdfo6d5jsot9mt7bqu52kg1q34j.apps.googleusercontent.com'
+            });
 
-            forumGoogleLoginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menghubungkan...';
+            forumGoogleLoginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengarahkan...';
             forumGoogleLoginBtn.disabled = true;
             
             try {
-                await signInWithPopup(auth, provider);
-                setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
-                // State change handled by onAuthStateChanged
+                await signInWithRedirect(auth, provider);
+                // Redirect will happen, code below might not run immediately
             } catch (error) {
                 console.error("Login failed", error);
                 setToast('Gagal login: ' + error.message, 'danger');
