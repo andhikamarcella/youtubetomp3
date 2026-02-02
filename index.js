@@ -1975,6 +1975,8 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   if (existsSync(COOKIES_PATH)) {
     args.push("--cookies", COOKIES_PATH);
   }
+  args.push("--js-runtimes", "node");
+  args.push("--remote-components", "ejs:github");
   args.push(target);
 
   let entry;
@@ -2004,6 +2006,8 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       if (existsSync(COOKIES_PATH)) {
         fallbackArgs.push("--cookies", COOKIES_PATH);
       }
+      fallbackArgs.push("--js-runtimes", "node");
+      fallbackArgs.push("--remote-components", "ejs:github");
       fallbackArgs.push(fallbackTarget);
       
       try {
@@ -5426,6 +5430,37 @@ const parseYtDlpProgressLine = (line = "") => {
   };
 };
 
+const buildYtDlpFallbackArgs = (args = []) => {
+  const next = Array.isArray(args) ? [...args] : [];
+  if (!next.length) return next;
+
+  const url = next[next.length - 1];
+  const isUrlLike = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("ytsearch:"));
+  const urlArg = isUrlLike ? next.pop() : null;
+
+  const hasExtractorArgs = next.includes("--extractor-args");
+  if (!hasExtractorArgs) {
+    next.push("--extractor-args", "youtube:player_client=android");
+  }
+
+  if (!next.includes("--force-ipv4")) {
+    next.push("--force-ipv4");
+  }
+
+  for (let i = 0; i < next.length - 1; i++) {
+    if (next[i] === "-f" && typeof next[i + 1] === "string") {
+      const selector = next[i + 1];
+      if (selector.includes("bestaudio")) {
+        next[i + 1] = "bestaudio/best";
+      }
+      break;
+    }
+  }
+
+  if (urlArg) next.push(urlArg);
+  return next;
+};
+
 const runYtDlpDownload = ({ args, id, onProgress }) =>
   new Promise((resolve, reject) => {
     const isWin = process.platform === "win32";
@@ -5820,6 +5855,8 @@ const convertSingle = async (payload = {}) => {
   if (existsSync(COOKIES_PATH)) {
     args.push("--cookies", COOKIES_PATH);
   }
+  args.push("--js-runtimes", "node");
+  args.push("--remote-components", "ejs:github");
   if (noPlaylist) args.push("--no-playlist");
   args.push("-o", outTpl);
 
@@ -5923,16 +5960,29 @@ const convertSingle = async (payload = {}) => {
         videoError.logs = (baseLogs || "").slice(-8000);
         throw videoError;
       }
-      try {
-        emitProgress({ stage: "downloading", message: "Downloader cadangan", percent: mapDownloadPercent(20) });
-        downloadResult = await runPythonDownload({ url, id, baseLogs });
-        logs = downloadResult.logs || baseLogs;
-      } catch (pyErr) {
-        if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-        const finalError = new Error(pyErr.message || err.message || "Gagal mengunduh");
-        const combinedLogs = [logs, baseLogs, pyErr.logs].filter(Boolean).join("\n");
-        finalError.logs = combinedLogs.slice(-8000);
-        throw finalError;
+      const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "");
+      if (shouldRetryWithFallbackArgs) {
+        try {
+          emitProgress({ stage: "downloading", message: "Mencoba mode kompatibilitas", percent: mapDownloadPercent(18) });
+          const fallbackArgs = buildYtDlpFallbackArgs(args);
+          downloadResult = await runYtDlpDownload({ args: fallbackArgs, id, onProgress: handleDownloadProgress });
+          logs = downloadResult.logs || baseLogs;
+        } catch (retryErr) {
+          logs = retryErr?.logs || logs || baseLogs;
+        }
+      }
+      if (!downloadResult) {
+        try {
+          emitProgress({ stage: "downloading", message: "Downloader cadangan", percent: mapDownloadPercent(20) });
+          downloadResult = await runPythonDownload({ url, id, baseLogs });
+          logs = downloadResult.logs || baseLogs;
+        } catch (pyErr) {
+          if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+          const finalError = new Error(pyErr.message || err.message || "Gagal mengunduh");
+          const combinedLogs = [logs, baseLogs, pyErr.logs].filter(Boolean).join("\n");
+          finalError.logs = combinedLogs.slice(-8000);
+          throw finalError;
+        }
       }
     }
   }
