@@ -4143,7 +4143,37 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                 transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
             }
             </style>
-            <script>
+            <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo",
+    authDomain: "forum-warga.firebaseapp.com",
+    projectId: "forum-warga",
+    storageBucket: "forum-warga.firebasestorage.app",
+    messagingSenderId: "317910503290",
+    appId: "1:317910503290:web:a97b324c48bd04a24750c3",
+    measurementId: "G-G8BYN8MNLR"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const db = getFirestore(app);
+
+  window.firebaseModules = {
+    db,
+    collection,
+    addDoc,
+    onSnapshot,
+    query,
+    orderBy,
+    limit,
+    serverTimestamp
+  };
+</script>
+<script>
             // Sound Effects System (AudioContext)
             const SoundFX = {
                 ctx: null,
@@ -17059,7 +17089,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
     initRealTimeClock();
 
-    // --- Task 6: Forum Chat Logic ---
+    // --- Task 6: Forum Chat Logic (Realtime) ---
     function initForumChat() {
         const forumModal = document.getElementById('forumModal');
         const forumLoginOverlay = document.getElementById('forumLoginOverlay');
@@ -17070,13 +17100,85 @@ $('#queueList')?.addEventListener('click', (e) => {
         
         if (!forumGoogleLoginBtn) return;
 
+        let unsubscribe = null;
+
+        function startChatListener() {
+             if (!window.firebaseModules || !window.firebaseModules.db) return;
+             const { db, collection, query, orderBy, limit, onSnapshot } = window.firebaseModules;
+             const q = query(collection(db, "forum-chats"), orderBy("timestamp", "asc"), limit(50));
+             
+             if(unsubscribe) unsubscribe();
+
+             unsubscribe = onSnapshot(q, (snapshot) => {
+                 forumChatArea.innerHTML = '';
+                 
+                 // System Join Message
+                 const joinMsg = `
+                    <div class="text-center my-3 small text-secondary">
+                       <span class="bg-body-secondary px-2 py-1 rounded-pill">
+                          <i class="bi bi-person-plus-fill me-1"></i> Obrolan Warga Realtime
+                       </span>
+                    </div>`;
+                 forumChatArea.insertAdjacentHTML('beforeend', joinMsg);
+
+                 snapshot.forEach((doc) => {
+                     const data = doc.data();
+                     renderMessage(data);
+                 });
+                 forumChatArea.scrollTop = forumChatArea.scrollHeight;
+             });
+        }
+
+        function renderMessage(data) {
+             const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
+             const isMe = userSession.email === data.email;
+             const isAdmin = data.isAdmin === true || (data.email === 'andhikamarcella546@gmail.com');
+             
+             let timeStr = 'Baru saja';
+             if (data.timestamp && data.timestamp.seconds) {
+                 const date = new Date(data.timestamp.seconds * 1000);
+                 timeStr = date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+             }
+
+             let msgHtml;
+             if (isAdmin) {
+                 msgHtml = `
+                <div class="d-flex align-items-start mb-3 flex-row-reverse message admin">
+                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.7rem; border: 2px solid gold;">ADM</div>
+                     <div class="message-bubble bg-dark text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
+                        <div class="admin-badge"><i class="bi bi-shield-check me-1"></i>ADMIN</div>
+                        <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
+                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all text-info"></i></div>
+                     </div>
+                  </div>`;
+             } else if (isMe) {
+                 msgHtml = `
+                <div class="d-flex align-items-start mb-3 flex-row-reverse">
+                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ME</div>
+                     <div class="bg-primary text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
+                        <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
+                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all"></i></div>
+                     </div>
+                  </div>`;
+             } else {
+                 msgHtml = `
+                <div class="d-flex align-items-start mb-3">
+                     <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">USR</div>
+                     <div class="bg-body-tertiary p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
+                        <div class="small fw-bold text-secondary mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
+                        <div class="small text-dark">${(data.text||'').replace(/</g, "&lt;")}</div>
+                        <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">${timeStr}</div>
+                     </div>
+                  </div>`;
+             }
+             forumChatArea.insertAdjacentHTML('beforeend', msgHtml);
+        }
+
         forumGoogleLoginBtn.addEventListener('click', () => {
-            // Simulate Google Login Popup
             forumGoogleLoginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menghubungkan...';
             forumGoogleLoginBtn.disabled = true;
             
             setTimeout(() => {
-                // Success simulation
                 forumLoginOverlay.classList.add('fade');
                 setTimeout(() => {
                     forumLoginOverlay.hidden = true;
@@ -17084,101 +17186,46 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumSendBtn.disabled = false;
                     forumInput.focus();
                     
-                    // Show toast
-                    setToast('<i class="bi bi-google me-2"></i>Login berhasil! Selamat datang di forum.', 'success');
+                    setToast('<i class="bi bi-google me-2"></i>Login berhasil! Mengambil chat...', 'success');
                     
-                    // --- FORCE ADMIN SESSION FOR DEMO ---
-                    // This allows the user to test the Admin features immediately
+                    // Force Admin Session (User Preference)
                     const adminUser = {
                         name: 'Admin User',
                         email: 'andhikamarcella546@gmail.com',
-                        photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c', // Dummy
+                        photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
                         sub: 'admin-123'
                     };
                     localStorage.setItem('userSession', JSON.stringify(adminUser));
-                    // ------------------------------------
-
-                    // Add system join message
-                    const joinMsg = `
-                        <div class="text-center my-3 small text-secondary">
-                           <span class="bg-body-secondary px-2 py-1 rounded-pill">
-                              <i class="bi bi-person-plus-fill me-1"></i> Anda bergabung dalam obrolan
-                           </span>
-                        </div>`;
-                    forumChatArea.insertAdjacentHTML('beforeend', joinMsg);
-                    forumChatArea.scrollTop = forumChatArea.scrollHeight;
                     
+                    startChatListener();
                 }, 500);
             }, 1500);
         });
 
-        function sendForumMessage() {
+        async function sendForumMessage() {
             const text = forumInput.value.trim();
             if(!text) return;
             
-            // Check for Admin
-            let isAdmin = false;
-            try {
-                const sess = JSON.parse(localStorage.getItem('userSession'));
-                if(sess && sess.email === 'andhikamarcella546@gmail.com') isAdmin = true;
-            } catch(e){}
-
-            const time = new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
-            
-            let msgHtml;
-            if (isAdmin) {
-                // Admin Message Style
-                msgHtml = `
-                <div class="d-flex align-items-start mb-3 flex-row-reverse message admin">
-                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.7rem; border: 2px solid gold;">ADM</div>
-                     <div class="message-bubble bg-dark text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
-                        <div class="admin-badge"><i class="bi bi-shield-check me-1"></i>ADMIN</div>
-                        <div class="small">${text.replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${time} <i class="bi bi-check-all text-info"></i></div>
-                     </div>
-                  </div>`;
-            } else {
-                // Regular User Message
-                msgHtml = `
-                <div class="d-flex align-items-start mb-3 flex-row-reverse">
-                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ME</div>
-                     <div class="bg-primary text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
-                        <div class="small">${text.replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${time} <i class="bi bi-check-all"></i></div>
-                     </div>
-                  </div>`;
+            if (!window.firebaseModules) {
+                 setToast('Menghubungkan ke server chat...', 'warning');
+                 return;
             }
-                  
-            forumChatArea.insertAdjacentHTML('beforeend', msgHtml);
-            forumInput.value = '';
-            forumChatArea.scrollTop = forumChatArea.scrollHeight;
-            
-            // Simulate Auto-Reply (Only if not admin? Or always? User didn't specify, leave as is)
-            setTimeout(() => {
-                const replies = [
-                    "Wah ide bagus tuh!",
-                    "Siap, ditampung dulu ya sarannya.",
-                    "Mantap gan! 👍",
-                    "Bisa dicoba nih.",
-                    "Jangan lupa share ke temen-temen ya!",
-                    "Server lagi kenceng nih, gas download! 🚀",
-                    "Ada yang tau kenapa speed download kadang turun?",
-                    "Keren fiturnya, makin lengkap.",
-                    "Admin fast respon banget dah."
-                ];
-                const reply = replies[Math.floor(Math.random() * replies.length)];
-                const replyHtml = `
-                <div class="d-flex align-items-start mb-3">
-                     <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">USR</div>
-                     <div class="bg-body-tertiary p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
-                        <div class="small fw-bold text-warning-emphasis mb-1">Warga +62</div>
-                        <div class="small text-dark">${reply}</div>
-                        <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">Baru saja</div>
-                     </div>
-                  </div>`;
-                  forumChatArea.insertAdjacentHTML('beforeend', replyHtml);
-                  forumChatArea.scrollTop = forumChatArea.scrollHeight;
-            }, 2000 + Math.random() * 2000);
+            const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+            const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
+
+            try {
+                await addDoc(collection(db, "forum-chats"), {
+                    text: text,
+                    email: userSession.email || 'anon@warga.com',
+                    name: userSession.name || 'Warga +62',
+                    timestamp: serverTimestamp(),
+                    isAdmin: userSession.email === 'andhikamarcella546@gmail.com'
+                });
+                forumInput.value = '';
+            } catch (e) {
+                console.error(e);
+                setToast('Gagal kirim pesan', 'danger');
+            }
         }
 
         if(forumSendBtn) {
@@ -17186,6 +17233,12 @@ $('#queueList')?.addEventListener('click', (e) => {
             forumInput.addEventListener('keypress', (e) => {
                 if(e.key === 'Enter') sendForumMessage();
             });
+        }
+        
+        // Auto-connect if session exists
+        const sess = localStorage.getItem('userSession');
+        if (sess && forumLoginOverlay.hidden) {
+            startChatListener();
         }
     }
     initForumChat();
