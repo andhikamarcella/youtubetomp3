@@ -3185,16 +3185,16 @@
   <!-- Forum Modal (Task 6) -->
   <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content border-0 shadow-lg">
-        <div class="modal-header bg-body-tertiary border-bottom-0">
+      <div class="modal-content border-0 shadow-lg bg-dark">
+        <div class="modal-header border-bottom-0" style="background-color: #1a1d21; color: white;">
           <h5 class="modal-title fw-bold" id="forumModalLabel"><i class="bi bi-chat-quote-fill text-primary me-2"></i>Forum Warga</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
-        <div class="modal-body p-0 position-relative bg-body-tertiary" style="height: 400px;">
+        <div class="modal-body p-0 position-relative" style="height: 400px; background-color: #121417;">
           <!-- Chat Area -->
           <div id="forumChatArea" class="d-flex flex-column p-3 h-100" style="overflow-y: auto;">
             <div class="text-center my-3">
-              <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 shadow-sm">Hari ini</span>
+              <span class="badge bg-dark bg-opacity-50 text-secondary border border-secondary rounded-pill px-3 shadow-sm">Hari ini</span>
             </div>
             <!-- Welcome Message -->
             <div class="d-flex align-items-start mb-3 message admin">
@@ -3233,15 +3233,15 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
         <!-- Image Preview Container -->
         <div id="forumPreviewContainer" class="d-none"></div>
         
-        <div class="modal-footer bg-body-tertiary border-top-0 p-3">
+        <div class="modal-footer border-top-0 p-3" style="background-color: #1a1d21;">
           <div class="input-group">
-            <button class="btn btn-outline-secondary rounded-start-pill ps-3" type="button" id="forumAttachBtn" title="Kirim Gambar"><i class="bi bi-paperclip"></i></button>
-            <button class="btn btn-outline-secondary border-start-0" type="button" id="forumStickerBtn" title="Stiker"><i class="bi bi-emoji-smile"></i></button>
-            <div class="input-group-text bg-light border-0 px-2">
+            <button class="btn btn-dark border-secondary rounded-start-pill ps-3" type="button" id="forumAttachBtn" title="Kirim Gambar"><i class="bi bi-paperclip"></i></button>
+            <button class="btn btn-dark border-secondary border-start-0" type="button" id="forumStickerBtn" title="Stiker"><i class="bi bi-emoji-smile"></i></button>
+            <div class="input-group-text bg-dark border-secondary border-start-0 px-2">
                 <input type="color" class="bubble-color-picker" id="bubbleColorPicker" title="Warna Bubble Chat" value="#d9fdd3">
             </div>
             <input type="file" id="forumImageInput" hidden accept="image/*">
-            <input type="text" id="forumInput" class="form-control bg-light border-0 text-dark" style="color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
+            <input type="text" id="forumInput" class="form-control border-0 text-dark" style="background-color: #f0f2f5; color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
             <button class="btn btn-primary rounded-end-pill px-4" type="button" id="forumSendBtn" disabled><i class="bi bi-send-fill"></i></button>
           </div>
         </div>
@@ -4145,6 +4145,22 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
             #maintCarouselTrack .btn:active {
                 transform: scale(0.90) !important;
                 transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+
+            /* Forum Styles */
+            #forumChatArea {
+                background-color: #121417;
+                background-image: linear-gradient(30deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(150deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(30deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(150deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(60deg, #1e2227 25%, transparent 25.5%, transparent 75%, #1e2227 75%, #1e2227), linear-gradient(60deg, #1e2227 25%, transparent 25.5%, transparent 75%, #1e2227 75%, #1e2227);
+                background-size: 40px 70px;
+                background-position: 0 0, 0 0, 20px 35px, 20px 35px, 0 0, 20px 35px;
+            }
+            .message-bubble-gradient {
+                background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%); 
+                color: white;
+            }
+            .admin-pinned-gradient {
+                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+                color: white;
             }
             </style>
             <script type="module">
@@ -17110,24 +17126,25 @@ $('#queueList')?.addEventListener('click', (e) => {
     // --- Task 6: Forum Chat Logic (Realtime & Authenticated) ---
     function initForumChat() {
         const forumModal = document.getElementById('forumModal');
-        // Auto-open logic if returning from login
-        if (sessionStorage.getItem('forum_login_pending') === 'true') {
-             // Use Bootstrap API to show modal if available, else standard fallback
-             // Delay slightly to ensure Bootstrap is ready
-             setTimeout(() => {
-                 if(typeof bootstrap !== 'undefined') {
-                     const bsModal = new bootstrap.Modal(forumModal);
-                     bsModal.show();
-                 }
-             }, 1000);
-        }
-
         const forumLoginOverlay = document.getElementById('forumLoginOverlay');
         const forumGoogleLoginBtn = document.getElementById('forumGoogleLoginBtn');
         const forumInput = document.getElementById('forumInput');
         const forumSendBtn = document.getElementById('forumSendBtn');
         const forumChatArea = document.getElementById('forumChatArea');
         
+        // Auto-open logic if returning from login
+        if (sessionStorage.getItem('forum_login_pending') === 'true') {
+             const checkBs = setInterval(() => {
+                 if(typeof bootstrap !== 'undefined' && forumModal) {
+                     clearInterval(checkBs);
+                     const bsModal = new bootstrap.Modal(forumModal);
+                     bsModal.show();
+                 }
+             }, 500);
+             // Timeout 10s
+             setTimeout(() => clearInterval(checkBs), 10000);
+        }
+
         if (!forumGoogleLoginBtn) return;
 
         let unsubscribe = null;
@@ -17144,11 +17161,17 @@ $('#queueList')?.addEventListener('click', (e) => {
                     if (result) {
                         setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
                         sessionStorage.removeItem('forum_login_pending');
+                        // Force hide overlay immediately
+                        forumLoginOverlay.classList.remove('d-flex');
+                        forumLoginOverlay.classList.add('d-none');
                     }
                 })
                 .catch((error) => {
                     console.error("Redirect login failed", error);
-                    setToast('Gagal login: ' + error.message, 'danger');
+                    // Don't show error if no redirect happened
+                    if (error.code !== 'auth/popup-closed-by-user') {
+                         setToast('Gagal login: ' + error.message, 'danger');
+                    }
                     sessionStorage.removeItem('forum_login_pending');
                 });
 
@@ -17168,8 +17191,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumInput.disabled = true;
                     forumSendBtn.disabled = true;
                     if(unsubscribe) unsubscribe();
-                    // Don't clear chat immediately to keep layout, but maybe we should?
-                    // forumChatArea.innerHTML = ''; 
                 }
             });
         }
@@ -17182,14 +17203,12 @@ $('#queueList')?.addEventListener('click', (e) => {
             }
         }, 500);
 
-        // Stop checking after 15 seconds to save resources
         setTimeout(() => clearInterval(moduleCheckInterval), 15000);
 
         function startChatListener() {
              if (!window.firebaseModules || !window.firebaseModules.db) return;
              const { db, collection, query, orderBy, limit, onSnapshot } = window.firebaseModules;
              
-             // UPDATE: Use 'forum-messages' to match user's existing DB
              const q = query(collection(db, "forum-messages"), orderBy("timestamp", "asc"), limit(50));
              
              if(unsubscribe) unsubscribe();
@@ -17197,13 +17216,13 @@ $('#queueList')?.addEventListener('click', (e) => {
              unsubscribe = onSnapshot(q, (snapshot) => {
                  forumChatArea.innerHTML = '';
                  
-                 // 1. Re-inject Pinned Admin Rules Message
+                 // 1. Re-inject Pinned Admin Rules Message (With Gradient)
                  const pinnedRules = `
                     <div class="d-flex align-items-start mb-3 message admin">
                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
-                       <div class="message-bubble">
-                          <div class="small fw-bold text-primary mb-1">Admin <i class="bi bi-patch-check-fill"></i></div>
-                          <div class="small">Selamat datang di Forum Warga!
+                       <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
+                          <div class="small fw-bold text-white mb-1">Admin <i class="bi bi-patch-check-fill text-info"></i></div>
+                          <div class="small text-white">Selamat datang di Forum Warga!
                           <br><br>
                           <b>Rules:</b>
                           <br>1. Dilarang SARA & Spam.
@@ -17211,7 +17230,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                           <br>3. Hormati sesama warga.
                           <br><br>
                           Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
-                          <div class="text-end text-body-tertiary mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
+                          <div class="text-end text-white-50 mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
                             <i class="bi bi-pin-angle-fill"></i> Pinned
                           </div>
                        </div>
@@ -17221,7 +17240,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  // 2. System Join Message
                  const joinMsg = `
                     <div class="text-center my-3 small text-secondary">
-                       <span class="bg-body-secondary px-2 py-1 rounded-pill">
+                       <span class="bg-dark bg-opacity-50 text-light px-2 py-1 rounded-pill border border-secondary">
                           <i class="bi bi-person-plus-fill me-1"></i> Obrolan Warga Realtime
                        </span>
                     </div>`;
@@ -17243,9 +17262,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         function renderMessage(data) {
              if (!currentUser) return;
 
-             // Match using UID instead of Email for better security/accuracy
              const isMe = data.uid === currentUser.uid;
-             // Hardcoded admin email check as fallback or additional check
              const isAdmin = (data.email === 'andhikamarcella546@gmail.com');
              
              let timeStr = 'Baru saja';
@@ -17261,10 +17278,10 @@ $('#queueList')?.addEventListener('click', (e) => {
                      <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid gold;">
                         ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                      </div>
-                     <div class="message-bubble bg-dark text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
-                        <div class="admin-badge"><i class="bi bi-shield-check me-1"></i>ADMIN</div>
-                        <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all text-info"></i></div>
+                     <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
+                        <div class="small fw-bold text-white mb-1"><i class="bi bi-shield-check me-1 text-warning"></i>ADMIN</div>
+                        <div class="small text-white">${(data.text||'').replace(/</g, "&lt;")}</div>
+                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all text-white"></i></div>
                      </div>
                   </div>`;
              } else if (isMe) {
@@ -17273,9 +17290,9 @@ $('#queueList')?.addEventListener('click', (e) => {
                      <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
                         ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ME'}
                      </div>
-                     <div class="bg-primary text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
+                     <div class="message-bubble p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%; background-color: #d9fdd3; color: #000;">
                         <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all"></i></div>
+                        <div class="text-end text-secondary mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all"></i></div>
                      </div>
                   </div>`;
              } else {
@@ -17284,7 +17301,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                      <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
                         ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'USR'}
                      </div>
-                     <div class="bg-body-tertiary p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
+                     <div class="bg-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
                         <div class="small fw-bold text-secondary mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
                         <div class="small text-dark">${(data.text||'').replace(/</g, "&lt;")}</div>
                         <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">${timeStr}</div>
@@ -17314,7 +17331,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                 // Set flag before redirect
                 sessionStorage.setItem('forum_login_pending', 'true');
                 await signInWithRedirect(auth, provider);
-                // Redirect will happen, code below might not run immediately
             } catch (error) {
                 console.error("Login failed", error);
                 setToast('Gagal login: ' + error.message, 'danger');
@@ -17335,7 +17351,6 @@ $('#queueList')?.addEventListener('click', (e) => {
             const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
 
             try {
-                // UPDATE: Match fields from user screenshot (uid, photoURL, text, timestamp, name)
                 await addDoc(collection(db, "forum-messages"), {
                     text: text,
                     uid: currentUser.uid,
