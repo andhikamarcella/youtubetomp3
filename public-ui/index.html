@@ -3324,22 +3324,11 @@
              <div class="tab-pane fade show active h-100 overflow-y-auto" id="sticker-recent">
                 <div class="text-center text-secondary small mt-5">Belum ada stiker yang dipakai.</div>
              </div>
-             <!-- Custom -->
-             <div class="tab-pane fade h-100 d-flex flex-column" id="sticker-custom">
-                <div class="mb-3 d-flex gap-2">
-                   <button class="btn btn-primary btn-sm w-100 rounded-pill" id="btnCreateSticker"><i class="bi bi-plus-lg me-1"></i> Buat Stiker Baru</button>
-                   <input type="file" id="stickerUploadInput" hidden accept="image/*">
-                </div>
-                <div class="sticker-grid flex-grow-1 overflow-y-auto" id="customStickerGrid">
-                    <!-- Custom stickers go here -->
-                </div>
-             </div>
-             <!-- Packs (Placeholder) -->
+
+             <!-- Packs (Firestore) -->
              <div class="tab-pane fade h-100 overflow-y-auto" id="sticker-pack">
                 <div class="sticker-grid">
-                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/3o7TKSjRrfIPjeiVyM/giphy.gif" class="sticker-item sticker-img" onclick="sendSticker(this.src)">
-                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/l0HlHJGHe3yAMhdQY/giphy.gif" class="sticker-item sticker-img" onclick="sendSticker(this.src)">
-                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/26BRL7YrutHKs/giphy.gif" class="sticker-item sticker-img" onclick="sendSticker(this.src)">
+                    <!-- Populated via JS -->
                 </div>
              </div>
           </div>
@@ -4251,7 +4240,7 @@
             <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, orderBy, limit, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
@@ -4282,6 +4271,8 @@
     addDoc,
     onSnapshot,
     query,
+    where,
+    getDocs,
     doc,
     setDoc,
     orderBy,
@@ -18028,6 +18019,20 @@ $('#queueList')?.addEventListener('click', (e) => {
                 packTab.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 small text-secondary">Memuat stiker umum...</div></div>';
                 
                 const { db, collection, getDocs, query, where } = window.firebaseModules;
+                const { auth, onAuthStateChanged } = window.firebaseModules;
+
+                if (!auth || !auth.currentUser) {
+                    packTab.innerHTML = '<div class="text-center text-secondary p-3">Login dulu untuk melihat stiker.</div>';
+                    if (onAuthStateChanged && auth) {
+                        const unsub = onAuthStateChanged(auth, (user) => {
+                            if (user) {
+                                unsub();
+                                loadGeneralStickers();
+                            }
+                        });
+                    }
+                    return;
+                }
                 
                 // Helper to render grid
                 const renderStickers = (urls) => {
