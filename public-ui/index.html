@@ -4396,11 +4396,13 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
 
               if (data.maintenance) {
                   // Maintenance Mode
+                  window.isMaintenance = true;
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-warning text-dark border ms-2';
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
               } else {
                   // Online
+                  window.isMaintenance = false;
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-success border ms-2';
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-hdd-network me-1"></i>Online';
                   showMaintenanceOverlay(false);
@@ -4500,7 +4502,9 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
           overlay = document.createElement('div');
           overlay.id = 'maintenanceOverlay';
           // Changed to solid background (opacity 1) to hide underlying content clutter
-          overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#ffffff;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;overflow-y:auto;';
+          // Force text color to dark (#212529) to ensure visibility on white background, overriding any global dark mode themes
+          // Removed flex from overlay to allow inner container to handle scrolling properly
+          overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#ffffff;color:#212529;z-index:9999;overflow-y:auto;';
           document.body.appendChild(overlay);
       }
       
@@ -4558,30 +4562,35 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         100% { background-position: 0 0; }
                     }
                     .maint-container {
-                        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                        width: 100%; min-height: 100%;
                         background: ${bgGradient};
                         display: flex; align-items: center; justify-content: center;
-                        padding: 1rem;
+                        padding: 2rem 1rem;
+                        box-sizing: border-box;
                     }
                     .maint-card {
                         background: rgba(255, 255, 255, 0.95);
                         backdrop-filter: blur(10px);
                         border-radius: 24px;
                         box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-                        padding: 3rem 2rem;
+                        padding: 2.5rem 2rem;
                         max-width: 480px;
                         width: 100%;
                         text-align: center;
                         border: 1px solid rgba(255,255,255,0.5);
+                        box-sizing: border-box;
+                        color: #212529;
+                        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+                        margin: auto; /* Vital for vertical centering + scrolling */
                     }
                     .maint-icon-wrap {
-                        width: 100px; height: 100px;
+                        width: 90px; height: 90px;
                         background: ${colorLight};
                         color: ${colorMain};
                         border-radius: 50%;
                         display: flex; align-items: center; justify-content: center;
-                        font-size: 3.5rem;
-                        margin: 0 auto 1.5rem;
+                        font-size: 3rem;
+                        margin: 0 auto 1.25rem;
                         position: relative;
                     }
                     .maint-icon-wrap::after {
@@ -4592,11 +4601,11 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         z-index: -1;
                     }
                     .maint-progress {
-                        height: 10px;
+                        height: 8px;
                         background: rgba(0,0,0,0.05);
                         border-radius: 10px;
                         overflow: hidden;
-                        margin: 1.5rem 0 0.5rem;
+                        margin: 1.25rem 0 0.5rem;
                         position: relative;
                     }
                     .maint-progress-bar {
@@ -4610,25 +4619,28 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     }
                     /* Mobile Optimization */
                     @media (max-width: 576px) {
+                        .maint-container {
+                            padding: 1rem;
+                            align-items: flex-start; /* Start from top on mobile to ensure header visible */
+                        }
                         .maint-card {
                             padding: 2rem 1.25rem;
-                            max-height: 90vh;
-                            overflow-y: auto;
+                            margin: 1rem auto; /* Add margin for safe area */
                         }
                         #maintenanceClock {
-                            font-size: 1.75rem !important;
+                            font-size: 1.5rem !important;
                             letter-spacing: 1px !important;
                         }
                         .maint-icon-wrap {
-                            width: 80px; height: 80px;
-                            font-size: 2.5rem;
+                            width: 70px; height: 70px;
+                            font-size: 2.25rem;
                             margin-bottom: 1rem;
                         }
                         .btn-lg {
-                            padding: 1rem !important;
-                            font-size: 1.1rem !important;
+                            padding: 0.8rem !important;
+                            font-size: 1rem !important;
                         }
-                        .h3 { font-size: 1.5rem !important; }
+                        .h3 { font-size: 1.4rem !important; }
                     }
                   </style>
                   <div class="maint-container">
@@ -4636,13 +4648,13 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                            <div class="maint-icon-wrap">
                                 <i class="bi ${iconClass}"></i>
                            </div>
-                           <h1 class="h3 fw-bold text-dark mb-2">${title}</h1>
-                           <p class="text-muted mb-3">${desc}</p>
+                           <h1 class="h3 fw-bold mb-2" style="color: #212529 !important;">${title}</h1>
+                           <p class="mb-3" style="color: #6c757d !important;">${desc}</p>
                            
                            <!-- Progress Section -->
                            <div class="text-start mb-4" ${progressVal === 0 ? 'hidden' : ''}>
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold text-secondary" style="font-size: 0.8rem;">${detailDesc}</small>
+                                    <small class="fw-bold" style="font-size: 0.8rem; color: #6c757d !important;">${detailDesc}</small>
                                     <small class="fw-bold" style="color: ${colorMain};">${progressVal}%</small>
                                 </div>
                                 <div class="maint-progress">
@@ -4652,27 +4664,27 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
                            <!-- FAQ Mini Section -->
                            <div class="text-start mb-4 p-3 rounded-4" style="background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.05);">
-                                <h6 class="fw-bold mb-3 text-secondary small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;"><i class="bi bi-question-circle-fill me-2"></i>Pertanyaan Umum</h6>
+                                <h6 class="fw-bold mb-3 small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem; color: #6c757d !important;"><i class="bi bi-question-circle-fill me-2"></i>Pertanyaan Umum</h6>
                                 <div class="d-flex flex-column gap-3">
                                     <div class="d-flex gap-3 align-items-start">
                                         <i class="bi bi-shield-check text-success fs-5 flex-shrink-0"></i>
                                         <div style="line-height: 1.3;">
-                                            <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Apakah data saya aman?</span>
-                                            <span class="text-muted d-block" style="font-size: 0.8rem;">Aman, tidak ada penghapusan data.</span>
+                                            <span class="d-block fw-bold" style="font-size: 0.85rem; color: #212529 !important;">Apakah data saya aman?</span>
+                                            <span class="d-block" style="font-size: 0.8rem; color: #6c757d !important;">Aman, tidak ada penghapusan data.</span>
                                         </div>
                                     </div>
                                     <div class="d-flex gap-3 align-items-start">
                                          <i class="bi bi-cloud-arrow-down text-primary fs-5 flex-shrink-0"></i>
                                          <div style="line-height: 1.3;">
-                                             <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Download dilanjutkan?</span>
-                                             <span class="text-muted d-block" style="font-size: 0.8rem;">Silakan ulangi setelah online.</span>
+                                             <span class="d-block fw-bold" style="font-size: 0.85rem; color: #212529 !important;">Download dilanjutkan?</span>
+                                             <span class="d-block" style="font-size: 0.8rem; color: #6c757d !important;">Silakan ulangi setelah online.</span>
                                          </div>
                                     </div>
                                      <div class="d-flex gap-3 align-items-start">
                                          <i class="bi bi-hdd-network text-warning fs-5 flex-shrink-0"></i>
                                          <div style="line-height: 1.3;">
-                                             <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Kenapa maintenance?</span>
-                                             <span class="text-muted d-block" style="font-size: 0.8rem;">Untuk stabilitas & keamanan.</span>
+                                             <span class="d-block fw-bold" style="font-size: 0.85rem; color: #212529 !important;">Kenapa maintenance?</span>
+                                             <span class="d-block" style="font-size: 0.8rem; color: #6c757d !important;">Untuk stabilitas & keamanan.</span>
                                          </div>
                                     </div>
                                 </div>
@@ -4680,12 +4692,12 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
                            <div class="d-flex align-items-center justify-content-center gap-3 mb-4 p-3 rounded-4" style="background: rgba(0,0,0,0.04);">
                                 <div class="text-start">
-                                    <small class="d-block text-uppercase fw-bold text-secondary" style="font-size: 0.7rem; letter-spacing: 1px;">Estimasi Selesai</small>
-                                    <span class="fw-bold text-dark">${est}</span>
+                                    <small class="d-block text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px; color: #6c757d !important;">Estimasi Selesai</small>
+                                    <span class="fw-bold" style="color: #212529 !important;">${est}</span>
                                 </div>
                                 <div class="vr mx-2"></div>
                                 <div class="text-end">
-                                     <small class="d-block text-uppercase fw-bold text-secondary" style="font-size: 0.7rem; letter-spacing: 1px;">Waktu Saat Ini</small>
+                                     <small class="d-block text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px; color: #6c757d !important;">Waktu Saat Ini</small>
                                      <div id="maintenanceClock" class="fw-bold font-monospace" style="color: ${colorMain}">00:00:00</div>
                                 </div>
                            </div>
@@ -13018,6 +13030,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   async function tryPrefillClipboard({ forceToast = false, overrideExisting = false } = {}){
     // Maintenance Check: Disable auto-paste if maintenance is active
+    if (window.isMaintenance) return;
     const overlay = document.getElementById('maintenanceOverlay');
     if (overlay && !overlay.hidden) return;
 
