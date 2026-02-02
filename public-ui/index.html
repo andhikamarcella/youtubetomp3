@@ -17136,6 +17136,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumInput = document.getElementById('forumInput');
         const forumSendBtn = document.getElementById('forumSendBtn');
         const forumChatArea = document.getElementById('forumChatArea');
+        const forumLogoutBtn = document.getElementById('forumLogoutBtn');
         
         // Auto-open logic if returning from login
         if (sessionStorage.getItem('forum_login_pending') === 'true') {
@@ -17199,6 +17200,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumLoginOverlay.classList.add('d-none');
                     forumInput.disabled = false;
                     forumSendBtn.disabled = false;
+                    if(forumLogoutBtn) forumLogoutBtn.classList.remove('d-none');
                     startChatListener();
                 } else {
                     // Logged Out
@@ -17206,6 +17208,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumLoginOverlay.classList.add('d-flex');
                     forumInput.disabled = true;
                     forumSendBtn.disabled = true;
+                    if(forumLogoutBtn) forumLogoutBtn.classList.add('d-none');
                     if(unsubscribe) unsubscribe();
                     // If we were showing loading, restore content
                     if (forumLoginOverlay.querySelector('.spinner-border')) {
@@ -17243,9 +17246,22 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         setTimeout(() => clearInterval(moduleCheckInterval), 15000);
 
-        function startChatListener() {
+        async function startChatListener() {
              if (!window.firebaseModules || !window.firebaseModules.db) return;
-             const { db, collection, query, orderBy, limit, onSnapshot } = window.firebaseModules;
+             
+             // Validasi user sebelum memulai listener
+             if (!currentUser) return;
+
+             const { db, collection, query, orderBy, limit, onSnapshot, auth } = window.firebaseModules;
+             
+             // Refresh token untuk memastikan izin akses database valid
+             try {
+                if (auth && auth.currentUser) {
+                    await auth.currentUser.getIdToken(true);
+                }
+             } catch (e) {
+                console.warn("Token refresh warning:", e);
+             }
              
              const q = query(collection(db, "forum-messages"), orderBy("timestamp", "asc"), limit(50));
              
@@ -17292,7 +17308,10 @@ $('#queueList')?.addEventListener('click', (e) => {
              }, (error) => {
                  console.error("Error getting chats:", error);
                  if (error.code === 'permission-denied') {
-                     setToast('Akses ditolak. Silakan login ulang.', 'danger');
+                     setToast('Koneksi terputus. Menyegarkan...', 'warning');
+                     // Auto logout & reload untuk memperbaiki sesi
+                     if (auth) auth.signOut();
+                     setTimeout(() => location.reload(), 1500);
                  }
              });
         }
@@ -17404,6 +17423,16 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
         
         forumGoogleLoginBtn.addEventListener('click', handleLoginClick);
+
+        if(forumLogoutBtn) {
+            forumLogoutBtn.addEventListener('click', () => {
+                if(window.firebaseModules && window.firebaseModules.auth) {
+                    window.firebaseModules.auth.signOut().then(() => {
+                        setToast('Berhasil logout.', 'success');
+                    });
+                }
+            });
+        }
 
         async function sendForumMessage() {
             const text = forumInput.value.trim();
