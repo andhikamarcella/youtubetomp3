@@ -16215,8 +16215,22 @@ $('#queueList')?.addEventListener('click', (e) => {
       if(btnResetMode) {
         btnResetMode.addEventListener('click', () => {
           localStorage.removeItem(modeKey);
-          setMode('basic');
-          setToast('Mode direset ke Basic');
+          
+          if (welcomeModalEl && bootstrapGlobal?.Modal) {
+             // Close settings offcanvas if open
+             const settingsOffcanvas = document.getElementById('offcanvasSettings');
+             if (settingsOffcanvas && bootstrapGlobal?.Offcanvas) {
+                 const offcanvasInstance = bootstrapGlobal.Offcanvas.getInstance(settingsOffcanvas);
+                 if (offcanvasInstance) offcanvasInstance.hide();
+             }
+             
+             // Show welcome modal
+             const modal = new bootstrapGlobal.Modal(welcomeModalEl);
+             modal.show();
+          } else {
+             setMode('basic');
+             setToast('Mode direset ke Basic');
+          }
         });
       }
 
