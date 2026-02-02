@@ -4151,7 +4151,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js";
   import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-  import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+  import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo",
@@ -4167,6 +4167,9 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   const analytics = getAnalytics(app);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  
+  // Set persistence to LOCAL to avoid session loss on redirect
+  setPersistence(auth, browserLocalPersistence).catch(console.error);
 
   window.firebaseModules = {
     db,
@@ -17107,6 +17110,18 @@ $('#queueList')?.addEventListener('click', (e) => {
     // --- Task 6: Forum Chat Logic (Realtime & Authenticated) ---
     function initForumChat() {
         const forumModal = document.getElementById('forumModal');
+        // Auto-open logic if returning from login
+        if (sessionStorage.getItem('forum_login_pending') === 'true') {
+             // Use Bootstrap API to show modal if available, else standard fallback
+             // Delay slightly to ensure Bootstrap is ready
+             setTimeout(() => {
+                 if(typeof bootstrap !== 'undefined') {
+                     const bsModal = new bootstrap.Modal(forumModal);
+                     bsModal.show();
+                 }
+             }, 1000);
+        }
+
         const forumLoginOverlay = document.getElementById('forumLoginOverlay');
         const forumGoogleLoginBtn = document.getElementById('forumGoogleLoginBtn');
         const forumInput = document.getElementById('forumInput');
@@ -17128,11 +17143,13 @@ $('#queueList')?.addEventListener('click', (e) => {
                 .then((result) => {
                     if (result) {
                         setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
+                        sessionStorage.removeItem('forum_login_pending');
                     }
                 })
                 .catch((error) => {
                     console.error("Redirect login failed", error);
                     setToast('Gagal login: ' + error.message, 'danger');
+                    sessionStorage.removeItem('forum_login_pending');
                 });
 
             onAuthStateChanged(auth, (user) => {
@@ -17294,13 +17311,16 @@ $('#queueList')?.addEventListener('click', (e) => {
             forumGoogleLoginBtn.disabled = true;
             
             try {
+                // Set flag before redirect
+                sessionStorage.setItem('forum_login_pending', 'true');
                 await signInWithRedirect(auth, provider);
                 // Redirect will happen, code below might not run immediately
             } catch (error) {
                 console.error("Login failed", error);
                 setToast('Gagal login: ' + error.message, 'danger');
-                forumGoogleLoginBtn.innerHTML = '<i class="bi bi-google me-2"></i>Masuk dengan Google';
+                forumGoogleLoginBtn.innerHTML = '<i class="bi bi-google me-2"></i>Login Google (Chat)';
                 forumGoogleLoginBtn.disabled = false;
+                sessionStorage.removeItem('forum_login_pending');
             }
         });
 
