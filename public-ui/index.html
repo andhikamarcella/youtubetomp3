@@ -3182,70 +3182,91 @@
   </div>
   </div>
 
-  <!-- Forum Modal (Task 6) -->
+  <!-- Forum Modal (Task 6) - Redesigned -->
   <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content border-0 shadow-lg bg-dark">
-        <div class="modal-header border-bottom-0" style="background-color: #1a1d21; color: white;">
-          <h5 class="modal-title fw-bold" id="forumModalLabel"><i class="bi bi-chat-quote-fill text-primary me-2"></i>Forum Warga</h5>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg"> <!-- Larger Modal -->
+      <div class="modal-content border-0 shadow-lg bg-dark overflow-hidden" style="border-radius: 1.5rem;">
+        
+        <!-- Header -->
+        <div class="modal-header border-bottom-0 p-3 align-items-center" style="background: linear-gradient(135deg, #1a1d21 0%, #212529 100%); color: white;">
+          <div class="d-flex align-items-center gap-3">
+             <div class="position-relative">
+                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px;">
+                    <i class="bi bi-chat-quote-fill text-white fs-5"></i>
+                </div>
+                <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-2 border-dark rounded-circle"></span>
+             </div>
+             <div>
+                <h5 class="modal-title fw-bold mb-0" id="forumModalLabel" style="font-family: 'Poppins', sans-serif;">Forum Warga</h5>
+                <div class="small text-white-50" id="forumOnlineCount"><span class="spinner-border spinner-border-sm" style="width: 0.7em; height: 0.7em;"></span> Online</div>
+             </div>
+          </div>
           <div class="d-flex align-items-center gap-2">
-            <button id="forumLogoutBtn" class="btn btn-sm btn-outline-danger d-none" title="Keluar"><i class="bi bi-box-arrow-right"></i></button>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            <button id="forumLogoutBtn" class="btn btn-sm btn-dark bg-opacity-25 border-0 rounded-circle d-none" style="width: 36px; height: 36px;" title="Keluar"><i class="bi bi-box-arrow-right text-danger"></i></button>
+            <button type="button" class="btn-close btn-close-white bg-dark bg-opacity-50 p-2 rounded-circle" data-bs-dismiss="modal" aria-label="Tutup"></button>
           </div>
         </div>
-        <div class="modal-body p-0 position-relative" style="height: 400px; background-color: #121417;">
-          <!-- Chat Area -->
-          <div id="forumChatArea" class="d-flex flex-column p-3 h-100" style="overflow-y: auto;">
-            <div class="text-center my-3">
-              <span class="badge bg-dark bg-opacity-50 text-secondary border border-secondary rounded-pill px-3 shadow-sm">Hari ini</span>
-            </div>
-            <!-- Welcome Message -->
-            <div class="d-flex align-items-start mb-3 message admin">
-               <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
-               <div class="message-bubble">
-                  <div class="small fw-bold text-primary mb-1">Admin <i class="bi bi-patch-check-fill"></i></div>
-                  <div class="small">Selamat datang di Forum Warga!
-<br><br>
-<b>Rules:</b>
-<br>1. Dilarang SARA & Spam.
-<br>2. Gunakan bahasa sopan.
-<br>3. Hormati sesama warga.
-<br><br>
-Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
-                  <div class="text-end text-body-tertiary mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
-                    <i class="bi bi-pin-angle-fill"></i> Pinned
-                  </div>
-               </div>
-            </div>
+
+        <!-- Chat Body -->
+        <div class="modal-body p-0 position-relative bg-black" style="height: 500px;">
+           <!-- Wallpaper Background -->
+           <div class="position-absolute top-0 start-0 w-100 h-100 opacity-25" style="background-image: url('https://transparenttextures.com/patterns/cubes.png'); pointer-events: none;"></div>
+           
+           <!-- Chat Area -->
+          <div id="forumChatArea" class="d-flex flex-column p-3 h-100 position-relative z-1" style="overflow-y: auto; scroll-behavior: smooth;">
+            <!-- Content Injected by JS -->
           </div>
           
           <!-- Login Overlay -->
-          <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-95 d-flex flex-column align-items-center justify-content-center p-4 text-center" style="backdrop-filter: blur(5px); z-index: 10;">
-              <div class="mb-3 p-3 bg-dark rounded-circle shadow-lg border border-secondary">
-                <i class="bi bi-google text-danger" style="font-size: 3rem;"></i>
+          <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-95 d-flex flex-column align-items-center justify-content-center p-4 text-center z-3" style="backdrop-filter: blur(10px);">
+              <div class="mb-4 p-4 bg-gradient-dark rounded-circle shadow-lg border border-secondary position-relative overflow-hidden">
+                <i class="bi bi-google text-danger position-relative z-1" style="font-size: 3.5rem;"></i>
+                <div class="position-absolute top-0 start-0 w-100 h-100 bg-white opacity-10"></div>
               </div>
-              <h4 class="fw-bold mb-2 text-light" style="font-family: monospace;">Login Diperlukan</h4>
-              <p class="text-secondary small mb-4" style="max-width: 280px; font-family: monospace;">Akses forum dibatasi untuk pengguna terverifikasi demi kenyamanan bersama.</p>
+              <h3 class="fw-bold mb-2 text-white" style="letter-spacing: -0.5px;">Gabung Forum</h3>
+              <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan warga lainnya.</p>
               
-              <button id="forumGoogleLoginBtn" class="btn btn-outline-primary rounded-pill py-2 px-4 d-flex align-items-center gap-2 shadow-sm">
-                  <i class="bi bi-google"></i>
-                  <span>Login Google (Chat)</span>
+              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G">
+                  <span>Masuk dengan Google</span>
               </button>
           </div>
         </div>
-        <!-- Image Preview Container -->
-        <div id="forumPreviewContainer" class="d-none"></div>
         
-        <div class="modal-footer border-top-0 p-3" style="background-color: #1a1d21;">
-          <div class="input-group">
-            <button class="btn btn-dark border-secondary rounded-start-pill ps-3" type="button" id="forumAttachBtn" title="Kirim Gambar"><i class="bi bi-paperclip"></i></button>
-            <button class="btn btn-dark border-secondary border-start-0" type="button" id="forumStickerBtn" title="Stiker"><i class="bi bi-emoji-smile"></i></button>
-            <div class="input-group-text bg-dark border-secondary border-start-0 px-2">
-                <input type="color" class="bubble-color-picker" id="bubbleColorPicker" title="Warna Bubble Chat" value="#d9fdd3">
+        <!-- Attachment Preview Bar (Horizontal Scroll) -->
+        <div id="attachmentPreviewBar" class="d-none bg-dark border-top border-secondary p-2 overflow-x-auto d-flex gap-2 align-items-center" style="white-space: nowrap;">
+            <!-- Preview Items injected here -->
+        </div>
+
+        <!-- Footer / Input Area -->
+        <div class="modal-footer border-top-0 p-2 bg-dark">
+          <div class="d-flex align-items-end w-100 gap-2 bg-secondary bg-opacity-10 rounded-4 p-2 border border-secondary border-opacity-25">
+            
+            <!-- Attachment Menu -->
+            <div class="dropdown">
+                <button class="btn btn-link text-secondary text-decoration-none p-2 rounded-circle hover-bg-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-plus-lg fs-5"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark shadow-lg rounded-4 p-2 mb-2">
+                    <li><button class="dropdown-item rounded-3 py-2" onclick="document.getElementById('forumImageInput').click()"><i class="bi bi-image text-success me-2"></i> Galeri Foto</button></li>
+                    <li><button class="dropdown-item rounded-3 py-2" id="btnCameraOpen"><i class="bi bi-camera text-primary me-2"></i> Kamera</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><button class="dropdown-item rounded-3 py-2" id="forumStickerBtn"><i class="bi bi-emoji-smile text-warning me-2"></i> Stiker</button></li>
+                </ul>
             </div>
-            <input type="file" id="forumImageInput" hidden accept="image/*">
-            <input type="text" id="forumInput" class="form-control border-0 text-dark" style="background-color: #f0f2f5; color: #000 !important;" placeholder="Tulis pesan..." disabled autocomplete="off">
-            <button class="btn btn-primary rounded-end-pill px-4" type="button" id="forumSendBtn" disabled><i class="bi bi-send-fill"></i></button>
+
+            <!-- Text Input -->
+            <div class="flex-grow-1 py-2">
+                <textarea id="forumInput" class="form-control bg-transparent border-0 text-white p-0 shadow-none" rows="1" placeholder="Ketik pesan..." style="resize: none; max-height: 100px;"></textarea>
+            </div>
+            
+            <!-- Hidden Inputs -->
+            <input type="file" id="forumImageInput" hidden accept="image/*" multiple>
+            
+            <!-- Send Button -->
+            <button class="btn btn-primary rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;" type="button" id="forumSendBtn" disabled>
+                <i class="bi bi-send-fill fs-5 ms-1"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -3295,6 +3316,40 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
                 </div>
              </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Editor Modal -->
+  <div class="modal fade" id="editorModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg bg-dark text-white">
+        <div class="modal-header border-bottom border-secondary">
+          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Gambar</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0 d-flex flex-column align-items-center justify-content-center bg-black position-relative" style="height: 500px; overflow: hidden;">
+            <canvas id="editorCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
+            
+            <!-- Text Input Overlay (Hidden by default) -->
+            <div id="textEditorOverlay" class="position-absolute top-50 start-50 translate-middle d-none" style="z-index: 10;">
+                <input type="text" id="editorTextInput" class="form-control form-control-lg bg-transparent text-white text-center border-0 fw-bold display-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8); outline: none; box-shadow: none;" placeholder="Ketik Teks...">
+            </div>
+        </div>
+        <div class="modal-footer border-top border-secondary justify-content-between">
+           <div class="d-flex gap-2">
+               <button class="btn btn-outline-light rounded-circle" id="btnEditCrop" title="Crop (1:1)"><i class="bi bi-crop"></i></button>
+               <button class="btn btn-outline-light rounded-circle" id="btnEditRotate" title="Putar"><i class="bi bi-arrow-clockwise"></i></button>
+               <div class="vr bg-secondary mx-1"></div>
+               <button class="btn btn-outline-light rounded-circle" id="btnEditBrush" title="Gambar"><i class="bi bi-brush"></i></button>
+               <input type="color" id="editorColorPicker" class="form-control form-control-color p-0 border-0 rounded-circle" value="#ff0000" title="Warna" style="width: 38px; height: 38px;">
+               <button class="btn btn-outline-light rounded-circle" id="btnEditText" title="Teks"><i class="bi bi-fonts"></i></button>
+           </div>
+           <div>
+               <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Batal</button>
+               <button type="button" class="btn btn-primary px-4" id="btnSaveEdit"><i class="bi bi-check-lg me-1"></i> Simpan</button>
+           </div>
         </div>
       </div>
     </div>
@@ -4171,6 +4226,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
   import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo",
@@ -4186,6 +4242,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   const analytics = getAnalytics(app);
   const db = getFirestore(app);
   const auth = getAuth(app);
+  const storage = getStorage(app);
   
   // Set persistence to LOCAL to avoid session loss on redirect
   setPersistence(auth, browserLocalPersistence).catch(console.error);
@@ -4193,6 +4250,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
   window.firebaseModules = {
     db,
     auth,
+    storage,
     collection,
     addDoc,
     onSnapshot,
@@ -4208,7 +4266,10 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     GoogleAuthProvider,
     onAuthStateChanged,
     setPersistence,
-    browserLocalPersistence
+    browserLocalPersistence,
+    ref,
+    uploadBytes,
+    getDownloadURL
   };
 </script>
 <script>
@@ -17139,8 +17200,30 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumSendBtn = document.getElementById('forumSendBtn');
         const forumChatArea = document.getElementById('forumChatArea');
         const forumLogoutBtn = document.getElementById('forumLogoutBtn');
+        const forumImageInput = document.getElementById('forumImageInput');
+        const attachmentPreviewBar = document.getElementById('attachmentPreviewBar');
+        const btnCameraOpen = document.getElementById('btnCameraOpen');
+        const forumOnlineCount = document.getElementById('forumOnlineCount');
         
-        // Auto-open logic if returning from login
+        // Editor Elements
+        const editorModalEl = document.getElementById('editorModal');
+        const editorCanvas = document.getElementById('editorCanvas');
+        const btnSaveEdit = document.getElementById('btnSaveEdit');
+        const editorColorPicker = document.getElementById('editorColorPicker');
+        const editorTextInput = document.getElementById('editorTextInput');
+        
+        let editorModal;
+        if(editorModalEl) editorModal = new bootstrap.Modal(editorModalEl);
+
+        let selectedFiles = []; // Array of File objects
+        let activeEditorFileIndex = null;
+        let canvasCtx = null;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentImageObj = null; // Image object for canvas
+
+        // Auto-open logic
         if (sessionStorage.getItem('forum_login_pending') === 'true') {
              const checkBs = setInterval(() => {
                  if(typeof bootstrap !== 'undefined' && forumModal) {
@@ -17149,7 +17232,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                      bsModal.show();
                  }
              }, 500);
-             // Timeout 10s
              setTimeout(() => clearInterval(checkBs), 10000);
         }
 
@@ -17158,12 +17240,217 @@ $('#queueList')?.addEventListener('click', (e) => {
         let unsubscribe = null;
         let currentUser = null;
 
-        // 1. Setup Auth Listener & Handle Redirect
+        // --- File Handling & Preview ---
+        
+        // Handle File Selection
+        if(forumImageInput) {
+            forumImageInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                addFilesToQueue(files);
+                e.target.value = ''; // Reset
+            });
+        }
+        
+        // Handle Camera
+        if(btnCameraOpen) {
+            btnCameraOpen.addEventListener('click', () => {
+                forumImageInput.setAttribute('capture', 'environment');
+                forumImageInput.click();
+                setTimeout(() => forumImageInput.removeAttribute('capture'), 1000); // Reset after click
+            });
+        }
+
+        function addFilesToQueue(files) {
+            files.forEach(file => {
+                if(file.type.startsWith('image/')) {
+                    selectedFiles.push(file);
+                }
+            });
+            renderAttachmentPreview();
+        }
+
+        function renderAttachmentPreview() {
+            if (selectedFiles.length === 0) {
+                attachmentPreviewBar.classList.add('d-none');
+                return;
+            }
+            attachmentPreviewBar.classList.remove('d-none');
+            attachmentPreviewBar.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.className = 'position-relative d-inline-block me-2';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="rounded-3 border border-secondary" style="height: 80px; width: 80px; object-fit: cover;">
+                        <button class="btn btn-sm btn-danger rounded-circle position-absolute top-0 end-0 m-1 p-0 d-flex align-items-center justify-content-center shadow-sm" 
+                            style="width: 20px; height: 20px; font-size: 10px;" onclick="removeFile(${index})"><i class="bi bi-x"></i></button>
+                        <button class="btn btn-sm btn-light rounded-circle position-absolute bottom-0 end-0 m-1 p-0 d-flex align-items-center justify-content-center shadow-sm" 
+                            style="width: 24px; height: 24px;" onclick="openImageEditor(${index})"><i class="bi bi-pencil-fill text-dark" style="font-size: 10px;"></i></button>
+                    `;
+                    attachmentPreviewBar.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+            updateSendButtonState();
+        }
+
+        window.removeFile = (index) => {
+            selectedFiles.splice(index, 1);
+            renderAttachmentPreview();
+        };
+
+        // --- Image Editor Logic ---
+
+        window.openImageEditor = (index) => {
+            activeEditorFileIndex = index;
+            const file = selectedFiles[index];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImageObj = img;
+                    initCanvas(img);
+                    editorModal.show();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function initCanvas(img) {
+            if(!editorCanvas) return;
+            canvasCtx = editorCanvas.getContext('2d');
+            
+            // Set canvas size to fit container but maintain aspect ratio
+            const container = editorCanvas.parentElement;
+            const maxWidth = container.clientWidth;
+            const maxHeight = container.clientHeight;
+            
+            let width = img.width;
+            let height = img.height;
+            
+            // Calculate scale
+            const scale = Math.min(maxWidth / width, maxHeight / height);
+            editorCanvas.width = width * scale;
+            editorCanvas.height = height * scale;
+            
+            // Draw initial image
+            canvasCtx.drawImage(img, 0, 0, editorCanvas.width, editorCanvas.height);
+            
+            // Reset drawing settings
+            canvasCtx.lineJoin = 'round';
+            canvasCtx.lineCap = 'round';
+            canvasCtx.lineWidth = 5;
+            canvasCtx.strokeStyle = editorColorPicker.value;
+        }
+
+        // Editor Tools
+        let editMode = 'none'; // 'brush', 'text'
+
+        if(document.getElementById('btnEditBrush')) {
+            document.getElementById('btnEditBrush').addEventListener('click', () => {
+                editMode = (editMode === 'brush') ? 'none' : 'brush';
+                editorCanvas.style.cursor = (editMode === 'brush') ? 'crosshair' : 'default';
+                setToast(editMode === 'brush' ? 'Mode Gambar Aktif' : 'Mode Gambar Nonaktif', 'info');
+            });
+        }
+        
+        if(document.getElementById('btnEditRotate')) {
+             document.getElementById('btnEditRotate').addEventListener('click', () => {
+                 // Simple 90 deg rotation
+                 const tempCanvas = document.createElement('canvas');
+                 tempCanvas.width = editorCanvas.height;
+                 tempCanvas.height = editorCanvas.width;
+                 const tempCtx = tempCanvas.getContext('2d');
+                 tempCtx.translate(tempCanvas.width/2, tempCanvas.height/2);
+                 tempCtx.rotate(90 * Math.PI / 180);
+                 tempCtx.drawImage(editorCanvas, -editorCanvas.width/2, -editorCanvas.height/2);
+                 
+                 // Resize main canvas and draw back
+                 editorCanvas.width = tempCanvas.width;
+                 editorCanvas.height = tempCanvas.height;
+                 canvasCtx.drawImage(tempCanvas, 0, 0);
+             });
+        }
+        
+        if(document.getElementById('btnEditCrop')) {
+            document.getElementById('btnEditCrop').addEventListener('click', () => {
+                // Crop to center square
+                const size = Math.min(editorCanvas.width, editorCanvas.height);
+                const startX = (editorCanvas.width - size) / 2;
+                const startY = (editorCanvas.height - size) / 2;
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = size;
+                tempCanvas.height = size;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                tempCtx.drawImage(editorCanvas, startX, startY, size, size, 0, 0, size, size);
+                
+                editorCanvas.width = size;
+                editorCanvas.height = size;
+                canvasCtx.drawImage(tempCanvas, 0, 0);
+                setToast('Gambar dipotong (1:1)', 'success');
+            });
+        }
+
+        if(document.getElementById('btnEditText')) {
+            document.getElementById('btnEditText').addEventListener('click', () => {
+                 const text = prompt("Masukkan teks untuk ditambahkan:");
+                 if(text) {
+                     canvasCtx.font = "bold 40px Arial";
+                     canvasCtx.fillStyle = editorColorPicker.value;
+                     canvasCtx.textAlign = "center";
+                     canvasCtx.strokeStyle = "white";
+                     canvasCtx.lineWidth = 3;
+                     
+                     // Draw center
+                     canvasCtx.strokeText(text, editorCanvas.width/2, editorCanvas.height/2);
+                     canvasCtx.fillText(text, editorCanvas.width/2, editorCanvas.height/2);
+                 }
+            });
+        }
+
+        // Drawing Events
+        editorCanvas.addEventListener('mousedown', (e) => {
+            if(editMode !== 'brush') return;
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+        editorCanvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing || editMode !== 'brush') return;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(lastX, lastY);
+            canvasCtx.lineTo(e.offsetX, e.offsetY);
+            canvasCtx.strokeStyle = editorColorPicker.value;
+            canvasCtx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        });
+        editorCanvas.addEventListener('mouseup', () => isDrawing = false);
+        editorCanvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // Save Edited Image
+        if(btnSaveEdit) {
+            btnSaveEdit.addEventListener('click', () => {
+                editorCanvas.toBlob((blob) => {
+                    // Create new File object
+                    const originalFile = selectedFiles[activeEditorFileIndex];
+                    const newFile = new File([blob], "edited_" + originalFile.name, { type: "image/png" });
+                    selectedFiles[activeEditorFileIndex] = newFile;
+                    renderAttachmentPreview();
+                    editorModal.hide();
+                }, 'image/png');
+            });
+        }
+
+        // --- Auth & Chat Logic ---
+
         function initAuth() {
             if (!window.firebaseModules || !window.firebaseModules.auth) return;
-            const { auth, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } = window.firebaseModules;
+            const { auth, onAuthStateChanged, getRedirectResult } = window.firebaseModules;
 
-            // Show loading state if we are returning from a redirect
             if (sessionStorage.getItem('forum_login_pending') === 'true') {
                  forumLoginOverlay.innerHTML = `
                     <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
@@ -17171,34 +17458,24 @@ $('#queueList')?.addEventListener('click', (e) => {
                  `;
             }
 
-            // Handle Redirect Result (if returning from Google)
-            getRedirectResult(auth)
-                .then((result) => {
-                    if (result) {
-                        setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
-                        sessionStorage.removeItem('forum_login_pending');
-                        // Force hide overlay immediately
-                        forumLoginOverlay.classList.remove('d-flex');
-                        forumLoginOverlay.classList.add('d-none');
-                        // Restore Overlay Content just in case logout happens later
-                        setTimeout(restoreOverlayContent, 1000);
-                    }
-                })
-                .catch((error) => {
-                    console.error("Redirect login failed", error);
-                    // Don't show error if no redirect happened
-                    if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/null-user') {
-                         setToast('Gagal login: ' + error.message, 'danger');
-                    }
+            getRedirectResult(auth).then((result) => {
+                if (result) {
+                    setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
                     sessionStorage.removeItem('forum_login_pending');
-                    restoreOverlayContent();
-                });
+                    forumLoginOverlay.classList.remove('d-flex');
+                    forumLoginOverlay.classList.add('d-none');
+                    setTimeout(restoreOverlayContent, 1000);
+                }
+            }).catch((error) => {
+                console.error("Redirect login failed", error);
+                sessionStorage.removeItem('forum_login_pending');
+                restoreOverlayContent();
+            });
 
             onAuthStateChanged(auth, async (user) => {
                 currentUser = user;
                 if (user) {
-                    // Logged In
-                    // Create/Update User Document (Essential for Permissions)
+                    // Create/Update User Document
                     try {
                         const { db, doc, setDoc, serverTimestamp } = window.firebaseModules;
                         if(db && doc && setDoc && serverTimestamp) {
@@ -17210,12 +17487,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                                 lastLogin: serverTimestamp()
                             }, { merge: true });
                         }
-                    } catch (e) {
-                         console.warn("User doc update failed:", e);
-                         if (e.code === 'permission-denied') {
-                             setToast('Gagal menyimpan profil user. Cek Rules Database!', 'danger');
-                         }
-                    }
+                    } catch (e) { console.warn("User doc update failed:", e); }
 
                     forumLoginOverlay.classList.remove('d-flex');
                     forumLoginOverlay.classList.add('d-none');
@@ -17224,65 +17496,54 @@ $('#queueList')?.addEventListener('click', (e) => {
                     if(forumLogoutBtn) forumLogoutBtn.classList.remove('d-none');
                     startChatListener();
                 } else {
-                    // Logged Out
                     forumLoginOverlay.classList.remove('d-none');
                     forumLoginOverlay.classList.add('d-flex');
                     forumInput.disabled = true;
                     forumSendBtn.disabled = true;
                     if(forumLogoutBtn) forumLogoutBtn.classList.add('d-none');
                     if(unsubscribe) unsubscribe();
-                    // If we were showing loading, restore content
-                    if (forumLoginOverlay.querySelector('.spinner-border')) {
-                        restoreOverlayContent();
-                    }
+                    if (forumLoginOverlay.querySelector('.spinner-border')) restoreOverlayContent();
                 }
             });
         }
         
         function restoreOverlayContent() {
              forumLoginOverlay.innerHTML = `
-              <div class="mb-3 p-3 bg-dark rounded-circle shadow-lg border border-secondary">
-                <i class="bi bi-google text-danger" style="font-size: 3rem;"></i>
+              <div class="mb-4 p-4 bg-gradient-dark rounded-circle shadow-lg border border-secondary position-relative overflow-hidden">
+                <i class="bi bi-google text-danger position-relative z-1" style="font-size: 3.5rem;"></i>
+                <div class="position-absolute top-0 start-0 w-100 h-100 bg-white opacity-10"></div>
               </div>
-              <h4 class="fw-bold mb-2 text-light" style="font-family: monospace;">Login Diperlukan</h4>
-              <p class="text-secondary small mb-4" style="max-width: 280px; font-family: monospace;">Akses forum dibatasi untuk pengguna terverifikasi demi kenyamanan bersama.</p>
+              <h3 class="fw-bold mb-2 text-white" style="letter-spacing: -0.5px;">Gabung Forum</h3>
+              <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan warga lainnya.</p>
               
-              <button id="forumGoogleLoginBtn" class="btn btn-outline-primary rounded-pill py-2 px-4 d-flex align-items-center gap-2 shadow-sm">
-                  <i class="bi bi-google"></i>
-                  <span>Login Google (Chat)</span>
+              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G">
+                  <span>Masuk dengan Google</span>
               </button>`;
-              
-              // Re-attach event listener since we replaced HTML
               const newBtn = document.getElementById('forumGoogleLoginBtn');
               if(newBtn) newBtn.addEventListener('click', handleLoginClick);
         }
 
-        // Call initAuth when modules are ready (Polling)
         const moduleCheckInterval = setInterval(() => {
             if (window.firebaseModules && window.firebaseModules.auth) {
                 clearInterval(moduleCheckInterval);
                 initAuth();
             }
         }, 500);
-
         setTimeout(() => clearInterval(moduleCheckInterval), 15000);
 
         async function startChatListener() {
              if (!window.firebaseModules || !window.firebaseModules.db) return;
-             
-             // Validasi user sebelum memulai listener
              if (!currentUser) return;
 
              const { db, collection, query, orderBy, limit, onSnapshot, auth } = window.firebaseModules;
              
-             // Refresh token untuk memastikan izin akses database valid
+             // Update Online Count (Fake for now, or just show connected)
+             if(forumOnlineCount) forumOnlineCount.innerHTML = '<span class="text-success">●</span> Terhubung';
+
              try {
-                if (auth && auth.currentUser) {
-                    await auth.currentUser.getIdToken(true);
-                }
-             } catch (e) {
-                console.warn("Token refresh warning:", e);
-             }
+                if (auth && auth.currentUser) await auth.currentUser.getIdToken(true);
+             } catch (e) {}
              
              const q = query(collection(db, "forum-messages"), orderBy("timestamp", "asc"), limit(50));
              
@@ -17291,35 +17552,19 @@ $('#queueList')?.addEventListener('click', (e) => {
              unsubscribe = onSnapshot(q, (snapshot) => {
                  forumChatArea.innerHTML = '';
                  
-                 // 1. Re-inject Pinned Admin Rules Message (With Gradient)
+                 // Pinned Message
                  const pinnedRules = `
                     <div class="d-flex align-items-start mb-3 message admin">
                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
                        <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
                           <div class="small fw-bold text-white mb-1">Admin <i class="bi bi-patch-check-fill text-info"></i></div>
-                          <div class="small text-white">Selamat datang di Forum Warga!
-                          <br><br>
-                          <b>Rules:</b>
-                          <br>1. Dilarang SARA & Spam.
-                          <br>2. Gunakan bahasa sopan.
-                          <br>3. Hormati sesama warga.
-                          <br><br>
-                          Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya biar aman.</div>
+                          <div class="small text-white">Selamat datang di Forum Warga!<br>Gunakan fitur baru: Upload Foto, Edit Foto, dan Stiker!</div>
                           <div class="text-end text-white-50 mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
                             <i class="bi bi-pin-angle-fill"></i> Pinned
                           </div>
                        </div>
                     </div>`;
                  forumChatArea.insertAdjacentHTML('beforeend', pinnedRules);
-
-                 // 2. System Join Message
-                 const joinMsg = `
-                    <div class="text-center my-3 small text-secondary">
-                       <span class="bg-dark bg-opacity-50 text-light px-2 py-1 rounded-pill border border-secondary">
-                          <i class="bi bi-person-plus-fill me-1"></i> Obrolan Warga Realtime
-                       </span>
-                    </div>`;
-                 forumChatArea.insertAdjacentHTML('beforeend', joinMsg);
 
                  snapshot.forEach((doc) => {
                      const data = doc.data();
@@ -17329,19 +17574,13 @@ $('#queueList')?.addEventListener('click', (e) => {
              }, (error) => {
                  console.error("Error getting chats:", error);
                  if (error.code === 'permission-denied') {
-                     // Hapus auto-logout yang menyebabkan loop
                      setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
-                     
-                     // Show Retry UI in Chat Area
                      const retryHtml = `
                         <div class="text-center my-3">
                             <div class="alert alert-danger d-inline-block p-2 small shadow-sm">
                                 <i class="bi bi-exclamation-triangle-fill me-1"></i> <b>Akses Ditolak Database</b>
-                                <br>Admin wajib mengatur "Firestore Rules" di Console Firebase agar bisa chat.
-                                <br><small>Buka Console > Firestore > Rules, lalu set:<br><code>allow read, write: if request.auth != null;</code></small>
-                                <br><button class="btn btn-sm btn-danger mt-2 rounded-pill px-3" onclick="location.reload()">
-                                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Halaman
-                                </button>
+                                <br>Admin wajib mengatur "Firestore Rules".
+                                <br><button class="btn btn-sm btn-danger mt-2 rounded-pill px-3" onclick="location.reload()">Refresh</button>
                             </div>
                         </div>`;
                      forumChatArea.insertAdjacentHTML('beforeend', retryHtml);
@@ -17362,97 +17601,99 @@ $('#queueList')?.addEventListener('click', (e) => {
                  timeStr = date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
              }
 
+             // Handle Images
+             let imagesHtml = '';
+             if(data.images && Array.isArray(data.images) && data.images.length > 0) {
+                 imagesHtml = `<div class="d-flex flex-wrap gap-1 mt-2 mb-1">`;
+                 data.images.forEach(url => {
+                     imagesHtml += `<img src="${url}" class="rounded-3 cursor-pointer shadow-sm border" style="max-width: 150px; max-height: 150px; object-fit: cover;" onclick="window.openPreview('${url}')">`;
+                 });
+                 imagesHtml += `</div>`;
+             }
+             // Backwards compatibility for single sticker/image field if any
+             if(data.stickerUrl) {
+                  imagesHtml += `<img src="${data.stickerUrl}" class="d-block mt-2" style="width: 120px;">`;
+             }
+
+             let msgContent = `<div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>` + imagesHtml;
+             
              let msgHtml;
              if (isAdmin) {
                  msgHtml = `
-                <div class="d-flex align-items-start mb-3 flex-row-reverse message admin">
+                <div class="d-flex align-items-end mb-3 flex-row-reverse message admin">
                      <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid gold;">
                         ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                      </div>
-                     <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
+                     <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
                         <div class="small fw-bold text-white mb-1"><i class="bi bi-shield-check me-1 text-warning"></i>ADMIN</div>
-                        <div class="small text-white">${(data.text||'').replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all text-white"></i></div>
+                        ${msgContent}
+                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr}</div>
                      </div>
                   </div>`;
              } else if (isMe) {
                  msgHtml = `
-                <div class="d-flex align-items-start mb-3 flex-row-reverse">
+                <div class="d-flex align-items-end mb-3 flex-row-reverse">
                      <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
                         ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ME'}
                      </div>
-                     <div class="message-bubble p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%; background-color: #d9fdd3; color: #000;">
-                        <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-secondary mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all"></i></div>
+                     <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0" style="max-width: 85%; background-color: #005c4b; color: #fff;">
+                        ${msgContent}
+                        <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all"></i></div>
                      </div>
                   </div>`;
              } else {
                  msgHtml = `
-                <div class="d-flex align-items-start mb-3">
+                <div class="d-flex align-items-end mb-3">
                      <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
                         ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'USR'}
                      </div>
-                     <div class="bg-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
-                        <div class="small fw-bold text-secondary mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
-                        <div class="small text-dark">${(data.text||'').replace(/</g, "&lt;")}</div>
-                        <div class="text-end text-body-tertiary mt-1" style="font-size: 0.65rem;">${timeStr}</div>
+                     <div class="message-bubble bg-dark text-white p-3 rounded-4 rounded-bottom-left-0 shadow-sm border border-secondary" style="max-width: 85%;">
+                        <div class="small fw-bold text-info mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
+                        ${msgContent}
+                        <div class="text-end text-secondary mt-1" style="font-size: 0.65rem;">${timeStr}</div>
                      </div>
                   </div>`;
              }
              forumChatArea.insertAdjacentHTML('beforeend', msgHtml);
         }
 
-        // Real Google Login
+        window.openPreview = (src) => {
+            const modalEl = document.getElementById('imagePreviewModal');
+            const imgEl = document.getElementById('previewModalImage');
+            if(modalEl && imgEl) {
+                imgEl.src = src;
+                const bsModal = new bootstrap.Modal(modalEl);
+                bsModal.show();
+            }
+        };
+
         async function handleLoginClick() {
+            // ... (Keep existing login logic mostly same but ensure new UI is handled)
             const btn = document.getElementById('forumGoogleLoginBtn');
             if(!btn) return;
-            
-            if (!window.firebaseModules || !window.firebaseModules.auth) {
-                 setToast('Firebase belum siap, coba refresh.', 'warning');
-                 return;
-            }
-            const { auth, signInWithRedirect, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence } = window.firebaseModules;
-            
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengarahkan...';
+            if (!window.firebaseModules || !window.firebaseModules.auth) return;
+            const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
             btn.disabled = true;
-            
             try {
                 const provider = new GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
-                
-                // Prioritize Popup for all devices to avoid redirect loops
                 try {
                     const result = await signInWithPopup(auth, provider);
                     if (result && result.user) {
-                        setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
+                        setToast('Login berhasil!', 'success');
                         sessionStorage.removeItem('forum_login_pending');
-                        document.getElementById('forumLoginOverlay')?.classList.remove('d-flex');
-                        document.getElementById('forumLoginOverlay')?.classList.add('d-none');
+                        forumLoginOverlay.classList.remove('d-flex');
+                        forumLoginOverlay.classList.add('d-none');
                     }
                 } catch (popupErr) {
-                    const code = popupErr?.code || '';
-                    const msg = (popupErr?.message || '').toLowerCase();
-                    if (
-                        code === 'auth/popup-blocked' ||
-                        code === 'auth/cancelled-popup-request' ||
-                        code === 'auth/popup-closed-by-user' ||
-                        code === 'auth/operation-not-supported-in-this-environment' ||
-                        code === 'auth/internal-error' ||
-                        msg.includes('blocked') ||
-                        msg.includes('closed')
-                    ) {
-                        sessionStorage.setItem('forum_login_pending', 'true');
-                        await signInWithRedirect(auth, provider);
-                        return;
-                    }
-                    throw popupErr;
+                    sessionStorage.setItem('forum_login_pending', 'true');
+                    await signInWithRedirect(auth, provider);
                 }
             } catch (error) {
-                console.error("Login failed", error);
-                setToast('Gagal login: ' + error.message, 'danger');
-                btn.innerHTML = '<i class="bi bi-google me-2"></i>Login Google (Chat)';
+                console.error(error);
+                btn.innerHTML = 'Login Google';
                 btn.disabled = false;
-                sessionStorage.removeItem('forum_login_pending');
             }
         }
         
@@ -17461,52 +17702,167 @@ $('#queueList')?.addEventListener('click', (e) => {
         if(forumLogoutBtn) {
             forumLogoutBtn.addEventListener('click', () => {
                 if(window.firebaseModules && window.firebaseModules.auth) {
-                    window.firebaseModules.auth.signOut().then(() => {
-                        setToast('Berhasil logout.', 'success');
-                    });
+                    window.firebaseModules.auth.signOut().then(() => setToast('Berhasil logout.', 'success'));
                 }
             });
         }
 
         async function sendForumMessage() {
             const text = forumInput.value.trim();
-            if(!text) return;
-            if(!currentUser) {
-                setToast('Anda belum login!', 'warning');
-                return;
-            }
+            if(!text && selectedFiles.length === 0) return;
+            if(!currentUser) { setToast('Anda belum login!', 'warning'); return; }
             
-            const { db, collection, addDoc, serverTimestamp, auth } = window.firebaseModules;
+            const { db, collection, addDoc, serverTimestamp, auth, storage, ref, uploadBytes, getDownloadURL } = window.firebaseModules;
+
+            forumSendBtn.disabled = true;
+            forumSendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
             try {
-                // Ensure fresh token if needed
-                if(auth && auth.currentUser) await auth.currentUser.getIdToken(true);
+                // Upload Images
+                let imageUrls = [];
+                if(selectedFiles.length > 0 && storage) {
+                     for (const file of selectedFiles) {
+                         const storageRef = ref(storage, `forum-uploads/${currentUser.uid}/${Date.now()}_${file.name}`);
+                         const snapshot = await uploadBytes(storageRef, file);
+                         const url = await getDownloadURL(snapshot.ref);
+                         imageUrls.push(url);
+                     }
+                }
 
                 const msgData = {
                     text: text,
                     uid: currentUser.uid,
                     name: currentUser.displayName || 'Warga',
-                    timestamp: serverTimestamp()
+                    timestamp: serverTimestamp(),
+                    images: imageUrls
                 };
                 if(currentUser.email) msgData.email = currentUser.email;
                 if(currentUser.photoURL) msgData.photoURL = currentUser.photoURL;
 
                 await addDoc(collection(db, "forum-messages"), msgData);
+                
+                // Reset Input
                 forumInput.value = '';
+                selectedFiles = [];
+                renderAttachmentPreview();
+                
             } catch (e) {
                 console.error(e);
-                if (e.code === 'permission-denied') {
-                    setToast('Gagal kirim: Izin ditolak. Silakan login ulang.', 'danger');
-                } else {
-                    setToast('Gagal kirim pesan: ' + e.message, 'danger');
-                }
+                setToast('Gagal kirim: ' + e.message, 'danger');
+            } finally {
+                forumSendBtn.disabled = false;
+                forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
+                updateSendButtonState();
             }
+        }
+        
+        function updateSendButtonState() {
+             const hasText = forumInput.value.trim().length > 0;
+             const hasFiles = selectedFiles.length > 0;
+             if(hasText || hasFiles) forumSendBtn.disabled = false;
+             else forumSendBtn.disabled = true;
         }
 
         if(forumSendBtn) {
             forumSendBtn.addEventListener('click', sendForumMessage);
+            forumInput.addEventListener('input', updateSendButtonState);
+            // Handle Enter key for text only if no files (or just shift+enter for newline)
             forumInput.addEventListener('keypress', (e) => {
-                if(e.key === 'Enter') sendForumMessage();
+                if(e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendForumMessage();
+                }
+            });
+        }
+        
+        // Sticker Integration
+        window.sendSticker = (url) => {
+             // For stickers, we send as a message with just image URL (backward compat or new field)
+             // Let's use the new images field for consistency, or text field if it's a link?
+             // Actually, let's treat sticker as an image URL in 'stickerUrl' field for special rendering size
+             const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+             if(!currentUser) return;
+             
+             addDoc(collection(db, "forum-messages"), {
+                 uid: currentUser.uid,
+                 name: currentUser.displayName || 'Warga',
+                 timestamp: serverTimestamp(),
+                 email: currentUser.email,
+                 photoURL: currentUser.photoURL,
+                 stickerUrl: url,
+                 text: ''
+             });
+             
+             const stickerModalEl = document.getElementById('stickerModal');
+             const stickerModal = bootstrap.Modal.getInstance(stickerModalEl);
+             if(stickerModal) stickerModal.hide();
+        };
+        
+        // Sticker Button
+        if(document.getElementById('forumStickerBtn')) {
+             document.getElementById('forumStickerBtn').addEventListener('click', () => {
+                  const stickerModalEl = document.getElementById('stickerModal');
+                  const bsModal = new bootstrap.Modal(stickerModalEl);
+                  bsModal.show();
+                  loadCustomStickers();
+             });
+        }
+
+        // Custom Sticker Logic
+        const btnCreateSticker = document.getElementById('btnCreateSticker');
+        const stickerUploadInput = document.getElementById('stickerUploadInput');
+        const customStickerGrid = document.getElementById('customStickerGrid');
+
+        if(btnCreateSticker && stickerUploadInput) {
+            btnCreateSticker.addEventListener('click', () => stickerUploadInput.click());
+            
+            stickerUploadInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+                
+                // 1. Upload to Storage
+                const { storage, ref, uploadBytes, getDownloadURL } = window.firebaseModules;
+                if(!storage || !currentUser) {
+                    setToast('Login dulu untuk buat stiker.', 'warning');
+                    return;
+                }
+                
+                try {
+                    setToast('Mengunggah stiker...', 'info');
+                    const storageRef = ref(storage, `stickers/${currentUser.uid}/${Date.now()}_${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    const url = await getDownloadURL(snapshot.ref);
+                    
+                    // 2. Save to LocalStorage
+                    let stickers = JSON.parse(localStorage.getItem('myStickers') || '[]');
+                    stickers.push(url);
+                    localStorage.setItem('myStickers', JSON.stringify(stickers));
+                    
+                    loadCustomStickers();
+                    setToast('Stiker berhasil dibuat!', 'success');
+                } catch(err) {
+                    console.error(err);
+                    setToast('Gagal buat stiker.', 'danger');
+                }
+            });
+        }
+
+        function loadCustomStickers() {
+            if(!customStickerGrid) return;
+            const stickers = JSON.parse(localStorage.getItem('myStickers') || '[]');
+            customStickerGrid.innerHTML = '';
+            
+            if(stickers.length === 0) {
+                customStickerGrid.innerHTML = '<div class="text-center text-secondary small mt-3">Belum ada stiker custom.</div>';
+                return;
+            }
+            
+            stickers.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'sticker-item sticker-img';
+                img.onclick = () => window.sendSticker(url);
+                customStickerGrid.appendChild(img);
             });
         }
     }
