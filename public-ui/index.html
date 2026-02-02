@@ -4915,7 +4915,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
       ringtoneSummaryIphone: 'Versi iPhone siap diunduh.',
       ringtoneSummaryBoth: 'Versi Android & iPhone siap diunduh.',
       voiceStatusReady: 'Perintah suara siap digunakan.',
-      voiceStatusListening: 'Mendengarkan' ucapkan 'buka donasi' atau 'mainkan game....',
+      voiceStatusListening: 'Mendengarkan... ucapkan \'buka donasi\' atau \'mainkan game...\'',
       voiceStatusStopped: 'Perintah suara dihentikan.',
       voiceStatusUnsupported: 'Browser belum mendukung voice recognition.',
       toastVoiceHandled: 'Perintah suara: {value}',
@@ -4988,7 +4988,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
       ringtoneSummaryIphone: 'iPhone version ready to download.',
       ringtoneSummaryBoth: 'Android & iPhone versions ready to download.',
       voiceStatusReady: 'Voice commands are ready.',
-      voiceStatusListening: 'Listening' say 'open donation' or 'play the game....',
+      voiceStatusListening: 'Listening say "open donation" or "play the game...."',
       voiceStatusStopped: 'Voice command stopped.',
       voiceStatusUnsupported: 'This browser does not support voice recognition.',
       toastVoiceHandled: 'Voice command: {value}',
@@ -5239,7 +5239,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
   'Isi username dan password admin': { en: 'Enter admin username and password' },
   'Job diproses di latar': { en: 'Job processed in background' },
   'Download': { en: 'Download' },
-  'Kamu offline ' mode PWA siap dipakai': { en: 'You are offline ' PWA mode ready' },
+  'Kamu offline - mode PWA siap dipakai': { en: 'You are offline - PWA mode ready' },
   'Konami code aktif!': { en: 'Konami code activated!' },
   'Koneksi kembali online': { en: 'Connection restored' },
   'Konversi audio dulu sebelum memberi rating': { en: 'Convert audio before rating' },
@@ -15606,10 +15606,6 @@ $('#queueList')?.addEventListener('click', (e) => {
   const basicFilename = document.getElementById('basic-filename');
   const basicErrorMsg = document.getElementById('basic-error-msg');
   const basicPasteBtn = document.getElementById('basic-paste-btn');
-
-  const vibrate = (ms = 50) => {
-    if (navigator.vibrate) navigator.vibrate(ms);
-  };
 
   const levenshteinDistance = (a, b) => {
     if (!a || !b) return 100;
