@@ -8,6 +8,21 @@ YoutubeDL = None
 YouTube = None
 
 
+def upgrade_ytdlp() -> bool:
+    global YoutubeDL
+    flag = str(os.environ.get("YTDLP_AUTO_UPGRADE", "1") or "").strip().lower()
+    if flag in {"0", "false", "no", "off"}:
+        return False
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet", "--upgrade", "yt-dlp"]
+        )
+        YoutubeDL = None
+        return ensure_ytdlp()
+    except Exception:
+        return False
+
+
 def ensure_ytdlp() -> bool:
     """Lazily import yt_dlp, installing it when absent."""
 
@@ -90,40 +105,64 @@ def download_with_ytdlp(
         raise RuntimeError("yt_dlp unavailable")
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
-    opts = {
+    base_opts = {
         "format": "bestaudio/best",
         "outtmpl": template,
         "restrictfilenames": False,
         "noplaylist": True,
         "quiet": False,
         "no_warnings": False,
+        "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
         "nocheckcertificate": True,
         "cachedir": False,
         "ignoreerrors": False,
     }
 
     if cookies_path and os.path.isfile(cookies_path):
-        opts["cookiefile"] = cookies_path
+        base_opts["cookiefile"] = cookies_path
 
-    with YoutubeDL(opts) as ydl:  # type: ignore[misc]
-        info = ydl.extract_info(url, download=True)
-        if info is None:
-            raise RuntimeError("yt_dlp returned no metadata")
+    compat_opts = dict(base_opts)
+    compat_opts["force_ipv4"] = True
+    compat_opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
 
-        for candidate in _iter_candidates(info):
-            filename: Optional[str] = None
-            if isinstance(candidate, dict):
-                filename = candidate.get("_filename")
-            if filename and os.path.isfile(filename):
-                return os.path.abspath(filename)
-            try:
-                guess = ydl.prepare_filename(candidate)
-            except Exception:
+    relaxed_opts = dict(compat_opts)
+    relaxed_opts["format"] = "best"
+
+    last_exc: Optional[Exception] = None
+    upgrade_tried = False
+    attempts = [base_opts, compat_opts, relaxed_opts]
+    for opts in attempts:
+        try:
+            with YoutubeDL(opts) as ydl:  # type: ignore[misc]
+                info = ydl.extract_info(url, download=True)
+                if info is None:
+                    raise RuntimeError("yt_dlp returned no metadata")
+
+                for candidate in _iter_candidates(info):
+                    filename: Optional[str] = None
+                    if isinstance(candidate, dict):
+                        filename = candidate.get("_filename")
+                    if filename and os.path.isfile(filename):
+                        return os.path.abspath(filename)
+                    try:
+                        guess = ydl.prepare_filename(candidate)
+                    except Exception:
+                        continue
+                    if guess and os.path.isfile(guess):
+                        return os.path.abspath(guess)
+        except Exception as exc:
+            last_exc = exc
+            text = str(exc)
+            if (
+                not upgrade_tried
+                and ("Requested format is not available" in text or "HTTP Error 400" in text or "HTTP Error 403" in text)
+                and upgrade_ytdlp()
+            ):
+                upgrade_tried = True
                 continue
-            if guess and os.path.isfile(guess):
-                return os.path.abspath(guess)
 
-    raise RuntimeError("yt_dlp did not produce an output file")
+    raise RuntimeError(f"yt_dlp did not produce an output file: {last_exc}")
 
 
 def download_with_pytube(url: str, out_dir: str, out_basename: str) -> str:
