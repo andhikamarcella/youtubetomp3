@@ -17991,190 +17991,42 @@ $('#queueList')?.addEventListener('click', (e) => {
                   const stickerModalEl = document.getElementById('stickerModal');
                   const bsModal = new bootstrap.Modal(stickerModalEl);
                   bsModal.show();
-                  loadCustomStickers();
+                  loadGeneralStickers();
              });
         }
 
-        // Custom Sticker Logic
-        const btnCreateSticker = document.getElementById('btnCreateSticker');
-        const stickerUploadInput = document.getElementById('stickerUploadInput');
-        const customStickerGrid = document.getElementById('customStickerGrid');
-
-        if(btnCreateSticker && stickerUploadInput) {
-            btnCreateSticker.addEventListener('click', () => stickerUploadInput.click());
-            
-            stickerUploadInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                
-                // Open Editor first for Stickers too!
-                selectedFiles = [file];
-                activeEditorFileIndex = 0;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        currentImageObj = img;
-                        initCanvas(img);
-                        editorModal.show();
-                        
-                        // Override Save Button for Sticker
-                        const newSaveBtn = btnSaveEdit.cloneNode(true);
-                        btnSaveEdit.replaceWith(newSaveBtn);
-                        // Re-select because replaced
-                        const actualSaveBtn = document.getElementById('btnSaveEdit');
-                        
-                        actualSaveBtn.onclick = () => {
-                            editorCanvas.toBlob(async (blob) => {
-                                // Upload to Cloudinary
-                                try {
-                                    setToast('Mengunggah stiker...', 'info');
-                                    const editedFile = new File([blob], "sticker_" + file.name, { type: "image/png" });
-                                    const url = await uploadToCloudinary(editedFile, 'stickers');
-                                    
-                                    // Save to LocalStorage
-                                    let stickers = JSON.parse(localStorage.getItem('myStickers') || '[]');
-                                    stickers.push(url);
-                                    localStorage.setItem('myStickers', JSON.stringify(stickers));
-                                    
-                                    loadCustomStickers();
-                                    setToast('Stiker berhasil dibuat!', 'success');
-                                    editorModal.hide();
-                                    
-                                    // Restore Save Button Behavior for Normal Chat
-                                    // (Simple reload or re-attach listener? Re-attach is better but complicated scope)
-                                    // We will just reload page or reset listener. 
-                                    // Let's reset listener to normal chat function.
-                                    actualSaveBtn.onclick = saveChatImage;
-                                    
-                                } catch(err) {
-                                    console.error(err);
-                                    setToast('Gagal buat stiker: ' + (err.message || 'Error'), 'danger');
-                                }
-                            }, 'image/png');
-                        };
-                    };
-                    img.src = ev.target.result;
-                };
-                reader.readAsDataURL(file);
-                e.target.value = ''; // Reset input
-            });
-        }
-        
-        // Define normal save function
-        const saveChatImage = () => {
-           if (!editorCanvas) return;
-           editorCanvas.toBlob((blob) => {
-               const originalFile = selectedFiles[activeEditorFileIndex];
-               const newFile = new File([blob], "edited_" + originalFile.name, { type: "image/png" });
-               selectedFiles[activeEditorFileIndex] = newFile;
-               renderAttachmentPreview();
-               editorModal.hide();
-           }, 'image/png');
-        };
-        
-        // Initial Attach
-        if(btnSaveEdit) btnSaveEdit.addEventListener('click', saveChatImage);
-        
-        // Fix Black Screen on Editor (Ensure Image Loaded)
-        if(editorModalEl) {
-            editorModalEl.addEventListener('shown.bs.modal', () => {
-                // Re-draw if needed to fix layout issues
-                if(currentImageObj && canvasCtx) {
-                    initCanvas(currentImageObj);
-                }
-            });
-        }
-
-        function loadCustomStickers() {
-            if(!customStickerGrid) return;
-            const stickers = JSON.parse(localStorage.getItem('myStickers') || '[]');
-            customStickerGrid.innerHTML = '';
-            
-            if(stickers.length === 0) {
-                customStickerGrid.innerHTML = '<div class="text-center text-secondary small mt-3">Belum ada stiker custom.</div>';
-            } else {
-                stickers.forEach(url => {
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.className = 'sticker-item sticker-img';
-                    img.onclick = () => window.sendSticker(url);
-                    customStickerGrid.appendChild(img);
-                });
-            }
-            
-            // Populate General Stickers (Pack) - Fetch from Cloudinary 'stickers/umum'
+        function loadGeneralStickers() {
+            // Populate General Stickers (Pack) - Fetch from Firestore 'stickers' collection
             const packTab = document.getElementById('sticker-pack');
-            if(packTab && packTab.querySelector('.sticker-grid').children.length <= 3) {
+            if(packTab && (!packTab.querySelector('.sticker-grid') || packTab.querySelector('.sticker-grid').children.length === 0)) {
                 // Loading State
                 packTab.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 small text-secondary">Memuat stiker umum...</div></div>';
                 
-                // Function to render stickers
-                const renderStickers = (list) => {
-                    let gridHtml = '<div class="sticker-grid">';
-                    list.forEach(s => {
-                        gridHtml += `<img src="${s}" class="sticker-item sticker-img" loading="lazy" onclick="sendSticker('${s}')">`;
-                    });
-                    gridHtml += '</div>';
-                    packTab.innerHTML = gridHtml;
-                };
-
-                const cloudName = 'dgbal8btf';
-                const apiKey = '422728616314883';
-                const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE'; 
+                const { db, collection, getDocs } = window.firebaseModules;
                 
-                const timestamp = Math.round((new Date()).getTime() / 1000);
-                
-                // Parameters for listing resources in a folder via Cloudinary API
-                const params = {
-                    timestamp: timestamp,
-                    type: 'upload',
-                    prefix: 'stickers/umum', // Folder path
-                    max_results: 100
-                };
-                
-                // Sort params for signature
-                const sortedKeys = Object.keys(params).sort();
-                let signatureStr = '';
-                sortedKeys.forEach(key => {
-                    signatureStr += `${key}=${params[key]}&`;
-                });
-                signatureStr = signatureStr.slice(0, -1) + apiSecret; // Remove last & and add secret
-                
-                async function sha1(str) {
-                    const enc = new TextEncoder();
-                    const hash = await crypto.subtle.digest('SHA-1', enc.encode(str));
-                    return Array.from(new Uint8Array(hash)).map(v => v.toString(16).padStart(2, '0')).join('');
-                }
-                
-                sha1(signatureStr).then(signature => {
-                    const queryParams = new URLSearchParams(params);
-                    queryParams.append('api_key', apiKey);
-                    queryParams.append('signature', signature);
-                    
-                    // Fetch resources using Admin API (Client-side signed listing)
-                    fetch(`https://api.cloudinary.com/v1_1/${cloudName}/resources/image?${queryParams.toString()}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            if(data.resources && data.resources.length > 0) {
-                                const urls = data.resources.map(res => res.secure_url);
-                                renderStickers(urls);
-                            } else {
-                                // Fallback if folder empty or not found
-                                console.warn('Cloudinary Folder Empty/Error, using fallback GIPHY');
-                                const fallbackStickers = [
-                                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/3o7TKSjRrfIPjeiVyM/giphy.gif",
-                                    "https://media.giphy.com/media/Cat/giphy.gif"
-                                ];
-                                renderStickers(fallbackStickers);
-                                setToast('Folder stickers/umum kosong atau tidak ditemukan.', 'warning');
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Cloudinary List Error:', err);
-                            packTab.innerHTML = '<div class="text-center text-danger p-3">Gagal memuat stiker.</div>';
+                getDocs(collection(db, "stickers"))
+                    .then((querySnapshot) => {
+                        let urls = [];
+                        querySnapshot.forEach((doc) => {
+                            const data = doc.data();
+                            if(data.url) urls.push(data.url);
                         });
-                });
+                        
+                        if(urls.length > 0) {
+                            let gridHtml = '<div class="sticker-grid">';
+                            urls.forEach(s => {
+                                gridHtml += `<img src="${s}" class="sticker-item sticker-img" loading="lazy" onclick="sendSticker('${s}')">`;
+                            });
+                            gridHtml += '</div>';
+                            packTab.innerHTML = gridHtml;
+                        } else {
+                            packTab.innerHTML = '<div class="text-center text-secondary p-3">Tidak ada stiker.</div>';
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error getting stickers:", error);
+                        packTab.innerHTML = '<div class="text-center text-danger p-3">Gagal memuat stiker.</div>';
+                    });
             }
         }
     }
