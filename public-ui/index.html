@@ -4426,7 +4426,73 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
       }
   }
   
+  window.manualCheckStatus = async function() {
+      const btn = document.querySelector('#maintenanceOverlay button');
+      if(!btn) return;
+      
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Cek...';
+      
+      try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          // Use a timestamp to prevent caching
+          const res = await fetch('/api/health?t=' + Date.now(), { signal: controller.signal });
+          clearTimeout(timeoutId);
 
+          if (res.ok) {
+               const data = await res.json();
+               // If maintenance is FALSE, then we are back online
+               if (!data.maintenance) {
+                   btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Online!';
+                   btn.classList.remove('btn-warning', 'btn-danger', 'btn-primary'); 
+                   btn.classList.add('btn-success');
+                   
+                   // Small delay then reload
+                   setTimeout(() => {
+                       window.location.reload();
+                   }, 800);
+                   return;
+               }
+          }
+          throw new Error('Still maintenance');
+      } catch (e) {
+          // Still maintenance or offline
+          btn.innerHTML = originalHtml;
+          btn.disabled = false;
+          
+          // Show toast
+          let toast = document.getElementById('maintToast');
+          if(!toast) {
+              toast = document.createElement('div');
+              toast.id = 'maintToast';
+              toast.className = 'position-fixed start-50 translate-middle-x px-4 py-3 rounded-pill text-white shadow-lg d-flex align-items-center gap-2';
+              toast.style.cssText = 'bottom: 100px; z-index: 10000; background: rgba(33,37,41,0.95); backdrop-filter: blur(4px); font-weight: 500; min-width: max-content;';
+              toast.innerHTML = '<i class="bi bi-hourglass-split text-warning fs-5"></i><span>Masih maintenance, sabar ya...</span>';
+              document.body.appendChild(toast);
+          } else {
+             // If already exists, just ensure it's visible and reset animation
+             toast.hidden = false;
+          }
+          
+          // Animate
+          toast.animate([
+              { opacity: 0, transform: 'translate(-50%, 20px)' },
+              { opacity: 1, transform: 'translate(-50%, 0)' }
+          ], { duration: 300, easing: 'ease-out', fill: 'forwards' });
+
+          // Hide after 2s
+          setTimeout(() => {
+              const anim = toast.animate([
+                  { opacity: 1, transform: 'translate(-50%, 0)' },
+                  { opacity: 0, transform: 'translate(-50%, 20px)' }
+              ], { duration: 300, easing: 'ease-in', fill: 'forwards' });
+              anim.onfinish = () => { if(toast) toast.remove(); };
+          }, 2500);
+      }
+  };
 
 function showMaintenanceOverlay(show, type = 'maintenance') {
       let overlay = document.getElementById('maintenanceOverlay');
@@ -4451,7 +4517,9 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
               let iconClass = 'bi-cone-striped';
               let title = 'Sedang Dalam Perbaikan';
-              let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin untuk meningkatkan kualitas layanan.';
+              let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin.';
+              let detailDesc = 'Upgrade server & peningkatan performa sistem';
+              let progressVal = 45;
               let est = '2 Jam';
               let colorMain = '#fd7e14'; // Orange
               let colorLight = 'rgba(253, 126, 20, 0.15)';
@@ -4461,6 +4529,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                   iconClass = 'bi-cloud-arrow-up-fill';
                   title = 'Server Sedang Update';
                   desc = 'Aplikasi sedang diperbarui ke versi terbaru. Layanan akan segera kembali.';
+                  detailDesc = 'Menerapkan fitur baru & optimasi database';
+                  progressVal = 75;
                   est = '5 Menit';
                   colorMain = '#0d6efd'; // Blue
                   colorLight = 'rgba(13, 110, 253, 0.15)';
@@ -4469,6 +4539,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                   iconClass = 'bi-router-fill';
                   title = 'Koneksi Terputus';
                   desc = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                  detailDesc = 'Menunggu sambungan ulang...';
+                  progressVal = 0;
                   est = 'Tidak diketahui';
                   colorMain = '#dc3545'; // Red
                   colorLight = 'rgba(220, 53, 69, 0.15)';
@@ -4480,6 +4552,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     @keyframes pulse-ring {
                         0% { transform: scale(0.8); opacity: 0.5; }
                         100% { transform: scale(1.3); opacity: 0; }
+                    }
+                    @keyframes progress-stripes {
+                        0% { background-position: 1rem 0; }
+                        100% { background-position: 0 0; }
                     }
                     .maint-container {
                         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -4505,7 +4581,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         border-radius: 50%;
                         display: flex; align-items: center; justify-content: center;
                         font-size: 3.5rem;
-                        margin: 0 auto 2rem;
+                        margin: 0 auto 1.5rem;
                         position: relative;
                     }
                     .maint-icon-wrap::after {
@@ -4515,15 +4591,93 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         animation: pulse-ring 2s infinite;
                         z-index: -1;
                     }
+                    .maint-progress {
+                        height: 10px;
+                        background: rgba(0,0,0,0.05);
+                        border-radius: 10px;
+                        overflow: hidden;
+                        margin: 1.5rem 0 0.5rem;
+                        position: relative;
+                    }
+                    .maint-progress-bar {
+                        height: 100%;
+                        background: ${colorMain};
+                        background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+                        background-size: 1rem 1rem;
+                        animation: progress-stripes 1s linear infinite;
+                        border-radius: 10px;
+                        transition: width 0.6s ease;
+                    }
+                    /* Mobile Optimization */
+                    @media (max-width: 576px) {
+                        .maint-card {
+                            padding: 2rem 1.25rem;
+                            max-height: 90vh;
+                            overflow-y: auto;
+                        }
+                        #maintenanceClock {
+                            font-size: 1.75rem !important;
+                            letter-spacing: 1px !important;
+                        }
+                        .maint-icon-wrap {
+                            width: 80px; height: 80px;
+                            font-size: 2.5rem;
+                            margin-bottom: 1rem;
+                        }
+                        .btn-lg {
+                            padding: 1rem !important;
+                            font-size: 1.1rem !important;
+                        }
+                        .h3 { font-size: 1.5rem !important; }
+                    }
                   </style>
                   <div class="maint-container">
                       <div class="maint-card">
                            <div class="maint-icon-wrap">
                                 <i class="bi ${iconClass}"></i>
                            </div>
-                           <h1 class="h3 fw-bold text-dark mb-3">${title}</h1>
-                           <p class="text-muted mb-4">${desc}</p>
+                           <h1 class="h3 fw-bold text-dark mb-2">${title}</h1>
+                           <p class="text-muted mb-3">${desc}</p>
                            
+                           <!-- Progress Section -->
+                           <div class="text-start mb-4" ${progressVal === 0 ? 'hidden' : ''}>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="fw-bold text-secondary" style="font-size: 0.8rem;">${detailDesc}</small>
+                                    <small class="fw-bold" style="color: ${colorMain};">${progressVal}%</small>
+                                </div>
+                                <div class="maint-progress">
+                                    <div class="maint-progress-bar" style="width: ${progressVal}%"></div>
+                                </div>
+                           </div>
+
+                           <!-- FAQ Mini Section -->
+                           <div class="text-start mb-4 p-3 rounded-4" style="background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.05);">
+                                <h6 class="fw-bold mb-3 text-secondary small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;"><i class="bi bi-question-circle-fill me-2"></i>Pertanyaan Umum</h6>
+                                <div class="d-flex flex-column gap-3">
+                                    <div class="d-flex gap-3 align-items-start">
+                                        <i class="bi bi-shield-check text-success fs-5 flex-shrink-0"></i>
+                                        <div style="line-height: 1.3;">
+                                            <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Apakah data saya aman?</span>
+                                            <span class="text-muted d-block" style="font-size: 0.8rem;">Aman, tidak ada penghapusan data.</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-3 align-items-start">
+                                         <i class="bi bi-cloud-arrow-down text-primary fs-5 flex-shrink-0"></i>
+                                         <div style="line-height: 1.3;">
+                                             <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Download dilanjutkan?</span>
+                                             <span class="text-muted d-block" style="font-size: 0.8rem;">Silakan ulangi setelah online.</span>
+                                         </div>
+                                    </div>
+                                     <div class="d-flex gap-3 align-items-start">
+                                         <i class="bi bi-hdd-network text-warning fs-5 flex-shrink-0"></i>
+                                         <div style="line-height: 1.3;">
+                                             <span class="d-block fw-bold text-dark" style="font-size: 0.85rem;">Kenapa maintenance?</span>
+                                             <span class="text-muted d-block" style="font-size: 0.8rem;">Untuk stabilitas & keamanan.</span>
+                                         </div>
+                                    </div>
+                                </div>
+                           </div>
+
                            <div class="d-flex align-items-center justify-content-center gap-3 mb-4 p-3 rounded-4" style="background: rgba(0,0,0,0.04);">
                                 <div class="text-start">
                                     <small class="d-block text-uppercase fw-bold text-secondary" style="font-size: 0.7rem; letter-spacing: 1px;">Estimasi Selesai</small>
@@ -4536,7 +4690,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                 </div>
                            </div>
 
-                           <button class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale" style="background: ${colorMain}; border: none;" onclick="location.reload()">
+                           <button class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
                       </div>
@@ -12863,6 +13017,10 @@ $('#queueList')?.addEventListener('click', (e) => {
   }
 
   async function tryPrefillClipboard({ forceToast = false, overrideExisting = false } = {}){
+    // Maintenance Check: Disable auto-paste if maintenance is active
+    const overlay = document.getElementById('maintenanceOverlay');
+    if (overlay && !overlay.hidden) return;
+
     if (!urlInput || !navigator.clipboard?.readText) return;
     try {
       const text = (await navigator.clipboard.readText() || '').trim();
