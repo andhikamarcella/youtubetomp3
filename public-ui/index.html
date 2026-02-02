@@ -17634,6 +17634,15 @@ $('#queueList')?.addEventListener('click', (e) => {
                  xhr.send(formData);
             });
         }
+
+        function renderMessage(data) {
+             if (!currentUser) return;
+
+             const isMe = data.uid === currentUser.uid;
+             const isAdmin = (data.email === 'andhikamarcella546@gmail.com');
+             
+             let timeStr = 'Baru saja';
+             if (data.timestamp && data.timestamp.seconds) {
                  const date = new Date(data.timestamp.seconds * 1000);
                  timeStr = date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
              }
