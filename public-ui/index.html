@@ -17379,7 +17379,17 @@ $('#queueList')?.addEventListener('click', (e) => {
                         document.getElementById('forumLoginOverlay')?.classList.add('d-none');
                     }
                 } catch (popupErr) {
-                    if (popupErr && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request')) {
+                    const code = popupErr?.code || '';
+                    const msg = (popupErr?.message || '').toLowerCase();
+                    if (
+                        code === 'auth/popup-blocked' ||
+                        code === 'auth/cancelled-popup-request' ||
+                        code === 'auth/popup-closed-by-user' ||
+                        code === 'auth/operation-not-supported-in-this-environment' ||
+                        code === 'auth/internal-error' ||
+                        msg.includes('blocked') ||
+                        msg.includes('closed')
+                    ) {
                         sessionStorage.setItem('forum_login_pending', 'true');
                         await signInWithRedirect(auth, provider);
                         return;
