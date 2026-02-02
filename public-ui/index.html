@@ -17344,6 +17344,13 @@ $('#queueList')?.addEventListener('click', (e) => {
             editorCanvas.width = img.naturalWidth;
             editorCanvas.height = img.naturalHeight;
             
+            // Fix Black Screen: Ensure container has height
+            const container = editorCanvas.parentElement;
+            if(container && container.clientHeight === 0) {
+                 container.style.height = '50vh';
+                 container.style.minHeight = '300px';
+            }
+            
             // Draw initial image
             redrawCanvas();
         }
@@ -17356,19 +17363,7 @@ $('#queueList')?.addEventListener('click', (e) => {
              canvasCtx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
              canvasCtx.drawImage(currentImageObj, 0, 0);
              
-             // 2. Draw Brush Strokes (We need to store them if we want to redraw properly)
-             // Current implementation draws directly to canvas, which means 'undo' or 'redraw' clears them.
-             // To support "drawing on photo" properly with text dragging, we should use a separate "scratch" canvas or store paths.
-             // For simplicity/performance now: We accept that moving text might clear strokes if we don't store them.
-             // BETTER: We will NOT clear strokes when moving text, but use a "restore" approach if possible?
-             // No, standard way is: Redraw Image -> Redraw Strokes -> Redraw Text.
-             
-             // Since we didn't refactor strokes storage yet, let's keep it simple:
-             // We will assume 'strokes' are part of the raster for now, UNLESS we want to support layers.
-             // The user said "canvasnya bisa di corett coret di foto". This works already.
-             // But "textnya bisa di drag".
-             
-             // Let's implement a simple stroke history
+             // 2. Draw Brush Strokes
              if (window.editorStrokes) {
                  window.editorStrokes.forEach(stroke => {
                      canvasCtx.beginPath();
@@ -17394,8 +17389,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                      canvasCtx.lineWidth = 4;
                      canvasCtx.strokeText(txtObj.text, txtObj.x, txtObj.y);
                      canvasCtx.fillText(txtObj.text, txtObj.x, txtObj.y);
-                     
-                     // Helper box if selected?
                  });
              }
         }
@@ -17552,6 +17545,20 @@ $('#queueList')?.addEventListener('click', (e) => {
                 };
                 newImg.src = tempCanvas.toDataURL();
             });
+        }
+        
+        // Ensure Editor Canvas Container has explicit dimensions to prevent "Black Screen"
+        // This usually happens if the modal or parent has 0 height when canvas initializes.
+        // We fix this by checking container size in initCanvas, but let's add a helper here too.
+        if(editorModalEl) {
+             editorModalEl.addEventListener('shown.bs.modal', () => {
+                 const container = editorCanvas.parentElement;
+                 if(container && container.clientHeight === 0) {
+                     // Force a height if hidden
+                     container.style.height = '50vh'; 
+                 }
+                 if(currentImageObj) initCanvas(currentImageObj);
+             });
         }
 
         if(document.getElementById('btnEditText')) {
