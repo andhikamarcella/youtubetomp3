@@ -1,18 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // User Profile: Users can read/write their own profile
+
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Forum Messages: Authenticated users can read/write messages
+
     match /forum-messages/{messageId} {
       allow read, write: if request.auth != null;
     }
-    
-    // Default deny
+
+    // ✅ STICKERS (INI YANG KURANG)
+    match /stickers/{stickerId} {
+      allow read, write: if request.auth != null;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
