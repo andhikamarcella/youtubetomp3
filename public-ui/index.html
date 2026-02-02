@@ -17089,7 +17089,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
     initRealTimeClock();
 
-    // --- Task 6: Forum Chat Logic (Realtime) ---
+    // --- Task 6: Forum Chat Logic (Realtime & Authenticated) ---
     function initForumChat() {
         const forumModal = document.getElementById('forumModal');
         const forumLoginOverlay = document.getElementById('forumLoginOverlay');
@@ -17101,11 +17101,46 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (!forumGoogleLoginBtn) return;
 
         let unsubscribe = null;
+        let currentUser = null;
+
+        // 1. Setup Auth Listener
+        function initAuth() {
+            if (!window.firebaseModules || !window.firebaseModules.auth) return;
+            const { auth, onAuthStateChanged } = window.firebaseModules;
+
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    // Logged In
+                    forumLoginOverlay.hidden = true;
+                    forumInput.disabled = false;
+                    forumSendBtn.disabled = false;
+                    startChatListener();
+                } else {
+                    // Logged Out
+                    forumLoginOverlay.hidden = false;
+                    forumLoginOverlay.classList.remove('fade'); // Reset fade
+                    forumInput.disabled = true;
+                    forumSendBtn.disabled = true;
+                    if(unsubscribe) unsubscribe();
+                    forumChatArea.innerHTML = ''; // Clear chat
+                }
+            });
+        }
+
+        // Call initAuth immediately if modules ready, or wait a bit
+        if (window.firebaseModules) {
+            initAuth();
+        } else {
+            setTimeout(initAuth, 1000); // Retry if script loading
+        }
 
         function startChatListener() {
              if (!window.firebaseModules || !window.firebaseModules.db) return;
              const { db, collection, query, orderBy, limit, onSnapshot } = window.firebaseModules;
-             const q = query(collection(db, "forum-chats"), orderBy("timestamp", "asc"), limit(50));
+             
+             // UPDATE: Use 'forum-messages' to match user's existing DB
+             const q = query(collection(db, "forum-messages"), orderBy("timestamp", "asc"), limit(50));
              
              if(unsubscribe) unsubscribe();
 
@@ -17126,13 +17161,21 @@ $('#queueList')?.addEventListener('click', (e) => {
                      renderMessage(data);
                  });
                  forumChatArea.scrollTop = forumChatArea.scrollHeight;
+             }, (error) => {
+                 console.error("Error getting chats:", error);
+                 if (error.code === 'permission-denied') {
+                     setToast('Akses ditolak. Silakan login ulang.', 'danger');
+                 }
              });
         }
 
         function renderMessage(data) {
-             const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
-             const isMe = userSession.email === data.email;
-             const isAdmin = data.isAdmin === true || (data.email === 'andhikamarcella546@gmail.com');
+             if (!currentUser) return;
+
+             // Match using UID instead of Email for better security/accuracy
+             const isMe = data.uid === currentUser.uid;
+             // Hardcoded admin email check as fallback or additional check
+             const isAdmin = (data.email === 'andhikamarcella546@gmail.com');
              
              let timeStr = 'Baru saja';
              if (data.timestamp && data.timestamp.seconds) {
@@ -17144,7 +17187,9 @@ $('#queueList')?.addEventListener('click', (e) => {
              if (isAdmin) {
                  msgHtml = `
                 <div class="d-flex align-items-start mb-3 flex-row-reverse message admin">
-                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.7rem; border: 2px solid gold;">ADM</div>
+                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid gold;">
+                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
+                     </div>
                      <div class="message-bubble bg-dark text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
                         <div class="admin-badge"><i class="bi bi-shield-check me-1"></i>ADMIN</div>
                         <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
@@ -17154,7 +17199,9 @@ $('#queueList')?.addEventListener('click', (e) => {
              } else if (isMe) {
                  msgHtml = `
                 <div class="d-flex align-items-start mb-3 flex-row-reverse">
-                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ME</div>
+                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
+                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ME'}
+                     </div>
                      <div class="bg-primary text-white p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
                         <div class="small">${(data.text||'').replace(/</g, "&lt;")}</div>
                         <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">${timeStr} <i class="bi bi-check-all"></i></div>
@@ -17163,7 +17210,9 @@ $('#queueList')?.addEventListener('click', (e) => {
              } else {
                  msgHtml = `
                 <div class="d-flex align-items-start mb-3">
-                     <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">USR</div>
+                     <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
+                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'USR'}
+                     </div>
                      <div class="bg-body-tertiary p-3 rounded-4 rounded-top-0 shadow-sm border-0" style="max-width: 85%;">
                         <div class="small fw-bold text-secondary mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
                         <div class="small text-dark">${(data.text||'').replace(/</g, "&lt;")}</div>
@@ -17174,57 +17223,54 @@ $('#queueList')?.addEventListener('click', (e) => {
              forumChatArea.insertAdjacentHTML('beforeend', msgHtml);
         }
 
-        forumGoogleLoginBtn.addEventListener('click', () => {
+        // Real Google Login
+        forumGoogleLoginBtn.addEventListener('click', async () => {
+            if (!window.firebaseModules || !window.firebaseModules.auth) {
+                 setToast('Firebase belum siap, coba refresh.', 'warning');
+                 return;
+            }
+            const { auth, signInWithPopup, GoogleAuthProvider } = window.firebaseModules;
+            const provider = new GoogleAuthProvider();
+
             forumGoogleLoginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menghubungkan...';
             forumGoogleLoginBtn.disabled = true;
             
-            setTimeout(() => {
-                forumLoginOverlay.classList.add('fade');
-                setTimeout(() => {
-                    forumLoginOverlay.hidden = true;
-                    forumInput.disabled = false;
-                    forumSendBtn.disabled = false;
-                    forumInput.focus();
-                    
-                    setToast('<i class="bi bi-google me-2"></i>Login berhasil! Mengambil chat...', 'success');
-                    
-                    // Force Admin Session (User Preference)
-                    const adminUser = {
-                        name: 'Admin User',
-                        email: 'andhikamarcella546@gmail.com',
-                        photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-                        sub: 'admin-123'
-                    };
-                    localStorage.setItem('userSession', JSON.stringify(adminUser));
-                    
-                    startChatListener();
-                }, 500);
-            }, 1500);
+            try {
+                await signInWithPopup(auth, provider);
+                setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
+                // State change handled by onAuthStateChanged
+            } catch (error) {
+                console.error("Login failed", error);
+                setToast('Gagal login: ' + error.message, 'danger');
+                forumGoogleLoginBtn.innerHTML = '<i class="bi bi-google me-2"></i>Masuk dengan Google';
+                forumGoogleLoginBtn.disabled = false;
+            }
         });
 
         async function sendForumMessage() {
             const text = forumInput.value.trim();
             if(!text) return;
-            
-            if (!window.firebaseModules) {
-                 setToast('Menghubungkan ke server chat...', 'warning');
-                 return;
+            if(!currentUser) {
+                setToast('Anda belum login!', 'warning');
+                return;
             }
+            
             const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
-            const userSession = JSON.parse(localStorage.getItem('userSession') || '{}');
 
             try {
-                await addDoc(collection(db, "forum-chats"), {
+                // UPDATE: Match fields from user screenshot (uid, photoURL, text, timestamp, name)
+                await addDoc(collection(db, "forum-messages"), {
                     text: text,
-                    email: userSession.email || 'anon@warga.com',
-                    name: userSession.name || 'Warga +62',
-                    timestamp: serverTimestamp(),
-                    isAdmin: userSession.email === 'andhikamarcella546@gmail.com'
+                    uid: currentUser.uid,
+                    name: currentUser.displayName || 'Warga',
+                    email: currentUser.email,
+                    photoURL: currentUser.photoURL,
+                    timestamp: serverTimestamp()
                 });
                 forumInput.value = '';
             } catch (e) {
                 console.error(e);
-                setToast('Gagal kirim pesan', 'danger');
+                setToast('Gagal kirim pesan: ' + e.message, 'danger');
             }
         }
 
@@ -17233,12 +17279,6 @@ $('#queueList')?.addEventListener('click', (e) => {
             forumInput.addEventListener('keypress', (e) => {
                 if(e.key === 'Enter') sendForumMessage();
             });
-        }
-        
-        // Auto-connect if session exists
-        const sess = localStorage.getItem('userSession');
-        if (sess && forumLoginOverlay.hidden) {
-            startChatListener();
         }
     }
     initForumChat();
