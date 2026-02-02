@@ -4449,39 +4449,96 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               overlay.dataset.type = type;
               overlay.dataset.rendered = 'true';
 
-              let icon = 'bi-cone-striped text-warning';
+              let iconClass = 'bi-cone-striped';
               let title = 'Sedang Dalam Perbaikan';
-              let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin.';
-              let est = 'Estimasi selesai: 2 Jam';
-              
+              let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin untuk meningkatkan kualitas layanan.';
+              let est = '2 Jam';
+              let colorMain = '#fd7e14'; // Orange
+              let colorLight = 'rgba(253, 126, 20, 0.15)';
+              let bgGradient = 'linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%)';
+
               if (type === 'deploying') {
-                  icon = 'bi-cloud-arrow-up-fill text-info';
+                  iconClass = 'bi-cloud-arrow-up-fill';
                   title = 'Server Sedang Update';
-                  desc = 'Mohon maaf, aplikasi sedang diperbarui ke versi terbaru. Layanan akan segera kembali.';
-                  est = 'Estimasi selesai: 5 Menit';
+                  desc = 'Aplikasi sedang diperbarui ke versi terbaru. Layanan akan segera kembali.';
+                  est = '5 Menit';
+                  colorMain = '#0d6efd'; // Blue
+                  colorLight = 'rgba(13, 110, 253, 0.15)';
+                  bgGradient = 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)';
               } else if (type === 'offline') {
-                  icon = 'bi-router-fill text-danger';
+                  iconClass = 'bi-router-fill';
                   title = 'Koneksi Terputus';
-                  desc = 'Mohon maaf, tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-                  est = 'Silakan coba lagi nanti.';
+                  desc = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+                  est = 'Tidak diketahui';
+                  colorMain = '#dc3545'; // Red
+                  colorLight = 'rgba(220, 53, 69, 0.15)';
+                  bgGradient = 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)';
               }
               
               overlay.innerHTML = `
-                  <div class="position-relative w-100 h-100" style="overflow: hidden; background: #fff;">
-                      <!-- INFO -->
-                      <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center position-relative">
-                           <div class="text-center px-4" style="max-width: 600px;">
-                              <i class="bi ${icon} mb-4" style="font-size: 5rem;"></i>
-                              <h1 class="display-5 fw-bold text-dark mb-3">${title}</h1>
-                              <p class="text-secondary lead mb-2">${desc}</p>
-                              <p class="text-muted small fw-bold mb-4"><i class="bi bi-stopwatch me-1"></i>${est}</p>
-                              
-                              <div id="maintenanceClock" class="display-4 fw-bold text-dark mb-4 font-monospace">00:00:00</div>
-    
-                              <button class="btn btn-primary rounded-pill px-5 py-2 shadow-sm fw-bold" onclick="location.reload()">
-                                  <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
-                              </button>
+                  <style>
+                    @keyframes pulse-ring {
+                        0% { transform: scale(0.8); opacity: 0.5; }
+                        100% { transform: scale(1.3); opacity: 0; }
+                    }
+                    .maint-container {
+                        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                        background: ${bgGradient};
+                        display: flex; align-items: center; justify-content: center;
+                        padding: 1rem;
+                    }
+                    .maint-card {
+                        background: rgba(255, 255, 255, 0.95);
+                        backdrop-filter: blur(10px);
+                        border-radius: 24px;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+                        padding: 3rem 2rem;
+                        max-width: 480px;
+                        width: 100%;
+                        text-align: center;
+                        border: 1px solid rgba(255,255,255,0.5);
+                    }
+                    .maint-icon-wrap {
+                        width: 100px; height: 100px;
+                        background: ${colorLight};
+                        color: ${colorMain};
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 3.5rem;
+                        margin: 0 auto 2rem;
+                        position: relative;
+                    }
+                    .maint-icon-wrap::after {
+                        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                        border-radius: 50%;
+                        border: 2px solid ${colorMain};
+                        animation: pulse-ring 2s infinite;
+                        z-index: -1;
+                    }
+                  </style>
+                  <div class="maint-container">
+                      <div class="maint-card">
+                           <div class="maint-icon-wrap">
+                                <i class="bi ${iconClass}"></i>
                            </div>
+                           <h1 class="h3 fw-bold text-dark mb-3">${title}</h1>
+                           <p class="text-muted mb-4">${desc}</p>
+                           
+                           <div class="d-flex align-items-center justify-content-center gap-3 mb-4 p-3 rounded-4" style="background: rgba(0,0,0,0.04);">
+                                <div class="text-start">
+                                    <small class="d-block text-uppercase fw-bold text-secondary" style="font-size: 0.7rem; letter-spacing: 1px;">Estimasi Selesai</small>
+                                    <span class="fw-bold text-dark">${est}</span>
+                                </div>
+                                <div class="vr mx-2"></div>
+                                <div class="text-end">
+                                     <small class="d-block text-uppercase fw-bold text-secondary" style="font-size: 0.7rem; letter-spacing: 1px;">Waktu Saat Ini</small>
+                                     <div id="maintenanceClock" class="fw-bold font-monospace" style="color: ${colorMain}">00:00:00</div>
+                                </div>
+                           </div>
+
+                           <button class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale" style="background: ${colorMain}; border: none;" onclick="location.reload()">
+                               <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
+                           </button>
                       </div>
                   </div>
               `;
