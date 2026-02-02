@@ -3,12 +3,14 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "migrate:xp": "node scripts/migrate_xp_events.js"
+    "migrate:xp": "node scripts/migrate_xp_events.js",
+    "sync:stickers": "node scripts/sync_stickers_firestore.mjs"
   },
   "dependencies": {
     "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "firebase-admin": "^13.5.0",
     "nanoid": "^5.1.5",
     "nodemailer": "^6.9.15"
   },
