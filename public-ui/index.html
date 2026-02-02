@@ -17363,16 +17363,13 @@ $('#queueList')?.addEventListener('click', (e) => {
             try {
                 const provider = new GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
-                const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-                if (isMobile) {
-                    sessionStorage.setItem('forum_login_pending', 'true');
-                    await signInWithRedirect(auth, provider);
-                    return;
-                }
+                
+                // Prioritize Popup for all devices to avoid redirect loops
                 try {
                     const result = await signInWithPopup(auth, provider);
                     if (result && result.user) {
                         setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
+                        sessionStorage.removeItem('forum_login_pending');
                         document.getElementById('forumLoginOverlay')?.classList.remove('d-flex');
                         document.getElementById('forumLoginOverlay')?.classList.add('d-none');
                     }
