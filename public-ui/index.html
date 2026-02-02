@@ -17361,8 +17361,6 @@ $('#queueList')?.addEventListener('click', (e) => {
             btn.disabled = true;
             
             try {
-                // Set persistence explicitly
-                await setPersistence(auth, browserLocalPersistence);
                 const provider = new GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
                 const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
