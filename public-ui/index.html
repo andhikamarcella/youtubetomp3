@@ -18103,26 +18103,53 @@ $('#queueList')?.addEventListener('click', (e) => {
                 });
             }
             
-            // Populate General Stickers (Pack)
+            // Populate General Stickers (Pack) - Fetch from GIPHY
             const packTab = document.getElementById('sticker-pack');
             if(packTab && packTab.querySelector('.sticker-grid').children.length <= 3) {
-                const generalStickers = [
+                // Loading State
+                packTab.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 small text-secondary">Memuat stiker GIPHY...</div></div>';
+                
+                // Fallback List
+                const fallbackStickers = [
                     "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/3o7TKSjRrfIPjeiVyM/giphy.gif",
-                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/l0HlHJGHe3yAMhdQY/giphy.gif",
-                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/26BRL7YrutHKs/giphy.gif",
-                    "https://i.pinimg.com/originals/e8/35/6b/e8356b764666672524a524754727d06a.gif",
-                    "https://media.tenor.com/P58QePyj4s8AAAAM/cat-cat-meme.gif",
-                    "https://media.tenor.com/images/328493c207c4d32669225727c2317673/tenor.gif",
-                    "https://media.tenor.com/images/d378a4f0925b32356521362e4f55462e/tenor.gif",
-                    "https://media.tenor.com/images/1c3702df22f082e6c27770e556e42676/tenor.gif",
-                    "https://media.tenor.com/images/5072c72b872365264372ac65d6a2dfa2/tenor.gif"
+                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/l0HlHJGHe3yAMhdQY/giphy.gif",
+                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/26BRL7YrutHKs/giphy.gif",
+                    "https://media.giphy.com/media/Cat/giphy.gif",
+                    "https://media.giphy.com/media/dog/giphy.gif",
+                    "https://media.tenor.com/P58QePyj4s8AAAAM/cat-cat-meme.gif"
                 ];
-                let gridHtml = '<div class="sticker-grid">';
-                generalStickers.forEach(s => {
-                    gridHtml += `<img src="${s}" class="sticker-item sticker-img" onclick="sendSticker('${s}')">`;
-                });
-                gridHtml += '</div>';
-                packTab.innerHTML = gridHtml;
+
+                // Function to render stickers
+                const renderStickers = (list) => {
+                    let gridHtml = '<div class="sticker-grid">';
+                    list.forEach(s => {
+                        gridHtml += `<img src="${s}" class="sticker-item sticker-img" loading="lazy" onclick="sendSticker('${s}')">`;
+                    });
+                    gridHtml += '</div>';
+                    packTab.innerHTML = gridHtml;
+                };
+
+                // Fetch GIPHY Trending
+                // Using a public demo key (0UTRbFtkMxAplogxzJppyaEFEms50vXC)
+                const apiKey = '0UTRbFtkMxAplogxzJppyaEFEms50vXC'; 
+                const limit = 50;
+                
+                fetch(`https://api.giphy.com/v1/stickers/trending?api_key=${apiKey}&limit=${limit}&rating=g`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data && data.data && data.data.length > 0) {
+                            const gifUrls = data.data.map(item => item.images.fixed_height.url);
+                            // Shuffle
+                            const shuffled = gifUrls.sort(() => 0.5 - Math.random());
+                            renderStickers(shuffled);
+                        } else {
+                            throw new Error('No data');
+                        }
+                    })
+                    .catch(err => {
+                        console.warn('GIPHY Fetch Failed, using fallback:', err);
+                        renderStickers(fallbackStickers);
+                    });
             }
         }
     }
