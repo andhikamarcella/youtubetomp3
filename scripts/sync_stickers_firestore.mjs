@@ -22,18 +22,41 @@ function toDocId(publicId) {
 }
 
 async function listCloudinaryResources({ folder, maxResults }) {
-  let nextCursor = undefined;
   const all = [];
+  let nextCursor = undefined;
 
+  try {
+    while (true) {
+      const search = cloudinary.search
+        .expression(`folder:${folder}`)
+        .sort_by("public_id", "asc")
+        .max_results(maxResults);
+
+      if (nextCursor) search.next_cursor(nextCursor);
+
+      const res = await search.execute();
+      const resources = Array.isArray(res?.resources) ? res.resources : [];
+      all.push(...resources);
+
+      if (!res?.next_cursor) break;
+      nextCursor = res.next_cursor;
+    }
+  } catch (e) {
+    nextCursor = undefined;
+  }
+
+  if (all.length > 0) return all;
+
+  const prefix = folder.endsWith("/") ? folder : `${folder}/`;
   while (true) {
-    const search = cloudinary.search
-      .expression(`folder:${folder}`)
-      .sort_by("public_id", "asc")
-      .max_results(maxResults);
+    const res = await cloudinary.api.resources({
+      type: "upload",
+      resource_type: "image",
+      prefix,
+      max_results: maxResults,
+      next_cursor: nextCursor,
+    });
 
-    if (nextCursor) search.next_cursor(nextCursor);
-
-    const res = await search.execute();
     const resources = Array.isArray(res?.resources) ? res.resources : [];
     all.push(...resources);
 
