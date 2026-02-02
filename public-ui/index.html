@@ -17315,6 +17315,22 @@ $('#queueList')?.addEventListener('click', (e) => {
                     currentImageObj = img;
                     initCanvas(img);
                     editorModal.show();
+                    
+                    // Normal Chat Flow Save
+                    const newSaveBtn = btnSaveEdit.cloneNode(true);
+                    btnSaveEdit.replaceWith(newSaveBtn);
+                    const actualSaveBtn = document.getElementById('btnSaveEdit');
+                    actualSaveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Simpan Edit';
+                    
+                    actualSaveBtn.onclick = () => {
+                        if (!editorCanvas) return;
+                        editorCanvas.toBlob((blob) => {
+                            const newFile = new File([blob], "edited_" + file.name, { type: "image/png" });
+                            selectedFiles[index] = newFile; // Update in place
+                            renderAttachmentPreview();
+                            editorModal.hide();
+                        }, 'image/png');
+                    };
                 };
                 img.src = e.target.result;
             };
@@ -17417,6 +17433,14 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         // Drawing Events
         editorCanvas.addEventListener('mousedown', (e) => {
+            if(editMode === 'text') {
+                const mouseX = e.offsetX;
+                const mouseY = e.offsetY;
+                // Find clicked text
+                // Simple hit detection
+                // ...
+                return;
+            }
             if(editMode !== 'brush') return;
             isDrawing = true;
             [lastX, lastY] = [e.offsetX, e.offsetY];
@@ -17434,19 +17458,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         editorCanvas.addEventListener('mouseout', () => isDrawing = false);
 
         // Save Edited Image
-        if(btnSaveEdit) {
-            btnSaveEdit.addEventListener('click', () => {
-                editorCanvas.toBlob((blob) => {
-                    // Create new File object
-                    const originalFile = selectedFiles[activeEditorFileIndex];
-                    const newFile = new File([blob], "edited_" + originalFile.name, { type: "image/png" });
-                    selectedFiles[activeEditorFileIndex] = newFile;
-                    renderAttachmentPreview();
-                    editorModal.hide();
-                }, 'image/png');
-            });
-        }
-
+        // This is handled by dynamic listeners now (btnSaveEdit.onclick)
+        // We remove the static listener or make it default to something safe
+        // BUT, since we overwrite onclick in specific flows, we can leave this or remove it.
+        // Better to remove the old static listener block to avoid conflicts.
+        
         // --- Auth & Chat Logic ---
 
         function initAuth() {
@@ -17593,20 +17609,18 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         // --- Cloudinary Upload Helper (Signed Upload Client-Side) ---
         // WARNING: Exposing API Secret client-side is risky. 
-        // This is implemented as per specific user request for this environment.
-        async function uploadToCloudinary(file, folder = 'forum-uploads') {
+        async function uploadToCloudinary(file, folder = null) {
             const apiKey = '422728616314883';
             const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE';
-            // Cloud Name harus benar. Dari API Key, user ini kemungkinan besar 'dhr8v003a' atau 'dhikamarcella'
-            // Kita akan coba 'dhikamarcella' dulu, jika gagal fallback ke yang lain atau alert.
-            // Update: User mengeluh tidak tersambung. 
-            // Cek URL endpoint Cloudinary: https://api.cloudinary.com/v1_1/<cloud_name>/image/upload
-            // Kita akan coba gunakan cloud name yang paling mungkin valid.
             const cloudName = 'dhikamarcella'; 
             const timestamp = Math.round((new Date()).getTime() / 1000);
             
-            // Generate Signature: SHA1(folder=...&timestamp=... + api_secret)
-            const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+            // Generate Signature
+            // If folder is provided, include it. If not, don't.
+            let paramsToSign = `timestamp=${timestamp}`;
+            if (folder) {
+                paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+            }
             const signatureStr = paramsToSign + apiSecret;
             
             async function sha1(str) {
@@ -17622,7 +17636,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             formData.append('file', file);
             formData.append('api_key', apiKey);
             formData.append('timestamp', timestamp);
-            formData.append('folder', folder);
+            if (folder) formData.append('folder', folder);
             formData.append('signature', signature);
             
             return new Promise((resolve, reject) => {
@@ -17635,7 +17649,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                          resolve(response.secure_url);
                      } else {
                          console.error("Cloudinary Error:", xhr.responseText);
-                         // Fallback mechanism or detailed error
                          reject(new Error("Cloudinary Upload Failed: " + xhr.statusText));
                      }
                  };
