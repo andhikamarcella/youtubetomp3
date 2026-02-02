@@ -4169,7 +4169,7 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
             <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
@@ -4197,6 +4197,8 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     addDoc,
     onSnapshot,
     query,
+    doc,
+    setDoc,
     orderBy,
     limit,
     serverTimestamp,
@@ -17192,10 +17194,26 @@ $('#queueList')?.addEventListener('click', (e) => {
                     restoreOverlayContent();
                 });
 
-            onAuthStateChanged(auth, (user) => {
+            onAuthStateChanged(auth, async (user) => {
                 currentUser = user;
                 if (user) {
                     // Logged In
+                    // Create/Update User Document (Essential for Permissions)
+                    try {
+                        const { db, doc, setDoc, serverTimestamp } = window.firebaseModules;
+                        if(db && doc && setDoc && serverTimestamp) {
+                            const userRef = doc(db, "users", user.uid);
+                            await setDoc(userRef, {
+                                email: user.email,
+                                displayName: user.displayName,
+                                photoURL: user.photoURL,
+                                lastLogin: serverTimestamp()
+                            }, { merge: true });
+                        }
+                    } catch (e) {
+                         console.warn("User doc update failed:", e);
+                    }
+
                     forumLoginOverlay.classList.remove('d-flex');
                     forumLoginOverlay.classList.add('d-none');
                     forumInput.disabled = false;
@@ -17309,7 +17327,21 @@ $('#queueList')?.addEventListener('click', (e) => {
                  console.error("Error getting chats:", error);
                  if (error.code === 'permission-denied') {
                      // Hapus auto-logout yang menyebabkan loop
-                     setToast('Koneksi terputus. Silakan refresh halaman atau login ulang.', 'danger');
+                     setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
+                     
+                     // Show Retry UI in Chat Area
+                     const retryHtml = `
+                        <div class="text-center my-3">
+                            <div class="alert alert-danger d-inline-block p-2 small shadow-sm">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Koneksi database ditolak.
+                                <br>Pastikan Anda login dengan akun Google yang valid.
+                                <br><button class="btn btn-sm btn-danger mt-2 rounded-pill px-3" onclick="location.reload()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Halaman
+                                </button>
+                            </div>
+                        </div>`;
+                     forumChatArea.insertAdjacentHTML('beforeend', retryHtml);
+                     forumChatArea.scrollTop = forumChatArea.scrollHeight;
                  }
              });
         }
