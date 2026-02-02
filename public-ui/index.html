@@ -17589,14 +17589,51 @@ $('#queueList')?.addEventListener('click', (e) => {
              });
         }
 
-        function renderMessage(data) {
-             if (!currentUser) return;
-
-             const isMe = data.uid === currentUser.uid;
-             const isAdmin = (data.email === 'andhikamarcella546@gmail.com');
-             
-             let timeStr = 'Baru saja';
-             if (data.timestamp && data.timestamp.seconds) {
+        // --- Cloudinary Upload Helper (Signed Upload Client-Side) ---
+        // WARNING: Exposing API Secret client-side is risky. 
+        // This is implemented as per specific user request for this environment.
+        async function uploadToCloudinary(file, folder = 'forum-uploads') {
+            const apiKey = '422728616314883';
+            const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE';
+            const cloudName = 'dhikamarcella'; 
+            const timestamp = Math.round((new Date()).getTime() / 1000);
+            
+            // Generate Signature: SHA1(folder=...&timestamp=... + api_secret)
+            const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+            const signatureStr = paramsToSign + apiSecret;
+            
+            async function sha1(str) {
+                const enc = new TextEncoder();
+                const hash = await crypto.subtle.digest('SHA-1', enc.encode(str));
+                return Array.from(new Uint8Array(hash))
+                    .map(v => v.toString(16).padStart(2, '0')).join('');
+            }
+            
+            const signature = await sha1(signatureStr);
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('api_key', apiKey);
+            formData.append('timestamp', timestamp);
+            formData.append('folder', folder);
+            formData.append('signature', signature);
+            
+            return new Promise((resolve, reject) => {
+                 const xhr = new XMLHttpRequest();
+                 xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
+                 
+                 xhr.onload = () => {
+                     if (xhr.status === 200) {
+                         resolve(JSON.parse(xhr.responseText).secure_url);
+                     } else {
+                         console.error("Cloudinary Error:", xhr.responseText);
+                         reject(JSON.parse(xhr.responseText));
+                     }
+                 };
+                 xhr.onerror = () => reject(xhr.statusText);
+                 xhr.send(formData);
+            });
+        }
                  const date = new Date(data.timestamp.seconds * 1000);
                  timeStr = date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
              }
@@ -17720,11 +17757,9 @@ $('#queueList')?.addEventListener('click', (e) => {
             try {
                 // Upload Images
                 let imageUrls = [];
-                if(selectedFiles.length > 0 && storage) {
+                if(selectedFiles.length > 0) {
                      for (const file of selectedFiles) {
-                         const storageRef = ref(storage, `forum-uploads/${currentUser.uid}/${Date.now()}_${file.name}`);
-                         const snapshot = await uploadBytes(storageRef, file);
-                         const url = await getDownloadURL(snapshot.ref);
+                         const url = await uploadToCloudinary(file);
                          imageUrls.push(url);
                      }
                 }
@@ -17820,32 +17855,73 @@ $('#queueList')?.addEventListener('click', (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
                 
-                // 1. Upload to Storage
-                const { storage, ref, uploadBytes, getDownloadURL } = window.firebaseModules;
-                if(!storage || !currentUser) {
-                    setToast('Login dulu untuk buat stiker.', 'warning');
-                    return;
-                }
-                
-                try {
-                    setToast('Mengunggah stiker...', 'info');
-                    const storageRef = ref(storage, `stickers/${currentUser.uid}/${Date.now()}_${file.name}`);
-                    const snapshot = await uploadBytes(storageRef, file);
-                    const url = await getDownloadURL(snapshot.ref);
-                    
-                    // 2. Save to LocalStorage
-                    let stickers = JSON.parse(localStorage.getItem('myStickers') || '[]');
-                    stickers.push(url);
-                    localStorage.setItem('myStickers', JSON.stringify(stickers));
-                    
-                    loadCustomStickers();
-                    setToast('Stiker berhasil dibuat!', 'success');
-                } catch(err) {
-                    console.error(err);
-                    setToast('Gagal buat stiker.', 'danger');
-                }
+                // Open Editor first for Stickers too!
+                selectedFiles = [file];
+                activeEditorFileIndex = 0;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        currentImageObj = img;
+                        initCanvas(img);
+                        editorModal.show();
+                        
+                        // Override Save Button for Sticker
+                        const newSaveBtn = btnSaveEdit.cloneNode(true);
+                        btnSaveEdit.replaceWith(newSaveBtn);
+                        // Re-select because replaced
+                        const actualSaveBtn = document.getElementById('btnSaveEdit');
+                        
+                        actualSaveBtn.onclick = () => {
+                            editorCanvas.toBlob(async (blob) => {
+                                // Upload to Cloudinary
+                                try {
+                                    setToast('Mengunggah stiker...', 'info');
+                                    const editedFile = new File([blob], "sticker_" + file.name, { type: "image/png" });
+                                    const url = await uploadToCloudinary(editedFile, 'stickers');
+                                    
+                                    // Save to LocalStorage
+                                    let stickers = JSON.parse(localStorage.getItem('myStickers') || '[]');
+                                    stickers.push(url);
+                                    localStorage.setItem('myStickers', JSON.stringify(stickers));
+                                    
+                                    loadCustomStickers();
+                                    setToast('Stiker berhasil dibuat!', 'success');
+                                    editorModal.hide();
+                                    
+                                    // Restore Save Button Behavior for Normal Chat
+                                    // (Simple reload or re-attach listener? Re-attach is better but complicated scope)
+                                    // We will just reload page or reset listener. 
+                                    // Let's reset listener to normal chat function.
+                                    actualSaveBtn.onclick = saveChatImage;
+                                    
+                                } catch(err) {
+                                    console.error(err);
+                                    setToast('Gagal buat stiker: ' + (err.message || 'Error'), 'danger');
+                                }
+                            }, 'image/png');
+                        };
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = ''; // Reset input
             });
         }
+        
+        // Define normal save function
+        const saveChatImage = () => {
+           editorCanvas.toBlob((blob) => {
+               const originalFile = selectedFiles[activeEditorFileIndex];
+               const newFile = new File([blob], "edited_" + originalFile.name, { type: "image/png" });
+               selectedFiles[activeEditorFileIndex] = newFile;
+               renderAttachmentPreview();
+               editorModal.hide();
+           }, 'image/png');
+        };
+        
+        // Initial Attach
+        if(btnSaveEdit) btnSaveEdit.addEventListener('click', saveChatImage);
 
         function loadCustomStickers() {
             if(!customStickerGrid) return;
@@ -17854,16 +17930,37 @@ $('#queueList')?.addEventListener('click', (e) => {
             
             if(stickers.length === 0) {
                 customStickerGrid.innerHTML = '<div class="text-center text-secondary small mt-3">Belum ada stiker custom.</div>';
-                return;
+            } else {
+                stickers.forEach(url => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'sticker-item sticker-img';
+                    img.onclick = () => window.sendSticker(url);
+                    customStickerGrid.appendChild(img);
+                });
             }
             
-            stickers.forEach(url => {
-                const img = document.createElement('img');
-                img.src = url;
-                img.className = 'sticker-item sticker-img';
-                img.onclick = () => window.sendSticker(url);
-                customStickerGrid.appendChild(img);
-            });
+            // Populate General Stickers (Pack)
+            const packTab = document.getElementById('sticker-pack');
+            if(packTab && packTab.querySelector('.sticker-grid').children.length <= 3) {
+                const generalStickers = [
+                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/3o7TKSjRrfIPjeiVyM/giphy.gif",
+                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/l0HlHJGHe3yAMhdQY/giphy.gif",
+                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbXN6cW4zOW96bXN6cW4zOW96bXN6cW4zOW96L2dpZg/26BRL7YrutHKs/giphy.gif",
+                    "https://i.pinimg.com/originals/e8/35/6b/e8356b764666672524a524754727d06a.gif",
+                    "https://media.tenor.com/P58QePyj4s8AAAAM/cat-cat-meme.gif",
+                    "https://media.tenor.com/images/328493c207c4d32669225727c2317673/tenor.gif",
+                    "https://media.tenor.com/images/d378a4f0925b32356521362e4f55462e/tenor.gif",
+                    "https://media.tenor.com/images/1c3702df22f082e6c27770e556e42676/tenor.gif",
+                    "https://media.tenor.com/images/5072c72b872365264372ac65d6a2dfa2/tenor.gif"
+                ];
+                let gridHtml = '<div class="sticker-grid">';
+                generalStickers.forEach(s => {
+                    gridHtml += `<img src="${s}" class="sticker-item sticker-img" onclick="sendSticker('${s}')">`;
+                });
+                gridHtml += '</div>';
+                packTab.innerHTML = gridHtml;
+            }
         }
     }
     initForumChat();
