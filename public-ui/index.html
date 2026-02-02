@@ -8588,8 +8588,16 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
         });
     }
     
+    const googleSignInForum = document.getElementById('googleSignInForum');
     if (googleSignInForum) {
-       // Logic moved to Firebase module script to ensure availability
+       googleSignInForum.innerHTML = '';
+       window.google.accounts.id.renderButton(googleSignInForum, {
+          theme: 'filled_blue',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'pill',
+          width: '250'
+       });
     }
 
     if (profileGoogleLoginBtn) {
