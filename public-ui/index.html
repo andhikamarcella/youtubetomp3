@@ -17355,7 +17355,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  setToast('Firebase belum siap, coba refresh.', 'warning');
                  return;
             }
-            const { auth, signInWithRedirect, GoogleAuthProvider, setPersistence, browserLocalPersistence } = window.firebaseModules;
+            const { auth, signInWithRedirect, signInWithPopup, GoogleAuthProvider, setPersistence, browserLocalPersistence } = window.firebaseModules;
             
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengarahkan...';
             btn.disabled = true;
@@ -17363,15 +17363,29 @@ $('#queueList')?.addEventListener('click', (e) => {
             try {
                 // Set persistence explicitly
                 await setPersistence(auth, browserLocalPersistence);
-                
                 const provider = new GoogleAuthProvider();
-                provider.setCustomParameters({
-                    'client_id': '284178469971-32adtvdfo6d5jsot9mt7bqu52kg1q34j.apps.googleusercontent.com'
-                });
-                
-                // Set flag before redirect
-                sessionStorage.setItem('forum_login_pending', 'true');
-                await signInWithRedirect(auth, provider);
+                provider.setCustomParameters({ prompt: 'select_account' });
+                const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+                if (isMobile) {
+                    sessionStorage.setItem('forum_login_pending', 'true');
+                    await signInWithRedirect(auth, provider);
+                    return;
+                }
+                try {
+                    const result = await signInWithPopup(auth, provider);
+                    if (result && result.user) {
+                        setToast('<i class="bi bi-google me-2"></i>Login berhasil!', 'success');
+                        document.getElementById('forumLoginOverlay')?.classList.remove('d-flex');
+                        document.getElementById('forumLoginOverlay')?.classList.add('d-none');
+                    }
+                } catch (popupErr) {
+                    if (popupErr && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request')) {
+                        sessionStorage.setItem('forum_login_pending', 'true');
+                        await signInWithRedirect(auth, provider);
+                        return;
+                    }
+                    throw popupErr;
+                }
             } catch (error) {
                 console.error("Login failed", error);
                 setToast('Gagal login: ' + error.message, 'danger');
