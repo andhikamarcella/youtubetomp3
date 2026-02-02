@@ -16225,8 +16225,13 @@ $('#queueList')?.addEventListener('click', (e) => {
              }
              
              // Show welcome modal
-             const modal = new bootstrapGlobal.Modal(welcomeModalEl);
-             modal.show();
+             if (welcomeModalInstance) {
+                welcomeModalInstance.show();
+             } else {
+                // Fallback if instance lost (shouldn't happen)
+                const modal = new bootstrapGlobal.Modal(welcomeModalEl);
+                modal.show();
+             }
           } else {
              setMode('basic');
              setToast('Mode direset ke Basic');
@@ -16248,19 +16253,28 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
 
       // Welcome Modal
-      if (welcomeModalEl && !currentMode) {
-        if (bootstrapGlobal?.Modal) {
-          const modal = new bootstrapGlobal.Modal(welcomeModalEl);
-          modal.show();
-          if(selectBasic) selectBasic.addEventListener('click', () => { setMode('basic'); modal.hide(); });
-          if(selectAdvanced) selectAdvanced.addEventListener('click', () => { setMode('advanced'); modal.hide(); });
-          if(selectGaptek) selectGaptek.addEventListener('click', () => { setMode('gaptek'); modal.hide(); });
-        } else {
-          // Fallback: force basic mode silently if JS missing
-          setMode('basic'); 
-        }
+      let welcomeModalInstance = null;
+      if (welcomeModalEl && bootstrapGlobal?.Modal) {
+         welcomeModalInstance = new bootstrapGlobal.Modal(welcomeModalEl);
+         
+         // Attach listeners ONCE, regardless of currentMode
+         const handleSelection = (mode) => {
+            setMode(mode);
+            welcomeModalInstance.hide();
+         };
+         
+         if(selectBasic) selectBasic.onclick = () => handleSelection('basic');
+         if(selectAdvanced) selectAdvanced.onclick = () => handleSelection('advanced');
+         if(selectGaptek) selectGaptek.onclick = () => handleSelection('gaptek');
+         
+         // Show if no mode selected
+         if (!currentMode) {
+            welcomeModalInstance.show();
+         } else {
+            setMode(currentMode);
+         }
       } else {
-        setMode(currentMode || 'basic'); // Default to Basic if undefined
+         setMode(currentMode || 'basic');
       }
 
       // Basic Mode Listeners
