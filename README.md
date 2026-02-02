@@ -192,6 +192,14 @@ npm run migrate:xp
 
 Perintah tersebut membuat file `data/users.json` memiliki `xpEvents` untuk setiap pengguna, menyalin nilai XP lama menjadi event `legacy-bootstrap`, dan memastikan level tersinkronisasi sebelum server dijalankan kembali.
 
+## Sync Sticker Umum (Cloudinary → Firestore)
+
+Untuk mengisi koleksi Firestore `stickers` dari folder Cloudinary `stickers/umum` secara otomatis (tanpa input manual satu-satu), pakai script:
+
+- `npm run sync:stickers`
+
+Panduan lengkap Railway + env var: lihat [STICKER_SYNC_RAILWAY.md](./STICKER_SYNC_RAILWAY.md).
+
 ## Browser Extension
 
 Folder [`browser-extension/`](./browser-extension) berisi manifest dan content script sederhana untuk menambahkan tombol **Convert MP3** di halaman video YouTube (desktop maupun mobile web). Muat ekstensi ini dalam mode developer pada browser Chromium, lalu setiap klik tombol akan membuka konverter dengan URL video yang sedang dibuka.
