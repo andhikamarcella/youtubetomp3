@@ -4164,10 +4164,10 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
             }
             </style>
             <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
-  import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAR6y5cZHEr0M3lahPXWPfXqsM2uBr-XMo",
@@ -17413,18 +17413,25 @@ $('#queueList')?.addEventListener('click', (e) => {
             const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
 
             try {
+                // Ensure fresh token if needed
+                if(auth.currentUser) await auth.currentUser.getIdToken(true);
+
                 await addDoc(collection(db, "forum-messages"), {
                     text: text,
                     uid: currentUser.uid,
                     name: currentUser.displayName || 'Warga',
-                    email: currentUser.email,
-                    photoURL: currentUser.photoURL,
+                    email: currentUser.email || null,
+                    photoURL: currentUser.photoURL || null,
                     timestamp: serverTimestamp()
                 });
                 forumInput.value = '';
             } catch (e) {
                 console.error(e);
-                setToast('Gagal kirim pesan: ' + e.message, 'danger');
+                if (e.code === 'permission-denied') {
+                    setToast('Gagal kirim: Izin ditolak database. Coba relogin.', 'danger');
+                } else {
+                    setToast('Gagal kirim pesan: ' + e.message, 'danger');
+                }
             }
         }
 
