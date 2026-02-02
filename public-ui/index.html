@@ -3217,13 +3217,17 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
           </div>
           
           <!-- Login Overlay -->
-          <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-90 d-flex flex-column align-items-center justify-content-center p-4 text-center" style="backdrop-filter: blur(4px); z-index: 10;">
-              <div class="mb-3 p-3 bg-body-secondary rounded-circle shadow-sm">
-                <i class="bi bi-google text-danger" style="font-size: 2.5rem;"></i>
+          <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-95 d-flex flex-column align-items-center justify-content-center p-4 text-center" style="backdrop-filter: blur(5px); z-index: 10;">
+              <div class="mb-3 p-3 bg-dark rounded-circle shadow-lg border border-secondary">
+                <i class="bi bi-google text-danger" style="font-size: 3rem;"></i>
               </div>
-              <h5 class="fw-bold mb-2">Login Diperlukan</h5>
-              <p class="text-secondary small mb-4" style="max-width: 250px;">Akses forum dibatasi untuk pengguna terverifikasi demi kenyamanan bersama.</p>
-              <div id="googleSignInForum"></div>
+              <h4 class="fw-bold mb-2 text-light" style="font-family: monospace;">Login Diperlukan</h4>
+              <p class="text-secondary small mb-4" style="max-width: 280px; font-family: monospace;">Akses forum dibatasi untuk pengguna terverifikasi demi kenyamanan bersama.</p>
+              
+              <button id="forumGoogleLoginBtn" class="btn btn-outline-primary rounded-pill py-2 px-4 d-flex align-items-center gap-2 shadow-sm">
+                  <i class="bi bi-google"></i>
+                  <span>Login Google (Chat)</span>
+              </button>
           </div>
         </div>
         <!-- Image Preview Container -->
