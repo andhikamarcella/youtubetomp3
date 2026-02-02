@@ -17410,11 +17410,11 @@ $('#queueList')?.addEventListener('click', (e) => {
                 return;
             }
             
-            const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+            const { db, collection, addDoc, serverTimestamp, auth } = window.firebaseModules;
 
             try {
                 // Ensure fresh token if needed
-                if(auth.currentUser) await auth.currentUser.getIdToken(true);
+                if(auth && auth.currentUser) await auth.currentUser.getIdToken(true);
 
                 await addDoc(collection(db, "forum-messages"), {
                     text: text,
