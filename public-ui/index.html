@@ -4201,7 +4201,9 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
     signInWithRedirect,
     getRedirectResult,
     GoogleAuthProvider,
-    onAuthStateChanged
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence
   };
 </script>
 <script>
@@ -17153,7 +17155,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         // 1. Setup Auth Listener & Handle Redirect
         function initAuth() {
             if (!window.firebaseModules || !window.firebaseModules.auth) return;
-            const { auth, onAuthStateChanged, getRedirectResult } = window.firebaseModules;
+            const { auth, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } = window.firebaseModules;
+
+            // Show loading state if we are returning from a redirect
+            if (sessionStorage.getItem('forum_login_pending') === 'true') {
+                 forumLoginOverlay.innerHTML = `
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                    <h5 class="text-white">Memverifikasi Login...</h5>
+                 `;
+            }
 
             // Handle Redirect Result (if returning from Google)
             getRedirectResult(auth)
@@ -17164,15 +17174,18 @@ $('#queueList')?.addEventListener('click', (e) => {
                         // Force hide overlay immediately
                         forumLoginOverlay.classList.remove('d-flex');
                         forumLoginOverlay.classList.add('d-none');
+                        // Restore Overlay Content just in case logout happens later
+                        setTimeout(restoreOverlayContent, 1000);
                     }
                 })
                 .catch((error) => {
                     console.error("Redirect login failed", error);
                     // Don't show error if no redirect happened
-                    if (error.code !== 'auth/popup-closed-by-user') {
+                    if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/null-user') {
                          setToast('Gagal login: ' + error.message, 'danger');
                     }
                     sessionStorage.removeItem('forum_login_pending');
+                    restoreOverlayContent();
                 });
 
             onAuthStateChanged(auth, (user) => {
@@ -17191,8 +17204,30 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumInput.disabled = true;
                     forumSendBtn.disabled = true;
                     if(unsubscribe) unsubscribe();
+                    // If we were showing loading, restore content
+                    if (forumLoginOverlay.querySelector('.spinner-border')) {
+                        restoreOverlayContent();
+                    }
                 }
             });
+        }
+        
+        function restoreOverlayContent() {
+             forumLoginOverlay.innerHTML = `
+              <div class="mb-3 p-3 bg-dark rounded-circle shadow-lg border border-secondary">
+                <i class="bi bi-google text-danger" style="font-size: 3rem;"></i>
+              </div>
+              <h4 class="fw-bold mb-2 text-light" style="font-family: monospace;">Login Diperlukan</h4>
+              <p class="text-secondary small mb-4" style="max-width: 280px; font-family: monospace;">Akses forum dibatasi untuk pengguna terverifikasi demi kenyamanan bersama.</p>
+              
+              <button id="forumGoogleLoginBtn" class="btn btn-outline-primary rounded-pill py-2 px-4 d-flex align-items-center gap-2 shadow-sm">
+                  <i class="bi bi-google"></i>
+                  <span>Login Google (Chat)</span>
+              </button>`;
+              
+              // Re-attach event listener since we replaced HTML
+              const newBtn = document.getElementById('forumGoogleLoginBtn');
+              if(newBtn) newBtn.addEventListener('click', handleLoginClick);
         }
 
         // Call initAuth when modules are ready (Polling)
@@ -17312,33 +17347,41 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
 
         // Real Google Login
-        forumGoogleLoginBtn.addEventListener('click', async () => {
+        async function handleLoginClick() {
+            const btn = document.getElementById('forumGoogleLoginBtn');
+            if(!btn) return;
+            
             if (!window.firebaseModules || !window.firebaseModules.auth) {
                  setToast('Firebase belum siap, coba refresh.', 'warning');
                  return;
             }
-            const { auth, signInWithRedirect, GoogleAuthProvider } = window.firebaseModules;
-            const provider = new GoogleAuthProvider();
-            // User requested Client ID
-            provider.setCustomParameters({
-                'client_id': '284178469971-32adtvdfo6d5jsot9mt7bqu52kg1q34j.apps.googleusercontent.com'
-            });
-
-            forumGoogleLoginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengarahkan...';
-            forumGoogleLoginBtn.disabled = true;
+            const { auth, signInWithRedirect, GoogleAuthProvider, setPersistence, browserLocalPersistence } = window.firebaseModules;
+            
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengarahkan...';
+            btn.disabled = true;
             
             try {
+                // Set persistence explicitly
+                await setPersistence(auth, browserLocalPersistence);
+                
+                const provider = new GoogleAuthProvider();
+                provider.setCustomParameters({
+                    'client_id': '284178469971-32adtvdfo6d5jsot9mt7bqu52kg1q34j.apps.googleusercontent.com'
+                });
+                
                 // Set flag before redirect
                 sessionStorage.setItem('forum_login_pending', 'true');
                 await signInWithRedirect(auth, provider);
             } catch (error) {
                 console.error("Login failed", error);
                 setToast('Gagal login: ' + error.message, 'danger');
-                forumGoogleLoginBtn.innerHTML = '<i class="bi bi-google me-2"></i>Login Google (Chat)';
-                forumGoogleLoginBtn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-google me-2"></i>Login Google (Chat)';
+                btn.disabled = false;
                 sessionStorage.removeItem('forum_login_pending');
             }
-        });
+        }
+        
+        forumGoogleLoginBtn.addEventListener('click', handleLoginClick);
 
         async function sendForumMessage() {
             const text = forumInput.value.trim();
