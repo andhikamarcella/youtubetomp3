@@ -5821,12 +5821,12 @@ const convertSingle = async (payload = {}) => {
     args.push("--cookies", COOKIES_PATH);
   }
   if (noPlaylist) args.push("--no-playlist");
-  if (atmos && !isVideoFormat) args.push("-f", "bestaudio[channels>2]/bestaudio");
   args.push("-o", outTpl);
 
   emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
 
   const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
+  const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
 
   if (isVideoFormat) {
     const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
@@ -5839,26 +5839,35 @@ const convertSingle = async (payload = {}) => {
       args.push("--merge-output-format", "mkv");
     }
   } else if (fmt === "m4a") {
-    args.push("-f", "bestaudio[ext=m4a]/bestaudio");
+    args.push("-f", "bestaudio[ext=m4a]/bestaudio/best");
   } else if (fmt === "alac") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "alac");
   } else if (fmt === "aac") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "aac");
     if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
   } else if (fmt === "opus") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "opus");
     if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
   } else if (fmt === "flac") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "flac");
   } else if (fmt === "mp3") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(sanitizedAbrForDownload));
   } else if (fmt === "wav") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "wav");
   } else if (fmt === "aiff") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "wav");
   } else if (fmt === "caf") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "wav");
   } else if (fmt === "ogg") {
+    args.push("-f", baseAudioSelector);
     args.push("-x", "--audio-format", "ogg");
   }
   if (resumeMode) {
