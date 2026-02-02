@@ -4496,6 +4496,37 @@ Silakan diskusi, request lagu, atau lapor bug di sini. Wajib login Google ya bia
       }
   };
 
+  // Global FAQ Toggle Functions
+  window.toggleFaqPanel = function() {
+      const panel = document.getElementById('faqFloatPanel');
+      const btn = document.getElementById('faqFloatBtn');
+      if(panel && btn) {
+          const isActive = panel.classList.toggle('active');
+          btn.innerHTML = isActive ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-question-lg"></i>';
+      }
+  };
+
+  window.toggleFaqItem = function(header) {
+      const item = header.parentElement;
+      const allItems = document.querySelectorAll('.faq-accordion-item');
+      
+      // Close others
+      allItems.forEach(el => {
+          if(el !== item) {
+              el.classList.remove('active');
+              const icon = el.querySelector('.faq-question i');
+              if(icon) icon.style.transform = 'rotate(0deg)';
+          }
+      });
+
+      // Toggle current
+      item.classList.toggle('active');
+      const icon = header.querySelector('i');
+      if(icon) {
+          icon.style.transform = item.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+  };
+
 function showMaintenanceOverlay(show, type = 'maintenance') {
       let overlay = document.getElementById('maintenanceOverlay');
       if (!overlay && show) {
@@ -4625,18 +4656,83 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         border-radius: 10px;
                         transition: width 0.6s ease;
                     }
-                    .faq-grid {
-                        display: grid;
-                        grid-template-columns: 1fr;
-                        gap: 0.75rem;
+                    /* Floating FAQ Widget */
+                    .faq-float-btn {
+                        position: fixed; bottom: 30px; right: 30px;
+                        width: 56px; height: 56px;
+                        border-radius: 50%;
+                        background: #ffffff;
+                        color: ${colorMain};
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                        border: none;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                        z-index: 10000;
+                        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                    }
+                    .faq-float-btn:hover { transform: scale(1.1); }
+                    .faq-float-btn:active { transform: scale(0.95); }
+
+                    .faq-float-panel {
+                        position: fixed; bottom: 100px; right: 30px;
+                        width: 320px;
+                        background: rgba(255, 255, 255, 0.98);
+                        backdrop-filter: blur(10px);
+                        border-radius: 20px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                        padding: 1.5rem;
+                        z-index: 10000;
+                        transform-origin: bottom right;
+                        transform: scale(0);
+                        opacity: 0;
+                        visibility: hidden;
+                        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                        border: 1px solid rgba(0,0,0,0.05);
                         text-align: left;
                     }
-                    .faq-item {
-                        display: flex; gap: 0.75rem; align-items: flex-start;
+                    .faq-float-panel.active {
+                        transform: scale(1);
+                        opacity: 1;
+                        visibility: visible;
+                    }
+
+                    .faq-accordion-item {
+                        border-bottom: 1px solid rgba(0,0,0,0.05);
+                        margin-bottom: 0.5rem;
+                        padding-bottom: 0.5rem;
+                    }
+                    .faq-accordion-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+                    .faq-question {
+                        font-weight: 600;
+                        font-size: 0.9rem;
+                        color: #212529;
+                        cursor: pointer;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 0.5rem 0;
+                        user-select: none;
+                    }
+                    .faq-question i { transition: transform 0.3s; color: ${colorMain}; }
+
+                    .faq-answer {
+                        max-height: 0;
+                        overflow: hidden;
                         font-size: 0.85rem;
+                        color: #6c757d;
+                        transition: max-height 0.3s ease, margin-top 0.3s ease;
+                    }
+                    .faq-accordion-item.active .faq-answer {
+                        max-height: 150px;
+                        margin-top: 0.25rem;
                     }
                     /* Mobile Optimization */
                     @media (max-width: 576px) {
+                        .faq-float-btn { bottom: 20px; right: 20px; width: 50px; height: 50px; }
+                        .faq-float-panel { bottom: 80px; right: 20px; width: calc(100% - 40px); max-width: 320px; }
+                        
                         .maint-container {
                             padding: 0.5rem; /* Minimized padding */
                             align-items: center; /* Center vertically on mobile too */
@@ -4688,33 +4784,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                     </div>
                                </div>
     
-                               <!-- FAQ Mini Section (Compact) -->
-                               <div class="mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.05);">
-                                    <h6 class="fw-bold mb-2 small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem; color: #6c757d !important; text-align: left;"><i class="bi bi-question-circle-fill me-2"></i>Pertanyaan Umum</h6>
-                                    <div class="faq-grid">
-                                        <div class="faq-item">
-                                            <i class="bi bi-shield-check text-success flex-shrink-0"></i>
-                                            <div>
-                                                <span class="d-block fw-bold" style="color: #212529 !important;">Data aman?</span>
-                                                <span class="d-block text-muted" style="line-height: 1.2;">Aman, tidak ada yang hilang.</span>
-                                            </div>
-                                        </div>
-                                        <div class="faq-item">
-                                             <i class="bi bi-cloud-arrow-down text-primary flex-shrink-0"></i>
-                                             <div>
-                                                 <span class="d-block fw-bold" style="color: #212529 !important;">Download?</span>
-                                                 <span class="d-block text-muted" style="line-height: 1.2;">Ulangi saat online.</span>
-                                             </div>
-                                        </div>
-                                         <div class="faq-item">
-                                             <i class="bi bi-hdd-network text-warning flex-shrink-0"></i>
-                                             <div>
-                                                 <span class="d-block fw-bold" style="color: #212529 !important;">Kenapa?</span>
-                                                 <span class="d-block text-muted" style="line-height: 1.2;">Stabilitas & keamanan.</span>
-                                             </div>
-                                        </div>
-                                    </div>
-                               </div>
+    
     
                                <div class="d-flex align-items-center justify-content-center gap-3 mb-3 p-2 rounded-3" style="background: rgba(0,0,0,0.04);">
                                     <div class="text-start">
@@ -4732,6 +4802,45 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                            <button class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
+                      </div>
+                      
+                      <!-- Floating FAQ Widget -->
+                      <button id="faqFloatBtn" class="faq-float-btn" onclick="toggleFaqPanel()">
+                          <i class="bi bi-question-lg"></i>
+                      </button>
+
+                      <div id="faqFloatPanel" class="faq-float-panel">
+                          <h6 class="fw-bold mb-3 small text-uppercase" style="letter-spacing: 0.5px; color: #6c757d !important;"><i class="bi bi-question-circle-fill me-2"></i>Pertanyaan Umum</h6>
+                          
+                          <div class="faq-accordion-item">
+                              <div class="faq-question" onclick="toggleFaqItem(this)">
+                                  <span>Data saya aman?</span>
+                                  <i class="bi bi-chevron-down"></i>
+                              </div>
+                              <div class="faq-answer">
+                                  Aman 100%. Tidak ada data yang hilang selama proses maintenance ini berlangsung.
+                              </div>
+                          </div>
+                          
+                          <div class="faq-accordion-item">
+                              <div class="faq-question" onclick="toggleFaqItem(this)">
+                                  <span>Bagaimana download saya?</span>
+                                  <i class="bi bi-chevron-down"></i>
+                              </div>
+                              <div class="faq-answer">
+                                  Silakan ulangi proses download setelah maintenance selesai.
+                              </div>
+                          </div>
+                          
+                          <div class="faq-accordion-item">
+                              <div class="faq-question" onclick="toggleFaqItem(this)">
+                                  <span>Kenapa maintenance?</span>
+                                  <i class="bi bi-chevron-down"></i>
+                              </div>
+                              <div class="faq-answer">
+                                  Kami melakukan upgrade server untuk meningkatkan stabilitas dan kecepatan sistem.
+                              </div>
+                          </div>
                       </div>
                   </div>
               `;
