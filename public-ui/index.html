@@ -18027,7 +18027,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 // Loading State
                 packTab.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 small text-secondary">Memuat stiker umum...</div></div>';
                 
-                const { db, collection, getDocs } = window.firebaseModules;
+                const { db, collection, getDocs, query, where } = window.firebaseModules;
                 
                 // Helper to render grid
                 const renderStickers = (urls) => {
@@ -18043,8 +18043,14 @@ $('#queueList')?.addEventListener('click', (e) => {
                     }
                 };
 
-                // 1. Try Firestore First
-                getDocs(collection(db, "stickers"))
+                // 1. Try Firestore First with Explicit Query
+                // Using a generic query or fetching all to debug "category" issue
+                // Better to fetch all if collection is small, or use category query if indexed
+                // User mentioned where("category", "==", "umum").
+                
+                const q = query(collection(db, "stickers"), where("category", "==", "umum"));
+                
+                getDocs(q)
                     .then((querySnapshot) => {
                         let urls = [];
                         querySnapshot.forEach((doc) => {
@@ -18052,11 +18058,14 @@ $('#queueList')?.addEventListener('click', (e) => {
                             if(data.url) urls.push(data.url);
                         });
                         
+                        // Debugging Log
+                        console.log(`Firestore Stickers Fetched: ${urls.length} items`);
+                        
                         if(urls.length > 0) {
                             renderStickers(urls);
                         } else {
                             // 2. Firestore Empty? Try Cloudinary Direct Listing (Fallback)
-                            console.warn("Firestore stickers empty, trying Cloudinary fallback...");
+                            console.warn("Firestore query returned 0 items. Trying Cloudinary fallback...");
                             fetchCloudinaryStickers().then(renderStickers).catch(err => {
                                 console.error(err);
                                 packTab.innerHTML = '<div class="text-center text-secondary p-3">Tidak ada stiker ditemukan.</div>';
@@ -18065,7 +18074,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                     })
                     .catch((error) => {
                         console.error("Error getting stickers from Firestore:", error);
-                        // 3. Firestore Error? Try Cloudinary Fallback
+                        // Permission Denied or Index Missing?
+                        // Fallback immediately
                         fetchCloudinaryStickers().then(renderStickers).catch(err => {
                              packTab.innerHTML = '<div class="text-center text-danger p-3">Gagal memuat stiker.</div>';
                         });
