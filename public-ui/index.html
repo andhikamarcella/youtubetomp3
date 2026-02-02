@@ -964,6 +964,33 @@
       .mini-player .mini-actions { flex-direction: row; min-width: 100%; justify-content: space-evenly; }
       .mini-player .mini-action-label { font-size: .6rem; }
     }
+    
+    /* WhatsApp-like Sticker Grid */
+    .sticker-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 12px;
+    }
+    .sticker-item {
+      width: 100%;
+      aspect-ratio: 1/1;
+      object-fit: contain;
+      cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .sticker-item:hover {
+      transform: scale(1.1);
+      background-color: rgba(0,0,0,0.05);
+    }
+    .sticker-item:active {
+      transform: scale(0.95);
+    }
+    html[data-bs-theme='dark'] .sticker-item:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
   </style>
   <!-- Cropper.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
@@ -3284,9 +3311,7 @@
             <li class="nav-item">
               <button class="nav-link active rounded-top-3 text-secondary" id="sticker-recent-tab" data-bs-toggle="tab" data-bs-target="#sticker-recent" type="button"><i class="bi bi-clock-history"></i></button>
             </li>
-            <li class="nav-item">
-              <button class="nav-link rounded-top-3 text-secondary" id="sticker-custom-tab" data-bs-toggle="tab" data-bs-target="#sticker-custom" type="button"><i class="bi bi-person-hearts"></i> Koleksi Saya</button>
-            </li>
+
             <li class="nav-item">
               <button class="nav-link rounded-top-3 text-secondary" id="sticker-pack-tab" data-bs-toggle="tab" data-bs-target="#sticker-pack" type="button"><i class="bi bi-emoji-smile"></i> Umum</button>
             </li>
