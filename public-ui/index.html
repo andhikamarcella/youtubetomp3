@@ -18830,13 +18830,23 @@ $('#queueList')?.addEventListener('click', (e) => {
                  forumChatArea.innerHTML = '';
                  forumMessageCache = {};
                  
-                 // Pinned Message
-                 const pinnedRules = `
+                const pinnedByRoom = {
+                  umum: 'Selamat datang di Forum Warga!<br>Room <b>Umum</b> buat ngobrol bebas, tanya fitur, dan update santai.',
+                  laporan: 'Room <b>Laporan</b> buat lapor bug/eror.<br>Tulis: link, device, dan screenshot kalau ada.',
+                  jomok: 'Room <b>Jomok</b> buat obrolan dewasa (18+).<br>Tetap sopan, jangan sebar data pribadi siapa pun.',
+                  foto: 'Room <b>Foto Warga</b> buat share foto, hasil edit, atau meme gambar.<br>Jangan doxxing & jangan upload KTP/nomor WA.',
+                  event: 'Room <b>Event</b> buat info event, tantangan, dan pengumuman komunitas.<br>Cek pinned ini biar nggak ketinggalan.',
+                  santai: 'Room <b>Santai / Meme</b> buat lepas stress.<br>Drop meme, cerita random, atau bercandaan tipis-tipis.',
+                };
+
+                const pinnedText = pinnedByRoom[roomKey] || pinnedByRoom.umum;
+
+                const pinnedRules = `
                     <div class="d-flex align-items-start mb-3 message admin">
                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
                        <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
                           <div class="small fw-bold text-white mb-1">Admin <i class="bi bi-patch-check-fill text-info"></i></div>
-                          <div class="small text-white">Selamat datang di Forum Warga!<br>Pilih room di atas untuk pindah topik (Umum, Laporan, Foto Warga, dll).</div>
+                         <div class="small text-white">${pinnedText}</div>
                           <div class="text-end text-white-50 mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
                             <i class="bi bi-pin-angle-fill"></i> Pinned
                           </div>
