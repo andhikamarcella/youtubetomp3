@@ -134,6 +134,13 @@
       text-overflow: ellipsis;
       max-width: 100%;
     }
+    #forumVoiceIndicator {
+      border-radius: 14px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border-left: 4px solid #ff4d4f;
+      margin-bottom: 8px;
+    }
 
     .chat-reply-quote {
       border-left: 4px solid rgba(255,255,255,0.35);
@@ -3463,6 +3470,19 @@
                         <button type="button" class="btn btn-link p-0 text-white-50" id="forumReplyCloseBtn" aria-label="Tutup reply" style="text-decoration:none;">
                             <i class="bi bi-x-lg"></i>
                         </button>
+                    </div>
+                </div>
+                <div id="forumVoiceIndicator" class="d-none">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge rounded-pill text-bg-danger">REC</span>
+                            <div class="text-white-50 small" id="forumVoiceTimer">00:00</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-link p-0 text-white-50" id="forumVoiceCancelBtn" aria-label="Batalkan rekaman" style="text-decoration:none;">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <textarea id="forumInput" class="form-control bg-transparent border-0 text-white p-0 shadow-none" rows="1" placeholder="Ketik pesan..." style="resize: none; max-height: 100px;"></textarea>
@@ -17438,6 +17458,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumReplyTitle = document.getElementById('forumReplyTitle');
         const forumReplyText = document.getElementById('forumReplyText');
         const forumReplyCloseBtn = document.getElementById('forumReplyCloseBtn');
+        const forumVoiceIndicator = document.getElementById('forumVoiceIndicator');
+        const forumVoiceTimer = document.getElementById('forumVoiceTimer');
+        const forumVoiceCancelBtn = document.getElementById('forumVoiceCancelBtn');
         const forumMessageInfoModalEl = document.getElementById('forumMessageInfoModal');
         const forumMessageInfoSender = document.getElementById('forumMessageInfoSender');
         const forumMessageInfoTime = document.getElementById('forumMessageInfoTime');
@@ -17447,6 +17470,14 @@ $('#queueList')?.addEventListener('click', (e) => {
         // --- Helper Functions ---
         let isNearBottomState = true;
         let replyContext = null;
+        let voiceState = {
+            isRecording: false,
+            mediaRecorder: null,
+            chunks: [],
+            stream: null,
+            startedAt: 0,
+            timer: null,
+        };
 
         function formatWhatsAppDate(timestamp) {
             if (!timestamp || !timestamp.seconds) return '';
@@ -17500,8 +17531,137 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (forumReplyText) forumReplyText.textContent = ctx.text || '';
         }
 
+        function setVoiceRecordingUi(isRecording) {
+            if (!forumVoiceIndicator) return;
+            if (isRecording) forumVoiceIndicator.classList.remove('d-none');
+            else forumVoiceIndicator.classList.add('d-none');
+        }
+
+        function updateVoiceTimerUi() {
+            if (!forumVoiceTimer) return;
+            const elapsedMs = Date.now() - (voiceState.startedAt || Date.now());
+            const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+            const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const ss = String(totalSeconds % 60).padStart(2, '0');
+            forumVoiceTimer.textContent = `${mm}:${ss}`;
+        }
+
+        async function startVoiceRecording() {
+            if (voiceState.isRecording) return;
+            if (!currentUser) { setToast('Anda belum login!', 'warning'); return; }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setToast('Browser tidak mendukung voice note', 'danger'); return; }
+            if (typeof MediaRecorder === 'undefined') { setToast('Browser tidak mendukung voice note', 'danger'); return; }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const recorder = new MediaRecorder(stream);
+
+                voiceState.isRecording = true;
+                voiceState.mediaRecorder = recorder;
+                voiceState.stream = stream;
+                voiceState.chunks = [];
+                voiceState.startedAt = Date.now();
+
+                setVoiceRecordingUi(true);
+                updateVoiceTimerUi();
+                if (voiceState.timer) clearInterval(voiceState.timer);
+                voiceState.timer = setInterval(updateVoiceTimerUi, 250);
+
+                recorder.addEventListener('dataavailable', (evt) => {
+                    if (evt.data && evt.data.size > 0) voiceState.chunks.push(evt.data);
+                });
+
+                recorder.start();
+                updateSendButtonState();
+            } catch (err) {
+                console.error(err);
+                setToast('Izin mikrofon ditolak', 'danger');
+            }
+        }
+
+        async function stopVoiceRecording(shouldSend) {
+            if (!voiceState.isRecording) return;
+            const recorder = voiceState.mediaRecorder;
+            const stream = voiceState.stream;
+            const startedAt = voiceState.startedAt || Date.now();
+
+            voiceState.isRecording = false;
+            if (voiceState.timer) clearInterval(voiceState.timer);
+            voiceState.timer = null;
+            setVoiceRecordingUi(false);
+
+            try {
+                if (recorder && recorder.state !== 'inactive') {
+                    await new Promise((resolve) => {
+                        recorder.addEventListener('stop', resolve, { once: true });
+                        recorder.stop();
+                    });
+                }
+            } catch {}
+
+            try {
+                if (stream) stream.getTracks().forEach((t) => t.stop());
+            } catch {}
+
+            const elapsedMs = Date.now() - startedAt;
+            const chunks = Array.isArray(voiceState.chunks) ? voiceState.chunks : [];
+            voiceState.chunks = [];
+            voiceState.mediaRecorder = null;
+            voiceState.stream = null;
+            voiceState.startedAt = 0;
+
+            updateSendButtonState();
+            if (!shouldSend) return;
+            if (!chunks.length) { setToast('Rekaman kosong', 'warning'); return; }
+
+            const mimeType = (recorder && recorder.mimeType) ? recorder.mimeType : (chunks[0] && chunks[0].type) ? chunks[0].type : 'audio/webm';
+            const blob = new Blob(chunks, { type: mimeType });
+            const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm';
+            const file = new File([blob], `voice_${Date.now()}.${ext}`, { type: mimeType });
+
+            forumSendBtn.disabled = true;
+            forumSendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            try {
+                const voiceUrl = await uploadToCloudinaryAuto(file, 'forum-voice');
+                const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+                const msgData = {
+                    text: '',
+                    uid: currentUser.uid,
+                    name: currentUser.displayName || 'Warga',
+                    timestamp: serverTimestamp(),
+                    voiceUrl,
+                    voiceDurationMs: elapsedMs,
+                    voiceMimeType: mimeType,
+                };
+                if (replyContext && replyContext.id) {
+                    msgData.replyTo = {
+                        id: replyContext.id,
+                        name: replyContext.name || 'Warga',
+                        text: replyContext.text || '',
+                    };
+                }
+                if (currentUser.email) msgData.email = currentUser.email;
+                if (currentUser.photoURL) msgData.photoURL = currentUser.photoURL;
+                await addDoc(collection(db, "forum-messages"), msgData);
+                setReplyContext(null);
+                window.scrollToBottom(true);
+            } catch (e) {
+                console.error(e);
+                setToast('Gagal kirim voice note: ' + (e.message || 'unknown'), 'danger');
+            } finally {
+                forumSendBtn.disabled = false;
+                updateSendButtonState();
+            }
+        }
+
         if (forumReplyCloseBtn) {
             forumReplyCloseBtn.addEventListener('click', () => setReplyContext(null));
+        }
+        if (forumVoiceCancelBtn) {
+            forumVoiceCancelBtn.addEventListener('click', async () => {
+                if (!voiceState.isRecording) return;
+                await stopVoiceRecording(false);
+            });
         }
 
         window.scrollToBottom = (smooth = true) => {
@@ -17970,7 +18130,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumLoginOverlay.classList.remove('d-flex');
                     forumLoginOverlay.classList.add('d-none');
                     forumInput.disabled = false;
-                    forumSendBtn.disabled = false;
+                    updateSendButtonState();
                     if(forumLogoutBtn) forumLogoutBtn.classList.remove('d-none');
                     if(forumDeleteAllBtn) {
                         if (user.email === adminEmail) forumDeleteAllBtn.classList.remove('d-none');
@@ -17981,7 +18141,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumLoginOverlay.classList.remove('d-none');
                     forumLoginOverlay.classList.add('d-flex');
                     forumInput.disabled = true;
-                    forumSendBtn.disabled = true;
+                    updateSendButtonState();
                     if(forumLogoutBtn) forumLogoutBtn.classList.add('d-none');
                     if(forumDeleteAllBtn) forumDeleteAllBtn.classList.add('d-none');
                     if(unsubscribe) unsubscribe();
@@ -18144,6 +18304,46 @@ $('#queueList')?.addEventListener('click', (e) => {
             });
         }
 
+        async function uploadToCloudinaryAuto(file, folder = null) {
+            const apiKey = '422728616314883';
+            const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE';
+            const cloudName = 'dgbal8btf';
+            const timestamp = Math.round((new Date()).getTime() / 1000);
+
+            let paramsToSign = `timestamp=${timestamp}`;
+            if (folder) {
+                paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+            }
+            const signatureStr = paramsToSign + apiSecret;
+
+            const enc = new TextEncoder();
+            const hash = await crypto.subtle.digest('SHA-1', enc.encode(signatureStr));
+            const signature = Array.from(new Uint8Array(hash)).map(v => v.toString(16).padStart(2, '0')).join('');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('api_key', apiKey);
+            formData.append('timestamp', timestamp);
+            if (folder) formData.append('folder', folder);
+            formData.append('signature', signature);
+
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`);
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve(response.secure_url);
+                    } else {
+                        console.error("Cloudinary Error:", xhr.responseText);
+                        reject(new Error("Cloudinary Upload Failed: " + xhr.statusText));
+                    }
+                };
+                xhr.onerror = () => reject(new Error("Network Error"));
+                xhr.send(formData);
+            });
+        }
+
         const reactionChoices = [
             { key: 'like', emoji: '👍' },
             { key: 'love', emoji: '❤️' },
@@ -18211,6 +18411,19 @@ $('#queueList')?.addEventListener('click', (e) => {
             document.addEventListener('click', onDocClick, true);
         }
 
+        if (forumReactionOverlay) {
+            forumReactionOverlay.addEventListener('click', async (e) => {
+                const btn = e.target.closest('[data-action="pick-reaction"]');
+                if (!btn) return;
+                e.preventDefault();
+                const messageId = btn.getAttribute('data-message-id');
+                const key = btn.getAttribute('data-reaction-key');
+                if (!messageId || !key) return;
+                try { await toggleReaction(messageId, key); } catch (err) { console.error(err); setToast('Gagal tambah reaksi', 'danger'); }
+                hideReactionOverlay();
+            });
+        }
+
         function showMessageInfo(messageId) {
             if (!forumMessageInfoModal) return;
             const msgData = forumMessageCache[messageId];
@@ -18245,7 +18458,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     const messageId = pill.getAttribute('data-message-id');
                     const key = pill.getAttribute('data-reaction-key');
                     if (messageId && key) {
-                        try { await toggleReaction(messageId, key); } catch (err) { console.error(err); }
+                        try { await toggleReaction(messageId, key); } catch (err) { console.error(err); setToast('Gagal tambah reaksi', 'danger'); }
                     }
                     return;
                 }
@@ -18259,7 +18472,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     
                     if (action === 'pick-reaction') {
                          const key = actionBtn.getAttribute('data-reaction-key');
-                         if (messageId && key) try { await toggleReaction(messageId, key); } catch (err) { console.error(err); }
+                         if (messageId && key) try { await toggleReaction(messageId, key); } catch (err) { console.error(err); setToast('Gagal tambah reaksi', 'danger'); }
                          hideReactionOverlay();
                     }
                     else if (action === 'msg-copy') {
@@ -18271,10 +18484,11 @@ $('#queueList')?.addEventListener('click', (e) => {
                     else if (action === 'msg-reply') {
                         const msgData = forumMessageCache[messageId];
                         if (msgData) {
+                            const replyText = (msgData.text || '').trim() || (msgData.voiceUrl ? '🎤 Voice note' : '');
                             setReplyContext({
                                 id: messageId,
                                 name: msgData.email === adminEmail ? 'ADMIN' : (msgData.name || 'Warga'),
-                                text: (msgData.text || '').trim(),
+                                text: replyText,
                             });
                             forumInput.focus();
                         }
@@ -18351,7 +18565,15 @@ $('#queueList')?.addEventListener('click', (e) => {
             `;
 
             const starIcon = isStarred ? `<i class="bi bi-star-fill text-warning me-1"></i>` : '';
-            let msgContent = replyQuote + `<div class="small" style="white-space: pre-wrap; word-wrap: break-word;">${(data.text||'').replace(/</g, "&lt;")}</div>` + imagesHtml + reactionStrip;
+            const textHtml = (data.text && String(data.text).trim() !== '')
+                ? `<div class="small" style="white-space: pre-wrap; word-wrap: break-word;">${String(data.text).replace(/</g, "&lt;")}</div>`
+                : '';
+            const voiceHtml = data.voiceUrl
+                ? `<div class="mt-2">
+                       <audio controls preload="none" src="${data.voiceUrl}" style="width: 260px; height: 32px;"></audio>
+                   </div>`
+                : '';
+            let msgContent = replyQuote + textHtml + voiceHtml + imagesHtml + reactionStrip;
             
             let msgHtml;
             if (isAdmin) {
@@ -18589,26 +18811,60 @@ $('#queueList')?.addEventListener('click', (e) => {
                 setToast('Gagal kirim: ' + e.message, 'danger');
             } finally {
                 forumSendBtn.disabled = false;
-                forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
                 updateSendButtonState();
             }
         }
         
         function updateSendButtonState() {
+             if (!forumSendBtn) return;
+             if (!currentUser) {
+                 forumSendBtn.disabled = true;
+                 return;
+             }
+             if (voiceState.isRecording) {
+                 forumSendBtn.disabled = false;
+                 forumSendBtn.classList.remove('btn-primary');
+                 forumSendBtn.classList.add('btn-danger');
+                 forumSendBtn.innerHTML = '<i class="bi bi-stop-fill fs-5"></i>';
+                 return;
+             }
              const hasText = forumInput.value.trim().length > 0;
              const hasFiles = selectedFiles.length > 0;
-             if(hasText || hasFiles) forumSendBtn.disabled = false;
-             else forumSendBtn.disabled = true;
+             forumSendBtn.disabled = false;
+             forumSendBtn.classList.remove('btn-danger');
+             forumSendBtn.classList.add('btn-primary');
+             if (hasText || hasFiles) {
+                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
+             } else {
+                 forumSendBtn.innerHTML = '<i class="bi bi-mic-fill fs-4"></i>';
+             }
         }
 
         if(forumSendBtn) {
-            forumSendBtn.addEventListener('click', sendForumMessage);
+            const handleSendBtnClick = async () => {
+                if (!currentUser) { setToast('Anda belum login!', 'warning'); return; }
+                const hasText = forumInput.value.trim().length > 0;
+                const hasFiles = selectedFiles.length > 0;
+                if (voiceState.isRecording) {
+                    await stopVoiceRecording(true);
+                    return;
+                }
+                if (hasText || hasFiles) {
+                    await sendForumMessage();
+                    return;
+                }
+                await startVoiceRecording();
+            };
+
+            forumSendBtn.addEventListener('click', handleSendBtnClick);
             forumInput.addEventListener('input', updateSendButtonState);
             // Handle Enter key for text only if no files (or just shift+enter for newline)
             forumInput.addEventListener('keypress', (e) => {
                 if(e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    sendForumMessage();
+                    const hasText = forumInput.value.trim().length > 0;
+                    const hasFiles = selectedFiles.length > 0;
+                    if (hasText || hasFiles) sendForumMessage();
                 }
             });
         }
