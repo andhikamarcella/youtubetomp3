@@ -415,6 +415,33 @@
     background-color: #e5ddd5;
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
     scrollbar-width: thin;
+    touch-action: pan-y;
+  }
+  #forumChatArea [data-message-id] {
+    touch-action: pan-y;
+  }
+  @media (max-width: 768px) {
+    #forumModal .modal-dialog {
+      margin: 0 !important;
+      max-width: 100% !important;
+      height: 100dvh;
+    }
+    #forumModal .modal-content {
+      border-radius: 0 !important;
+      height: 100dvh;
+    }
+    #forumModal .modal-header {
+      padding-top: calc(0.75rem + env(safe-area-inset-top));
+      padding-left: calc(0.75rem + env(safe-area-inset-left));
+      padding-right: calc(0.75rem + env(safe-area-inset-right));
+    }
+    #forumModal .modal-body {
+      height: calc(100dvh - 160px);
+      max-height: none !important;
+    }
+    #forumModal .modal-footer {
+      padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    }
   }
   [data-bs-theme="dark"] #forumChatArea {
     background-color: #0b141a;
@@ -514,6 +541,7 @@
     .message { margin-bottom: .5rem; display: flex; align-items: flex-end; max-width: 100%; }
     .message.user { justify-content: flex-end; }
     .message.assistant { justify-content: flex-start; }
+    .message.admin { justify-content: flex-end; }
     .message-bubble { max-width: 75%; padding: .5rem .75rem; border-radius: .75rem; word-wrap: break-word; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); line-height: 1.4; }
     .message.user .message-bubble { background: #dcf8c6; color: #303030; border-bottom-right-radius: .25rem; }
     .message.assistant .message-bubble { background: white; color: #303030; border-bottom-left-radius: .25rem; }
@@ -3611,7 +3639,7 @@
   <!-- Forum Modal (Task 6) - Redesigned -->
   <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-md-down">
-      <div class="modal-content border-0 shadow-lg bg-dark overflow-hidden" style="border-radius: 1.5rem;">
+      <div class="modal-content border-0 shadow-lg bg-dark" style="border-radius: 1.5rem;">
         
         <!-- Header -->
         <div class="modal-header border-bottom-0 p-3 align-items-center justify-content-between" style="background: linear-gradient(135deg, #1a1d21 0%, #212529 100%); color: white;">
@@ -4811,6 +4839,10 @@
 
             /* Forum Styles */
             #forumChatArea {
+                background-color: #e5ddd5;
+                background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
+            }
+            [data-bs-theme="dark"] #forumChatArea {
                 background-color: #121417;
                 background-image: linear-gradient(30deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(150deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(30deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(150deg, #191c20 12%, transparent 12.5%, transparent 87%, #191c20 87.5%, #191c20), linear-gradient(60deg, #1e2227 25%, transparent 25.5%, transparent 75%, #1e2227 75%, #1e2227), linear-gradient(60deg, #1e2227 25%, transparent 25.5%, transparent 75%, #1e2227 75%, #1e2227);
                 background-size: 40px 70px;
@@ -19919,6 +19951,64 @@ $('#queueList')?.addEventListener('click', (e) => {
 
             forumChatArea.addEventListener('pointerup', finishSwipeReply);
             forumChatArea.addEventListener('pointercancel', finishSwipeReply);
+
+            let touchSwipe = null;
+            const touchStart = (e) => {
+                if (!canSwipeReply()) return;
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                if (e.target.closest('button, a, input, textarea, .dropdown, .voice-note')) return;
+                const msgEl = e.target.closest('[data-message-id]');
+                if (!msgEl) return;
+                touchSwipe = {
+                    el: msgEl,
+                    id: msgEl.getAttribute('data-message-id') || '',
+                    startX: t.clientX,
+                    startY: t.clientY,
+                    dx: 0,
+                    locked: false,
+                };
+                msgEl.style.transition = 'none';
+            };
+            const touchMove = (e) => {
+                if (!touchSwipe) return;
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                const dx = t.clientX - touchSwipe.startX;
+                const dy = t.clientY - touchSwipe.startY;
+                touchSwipe.dx = dx;
+                if (!touchSwipe.locked) {
+                    if (Math.abs(dy) > 44) { resetSwipeReplyUi(); touchSwipe = null; return; }
+                    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) touchSwipe.locked = true;
+                }
+                if (!touchSwipe.locked) return;
+                if (dx <= 0) return;
+                e.preventDefault();
+                const cap = Math.min(72, dx);
+                if (touchSwipe.el) {
+                    touchSwipe.el.style.transform = `translateX(${cap}px)`;
+                    touchSwipe.el.style.opacity = String(Math.max(0.65, 1 - (cap / 260)));
+                }
+            };
+            const touchEnd = () => {
+                if (!touchSwipe) return;
+                const shouldTrigger = touchSwipe.dx > 56;
+                const id = touchSwipe.id;
+                resetSwipeReplyUi();
+                if (shouldTrigger && id) {
+                    const msgData = forumMessageCache[id];
+                    if (msgData) {
+                        setReplyContext(buildReplyContextFromMessage(id, msgData));
+                        try { if (navigator.vibrate) navigator.vibrate(18); } catch {}
+                        try { forumInput.focus(); } catch {}
+                    }
+                }
+                touchSwipe = null;
+            };
+            forumChatArea.addEventListener('touchstart', touchStart, { passive: true });
+            forumChatArea.addEventListener('touchmove', touchMove, { passive: false });
+            forumChatArea.addEventListener('touchend', touchEnd, { passive: true });
+            forumChatArea.addEventListener('touchcancel', touchEnd, { passive: true });
         }
 
         function renderMessage(messageId, data) {
@@ -20014,8 +20104,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid gold;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                     </div>
-                    <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
-                       <div class="small fw-bold text-white mb-1">${isReportBot ? '<i class="bi bi-robot me-1 text-info"></i>BOT Laporan' : '<i class="bi bi-shield-check me-1 text-warning"></i>ADMIN'}</div>
+                    <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
+                       <div class="small fw-bold mb-1" style="opacity: 0.9;">${isReportBot ? '<i class="bi bi-robot me-1 text-info"></i>BOT Laporan' : '<i class="bi bi-shield-check me-1 text-warning"></i>ADMIN'}</div>
                        ${msgContent}
                        <div class="d-flex justify-content-end align-items-center mt-1">
                           <div class="text-white-50 me-2" style="font-size: 0.65rem;">${starIcon}${timeStr}</div>
