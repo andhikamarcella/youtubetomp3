@@ -20038,7 +20038,9 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (!currentUser) return;
 
             const isReportBot = !!(data && data.report && data.report.type === 'user_report');
-            const isAdminEmail = !isReportBot && (data.email === adminEmail);
+            const msgEmail = data && data.email ? String(data.email).trim().toLowerCase() : '';
+            const msgName = data && data.name ? String(data.name).trim().toLowerCase() : '';
+            const isAdminEmail = !isReportBot && (msgEmail === adminEmail || (!msgEmail && msgName === 'admin'));
             const isMe = !isReportBot && !isAdminEmail && data.uid === currentUser.uid;
             const isAdmin = isAdminEmail || isReportBot;
             const isStarred = Array.isArray(data.starredBy) && data.starredBy.includes(currentUser.uid);
