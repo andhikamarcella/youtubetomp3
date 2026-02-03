@@ -20285,7 +20285,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  </div>`;
             } else if (isAdminEmail) {
                 msgHtml = `
-               <div class="d-flex align-items-end mb-2 flex-row-reverse message admin w-100 justify-content-end" data-message-id="${messageId}">
+               <div class="d-flex align-items-end mb-2 flex-row-reverse message admin w-100" data-message-id="${messageId}">
                     <div class="bg-dark text-white d-flex align-items-center justify-content-center ms-2 shadow-sm wa-avatar" style="border: 2px solid gold;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                     </div>
@@ -20300,7 +20300,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  </div>`;
             } else if (isMe) {
                 msgHtml = `
-               <div class="d-flex align-items-end mb-2 flex-row-reverse w-100 justify-content-end" data-message-id="${messageId}">
+               <div class="d-flex align-items-end mb-2 flex-row-reverse w-100" data-message-id="${messageId}">
                     <div class="bg-dark text-white d-flex align-items-center justify-content-center ms-2 shadow-sm wa-avatar" style="font-size: 0.8rem;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ME'}
                     </div>
