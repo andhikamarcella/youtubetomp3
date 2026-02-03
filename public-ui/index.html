@@ -96,6 +96,89 @@
         --chat-date-other: rgba(255,255,255,0.6);
     }
 
+    .chat-date-separator {
+      align-self: center;
+      background: rgba(255, 255, 255, 0.75);
+      color: #111b21;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin: 10px 0 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      backdrop-filter: blur(6px);
+    }
+    [data-bs-theme="dark"] .chat-date-separator {
+      background: rgba(0,0,0,0.35);
+      color: #e9edef;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+
+    #forumReplyPreview {
+      border-radius: 14px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.06);
+      border-left: 4px solid var(--bs-primary);
+      margin-bottom: 8px;
+    }
+    #forumReplyPreview .reply-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #7bd1ff;
+    }
+    #forumReplyPreview .reply-text {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.75);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .chat-reply-quote {
+      border-left: 4px solid rgba(255,255,255,0.35);
+      padding-left: 10px;
+      margin-bottom: 8px;
+      opacity: 0.95;
+    }
+    .chat-reply-quote .quote-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      opacity: 0.9;
+    }
+    .chat-reply-quote .quote-text {
+      font-size: 0.8rem;
+      opacity: 0.9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #forumReactionOverlay {
+      pointer-events: none;
+    }
+    #forumReactionOverlay .reaction-bar {
+      pointer-events: auto;
+      background: rgba(0,0,0,0.72);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      padding: 8px 10px;
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+      backdrop-filter: blur(8px);
+    }
+    #forumReactionOverlay .reaction-btn {
+      pointer-events: auto;
+      border: none;
+      background: transparent;
+      color: white;
+      font-size: 1.25rem;
+      line-height: 1;
+      padding: 2px 4px;
+    }
+
     /* Basic Mode Styles */
     .step-active {
       box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.25) !important;
@@ -3328,6 +3411,8 @@
           <button id="forumScrollBtn" class="btn btn-secondary rounded-circle shadow-lg position-absolute bottom-0 end-0 m-3 d-none z-2" style="width: 40px; height: 40px;" title="Scroll ke bawah">
               <i class="bi bi-arrow-down"></i>
           </button>
+
+          <div id="forumReactionOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none z-2"></div>
           
           <!-- Login Overlay -->
           <div id="forumLoginOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-95 d-flex flex-column align-items-center justify-content-center p-4 text-center z-3" style="backdrop-filter: blur(10px);">
@@ -3369,6 +3454,17 @@
 
             <!-- Text Input -->
             <div class="flex-grow-1 py-2">
+                <div id="forumReplyPreview" class="d-none">
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="reply-title" id="forumReplyTitle"></div>
+                            <div class="reply-text" id="forumReplyText"></div>
+                        </div>
+                        <button type="button" class="btn btn-link p-0 text-white-50" id="forumReplyCloseBtn" aria-label="Tutup reply" style="text-decoration:none;">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
                 <textarea id="forumInput" class="form-control bg-transparent border-0 text-white p-0 shadow-none" rows="1" placeholder="Ketik pesan..." style="resize: none; max-height: 100px;"></textarea>
             </div>
             
@@ -3473,6 +3569,25 @@
               <img id="previewModalImage" src="" class="img-fluid" style="max-height: 100vh; max-width: 100vw; object-fit: contain;">
           </div>
       </div>
+  </div>
+
+  <div class="modal fade" id="forumMessageInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-0 rounded-4 shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Info pesan</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <div class="small text-white-50 mb-1">Pengirim</div>
+          <div class="fw-semibold mb-3" id="forumMessageInfoSender"></div>
+          <div class="small text-white-50 mb-1">Waktu</div>
+          <div class="fw-semibold mb-3" id="forumMessageInfoTime"></div>
+          <div class="small text-white-50 mb-1">ID</div>
+          <div class="font-monospace small text-white-50" id="forumMessageInfoId"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Profile Modal (Task 15) -->
@@ -17318,8 +17433,21 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumSendBtn = document.getElementById('forumSendBtn');
         const forumChatArea = document.getElementById('forumChatArea');
         const forumScrollBtn = document.getElementById('forumScrollBtn');
+        const forumReactionOverlay = document.getElementById('forumReactionOverlay');
+        const forumReplyPreview = document.getElementById('forumReplyPreview');
+        const forumReplyTitle = document.getElementById('forumReplyTitle');
+        const forumReplyText = document.getElementById('forumReplyText');
+        const forumReplyCloseBtn = document.getElementById('forumReplyCloseBtn');
+        const forumMessageInfoModalEl = document.getElementById('forumMessageInfoModal');
+        const forumMessageInfoSender = document.getElementById('forumMessageInfoSender');
+        const forumMessageInfoTime = document.getElementById('forumMessageInfoTime');
+        const forumMessageInfoId = document.getElementById('forumMessageInfoId');
+        const forumMessageInfoModal = forumMessageInfoModalEl ? new bootstrap.Modal(forumMessageInfoModalEl) : null;
 
         // --- Helper Functions ---
+        let isNearBottomState = true;
+        let replyContext = null;
+
         function formatWhatsAppDate(timestamp) {
             if (!timestamp || !timestamp.seconds) return '';
             const date = new Date(timestamp.seconds * 1000);
@@ -17336,6 +17464,46 @@ $('#queueList')?.addEventListener('click', (e) => {
             return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + timeStr;
         }
 
+        function dayKeyFromTimestamp(timestamp) {
+            if (!timestamp || !timestamp.seconds) return '';
+            const d = new Date(timestamp.seconds * 1000);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function formatSeparatorLabel(timestamp) {
+            if (!timestamp || !timestamp.seconds) return '';
+            const date = new Date(timestamp.seconds * 1000);
+            const now = new Date();
+            const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+            const yesterday = new Date(now);
+            yesterday.setDate(now.getDate() - 1);
+            const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+            if (isToday) return 'Hari ini';
+            if (isYesterday) return 'Kemarin';
+            return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        function setReplyContext(ctx) {
+            replyContext = ctx;
+            if (!forumReplyPreview) return;
+            if (!ctx) {
+                forumReplyPreview.classList.add('d-none');
+                if (forumReplyTitle) forumReplyTitle.textContent = '';
+                if (forumReplyText) forumReplyText.textContent = '';
+                return;
+            }
+            forumReplyPreview.classList.remove('d-none');
+            if (forumReplyTitle) forumReplyTitle.textContent = ctx.name || 'Warga';
+            if (forumReplyText) forumReplyText.textContent = ctx.text || '';
+        }
+
+        if (forumReplyCloseBtn) {
+            forumReplyCloseBtn.addEventListener('click', () => setReplyContext(null));
+        }
+
         window.scrollToBottom = (smooth = true) => {
             if (!forumChatArea) return;
             forumChatArea.scrollTo({
@@ -17343,6 +17511,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 behavior: smooth ? 'smooth' : 'auto'
             });
             if(forumScrollBtn) forumScrollBtn.classList.add('d-none');
+            isNearBottomState = true;
         };
 
         if(forumChatArea) {
@@ -17350,12 +17519,16 @@ $('#queueList')?.addEventListener('click', (e) => {
                  if(!forumScrollBtn) return;
                  const threshold = 150;
                  const isNearBottom = forumChatArea.scrollHeight - forumChatArea.scrollTop - forumChatArea.clientHeight < threshold;
+                 isNearBottomState = isNearBottom;
                  if(isNearBottom) {
                      forumScrollBtn.classList.add('d-none');
                  } else {
                      forumScrollBtn.classList.remove('d-none');
                  }
              });
+        }
+        if (forumScrollBtn) {
+            forumScrollBtn.addEventListener('click', () => window.scrollToBottom(true));
         }
         const forumLogoutBtn = document.getElementById('forumLogoutBtn');
         const forumDeleteAllBtn = document.getElementById('forumDeleteAllBtn');
@@ -17860,6 +18033,10 @@ $('#queueList')?.addEventListener('click', (e) => {
              if(unsubscribe) unsubscribe();
 
              unsubscribe = onSnapshot(q, (snapshot) => {
+                 const prevScrollTop = forumChatArea.scrollTop;
+                 const prevScrollHeight = forumChatArea.scrollHeight;
+                 const shouldAutoScroll = isNearBottomState || forumChatArea.innerHTML.trim() === '';
+
                  forumChatArea.innerHTML = '';
                  forumMessageCache = {};
                  
@@ -17877,12 +18054,28 @@ $('#queueList')?.addEventListener('click', (e) => {
                     </div>`;
                  forumChatArea.insertAdjacentHTML('beforeend', pinnedRules);
 
+                 let lastDateKey = '';
                  snapshot.forEach((doc) => {
                      const data = doc.data();
                      forumMessageCache[doc.id] = data;
+                     const key = dayKeyFromTimestamp(data.timestamp);
+                     if (key && key !== lastDateKey) {
+                         lastDateKey = key;
+                         const label = formatSeparatorLabel(data.timestamp);
+                         if (label) {
+                             forumChatArea.insertAdjacentHTML('beforeend', `<div class="chat-date-separator">${label}</div>`);
+                         }
+                     }
                      renderMessage(doc.id, data);
                  });
-                 forumChatArea.scrollTop = forumChatArea.scrollHeight;
+                 if (shouldAutoScroll) {
+                     window.scrollToBottom(false);
+                 } else {
+                     const nextScrollHeight = forumChatArea.scrollHeight;
+                     const delta = nextScrollHeight - prevScrollHeight;
+                     forumChatArea.scrollTop = Math.max(0, prevScrollTop + delta);
+                     if (forumScrollBtn) forumScrollBtn.classList.remove('d-none');
+                 }
              }, (error) => {
                  console.error("Error getting chats:", error);
                  if (error.code === 'permission-denied') {
@@ -17971,6 +18164,65 @@ $('#queueList')?.addEventListener('click', (e) => {
             await updateDoc(ref, { [field]: has ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid) });
         }
 
+        async function toggleStar(messageId) {
+            if(!currentUser) { setToast('Anda belum login!', 'warning'); return; }
+            const msg = forumMessageCache[messageId] || {};
+            const existing = Array.isArray(msg.starredBy) ? msg.starredBy : [];
+            const has = existing.includes(currentUser.uid);
+            const { db, doc, updateDoc, arrayUnion, arrayRemove } = window.firebaseModules;
+            const ref = doc(db, "forum-messages", messageId);
+            await updateDoc(ref, { starredBy: has ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid) });
+            setToast(has ? 'Bintang dihapus' : 'Ditandai berbintang', 'success');
+        }
+
+        function hideReactionOverlay() {
+            if (!forumReactionOverlay) return;
+            forumReactionOverlay.classList.add('d-none');
+            forumReactionOverlay.innerHTML = '';
+        }
+
+        function showReactionOverlay(messageId, anchorEl) {
+            if (!forumReactionOverlay) return;
+            hideReactionOverlay();
+
+            const bar = document.createElement('div');
+            bar.className = 'reaction-bar position-absolute';
+            bar.innerHTML = reactionChoices.map((r) => (
+                `<button type="button" class="reaction-btn" data-action="pick-reaction" data-message-id="${messageId}" data-reaction-key="${r.key}" aria-label="Reaction ${r.key}">${r.emoji}</button>`
+            )).join('');
+
+            forumReactionOverlay.appendChild(bar);
+            forumReactionOverlay.classList.remove('d-none');
+
+            const overlayRect = forumReactionOverlay.getBoundingClientRect();
+            const anchorRect = anchorEl.getBoundingClientRect();
+            const top = Math.max(10, anchorRect.top - overlayRect.top - 48);
+            const left = Math.max(10, Math.min(anchorRect.left - overlayRect.left, overlayRect.width - bar.offsetWidth - 10));
+            bar.style.top = `${top}px`;
+            bar.style.left = `${left}px`;
+
+            const onDocClick = (evt) => {
+                const inside = forumReactionOverlay.contains(evt.target);
+                if (!inside) {
+                    hideReactionOverlay();
+                    document.removeEventListener('click', onDocClick, true);
+                }
+            };
+            document.addEventListener('click', onDocClick, true);
+        }
+
+        function showMessageInfo(messageId) {
+            if (!forumMessageInfoModal) return;
+            const msgData = forumMessageCache[messageId];
+            if (!msgData) return;
+            const sender = msgData.email === adminEmail ? 'ADMIN' : (msgData.name || 'Warga');
+            const time = msgData.timestamp ? new Date(msgData.timestamp.seconds * 1000).toLocaleString('id-ID') : '-';
+            if (forumMessageInfoSender) forumMessageInfoSender.textContent = sender;
+            if (forumMessageInfoTime) forumMessageInfoTime.textContent = time;
+            if (forumMessageInfoId) forumMessageInfoId.textContent = messageId;
+            forumMessageInfoModal.show();
+        }
+
         function buildReactionsHtml(messageId, reactions) {
             if (!reactions) return '';
             const pills = [];
@@ -18008,6 +18260,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     if (action === 'pick-reaction') {
                          const key = actionBtn.getAttribute('data-reaction-key');
                          if (messageId && key) try { await toggleReaction(messageId, key); } catch (err) { console.error(err); }
+                         hideReactionOverlay();
                     }
                     else if (action === 'msg-copy') {
                         const msgData = forumMessageCache[messageId];
@@ -18018,8 +18271,11 @@ $('#queueList')?.addEventListener('click', (e) => {
                     else if (action === 'msg-reply') {
                         const msgData = forumMessageCache[messageId];
                         if (msgData) {
-                            const quote = `> ${msgData.text.substring(0, 50).replace(/\n/g, ' ')}${msgData.text.length > 50 ? '...' : ''}\n\n`;
-                            forumInput.value = quote + forumInput.value;
+                            setReplyContext({
+                                id: messageId,
+                                name: msgData.email === adminEmail ? 'ADMIN' : (msgData.name || 'Warga'),
+                                text: (msgData.text || '').trim(),
+                            });
                             forumInput.focus();
                         }
                     }
@@ -18033,17 +18289,15 @@ $('#queueList')?.addEventListener('click', (e) => {
                         }
                     }
                     else if (action === 'msg-info') {
-                        const msgData = forumMessageCache[messageId];
-                        if(msgData) {
-                             const date = msgData.timestamp ? new Date(msgData.timestamp.seconds * 1000).toLocaleString('id-ID') : '-';
-                             alert(`Detail Pesan:\nPengirim: ${msgData.name}\nWaktu: ${date}\nID: ${messageId}`);
-                        }
+                        showMessageInfo(messageId);
                     }
                     else if (action === 'msg-star') {
-                        setToast('Fitur Berbintang belum tersedia', 'info');
+                        try { await toggleStar(messageId); } catch (e2) { setToast('Gagal: ' + e2.message, 'danger'); }
                     }
                     else if (action === 'msg-react-menu') {
-                        setToast('Gunakan tombol reaksi di bawah pesan', 'info');
+                        const wrapper = actionBtn.closest('[data-message-id]');
+                        const bubble = wrapper ? wrapper.querySelector('.message-bubble') : null;
+                        showReactionOverlay(messageId, bubble || wrapper || actionBtn);
                     }
                 }
             });
@@ -18054,6 +18308,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
             const isMe = data.uid === currentUser.uid;
             const isAdmin = (data.email === adminEmail);
+            const isStarred = Array.isArray(data.starredBy) && data.starredBy.includes(currentUser.uid);
             
             // Use new helper
             let timeStr = formatWhatsAppDate(data.timestamp);
@@ -18071,6 +18326,12 @@ $('#queueList')?.addEventListener('click', (e) => {
             }
 
             const reactionStrip = buildReactionsHtml(messageId, data.reactions);
+            const replyQuote = data.replyTo && typeof data.replyTo === 'object'
+                ? `<div class="chat-reply-quote">
+                      <div class="quote-title">${(data.replyTo.name || 'Warga').replace(/</g, "&lt;")}</div>
+                      <div class="quote-text">${String(data.replyTo.text || '').replace(/</g, "&lt;")}</div>
+                   </div>`
+                : '';
             
             // New Dropdown Menu
             const optionsMenu = `
@@ -18083,13 +18344,14 @@ $('#queueList')?.addEventListener('click', (e) => {
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-reply" data-id="${messageId}"><i class="bi bi-reply me-2"></i> Balas</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-copy" data-id="${messageId}"><i class="bi bi-clipboard me-2"></i> Salin</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-react-menu" data-id="${messageId}"><i class="bi bi-emoji-smile me-2"></i> Reaksi</button></li>
-                    <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-star" data-id="${messageId}"><i class="bi bi-star me-2"></i> Berbintang</button></li>
+                    <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-star" data-id="${messageId}"><i class="bi ${isStarred ? 'bi-star-fill' : 'bi-star'} me-2"></i> ${isStarred ? 'Hapus bintang' : 'Bintang'}</button></li>
                     ${(isMe || isAdmin) ? `<li><hr class="dropdown-divider my-1"></li><li><button class="dropdown-item rounded-2 small py-2 text-danger" data-action="msg-delete" data-id="${messageId}"><i class="bi bi-trash3 me-2"></i> Hapus</button></li>` : ''}
                   </ul>
                 </div>
             `;
 
-            let msgContent = `<div class="small" style="white-space: pre-wrap; word-wrap: break-word;">${(data.text||'').replace(/</g, "&lt;")}</div>` + imagesHtml + reactionStrip;
+            const starIcon = isStarred ? `<i class="bi bi-star-fill text-warning me-1"></i>` : '';
+            let msgContent = replyQuote + `<div class="small" style="white-space: pre-wrap; word-wrap: break-word;">${(data.text||'').replace(/</g, "&lt;")}</div>` + imagesHtml + reactionStrip;
             
             let msgHtml;
             if (isAdmin) {
@@ -18102,7 +18364,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                        <div class="small fw-bold text-white mb-1"><i class="bi bi-shield-check me-1 text-warning"></i>ADMIN</div>
                        ${msgContent}
                        <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="text-white-50 me-2" style="font-size: 0.65rem;">${timeStr}</div>
+                          <div class="text-white-50 me-2" style="font-size: 0.65rem;">${starIcon}${timeStr}</div>
                           ${optionsMenu}
                        </div>
                     </div>
@@ -18116,7 +18378,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0" style="max-width: 85%; background-color: var(--chat-me-bg); color: var(--chat-me-text);">
                        ${msgContent}
                        <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-me);">${timeStr} <i class="bi bi-check-all"></i></div>
+                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-me);">${starIcon}${timeStr} <i class="bi bi-check-all"></i></div>
                           ${optionsMenu}
                        </div>
                     </div>
@@ -18131,7 +18393,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                        <div class="small fw-bold text-info mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
                        ${msgContent}
                        <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-other);">${timeStr}</div>
+                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-other);">${starIcon}${timeStr}</div>
                           ${optionsMenu}
                        </div>
                     </div>
@@ -18303,6 +18565,13 @@ $('#queueList')?.addEventListener('click', (e) => {
                     timestamp: serverTimestamp(),
                     images: imageUrls
                 };
+                if (replyContext && replyContext.id) {
+                    msgData.replyTo = {
+                        id: replyContext.id,
+                        name: replyContext.name || 'Warga',
+                        text: replyContext.text || '',
+                    };
+                }
                 if(currentUser.email) msgData.email = currentUser.email;
                 if(currentUser.photoURL) msgData.photoURL = currentUser.photoURL;
 
@@ -18310,8 +18579,10 @@ $('#queueList')?.addEventListener('click', (e) => {
                 
                 // Reset Input
                 forumInput.value = '';
+                setReplyContext(null);
                 selectedFiles = [];
                 renderAttachmentPreview();
+                window.scrollToBottom(true);
                 
             } catch (e) {
                 console.error(e);
