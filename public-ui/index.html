@@ -3439,7 +3439,7 @@
         </div>
         
         <div class="pt-3 text-center">
-            <small class="text-secondary-emphasis d-block" style="font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; font-weight: 500;">v3.2 • Online</small>
+            <small id="navVersionBadge" class="text-secondary-emphasis d-block" style="font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; font-weight: 500;">Loading...</small>
         </div>
       </div>
     </div>
@@ -6298,7 +6298,27 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     if (shouldNarrate()) queueNarration(String(message));
   };
   const setToast = (msg) => {
-    const text = translateMessage(msg);
+    let text = translateMessage(msg);
+
+    if (text && !text.includes('<')) {
+      const raw = text.trim();
+      const lower = raw.toLowerCase();
+
+      if (/^gagal\b/.test(lower) || /^tidak bisa\b/.test(lower) || /^error\b/.test(lower)) {
+        const base = /[.!?]$/.test(raw) ? raw : `${raw}.`;
+        text = `Ups, ${base} Coba lagi sebentar ya.`;
+      } else if (/^berhasil\b/.test(lower) || /^sukses\b/.test(lower)) {
+        const base = /[.!?]$/.test(raw) ? raw : `${raw}!`;
+        text = `Beres, ${base.charAt(0).toLowerCase()}${base.slice(1)}`;
+      } else if (/anda belum login/i.test(raw) || /masuk dengan google/i.test(raw)) {
+        text = 'Silakan login dulu supaya fitur ini bisa dipakai.';
+      } else if (/url tidak valid/i.test(raw) || /url ini belum didukung/i.test(raw)) {
+        text = 'Link‑nya belum pas, coba cek lagi ya.';
+      } else if (/belum ada hasil konversi/i.test(raw)) {
+        text = 'Belum ada hasil convert yang bisa disimpan.';
+      }
+    }
+
     if (toastTextEl) toastTextEl.textContent = text;
     if (toast) {
       toast.show();
@@ -17113,6 +17133,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       
       // Version Badge
       const verBadge = document.getElementById('appVersionBadge');
+      const navVerBadge = document.getElementById('navVersionBadge');
       if(verBadge) {
           verBadge.textContent = APP_VERSION;
           verBadge.title = `Klik untuk info versi (${APP_VERSION})`;
@@ -17120,6 +17141,9 @@ $('#queueList')?.addEventListener('click', (e) => {
                setToast(`YouTube To MP3 ${APP_VERSION} - Updated & Stable`);
                vibrate(50);
           });
+      }
+      if (navVerBadge) {
+          navVerBadge.textContent = `${APP_VERSION} • Online`;
       }
   
       if (state.experience.narratorAuto) narrateGuide();
