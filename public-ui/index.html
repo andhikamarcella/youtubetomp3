@@ -3633,6 +3633,9 @@
              </div>
           </div>
           <div class="d-flex align-items-center gap-2">
+            <button id="forumReportBtn" class="btn btn-sm btn-outline-warning rounded-circle d-none d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Laporkan">
+                <i class="bi bi-flag"></i>
+            </button>
             <button id="forumDeleteAllBtn" class="btn btn-sm btn-outline-warning rounded-circle d-none d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Hapus semua chat">
                 <i class="bi bi-trash3"></i>
             </button>
@@ -3702,7 +3705,7 @@
             
             <!-- Attachment Menu -->
             <div class="dropdown">
-                <button class="btn btn-link text-secondary text-decoration-none p-2 rounded-circle hover-bg-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button id="forumAttachMenuBtn" class="btn btn-link text-secondary text-decoration-none p-2 rounded-circle hover-bg-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-plus-lg fs-5"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark shadow-lg rounded-4 p-2 mb-2">
@@ -3796,6 +3799,62 @@
                 </div>
              </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="forumReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header border-0 bg-body-tertiary">
+          <h5 class="modal-title fw-bold"><i class="bi bi-flag-fill text-warning me-2"></i>Kirim Laporan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-info border-0 bg-info-subtle text-info-emphasis mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>Gunakan laporan untuk bug, spam, pelecehan, atau konten berbahaya. Sertakan bukti seperlunya.
+          </div>
+
+          <input type="hidden" id="reportMessageId">
+          <input type="hidden" id="reportTargetUid">
+          <input type="hidden" id="reportTargetName">
+          <input type="hidden" id="reportSourceRoom">
+
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold" for="reportCategory">Kategori</label>
+              <select id="reportCategory" class="form-select">
+                <option value="bug">Bug / Error</option>
+                <option value="spam">Spam</option>
+                <option value="harassment">Pelecehan</option>
+                <option value="scam">Penipuan / Scam</option>
+                <option value="other">Lainnya</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-8">
+              <label class="form-label fw-semibold" for="reportContact">Kontak (opsional)</label>
+              <input id="reportContact" class="form-control" placeholder="WA/IG/email untuk follow-up (opsional)">
+              <div class="form-text">Kontak ini hanya untuk admin follow-up laporan.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold" for="reportDetails">Keterangan laporan</label>
+              <textarea id="reportDetails" class="form-control" rows="4" placeholder="Ceritakan kronologi: apa yang terjadi, kapan, dan di room mana."></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold" for="reportEvidence">Bukti chat (opsional)</label>
+              <textarea id="reportEvidence" class="form-control" rows="2" placeholder="Tempel kutipan chat atau detail tambahan (opsional)."></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold" for="reportFiles">Screenshot / bukti (opsional)</label>
+              <input type="file" id="reportFiles" class="form-control" accept="image/*" multiple>
+              <div id="reportPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 bg-body-tertiary">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-warning rounded-pill px-4" id="reportSubmitBtn"><i class="bi bi-send-fill me-1"></i> Kirim</button>
         </div>
       </div>
     </div>
@@ -17892,6 +17951,22 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumVoiceIndicator = document.getElementById('forumVoiceIndicator');
         const forumVoiceTimer = document.getElementById('forumVoiceTimer');
         const forumVoiceCancelBtn = document.getElementById('forumVoiceCancelBtn');
+        const forumAttachMenuBtn = document.getElementById('forumAttachMenuBtn');
+        const forumStickerBtn = document.getElementById('forumStickerBtn');
+        const forumReportBtn = document.getElementById('forumReportBtn');
+        const forumReportModalEl = document.getElementById('forumReportModal');
+        const reportSubmitBtn = document.getElementById('reportSubmitBtn');
+        const reportFilesInput = document.getElementById('reportFiles');
+        const reportPreview = document.getElementById('reportPreview');
+        const reportMessageIdEl = document.getElementById('reportMessageId');
+        const reportTargetUidEl = document.getElementById('reportTargetUid');
+        const reportTargetNameEl = document.getElementById('reportTargetName');
+        const reportSourceRoomEl = document.getElementById('reportSourceRoom');
+        const reportCategoryEl = document.getElementById('reportCategory');
+        const reportContactEl = document.getElementById('reportContact');
+        const reportDetailsEl = document.getElementById('reportDetails');
+        const reportEvidenceEl = document.getElementById('reportEvidence');
+        const forumReportModal = forumReportModalEl ? new bootstrap.Modal(forumReportModalEl) : null;
         const forumMessageInfoModalEl = document.getElementById('forumMessageInfoModal');
         const forumMessageInfoSender = document.getElementById('forumMessageInfoSender');
         const forumMessageInfoTime = document.getElementById('forumMessageInfoTime');
@@ -17901,6 +17976,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         // --- Helper Functions ---
         let isNearBottomState = true;
         let replyContext = null;
+        let reportFiles = [];
         let voiceState = {
             isRecording: false,
             mediaRecorder: null,
@@ -17973,6 +18049,195 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumReplyThumb.removeAttribute('src');
                 }
             }
+        }
+
+        function isLaporanRoom() {
+            return (activeForumRoom || 'umum') === 'laporan';
+        }
+
+        function applyRoomUiRules() {
+            if (!forumInput || !forumSendBtn) return;
+            const readOnly = isLaporanRoom();
+            if (readOnly) {
+                forumInput.disabled = true;
+                forumInput.placeholder = 'Room Laporan bersifat read-only. Gunakan tombol Laporkan untuk mengirim laporan.';
+                forumSendBtn.disabled = true;
+                setReplyContext(null);
+                if (forumAttachMenuBtn) {
+                    forumAttachMenuBtn.setAttribute('disabled', '');
+                    forumAttachMenuBtn.style.pointerEvents = 'none';
+                    forumAttachMenuBtn.style.opacity = '0.5';
+                }
+                if (forumStickerBtn) {
+                    forumStickerBtn.setAttribute('disabled', '');
+                }
+            } else {
+                if (currentUser) forumInput.disabled = false;
+                forumInput.placeholder = 'Ketik pesan...';
+                if (forumAttachMenuBtn) {
+                    forumAttachMenuBtn.removeAttribute('disabled');
+                    forumAttachMenuBtn.style.pointerEvents = '';
+                    forumAttachMenuBtn.style.opacity = '';
+                }
+                if (forumStickerBtn) {
+                    forumStickerBtn.removeAttribute('disabled');
+                }
+                updateSendButtonState();
+            }
+        }
+
+        function resetReportForm() {
+            if (reportMessageIdEl) reportMessageIdEl.value = '';
+            if (reportTargetUidEl) reportTargetUidEl.value = '';
+            if (reportTargetNameEl) reportTargetNameEl.value = '';
+            if (reportSourceRoomEl) reportSourceRoomEl.value = activeForumRoom || 'umum';
+            if (reportCategoryEl) reportCategoryEl.value = 'bug';
+            if (reportContactEl) reportContactEl.value = '';
+            if (reportDetailsEl) reportDetailsEl.value = '';
+            if (reportEvidenceEl) reportEvidenceEl.value = '';
+            reportFiles = [];
+            if (reportFilesInput) reportFilesInput.value = '';
+            if (reportPreview) reportPreview.innerHTML = '';
+        }
+
+        function renderReportPreview() {
+            if (!reportPreview) return;
+            reportPreview.innerHTML = '';
+            reportFiles.forEach((file, idx) => {
+                const url = URL.createObjectURL(file);
+                const wrap = document.createElement('div');
+                wrap.className = 'position-relative';
+                wrap.innerHTML = `
+                  <img src="${url}" class="rounded-3 border" style="width: 110px; height: 110px; object-fit: cover;">
+                  <button type="button" class="btn btn-sm btn-dark position-absolute top-0 end-0 m-1 p-0 d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; border-radius: 999px;" data-action="remove-report-file" data-idx="${idx}">
+                    <i class="bi bi-x"></i>
+                  </button>
+                `;
+                reportPreview.appendChild(wrap);
+            });
+        }
+
+        if (reportFilesInput) {
+            reportFilesInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []).filter((f) => f && f.type && f.type.startsWith('image/'));
+                reportFiles = [...reportFiles, ...files].slice(0, 8);
+                renderReportPreview();
+                reportFilesInput.value = '';
+            });
+        }
+        if (reportPreview) {
+            reportPreview.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action="remove-report-file"]');
+                if (!btn) return;
+                const idx = Number(btn.getAttribute('data-idx'));
+                if (!Number.isFinite(idx)) return;
+                reportFiles.splice(idx, 1);
+                renderReportPreview();
+            });
+        }
+
+        async function submitForumReport() {
+            if (!currentUser) { setToast('Silakan login dulu supaya bisa melapor.'); return; }
+            if (!window.firebaseModules || !window.firebaseModules.db) { setToast('Sistem laporan belum siap.'); return; }
+
+            const category = reportCategoryEl ? reportCategoryEl.value : 'other';
+            const details = reportDetailsEl ? reportDetailsEl.value.trim() : '';
+            const evidence = reportEvidenceEl ? reportEvidenceEl.value.trim() : '';
+            if (!details) { setToast('Isi dulu keterangan laporan ya.'); return; }
+
+            const srcRoom = reportSourceRoomEl ? (reportSourceRoomEl.value || (activeForumRoom || 'umum')) : (activeForumRoom || 'umum');
+            const msgId = reportMessageIdEl ? reportMessageIdEl.value : '';
+            const targetName = reportTargetNameEl ? reportTargetNameEl.value : '';
+            const targetUid = reportTargetUidEl ? reportTargetUidEl.value : '';
+            const contact = reportContactEl ? reportContactEl.value.trim() : '';
+
+            const originalHtml = reportSubmitBtn ? reportSubmitBtn.innerHTML : '';
+            if (reportSubmitBtn) {
+                reportSubmitBtn.disabled = true;
+                reportSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengirim...';
+            }
+
+            try {
+                let uploaded = [];
+                if (reportFiles.length > 0) {
+                    for (const f of reportFiles) {
+                        try {
+                            const url = await uploadToCloudinary(f, 'forum-reports');
+                            if (url) uploaded.push(url);
+                        } catch (err) { console.error(err); }
+                    }
+                }
+
+                const reporter = currentUser.displayName || currentUser.email || 'Warga';
+                const roomLabel = (typeof getForumRoomLabel === 'function') ? getForumRoomLabel(srcRoom) : srcRoom;
+                const lines = [
+                    `LAPORAN (${category})`,
+                    `Pelapor: ${reporter}`,
+                    `Room: ${roomLabel}`,
+                    targetName ? `Target: ${targetName}` : null,
+                    targetUid ? `Target UID: ${targetUid}` : null,
+                    msgId ? `Message ID: ${msgId}` : null,
+                    contact ? `Kontak: ${contact}` : null,
+                    ``,
+                    `Keterangan:`,
+                    details,
+                    evidence ? `` : null,
+                    evidence ? `Bukti chat:` : null,
+                    evidence || null,
+                ].filter(Boolean).join('\n');
+
+                const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+                await addDoc(collection(db, "forum-messages"), {
+                    uid: currentUser.uid,
+                    name: 'BOT Laporan',
+                    timestamp: serverTimestamp(),
+                    room: 'laporan',
+                    text: lines,
+                    images: uploaded,
+                    report: {
+                        type: 'user_report',
+                        category,
+                        sourceRoom: srcRoom,
+                        messageId: msgId,
+                        reportedUid: targetUid,
+                        reportedName: targetName,
+                        submittedByUid: currentUser.uid,
+                    },
+                });
+
+                setToast('Laporan terkirim. Makasih sudah bantu jaga forum.');
+                try { forumReportModal?.hide?.(); } catch {}
+                resetReportForm();
+            } catch (err) {
+                console.error(err);
+                setToast('Gagal kirim laporan. Coba lagi sebentar ya.');
+            } finally {
+                if (reportSubmitBtn) {
+                    reportSubmitBtn.disabled = false;
+                    reportSubmitBtn.innerHTML = originalHtml;
+                }
+            }
+        }
+
+        if (reportSubmitBtn) {
+            reportSubmitBtn.addEventListener('click', () => {
+                submitForumReport();
+            });
+        }
+
+        function openReportModal(prefill = {}) {
+            resetReportForm();
+            if (reportSourceRoomEl) reportSourceRoomEl.value = prefill.sourceRoom || (activeForumRoom || 'umum');
+            if (reportMessageIdEl) reportMessageIdEl.value = prefill.messageId || '';
+            if (reportTargetUidEl) reportTargetUidEl.value = prefill.targetUid || '';
+            if (reportTargetNameEl) reportTargetNameEl.value = prefill.targetName || '';
+            if (reportCategoryEl && prefill.category) reportCategoryEl.value = prefill.category;
+            if (reportEvidenceEl && prefill.evidence) reportEvidenceEl.value = prefill.evidence;
+            if (forumReportModal) forumReportModal.show();
+        }
+
+        if (forumReportBtn) {
+            forumReportBtn.addEventListener('click', () => openReportModal({}));
         }
 
         function buildReplyContextFromMessage(messageId, msgData) {
@@ -18225,6 +18490,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
             updateSendButtonState();
             if (!shouldSend) return;
+            if (isLaporanRoom()) { setToast('Room Laporan tidak menerima voice note. Gunakan tombol Laporkan ya.'); return; }
             if (!chunks.length) { setToast('Rekaman kosong', 'warning'); return; }
 
             const mimeType = (recorder && recorder.mimeType) ? recorder.mimeType : (chunks[0] && chunks[0].type) ? chunks[0].type : 'audio/webm';
@@ -18465,6 +18731,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (isPrivateRoomKey(roomKey)) forumCopyRoomBtn.classList.remove('d-none');
             else forumCopyRoomBtn.classList.add('d-none');
           }
+          applyRoomUiRules();
         }
 
         function handleRoomSelection(value) {
@@ -19078,17 +19345,20 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumInput.disabled = false;
                     updateSendButtonState();
                     if(forumLogoutBtn) forumLogoutBtn.classList.remove('d-none');
+                    if(forumReportBtn) forumReportBtn.classList.remove('d-none');
                     if(forumDeleteAllBtn) {
                         if (user.email === adminEmail) forumDeleteAllBtn.classList.remove('d-none');
                         else forumDeleteAllBtn.classList.add('d-none');
                     }
                     startChatListener();
+                    applyRoomUiRules();
                 } else {
                     forumLoginOverlay.classList.remove('d-none');
                     forumLoginOverlay.classList.add('d-flex');
                     forumInput.disabled = true;
                     updateSendButtonState();
                     if(forumLogoutBtn) forumLogoutBtn.classList.add('d-none');
+                    if(forumReportBtn) forumReportBtn.classList.add('d-none');
                     if(forumDeleteAllBtn) forumDeleteAllBtn.classList.add('d-none');
                     if(unsubscribe) unsubscribe();
                     if (forumLoginOverlay.querySelector('.spinner-border')) restoreOverlayContent();
@@ -19154,7 +19424,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  
                 const pinnedByRoom = {
                   umum: 'Selamat datang di Forum Warga!<br>Room <b>Umum</b> buat ngobrol bebas, tanya fitur, dan update santai.',
-                  laporan: 'Room <b>Laporan</b> buat lapor bug/eror.<br>Tulis: link, device, dan screenshot kalau ada.',
+                  laporan: 'Room <b>Laporan</b> bersifat <b>read-only</b>.<br>Untuk kirim laporan, pakai tombol <b>Laporkan</b> (ikon bendera) lalu isi form + screenshot.',
                   jomok: 'Room <b>Jomok</b> buat obrolan dewasa (18+).<br>Tetap sopan, jangan sebar data pribadi siapa pun.',
                   foto: 'Room <b>Foto Warga</b> buat share foto, hasil edit, atau meme gambar.<br>Jangan doxxing & jangan upload KTP/nomor WA.',
                   event: 'Room <b>Event</b> buat info event, tantangan, dan pengumuman komunitas.<br>Cek pinned ini biar nggak ketinggalan.',
@@ -19528,52 +19798,16 @@ $('#queueList')?.addEventListener('click', (e) => {
                     else if (action === 'msg-report') {
                         const msgData = forumMessageCache[messageId];
                         if (!msgData) return;
-                        if (!currentUser) { setToast('Silakan login dulu supaya bisa melapor.'); return; }
-
-                        const includeContent = confirm('Kirim laporan ke room "Laporan"?\n\nPilih OK untuk menyertakan isi pesan.\nPilih Cancel untuk laporan tanpa isi.');
                         const ctx = buildReplyContextFromMessage(messageId, msgData);
-                        const roomLabel = (typeof getForumRoomLabel === 'function') ? getForumRoomLabel(activeForumRoom || 'umum') : (activeForumRoom || 'umum');
-                        const reporter = currentUser.displayName || currentUser.email || 'Warga';
                         const reportedName = msgData.email === adminEmail ? 'ADMIN' : (msgData.name || 'Warga');
-
-                        const excerpt = includeContent
-                          ? String(ctx.text || '').slice(0, 220)
-                          : '(disembunyikan)';
-
-                        const reportText = [
-                          `LAPORAN`,
-                          `Pelapor: ${reporter}`,
-                          `Room: ${roomLabel}`,
-                          `Target: ${reportedName}`,
-                          `Message ID: ${messageId}`,
-                          `Isi: ${excerpt}`,
-                        ].join('\n');
-
-                        try {
-                          const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
-                          await addDoc(collection(db, "forum-messages"), {
-                            uid: currentUser.uid,
-                            name: currentUser.displayName || 'Warga',
-                            email: currentUser.email,
-                            photoURL: currentUser.photoURL,
-                            timestamp: serverTimestamp(),
-                            room: 'laporan',
-                            text: reportText,
-                            report: {
-                              sourceRoom: activeForumRoom || 'umum',
-                              sourceRoomLabel: roomLabel,
-                              messageId,
-                              reportedUid: msgData.uid || '',
-                              reportedName,
-                              kind: ctx.kind || 'text',
-                              previewUrl: includeContent ? (ctx.previewUrl || '') : '',
-                            },
-                          });
-                          setToast('Laporan terkirim. Makasih sudah bantu jaga forum.');
-                        } catch (err) {
-                          console.error(err);
-                          setToast('Gagal kirim laporan. Coba lagi sebentar ya.');
-                        }
+                        openReportModal({
+                          category: 'other',
+                          sourceRoom: activeForumRoom || 'umum',
+                          messageId,
+                          targetUid: msgData.uid || '',
+                          targetName: reportedName,
+                          evidence: ctx.text ? `Kutipan: ${String(ctx.text).slice(0, 220)}` : '',
+                        });
                     }
                     else if (action === 'msg-delete') {
                         if (confirm('Hapus pesan ini?')) {
@@ -19690,8 +19924,9 @@ $('#queueList')?.addEventListener('click', (e) => {
         function renderMessage(messageId, data) {
             if (!currentUser) return;
 
-            const isMe = data.uid === currentUser.uid;
-            const isAdmin = (data.email === adminEmail);
+            const isReportBot = !!(data && data.report && data.report.type === 'user_report');
+            const isMe = !isReportBot && data.uid === currentUser.uid;
+            const isAdmin = isReportBot || (data.email === adminEmail);
             const isStarred = Array.isArray(data.starredBy) && data.starredBy.includes(currentUser.uid);
             const isDeleted = !!data.deleted;
             
@@ -19779,7 +20014,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                     </div>
                     <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
-                       <div class="small fw-bold text-white mb-1"><i class="bi bi-shield-check me-1 text-warning"></i>ADMIN</div>
+                       <div class="small fw-bold text-white mb-1">${isReportBot ? '<i class="bi bi-robot me-1 text-info"></i>BOT Laporan' : '<i class="bi bi-shield-check me-1 text-warning"></i>ADMIN'}</div>
                        ${msgContent}
                        <div class="d-flex justify-content-end align-items-center mt-1">
                           <div class="text-white-50 me-2" style="font-size: 0.65rem;">${starIcon}${timeStr}</div>
@@ -19957,6 +20192,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
 
         async function sendForumMessage() {
+            if (isLaporanRoom()) { setToast('Room Laporan tidak menerima chat. Gunakan tombol Laporkan ya.'); return; }
             const text = forumInput.value.trim();
             if(!text && selectedFiles.length === 0) return;
             if(!currentUser) { setToast('Anda belum login!', 'warning'); return; }
@@ -20018,6 +20254,13 @@ $('#queueList')?.addEventListener('click', (e) => {
              if (!forumSendBtn) return;
              if (!currentUser) {
                  forumSendBtn.disabled = true;
+                 return;
+             }
+             if (isLaporanRoom()) {
+                 forumSendBtn.disabled = true;
+                 forumSendBtn.classList.remove('btn-danger');
+                 forumSendBtn.classList.add('btn-primary');
+                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
                  return;
              }
              if (voiceState.isRecording) {
@@ -20198,6 +20441,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         window.sendSticker = async (url) => {
              const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
              if(!currentUser) { setToast('Anda belum login!', 'warning'); return; }
+             if (isLaporanRoom()) { setToast('Room Laporan tidak menerima chat/stiker. Gunakan tombol Laporkan ya.'); return; }
 
              let messageId = null;
              try {
