@@ -3618,7 +3618,12 @@
              </div>
              <div>
                 <h5 class="modal-title fw-bold mb-0" id="forumModalLabel" style="font-family: 'Poppins', sans-serif;">Forum Warga</h5>
-                <div class="small text-white-50" id="forumOnlineCount"><span class="spinner-border spinner-border-sm" style="width: 0.7em; height: 0.7em;"></span> Online</div>
+                <div class="d-flex flex-wrap align-items-center gap-2 small">
+                  <div class="badge rounded-pill text-bg-secondary border-0 px-3 py-1 d-flex align-items-center gap-2">
+                    <span class="badge bg-success-subtle border border-success-subtle text-success-emphasis px-2 py-1" id="forumRoomBadge">Umum</span>
+                    <span class="text-white-50" id="forumOnlineCount"><span class="spinner-border spinner-border-sm" style="width: 0.7em; height: 0.7em;"></span> Online</span>
+                  </div>
+                </div>
              </div>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -3634,6 +3639,17 @@
 
         <!-- Chat Body -->
         <div class="modal-body p-0 position-relative bg-black" style="height: 500px;">
+           <!-- Room Tabs -->
+           <div class="border-bottom border-secondary bg-dark px-3 pt-2 pb-1">
+             <div class="nav nav-pills nav-fill gap-1" id="forumRoomTabs" role="tablist">
+               <button type="button" class="btn btn-sm btn-outline-light rounded-pill active" data-room="umum">Umum</button>
+               <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" data-room="laporan">Laporan</button>
+               <button type="button" class="btn btn-sm btn-outline-info rounded-pill" data-room="jomok">Jomok</button>
+               <button type="button" class="btn btn-sm btn-outline-success rounded-pill" data-room="foto">Foto Warga</button>
+               <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-room="event">Event</button>
+               <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-room="santai">Santai / Meme</button>
+             </div>
+           </div>
            <!-- Wallpaper Background -->
            <div class="position-absolute top-0 start-0 w-100 h-100 opacity-25" style="background-image: url('https://transparenttextures.com/patterns/cubes.png'); pointer-events: none;"></div>
            
@@ -18179,6 +18195,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     uid: currentUser.uid,
                     name: currentUser.displayName || 'Warga',
                     timestamp: serverTimestamp(),
+                    room: activeForumRoom || 'umum',
                     voiceUrl,
                     voiceDurationMs: elapsedMs,
                     voiceMimeType: mimeType,
@@ -18282,10 +18299,56 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (!forumGoogleLoginBtn) return;
 
         let unsubscribe = null;
+        let extraUnsubscribes = [];
         let currentUser = null;
         let forumMessageCache = {};
         let stickerFavoritesSet = new Set();
         const adminEmail = 'andhikamarcella546@gmail.com';
+        const forumRoomTabs = document.getElementById('forumRoomTabs');
+        const forumRoomBadge = document.getElementById('forumRoomBadge');
+        const FORUM_ROOMS = [
+          { key: 'umum', label: 'Umum' },
+          { key: 'laporan', label: 'Laporan' },
+          { key: 'jomok', label: 'Jomok' },
+          { key: 'foto', label: 'Foto Warga' },
+          { key: 'event', label: 'Event' },
+          { key: 'santai', label: 'Santai / Meme' },
+        ];
+        const forumRoomKeyStorage = 'forum_room';
+        let activeForumRoom = localStorage.getItem(forumRoomKeyStorage) || 'umum';
+
+        function getForumRoomLabel(key) {
+          const found = FORUM_ROOMS.find((r) => r.key === key);
+          return found ? found.label : 'Umum';
+        }
+
+        function setActiveRoomUi(roomKey) {
+          activeForumRoom = roomKey;
+          localStorage.setItem(forumRoomKeyStorage, roomKey);
+          if (forumRoomBadge) forumRoomBadge.textContent = getForumRoomLabel(roomKey);
+          if (forumRoomTabs) {
+            forumRoomTabs.querySelectorAll('button[data-room]').forEach((btn) => {
+              const isActive = btn.getAttribute('data-room') === roomKey;
+              btn.classList.toggle('active', isActive);
+              btn.classList.toggle('btn-light', isActive);
+              btn.classList.toggle('text-dark', isActive);
+              if (!isActive) {
+                btn.classList.remove('btn-light', 'text-dark');
+              }
+            });
+          }
+        }
+
+        if (forumRoomTabs) {
+          forumRoomTabs.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-room]');
+            if (!btn) return;
+            const room = btn.getAttribute('data-room') || 'umum';
+            setActiveRoomUi(room);
+            try { startChatListener(); } catch {}
+          });
+        }
+        setActiveRoomUi(activeForumRoom);
 
         // --- File Handling & Preview ---
         
@@ -18375,12 +18438,12 @@ $('#queueList')?.addEventListener('click', (e) => {
                         if (!editorCanvas) return;
                         editorCanvas.toBlob((blob) => {
                             if(!blob) return;
-                            const newFile = new File([blob], "edited_" + file.name, { type: "image/png" });
+                            const newFile = new File([blob], "edited_" + file.name, { type: file.type || "image/png" });
                             selectedFiles[index] = newFile; // Update in place
                             renderAttachmentPreview();
                             const bsModal = bootstrap.Modal.getInstance(document.getElementById('editorModal'));
                             if(bsModal) bsModal.hide();
-                        }, 'image/png');
+                        }, file.type || 'image/png', 1.0);
                     };
                 };
                 img.src = e.target.result;
@@ -18391,17 +18454,26 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         // Initialize Canvas with High Resolution
         function initCanvas(img) {
+            if (!editorCanvas) return;
+
             // Set canvas size to match image's natural dimensions for high quality
-            editorCanvas.width = img.naturalWidth;
-            editorCanvas.height = img.naturalHeight;
-            
-            // Fix Black Screen: Ensure container has height
+            editorCanvas.width = img.naturalWidth || img.width;
+            editorCanvas.height = img.naturalHeight || img.height;
+
+            // Init 2D context
+            canvasCtx = editorCanvas.getContext('2d');
+
+            // Ensure container has height so canvas is visible
             const container = editorCanvas.parentElement;
-            if(container && container.clientHeight === 0) {
+            if (container && container.clientHeight === 0) {
                  container.style.height = '50vh';
                  container.style.minHeight = '300px';
             }
-            
+
+            // Reset strokes & texts for a fresh edit session
+            window.editorStrokes = [];
+            window.editorTexts = [];
+
             // Draw initial image
             redrawCanvas();
         }
@@ -18731,7 +18803,7 @@ $('#queueList')?.addEventListener('click', (e) => {
              if (!window.firebaseModules || !window.firebaseModules.db) return;
              if (!currentUser) return;
 
-             const { db, collection, query, orderBy, limit, onSnapshot, auth } = window.firebaseModules;
+             const { db, collection, query, orderBy, where, limit, onSnapshot, auth } = window.firebaseModules;
              
              // Update Online Count (Fake for now, or just show connected)
              if(forumOnlineCount) forumOnlineCount.innerHTML = '<span class="text-success">●</span> Terhubung';
@@ -18740,11 +18812,24 @@ $('#queueList')?.addEventListener('click', (e) => {
                 if (auth && auth.currentUser) await auth.currentUser.getIdToken(true);
              } catch (e) {}
              
-             const q = query(collection(db, "forum-messages"), orderBy("timestamp", "asc"), limit(50));
+             const colRef = collection(db, "forum-messages");
+             const roomKey = activeForumRoom || 'umum';
+             let q;
+             if (roomKey === 'umum') {
+                // Show explicit "umum" and legacy messages without room
+                // We'll merge two snapshots below
+                q = null;
+             } else {
+                q = query(colRef, where('room', '==', roomKey), orderBy("timestamp", "asc"), limit(50));
+             }
              
-             if(unsubscribe) unsubscribe();
+             if(unsubscribe) { try{ unsubscribe(); } catch{} unsubscribe = null; }
+             if (Array.isArray(extraUnsubscribes) && extraUnsubscribes.length) {
+                extraUnsubscribes.forEach((fn) => { try { fn(); } catch {} });
+             }
+             extraUnsubscribes = [];
 
-             unsubscribe = onSnapshot(q, (snapshot) => {
+             const handleSnapshot = (docs) => {
                  const prevScrollTop = forumChatArea.scrollTop;
                  const prevScrollHeight = forumChatArea.scrollHeight;
                  const shouldAutoScroll = isNearBottomState || forumChatArea.innerHTML.trim() === '';
@@ -18758,7 +18843,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
                        <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
                           <div class="small fw-bold text-white mb-1">Admin <i class="bi bi-patch-check-fill text-info"></i></div>
-                          <div class="small text-white">Selamat datang di Forum Warga!<br>Gunakan fitur baru: Upload Foto, Edit Foto, dan Stiker!</div>
+                          <div class="small text-white">Selamat datang di Forum Warga!<br>Pilih room di atas untuk pindah topik (Umum, Laporan, Foto Warga, dll).</div>
                           <div class="text-end text-white-50 mt-1 d-flex align-items-center justify-content-end gap-1" style="font-size: 0.65rem;">
                             <i class="bi bi-pin-angle-fill"></i> Pinned
                           </div>
@@ -18767,7 +18852,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                  forumChatArea.insertAdjacentHTML('beforeend', pinnedRules);
 
                  let lastDateKey = '';
-                 snapshot.forEach((doc) => {
+                 docs.forEach((doc) => {
                      const data = doc.data();
                      forumMessageCache[doc.id] = data;
                      const key = dayKeyFromTimestamp(data.timestamp);
@@ -18788,7 +18873,34 @@ $('#queueList')?.addEventListener('click', (e) => {
                      forumChatArea.scrollTop = Math.max(0, prevScrollTop + delta);
                      if (forumScrollBtn) forumScrollBtn.classList.remove('d-none');
                  }
-             }, (error) => {
+             };
+
+             if (roomKey === 'umum') {
+                const snapA = query(colRef, where('room', '==', 'umum'), orderBy("timestamp", "asc"), limit(50));
+                const snapB = query(colRef, where('room', '==', null), orderBy("timestamp", "asc"), limit(50));
+                let docsA = [];
+                let docsB = [];
+                const mergeRender = () => {
+                    const map = new Map();
+                    [...docsA, ...docsB].forEach((d) => map.set(d.id, d));
+                    const merged = Array.from(map.values());
+                    merged.sort((a, b) => {
+                        const ta = a.data()?.timestamp?.toMillis?.() || 0;
+                        const tb = b.data()?.timestamp?.toMillis?.() || 0;
+                        return ta - tb;
+                    });
+                    handleSnapshot(merged.slice(-50));
+                };
+                const onError = (error) => {
+                    console.error("Error getting chats:", error);
+                    if (error.code === 'permission-denied') {
+                        setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
+                    }
+                };
+                unsubscribe = onSnapshot(snapA, (s) => { docsA = s.docs; mergeRender(); }, onError);
+                extraUnsubscribes.push(onSnapshot(snapB, (s) => { docsB = s.docs; mergeRender(); }, onError));
+             } else {
+                unsubscribe = onSnapshot(q, (snapshot) => handleSnapshot(snapshot.docs), (error) => {
                  console.error("Error getting chats:", error);
                  if (error.code === 'permission-denied') {
                      setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
@@ -18803,7 +18915,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                      forumChatArea.insertAdjacentHTML('beforeend', retryHtml);
                      forumChatArea.scrollTop = forumChatArea.scrollHeight;
                  }
-             });
+                });
+             }
         }
 
         // --- Cloudinary Upload Helper (Signed Upload Client-Side) ---
@@ -19420,6 +19533,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     uid: currentUser.uid,
                     name: currentUser.displayName || 'Warga',
                     timestamp: serverTimestamp(),
+                    room: activeForumRoom || 'umum',
                     images: imageUrls
                 };
                 if (replyContext && replyContext.id) {
@@ -19643,6 +19757,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                      uid: currentUser.uid,
                      name: currentUser.displayName || 'Warga',
                      timestamp: serverTimestamp(),
+                     room: activeForumRoom || 'umum',
                      email: currentUser.email,
                      photoURL: currentUser.photoURL,
                      stickerUrl: url,
