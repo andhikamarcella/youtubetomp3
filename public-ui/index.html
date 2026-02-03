@@ -18814,14 +18814,7 @@ $('#queueList')?.addEventListener('click', (e) => {
              
              const colRef = collection(db, "forum-messages");
              const roomKey = activeForumRoom || 'umum';
-             let q;
-             if (roomKey === 'umum') {
-                // Show explicit "umum" and legacy messages without room
-                // We'll merge two snapshots below
-                q = null;
-             } else {
-                q = query(colRef, where('room', '==', roomKey), orderBy("timestamp", "asc"), limit(50));
-             }
+             const q = query(colRef, orderBy("timestamp", "desc"), limit(250));
              
              if(unsubscribe) { try{ unsubscribe(); } catch{} unsubscribe = null; }
              if (Array.isArray(extraUnsubscribes) && extraUnsubscribes.length) {
@@ -18875,48 +18868,46 @@ $('#queueList')?.addEventListener('click', (e) => {
                  }
              };
 
-             if (roomKey === 'umum') {
-                const snapA = query(colRef, where('room', '==', 'umum'), orderBy("timestamp", "asc"), limit(50));
-                const snapB = query(colRef, where('room', '==', null), orderBy("timestamp", "asc"), limit(50));
-                let docsA = [];
-                let docsB = [];
-                const mergeRender = () => {
-                    const map = new Map();
-                    [...docsA, ...docsB].forEach((d) => map.set(d.id, d));
-                    const merged = Array.from(map.values());
-                    merged.sort((a, b) => {
-                        const ta = a.data()?.timestamp?.toMillis?.() || 0;
-                        const tb = b.data()?.timestamp?.toMillis?.() || 0;
-                        return ta - tb;
-                    });
-                    handleSnapshot(merged.slice(-50));
-                };
-                const onError = (error) => {
-                    console.error("Error getting chats:", error);
-                    if (error.code === 'permission-denied') {
-                        setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
-                    }
-                };
-                unsubscribe = onSnapshot(snapA, (s) => { docsA = s.docs; mergeRender(); }, onError);
-                extraUnsubscribes.push(onSnapshot(snapB, (s) => { docsB = s.docs; mergeRender(); }, onError));
-             } else {
-                unsubscribe = onSnapshot(q, (snapshot) => handleSnapshot(snapshot.docs), (error) => {
-                 console.error("Error getting chats:", error);
-                 if (error.code === 'permission-denied') {
-                     setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
-                     const retryHtml = `
-                        <div class="text-center my-3">
-                            <div class="alert alert-danger d-inline-block p-2 small shadow-sm">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i> <b>Akses Ditolak Database</b>
-                                <br>Admin wajib mengatur "Firestore Rules".
-                                <br><button class="btn btn-sm btn-danger mt-2 rounded-pill px-3" onclick="location.reload()">Refresh</button>
-                            </div>
-                        </div>`;
-                     forumChatArea.insertAdjacentHTML('beforeend', retryHtml);
-                     forumChatArea.scrollTop = forumChatArea.scrollHeight;
+             const normalizeRoom = (data) => {
+                 const key = data && typeof data.room === 'string' ? data.room.trim() : '';
+                 return key ? key : 'umum';
+             };
+
+             const filterDocsForRoom = (docs) => {
+                 if (!Array.isArray(docs)) return [];
+                 const filtered = roomKey === 'umum'
+                   ? docs.filter((d) => normalizeRoom(d.data()) === 'umum')
+                   : docs.filter((d) => normalizeRoom(d.data()) === roomKey);
+                 filtered.sort((a, b) => {
+                   const ta = a.data()?.timestamp?.toMillis?.() || 0;
+                   const tb = b.data()?.timestamp?.toMillis?.() || 0;
+                   return ta - tb;
+                 });
+                 return filtered;
+             };
+
+             unsubscribe = onSnapshot(
+                 q,
+                 (snapshot) => handleSnapshot(filterDocsForRoom(snapshot.docs)),
+                 (error) => {
+                     console.error("Error getting chats:", error);
+                     if (error.code === 'permission-denied') {
+                         setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
+                         const retryHtml = `
+                            <div class="text-center my-3">
+                                <div class="alert alert-danger d-inline-block p-2 small shadow-sm">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> <b>Akses Ditolak Database</b>
+                                    <br>Admin wajib mengatur "Firestore Rules".
+                                    <br><button class="btn btn-sm btn-danger mt-2 rounded-pill px-3" onclick="location.reload()">Refresh</button>
+                                </div>
+                            </div>`;
+                         forumChatArea.insertAdjacentHTML('beforeend', retryHtml);
+                         forumChatArea.scrollTop = forumChatArea.scrollHeight;
+                     } else if (error.code === 'failed-precondition') {
+                         setToast('Room forum butuh index Firestore. Sementara aku tampilkan versi kompatibel dulu.', 'warning');
+                     }
                  }
-                });
-             }
+             );
         }
 
         // --- Cloudinary Upload Helper (Signed Upload Client-Side) ---
