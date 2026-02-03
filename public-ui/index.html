@@ -19965,6 +19965,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 : '';
             
             // New Dropdown Menu
+            const viewerIsAdmin = !!(currentUser && currentUser.email === adminEmail);
             const optionsMenu = `
                 <div class="dropdown d-inline-block ms-1">
                   <button class="btn btn-link btn-sm p-0 text-decoration-none text-white-50" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="opacity: 0.8;">
@@ -19977,7 +19978,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-report" data-id="${messageId}"><i class="bi bi-flag me-2"></i> Laporkan</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-react-menu" data-id="${messageId}"><i class="bi bi-emoji-smile me-2"></i> Reaksi</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-star" data-id="${messageId}"><i class="bi ${isStarred ? 'bi-star-fill' : 'bi-star'} me-2"></i> ${isStarred ? 'Hapus bintang' : 'Bintang'}</button></li>
-                    ${(isMe || isAdmin) ? `<li><hr class="dropdown-divider my-1"></li><li><button class="dropdown-item rounded-2 small py-2 text-danger" data-action="msg-delete" data-id="${messageId}"><i class="bi bi-trash3 me-2"></i> Hapus</button></li>` : ''}
+                    ${(isMe || viewerIsAdmin) ? `<li><hr class="dropdown-divider my-1"></li><li><button class="dropdown-item rounded-2 small py-2 text-danger" data-action="msg-delete" data-id="${messageId}"><i class="bi bi-trash3 me-2"></i> Hapus</button></li>` : ''}
                   </ul>
                 </div>
             `;
