@@ -7505,21 +7505,39 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
 
   async function requestCaptchaToken(action = 'convert') {
-    if (typeof turnstile !== 'undefined') {
-      const token = (typeof turnstileWidgetId !== 'undefined' && turnstileWidgetId !== null)
-        ? turnstile.getResponse(turnstileWidgetId)
-        : turnstile.getResponse();
-      if (token) {
+    const tryReadResponse = () => {
+      if (typeof turnstile === 'undefined') return '';
+      try {
+        const token = (typeof turnstileWidgetId !== 'undefined' && turnstileWidgetId !== null)
+          ? turnstile.getResponse(turnstileWidgetId)
+          : turnstile.getResponse();
+        return token || '';
+      } catch {
+        return '';
+      }
+    };
+
+    const direct = tryReadResponse();
+    if (direct) {
+      state.captcha.lastToken = direct;
+      state.captcha.lastAction = action;
+      state.captcha.lastFetched = Date.now();
+      return direct;
+    }
+
+    if (typeof requestTurnstileVerification === 'function') {
+      const token = await requestTurnstileVerification();
+      if (typeof token === 'string' && token) {
         state.captcha.lastToken = token;
         state.captcha.lastAction = action;
         state.captcha.lastFetched = Date.now();
         return token;
       }
-      const msg = translateMessage('Mohon selesaikan Captcha terlebih dahulu');
-      setToast(msg);
-      throw new Error(msg);
     }
-    return null;
+
+    const msg = translateMessage('Mohon selesaikan Captcha terlebih dahulu');
+    setToast(msg);
+    throw new Error(msg);
   }
 
   const badgeCatalog = {
@@ -16176,18 +16194,29 @@ $('#queueList')?.addEventListener('click', (e) => {
       const widgetContainer = document.getElementById('turnstile-widget');
       
       if (!modalEl || !widgetContainer) {
-        console.warn('Turnstile modal missing');
-        resolve(true); 
-        return;
-      }
-      
-      if (!window.turnstile) {
-        console.warn('Turnstile script not loaded');
-        resolve(true);
+        const msg = translateMessage('Captcha tidak tersedia. Refresh halaman atau matikan adblock.');
+        setToast(msg);
+        reject(new Error(msg));
         return;
       }
 
       if (bootstrapGlobal?.Modal) {
+        const waitForTurnstile = async (timeoutMs = 4000) => {
+          const started = Date.now();
+          while (!window.turnstile && Date.now() - started < timeoutMs) {
+            await new Promise((r) => setTimeout(r, 120));
+          }
+          return !!window.turnstile;
+        };
+
+        waitForTurnstile().then((ok) => {
+          if (!ok) {
+            const msg = translateMessage('Captcha gagal dimuat. Refresh halaman atau matikan adblock.');
+            setToast(msg);
+            reject(new Error(msg));
+            return;
+          }
+
         const modal = new bootstrapGlobal.Modal(modalEl);
         modal.show();
 
@@ -16215,10 +16244,15 @@ $('#queueList')?.addEventListener('click', (e) => {
             });
         } catch (e) {
             console.error(e);
-            resolve(true); // Fail open if render fails?
+            const msg = translateMessage('Captcha gagal dimunculkan. Coba refresh.');
+            setToast(msg);
+            reject(new Error(msg));
         }
+        });
       } else {
-        resolve(true);
+        const msg = translateMessage('Komponen captcha belum siap. Coba refresh.');
+        setToast(msg);
+        reject(new Error(msg));
       }
     });
   };
