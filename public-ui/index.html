@@ -1258,6 +1258,12 @@
       gap: 12px;
       padding: 12px;
     }
+    @media (min-width: 992px) {
+      .sticker-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+    @media (max-width: 575.98px) {
+      .sticker-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; }
+    }
     .sticker-tile {
       position: relative;
       width: 100%;
@@ -3604,7 +3610,7 @@
 
   <!-- Forum Modal (Task 6) - Redesigned -->
   <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg"> <!-- Larger Modal -->
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-md-down">
       <div class="modal-content border-0 shadow-lg bg-dark overflow-hidden" style="border-radius: 1.5rem;">
         
         <!-- Header -->
@@ -3638,7 +3644,7 @@
         </div>
 
         <!-- Chat Body -->
-        <div class="modal-body p-0 position-relative bg-black" style="height: 500px;">
+        <div class="modal-body p-0 position-relative bg-black" style="height: 70vh; max-height: 640px;">
            <div class="border-bottom border-secondary bg-dark px-3 py-2">
              <div class="d-flex align-items-center gap-2">
                <span class="text-white-50 small">Room</span>
@@ -3754,8 +3760,8 @@
 
   <!-- Sticker Modal -->
   <div class="modal fade" id="stickerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-0 shadow-lg" style="height: 500px; display: flex; flex-direction: column;">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down" style="max-width: 620px;">
+      <div class="modal-content border-0 shadow-lg" style="display: flex; flex-direction: column;">
         <div class="modal-header border-0 pb-0">
           <ul class="nav nav-tabs border-0" id="stickerTabs" role="tablist">
             <li class="nav-item">
@@ -3770,9 +3776,9 @@
               <button class="nav-link rounded-top-3 text-secondary" id="sticker-pack-tab" data-bs-toggle="tab" data-bs-target="#sticker-pack" type="button"><i class="bi bi-emoji-smile"></i> Umum</button>
             </li>
           </ul>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
-        <div class="modal-body p-3 bg-body-tertiary flex-grow-1 overflow-hidden">
+        <div class="modal-body p-0 bg-body-tertiary flex-grow-1">
           <div class="tab-content h-100" id="stickerTabContent">
              <!-- Recent -->
              <div class="tab-pane fade show active h-100 overflow-y-auto" id="sticker-recent">
@@ -3805,6 +3811,7 @@
         </div>
         <div class="modal-body p-0 d-flex flex-column align-items-center justify-content-center bg-black position-relative" style="height: 500px; overflow: hidden;">
             <canvas id="editorCanvas" style="max-width: 100%; max-height: 100%;"></canvas>
+            <img id="editorCropImage" alt="Crop" style="max-width: 100%; max-height: 100%; display: none;">
             
             <!-- Text Input Overlay (Hidden by default) -->
             <div id="textEditorOverlay" class="position-absolute top-50 start-50 translate-middle d-none" style="z-index: 10;">
@@ -3819,6 +3826,11 @@
                <button class="btn btn-outline-light rounded-circle" id="btnEditBrush" title="Gambar"><i class="bi bi-brush"></i></button>
                <input type="color" id="editorColorPicker" class="form-control form-control-color p-0 border-0 rounded-circle" value="#ff0000" title="Warna" style="width: 38px; height: 38px;">
                <button class="btn btn-outline-light rounded-circle" id="btnEditText" title="Teks"><i class="bi bi-fonts"></i></button>
+               <div id="editorTextTools" class="d-none align-items-center gap-2 ms-1">
+                 <button type="button" class="btn btn-outline-light rounded-circle" id="editorTextSmaller" title="Kecilkan teks"><i class="bi bi-dash-lg"></i></button>
+                 <input type="range" id="editorTextSize" class="form-range" min="12" max="240" step="2" value="72" style="width: 120px;">
+                 <button type="button" class="btn btn-outline-light rounded-circle" id="editorTextBigger" title="Besarkan teks"><i class="bi bi-plus-lg"></i></button>
+               </div>
            </div>
            <div>
                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Batal</button>
@@ -4391,6 +4403,43 @@
         </div>
         <div class="modal-footer border-0 bg-body-tertiary">
           <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">Saya Setuju</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="privateRoomTosModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header border-0 bg-body-tertiary">
+          <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock-fill text-primary me-2"></i>Syarat Private Room</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-warning border-0 bg-warning-subtle text-warning-emphasis mb-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Private Room di forum ini <b>bukan enkripsi end-to-end</b>. Jangan kirim data sensitif.
+          </div>
+
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-1-circle me-2"></i>Definisi “Private”</h6>
+          <p class="text-secondary small mb-4">
+            Private Room berarti chat dipisah berdasarkan kode room. Siapa pun yang tahu kodenya bisa masuk. Kami tidak menjamin kerahasiaan absolut.
+          </p>
+
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-2-circle me-2"></i>Larangan</h6>
+          <ul class="text-secondary small mb-4">
+            <li>Dilarang membagikan data pribadi orang lain (doxxing), KTP, nomor WA, alamat, dsb.</li>
+            <li>Dilarang konten ilegal, pelecehan, ancaman, atau spam.</li>
+            <li>Untuk room 18+ tetap wajib sopan dan tanpa paksaan/pelecehan.</li>
+          </ul>
+
+          <h6 class="fw-bold text-primary mb-2"><i class="bi bi-3-circle me-2"></i>Pelaporan</h6>
+          <p class="text-secondary small mb-0">
+            Kalau ada penyalahgunaan, gunakan menu pesan → <b>Laporkan</b> untuk mengirim laporan ke room “Laporan”. Laporan dibuat oleh pengguna (tidak otomatis).
+          </p>
+        </div>
+        <div class="modal-footer border-0 bg-body-tertiary">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary rounded-pill px-4" id="privateRoomAcceptBtn">Saya Setuju</button>
         </div>
       </div>
     </div>
@@ -18274,9 +18323,17 @@ $('#queueList')?.addEventListener('click', (e) => {
         // Editor Elements
         const editorModalEl = document.getElementById('editorModal');
         const editorCanvas = document.getElementById('editorCanvas');
+        const editorCropImage = document.getElementById('editorCropImage');
         const btnSaveEdit = document.getElementById('btnSaveEdit');
         const editorColorPicker = document.getElementById('editorColorPicker');
         const editorTextInput = document.getElementById('editorTextInput');
+        const btnEditCrop = document.getElementById('btnEditCrop');
+        const btnEditRotate = document.getElementById('btnEditRotate');
+        const btnEditText = document.getElementById('btnEditText');
+        const editorTextTools = document.getElementById('editorTextTools');
+        const editorTextSize = document.getElementById('editorTextSize');
+        const editorTextSmaller = document.getElementById('editorTextSmaller');
+        const editorTextBigger = document.getElementById('editorTextBigger');
         
         let editorModal;
         if(editorModalEl) editorModal = new bootstrap.Modal(editorModalEl);
@@ -18288,6 +18345,10 @@ $('#queueList')?.addEventListener('click', (e) => {
         let lastX = 0;
         let lastY = 0;
         let currentImageObj = null; // Image object for canvas
+        let editMode = 'none';
+        let cropperInstance = null;
+        let activeTextIndex = -1;
+        let textDragOffset = { x: 0, y: 0 };
 
         // Auto-open logic
         if (sessionStorage.getItem('forum_login_pending') === 'true') {
@@ -18312,6 +18373,11 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumRoomSelect = document.getElementById('forumRoomSelect');
         const forumCopyRoomBtn = document.getElementById('forumCopyRoomBtn');
         const forumRoomBadge = document.getElementById('forumRoomBadge');
+        const privateRoomTosModalEl = document.getElementById('privateRoomTosModal');
+        const privateRoomAcceptBtn = document.getElementById('privateRoomAcceptBtn');
+        const privateRoomTosModal = privateRoomTosModalEl ? new bootstrap.Modal(privateRoomTosModalEl) : null;
+        const privateRoomTosKey = 'forum_private_room_tos_ok';
+        let pendingRoomSelection = null;
         const FORUM_ROOMS = [
           { key: 'umum', label: 'Umum' },
           { key: 'laporan', label: 'Laporan' },
@@ -18350,6 +18416,27 @@ $('#queueList')?.addEventListener('click', (e) => {
           return found ? found.label : 'Umum';
         }
 
+        function hasAcceptedPrivateRoomTos() {
+          try { return localStorage.getItem(privateRoomTosKey) === '1'; } catch { return false; }
+        }
+
+        function requestPrivateRoomTos(nextSelection) {
+          pendingRoomSelection = nextSelection;
+          if (forumRoomSelect) forumRoomSelect.value = activeForumRoom;
+          if (privateRoomTosModal) privateRoomTosModal.show();
+          else setToast('Syarat Private Room belum siap dibuka.');
+        }
+
+        if (privateRoomAcceptBtn) {
+          privateRoomAcceptBtn.addEventListener('click', () => {
+            try { localStorage.setItem(privateRoomTosKey, '1'); } catch {}
+            try { privateRoomTosModal?.hide?.(); } catch {}
+            const next = pendingRoomSelection;
+            pendingRoomSelection = null;
+            if (next) handleRoomSelection(next);
+          });
+        }
+
         function syncRoomSelectOptions(roomKey) {
           if (!forumRoomSelect) return;
           const opts = Array.from(forumRoomSelect.options || []);
@@ -18381,6 +18468,10 @@ $('#queueList')?.addEventListener('click', (e) => {
         }
 
         function handleRoomSelection(value) {
+          if ((value === '__create_private__' || value === '__join_private__' || isPrivateRoomKey(value)) && !hasAcceptedPrivateRoomTos()) {
+            requestPrivateRoomTos(value);
+            return;
+          }
           if (value === '__create_private__') {
             const code = generatePrivateRoomCode(6);
             const key = buildPrivateRoomKey(code);
@@ -18542,6 +18633,13 @@ $('#queueList')?.addEventListener('click', (e) => {
         function initCanvas(img) {
             if (!editorCanvas) return;
 
+            if (cropperInstance) {
+                try { cropperInstance.destroy(); } catch {}
+                cropperInstance = null;
+            }
+            if (editorCropImage) editorCropImage.style.display = 'none';
+            editorCanvas.style.display = '';
+
             // Set canvas size to match image's natural dimensions for high quality
             editorCanvas.width = img.naturalWidth || img.width;
             editorCanvas.height = img.naturalHeight || img.height;
@@ -18559,6 +18657,8 @@ $('#queueList')?.addEventListener('click', (e) => {
             // Reset strokes & texts for a fresh edit session
             window.editorStrokes = [];
             window.editorTexts = [];
+            activeTextIndex = -1;
+            if (editorTextTools) editorTextTools.classList.add('d-none');
 
             // Draw initial image
             redrawCanvas();
@@ -18591,11 +18691,12 @@ $('#queueList')?.addEventListener('click', (e) => {
              // 3. Draw Text Objects
              if (window.editorTexts) {
                  window.editorTexts.forEach(txtObj => {
-                     canvasCtx.font = "bold 60px Arial"; // Fixed large size for high res
+                     const size = Math.max(12, Number(txtObj.size) || 72);
+                     canvasCtx.font = `bold ${size}px Arial`;
                      canvasCtx.fillStyle = txtObj.color;
                      canvasCtx.textAlign = "center";
                      canvasCtx.strokeStyle = "white";
-                     canvasCtx.lineWidth = 4;
+                     canvasCtx.lineWidth = Math.max(2, Math.round(size / 18));
                      canvasCtx.strokeText(txtObj.text, txtObj.x, txtObj.y);
                      canvasCtx.fillText(txtObj.text, txtObj.x, txtObj.y);
                  });
@@ -18614,71 +18715,152 @@ $('#queueList')?.addEventListener('click', (e) => {
         
         let currentStroke = null;
         let draggingTextIndex = -1;
-        
-        // Mouse Events
 
-        editorCanvas.addEventListener('mousedown', (e) => {
-            // Scale mouse coordinates to canvas resolution
+        const getCanvasPoint = (e) => {
             const rect = editorCanvas.getBoundingClientRect();
             const scaleX = editorCanvas.width / rect.width;
             const scaleY = editorCanvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY,
+            };
+        };
 
-            if(editMode === 'text') {
-                // Check collision with text (Simple radius check)
-                draggingTextIndex = -1;
-                for(let i = window.editorTexts.length - 1; i >= 0; i--) {
-                    const t = window.editorTexts[i];
-                    // Approx hit box (very rough)
-                    if(Math.abs(mouseX - t.x) < 100 && Math.abs(mouseY - t.y) < 50) {
-                        draggingTextIndex = i;
-                        editorCanvas.style.cursor = 'move';
-                        return;
-                    }
+        const getTextBounds = (txtObj) => {
+            if (!canvasCtx || !txtObj) return null;
+            const size = Math.max(12, Number(txtObj.size) || 72);
+            canvasCtx.save();
+            canvasCtx.font = `bold ${size}px Arial`;
+            canvasCtx.textAlign = 'center';
+            const metrics = canvasCtx.measureText(String(txtObj.text || ''));
+            canvasCtx.restore();
+            const w = Math.max(24, metrics.width);
+            const pad = Math.max(10, Math.round(size * 0.25));
+            const left = txtObj.x - (w / 2) - pad;
+            const right = txtObj.x + (w / 2) + pad;
+            const top = txtObj.y - size - pad;
+            const bottom = txtObj.y + pad;
+            return { left, right, top, bottom, size };
+        };
+
+        const pickTextIndexAt = (x, y) => {
+            if (!Array.isArray(window.editorTexts)) return -1;
+            for (let i = window.editorTexts.length - 1; i >= 0; i--) {
+                const bounds = getTextBounds(window.editorTexts[i]);
+                if (!bounds) continue;
+                if (x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) return i;
+            }
+            return -1;
+        };
+
+        const setActiveText = (idx) => {
+            activeTextIndex = Number.isFinite(idx) ? idx : -1;
+            if (activeTextIndex < 0 || !Array.isArray(window.editorTexts) || !window.editorTexts[activeTextIndex]) {
+                if (editorTextTools) editorTextTools.classList.add('d-none');
+                return;
+            }
+            const t = window.editorTexts[activeTextIndex];
+            const size = Math.max(12, Number(t.size) || 72);
+            if (editorTextSize) editorTextSize.value = String(Math.min(Number(editorTextSize.max) || 240, Math.max(Number(editorTextSize.min) || 12, size)));
+            if (editorTextTools) editorTextTools.classList.remove('d-none');
+        };
+
+        const bumpTextSize = (delta) => {
+            if (activeTextIndex < 0 || !Array.isArray(window.editorTexts) || !window.editorTexts[activeTextIndex]) return;
+            const t = window.editorTexts[activeTextIndex];
+            const next = Math.max(12, Math.min(240, (Number(t.size) || 72) + delta));
+            t.size = next;
+            if (editorTextSize) editorTextSize.value = String(next);
+            redrawCanvas();
+        };
+
+        const setCropMode = (enabled) => {
+            if (!editorCanvas || !editorCropImage) return;
+            const saveBtn = document.getElementById('btnSaveEdit');
+            if (enabled) {
+                editMode = 'crop';
+                editorCanvas.style.display = 'none';
+                editorCropImage.style.display = '';
+                if (saveBtn) saveBtn.setAttribute('disabled', '');
+            } else {
+                editMode = 'none';
+                editorCropImage.style.display = 'none';
+                editorCanvas.style.display = '';
+                if (saveBtn) saveBtn.removeAttribute('disabled');
+            }
+        };
+
+        editorCanvas.addEventListener('pointerdown', (e) => {
+            editorCanvas.setPointerCapture?.(e.pointerId);
+            const { x: mouseX, y: mouseY } = getCanvasPoint(e);
+
+            if (editMode === 'text') {
+                const idx = pickTextIndexAt(mouseX, mouseY);
+                setActiveText(idx);
+                if (idx !== -1) {
+                    draggingTextIndex = idx;
+                    const t = window.editorTexts[idx];
+                    textDragOffset = { x: mouseX - t.x, y: mouseY - t.y };
+                    editorCanvas.style.cursor = 'move';
+                } else {
+                    draggingTextIndex = -1;
+                    editorCanvas.style.cursor = 'default';
                 }
-            } else if(editMode === 'brush') {
+                return;
+            }
+
+            if (editMode === 'brush') {
                 isDrawing = true;
                 [lastX, lastY] = [mouseX, mouseY];
-                currentStroke = { points: [{x: mouseX, y: mouseY}], color: editorColorPicker.value, size: 10 }; // Scaled size
+                currentStroke = { points: [{x: mouseX, y: mouseY}], color: editorColorPicker.value, size: 10 };
             }
         });
 
-        editorCanvas.addEventListener('mousemove', (e) => {
-            const rect = editorCanvas.getBoundingClientRect();
-            const scaleX = editorCanvas.width / rect.width;
-            const scaleY = editorCanvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
+        editorCanvas.addEventListener('pointermove', (e) => {
+            const { x: mouseX, y: mouseY } = getCanvasPoint(e);
 
-            if(editMode === 'text' && draggingTextIndex !== -1) {
-                window.editorTexts[draggingTextIndex].x = mouseX;
-                window.editorTexts[draggingTextIndex].y = mouseY;
+            if (editMode === 'text' && draggingTextIndex !== -1) {
+                const t = window.editorTexts[draggingTextIndex];
+                t.x = mouseX - (textDragOffset?.x || 0);
+                t.y = mouseY - (textDragOffset?.y || 0);
                 redrawCanvas();
-            } else if (isDrawing && editMode === 'brush') {
+                return;
+            }
+
+            if (isDrawing && editMode === 'brush') {
                 canvasCtx.beginPath();
                 canvasCtx.lineJoin = 'round';
                 canvasCtx.lineCap = 'round';
-                canvasCtx.lineWidth = 10; // Scaled
+                canvasCtx.lineWidth = 10;
                 canvasCtx.strokeStyle = editorColorPicker.value;
                 canvasCtx.moveTo(lastX, lastY);
                 canvasCtx.lineTo(mouseX, mouseY);
                 canvasCtx.stroke();
                 
-                if(currentStroke) currentStroke.points.push({x: mouseX, y: mouseY});
+                if (currentStroke) currentStroke.points.push({x: mouseX, y: mouseY});
                 [lastX, lastY] = [mouseX, mouseY];
             }
         });
 
-        editorCanvas.addEventListener('mouseup', () => {
-            if(isDrawing && currentStroke) {
+        const endPointer = () => {
+            if (isDrawing && currentStroke) {
                 window.editorStrokes.push(currentStroke);
                 currentStroke = null;
             }
             isDrawing = false;
             draggingTextIndex = -1;
-            if(editMode === 'text') editorCanvas.style.cursor = 'default';
-        });
+            if (editMode === 'text') editorCanvas.style.cursor = 'default';
+        };
+
+        editorCanvas.addEventListener('pointerup', endPointer);
+        editorCanvas.addEventListener('pointercancel', endPointer);
+
+        editorCanvas.addEventListener('wheel', (e) => {
+            if (editMode !== 'text' || activeTextIndex < 0) return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -4 : 4;
+            bumpTextSize(delta);
+        }, { passive: false });
 
         // Tool Buttons Logic
         if(document.getElementById('btnEditBrush')) {
@@ -18689,70 +18871,89 @@ $('#queueList')?.addEventListener('click', (e) => {
             });
         }
         
-        if(document.getElementById('btnEditCrop')) {
-            document.getElementById('btnEditCrop').addEventListener('click', () => {
-                // Free Custom Crop via Prompt for now (Simulated) or Center Crop?
-                // User wants "Manual / Custom".
-                // Since building a full UI drag-crop is complex in one go, 
-                // Let's do a prompt for Aspect Ratio or simple "Free Crop" logic?
-                // Or better: Use a library. But I can't.
-                // Fallback: 1:1 Crop or "Square Center".
-                // User explicitly said "ga 1:1 aja".
-                // I'll make it crop 4:3 or 16:9 toggles? Or just leave it as "Crop Center" but allow choosing ratio?
-                // Let's implement a cycle: 1:1 -> 4:3 -> 16:9 -> Original
-                
-                if(!window.cropRatio) window.cropRatio = 0;
-                const ratios = [1, 4/3, 16/9, 0]; // 0 = Reset
-                const ratioNames = ['1:1 (Kotak)', '4:3', '16:9', 'Reset'];
-                window.cropRatio = (window.cropRatio + 1) % ratios.length;
-                const r = ratios[window.cropRatio];
-                
-                setToast(`Crop Ratio: ${ratioNames[window.cropRatio]}`, 'info');
-                
-                if(r === 0) {
-                    initCanvas(currentImageObj); // Reset
-                    window.editorStrokes = []; window.editorTexts = []; // Clear edits on reset? Maybe not.
+        if (btnEditCrop) {
+            btnEditCrop.addEventListener('click', () => {
+                if (!currentImageObj || !editorCropImage) return;
+
+                if (!cropperInstance) {
+                    if (!window.Cropper) {
+                        setToast('Mode crop belum siap di perangkat ini.');
+                        return;
+                    }
+                    if (editorTextTools) editorTextTools.classList.add('d-none');
+                    setCropMode(true);
+                    editorCropImage.src = currentImageObj.src;
+                    editorCropImage.onload = () => {
+                        try { cropperInstance?.destroy?.(); } catch {}
+                        cropperInstance = new window.Cropper(editorCropImage, {
+                            viewMode: 1,
+                            dragMode: 'move',
+                            autoCropArea: 0.9,
+                            background: false,
+                            responsive: true,
+                            guides: true,
+                            center: true,
+                            zoomable: true,
+                            movable: true,
+                            rotatable: true,
+                            scalable: false,
+                            cropBoxMovable: true,
+                            cropBoxResizable: true,
+                        });
+                        setToast('Tarik kotak crop sesuai kebutuhan, lalu tekan Crop lagi untuk simpan.');
+                    };
                     return;
                 }
-                
-                // Crop Logic (Center Crop)
-                const imgW = currentImageObj.naturalWidth;
-                const imgH = currentImageObj.naturalHeight;
-                let cropW, cropH;
-                
-                if(imgW / imgH > r) {
-                    cropH = imgH;
-                    cropW = imgH * r;
-                } else {
-                    cropW = imgW;
-                    cropH = imgW / r;
+
+                try {
+                    const cropped = cropperInstance.getCroppedCanvas({
+                        imageSmoothingEnabled: true,
+                        imageSmoothingQuality: 'high',
+                    });
+                    const newImg = new Image();
+                    newImg.onload = () => {
+                        try { cropperInstance.destroy(); } catch {}
+                        cropperInstance = null;
+                        currentImageObj = newImg;
+                        window.editorStrokes = [];
+                        window.editorTexts = [];
+                        setCropMode(false);
+                        initCanvas(newImg);
+                        setToast('Crop diterapkan.');
+                    };
+                    newImg.src = cropped.toDataURL();
+                } catch (err) {
+                    console.error(err);
+                    setToast('Crop gagal diproses.');
                 }
-                
-                const startX = (imgW - cropW) / 2;
-                const startY = (imgH - cropH) / 2;
-                
-                editorCanvas.width = cropW;
-                editorCanvas.height = cropH;
-                
-                // We need to redraw everything shifted
-                // This is hard without full state. 
-                // Simple version: Crop creates a new "Base Image" state.
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = cropW;
-                tempCanvas.height = cropH;
-                const tCtx = tempCanvas.getContext('2d');
-                tCtx.drawImage(currentImageObj, startX, startY, cropW, cropH, 0, 0, cropW, cropH);
-                
-                // Update current image object to be the cropped version?
-                // This is destructive but effective for "Crop".
+            });
+        }
+
+        if (btnEditRotate) {
+            btnEditRotate.addEventListener('click', () => {
+                if (!currentImageObj) return;
+                if (cropperInstance) {
+                    try { cropperInstance.rotate(90); } catch {}
+                    return;
+                }
+                const srcW = currentImageObj.naturalWidth || currentImageObj.width;
+                const srcH = currentImageObj.naturalHeight || currentImageObj.height;
+                const temp = document.createElement('canvas');
+                temp.width = srcH;
+                temp.height = srcW;
+                const tCtx = temp.getContext('2d');
+                tCtx.translate(temp.width / 2, temp.height / 2);
+                tCtx.rotate(Math.PI / 2);
+                tCtx.drawImage(currentImageObj, -srcW / 2, -srcH / 2);
                 const newImg = new Image();
                 newImg.onload = () => {
                     currentImageObj = newImg;
-                    window.editorStrokes = []; // Clear strokes on crop (hard to map)
+                    window.editorStrokes = [];
                     window.editorTexts = [];
                     initCanvas(newImg);
+                    setToast('Gambar diputar.');
                 };
-                newImg.src = tempCanvas.toDataURL();
+                newImg.src = temp.toDataURL();
             });
         }
         
@@ -18768,23 +18969,58 @@ $('#queueList')?.addEventListener('click', (e) => {
                  }
                  if(currentImageObj) initCanvas(currentImageObj);
              });
+             editorModalEl.addEventListener('hidden.bs.modal', () => {
+                 if (cropperInstance) {
+                     try { cropperInstance.destroy(); } catch {}
+                     cropperInstance = null;
+                 }
+                 if (editorCropImage) editorCropImage.style.display = 'none';
+                 if (editorCanvas) editorCanvas.style.display = '';
+                 const saveBtn = document.getElementById('btnSaveEdit');
+                 if (saveBtn) saveBtn.removeAttribute('disabled');
+                 editMode = 'none';
+                 activeTextIndex = -1;
+                 if (editorTextTools) editorTextTools.classList.add('d-none');
+             });
         }
 
-        if(document.getElementById('btnEditText')) {
-            document.getElementById('btnEditText').addEventListener('click', () => {
-                 editMode = 'text';
-                 const text = prompt("Masukkan teks:");
-                 if(text) {
-                     window.editorTexts.push({
-                         text: text,
-                         x: editorCanvas.width / 2,
-                         y: editorCanvas.height / 2,
-                         color: editorColorPicker.value
-                     });
-                     redrawCanvas();
-                     setToast('Teks ditambahkan! Geser untuk memindahkan.', 'success');
-                 }
+        if (btnEditText) {
+            btnEditText.addEventListener('click', () => {
+                editMode = 'text';
+                if (cropperInstance) {
+                    setToast('Selesaikan crop dulu atau tekan Crop lagi untuk simpan.');
+                    return;
+                }
+                const text = prompt("Masukkan teks:");
+                if (!text) return;
+                const baseSize = editorTextSize ? Number(editorTextSize.value) || 72 : 72;
+                window.editorTexts.push({
+                    text: text,
+                    x: editorCanvas.width / 2,
+                    y: editorCanvas.height / 2,
+                    color: editorColorPicker.value,
+                    size: baseSize,
+                });
+                setActiveText(window.editorTexts.length - 1);
+                redrawCanvas();
+                setToast('Teks ditambahkan. Drag untuk pindah, scroll/slider untuk perbesar.');
             });
+        }
+
+        if (editorTextSize) {
+            editorTextSize.addEventListener('input', () => {
+                if (activeTextIndex < 0 || !Array.isArray(window.editorTexts) || !window.editorTexts[activeTextIndex]) return;
+                window.editorTexts[activeTextIndex].size = Number(editorTextSize.value) || 72;
+                redrawCanvas();
+            });
+        }
+
+        if (editorTextSmaller) {
+            editorTextSmaller.addEventListener('click', () => bumpTextSize(-6));
+        }
+
+        if (editorTextBigger) {
+            editorTextBigger.addEventListener('click', () => bumpTextSize(6));
         }
 
         // Save Edited Image
@@ -19289,6 +19525,56 @@ $('#queueList')?.addEventListener('click', (e) => {
                             forumInput.focus();
                         }
                     }
+                    else if (action === 'msg-report') {
+                        const msgData = forumMessageCache[messageId];
+                        if (!msgData) return;
+                        if (!currentUser) { setToast('Silakan login dulu supaya bisa melapor.'); return; }
+
+                        const includeContent = confirm('Kirim laporan ke room "Laporan"?\n\nPilih OK untuk menyertakan isi pesan.\nPilih Cancel untuk laporan tanpa isi.');
+                        const ctx = buildReplyContextFromMessage(messageId, msgData);
+                        const roomLabel = (typeof getForumRoomLabel === 'function') ? getForumRoomLabel(activeForumRoom || 'umum') : (activeForumRoom || 'umum');
+                        const reporter = currentUser.displayName || currentUser.email || 'Warga';
+                        const reportedName = msgData.email === adminEmail ? 'ADMIN' : (msgData.name || 'Warga');
+
+                        const excerpt = includeContent
+                          ? String(ctx.text || '').slice(0, 220)
+                          : '(disembunyikan)';
+
+                        const reportText = [
+                          `LAPORAN`,
+                          `Pelapor: ${reporter}`,
+                          `Room: ${roomLabel}`,
+                          `Target: ${reportedName}`,
+                          `Message ID: ${messageId}`,
+                          `Isi: ${excerpt}`,
+                        ].join('\n');
+
+                        try {
+                          const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+                          await addDoc(collection(db, "forum-messages"), {
+                            uid: currentUser.uid,
+                            name: currentUser.displayName || 'Warga',
+                            email: currentUser.email,
+                            photoURL: currentUser.photoURL,
+                            timestamp: serverTimestamp(),
+                            room: 'laporan',
+                            text: reportText,
+                            report: {
+                              sourceRoom: activeForumRoom || 'umum',
+                              sourceRoomLabel: roomLabel,
+                              messageId,
+                              reportedUid: msgData.uid || '',
+                              reportedName,
+                              kind: ctx.kind || 'text',
+                              previewUrl: includeContent ? (ctx.previewUrl || '') : '',
+                            },
+                          });
+                          setToast('Laporan terkirim. Makasih sudah bantu jaga forum.');
+                        } catch (err) {
+                          console.error(err);
+                          setToast('Gagal kirim laporan. Coba lagi sebentar ya.');
+                        }
+                    }
                     else if (action === 'msg-delete') {
                         if (confirm('Hapus pesan ini?')) {
                              const { db, doc, deleteDoc, updateDoc, serverTimestamp } = window.firebaseModules;
@@ -19327,6 +19613,78 @@ $('#queueList')?.addEventListener('click', (e) => {
                     }
                 }
             });
+
+            let swipeReplyState = null;
+            const canSwipeReply = () => {
+                try {
+                    return window.matchMedia('(max-width: 768px)').matches || window.matchMedia('(pointer: coarse)').matches;
+                } catch {
+                    return window.innerWidth <= 768;
+                }
+            };
+            const resetSwipeReplyUi = () => {
+                if (!swipeReplyState) return;
+                const el = swipeReplyState.el;
+                if (el) {
+                    el.style.transition = 'transform 160ms ease, opacity 160ms ease';
+                    el.style.transform = '';
+                    el.style.opacity = '';
+                }
+            };
+
+            forumChatArea.addEventListener('pointerdown', (e) => {
+                if (!canSwipeReply()) return;
+                if (e.target.closest('button, a, input, textarea, .dropdown, .voice-note')) return;
+                const msgEl = e.target.closest('[data-message-id]');
+                if (!msgEl) return;
+                swipeReplyState = {
+                    el: msgEl,
+                    id: msgEl.getAttribute('data-message-id') || '',
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    dx: 0,
+                    active: false,
+                };
+                msgEl.style.transition = 'none';
+            });
+
+            forumChatArea.addEventListener('pointermove', (e) => {
+                if (!swipeReplyState) return;
+                const dx = e.clientX - swipeReplyState.startX;
+                const dy = e.clientY - swipeReplyState.startY;
+                swipeReplyState.dx = dx;
+                if (!swipeReplyState.active && Math.abs(dy) > 44) {
+                    resetSwipeReplyUi();
+                    swipeReplyState = null;
+                    return;
+                }
+                if (dx <= 0) return;
+                const cap = Math.min(72, dx);
+                swipeReplyState.active = cap > 18;
+                if (swipeReplyState.el) {
+                    swipeReplyState.el.style.transform = `translateX(${cap}px)`;
+                    swipeReplyState.el.style.opacity = String(Math.max(0.65, 1 - (cap / 260)));
+                }
+            });
+
+            const finishSwipeReply = () => {
+                if (!swipeReplyState) return;
+                const { el, id, dx } = swipeReplyState;
+                const shouldTrigger = dx > 56;
+                resetSwipeReplyUi();
+                if (shouldTrigger && id) {
+                    const msgData = forumMessageCache[id];
+                    if (msgData) {
+                        setReplyContext(buildReplyContextFromMessage(id, msgData));
+                        try { if (navigator.vibrate) navigator.vibrate(18); } catch {}
+                        try { forumInput.focus(); } catch {}
+                    }
+                }
+                swipeReplyState = null;
+            };
+
+            forumChatArea.addEventListener('pointerup', finishSwipeReply);
+            forumChatArea.addEventListener('pointercancel', finishSwipeReply);
         }
 
         function renderMessage(messageId, data) {
@@ -19381,6 +19739,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-info" data-id="${messageId}"><i class="bi bi-info-circle me-2"></i> Info</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-reply" data-id="${messageId}"><i class="bi bi-reply me-2"></i> Balas</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-copy" data-id="${messageId}"><i class="bi bi-clipboard me-2"></i> Salin</button></li>
+                    <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-report" data-id="${messageId}"><i class="bi bi-flag me-2"></i> Laporkan</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-react-menu" data-id="${messageId}"><i class="bi bi-emoji-smile me-2"></i> Reaksi</button></li>
                     <li><button class="dropdown-item rounded-2 small py-2" data-action="msg-star" data-id="${messageId}"><i class="bi ${isStarred ? 'bi-star-fill' : 'bi-star'} me-2"></i> ${isStarred ? 'Hapus bintang' : 'Bintang'}</button></li>
                     ${(isMe || isAdmin) ? `<li><hr class="dropdown-divider my-1"></li><li><button class="dropdown-item rounded-2 small py-2 text-danger" data-action="msg-delete" data-id="${messageId}"><i class="bi bi-trash3 me-2"></i> Hapus</button></li>` : ''}
@@ -19842,7 +20201,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
              let messageId = null;
              try {
-                 const msgRef = await addDoc(collection(db, "forum-messages"), {
+                 const msgData = {
                      uid: currentUser.uid,
                      name: currentUser.displayName || 'Warga',
                      timestamp: serverTimestamp(),
@@ -19851,7 +20210,17 @@ $('#queueList')?.addEventListener('click', (e) => {
                      photoURL: currentUser.photoURL,
                      stickerUrl: url,
                      text: ''
-                 });
+                 };
+                 if (replyContext && replyContext.id) {
+                     msgData.replyTo = {
+                         id: replyContext.id,
+                         name: replyContext.name || 'Warga',
+                         text: replyContext.text || '',
+                         kind: replyContext.kind || 'text',
+                         previewUrl: replyContext.previewUrl || '',
+                     };
+                 }
+                 const msgRef = await addDoc(collection(db, "forum-messages"), msgData);
                  messageId = msgRef.id;
              } catch (e) {
                  console.error(e);
@@ -19872,6 +20241,7 @@ $('#queueList')?.addEventListener('click', (e) => {
              const stickerModalEl = document.getElementById('stickerModal');
              const stickerModal = bootstrap.Modal.getInstance(stickerModalEl);
              if(stickerModal) stickerModal.hide();
+             setReplyContext(null);
         };
         
         // Sticker Button
