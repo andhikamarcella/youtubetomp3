@@ -420,6 +420,22 @@
   #forumChatArea [data-message-id] {
     touch-action: pan-y;
   }
+  .message.admin.admin-pinned {
+    justify-content: flex-start !important;
+  }
+  .message.admin.admin-pinned .message-bubble {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+    color: #fff !important;
+  }
+  .message.admin.admin-pinned .message-bubble::before,
+  .message.admin.admin-pinned .message-bubble::after {
+    content: none !important;
+  }
+
+  .message.admin:not(.admin-pinned) .message-bubble::before,
+  .message.admin:not(.admin-pinned) .message-bubble::after {
+    content: none !important;
+  }
   @media (max-width: 768px) {
     #forumModal .modal-dialog {
       margin: 0 !important;
@@ -19468,7 +19484,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                   : (pinnedByRoom[roomKey] || pinnedByRoom.umum);
 
                 const pinnedRules = `
-                    <div class="d-flex align-items-start mb-3 message admin">
+                    <div class="d-flex align-items-start mb-3 message admin admin-pinned">
                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">ADM</div>
                        <div class="message-bubble admin-pinned-gradient p-3 rounded-4 rounded-top-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
                           <div class="small fw-bold text-white mb-1">Admin <i class="bi bi-patch-check-fill text-info"></i></div>
@@ -20015,8 +20031,9 @@ $('#queueList')?.addEventListener('click', (e) => {
             if (!currentUser) return;
 
             const isReportBot = !!(data && data.report && data.report.type === 'user_report');
-            const isMe = !isReportBot && data.uid === currentUser.uid;
-            const isAdmin = isReportBot || (data.email === adminEmail);
+            const isAdminEmail = !isReportBot && (data.email === adminEmail);
+            const isMe = !isReportBot && !isAdminEmail && data.uid === currentUser.uid;
+            const isAdmin = isAdminEmail || isReportBot;
             const isStarred = Array.isArray(data.starredBy) && data.starredBy.includes(currentUser.uid);
             const isDeleted = !!data.deleted;
             
@@ -20098,17 +20115,32 @@ $('#queueList')?.addEventListener('click', (e) => {
             let msgContent = replyQuote + textHtml + voiceHtml + imagesHtml + reactionStrip;
             
             let msgHtml;
-            if (isAdmin) {
+            if (isReportBot) {
+                msgHtml = `
+               <div class="d-flex align-items-end mb-3 message admin" data-message-id="${messageId}">
+                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid #0dcaf0;">
+                       <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="message-bubble p-3 rounded-4 rounded-bottom-left-0 shadow-sm border border-secondary" style="max-width: 85%; background-color: var(--chat-other-bg); color: var(--chat-other-text);">
+                       <div class="small fw-bold mb-1" style="color: #0dcaf0;"><i class="bi bi-robot me-1"></i>BOT Laporan</div>
+                       ${msgContent}
+                       <div class="d-flex justify-content-end align-items-center mt-1">
+                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-other);">${starIcon}${timeStr}</div>
+                          ${optionsMenu}
+                       </div>
+                    </div>
+                 </div>`;
+            } else if (isAdminEmail) {
                 msgHtml = `
                <div class="d-flex align-items-end mb-3 flex-row-reverse message admin" data-message-id="${messageId}">
                     <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid gold;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                     </div>
-                    <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%;">
-                       <div class="small fw-bold mb-1" style="opacity: 0.9;">${isReportBot ? '<i class="bi bi-robot me-1 text-info"></i>BOT Laporan' : '<i class="bi bi-shield-check me-1 text-warning"></i>ADMIN'}</div>
+                    <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%; background-color: var(--chat-me-bg); color: var(--chat-me-text);">
+                       <div class="small fw-bold mb-1" style="opacity: 0.9;"><i class="bi bi-shield-check me-1 text-warning"></i>ADMIN</div>
                        ${msgContent}
                        <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="text-white-50 me-2" style="font-size: 0.65rem;">${starIcon}${timeStr}</div>
+                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-me);">${starIcon}${timeStr}</div>
                           ${optionsMenu}
                        </div>
                     </div>
