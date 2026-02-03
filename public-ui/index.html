@@ -511,6 +511,131 @@
       color: #e9edef;
       box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
   }
+
+  #forumChatArea {
+    padding: 12px 8px !important;
+  }
+
+  #forumChatArea [data-message-id] {
+    gap: 6px;
+  }
+
+  #forumChatArea .wa-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 999px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  #forumChatArea .wa-bubble {
+    position: relative;
+    max-width: min(72%, 520px) !important;
+    padding: 6px 7px 20px 9px !important;
+    padding-right: 64px !important;
+    border-radius: 8px !important;
+    line-height: 1.35;
+    font-size: 14px;
+    box-shadow: 0 1px 0.5px rgba(11,20,26,.13) !important;
+    overflow: visible;
+  }
+
+  #forumChatArea .wa-bubble--me {
+    background-color: var(--chat-me-bg) !important;
+    color: var(--chat-me-text) !important;
+    border-radius: 8px 0 8px 8px !important;
+  }
+
+  #forumChatArea .wa-bubble--other {
+    background-color: var(--chat-other-bg) !important;
+    color: var(--chat-other-text) !important;
+    border-radius: 0 8px 8px 8px !important;
+    border: none !important;
+  }
+
+  #forumChatArea .wa-bubble--me:not(.wa-bubble--no-tail)::after {
+    content: "";
+    position: absolute;
+    right: -4px;
+    bottom: 0;
+    width: 12px;
+    height: 12px;
+    background: var(--chat-me-bg);
+    transform: translateY(-2px) rotate(45deg);
+    border-bottom-left-radius: 2px;
+  }
+
+  #forumChatArea .wa-bubble--other:not(.wa-bubble--no-tail)::after {
+    content: "";
+    position: absolute;
+    left: -4px;
+    bottom: 0;
+    width: 12px;
+    height: 12px;
+    background: var(--chat-other-bg);
+    transform: translateY(-2px) rotate(45deg);
+    border-bottom-right-radius: 2px;
+  }
+
+  #forumChatArea .wa-meta {
+    position: absolute;
+    right: 6px;
+    bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    line-height: 1;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  #forumChatArea .wa-meta .wa-time {
+    opacity: 0.9;
+  }
+
+  #forumChatArea .wa-meta .wa-status i {
+    font-size: 0.9em;
+  }
+
+  #forumChatArea .wa-options .wa-options-btn {
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  #forumChatArea [data-message-id]:hover .wa-options .wa-options-btn,
+  #forumChatArea [data-message-id]:focus-within .wa-options .wa-options-btn {
+    opacity: 0.85;
+  }
+  @media (hover: none), (pointer: coarse) {
+    #forumChatArea .wa-options .wa-options-btn {
+      opacity: 0.85;
+    }
+  }
+
+  #forumChatArea .wa-bubble--with-media {
+    padding-right: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  #forumChatArea .wa-bubble--with-media .wa-meta {
+    position: static;
+    margin-top: 6px;
+    justify-content: flex-end;
+  }
+
+  #forumChatArea .wa-sticker {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  #forumChatArea .wa-sticker::after {
+    content: none !important;
+  }
   
   /* Stickers */
   .sticker-message {
@@ -579,8 +704,7 @@
     html[data-bs-theme='dark'] .message.assistant .message-bubble { background: #1f2c34; color: white; }
     html[data-bs-theme='dark'] .assistant-input-area { background: #0a141f; border-top-color: #1f2c34; }
     html[data-bs-theme='dark'] .assistant-input-area .form-control { background: #1f2c34; border-color: #2f3c44; color: white; }
-    /* Admin Message Style - Rainbow Stroke Only */
-    .message.admin .message-bubble {
+    .assistant-panel .message.admin .message-bubble {
       position: relative;
       z-index: 1;
       border: none !important;
@@ -590,11 +714,10 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       overflow: visible;
     }
-    html[data-bs-theme='dark'] .message.admin .message-bubble {
+    html[data-bs-theme='dark'] .assistant-panel .message.admin .message-bubble {
       color: #fff;
     }
-    /* Rainbow Layer (Bottom) */
-    .message.admin .message-bubble::before {
+    .assistant-panel .message.admin .message-bubble::before {
       content: "";
       position: absolute;
       inset: -3px;
@@ -604,8 +727,7 @@
       animation: rainbow-spin 5s linear infinite;
       background-size: 200% 200%;
     }
-    /* Solid Background Layer (Middle) */
-    .message.admin .message-bubble::after {
+    .assistant-panel .message.admin .message-bubble::after {
       content: "";
       position: absolute;
       inset: 0;
@@ -613,7 +735,7 @@
       background: #ffffff;
       z-index: -1;
     }
-    html[data-bs-theme='dark'] .message.admin .message-bubble::after {
+    html[data-bs-theme='dark'] .assistant-panel .message.admin .message-bubble::after {
       background: #1f2c34;
     }
     
@@ -20083,8 +20205,8 @@ $('#queueList')?.addEventListener('click', (e) => {
             // New Dropdown Menu
             const viewerIsAdmin = !!(currentUser && currentUser.email === adminEmail);
             const optionsMenu = `
-                <div class="dropdown d-inline-block ms-1">
-                  <button class="btn btn-link btn-sm p-0 text-decoration-none text-white-50" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="opacity: 0.8;">
+                <div class="dropdown d-inline-block wa-options">
+                  <button class="btn btn-link btn-sm p-0 text-decoration-none wa-options-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-chevron-down" style="font-size: 0.75rem;"></i>
                   </button>
                   <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-0 p-1" style="min-width: 160px;">
@@ -20122,63 +20244,70 @@ $('#queueList')?.addEventListener('click', (e) => {
                    </div>`
                 : '';
             let msgContent = replyQuote + textHtml + voiceHtml + imagesHtml + reactionStrip;
+            const hasMedia = !!(
+                (!isDeleted && (data.voiceUrl || (data.images && Array.isArray(data.images) && data.images.length) || data.stickerUrl)) ||
+                (reactionStrip && String(reactionStrip).trim() !== '')
+            );
+            const bubbleWithMediaClass = hasMedia ? ' wa-bubble--with-media' : '';
+            const bubbleStickerClass = (!isDeleted && data.stickerUrl && (!data.text || String(data.text).trim() === '') && !data.voiceUrl && !(data.images && Array.isArray(data.images) && data.images.length)) ? ' wa-sticker wa-bubble--no-tail' : '';
             
             let msgHtml;
             if (isReportBot) {
                 msgHtml = `
-               <div class="d-flex align-items-end mb-3 message admin w-100 justify-content-start" data-message-id="${messageId}">
-                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid #0dcaf0;">
+               <div class="d-flex align-items-end mb-2 message admin w-100 justify-content-start" data-message-id="${messageId}">
+                    <div class="bg-dark text-white d-flex align-items-center justify-content-center me-2 shadow-sm wa-avatar" style="border: 2px solid #0dcaf0;">
                        <i class="bi bi-robot"></i>
                     </div>
-                    <div class="message-bubble p-3 rounded-4 rounded-bottom-left-0 shadow-sm border border-secondary" style="max-width: 85%; background-color: var(--chat-other-bg); color: var(--chat-other-text);">
+                    <div class="message-bubble wa-bubble wa-bubble--other wa-bubble--no-tail${bubbleWithMediaClass}${bubbleStickerClass}">
                        <div class="small fw-bold mb-1" style="color: #0dcaf0;"><i class="bi bi-robot me-1"></i>BOT Laporan</div>
                        ${msgContent}
-                       <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-other);">${starIcon}${timeStr}</div>
+                       <div class="wa-meta" style="color: var(--chat-date-other);">
+                          <span class="wa-time">${starIcon}${timeStr}</span>
                           ${optionsMenu}
                        </div>
                     </div>
                  </div>`;
             } else if (isAdminEmail) {
                 msgHtml = `
-               <div class="d-flex align-items-end mb-3 flex-row-reverse message admin w-100 justify-content-end" data-message-id="${messageId}">
-                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; border: 2px solid gold;">
+               <div class="d-flex align-items-end mb-2 flex-row-reverse message admin w-100 justify-content-end" data-message-id="${messageId}">
+                    <div class="bg-dark text-white d-flex align-items-center justify-content-center ms-2 shadow-sm wa-avatar" style="border: 2px solid gold;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ADM'}
                     </div>
-                    <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0 position-relative" style="max-width: 85%; background-color: var(--chat-me-bg); color: var(--chat-me-text);">
+                    <div class="message-bubble wa-bubble wa-bubble--me wa-bubble--no-tail${bubbleWithMediaClass}${bubbleStickerClass}">
                        <div class="small fw-bold mb-1" style="opacity: 0.9;"><i class="bi bi-shield-check me-1 text-warning"></i>ADMIN</div>
                        ${msgContent}
-                       <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-me);">${starIcon}${timeStr}</div>
+                       <div class="wa-meta" style="color: var(--chat-date-me);">
+                          <span class="wa-time">${starIcon}${timeStr}</span>
                           ${optionsMenu}
                        </div>
                     </div>
                  </div>`;
             } else if (isMe) {
                 msgHtml = `
-               <div class="d-flex align-items-end mb-3 flex-row-reverse w-100 justify-content-end" data-message-id="${messageId}">
-                    <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center ms-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
+               <div class="d-flex align-items-end mb-2 flex-row-reverse w-100 justify-content-end" data-message-id="${messageId}">
+                    <div class="bg-dark text-white d-flex align-items-center justify-content-center ms-2 shadow-sm wa-avatar" style="font-size: 0.8rem;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'ME'}
                     </div>
-                    <div class="message-bubble p-3 rounded-4 rounded-bottom-right-0 shadow-sm border-0" style="max-width: 85%; background-color: var(--chat-me-bg); color: var(--chat-me-text);">
+                    <div class="message-bubble wa-bubble wa-bubble--me${bubbleWithMediaClass}${bubbleStickerClass}">
                        ${msgContent}
-                       <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-me);">${starIcon}${timeStr} <i class="bi bi-check-all"></i></div>
+                       <div class="wa-meta" style="color: var(--chat-date-me);">
+                          <span class="wa-time">${starIcon}${timeStr}</span>
+                          <span class="wa-status"><i class="bi bi-check-all"></i></span>
                           ${optionsMenu}
                        </div>
                     </div>
                  </div>`;
             } else {
                 msgHtml = `
-               <div class="d-flex align-items-end mb-3 w-100 justify-content-start" data-message-id="${messageId}">
-                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm overflow-hidden" style="width:36px; height:36px; flex-shrink:0; font-size: 0.8rem;">
+               <div class="d-flex align-items-end mb-2 w-100 justify-content-start" data-message-id="${messageId}">
+                    <div class="bg-secondary text-white d-flex align-items-center justify-content-center me-2 shadow-sm wa-avatar" style="font-size: 0.8rem;">
                        ${data.photoURL ? `<img src="${data.photoURL}" class="w-100 h-100 object-fit-cover">` : 'USR'}
                     </div>
-                    <div class="message-bubble p-3 rounded-4 rounded-bottom-left-0 shadow-sm border border-secondary" style="max-width: 85%; background-color: var(--chat-other-bg); color: var(--chat-other-text);">
+                    <div class="message-bubble wa-bubble wa-bubble--other${bubbleWithMediaClass}${bubbleStickerClass}">
                        <div class="small fw-bold text-info mb-1">${(data.name || 'Warga').replace(/</g, "&lt;")}</div>
                        ${msgContent}
-                       <div class="d-flex justify-content-end align-items-center mt-1">
-                          <div class="me-2" style="font-size: 0.65rem; color: var(--chat-date-other);">${starIcon}${timeStr}</div>
+                       <div class="wa-meta" style="color: var(--chat-date-other);">
+                          <span class="wa-time">${starIcon}${timeStr}</span>
                           ${optionsMenu}
                        </div>
                     </div>
