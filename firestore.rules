@@ -18,8 +18,21 @@ service cloud.firestore {
     // Forum Messages: Authenticated users can read/write messages
     match /forum-messages/{messageId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth != null && request.auth.token.email == 'andhikamarcella546@gmail.com';
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update: if request.auth != null && (
+        request.auth.token.email == 'andhikamarcella546@gmail.com' ||
+        (
+          request.auth.uid == resource.data.uid &&
+          request.resource.data.uid == resource.data.uid
+        )
+      );
+
+      allow delete: if request.auth != null && (
+        request.auth.token.email == 'andhikamarcella546@gmail.com' ||
+        request.auth.uid == resource.data.uid
+      );
     }
 
     match /stickers/{stickerId} {
