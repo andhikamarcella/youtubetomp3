@@ -3639,15 +3639,20 @@
 
         <!-- Chat Body -->
         <div class="modal-body p-0 position-relative bg-black" style="height: 500px;">
-           <!-- Room Tabs -->
-           <div class="border-bottom border-secondary bg-dark px-3 pt-2 pb-1">
-             <div class="nav nav-pills nav-fill gap-1" id="forumRoomTabs" role="tablist">
-               <button type="button" class="btn btn-sm btn-outline-light rounded-pill active" data-room="umum">Umum</button>
-               <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" data-room="laporan">Laporan</button>
-               <button type="button" class="btn btn-sm btn-outline-info rounded-pill" data-room="jomok">Jomok</button>
-               <button type="button" class="btn btn-sm btn-outline-success rounded-pill" data-room="foto">Foto Warga</button>
-               <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-room="event">Event</button>
-               <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-room="santai">Santai / Meme</button>
+           <div class="border-bottom border-secondary bg-dark px-3 py-2">
+             <div class="d-flex align-items-center gap-2">
+               <span class="text-white-50 small">Room</span>
+               <select id="forumRoomSelect" class="form-select form-select-sm bg-black text-white border-secondary" style="max-width: 260px;">
+                 <option value="umum">Umum</option>
+                 <option value="laporan">Laporan</option>
+                 <option value="jomok">Jomok</option>
+                 <option value="foto">Foto Warga</option>
+                 <option value="event">Event</option>
+                 <option value="santai">Santai / Meme</option>
+                 <option value="__create_private__">+ Private Room (buat baru)</option>
+                 <option value="__join_private__">Masuk Private Room (pakai kode)</option>
+               </select>
+               <button id="forumCopyRoomBtn" type="button" class="btn btn-sm btn-outline-light rounded-pill d-none">Salin kode</button>
              </div>
            </div>
            <!-- Wallpaper Background -->
@@ -18304,7 +18309,8 @@ $('#queueList')?.addEventListener('click', (e) => {
         let forumMessageCache = {};
         let stickerFavoritesSet = new Set();
         const adminEmail = 'andhikamarcella546@gmail.com';
-        const forumRoomTabs = document.getElementById('forumRoomTabs');
+        const forumRoomSelect = document.getElementById('forumRoomSelect');
+        const forumCopyRoomBtn = document.getElementById('forumCopyRoomBtn');
         const forumRoomBadge = document.getElementById('forumRoomBadge');
         const FORUM_ROOMS = [
           { key: 'umum', label: 'Umum' },
@@ -18317,37 +18323,117 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumRoomKeyStorage = 'forum_room';
         let activeForumRoom = localStorage.getItem(forumRoomKeyStorage) || 'umum';
 
+        function isPrivateRoomKey(key) {
+          return typeof key === 'string' && /^priv-\d{4,10}$/.test(key);
+        }
+
+        function parsePrivateRoomCode(key) {
+          if (!isPrivateRoomKey(key)) return '';
+          return key.replace('priv-', '');
+        }
+
+        function buildPrivateRoomKey(code) {
+          const cleaned = String(code || '').replace(/\D/g, '');
+          return cleaned ? `priv-${cleaned}` : '';
+        }
+
+        function generatePrivateRoomCode(length = 6) {
+          const n = Math.max(4, Math.min(10, Number(length) || 6));
+          let out = '';
+          for (let i = 0; i < n; i += 1) out += String(Math.floor(Math.random() * 10));
+          return out;
+        }
+
         function getForumRoomLabel(key) {
+          if (isPrivateRoomKey(key)) return `Private • ${parsePrivateRoomCode(key)}`;
           const found = FORUM_ROOMS.find((r) => r.key === key);
           return found ? found.label : 'Umum';
+        }
+
+        function syncRoomSelectOptions(roomKey) {
+          if (!forumRoomSelect) return;
+          const opts = Array.from(forumRoomSelect.options || []);
+          opts
+            .filter((o) => o && o.dataset && o.dataset.dynamic === '1')
+            .forEach((o) => { try { o.remove(); } catch {} });
+
+          if (isPrivateRoomKey(roomKey)) {
+            const opt = document.createElement('option');
+            opt.value = roomKey;
+            opt.textContent = `Private Room • ${parsePrivateRoomCode(roomKey)}`;
+            opt.dataset.dynamic = '1';
+            const joinOpt = forumRoomSelect.querySelector('option[value="__join_private__"]');
+            if (joinOpt && joinOpt.parentNode) joinOpt.parentNode.insertBefore(opt, joinOpt);
+            else forumRoomSelect.appendChild(opt);
+          }
         }
 
         function setActiveRoomUi(roomKey) {
           activeForumRoom = roomKey;
           localStorage.setItem(forumRoomKeyStorage, roomKey);
           if (forumRoomBadge) forumRoomBadge.textContent = getForumRoomLabel(roomKey);
-          if (forumRoomTabs) {
-            forumRoomTabs.querySelectorAll('button[data-room]').forEach((btn) => {
-              const isActive = btn.getAttribute('data-room') === roomKey;
-              btn.classList.toggle('active', isActive);
-              btn.classList.toggle('btn-light', isActive);
-              btn.classList.toggle('text-dark', isActive);
-              if (!isActive) {
-                btn.classList.remove('btn-light', 'text-dark');
-              }
-            });
+          syncRoomSelectOptions(roomKey);
+          if (forumRoomSelect) forumRoomSelect.value = roomKey;
+          if (forumCopyRoomBtn) {
+            if (isPrivateRoomKey(roomKey)) forumCopyRoomBtn.classList.remove('d-none');
+            else forumCopyRoomBtn.classList.add('d-none');
           }
         }
 
-        if (forumRoomTabs) {
-          forumRoomTabs.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-room]');
-            if (!btn) return;
-            const room = btn.getAttribute('data-room') || 'umum';
-            setActiveRoomUi(room);
+        function handleRoomSelection(value) {
+          if (value === '__create_private__') {
+            const code = generatePrivateRoomCode(6);
+            const key = buildPrivateRoomKey(code);
+            setActiveRoomUi(key);
             try { startChatListener(); } catch {}
+            if (navigator.clipboard?.writeText) {
+              navigator.clipboard.writeText(code).then(
+                () => setToast(`Private room siap. Kodenya ${code} (sudah kesalin).`),
+                () => setToast(`Private room siap. Kodenya ${code}.`)
+              );
+            } else {
+              setToast(`Private room siap. Kodenya ${code}.`);
+            }
+            return;
+          }
+          if (value === '__join_private__') {
+            const raw = window.prompt('Masukkan kode Private Room (angka saja):', '');
+            const cleaned = String(raw || '').replace(/\D/g, '');
+            if (!cleaned || cleaned.length < 4) {
+              setToast('Kode private room belum valid.');
+              setActiveRoomUi('umum');
+              try { startChatListener(); } catch {}
+              return;
+            }
+            const key = buildPrivateRoomKey(cleaned);
+            setActiveRoomUi(key);
+            try { startChatListener(); } catch {}
+            setToast(`Masuk ke private room ${cleaned}.`);
+            return;
+          }
+          setActiveRoomUi(value || 'umum');
+          try { startChatListener(); } catch {}
+        }
+
+        if (forumRoomSelect) {
+          forumRoomSelect.addEventListener('change', () => {
+            handleRoomSelection(forumRoomSelect.value);
           });
         }
+
+        if (forumCopyRoomBtn) {
+          forumCopyRoomBtn.addEventListener('click', async () => {
+            const code = parsePrivateRoomCode(activeForumRoom);
+            if (!code) return;
+            try {
+              await navigator.clipboard.writeText(code);
+              setToast('Kode private room sudah kesalin.');
+            } catch {
+              setToast(`Kode private room: ${code}`);
+            }
+          });
+        }
+
         setActiveRoomUi(activeForumRoom);
 
         // --- File Handling & Preview ---
@@ -18839,7 +18925,9 @@ $('#queueList')?.addEventListener('click', (e) => {
                   santai: 'Room <b>Santai / Meme</b> buat lepas stress.<br>Drop meme, cerita random, atau bercandaan tipis-tipis.',
                 };
 
-                const pinnedText = pinnedByRoom[roomKey] || pinnedByRoom.umum;
+                const pinnedText = isPrivateRoomKey(roomKey)
+                  ? `Ini <b>Private Room</b>.<br>Kode room: <b>${parsePrivateRoomCode(roomKey)}</b> • Jangan dibagi ke orang random.`
+                  : (pinnedByRoom[roomKey] || pinnedByRoom.umum);
 
                 const pinnedRules = `
                     <div class="d-flex align-items-start mb-3 message admin">
