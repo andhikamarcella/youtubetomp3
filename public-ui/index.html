@@ -17670,6 +17670,10 @@ $('#queueList')?.addEventListener('click', (e) => {
             let kind = 'text';
             let previewUrl = '';
 
+            if (msgData && msgData.deleted) {
+                return { id: messageId, name: senderName, text: 'Pesan dihapus', kind: 'text', previewUrl: '' };
+            }
+
             if (msgData && msgData.stickerUrl) {
                 kind = 'sticker';
                 previewUrl = msgData.stickerUrl;
@@ -18843,14 +18847,26 @@ $('#queueList')?.addEventListener('click', (e) => {
                     }
                     else if (action === 'msg-delete') {
                         if (confirm('Hapus pesan ini?')) {
-                             const { db, doc, deleteDoc } = window.firebaseModules;
+                             const { db, doc, deleteDoc, updateDoc, serverTimestamp } = window.firebaseModules;
                              try {
                                  await deleteDoc(doc(db, "forum-messages", messageId));
                                  setToast('Pesan dihapus', 'success');
                              } catch (e) {
                                  const msg = (e && e.message) ? e.message : String(e);
-                                 if (/permission|insufficient/i.test(msg)) setToast('Gagal hapus: tidak punya izin (cek Firestore Rules).', 'danger');
-                                 else setToast('Gagal hapus: ' + msg, 'danger');
+                                 if (/permission|insufficient/i.test(msg)) {
+                                     try {
+                                         await updateDoc(doc(db, "forum-messages", messageId), {
+                                             deleted: true,
+                                             deletedByUid: currentUser ? currentUser.uid : null,
+                                             deletedAt: serverTimestamp ? serverTimestamp() : null,
+                                         });
+                                         setToast('Pesan dihapus', 'success');
+                                     } catch (e2) {
+                                         const msg2 = (e2 && e2.message) ? e2.message : String(e2);
+                                         setToast('Gagal hapus: tidak punya izin (deploy Firestore Rules).', 'danger');
+                                         console.error('Soft delete failed:', msg2);
+                                     }
+                                 } else setToast('Gagal hapus: ' + msg, 'danger');
                              }
                         }
                     }
@@ -18875,19 +18891,20 @@ $('#queueList')?.addEventListener('click', (e) => {
             const isMe = data.uid === currentUser.uid;
             const isAdmin = (data.email === adminEmail);
             const isStarred = Array.isArray(data.starredBy) && data.starredBy.includes(currentUser.uid);
+            const isDeleted = !!data.deleted;
             
             // Use new helper
             let timeStr = formatWhatsAppDate(data.timestamp);
 
             let imagesHtml = '';
-            if(data.images && Array.isArray(data.images) && data.images.length > 0) {
+            if(!isDeleted && data.images && Array.isArray(data.images) && data.images.length > 0) {
                 imagesHtml = `<div class="d-flex flex-wrap gap-1 mt-2 mb-1">`;
                 data.images.forEach(url => {
                     imagesHtml += `<img src="${url}" class="rounded-3 cursor-pointer shadow-sm border" style="max-width: 150px; max-height: 150px; object-fit: cover;" onclick="window.openPreview('${url}')">`;
                 });
                 imagesHtml += `</div>`;
             }
-            if(data.stickerUrl) {
+            if(!isDeleted && data.stickerUrl) {
                 imagesHtml += `<img src="${data.stickerUrl}" class="d-block mt-2 sticker-img cursor-pointer" style="width: 140px;" onclick="window.openStickerPreview('${data.stickerUrl}')">`;
             }
 
@@ -18928,14 +18945,16 @@ $('#queueList')?.addEventListener('click', (e) => {
             `;
 
             const starIcon = isStarred ? `<i class="bi bi-star-fill text-warning me-1"></i>` : '';
-            const textHtml = (data.text && String(data.text).trim() !== '')
+            const textHtml = isDeleted
+                ? `<div class="small fst-italic" style="opacity: 0.75;">Pesan dihapus</div>`
+                : (data.text && String(data.text).trim() !== '')
                 ? `<div class="small" style="white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;">${String(data.text).replace(/</g, "&lt;")}</div>`
                 : '';
             const voiceUrlSafe = data.voiceUrl ? String(data.voiceUrl).replace(/"/g, '&quot;') : '';
             const voiceBars = buildVoiceBarsHtml(messageId);
             const voiceDurationSeconds = data.voiceDurationMs ? Math.max(0, Math.round(Number(data.voiceDurationMs) / 1000)) : 0;
             const voiceTimeLabel = voiceDurationSeconds ? formatDurationSeconds(voiceDurationSeconds) : '0:00';
-            const voiceHtml = data.voiceUrl
+            const voiceHtml = (!isDeleted && data.voiceUrl)
                 ? `<div class="mt-2">
                        <div class="voice-note" data-voice-message-id="${messageId}" data-voice-url="${voiceUrlSafe}" data-voice-duration-ms="${data.voiceDurationMs || ''}">
                          <button type="button" class="voice-play-btn" aria-label="Putar voice note"><i class="bi bi-play-fill"></i></button>
