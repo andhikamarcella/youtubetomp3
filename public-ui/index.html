@@ -192,6 +192,71 @@
       word-break: break-word;
       white-space: pre-wrap;
     }
+    .voice-note {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 100%;
+      user-select: none;
+    }
+    .voice-play-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.18);
+      color: currentColor;
+      flex-shrink: 0;
+    }
+    .voice-wave {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      height: 22px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .voice-bars {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 2px;
+    }
+    .voice-bars span {
+      width: 3px;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.3;
+      flex-shrink: 0;
+      transform: translateZ(0);
+    }
+    .voice-bars-progress {
+      overflow: hidden;
+      width: 0%;
+      right: auto;
+    }
+    .voice-bars-progress span {
+      opacity: 0.85;
+    }
+    .voice-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      flex-shrink: 0;
+      min-width: 44px;
+    }
+    .voice-time {
+      font-size: 0.72rem;
+      opacity: 0.75;
+      line-height: 1;
+      white-space: nowrap;
+    }
     .chat-reply-quote .quote-row {
       display: flex;
       align-items: center;
@@ -17622,6 +17687,147 @@ $('#queueList')?.addEventListener('click', (e) => {
             return { id: messageId, name: senderName, text, kind, previewUrl };
         }
 
+        const voiceAudioByMessageId = new Map();
+        let activeVoiceMessageId = null;
+
+        function formatDurationSeconds(seconds) {
+            const s = Math.max(0, Math.floor(seconds || 0));
+            const mm = String(Math.floor(s / 60));
+            const ss = String(s % 60).padStart(2, '0');
+            return `${mm}:${ss}`;
+        }
+
+        function hashStringToUint(str) {
+            const s = String(str || '');
+            let h = 2166136261;
+            for (let i = 0; i < s.length; i++) {
+                h ^= s.charCodeAt(i);
+                h = Math.imul(h, 16777619);
+            }
+            return h >>> 0;
+        }
+
+        function makeRng(seedUint) {
+            let a = seedUint >>> 0;
+            return () => {
+                a += 0x6D2B79F5;
+                let t = a;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function buildVoiceBarsHtml(seedStr, barCount = 34) {
+            const rng = makeRng(hashStringToUint(seedStr));
+            let html = '';
+            for (let i = 0; i < barCount; i++) {
+                const v = rng();
+                const height = Math.round(28 + v * 72);
+                html += `<span style="height:${height}%"></span>`;
+            }
+            return html;
+        }
+
+        function setVoiceUiPlaying(voiceEl, isPlaying) {
+            if (!voiceEl) return;
+            const btn = voiceEl.querySelector('.voice-play-btn');
+            if (!btn) return;
+            btn.innerHTML = isPlaying ? '<i class="bi bi-pause-fill"></i>' : '<i class="bi bi-play-fill"></i>';
+        }
+
+        function updateVoiceUiProgress(voiceEl, audio) {
+            if (!voiceEl || !audio) return;
+            const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+            const current = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+            const p = duration > 0 ? Math.max(0, Math.min(1, current / duration)) : 0;
+            const prog = voiceEl.querySelector('.voice-bars-progress');
+            if (prog) prog.style.width = `${Math.round(p * 100)}%`;
+        }
+
+        function setVoiceUiDuration(voiceEl, seconds) {
+            if (!voiceEl) return;
+            const el = voiceEl.querySelector('.voice-time');
+            if (!el) return;
+            el.textContent = formatDurationSeconds(seconds);
+        }
+
+        function getVoiceElByMessageId(messageId) {
+            if (!forumChatArea) return null;
+            const nodes = forumChatArea.querySelectorAll('.voice-note');
+            for (const n of nodes) {
+                if (n.getAttribute('data-voice-message-id') === messageId) return n;
+            }
+            return null;
+        }
+
+        async function toggleVoicePlayback(voiceEl) {
+            if (!voiceEl) return;
+            const messageId = voiceEl.getAttribute('data-voice-message-id');
+            const url = voiceEl.getAttribute('data-voice-url') || '';
+            if (!messageId || !url) return;
+
+            const existingActive = activeVoiceMessageId && voiceAudioByMessageId.get(activeVoiceMessageId);
+            if (existingActive && activeVoiceMessageId !== messageId) {
+                try { existingActive.pause(); } catch {}
+            }
+
+            let audio = voiceAudioByMessageId.get(messageId);
+            if (!audio) {
+                audio = new Audio(url);
+                audio.preload = 'metadata';
+                voiceAudioByMessageId.set(messageId, audio);
+
+                const knownMs = Number(voiceEl.getAttribute('data-voice-duration-ms') || 0);
+                if (knownMs > 0) setVoiceUiDuration(voiceEl, knownMs / 1000);
+
+                audio.addEventListener('loadedmetadata', () => {
+                    const el = getVoiceElByMessageId(messageId) || voiceEl;
+                    const secs = Number.isFinite(audio.duration) ? audio.duration : 0;
+                    if (secs > 0) setVoiceUiDuration(el, secs);
+                    updateVoiceUiProgress(el, audio);
+                });
+                audio.addEventListener('timeupdate', () => {
+                    const el = getVoiceElByMessageId(messageId) || voiceEl;
+                    updateVoiceUiProgress(el, audio);
+                });
+                audio.addEventListener('ended', () => {
+                    const el = getVoiceElByMessageId(messageId) || voiceEl;
+                    if (activeVoiceMessageId === messageId) activeVoiceMessageId = null;
+                    setVoiceUiPlaying(el, false);
+                    updateVoiceUiProgress(el, audio);
+                });
+                audio.addEventListener('pause', () => {
+                    const el = getVoiceElByMessageId(messageId) || voiceEl;
+                    if (activeVoiceMessageId === messageId) activeVoiceMessageId = null;
+                    setVoiceUiPlaying(el, false);
+                    updateVoiceUiProgress(el, audio);
+                });
+                audio.addEventListener('play', () => {
+                    const el = getVoiceElByMessageId(messageId) || voiceEl;
+                    activeVoiceMessageId = messageId;
+                    setVoiceUiPlaying(el, true);
+                });
+                audio.addEventListener('error', () => {
+                    const el = getVoiceElByMessageId(messageId) || voiceEl;
+                    setVoiceUiPlaying(el, false);
+                    setToast('Voice note tidak bisa diputar', 'danger');
+                });
+            }
+
+            if (!audio.paused) {
+                audio.pause();
+                return;
+            }
+
+            try {
+                await audio.play();
+            } catch (err) {
+                console.error(err);
+                setToast('Gagal memutar voice note', 'danger');
+            }
+        }
+
         function setVoiceRecordingUi(isRecording) {
             if (!forumVoiceIndicator) return;
             if (isRecording) forumVoiceIndicator.classList.remove('d-none');
@@ -17713,7 +17919,14 @@ $('#queueList')?.addEventListener('click', (e) => {
             forumSendBtn.disabled = true;
             forumSendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
             try {
-                const voiceUrl = await uploadToCloudinaryAuto(file, 'forum-voice');
+                let voiceUrl = '';
+                try {
+                    voiceUrl = await uploadToCloudinaryVideo(file, 'forum-voice');
+                } catch (err) {
+                    console.error(err);
+                    voiceUrl = await uploadToCloudinaryAuto(file, 'forum-voice');
+                }
+                if (!voiceUrl) throw new Error('Voice upload gagal');
                 const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
                 const msgData = {
                     text: '',
@@ -18437,6 +18650,46 @@ $('#queueList')?.addEventListener('click', (e) => {
             });
         }
 
+        async function uploadToCloudinaryVideo(file, folder = null) {
+            const apiKey = '422728616314883';
+            const apiSecret = 'Nh3_vvxXVaQSEyJXqguIiI5YTbE';
+            const cloudName = 'dgbal8btf';
+            const timestamp = Math.round((new Date()).getTime() / 1000);
+
+            let paramsToSign = `timestamp=${timestamp}`;
+            if (folder) {
+                paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+            }
+            const signatureStr = paramsToSign + apiSecret;
+
+            const enc = new TextEncoder();
+            const hash = await crypto.subtle.digest('SHA-1', enc.encode(signatureStr));
+            const signature = Array.from(new Uint8Array(hash)).map(v => v.toString(16).padStart(2, '0')).join('');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('api_key', apiKey);
+            formData.append('timestamp', timestamp);
+            if (folder) formData.append('folder', folder);
+            formData.append('signature', signature);
+
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`);
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve(response.secure_url);
+                    } else {
+                        console.error("Cloudinary Error:", xhr.responseText);
+                        reject(new Error("Cloudinary Upload Failed: " + xhr.statusText));
+                    }
+                };
+                xhr.onerror = () => reject(new Error("Network Error"));
+                xhr.send(formData);
+            });
+        }
+
         const reactionChoices = [
             { key: 'like', emoji: '👍' },
             { key: 'love', emoji: '❤️' },
@@ -18544,6 +18797,13 @@ $('#queueList')?.addEventListener('click', (e) => {
 
         if (forumChatArea) {
             forumChatArea.addEventListener('click', async (e) => {
+                const voiceEl = e.target.closest('.voice-note');
+                if (voiceEl) {
+                    e.preventDefault();
+                    await toggleVoicePlayback(voiceEl);
+                    return;
+                }
+
                 // Toggle Reaction (Pill)
                 const pill = e.target.closest('[data-action="toggle-reaction"]');
                 if (pill) {
@@ -18587,7 +18847,11 @@ $('#queueList')?.addEventListener('click', (e) => {
                              try {
                                  await deleteDoc(doc(db, "forum-messages", messageId));
                                  setToast('Pesan dihapus', 'success');
-                             } catch (e) { setToast('Gagal hapus: ' + e.message, 'danger'); }
+                             } catch (e) {
+                                 const msg = (e && e.message) ? e.message : String(e);
+                                 if (/permission|insufficient/i.test(msg)) setToast('Gagal hapus: tidak punya izin (cek Firestore Rules).', 'danger');
+                                 else setToast('Gagal hapus: ' + msg, 'danger');
+                             }
                         }
                     }
                     else if (action === 'msg-info') {
@@ -18667,9 +18931,20 @@ $('#queueList')?.addEventListener('click', (e) => {
             const textHtml = (data.text && String(data.text).trim() !== '')
                 ? `<div class="small" style="white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;">${String(data.text).replace(/</g, "&lt;")}</div>`
                 : '';
+            const voiceUrlSafe = data.voiceUrl ? String(data.voiceUrl).replace(/"/g, '&quot;') : '';
+            const voiceBars = buildVoiceBarsHtml(messageId);
+            const voiceDurationSeconds = data.voiceDurationMs ? Math.max(0, Math.round(Number(data.voiceDurationMs) / 1000)) : 0;
+            const voiceTimeLabel = voiceDurationSeconds ? formatDurationSeconds(voiceDurationSeconds) : '0:00';
             const voiceHtml = data.voiceUrl
                 ? `<div class="mt-2">
-                       <audio controls preload="none" src="${data.voiceUrl}" style="width: 260px; max-width: 70vw; height: 32px;"></audio>
+                       <div class="voice-note" data-voice-message-id="${messageId}" data-voice-url="${voiceUrlSafe}" data-voice-duration-ms="${data.voiceDurationMs || ''}">
+                         <button type="button" class="voice-play-btn" aria-label="Putar voice note"><i class="bi bi-play-fill"></i></button>
+                         <div class="voice-wave" aria-label="Waveform">
+                           <div class="voice-bars voice-bars-base">${voiceBars}</div>
+                           <div class="voice-bars voice-bars-progress">${voiceBars}</div>
+                         </div>
+                         <div class="voice-meta"><span class="voice-time">${voiceTimeLabel}</span></div>
+                       </div>
                    </div>`
                 : '';
             let msgContent = replyQuote + textHtml + voiceHtml + imagesHtml + reactionStrip;
