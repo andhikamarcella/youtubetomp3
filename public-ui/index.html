@@ -120,11 +120,19 @@
       background: rgba(255,255,255,0.06);
       border-left: 4px solid var(--bs-primary);
       margin-bottom: 8px;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    #forumReplyPreview .reply-body {
+      min-width: 0;
     }
     #forumReplyPreview .reply-title {
       font-size: 0.75rem;
       font-weight: 700;
       color: #7bd1ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     #forumReplyPreview .reply-text {
       font-size: 0.8rem;
@@ -159,6 +167,24 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .chat-reply-quote .quote-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .chat-reply-quote .quote-main {
+      min-width: 0;
+      flex: 1;
+    }
+    .chat-reply-quote .quote-thumb {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.2);
+      flex-shrink: 0;
     }
 
     #forumReactionOverlay {
@@ -3463,13 +3489,16 @@
             <div class="flex-grow-1 py-2">
                 <div id="forumReplyPreview" class="d-none">
                     <div class="d-flex align-items-start justify-content-between gap-2">
-                        <div class="flex-grow-1 overflow-hidden">
+                        <div class="reply-body flex-grow-1 overflow-hidden">
                             <div class="reply-title" id="forumReplyTitle"></div>
                             <div class="reply-text" id="forumReplyText"></div>
                         </div>
-                        <button type="button" class="btn btn-link p-0 text-white-50" id="forumReplyCloseBtn" aria-label="Tutup reply" style="text-decoration:none;">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
+                        <div class="d-flex align-items-start gap-2 flex-shrink-0">
+                            <img id="forumReplyThumb" class="d-none rounded-2 border border-secondary" alt="Preview" style="width: 38px; height: 38px; object-fit: cover;">
+                            <button type="button" class="btn btn-link p-0 text-white-50" id="forumReplyCloseBtn" aria-label="Tutup reply" style="text-decoration:none;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div id="forumVoiceIndicator" class="d-none">
@@ -17457,6 +17486,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumReplyPreview = document.getElementById('forumReplyPreview');
         const forumReplyTitle = document.getElementById('forumReplyTitle');
         const forumReplyText = document.getElementById('forumReplyText');
+        const forumReplyThumb = document.getElementById('forumReplyThumb');
         const forumReplyCloseBtn = document.getElementById('forumReplyCloseBtn');
         const forumVoiceIndicator = document.getElementById('forumVoiceIndicator');
         const forumVoiceTimer = document.getElementById('forumVoiceTimer');
@@ -17524,11 +17554,48 @@ $('#queueList')?.addEventListener('click', (e) => {
                 forumReplyPreview.classList.add('d-none');
                 if (forumReplyTitle) forumReplyTitle.textContent = '';
                 if (forumReplyText) forumReplyText.textContent = '';
+                if (forumReplyThumb) {
+                    forumReplyThumb.classList.add('d-none');
+                    forumReplyThumb.removeAttribute('src');
+                }
                 return;
             }
             forumReplyPreview.classList.remove('d-none');
             if (forumReplyTitle) forumReplyTitle.textContent = ctx.name || 'Warga';
             if (forumReplyText) forumReplyText.textContent = ctx.text || '';
+            if (forumReplyThumb) {
+                if (ctx.previewUrl) {
+                    forumReplyThumb.src = ctx.previewUrl;
+                    forumReplyThumb.classList.remove('d-none');
+                } else {
+                    forumReplyThumb.classList.add('d-none');
+                    forumReplyThumb.removeAttribute('src');
+                }
+            }
+        }
+
+        function buildReplyContextFromMessage(messageId, msgData) {
+            const senderName = msgData && msgData.email === adminEmail ? 'ADMIN' : ((msgData && msgData.name) || 'Warga');
+            const trimmedText = (msgData && msgData.text ? String(msgData.text) : '').trim();
+            let text = trimmedText;
+            let kind = 'text';
+            let previewUrl = '';
+
+            if (msgData && msgData.stickerUrl) {
+                kind = 'sticker';
+                previewUrl = msgData.stickerUrl;
+                if (!text) text = 'Stiker';
+            } else if (msgData && Array.isArray(msgData.images) && msgData.images.length > 0) {
+                kind = 'image';
+                previewUrl = msgData.images[0];
+                if (!text) text = 'Foto';
+            } else if (msgData && msgData.voiceUrl) {
+                kind = 'voice';
+                if (!text) text = 'Voice note';
+            }
+            if (!text) text = 'Pesan';
+
+            return { id: messageId, name: senderName, text, kind, previewUrl };
         }
 
         function setVoiceRecordingUi(isRecording) {
@@ -17638,6 +17705,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                         id: replyContext.id,
                         name: replyContext.name || 'Warga',
                         text: replyContext.text || '',
+                        kind: replyContext.kind || 'text',
+                        previewUrl: replyContext.previewUrl || '',
                     };
                 }
                 if (currentUser.email) msgData.email = currentUser.email;
@@ -18484,12 +18553,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     else if (action === 'msg-reply') {
                         const msgData = forumMessageCache[messageId];
                         if (msgData) {
-                            const replyText = (msgData.text || '').trim() || (msgData.voiceUrl ? '🎤 Voice note' : '');
-                            setReplyContext({
-                                id: messageId,
-                                name: msgData.email === adminEmail ? 'ADMIN' : (msgData.name || 'Warga'),
-                                text: replyText,
-                            });
+                            setReplyContext(buildReplyContextFromMessage(messageId, msgData));
                             forumInput.focus();
                         }
                     }
@@ -18540,10 +18604,21 @@ $('#queueList')?.addEventListener('click', (e) => {
             }
 
             const reactionStrip = buildReactionsHtml(messageId, data.reactions);
-            const replyQuote = data.replyTo && typeof data.replyTo === 'object'
+            const replyTo = data.replyTo && typeof data.replyTo === 'object' ? data.replyTo : null;
+            const replyToName = replyTo ? String(replyTo.name || 'Warga').replace(/</g, "&lt;") : '';
+            const replyToText = replyTo ? String(replyTo.text || '').replace(/</g, "&lt;") : '';
+            const replyToThumb = replyTo && replyTo.previewUrl
+                ? `<img class="quote-thumb" src="${String(replyTo.previewUrl)}" alt="Preview">`
+                : '';
+            const replyQuote = replyTo
                 ? `<div class="chat-reply-quote">
-                      <div class="quote-title">${(data.replyTo.name || 'Warga').replace(/</g, "&lt;")}</div>
-                      <div class="quote-text">${String(data.replyTo.text || '').replace(/</g, "&lt;")}</div>
+                      <div class="quote-row">
+                        <div class="quote-main">
+                          <div class="quote-title">${replyToName}</div>
+                          <div class="quote-text">${replyToText}</div>
+                        </div>
+                        ${replyToThumb}
+                      </div>
                    </div>`
                 : '';
             
@@ -18570,7 +18645,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 : '';
             const voiceHtml = data.voiceUrl
                 ? `<div class="mt-2">
-                       <audio controls preload="none" src="${data.voiceUrl}" style="width: 260px; height: 32px;"></audio>
+                       <audio controls preload="none" src="${data.voiceUrl}" style="width: 260px; max-width: 70vw; height: 32px;"></audio>
                    </div>`
                 : '';
             let msgContent = replyQuote + textHtml + voiceHtml + imagesHtml + reactionStrip;
@@ -18792,6 +18867,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                         id: replyContext.id,
                         name: replyContext.name || 'Warga',
                         text: replyContext.text || '',
+                        kind: replyContext.kind || 'text',
+                        previewUrl: replyContext.previewUrl || '',
                     };
                 }
                 if(currentUser.email) msgData.email = currentUser.email;
