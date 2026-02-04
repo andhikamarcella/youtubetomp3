@@ -4760,7 +4760,7 @@
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   
   <!-- Mini Player Overlay -->
-  <div id="miniPlayerOverlay" class="mini-player-overlay">
+  <div id="miniPlayerOverlay" class="mini-player-overlay" hidden>
       <div class="mini-player-card">
           <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="mb-0 text-white-50 text-uppercase small ls-1" style="font-size: 0.7rem;">Now Playing</h6>
@@ -13729,6 +13729,169 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   // ===== History =====
   const historyKey = 'ytmp3.history.v1';
+
+  (() => {
+    const overlay = document.getElementById('miniPlayerOverlay');
+    const audio = document.getElementById('globalAudioPlayer');
+    if (!overlay || !audio) return;
+
+    const closeBtn = document.getElementById('closeMiniPlayer');
+    const thumbnailEl = document.getElementById('mpThumbnail');
+    const titleEl = document.getElementById('mpTitle');
+    const artistEl = document.getElementById('mpArtist');
+    const currentEl = document.getElementById('mpCurrentTime');
+    const durationEl = document.getElementById('mpDuration');
+    const progressEl = document.getElementById('mpProgressBar');
+    const playPauseBtn = document.getElementById('mpPlayPause');
+    const seekBackBtn = document.getElementById('mpSeekBack');
+    const seekFwdBtn = document.getElementById('mpSeekFwd');
+    const volumeEl = document.getElementById('mpVolume');
+    const downloadBtn = document.getElementById('mpDownloadBtn');
+
+    overlay.classList.remove('show');
+    overlay.hidden = true;
+
+    const state = {
+      ready: false,
+      lastUrl: '',
+      seeking: false,
+    };
+    window.__miniPlayerOverlayState = state;
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+    const fmtTime = (s) => {
+      const sec = Number.isFinite(s) ? Math.max(0, Math.floor(s)) : 0;
+      const m = Math.floor(sec / 60);
+      const r = sec % 60;
+      return `${m}:${String(r).padStart(2, '0')}`;
+    };
+    const setPlayIcon = (isPlaying) => {
+      const icon = playPauseBtn?.querySelector('i');
+      if (!icon) return;
+      icon.className = isPlaying ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+    };
+    const showOverlay = () => {
+      overlay.hidden = false;
+      overlay.classList.add('show');
+    };
+    const hideOverlay = () => {
+      overlay.classList.remove('show');
+      overlay.hidden = true;
+    };
+
+    const syncProgress = () => {
+      if (!progressEl || state.seeking) return;
+      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      if (dur > 0) {
+        progressEl.max = String(dur);
+        progressEl.value = String(cur);
+      } else {
+        progressEl.max = '0';
+        progressEl.value = '0';
+      }
+      if (currentEl) currentEl.textContent = fmtTime(cur);
+      if (durationEl) durationEl.textContent = fmtTime(dur);
+    };
+
+    window.closeMiniPlayer = () => {
+      try { audio.pause(); } catch {}
+      hideOverlay();
+    };
+
+    window.openMiniPlayer = async (url, title, artist, cover) => {
+      if (!url) return;
+      state.lastUrl = String(url);
+      if (titleEl) titleEl.textContent = title ? String(title) : 'Untitled';
+      if (artistEl) artistEl.textContent = artist ? String(artist) : '';
+      if (thumbnailEl) {
+        const src = cover ? String(cover) : '';
+        thumbnailEl.src = src;
+        thumbnailEl.style.display = src ? '' : 'none';
+      }
+      if (downloadBtn) {
+        downloadBtn.href = String(url);
+      }
+
+      if (audio.src !== String(url)) {
+        audio.src = String(url);
+      }
+
+      if (volumeEl) {
+        const v = clamp(Number(volumeEl.value), 0, 1);
+        audio.volume = Number.isFinite(v) ? v : 1;
+      }
+
+      showOverlay();
+      try {
+        await audio.play();
+      } catch {}
+      setPlayIcon(!audio.paused);
+      syncProgress();
+    };
+
+    const onKeyDown = (e) => {
+      if (!overlay || overlay.hidden) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        window.closeMiniPlayer();
+      }
+    };
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => window.closeMiniPlayer());
+    }
+    if (playPauseBtn) {
+      playPauseBtn.addEventListener('click', async () => {
+        if (audio.paused) {
+          try { await audio.play(); } catch {}
+        } else {
+          try { audio.pause(); } catch {}
+        }
+        setPlayIcon(!audio.paused);
+      });
+    }
+    if (seekBackBtn) {
+      seekBackBtn.addEventListener('click', () => {
+        const next = (Number.isFinite(audio.currentTime) ? audio.currentTime : 0) - 10;
+        audio.currentTime = Math.max(0, next);
+        syncProgress();
+      });
+    }
+    if (seekFwdBtn) {
+      seekFwdBtn.addEventListener('click', () => {
+        const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+        const next = (Number.isFinite(audio.currentTime) ? audio.currentTime : 0) + 10;
+        audio.currentTime = dur > 0 ? Math.min(dur, next) : Math.max(0, next);
+        syncProgress();
+      });
+    }
+    if (progressEl) {
+      progressEl.addEventListener('pointerdown', () => { state.seeking = true; });
+      progressEl.addEventListener('pointerup', () => { state.seeking = false; });
+      progressEl.addEventListener('input', () => {
+        const val = Number(progressEl.value);
+        if (Number.isFinite(val)) audio.currentTime = Math.max(0, val);
+        syncProgress();
+      });
+      progressEl.addEventListener('change', () => {
+        state.seeking = false;
+        syncProgress();
+      });
+    }
+    if (volumeEl) {
+      volumeEl.addEventListener('input', () => {
+        const v = clamp(Number(volumeEl.value), 0, 1);
+        audio.volume = Number.isFinite(v) ? v : 1;
+      });
+    }
+
+    audio.addEventListener('loadedmetadata', syncProgress);
+    audio.addEventListener('timeupdate', syncProgress);
+    audio.addEventListener('play', () => setPlayIcon(true));
+    audio.addEventListener('pause', () => setPlayIcon(false));
+    document.addEventListener('keydown', onKeyDown);
+  })();
 
   const renderBasicHistory = () => {
     const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
