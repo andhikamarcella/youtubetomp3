@@ -5961,6 +5961,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
   window.destroyMaintenanceRadio = function() {
       const st = window.__maintRadioState;
       if (!st) return;
+      try { st.keepAliveTimer && clearInterval(st.keepAliveTimer); } catch {}
+      try { st.onVisibility && document.removeEventListener('visibilitychange', st.onVisibility); } catch {}
       try { st.cleanup && st.cleanup(); } catch {}
       try { st.player && typeof st.player.destroy === 'function' && st.player.destroy(); } catch {}
       delete window.__maintRadioState;
@@ -6021,12 +6023,15 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
           unlocked: false,
           player: null,
           cleanup: null,
+          keepAliveTimer: null,
+          onVisibility: null,
       };
       window.__maintRadioState = state;
 
       const unlock = () => {
           if (!state.player || state.unlocked) return;
           state.unlocked = true;
+          try { localStorage.setItem('maint_audio_wants_sound', '1'); } catch {}
           try {
               state.player.unMute();
               state.player.setVolume(Number(volumeEl.value) || 0);
@@ -6058,6 +6063,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               try {
                   const isMuted = Boolean(state.player.isMuted && state.player.isMuted());
                   if (isMuted) {
+                      try { localStorage.setItem('maint_audio_wants_sound', '1'); } catch {}
                       state.player.unMute();
                       if (!state.unlocked) state.unlocked = true;
                   } else {
@@ -6108,6 +6114,13 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                           setMuteIcon(true);
                           setVinylPlaying(true);
                           if (hint) hint.textContent = 'Sedang diputar';
+                          let wantsSound = false;
+                          try { wantsSound = localStorage.getItem('maint_audio_wants_sound') === '1'; } catch {}
+                          if (wantsSound) {
+                              window.setTimeout(() => {
+                                  try { unlock(); } catch {}
+                              }, 250);
+                          }
                           window.setTimeout(() => {
                               if (!state.player) return;
                               let mutedNow = true;
@@ -6119,6 +6132,37 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                   enableBtn.classList.add('d-none');
                               }
                           }, 1200);
+
+                          state.onVisibility = () => {
+                              if (!state.player) return;
+                              if (document.visibilityState === 'visible') {
+                                  try { state.player.playVideo(); } catch {}
+                              }
+                          };
+                          document.addEventListener('visibilitychange', state.onVisibility);
+
+                          state.keepAliveTimer = window.setInterval(() => {
+                              if (!state.player) return;
+                              const mountNow = document.getElementById('maintYTPlayer');
+                              if (!mountNow) return;
+                              let wants = false;
+                              try { wants = localStorage.getItem('maint_audio_wants_sound') === '1'; } catch {}
+                              let playerState = null;
+                              try { playerState = state.player.getPlayerState(); } catch {}
+                              const ps = window.YT && window.YT.PlayerState ? window.YT.PlayerState : null;
+                              const isPlaying = ps ? playerState === ps.PLAYING || playerState === ps.BUFFERING : false;
+                              if (!isPlaying) {
+                                  try { state.player.playVideo(); } catch {}
+                              }
+                              if (wants) {
+                                  let isMuted = true;
+                                  try { isMuted = Boolean(state.player.isMuted && state.player.isMuted()); } catch {}
+                                  if (isMuted) {
+                                      try { state.player.unMute(); } catch {}
+                                      try { state.player.setVolume(Number(volumeEl.value) || 0); } catch {}
+                                  }
+                              }
+                          }, 4000);
                       },
                       onStateChange: (ev) => {
                           const code = ev && typeof ev.data === 'number' ? ev.data : null;
