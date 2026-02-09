@@ -436,6 +436,151 @@
   body.maintenance-help-mode .faq-float-btn {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
   }
+
+  .forum-widget {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    z-index: 1105;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    max-width: min(420px, 92vw);
+  }
+  .forum-widget-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 18px 38px rgba(15,23,42,.22);
+    font-weight: 700;
+    letter-spacing: .01em;
+  }
+  .forum-widget-toggle .badge {
+    font-weight: 700;
+  }
+  .forum-widget-panel {
+    width: min(360px, 92vw);
+    max-height: min(520px, 74vh);
+    border-radius: 1.2rem;
+    overflow: hidden;
+    background: var(--bs-body-bg);
+    border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent);
+    box-shadow: 0 28px 56px rgba(15,23,42,.35);
+    display: flex;
+    flex-direction: column;
+    transform-origin: bottom left;
+  }
+  .forum-widget-header {
+    padding: .85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    background: linear-gradient(135deg, rgba(13,110,253,.16), rgba(111,66,193,.16));
+    border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 80%, transparent);
+  }
+  .forum-widget-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    font-size: .75rem;
+  }
+  .forum-widget-body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .forum-widget-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #e5ddd5;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  html[data-bs-theme='dark'] .forum-widget-messages {
+    background: #0a141f;
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a141f"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.02)"/></svg>');
+  }
+  .forum-widget-msg {
+    display: flex;
+    align-items: flex-end;
+    max-width: 100%;
+  }
+  .forum-widget-msg.me { justify-content: flex-end; }
+  .forum-widget-msg.other { justify-content: flex-start; }
+  .forum-widget-bubble {
+    max-width: 78%;
+    padding: .55rem .75rem;
+    border-radius: .9rem;
+    line-height: 1.35;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+    word-break: break-word;
+  }
+  .forum-widget-msg.me .forum-widget-bubble {
+    background: #dcf8c6;
+    color: #111b21;
+    border-bottom-right-radius: .3rem;
+  }
+  .forum-widget-msg.other .forum-widget-bubble {
+    background: #fff;
+    color: #111b21;
+    border-bottom-left-radius: .3rem;
+  }
+  html[data-bs-theme='dark'] .forum-widget-msg.me .forum-widget-bubble {
+    background: #005c4b;
+    color: #e9edef;
+  }
+  html[data-bs-theme='dark'] .forum-widget-msg.other .forum-widget-bubble {
+    background: #1f2c34;
+    color: #e9edef;
+  }
+  .forum-widget-meta {
+    margin-top: .25rem;
+    font-size: .7rem;
+    opacity: .75;
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+  }
+  .forum-widget-input {
+    padding: .75rem;
+    border-top: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent);
+    background: color-mix(in srgb, var(--bs-body-bg) 85%, #fff);
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+  }
+  .forum-widget-input input {
+    border-radius: 999px;
+  }
+  .forum-widget-login {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    padding: 1rem;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    text-align: center;
+  }
   .message.admin.admin-pinned {
     justify-content: flex-start !important;
   }
@@ -4339,6 +4484,35 @@
       <span class="pulse" id="assistantPulse" aria-hidden="true"></span>
     </button>
   </div>
+  <div class="forum-widget" id="forumWidget" aria-live="polite">
+    <div class="forum-widget-panel" id="forumWidgetPanel" hidden>
+      <div class="forum-widget-header">
+        <div class="forum-widget-title"><i class="bi bi-chat-dots-fill"></i> Forum Warga</div>
+        <button type="button" class="btn-close" id="forumWidgetClose" aria-label="Tutup Forum Warga" onclick="toggleForumWidget(false)"></button>
+      </div>
+      <div class="forum-widget-body">
+        <div class="forum-widget-login" id="forumWidgetLogin" hidden>
+          <div class="fw-bold">Login dulu untuk ikut chat</div>
+          <button type="button" class="btn btn-light rounded-pill fw-bold px-4" id="forumWidgetLoginBtn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="G" class="me-2">
+            Masuk dengan Google
+          </button>
+          <div class="small opacity-75">Room Umum saja</div>
+        </div>
+        <div class="forum-widget-messages" id="forumWidgetMessages"></div>
+        <div class="forum-widget-input">
+          <input type="text" class="form-control" id="forumWidgetInput" placeholder="Ketik pesan..." autocomplete="off">
+          <button type="button" class="btn btn-primary rounded-circle" id="forumWidgetSend" style="width:42px;height:42px;display:grid;place-items:center;">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="forum-widget-toggle" id="forumWidgetToggle" aria-expanded="false" onclick="toggleForumWidget()">
+      <i class="bi bi-chat"></i> Chat
+      <span class="badge text-bg-success ms-1" id="forumWidgetStatus" hidden>●</span>
+    </button>
+  </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
   <footer class="border-top mt-5 bg-body-tertiary">
     <div class="container py-4">
@@ -4355,7 +4529,7 @@
            <p class="small text-secondary mb-3">
              Kami berkomitmen menghadirkan pengalaman download terbaik tanpa iklan yang mengganggu. Dibangun dengan teknologi web terbaru untuk kecepatan dan keamanan maksimal.
            </p>
-           <button class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#forumModal">
+          <button class="btn btn-sm btn-outline-primary rounded-pill" type="button" onclick="toggleForumWidget(true)">
              <i class="bi bi-chat-dots me-1"></i> Gabung Forum
            </button>
         </div>
@@ -5343,6 +5517,189 @@
       if (btn) btn.innerHTML = '<i class="bi bi-x-lg"></i>';
   };
 
+  window.toggleForumWidget = function(forceOpen = null) {
+      const panel = document.getElementById('forumWidgetPanel');
+      const toggle = document.getElementById('forumWidgetToggle');
+      if (!panel || !toggle) return;
+      const shouldOpen = forceOpen === null ? panel.hidden : Boolean(forceOpen);
+      panel.hidden = !shouldOpen;
+      toggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+      if (shouldOpen) {
+          const input = document.getElementById('forumWidgetInput');
+          if (input && !input.disabled) input.focus();
+          window.initForumWidget && window.initForumWidget();
+      }
+  };
+
+  window.initForumWidget = function() {
+      if (window.__forumWidgetInited) return;
+      window.__forumWidgetInited = true;
+
+      const panel = document.getElementById('forumWidgetPanel');
+      const toggle = document.getElementById('forumWidgetToggle');
+      const closeBtn = document.getElementById('forumWidgetClose');
+      const loginOverlay = document.getElementById('forumWidgetLogin');
+      const loginBtn = document.getElementById('forumWidgetLoginBtn');
+      const messagesEl = document.getElementById('forumWidgetMessages');
+      const inputEl = document.getElementById('forumWidgetInput');
+      const sendBtn = document.getElementById('forumWidgetSend');
+      const statusEl = document.getElementById('forumWidgetStatus');
+
+      if (!panel || !toggle || !messagesEl || !inputEl || !sendBtn) return;
+
+      const esc = (v) => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const fmtTime = (ts) => {
+          try {
+              const ms = ts?.toMillis?.() ? ts.toMillis() : (typeof ts === 'number' ? ts : 0);
+              if (!ms) return '';
+              return new Date(ms).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          } catch { return ''; }
+      };
+
+      let currentUser = null;
+      let unsubscribe = null;
+      let lastBottomStick = true;
+
+      const scrollToBottom = () => {
+          if (!messagesEl) return;
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+      };
+
+      const render = (docs) => {
+          const atBottom = Math.abs((messagesEl.scrollTop + messagesEl.clientHeight) - messagesEl.scrollHeight) < 24;
+          lastBottomStick = atBottom || lastBottomStick;
+          const html = docs.map((docSnap) => {
+              const data = docSnap.data() || {};
+              const uid = String(data.uid || '');
+              const me = currentUser && uid && uid === currentUser.uid;
+              const name = esc(data.name || 'Warga');
+              const text = esc(data.text || '');
+              const time = esc(fmtTime(data.timestamp));
+              return `
+                <div class="forum-widget-msg ${me ? 'me' : 'other'}">
+                  <div class="forum-widget-bubble">
+                    <div class="small fw-semibold">${name}</div>
+                    <div>${text}</div>
+                    <div class="forum-widget-meta"><span>${time}</span></div>
+                  </div>
+                </div>
+              `;
+          }).join('');
+          messagesEl.innerHTML = html || `<div class="text-center text-secondary small">Belum ada chat. Mulai duluan ya.</div>`;
+          if (lastBottomStick) scrollToBottom();
+      };
+
+      const setLoginState = (loggedIn) => {
+          if (loginOverlay) loginOverlay.hidden = loggedIn;
+          inputEl.disabled = !loggedIn;
+          sendBtn.disabled = !loggedIn;
+          if (statusEl) statusEl.hidden = !loggedIn;
+      };
+
+      const ensureFirebaseReady = () => {
+          return new Promise((resolve, reject) => {
+              const started = Date.now();
+              const tick = () => {
+                  if (window.firebaseModules && window.firebaseModules.db && window.firebaseModules.auth) return resolve(true);
+                  if (Date.now() - started > 15000) return reject(new Error('Firebase belum siap'));
+                  setTimeout(tick, 250);
+              };
+              tick();
+          });
+      };
+
+      const startListener = () => {
+          const { db, collection, query, orderBy, limit, onSnapshot } = window.firebaseModules;
+          if (unsubscribe) { try { unsubscribe(); } catch {} unsubscribe = null; }
+          const colRef = collection(db, "forum-messages");
+          const q = query(colRef, orderBy("timestamp", "desc"), limit(200));
+          unsubscribe = onSnapshot(q, (snapshot) => {
+              const docs = snapshot.docs
+                .filter((d) => {
+                    const room = String(d.data()?.room || 'umum').trim() || 'umum';
+                    return room === 'umum';
+                })
+                .sort((a, b) => {
+                    const ta = a.data()?.timestamp?.toMillis?.() || 0;
+                    const tb = b.data()?.timestamp?.toMillis?.() || 0;
+                    return ta - tb;
+                });
+              render(docs);
+          });
+      };
+
+      const send = async () => {
+          const text = inputEl.value.trim();
+          if (!text) return;
+          if (!currentUser) return;
+          const { db, collection, addDoc, serverTimestamp } = window.firebaseModules;
+          sendBtn.disabled = true;
+          try {
+              await addDoc(collection(db, "forum-messages"), {
+                  text,
+                  uid: currentUser.uid,
+                  name: currentUser.displayName || 'Warga',
+                  timestamp: serverTimestamp(),
+                  room: 'umum',
+              });
+              inputEl.value = '';
+              lastBottomStick = true;
+              scrollToBottom();
+          } catch (e) {
+              setToast('Gagal kirim chat.', 'danger');
+          } finally {
+              sendBtn.disabled = false;
+          }
+      };
+
+      if (sendBtn) sendBtn.addEventListener('click', send);
+      if (inputEl) inputEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      });
+      if (messagesEl) messagesEl.addEventListener('scroll', () => {
+          const atBottom = Math.abs((messagesEl.scrollTop + messagesEl.clientHeight) - messagesEl.scrollHeight) < 24;
+          lastBottomStick = atBottom;
+      });
+
+      if (loginBtn) {
+          loginBtn.addEventListener('click', async () => {
+              try {
+                  await ensureFirebaseReady();
+                  const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = window.firebaseModules;
+                  loginBtn.disabled = true;
+                  loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
+                  const provider = new GoogleAuthProvider();
+                  provider.setCustomParameters({ prompt: 'select_account' });
+                  try {
+                      await signInWithPopup(auth, provider);
+                  } catch {
+                      await signInWithRedirect(auth, provider);
+                  }
+              } catch {
+                  setToast('Login gagal.', 'danger');
+              } finally {
+                  loginBtn.disabled = false;
+                  loginBtn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="G" class="me-2">Masuk dengan Google';
+              }
+          });
+      }
+
+      ensureFirebaseReady()
+        .then(() => {
+            const { auth, onAuthStateChanged } = window.firebaseModules;
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user || null;
+                setLoginState(Boolean(currentUser));
+                startListener();
+            });
+            setLoginState(Boolean(window.firebaseModules?.auth?.currentUser));
+            startListener();
+        })
+        .catch(() => {
+            setLoginState(false);
+        });
+  };
+
   // Global FAQ Toggle Functions
   window.toggleFaqPanel = function() {
       const panel = document.getElementById('faqFloatPanel');
@@ -5895,10 +6252,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
                            ${type === 'maintenance' ? `
-                           <button id="maintenanceHelpBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="openMaintenanceHelp()">
-                               <i class="bi bi-chat-dots-fill me-2"></i>Pertanyaan Umum
+                           <button id="maintenanceHelpBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="toggleForumWidget(true)">
+                               <i class="bi bi-chat-dots-fill me-2"></i>Forum Warga
                            </button>
-                           <div class="small mt-2" style="color:#6c757d !important;">Klik untuk lihat jawaban cepat (tanpa chat).</div>
+                           <div class="small mt-2" style="color:#6c757d !important;">Chat pop-up khusus Room Umum.</div>
                            ` : ''}
                       </div>
                       
