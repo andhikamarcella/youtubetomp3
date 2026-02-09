@@ -51,6 +51,11 @@ import {
   claimCheatForUser,
   recordXpEventForUser,
 } from "./user_store.js";
+import {
+  recordSaweriaSupportEvent,
+  listSupportLeaderboard,
+  listRecentSupports,
+} from "./support_store.js";
 import { CacheStore } from "./lib/cache_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
@@ -90,6 +95,7 @@ const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const isGroqConfigured = Boolean(GROQ_API_KEY);
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
+const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -914,6 +920,26 @@ const maskEmail = (email = "") => {
   if (!domain) return email;
   if (user.length <= 2) return `${user[0] || ""}***@${domain}`;
   return `${user.slice(0, 2)}***@${domain}`;
+};
+
+const SAWERIA_SIGNATURE_HEADER = "Saweria-Callback-Signature";
+const buildSaweriaHmacData = (payload) => {
+  const version = payload?.version ?? "";
+  const id = payload?.id ?? "";
+  const amountRaw = payload?.amount_raw ?? "";
+  const donatorName = payload?.donator_name ?? "";
+  const donatorEmail = payload?.donator_email ?? "";
+  return `${version}${id}${amountRaw}${donatorName}${donatorEmail}`;
+};
+
+const verifySaweriaSignature = (payload, signature, key) => {
+  const data = buildSaweriaHmacData(payload);
+  const expected = createHmac("sha256", key).update(data).digest("hex");
+  try {
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(String(signature || "")));
+  } catch {
+    return false;
+  }
 };
 
 let mailTransport = null;
@@ -6468,6 +6494,64 @@ app.post("/api/upload-forum-image", async (req, res) => {
   } catch (err) {
     console.error("Cloudinary upload error:", err);
     return res.status(500).json({ error: "Upload failed: " + (err.message || err) });
+  }
+});
+
+app.post(["/api/saweria/webhook", "/saweria/webhook", "/webhook/saweria"], async (req, res) => {
+  try {
+    if (!SAWERIA_STREAM_KEY) {
+      return res.status(500).json({ error: "SAWERIA_STREAM_KEY belum dikonfigurasi" });
+    }
+    const signature = String(req.header(SAWERIA_SIGNATURE_HEADER) || "").trim();
+    if (!signature) return res.sendStatus(401);
+    const valid = verifySaweriaSignature(req.body || {}, signature, SAWERIA_STREAM_KEY);
+    if (!valid) return res.sendStatus(403);
+
+    const result = await recordSaweriaSupportEvent(req.body, {
+      ip: req.ip,
+      userAgent: req.get("user-agent") || "",
+    });
+    return res.json({ ok: true, applied: result.applied });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "Webhook Saweria gagal" });
+  }
+});
+
+app.get("/api/support/hall-of-fame", async (req, res) => {
+  try {
+    const limitRaw = req.query?.limit;
+    const limit = limitRaw ? Number(limitRaw) : 10;
+    const topMonth = await listSupportLeaderboard({ period: "month", limit });
+    const topAll = await listSupportLeaderboard({ period: "all", limit });
+    const recent = await listRecentSupports({ limit });
+    const topMonthSafe = Array.isArray(topMonth)
+      ? topMonth.map((row) => ({
+          rank: row.rank,
+          name: row.name,
+          totalAmount: row.totalAmount,
+          lastAt: row.lastAt,
+        }))
+      : [];
+    const topAllSafe = Array.isArray(topAll)
+      ? topAll.map((row) => ({
+          rank: row.rank,
+          name: row.name,
+          totalAmount: row.totalAmount,
+          lastAt: row.lastAt,
+        }))
+      : [];
+    const recentSafe = Array.isArray(recent)
+      ? recent.map((row) => ({
+          id: row.id,
+          createdAt: row.createdAt,
+          amountRaw: row.amountRaw,
+          donatorName: row.donatorName,
+          message: row.message,
+        }))
+      : [];
+    return res.json({ ok: true, topMonth: topMonthSafe, topAll: topAllSafe, recent: recentSafe });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "Gagal memuat hall of fame" });
   }
 });
 
