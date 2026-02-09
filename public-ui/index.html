@@ -431,51 +431,10 @@
     backdrop-filter: blur(6px);
   }
 
-  body.forum-maintenance-mode #forumChatArea,
-  body.forum-maintenance-mode #forumModal #forumInput,
-  body.forum-maintenance-mode #forumModalLabel {
+  body.maintenance-help-mode #faqFloatPanel,
+  body.maintenance-help-mode .faq-float-panel,
+  body.maintenance-help-mode .faq-float-btn {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-  }
-  body.forum-maintenance-mode #forumModal .modal-content {
-    background: rgba(255, 255, 255, 0.96) !important;
-    color: #212529 !important;
-  }
-  body.forum-maintenance-mode #forumModal .modal-header,
-  body.forum-maintenance-mode #forumModal .modal-body,
-  body.forum-maintenance-mode #forumModal .modal-footer {
-    background: transparent !important;
-    color: #212529 !important;
-  }
-  body.forum-maintenance-mode #forumModal .modal-header * {
-    color: #212529 !important;
-  }
-  body.forum-maintenance-mode #forumModal .btn-close {
-    filter: none !important;
-    opacity: 0.7;
-  }
-  body.forum-maintenance-mode #forumChatArea {
-    background-color: transparent;
-    background-image: none;
-  }
-  body.forum-maintenance-mode #forumModal .modal-body {
-    background: linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%) !important;
-  }
-  body.forum-maintenance-mode #forumModal .modal-header .bg-primary {
-    background: #fd7e14 !important;
-  }
-  body.forum-maintenance-mode #forumAttachMenuBtn,
-  body.forum-maintenance-mode #attachmentPreviewBar,
-  body.forum-maintenance-mode #btnCameraOpen,
-  body.forum-maintenance-mode #forumStickerBtn,
-  body.forum-maintenance-mode #forumVoiceIndicator,
-  body.forum-maintenance-mode #forumReactionOverlay,
-  body.forum-maintenance-mode #forumCopyRoomBtn,
-  body.forum-maintenance-mode #forumReportBtn,
-  body.forum-maintenance-mode #forumDeleteAllBtn {
-    display: none !important;
-  }
-  body.forum-maintenance-mode #forumChatArea .wa-options {
-    display: none !important;
   }
   .message.admin.admin-pinned {
     justify-content: flex-start !important;
@@ -5376,63 +5335,12 @@
       }
   };
 
-  window.openForumFromMaintenance = function() {
-      const overlay = document.getElementById('maintenanceOverlay');
-      const forumModalEl = document.getElementById('forumModal');
-      if (!forumModalEl) {
-          setToast('Forum belum siap dimuat.', 'warning');
-          return;
-      }
-      const B = window.bs || window.bootstrap || window.bootstrapGlobal;
-      if (!B || !B.Modal) {
-          setToast('Komponen modal belum siap. Coba refresh.', 'warning');
-          return;
-      }
-
-      try {
-          if (overlay) {
-              overlay.dataset.paused = '1';
-              overlay.dataset.prevOverflow = document.body.style.overflow || '';
-              overlay.hidden = true;
-              document.body.style.overflow = '';
-          }
-
-          const modal = B.Modal.getInstance(forumModalEl) || new B.Modal(forumModalEl);
-          document.body.classList.add('forum-maintenance-mode');
-
-          const roomSelect = document.getElementById('forumRoomSelect');
-          if (roomSelect) {
-              roomSelect.dataset.prevValue = roomSelect.value;
-              roomSelect.value = 'umum';
-              roomSelect.disabled = true;
-          }
-
-          const onHidden = () => {
-              forumModalEl.removeEventListener('hidden.bs.modal', onHidden);
-              document.body.classList.remove('forum-maintenance-mode');
-              if (roomSelect) {
-                  const prev = roomSelect.dataset.prevValue;
-                  roomSelect.disabled = false;
-                  if (prev) roomSelect.value = prev;
-                  delete roomSelect.dataset.prevValue;
-              }
-              if (overlay && overlay.dataset.paused === '1' && window.isMaintenance) {
-                  overlay.hidden = false;
-                  document.body.style.overflow = overlay.dataset.prevOverflow || 'hidden';
-                  overlay.dataset.paused = '0';
-              }
-          };
-          forumModalEl.addEventListener('hidden.bs.modal', onHidden);
-          modal.show();
-      } catch (e) {
-          setToast('Gagal membuka forum.', 'danger');
-          document.body.classList.remove('forum-maintenance-mode');
-          if (overlay) {
-              overlay.hidden = false;
-              document.body.style.overflow = overlay.dataset.prevOverflow || 'hidden';
-              overlay.dataset.paused = '0';
-          }
-      }
+  window.openMaintenanceHelp = function() {
+      document.body.classList.add('maintenance-help-mode');
+      const panel = document.getElementById('faqFloatPanel');
+      const btn = document.getElementById('faqFloatBtn');
+      if (panel) panel.classList.add('active');
+      if (btn) btn.innerHTML = '<i class="bi bi-x-lg"></i>';
   };
 
   // Global FAQ Toggle Functions
@@ -5442,6 +5350,7 @@
       if(panel && btn) {
           const isActive = panel.classList.toggle('active');
           btn.innerHTML = isActive ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-question-lg"></i>';
+          if (!isActive) document.body.classList.remove('maintenance-help-mode');
       }
   };
 
@@ -5986,10 +5895,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
                            ${type === 'maintenance' ? `
-                           <button id="maintenanceForumBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="openForumFromMaintenance()">
-                               <i class="bi bi-chat-quote-fill me-2"></i>Forum Warga
+                           <button id="maintenanceHelpBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="openMaintenanceHelp()">
+                               <i class="bi bi-chat-dots-fill me-2"></i>Pertanyaan Umum
                            </button>
-                           <div class="small mt-2" style="color:#6c757d !important;">Forum tetap bisa dipakai saat maintenance.</div>
+                           <div class="small mt-2" style="color:#6c757d !important;">Klik untuk lihat jawaban cepat (tanpa chat).</div>
                            ` : ''}
                       </div>
                       
