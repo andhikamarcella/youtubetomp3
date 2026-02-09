@@ -416,6 +416,7 @@
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
     scrollbar-width: thin;
     touch-action: pan-y;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
   #forumChatArea [data-message-id] {
     touch-action: pan-y;
@@ -423,9 +424,51 @@
   #forumModal #forumInput {
     color: #e9edef !important;
     caret-color: #e9edef;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
   #forumModal #forumInput::placeholder {
     color: rgba(233, 237, 239, 0.55) !important;
+  }
+  #forumModalLabel {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    letter-spacing: 0.2px;
+  }
+  #forumModal .modal-content {
+    background: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+  }
+  #forumModal .modal-header {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--bs-primary) 35%, #000) 0%, color-mix(in srgb, var(--bs-primary) 18%, #000) 100%) !important;
+  }
+  #forumModal .modal-body,
+  #forumModal .modal-footer {
+    background: var(--bs-body-bg) !important;
+  }
+  [data-bs-theme="dark"] #forumModal .modal-content {
+    background: #0b141a !important;
+    color: #e9edef !important;
+  }
+  [data-bs-theme="dark"] #forumModal .modal-body,
+  [data-bs-theme="dark"] #forumModal .modal-footer {
+    background: #0b141a !important;
+  }
+  #forumAttachMenuBtn,
+  #attachmentPreviewBar,
+  #btnCameraOpen,
+  #forumStickerBtn,
+  #forumVoiceIndicator,
+  #forumReactionOverlay,
+  #forumCopyRoomBtn {
+    display: none !important;
+  }
+  #forumChatArea .wa-options {
+    display: none !important;
+  }
+  #forumModal .modal-footer .bg-secondary.bg-opacity-10 {
+    background: color-mix(in srgb, var(--bs-secondary) 14%, transparent) !important;
+  }
+  #forumLoadingOverlay {
+    backdrop-filter: blur(6px);
   }
   .message.admin.admin-pinned {
     justify-content: flex-start !important;
@@ -3812,7 +3855,7 @@
                 <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-2 border-dark rounded-circle"></span>
              </div>
              <div>
-                <h5 class="modal-title fw-bold mb-0" id="forumModalLabel" style="font-family: 'Poppins', sans-serif;">Forum Warga</h5>
+                <h5 class="modal-title fw-bold mb-0" id="forumModalLabel">Forum Warga</h5>
                 <div class="d-flex flex-wrap align-items-center gap-2 small">
                   <div class="badge rounded-pill text-bg-secondary border-0 px-3 py-1 d-flex align-items-center gap-2">
                     <span class="badge bg-success-subtle border border-success-subtle text-success-emphasis px-2 py-1" id="forumRoomBadge">Umum</span>
@@ -3843,12 +3886,6 @@
                <select id="forumRoomSelect" class="form-select form-select-sm bg-black text-white border-secondary" style="max-width: 260px;">
                  <option value="umum">Umum</option>
                  <option value="laporan">Laporan</option>
-                 <option value="jomok">Jomok</option>
-                 <option value="foto">Foto Warga</option>
-                 <option value="event">Event</option>
-                 <option value="santai">Santai / Meme</option>
-                 <option value="__create_private__">+ Private Room (buat baru)</option>
-                 <option value="__join_private__">Masuk Private Room (pakai kode)</option>
                </select>
                <button id="forumCopyRoomBtn" type="button" class="btn btn-sm btn-outline-light rounded-pill d-none">Salin kode</button>
              </div>
@@ -3856,6 +3893,14 @@
            <!-- Wallpaper Background -->
            <div class="position-absolute top-0 start-0 w-100 h-100 opacity-25" style="background-image: url('https://transparenttextures.com/patterns/cubes.png'); pointer-events: none;"></div>
            
+           <div id="forumLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-2 bg-black bg-opacity-75 text-center p-4">
+             <div class="d-flex flex-column align-items-center gap-3">
+               <div class="spinner-border text-light" role="status" aria-label="Memuat"></div>
+               <div class="text-white-50" style="max-width: 420px;">
+                 Menyambungkan forum warga...
+               </div>
+             </div>
+           </div>
            <!-- Chat Area -->
           <div id="forumChatArea" class="d-flex flex-column p-3 h-100 position-relative z-1" style="overflow-y: auto; scroll-behavior: smooth;">
             <!-- Content Injected by JS -->
@@ -17263,48 +17308,109 @@ $('#queueList')?.addEventListener('click', (e) => {
       linkContainer.innerHTML = html;
     }
 
-    // 2. Hall of Fame Dummy Data
+    // 2. Hall of Fame
     const sultanList = document.getElementById('hof-sultan-list');
     const recentList = document.getElementById('hof-recent-list');
     
-    if (sultanList) {
-      // Dummy Sultans
-      const sultans = [
-        { name: 'Sultan_01', amount: 'Rp 500.000', color: 'warning' },
-        { name: 'RajaSawer', amount: 'Rp 250.000', color: 'secondary' },
-        { name: 'Anonym', amount: 'Rp 150.000', color: 'secondary' }
-      ];
-      sultanList.innerHTML = sultans.map((s, i) => `
-        <div class="list-group-item d-flex align-items-center gap-3 p-3">
-          <div class="fw-bold text-${i===0?'warning':'secondary'} fs-4">${i+1}</div>
-          <div class="avatar-placeholder rounded-circle bg-${s.color} text-dark d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">${s.name[0]}</div>
-          <div class="flex-grow-1">
-            <div class="fw-bold">${s.name}</div>
-            <div class="small text-secondary">${s.amount}</div>
-          </div>
-          ${i===0 ? '<i class="bi bi-crown-fill text-warning"></i>' : ''}
-        </div>
-      `).join('');
-    }
+    const formatRupiah = (amount) => {
+      const value = Number(amount) || 0;
+      return `Rp ${new Intl.NumberFormat('id-ID').format(value)}`;
+    };
 
-    if (recentList) {
-      // Dummy Recent
-      const recents = [
-        { name: 'User123', item: 'Traktir Kopi', time: '2m ago' },
-        { name: 'GamerX', item: 'Server Boost', time: '5m ago' },
-        { name: 'MusicLover', item: 'Traktir Kopi', time: '12m ago' },
-        { name: 'Guest99', item: 'Sultan Mode', time: '1h ago' }
-      ];
-      recentList.innerHTML = recents.map(r => `
-        <div class="list-group-item d-flex align-items-center gap-3 p-3">
-          <div class="avatar-placeholder rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;"><i class="bi bi-person-fill"></i></div>
-          <div class="flex-grow-1">
-            <div class="fw-semibold">${r.name}</div>
-            <div class="small text-secondary">${r.item}</div>
-          </div>
-          <small class="text-secondary">${r.time}</small>
-        </div>
-      `).join('');
+    const supportTierLabel = (amountRaw) => {
+      const n = Number(amountRaw) || 0;
+      if (n >= 100000) return 'Sultan Mode';
+      if (n >= 50000) return 'Server Boost';
+      return 'Traktir Kopi';
+    };
+
+    const timeAgo = (ms) => {
+      const t = Number(ms) || 0;
+      if (!t) return '';
+      const diff = Math.max(0, Date.now() - t);
+      const sec = Math.floor(diff / 1000);
+      if (sec < 60) return `${sec}s ago`;
+      const min = Math.floor(sec / 60);
+      if (min < 60) return `${min}m ago`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h ago`;
+      const day = Math.floor(hr / 24);
+      return `${day}d ago`;
+    };
+
+    const escapeHtml = (v) => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    const renderHallOfFame = async () => {
+      if (sultanList) {
+        sultanList.innerHTML = `<div class="list-group-item p-3 text-secondary small"><span class="spinner-border spinner-border-sm me-2"></span>Memuat leaderboard...</div>`;
+      }
+      if (recentList) {
+        recentList.innerHTML = `<div class="list-group-item p-3 text-secondary small"><span class="spinner-border spinner-border-sm me-2"></span>Memuat dukungan terbaru...</div>`;
+      }
+      try {
+        const resp = await fetch(`/api/support/hall-of-fame?limit=10`, { cache: 'no-store' });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok || !data || !data.ok) throw new Error(data?.error || 'Gagal memuat data');
+
+        const topMonth = Array.isArray(data.topMonth) ? data.topMonth : [];
+        const recent = Array.isArray(data.recent) ? data.recent : [];
+
+        if (sultanList) {
+          if (!topMonth.length) {
+            sultanList.innerHTML = `<div class="list-group-item p-3 text-secondary small">Belum ada dukungan bulan ini.</div>`;
+          } else {
+            sultanList.innerHTML = topMonth.slice(0, 10).map((row, i) => {
+              const name = escapeHtml(row.name || 'Anonim');
+              const initial = escapeHtml(String(name || 'A').trim().charAt(0).toUpperCase() || 'A');
+              const amount = formatRupiah(row.totalAmount);
+              const rankColor = i === 0 ? 'warning' : 'secondary';
+              const avatarBg = i === 0 ? 'warning' : 'secondary-subtle';
+              const avatarText = i === 0 ? 'dark' : 'dark';
+              return `
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="fw-bold text-${rankColor} fs-4">${i + 1}</div>
+                  <div class="avatar-placeholder rounded-circle bg-${avatarBg} text-${avatarText} d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">${initial}</div>
+                  <div class="flex-grow-1">
+                    <div class="fw-bold">${name}</div>
+                    <div class="small text-secondary">${amount}</div>
+                  </div>
+                  ${i === 0 ? '<i class="bi bi-crown-fill text-warning"></i>' : ''}
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        if (recentList) {
+          if (!recent.length) {
+            recentList.innerHTML = `<div class="list-group-item p-3 text-secondary small">Belum ada dukungan terbaru.</div>`;
+          } else {
+            recentList.innerHTML = recent.slice(0, 10).map((row) => {
+              const name = escapeHtml(row.donatorName || 'Anonim');
+              const label = escapeHtml(supportTierLabel(row.amountRaw));
+              const when = escapeHtml(timeAgo(row.createdAt));
+              return `
+                <div class="list-group-item d-flex align-items-center gap-3 p-3">
+                  <div class="avatar-placeholder rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;"><i class="bi bi-person-fill"></i></div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">${name}</div>
+                    <div class="small text-secondary">${label} • ${formatRupiah(row.amountRaw)}</div>
+                  </div>
+                  <small class="text-secondary">${when}</small>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+      } catch (e) {
+        if (sultanList) sultanList.innerHTML = `<div class="list-group-item p-3 text-danger small">Leaderboard gagal dimuat.</div>`;
+        if (recentList) recentList.innerHTML = `<div class="list-group-item p-3 text-danger small">Dukungan terbaru gagal dimuat.</div>`;
+      }
+    };
+
+    if (sultanList || recentList) {
+      renderHallOfFame();
+      setInterval(renderHallOfFame, 30000);
     }
   };
 
@@ -18802,6 +18908,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumChatArea = document.getElementById('forumChatArea');
         const forumScrollBtn = document.getElementById('forumScrollBtn');
         const forumReactionOverlay = document.getElementById('forumReactionOverlay');
+        const forumLoadingOverlay = document.getElementById('forumLoadingOverlay');
         const forumReplyPreview = document.getElementById('forumReplyPreview');
         const forumReplyTitle = document.getElementById('forumReplyTitle');
         const forumReplyText = document.getElementById('forumReplyText');
@@ -19506,10 +19613,6 @@ $('#queueList')?.addEventListener('click', (e) => {
         const FORUM_ROOMS = [
           { key: 'umum', label: 'Umum' },
           { key: 'laporan', label: 'Laporan' },
-          { key: 'jomok', label: 'Jomok' },
-          { key: 'foto', label: 'Foto Warga' },
-          { key: 'event', label: 'Event' },
-          { key: 'santai', label: 'Santai / Meme' },
         ];
         const forumRoomKeyStorage = 'forum_room';
         let activeForumRoom = localStorage.getItem(forumRoomKeyStorage) || 'umum';
@@ -20220,6 +20323,10 @@ $('#queueList')?.addEventListener('click', (e) => {
                     if(forumReportBtn) forumReportBtn.classList.add('d-none');
                     if(forumDeleteAllBtn) forumDeleteAllBtn.classList.add('d-none');
                     if(unsubscribe) unsubscribe();
+                    if (forumLoadingOverlay) {
+                      forumLoadingOverlay.classList.remove('d-flex');
+                      forumLoadingOverlay.classList.add('d-none');
+                    }
                     if (forumLoginOverlay.querySelector('.spinner-border')) restoreOverlayContent();
                 }
             });
@@ -20258,6 +20365,12 @@ $('#queueList')?.addEventListener('click', (e) => {
              
              // Update Online Count (Fake for now, or just show connected)
              if(forumOnlineCount) forumOnlineCount.innerHTML = '<span class="text-success">●</span> Terhubung';
+             if (forumLoadingOverlay) {
+               forumLoadingOverlay.classList.remove('d-none');
+               forumLoadingOverlay.classList.add('d-flex');
+               const msgEl = forumLoadingOverlay.querySelector('.text-white-50');
+               if (msgEl) msgEl.textContent = 'Menyambungkan forum warga...';
+             }
 
              try {
                 if (auth && auth.currentUser) await auth.currentUser.getIdToken(true);
@@ -20274,6 +20387,10 @@ $('#queueList')?.addEventListener('click', (e) => {
              extraUnsubscribes = [];
 
              const handleSnapshot = (docs) => {
+                 if (forumLoadingOverlay) {
+                   forumLoadingOverlay.classList.remove('d-flex');
+                   forumLoadingOverlay.classList.add('d-none');
+                 }
                  const prevScrollTop = forumChatArea.scrollTop;
                  const prevScrollHeight = forumChatArea.scrollHeight;
                  const shouldAutoScroll = isNearBottomState || forumChatArea.innerHTML.trim() === '';
@@ -20282,17 +20399,10 @@ $('#queueList')?.addEventListener('click', (e) => {
                  forumMessageCache = {};
                  
                 const pinnedByRoom = {
-                  umum: 'Selamat datang di Forum Warga!<br>Room <b>Umum</b> buat ngobrol bebas, tanya fitur, dan update santai.',
+                  umum: 'Selamat datang di Forum Warga!<br>Silakan ngobrol santai, tanya fitur, atau share info.',
                   laporan: 'Room <b>Laporan</b> bersifat <b>read-only</b>.<br>Untuk kirim laporan, pakai tombol <b>Laporkan</b> (ikon bendera) lalu isi form + screenshot.',
-                  jomok: 'Room <b>Jomok</b> buat obrolan dewasa (18+).<br>Tetap sopan, jangan sebar data pribadi siapa pun.',
-                  foto: 'Room <b>Foto Warga</b> buat share foto, hasil edit, atau meme gambar.<br>Jangan doxxing & jangan upload KTP/nomor WA.',
-                  event: 'Room <b>Event</b> buat info event, tantangan, dan pengumuman komunitas.<br>Cek pinned ini biar nggak ketinggalan.',
-                  santai: 'Room <b>Santai / Meme</b> buat lepas stress.<br>Drop meme, cerita random, atau bercandaan tipis-tipis.',
                 };
-
-                const pinnedText = isPrivateRoomKey(roomKey)
-                  ? `Ini <b>Private Room</b>.<br>Kode room: <b>${parsePrivateRoomCode(roomKey)}</b> • Jangan dibagi ke orang random.`
-                  : (pinnedByRoom[roomKey] || pinnedByRoom.umum);
+                const pinnedText = pinnedByRoom[roomKey] || pinnedByRoom.umum;
 
                 const pinnedRules = `
                     <div class="d-flex align-items-start mb-3 message admin admin-pinned w-100 justify-content-start">
@@ -20354,6 +20464,12 @@ $('#queueList')?.addEventListener('click', (e) => {
                  (snapshot) => handleSnapshot(filterDocsForRoom(snapshot.docs)),
                  (error) => {
                      console.error("Error getting chats:", error);
+                     if (forumLoadingOverlay) {
+                       forumLoadingOverlay.classList.remove('d-none');
+                       forumLoadingOverlay.classList.add('d-flex');
+                       const msgEl = forumLoadingOverlay.querySelector('.text-white-50');
+                       if (msgEl) msgEl.textContent = 'Gagal menyambungkan forum. Coba refresh.';
+                     }
                      if (error.code === 'permission-denied') {
                          setToast('Gagal memuat pesan. Silakan refresh halaman.', 'danger');
                          const retryHtml = `
@@ -21140,7 +21256,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         async function sendForumMessage() {
             if (isLaporanRoom()) { setToast('Room Laporan tidak menerima chat. Gunakan tombol Laporkan ya.'); return; }
             const text = forumInput.value.trim();
-            if(!text && selectedFiles.length === 0) return;
+            if(!text) return;
             if(!currentUser) { setToast('Anda belum login!', 'warning'); return; }
             
             const { db, collection, addDoc, serverTimestamp, auth, storage, ref, uploadBytes, getDownloadURL } = window.firebaseModules;
@@ -21149,14 +21265,7 @@ $('#queueList')?.addEventListener('click', (e) => {
             forumSendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
             try {
-                // Upload Images
                 let imageUrls = [];
-                if(selectedFiles.length > 0) {
-                     for (const file of selectedFiles) {
-                         const url = await uploadToCloudinary(file);
-                         imageUrls.push(url);
-                     }
-                }
 
                 const msgData = {
                     text: text,
@@ -21183,8 +21292,6 @@ $('#queueList')?.addEventListener('click', (e) => {
                 // Reset Input
                 forumInput.value = '';
                 setReplyContext(null);
-                selectedFiles = [];
-                renderAttachmentPreview();
                 window.scrollToBottom(true);
                 
             } catch (e) {
@@ -21200,32 +21307,17 @@ $('#queueList')?.addEventListener('click', (e) => {
              if (!forumSendBtn) return;
              if (!currentUser) {
                  forumSendBtn.disabled = true;
+                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
                  return;
              }
              if (isLaporanRoom()) {
                  forumSendBtn.disabled = true;
-                 forumSendBtn.classList.remove('btn-danger');
-                 forumSendBtn.classList.add('btn-primary');
                  forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
-                 return;
-             }
-             if (voiceState.isRecording) {
-                 forumSendBtn.disabled = false;
-                 forumSendBtn.classList.remove('btn-primary');
-                 forumSendBtn.classList.add('btn-danger');
-                 forumSendBtn.innerHTML = '<i class="bi bi-stop-fill fs-5"></i>';
                  return;
              }
              const hasText = forumInput.value.trim().length > 0;
-             const hasFiles = selectedFiles.length > 0;
-             forumSendBtn.disabled = false;
-             forumSendBtn.classList.remove('btn-danger');
-             forumSendBtn.classList.add('btn-primary');
-             if (hasText || hasFiles) {
-                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
-             } else {
-                 forumSendBtn.innerHTML = '<i class="bi bi-mic-fill fs-4"></i>';
-             }
+             forumSendBtn.disabled = !hasText;
+             forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
         }
 
         if(forumSendBtn) {
@@ -21240,16 +21332,10 @@ $('#queueList')?.addEventListener('click', (e) => {
             const handleSendBtnClick = async () => {
                 if (!currentUser) { setToast('Anda belum login!', 'warning'); return; }
                 const hasText = forumInput.value.trim().length > 0;
-                const hasFiles = selectedFiles.length > 0;
-                if (voiceState.isRecording) {
-                    await stopVoiceRecording(true);
-                    return;
-                }
-                if (hasText || hasFiles) {
+                if (hasText) {
                     await sendForumMessage();
                     return;
                 }
-                await startVoiceRecording();
             };
 
             forumSendBtn.addEventListener('click', handleSendBtnClick);
@@ -21262,8 +21348,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                 if(e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     const hasText = forumInput.value.trim().length > 0;
-                    const hasFiles = selectedFiles.length > 0;
-                    if (hasText || hasFiles) sendForumMessage();
+                    if (hasText) sendForumMessage();
                 }
             });
 
