@@ -5296,7 +5296,7 @@
   }
   
   window.manualCheckStatus = async function() {
-      const btn = document.querySelector('#maintenanceOverlay button');
+      const btn = document.getElementById('maintenanceCheckBtn') || document.querySelector('#maintenanceOverlay button');
       if(!btn) return;
       
       const originalHtml = btn.innerHTML;
@@ -5360,6 +5360,48 @@
               ], { duration: 300, easing: 'ease-in', fill: 'forwards' });
               anim.onfinish = () => { if(toast) toast.remove(); };
           }, 2500);
+      }
+  };
+
+  window.openForumFromMaintenance = function() {
+      const overlay = document.getElementById('maintenanceOverlay');
+      const forumModalEl = document.getElementById('forumModal');
+      if (!forumModalEl) {
+          setToast('Forum belum siap dimuat.', 'warning');
+          return;
+      }
+      const B = window.bs || window.bootstrap || window.bootstrapGlobal;
+      if (!B || !B.Modal) {
+          setToast('Komponen modal belum siap. Coba refresh.', 'warning');
+          return;
+      }
+
+      try {
+          if (overlay) {
+              overlay.dataset.paused = '1';
+              overlay.dataset.prevOverflow = document.body.style.overflow || '';
+              overlay.hidden = true;
+              document.body.style.overflow = '';
+          }
+
+          const modal = B.Modal.getInstance(forumModalEl) || new B.Modal(forumModalEl);
+          const onHidden = () => {
+              forumModalEl.removeEventListener('hidden.bs.modal', onHidden);
+              if (overlay && overlay.dataset.paused === '1' && window.isMaintenance) {
+                  overlay.hidden = false;
+                  document.body.style.overflow = overlay.dataset.prevOverflow || 'hidden';
+                  overlay.dataset.paused = '0';
+              }
+          };
+          forumModalEl.addEventListener('hidden.bs.modal', onHidden);
+          modal.show();
+      } catch (e) {
+          setToast('Gagal membuka forum.', 'danger');
+          if (overlay) {
+              overlay.hidden = false;
+              document.body.style.overflow = overlay.dataset.prevOverflow || 'hidden';
+              overlay.dataset.paused = '0';
+          }
       }
   };
 
@@ -5910,9 +5952,15 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                </div>
                            </div>
 
-                           <button class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
+                           <button id="maintenanceCheckBtn" class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
+                           ${type === 'maintenance' ? `
+                           <button id="maintenanceForumBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="openForumFromMaintenance()">
+                               <i class="bi bi-chat-quote-fill me-2"></i>Forum Warga
+                           </button>
+                           <div class="small mt-2" style="color:#6c757d !important;">Forum tetap bisa dipakai saat maintenance.</div>
+                           ` : ''}
                       </div>
                       
                   ${type === 'maintenance' ? `
