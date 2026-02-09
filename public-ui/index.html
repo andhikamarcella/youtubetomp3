@@ -416,7 +416,6 @@
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e5ddd5"/><path d="M0 0L50 50L0 100" fill="rgba(255,255,255,0.05)"/></svg>');
     scrollbar-width: thin;
     touch-action: pan-y;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
   #forumChatArea [data-message-id] {
     touch-action: pan-y;
@@ -424,51 +423,59 @@
   #forumModal #forumInput {
     color: #e9edef !important;
     caret-color: #e9edef;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
   #forumModal #forumInput::placeholder {
     color: rgba(233, 237, 239, 0.55) !important;
   }
-  #forumModalLabel {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-    letter-spacing: 0.2px;
-  }
-  #forumModal .modal-content {
-    background: var(--bs-body-bg) !important;
-    color: var(--bs-body-color) !important;
-  }
-  #forumModal .modal-header {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--bs-primary) 35%, #000) 0%, color-mix(in srgb, var(--bs-primary) 18%, #000) 100%) !important;
-  }
-  #forumModal .modal-body,
-  #forumModal .modal-footer {
-    background: var(--bs-body-bg) !important;
-  }
-  [data-bs-theme="dark"] #forumModal .modal-content {
-    background: #0b141a !important;
-    color: #e9edef !important;
-  }
-  [data-bs-theme="dark"] #forumModal .modal-body,
-  [data-bs-theme="dark"] #forumModal .modal-footer {
-    background: #0b141a !important;
-  }
-  #forumAttachMenuBtn,
-  #attachmentPreviewBar,
-  #btnCameraOpen,
-  #forumStickerBtn,
-  #forumVoiceIndicator,
-  #forumReactionOverlay,
-  #forumCopyRoomBtn {
-    display: none !important;
-  }
-  #forumChatArea .wa-options {
-    display: none !important;
-  }
-  #forumModal .modal-footer .bg-secondary.bg-opacity-10 {
-    background: color-mix(in srgb, var(--bs-secondary) 14%, transparent) !important;
-  }
   #forumLoadingOverlay {
     backdrop-filter: blur(6px);
+  }
+
+  body.forum-maintenance-mode #forumChatArea,
+  body.forum-maintenance-mode #forumModal #forumInput,
+  body.forum-maintenance-mode #forumModalLabel {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  }
+  body.forum-maintenance-mode #forumModal .modal-content {
+    background: rgba(255, 255, 255, 0.96) !important;
+    color: #212529 !important;
+  }
+  body.forum-maintenance-mode #forumModal .modal-header,
+  body.forum-maintenance-mode #forumModal .modal-body,
+  body.forum-maintenance-mode #forumModal .modal-footer {
+    background: transparent !important;
+    color: #212529 !important;
+  }
+  body.forum-maintenance-mode #forumModal .modal-header * {
+    color: #212529 !important;
+  }
+  body.forum-maintenance-mode #forumModal .btn-close {
+    filter: none !important;
+    opacity: 0.7;
+  }
+  body.forum-maintenance-mode #forumChatArea {
+    background-color: transparent;
+    background-image: none;
+  }
+  body.forum-maintenance-mode #forumModal .modal-body {
+    background: linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%) !important;
+  }
+  body.forum-maintenance-mode #forumModal .modal-header .bg-primary {
+    background: #fd7e14 !important;
+  }
+  body.forum-maintenance-mode #forumAttachMenuBtn,
+  body.forum-maintenance-mode #attachmentPreviewBar,
+  body.forum-maintenance-mode #btnCameraOpen,
+  body.forum-maintenance-mode #forumStickerBtn,
+  body.forum-maintenance-mode #forumVoiceIndicator,
+  body.forum-maintenance-mode #forumReactionOverlay,
+  body.forum-maintenance-mode #forumCopyRoomBtn,
+  body.forum-maintenance-mode #forumReportBtn,
+  body.forum-maintenance-mode #forumDeleteAllBtn {
+    display: none !important;
+  }
+  body.forum-maintenance-mode #forumChatArea .wa-options {
+    display: none !important;
   }
   .message.admin.admin-pinned {
     justify-content: flex-start !important;
@@ -3886,6 +3893,12 @@
                <select id="forumRoomSelect" class="form-select form-select-sm bg-black text-white border-secondary" style="max-width: 260px;">
                  <option value="umum">Umum</option>
                  <option value="laporan">Laporan</option>
+                 <option value="jomok">Jomok</option>
+                 <option value="foto">Foto Warga</option>
+                 <option value="event">Event</option>
+                 <option value="santai">Santai / Meme</option>
+                 <option value="__create_private__">+ Private Room (buat baru)</option>
+                 <option value="__join_private__">Masuk Private Room (pakai kode)</option>
                </select>
                <button id="forumCopyRoomBtn" type="button" class="btn btn-sm btn-outline-light rounded-pill d-none">Salin kode</button>
              </div>
@@ -5385,8 +5398,24 @@
           }
 
           const modal = B.Modal.getInstance(forumModalEl) || new B.Modal(forumModalEl);
+          document.body.classList.add('forum-maintenance-mode');
+
+          const roomSelect = document.getElementById('forumRoomSelect');
+          if (roomSelect) {
+              roomSelect.dataset.prevValue = roomSelect.value;
+              roomSelect.value = 'umum';
+              roomSelect.disabled = true;
+          }
+
           const onHidden = () => {
               forumModalEl.removeEventListener('hidden.bs.modal', onHidden);
+              document.body.classList.remove('forum-maintenance-mode');
+              if (roomSelect) {
+                  const prev = roomSelect.dataset.prevValue;
+                  roomSelect.disabled = false;
+                  if (prev) roomSelect.value = prev;
+                  delete roomSelect.dataset.prevValue;
+              }
               if (overlay && overlay.dataset.paused === '1' && window.isMaintenance) {
                   overlay.hidden = false;
                   document.body.style.overflow = overlay.dataset.prevOverflow || 'hidden';
@@ -5397,6 +5426,7 @@
           modal.show();
       } catch (e) {
           setToast('Gagal membuka forum.', 'danger');
+          document.body.classList.remove('forum-maintenance-mode');
           if (overlay) {
               overlay.hidden = false;
               document.body.style.overflow = overlay.dataset.prevOverflow || 'hidden';
@@ -19661,6 +19691,10 @@ $('#queueList')?.addEventListener('click', (e) => {
         const FORUM_ROOMS = [
           { key: 'umum', label: 'Umum' },
           { key: 'laporan', label: 'Laporan' },
+          { key: 'jomok', label: 'Jomok' },
+          { key: 'foto', label: 'Foto Warga' },
+          { key: 'event', label: 'Event' },
+          { key: 'santai', label: 'Santai / Meme' },
         ];
         const forumRoomKeyStorage = 'forum_room';
         let activeForumRoom = localStorage.getItem(forumRoomKeyStorage) || 'umum';
@@ -20447,10 +20481,16 @@ $('#queueList')?.addEventListener('click', (e) => {
                  forumMessageCache = {};
                  
                 const pinnedByRoom = {
-                  umum: 'Selamat datang di Forum Warga!<br>Silakan ngobrol santai, tanya fitur, atau share info.',
+                  umum: 'Selamat datang di Forum Warga!<br>Room <b>Umum</b> buat ngobrol bebas, tanya fitur, dan update santai.',
                   laporan: 'Room <b>Laporan</b> bersifat <b>read-only</b>.<br>Untuk kirim laporan, pakai tombol <b>Laporkan</b> (ikon bendera) lalu isi form + screenshot.',
+                  jomok: 'Room <b>Jomok</b> buat obrolan dewasa (18+).<br>Tetap sopan, jangan sebar data pribadi siapa pun.',
+                  foto: 'Room <b>Foto Warga</b> buat share foto, hasil edit, atau meme gambar.<br>Jangan doxxing & jangan upload KTP/nomor WA.',
+                  event: 'Room <b>Event</b> buat info event, tantangan, dan pengumuman komunitas.<br>Cek pinned ini biar nggak ketinggalan.',
+                  santai: 'Room <b>Santai / Meme</b> buat lepas stress.<br>Drop meme, cerita random, atau bercandaan tipis-tipis.',
                 };
-                const pinnedText = pinnedByRoom[roomKey] || pinnedByRoom.umum;
+                const pinnedText = isPrivateRoomKey(roomKey)
+                  ? `Ini <b>Private Room</b>.<br>Kode room: <b>${parsePrivateRoomCode(roomKey)}</b> • Jangan dibagi ke orang random.`
+                  : (pinnedByRoom[roomKey] || pinnedByRoom.umum);
 
                 const pinnedRules = `
                     <div class="d-flex align-items-start mb-3 message admin admin-pinned w-100 justify-content-start">
@@ -21304,7 +21344,7 @@ $('#queueList')?.addEventListener('click', (e) => {
         async function sendForumMessage() {
             if (isLaporanRoom()) { setToast('Room Laporan tidak menerima chat. Gunakan tombol Laporkan ya.'); return; }
             const text = forumInput.value.trim();
-            if(!text) return;
+            if(!text && selectedFiles.length === 0) return;
             if(!currentUser) { setToast('Anda belum login!', 'warning'); return; }
             
             const { db, collection, addDoc, serverTimestamp, auth, storage, ref, uploadBytes, getDownloadURL } = window.firebaseModules;
@@ -21313,7 +21353,14 @@ $('#queueList')?.addEventListener('click', (e) => {
             forumSendBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
             try {
+                // Upload Images
                 let imageUrls = [];
+                if(selectedFiles.length > 0) {
+                     for (const file of selectedFiles) {
+                         const url = await uploadToCloudinary(file);
+                         imageUrls.push(url);
+                     }
+                }
 
                 const msgData = {
                     text: text,
@@ -21340,6 +21387,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                 // Reset Input
                 forumInput.value = '';
                 setReplyContext(null);
+                selectedFiles = [];
+                renderAttachmentPreview();
                 window.scrollToBottom(true);
                 
             } catch (e) {
@@ -21355,17 +21404,29 @@ $('#queueList')?.addEventListener('click', (e) => {
              if (!forumSendBtn) return;
              if (!currentUser) {
                  forumSendBtn.disabled = true;
-                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
                  return;
              }
              if (isLaporanRoom()) {
                  forumSendBtn.disabled = true;
-                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
+                 return;
+             }
+             if (voiceState.isRecording) {
+                 forumSendBtn.disabled = false;
+                 forumSendBtn.classList.remove('btn-primary');
+                 forumSendBtn.classList.add('btn-danger');
+                 forumSendBtn.innerHTML = '<i class="bi bi-stop-fill fs-5"></i>';
                  return;
              }
              const hasText = forumInput.value.trim().length > 0;
-             forumSendBtn.disabled = !hasText;
-             forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
+             const hasFiles = selectedFiles.length > 0;
+             forumSendBtn.disabled = false;
+             forumSendBtn.classList.remove('btn-danger');
+             forumSendBtn.classList.add('btn-primary');
+             if (hasText || hasFiles) {
+                 forumSendBtn.innerHTML = '<i class="bi bi-send-fill fs-5 ms-1"></i>';
+             } else {
+                 forumSendBtn.innerHTML = '<i class="bi bi-mic-fill fs-4"></i>';
+             }
         }
 
         if(forumSendBtn) {
@@ -21380,10 +21441,16 @@ $('#queueList')?.addEventListener('click', (e) => {
             const handleSendBtnClick = async () => {
                 if (!currentUser) { setToast('Anda belum login!', 'warning'); return; }
                 const hasText = forumInput.value.trim().length > 0;
-                if (hasText) {
+                const hasFiles = selectedFiles.length > 0;
+                if (voiceState.isRecording) {
+                    await stopVoiceRecording(true);
+                    return;
+                }
+                if (hasText || hasFiles) {
                     await sendForumMessage();
                     return;
                 }
+                await startVoiceRecording();
             };
 
             forumSendBtn.addEventListener('click', handleSendBtnClick);
@@ -21396,7 +21463,8 @@ $('#queueList')?.addEventListener('click', (e) => {
                 if(e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     const hasText = forumInput.value.trim().length > 0;
-                    if (hasText) sendForumMessage();
+                    const hasFiles = selectedFiles.length > 0;
+                    if (hasText || hasFiles) sendForumMessage();
                 }
             });
 
