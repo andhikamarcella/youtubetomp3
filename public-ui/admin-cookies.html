@@ -119,16 +119,28 @@
 
     const refreshStatus = async () => {
       const res = await fetch('/admin/cookies-status?t=' + Date.now());
-      const data = await res.json();
-      if (data && data.disabled) {
-        $('statusBox').innerHTML = 'Admin cookies dinonaktifkan. Set ENV: ADMIN_BEARER, ADMIN_USER_HASH, ADMIN_PASS_HASH.';
-        return;
+      const data = await res.json().catch(() => ({}));
+      const isDisabled = Boolean(data && data.disabled);
+      const dot = $('pageDot');
+      const loginBtn = $('loginBtn');
+      if (isDisabled) {
+        if (dot) dot.className = 'dot bad';
+        if (loginBtn) loginBtn.disabled = true;
+        toast('loginToast', 'Admin belum diaktifkan di server. Set ENV: ADMIN_BEARER, ADMIN_USER_HASH, ADMIN_PASS_HASH (Railway Variables).', false);
+        const box = $('statusBox');
+        if (box) box.innerHTML = 'Admin cookies dinonaktifkan. Set ENV: ADMIN_BEARER, ADMIN_USER_HASH, ADMIN_PASS_HASH.';
+        return data;
       }
+      if (loginBtn) loginBtn.disabled = false;
+      if (dot && !getToken()) dot.className = 'dot warn';
+      const box = $('statusBox');
+      if (!box) return data;
       if (!data.exists) {
-        $('statusBox').innerHTML = 'cookies.txt belum ada.';
-        return;
+        box.innerHTML = 'cookies.txt belum ada.';
+        return data;
       }
-      $('statusBox').innerHTML = `Ada cookies.txt — <span class="mono">${data.bytes}</span> bytes`;
+      box.innerHTML = `Ada cookies.txt — <span class="mono">${data.bytes}</span> bytes`;
+      return data;
     };
 
     $('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
