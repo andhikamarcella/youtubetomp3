@@ -3782,6 +3782,7 @@
       <h6 class="mb-2">Status cookies</h6>
       <div class="d-grid gap-2 mb-2">
         <button class="btn btn-outline-secondary" id="checkCookie" type="button"><i class="bi bi-shield-check"></i> Cek status cookies</button>
+        <a class="btn btn-outline-primary" href="./admin-cookies.html" target="_blank" rel="noopener"><i class="bi bi-cloud-upload"></i> Buka Admin Cookies</a>
       </div>
       <div id="cookieStatus" class="small text-secondary" role="status" aria-live="polite"></div>
 
@@ -4367,7 +4368,7 @@
         <div class="maint-audio-hint" id="maintAudioHint">Backsound aktif. Kalau suaranya belum nyala, tap sekali.</div>
       </div>
     </div>
-    <button type="button" class="maint-music-toggle" id="maintMusicToggle" aria-expanded="false">
+    <button type="button" class="maint-music-toggle" id="maintMusicToggle" aria-expanded="false" onclick="window.toggleMaintMusic && window.toggleMaintMusic()">
       <i class="bi bi-music-note-beamed"></i>
     </button>
   </div>
@@ -4395,7 +4396,7 @@
         </div>
       </div>
     </div>
-    <button type="button" class="forum-widget-toggle" id="forumWidgetToggle" aria-expanded="false">
+    <button type="button" class="forum-widget-toggle" id="forumWidgetToggle" aria-expanded="false" onclick="window.toggleForumWidget && window.toggleForumWidget()">
       <i class="bi bi-chat-dots-fill"></i>
       <span class="badge text-bg-success ms-1" id="forumWidgetStatus" hidden></span>
     </button>
@@ -6270,13 +6271,14 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         .faq-float-panel { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); right: calc(16px + env(safe-area-inset-right, 0px)); width: calc(100% - 32px); max-width: 320px; }
                         
                         .maint-container {
-                            padding: 0.5rem; /* Minimized padding */
-                            align-items: center; /* Center vertically on mobile too */
+                            padding: 0.75rem 0.5rem calc(0.75rem + 86px + env(safe-area-inset-bottom, 0px));
+                            align-items: center;
+                            justify-content: flex-start;
                         }
                         .maint-card {
                             padding: 1.5rem 1rem;
                             border-radius: 16px;
-                            max-height: 98vh; /* Ensure it fits */
+                            max-height: calc(100vh - 110px);
                         }
                         .maint-icon-wrap {
                             width: 60px; height: 60px;
@@ -16748,6 +16750,8 @@ $('#queueList')?.addEventListener('click', (e) => {
         if (!loginData?.token) throw new Error('Login gagal');
         state.adminBearer = loginData.token;
         persistState();
+        try { sessionStorage.setItem('admin_bearer_token', state.adminBearer); } catch {}
+        try { localStorage.setItem('ytmp3_admin_bearer', state.adminBearer); } catch {}
         if (adminPassInput) adminPassInput.value = '';
         setToast('Login admin berhasil');
         updateAdminUi();
@@ -16765,6 +16769,8 @@ $('#queueList')?.addEventListener('click', (e) => {
     adminLogoutBtn.addEventListener('click', () => {
       state.adminBearer = '';
       persistState();
+      try { sessionStorage.removeItem('admin_bearer_token'); } catch {}
+      try { localStorage.removeItem('ytmp3_admin_bearer'); } catch {}
       updateAdminUi();
       setToast('Logout admin berhasil');
     });
@@ -22256,6 +22262,26 @@ $('#queueList')?.addEventListener('click', (e) => {
 
 
     
+</script>
+<script>
+  (function () {
+    if (typeof window.toggleForumWidget !== 'function') {
+      window.__pendingForumToggle = null;
+      window.toggleForumWidget = function (forceOpen) {
+        window.__pendingForumToggle = forceOpen === undefined ? null : forceOpen;
+        window.__pendingForumToggleClick = true;
+      };
+    }
+    if (typeof window.toggleMaintMusic !== 'function') {
+      window.__pendingMaintMusic = null;
+      window.toggleMaintMusic = function () {
+        window.__pendingMaintMusic = true;
+      };
+      window.closeMaintMusic = function () {
+        window.__pendingMaintMusic = false;
+      };
+    }
+  })();
 </script>
 <script src="./forum-widget.js" defer></script>
 <script src="./music-widget.js" defer></script>
