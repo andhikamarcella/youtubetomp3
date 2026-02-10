@@ -288,8 +288,8 @@ body.maintenance-widgets .forum-widget-toggle .badge {
 @media (max-width: 576px) {
   body.is-maintenance .forum-widget,
   body.maintenance-widgets .forum-widget {
-    bottom: calc(132px + env(safe-area-inset-bottom, 0px));
-    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    right: calc(148px + env(safe-area-inset-right, 0px));
     left: auto;
     max-width: calc(100vw - 32px);
   }
