@@ -46,6 +46,7 @@
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" onload="this.onload=null;this.rel='stylesheet'">
   <link rel="stylesheet" href="./forum-widget.css">
+  <link rel="stylesheet" href="./music-widget.css">
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <noscript>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -4340,8 +4341,38 @@
       <span class="pulse" id="assistantPulse" aria-hidden="true"></span>
     </button>
   </div>
+  <div class="maint-music-widget" id="maintMusicWidget" aria-live="polite">
+    <div class="maint-music-panel" id="maintMusicPanel">
+      <div class="maint-music-header">
+        <div class="maint-music-title"><i class="bi bi-music-note-beamed"></i> Backsound</div>
+        <button type="button" class="btn-close" aria-label="Tutup Backsound" onclick="closeMaintMusic()"></button>
+      </div>
+      <div class="maint-music-body">
+        <div class="maint-radio-widget" id="maintRadioWidget">
+          <div class="maint-vinyl-wrap">
+            <div class="maint-vinyl" id="maintVinyl">
+              <div class="maint-vinyl-label">LIVE</div>
+              <div class="maint-vinyl-hole"></div>
+            </div>
+          </div>
+          <div class="maint-radio-right">
+            <div class="maint-radio-controls">
+              <button type="button" id="maintMuteBtn" aria-label="Mute atau unmute"><i class="bi bi-volume-up-fill"></i></button>
+              <input type="range" id="maintVolume" min="0" max="100" value="70" aria-label="Volume">
+            </div>
+            <button type="button" class="maint-enable-sound d-none" id="maintEnableSoundBtn">Tap untuk nyalain suara</button>
+          </div>
+          <div id="maintYTPlayer" style="position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none;"></div>
+        </div>
+        <div class="maint-audio-hint" id="maintAudioHint">Backsound aktif. Kalau suaranya belum nyala, tap sekali.</div>
+      </div>
+    </div>
+    <button type="button" class="maint-music-toggle" id="maintMusicToggle" aria-expanded="false">
+      <i class="bi bi-music-note-beamed"></i>
+    </button>
+  </div>
   <div class="forum-widget" id="forumWidget" aria-live="polite">
-    <div class="forum-widget-panel" id="forumWidgetPanel" hidden>
+    <div class="forum-widget-panel" id="forumWidgetPanel">
       <div class="forum-widget-header">
         <div class="forum-widget-title"><i class="bi bi-chat-dots-fill"></i> Forum Warga</div>
         <button type="button" class="btn-close" id="forumWidgetClose" aria-label="Tutup Forum Warga" onclick="closeForumWidget()"></button>
@@ -4364,6 +4395,10 @@
         </div>
       </div>
     </div>
+    <button type="button" class="forum-widget-toggle" id="forumWidgetToggle" aria-expanded="false">
+      <i class="bi bi-chat-dots-fill"></i> Forum
+      <span class="badge text-bg-success ms-1" id="forumWidgetStatus" hidden>●</span>
+    </button>
   </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
   <footer class="border-top mt-5 bg-body-tertiary">
@@ -5442,6 +5477,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
           document.body.classList.toggle('is-maintenance', Boolean(show) && String(type) === 'maintenance');
           if (!show) {
               document.documentElement.style.removeProperty('--maintenance-accent');
+              document.documentElement.style.removeProperty('--maint-accent');
               try { window.destroyMaintenanceRadio && window.destroyMaintenanceRadio(); } catch {}
           }
           if(show) {
@@ -5488,6 +5524,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               }
               
               try { document.documentElement.style.setProperty('--maintenance-accent', colorMain); } catch {}
+              try { document.documentElement.style.setProperty('--maint-accent', colorMain); } catch {}
               
               overlay.innerHTML = `
                   <style>
@@ -5738,53 +5775,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         color: #fff;
                         box-shadow: 0 14px 28px rgba(0,0,0,0.12);
                     }
-                    .music-float-btn {
-                        position: fixed; bottom: 30px; left: 30px;
-                        width: 56px; height: 56px;
-                        border-radius: 50%;
-                        background: #ffffff;
-                        color: ${colorMain};
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                        border: none;
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 1.35rem;
-                        cursor: pointer;
-                        z-index: 10000;
-                        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                    }
-                    .music-float-btn:hover { transform: scale(1.1); }
-                    .music-float-btn:active { transform: scale(0.95); }
-
-                    .music-float-panel {
-                        position: fixed; bottom: 100px; left: 30px;
-                        width: min(360px, calc(100% - 60px));
-                        background: rgba(255, 255, 255, 0.98);
-                        backdrop-filter: blur(10px);
-                        border-radius: 20px;
-                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-                        padding: 1rem;
-                        z-index: 10000;
-                        transform-origin: bottom left;
-                        transform: scale(0);
-                        opacity: 0;
-                        visibility: hidden;
-                        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                        border: 1px solid rgba(0,0,0,0.05);
-                        text-align: left;
-                    }
-                    .music-float-panel.active {
-                        transform: scale(1);
-                        opacity: 1;
-                        visibility: visible;
-                    }
-                    @media (hover: hover) and (pointer: fine) {
-                        #musicFloatBtn:hover + #musicFloatPanel:not(.active) {
-                            transform: scale(1);
-                            opacity: 1;
-                            visibility: visible;
-                        }
-                    }
-
                     /* Floating FAQ Widget */
                     .faq-float-btn {
                         position: fixed; bottom: 30px; right: 30px;
@@ -5859,8 +5849,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     }
                     /* Mobile Optimization */
                     @media (max-width: 576px) {
-                        .music-float-btn { bottom: 20px; left: 20px; width: 50px; height: 50px; }
-                        .music-float-panel { bottom: 80px; left: 20px; width: calc(100% - 40px); }
                         .faq-float-btn { bottom: 20px; right: 20px; width: 50px; height: 50px; }
                         .faq-float-panel { bottom: 80px; right: 20px; width: calc(100% - 40px); max-width: 320px; }
                         
@@ -5933,25 +5921,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                          <div id="maintenanceClock" class="fw-bold font-monospace" style="color: ${colorMain}; font-size: 0.9rem;">00:00:00</div>
                                     </div>
                                </div>
-                               ${type === 'maintenance' ? `
-                               <div class="maint-radio-widget" id="maintRadioWidget">
-                                   <div class="maint-vinyl-wrap">
-                                       <div class="maint-vinyl" id="maintVinyl">
-                                           <div class="maint-vinyl-label">LIVE</div>
-                                           <div class="maint-vinyl-hole"></div>
-                                       </div>
-                                   </div>
-                                   <div class="maint-radio-right">
-                                       <div class="maint-radio-controls">
-                                           <button type="button" id="maintMuteBtn" aria-label="Mute atau unmute"><i class="bi bi-volume-up-fill"></i></button>
-                                           <input type="range" id="maintVolume" min="0" max="100" value="70" aria-label="Volume">
-                                       </div>
-                                       <button type="button" class="maint-enable-sound d-none" id="maintEnableSoundBtn">Tap untuk nyalain suara</button>
-                                   </div>
-                                   <div id="maintYTPlayer" style="position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; pointer-events:none;"></div>
-                               </div>
-                               <div class="maint-audio-hint" id="maintAudioHint">Backsound aktif. Kalau suaranya belum nyala, tap sekali.</div>
-                               ` : ''}
                            </div>
 
                            <button id="maintenanceCheckBtn" class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
@@ -21788,5 +21757,7 @@ $('#queueList')?.addEventListener('click', (e) => {
     
 </script>
 <script src="./forum-widget.js" defer></script>
+<script src="./music-widget.js" defer></script>
+<script src="./draggable-widgets.js" defer></script>
 </body>
 </html>
