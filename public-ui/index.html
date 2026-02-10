@@ -4344,7 +4344,7 @@
     <div class="forum-widget-panel" id="forumWidgetPanel" hidden>
       <div class="forum-widget-header">
         <div class="forum-widget-title"><i class="bi bi-chat-dots-fill"></i> Forum Warga</div>
-        <button type="button" class="btn-close" id="forumWidgetClose" aria-label="Tutup Forum Warga" onclick="toggleForumWidget(false)"></button>
+        <button type="button" class="btn-close" id="forumWidgetClose" aria-label="Tutup Forum Warga" onclick="closeForumWidget()"></button>
       </div>
       <div class="forum-widget-body">
         <div class="forum-widget-login" id="forumWidgetLogin" hidden>
@@ -5373,6 +5373,32 @@
       if (btn) btn.innerHTML = '<i class="bi bi-x-lg"></i>';
   };
 
+  window.openForumWidgetFromMaintenance = function() {
+      const overlay = document.getElementById('maintenanceOverlay');
+      if (overlay) {
+          overlay.dataset.forumPaused = '1';
+          overlay.hidden = true;
+          document.body.style.overflow = '';
+      }
+      if (typeof window.toggleForumWidget === 'function') {
+          window.toggleForumWidget(true);
+      } else if (typeof window.setToast === 'function') {
+          window.setToast('Forum belum siap dimuat. Coba refresh.', 'warning');
+      } else {
+          alert('Forum belum siap dimuat. Coba refresh.');
+      }
+  };
+
+  window.closeForumWidget = function() {
+      if (typeof window.toggleForumWidget === 'function') window.toggleForumWidget(false);
+      const overlay = document.getElementById('maintenanceOverlay');
+      if (overlay && overlay.dataset.forumPaused === '1' && window.isMaintenance) {
+          overlay.hidden = false;
+          document.body.style.overflow = 'hidden';
+          overlay.dataset.forumPaused = '0';
+      }
+  };
+
   // Global FAQ Toggle Functions
   window.toggleFaqPanel = function() {
       const panel = document.getElementById('faqFloatPanel');
@@ -5925,7 +5951,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
                            ${type === 'maintenance' ? `
-                           <button id="maintenanceHelpBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="toggleForumWidget(true)">
+                           <button id="maintenanceHelpBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="openForumWidgetFromMaintenance()">
                                <i class="bi bi-chat-dots-fill me-2"></i>Forum Warga
                            </button>
                            <div class="small mt-2" style="color:#6c757d !important;">Chat pop-up khusus Room Umum.</div>
