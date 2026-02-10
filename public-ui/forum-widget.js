@@ -293,7 +293,7 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     const { toggle, widget } = els();
-    if (toggle) toggle.addEventListener("click", () => window.toggleForumWidget());
+    if (toggle && !toggle.getAttribute("onclick")) toggle.addEventListener("click", () => window.toggleForumWidget());
     window.toggleForumWidget(false);
     document.addEventListener("click", (e) => {
       const w = els().widget;
@@ -306,6 +306,14 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") window.toggleForumWidget(false);
     });
+    try {
+      if (window.__pendingForumToggleClick) {
+        const force = window.__pendingForumToggle;
+        window.__pendingForumToggle = null;
+        window.__pendingForumToggleClick = false;
+        window.toggleForumWidget(force === null ? null : force);
+      }
+    } catch {}
   });
 })();
 
