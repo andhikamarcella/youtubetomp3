@@ -5748,7 +5748,8 @@
           const next = document.getElementById('maintCarouselNext');
           const sidePrev = document.getElementById('maintSidePrev');
           const sideNext = document.getElementById('maintSideNext');
-          if (!track || !dotsWrap || !prev || !next) return;
+          if (!track || !dotsWrap) return;
+          if ((!prev && !sidePrev) || (!next && !sideNext)) return;
           const slides = Array.from(track.querySelectorAll('.maint-carousel-slide'));
           if (!slides.length) return;
 
@@ -5774,8 +5775,10 @@
               });
               const dots = Array.from(dotsWrap.querySelectorAll('.maint-carousel-dot'));
               dots.forEach((d, i) => d.classList.toggle('active', i === best));
-              prev.disabled = best === 0;
-              next.disabled = best === slides.length - 1;
+              if (prev) prev.disabled = best === 0;
+              if (next) next.disabled = best === slides.length - 1;
+              if (sidePrev) sidePrev.disabled = best === 0;
+              if (sideNext) sideNext.disabled = best === slides.length - 1;
           };
 
           const go = (dir) => {
@@ -5788,8 +5791,8 @@
               window.setTimeout(setActive, 240);
           };
 
-          prev.onclick = () => go(-1);
-          next.onclick = () => go(1);
+          if (prev) prev.onclick = () => go(-1);
+          if (next) next.onclick = () => go(1);
           if (sidePrev) sidePrev.onclick = () => go(-1);
           if (sideNext) sideNext.onclick = () => go(1);
           track.addEventListener('scroll', () => {
@@ -6260,26 +6263,24 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     #maintCarouselNext {
                         position: static;
                         transform: none;
+                        display: none;
                     }
-                    .maint-stage {
+                    .maint-carousel-wrap {
                         position: relative;
-                        width: min(560px, 100%);
-                        display: grid;
-                        place-items: center;
                     }
                     .maint-side-btn {
                         position: absolute;
                         top: 50%;
                         transform: translateY(-50%);
-                        width: 46px;
-                        height: 46px;
+                        width: 42px;
+                        height: 42px;
                         border-radius: 999px;
                         border: 1px solid rgba(0,0,0,0.08);
-                        background: rgba(255,255,255,0.85);
+                        background: rgba(255,255,255,0.88);
                         backdrop-filter: blur(10px);
                         display: grid;
                         place-items: center;
-                        box-shadow: 0 18px 40px rgba(15,23,42,.16);
+                        box-shadow: 0 14px 28px rgba(15,23,42,.14);
                         cursor: pointer;
                         z-index: 5;
                         color: #111827;
@@ -6290,18 +6291,18 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         color: #e5e7eb;
                     }
                     .maint-side-btn:disabled {
-                        opacity: 0.45;
-                        cursor: default;
+                        opacity: 0;
+                        pointer-events: none;
                     }
-                    #maintSidePrev { left: -14px; }
-                    #maintSideNext { right: -14px; }
+                    #maintSidePrev { left: 8px; }
+                    #maintSideNext { right: 8px; }
                     @media (max-width: 576px) {
-                        #maintSidePrev,
-                        #maintSideNext { display: none; }
-                    }
-                    @media (min-width: 577px) {
-                        #maintCarouselPrev,
-                        #maintCarouselNext { display: none; }
+                        .maint-side-btn {
+                            width: 38px;
+                            height: 38px;
+                        }
+                        #maintSidePrev { left: 6px; }
+                        #maintSideNext { right: 6px; }
                     }
                     .maint-carousel-dots {
                         display: inline-flex;
@@ -6859,10 +6860,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     }
                   </style>
                   <div class="maint-container">
-                      <div class="maint-stage">
-                          <button type="button" class="maint-side-btn" id="maintSidePrev" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
-                          <button type="button" class="maint-side-btn" id="maintSideNext" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
-                          <div class="maint-card">
+                      <div class="maint-card">
                            <div class="maint-icon-wrap">
                                 <i id="maintIcon" class="bi ${iconClass}"></i>
                            </div>
@@ -6916,7 +6914,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                            <button type="button" class="maint-carousel-btn" id="maintCarouselNext" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
                                        </div>
                                    </div>
-                                   <div class="maint-carousel-track" id="maintCarouselTrack">
+                                   <div class="maint-carousel-wrap">
+                                       <button type="button" class="maint-side-btn" id="maintSidePrev" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+                                       <button type="button" class="maint-side-btn" id="maintSideNext" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
+                                       <div class="maint-carousel-track" id="maintCarouselTrack">
                                       <div class="maint-carousel-slide">
                                           <div class="maint-section-title"><span><i class="bi bi-chat-square-text-fill me-2" style="color:${colorMain};"></i>Chat Umum</span><span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">room: umum</span></div>
                                           <div class="maint-chat-box">
@@ -6975,6 +6976,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                                <div class="small" id="maintTipText" style="color:#6c757d !important;">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
                                            </div>
                                        </div>
+                                       </div>
                                    </div>
                                    <div class="small mt-2" style="color:#6c757d !important;">Geser untuk pindah slide. Bisa juga pakai tombol panah.</div>
                                </div>
@@ -7001,7 +7003,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <div class="small mt-1" style="color:#6c757d !important;">Waktu ditampilkan sesuai zona waktu kamu. Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
                                <div class="small mt-1" style="color:#6c757d !important;">Ada kendala? hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
                            </div>
-                          </div>
                       </div>
                       
                       <!-- Floating FAQ Widget -->
