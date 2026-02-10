@@ -6352,10 +6352,32 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     }
                     @media (min-width: 992px) {
                         .maint-card {
-                            max-width: 640px;
-                            padding: 2.4rem 2.2rem;
+                            max-width: 760px;
+                            padding: 2.25rem 2.25rem;
                             border-radius: 24px;
+                            max-height: min(86vh, 860px);
                         }
+                        .maint-content-wrapper { text-align: left; }
+                        .maint-summary {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 14px;
+                            align-items: start;
+                        }
+                        .maint-summary-head { grid-column: 1 / -1; }
+                        .maint-summary-head .h3 { margin-bottom: 0.35rem !important; }
+                        .maint-summary-head p { margin-bottom: 0.85rem !important; max-width: 70ch; }
+                        .maint-summary-progress { margin-bottom: 0 !important; }
+                        .maint-summary .maint-est-row { margin-bottom: 0 !important; }
+                        .maint-details-grid {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 12px;
+                            margin-top: 12px;
+                        }
+                        .maint-details-grid .maint-section { margin-top: 0 !important; padding: 10px 10px; }
+                        .maint-details-grid .maint-section--wide { grid-column: 1 / -1; }
+                        .maint-mini-log { gap: 4px; font-size: 0.86rem; }
                     }
 
                     #maintToast {
@@ -7293,12 +7315,15 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                            </div>
                            
                            <div class="maint-content-wrapper">
+                               <div class="maint-summary">
+                               <div class="maint-summary-head">
                                <h1 class="h3 fw-bold mb-2 maint-title">${title}</h1>
                                <p class="mb-3 maint-muted">${desc}</p>
                                ${type === 'maintenance' ? '' : ''}
+                               </div>
                                
                                <!-- Progress Section -->
-                               <div class="text-start mb-3">
+                               <div class="text-start mb-3 maint-summary-progress">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <small class="fw-bold maint-muted" id="maintDetailDesc" style="font-size: 0.8rem;">${detailDesc}</small>
                                         <small class="fw-bold" id="maintProgressPercent" style="color: ${colorMain}; font-size: 0.75rem;">${progressVal}%</small>
@@ -7332,6 +7357,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                     </div>
                                </div>
 
+                               </div>
+
+                               <div class="maint-details-grid">
+
                                    <div class="maint-section" style="margin-top: 12px;">
                                        <div class="maint-section-title"><span><i class="bi bi-heart-fill me-2" style="color:${colorMain};"></i>Terima kasih</span><span id="maintThemeNote" class="small fw-semibold" style="letter-spacing:0; text-transform:none;"></span></div>
                                        <div class="small maint-muted">Terima kasih sudah menunggu. Kami tahu waktu kamu berharga, dan kami lagi fokus bikin layanan ini lebih stabil.</div>
@@ -7359,7 +7388,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                        </ul>
                                    </div>
 
-                                   <div class="maint-section" style="margin-top: 12px;">
+                                   <div class="maint-section maint-section--wide" style="margin-top: 12px;">
                                        <div class="maint-section-title"><span><i class="bi bi-hdd-network-fill me-2" style="color:${colorMain};"></i>Status Server</span></div>
                                        <div class="maint-badges" id="maintServices">
                                            <span class="maint-badge"><span style="color:#22c55e;">●</span> Database: OK</span>
@@ -7372,6 +7401,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                            <div class="small maint-muted" id="maintTipText">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
                                        </div>
                                    </div>
+
+                               </div>
                            </div>
 
                           <div class="maint-actions">
