@@ -4426,7 +4426,7 @@
            <p class="small text-secondary mb-3">
              Kami berkomitmen menghadirkan pengalaman download terbaik tanpa iklan yang mengganggu. Dibangun dengan teknologi web terbaru untuk kecepatan dan keamanan maksimal.
            </p>
-          <button class="btn btn-sm btn-outline-primary rounded-pill" type="button" onclick="toggleForumWidget(true)">
+          <button class="btn btn-sm btn-outline-primary rounded-pill" type="button" id="joinForumBtn" data-action="join-forum">
              <i class="bi bi-chat-dots me-1"></i> Gabung Forum
            </button>
         </div>
@@ -23347,6 +23347,21 @@ $('#queueList')?.addEventListener('click', (e) => {
         window.__pendingForumToggleClick = true;
       };
     }
+    if (typeof window.openForumFromFooter !== 'function') {
+      window.openForumFromFooter = function () {
+        try {
+          const modalEl = document.getElementById('forumModal');
+          if (modalEl && window.bootstrap?.Modal) {
+            const bs = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            bs.show();
+            return;
+          }
+        } catch {}
+        try {
+          if (typeof window.toggleForumWidget === 'function') window.toggleForumWidget(true);
+        } catch {}
+      };
+    }
     if (typeof window.toggleMaintMusic !== 'function') {
       window.__pendingMaintMusic = null;
       window.toggleMaintMusic = function () {
@@ -23357,6 +23372,17 @@ $('#queueList')?.addEventListener('click', (e) => {
       };
     }
   })();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('joinForumBtn') || document.querySelector('[data-action="join-forum"]');
+    if (!btn) return;
+    if (btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      try { window.openForumFromFooter && window.openForumFromFooter(); } catch {}
+    });
+  });
 </script>
 <script src="./forum-widget.js" defer></script>
 <script src="./music-widget.js" defer></script>
