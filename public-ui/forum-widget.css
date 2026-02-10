@@ -2,7 +2,7 @@
   position: fixed;
   bottom: 1.5rem;
   left: 1.5rem;
-  z-index: 1105;
+  z-index: 10001;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
