@@ -10,8 +10,8 @@
 
 body.is-maintenance .maint-music-widget {
   display: flex;
-  bottom: 20px;
-  right: 90px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  right: calc(90px + env(safe-area-inset-right, 0px));
   top: auto;
   left: auto;
 }
@@ -103,8 +103,8 @@ body.is-maintenance .maint-music-widget.pinned .maint-music-panel {
 
 @media (max-width: 576px) {
   body.is-maintenance .maint-music-widget {
-    bottom: 16px;
-    right: 82px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    right: calc(82px + env(safe-area-inset-right, 0px));
   }
   .maint-music-panel {
     width: min(420px, calc(100vw - 40px));
