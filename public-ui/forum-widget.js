@@ -20,7 +20,7 @@
       const started = Date.now();
       const tick = () => {
         const m = window.firebaseModules;
-        if (m?.db && m?.auth && m?.collection && m?.addDoc && m?.serverTimestamp && m?.onSnapshot && m?.query) {
+        if (m?.db && m?.auth && m?.collection && m?.addDoc && m?.serverTimestamp && m?.onSnapshot && m?.query && m?.orderBy && m?.limit) {
           resolve(m);
           return;
         }
@@ -51,6 +51,15 @@
     currentUser: null,
     unsubscribe: null,
     stickBottom: true,
+  };
+
+  const stopListener = () => {
+    if (state.unsubscribe) {
+      try {
+        state.unsubscribe();
+      } catch {}
+      state.unsubscribe = null;
+    }
   };
 
   const setPinned = (pinned) => {
@@ -120,23 +129,35 @@
   const startListener = async () => {
     const { messages } = els();
     try {
-      const m = await waitForFirebase();
-      const { db, collection, query, where, orderBy, limit, onSnapshot } = m;
-      if (typeof where !== "function") return;
-
-      if (state.unsubscribe) {
-        try {
-          state.unsubscribe();
-        } catch {}
-        state.unsubscribe = null;
+      if (!state.currentUser) {
+        stopListener();
+        if (messages) {
+          messages.innerHTML =
+            '<div class="text-center text-secondary small">Login dulu untuk lihat chat.</div>';
+        }
+        return;
       }
+      const m = await waitForFirebase();
+      const { db, collection, query, orderBy, limit, onSnapshot } = m;
+
+      stopListener();
 
       const colRef = collection(db, "forum-messages");
-      const q = query(colRef, where("room", "==", "umum"), orderBy("timestamp", "desc"), limit(200));
+      const q = query(colRef, orderBy("timestamp", "desc"), limit(200));
       state.unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          const docs = Array.from(snapshot.docs || []).slice().reverse();
+          const docs = Array.from(snapshot.docs || [])
+            .filter((docSnap) => {
+              try {
+                const data = docSnap.data?.() || {};
+                return String(data.room || "umum") === "umum";
+              } catch {
+                return false;
+              }
+            })
+            .slice()
+            .reverse();
           render(docs);
         },
         () => {
@@ -243,10 +264,11 @@
       onAuthStateChanged(auth, (user) => {
         state.currentUser = user || null;
         setLoginState(Boolean(state.currentUser));
-        startListener().catch(() => {});
+        if (state.currentUser) startListener().catch(() => {});
+        else stopListener();
       });
       setLoginState(Boolean(auth.currentUser));
-      startListener().catch(() => {});
+      if (auth.currentUser) startListener().catch(() => {});
     } catch {
       setLoginState(false);
     }
