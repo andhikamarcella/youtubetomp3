@@ -62,19 +62,19 @@
     }
   };
 
-  const setPinned = (pinned) => {
-    const { widget, toggle, status } = els();
+  const setOpen = (open) => {
+    const { widget, toggle, status, panel } = els();
     if (!widget) return;
-    widget.classList.toggle("pinned", Boolean(pinned));
+    widget.classList.toggle("open", Boolean(open));
+    if (panel) panel.hidden = !Boolean(open);
     if (toggle) {
-      toggle.setAttribute("aria-expanded", pinned ? "true" : "false");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.setAttribute("aria-label", open ? "Tutup forum" : "Buka forum");
       const statusEl = status || document.getElementById("forumWidgetStatus");
-      toggle.innerHTML = pinned
-        ? '<i class="bi bi-x-lg"></i> Tutup'
-        : '<i class="bi bi-chat-dots-fill"></i> Forum';
+      toggle.innerHTML = open ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-chat-dots-fill"></i>';
       if (statusEl) {
         statusEl.hidden = !Boolean(state.currentUser);
-        statusEl.className = "badge text-bg-success ms-1";
+        statusEl.className = "badge text-bg-success";
         statusEl.id = "forumWidgetStatus";
         toggle.appendChild(statusEl);
       }
@@ -277,11 +277,15 @@
   window.toggleForumWidget = (forceOpen = null) => {
     const { widget, input } = els();
     if (!widget) return;
-    const shouldPin = forceOpen === null ? !widget.classList.contains("pinned") : Boolean(forceOpen);
-    setPinned(shouldPin);
-    if (shouldPin) {
-      init().catch(() => {});
+    const shouldOpen = forceOpen === null ? !widget.classList.contains("open") : Boolean(forceOpen);
+    setOpen(shouldOpen);
+    if (shouldOpen) {
+      init().catch(() => {}).finally(() => {
+        if (state.currentUser) startListener().catch(() => {});
+      });
       if (input && !input.disabled) input.focus();
+    } else {
+      stopListener();
     }
   };
 
@@ -290,7 +294,15 @@
   document.addEventListener("DOMContentLoaded", () => {
     const { toggle, widget } = els();
     if (toggle) toggle.addEventListener("click", () => window.toggleForumWidget());
-    if (widget) widget.addEventListener("pointerenter", () => init().catch(() => {}), { once: true });
+    window.toggleForumWidget(false);
+    document.addEventListener("click", (e) => {
+      const w = els().widget;
+      if (!w) return;
+      if (!w.classList.contains("open")) return;
+      const target = e.target;
+      if (target && w.contains(target)) return;
+      window.toggleForumWidget(false);
+    });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") window.toggleForumWidget(false);
     });
