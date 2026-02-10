@@ -212,10 +212,10 @@
 
   window.toggleForumWidget = (forceOpen = null) => {
     const { panel, toggle, input } = els();
-    if (!panel || !toggle) return;
+    if (!panel) return;
     const shouldOpen = forceOpen === null ? panel.hidden : Boolean(forceOpen);
     panel.hidden = !shouldOpen;
-    toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    if (toggle) toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
     if (shouldOpen) {
       init().catch(() => {});
       if (input && !input.disabled) input.focus();
