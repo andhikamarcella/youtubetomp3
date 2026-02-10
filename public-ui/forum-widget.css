@@ -289,7 +289,7 @@ body.maintenance-widgets .forum-widget-toggle .badge {
   body.is-maintenance .forum-widget,
   body.maintenance-widgets .forum-widget {
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    right: calc(148px + env(safe-area-inset-right, 0px));
+    right: calc(140px + env(safe-area-inset-right, 0px));
     left: auto;
     max-width: calc(100vw - 32px);
   }
@@ -298,6 +298,21 @@ body.maintenance-widgets .forum-widget-toggle .badge {
   body.maintenance-widgets .forum-widget-panel {
     width: calc(100vw - 32px);
     max-height: min(520px, calc(100vh - 130px));
+  }
+
+  body.is-maintenance .forum-widget-toggle,
+  body.maintenance-widgets .forum-widget-toggle {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+
+  body.is-maintenance .forum-widget-toggle .badge,
+  body.maintenance-widgets .forum-widget-toggle .badge {
+    top: 8px;
+    right: 8px;
+    width: 9px;
+    height: 9px;
   }
 }
 
