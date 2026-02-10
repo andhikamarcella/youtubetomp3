@@ -1,6 +1,6 @@
 .maint-music-widget {
   position: fixed;
-  z-index: 20000;
+  z-index: 21000;
   display: none;
   flex-direction: column;
   align-items: flex-end;
@@ -8,8 +8,9 @@
   max-width: min(420px, 92vw);
 }
 
-body.is-maintenance .maint-music-widget {
-  display: flex;
+body.is-maintenance .maint-music-widget,
+body.maintenance-widgets .maint-music-widget {
+  display: flex !important;
   bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   right: calc(90px + env(safe-area-inset-right, 0px));
   top: auto;
@@ -55,8 +56,12 @@ body.is-maintenance .maint-music-widget {
   transition: transform .18s ease, opacity .18s ease, visibility .18s ease;
 }
 
-body.is-maintenance .maint-music-widget:hover .maint-music-panel,
-body.is-maintenance .maint-music-widget.pinned .maint-music-panel {
+.maint-music-panel[hidden] {
+  display: none !important;
+}
+
+body.is-maintenance .maint-music-widget.open .maint-music-panel,
+body.maintenance-widgets .maint-music-widget.open .maint-music-panel {
   transform: scale(1);
   opacity: 1;
   visibility: visible;
@@ -88,6 +93,21 @@ body.is-maintenance .maint-music-widget.pinned .maint-music-panel {
   color: #111827;
 }
 
+.maint-music-header .btn-close {
+  opacity: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background-color: rgba(0,0,0,0.06);
+  padding: 0;
+}
+
+body.is-maintenance .maint-music-widget.open .maint-music-toggle,
+body.maintenance-widgets .maint-music-widget.open .maint-music-toggle {
+  background: var(--maint-accent, #fd7e14);
+  color: #fff;
+}
+
 .maint-music-body {
   padding: 1rem;
   display: grid;
@@ -102,9 +122,10 @@ body.is-maintenance .maint-music-widget.pinned .maint-music-panel {
 }
 
 @media (max-width: 576px) {
-  body.is-maintenance .maint-music-widget {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    right: calc(82px + env(safe-area-inset-right, 0px));
+  body.is-maintenance .maint-music-widget,
+  body.maintenance-widgets .maint-music-widget {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    right: calc(16px + env(safe-area-inset-right, 0px));
   }
   .maint-music-panel {
     width: min(420px, calc(100vw - 40px));
