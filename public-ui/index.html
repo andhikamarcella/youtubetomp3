@@ -5471,7 +5471,7 @@
                   const renderItem = (status, title, sub) => {
                       const safeTitle = String(title || '');
                       const safeSub = String(sub || '');
-                      return `<li><span class="dot ${status}"></span><div><div class="fw-semibold">${safeTitle}</div>${safeSub ? `<div class="small" style="color:#6c757d !important;">${safeSub}</div>` : ''}</div></li>`;
+                      return `<li><span class="dot ${status}"></span><div><div class="fw-semibold">${safeTitle}</div>${safeSub ? `<div class="small maint-muted">${safeSub}</div>` : ''}</div></li>`;
                   };
                   if (steps && steps.length) {
                       stepsEl.innerHTML = steps
@@ -5886,79 +5886,20 @@
           if (!overlay || overlay.hidden) return;
           const launcher = document.getElementById('maintChatLauncher');
           const openBtn = document.getElementById('maintChatLauncherOpen');
-          const prev = document.getElementById('maintChatLauncherPrev');
-          const next = document.getElementById('maintChatLauncherNext');
-          const dotsWrap = document.getElementById('maintChatLauncherDots');
           const drawer = document.getElementById('maintChatDrawer');
           const backdrop = document.getElementById('maintChatDrawerBackdrop');
           const closeBtn = document.getElementById('maintChatDrawerClose');
-          const roomTrack = document.getElementById('maintChatRoomTrack');
-          if (!launcher || !openBtn || !prev || !next || !dotsWrap || !drawer || !roomTrack) return;
+          if (!launcher || !openBtn || !drawer) return;
           if (launcher.dataset.ready === '1') return;
           launcher.dataset.ready = '1';
-
-          const rooms = () => Array.from(roomTrack.querySelectorAll('.maint-chat-room-btn'));
-
-          const setDots = () => {
-              const list = rooms();
-              const activeIdx = Math.max(0, list.findIndex((b) => b.classList.contains('active')));
-              dotsWrap.innerHTML = list
-                .map((_, i) => `<span class="maint-chat-launcher-dot${i === activeIdx ? ' active' : ''}" data-i="${i}"></span>`)
-                .join('');
-              prev.disabled = activeIdx === 0;
-              next.disabled = activeIdx === list.length - 1;
-          };
-
-          const setActiveIdx = (idx) => {
-              const list = rooms();
-              if (!list.length) return;
-              const safeIdx = Math.max(0, Math.min(list.length - 1, Number(idx) || 0));
-              const btn = list[safeIdx];
-              const room = btn?.dataset?.room || 'umum';
-              const label = (btn?.textContent || 'Chat').trim();
-              document.dispatchEvent(new CustomEvent('maint-chat-room-change', { detail: { room, label } }));
-              setDots();
-          };
 
           openBtn.addEventListener('click', () => window.toggleMaintenanceChatDrawer(true));
           if (backdrop) backdrop.addEventListener('click', () => window.toggleMaintenanceChatDrawer(false));
           if (closeBtn) closeBtn.addEventListener('click', () => window.toggleMaintenanceChatDrawer(false));
 
-          prev.addEventListener('click', () => {
-              const list = rooms();
-              const idx = list.findIndex((b) => b.classList.contains('active'));
-              setActiveIdx((idx < 0 ? 0 : idx) - 1);
-              window.toggleMaintenanceChatDrawer(true);
-          });
-          next.addEventListener('click', () => {
-              const list = rooms();
-              const idx = list.findIndex((b) => b.classList.contains('active'));
-              setActiveIdx((idx < 0 ? 0 : idx) + 1);
-              window.toggleMaintenanceChatDrawer(true);
-          });
-
-          dotsWrap.addEventListener('click', (e) => {
-              const t = e && e.target ? e.target : null;
-              const i = t && t.dataset ? Number(t.dataset.i) : NaN;
-              if (!Number.isFinite(i)) return;
-              setActiveIdx(i);
-              window.toggleMaintenanceChatDrawer(true);
-          });
-
-          rooms().forEach((btn, i) => {
-              btn.addEventListener('click', () => {
-                  setActiveIdx(i);
-              });
-          });
-
           document.addEventListener('keydown', (e) => {
               if (e.key === 'Escape' && !drawer.hidden) window.toggleMaintenanceChatDrawer(false);
           });
-
-          const onRoomChange = () => setDots();
-          document.addEventListener('maint-chat-room-change', onRoomChange);
-
-          setDots();
       } catch {}
   };
 
@@ -6346,6 +6287,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         border-color: rgba(255,255,255,0.08);
                         box-shadow: 0 20px 70px rgba(0,0,0,0.35);
                     }
+                    .maint-title { color: #111827; }
+                    .maint-muted { color: #6c757d; }
+                    #maintenanceOverlay.maint-night .maint-title { color: #e5e7eb !important; }
+                    #maintenanceOverlay.maint-night .maint-muted { color: rgba(229,231,235,0.78) !important; }
                     body.maintenance-overlay-active .forum-widget {
                         display: none !important;
                     }
@@ -6652,65 +6597,13 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         background: rgba(17, 24, 39, 0.72);
                         color: rgba(229,231,235,0.95);
                     }
-                    .maint-chat-launcher-nav {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 6px;
-                        padding: 6px 8px;
-                        border-radius: 999px;
-                        border: 1px solid rgba(0,0,0,0.08);
-                        background: rgba(255,255,255,0.82);
-                        box-shadow: 0 16px 34px rgba(15,23,42,.14);
-                    }
-                    #maintenanceOverlay.maint-night .maint-chat-launcher-nav {
-                        border-color: rgba(255,255,255,0.12);
-                        background: rgba(17, 24, 39, 0.68);
-                        color: rgba(229,231,235,0.95);
-                    }
-                    .maint-chat-launcher-mini {
-                        width: 34px;
-                        height: 34px;
-                        border-radius: 999px;
-                        border: 0;
-                        background: rgba(0,0,0,0.06);
-                        display: grid;
-                        place-items: center;
-                        cursor: pointer;
-                        color: inherit;
-                    }
-                    #maintenanceOverlay.maint-night .maint-chat-launcher-mini {
-                        background: rgba(255,255,255,0.10);
-                    }
-                    .maint-chat-launcher-dots {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 6px;
-                        padding: 6px 8px;
-                        border-radius: 999px;
-                        background: rgba(0,0,0,0.05);
-                    }
-                    #maintenanceOverlay.maint-night .maint-chat-launcher-dots {
-                        background: rgba(255,255,255,0.08);
-                    }
-                    .maint-chat-launcher-dot {
-                        width: 7px;
-                        height: 7px;
-                        border-radius: 999px;
-                        background: rgba(148,163,184,0.9);
-                    }
-                    .maint-chat-launcher-dot.active {
-                        background: var(--maintenance-accent, #fd7e14);
-                    }
                     @media (max-width: 576px) {
                         .maint-chat-launcher {
-                            top: auto;
-                            bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+                            top: 50%;
                             right: calc(12px + env(safe-area-inset-right, 0px));
-                            transform: none;
+                            transform: translateY(-50%);
                         }
                         .maint-chat-launcher-btn { padding: 9px 10px; font-size: 0.68rem; }
-                        .maint-chat-launcher-nav { padding: 5px 6px; }
-                        .maint-chat-launcher-mini { width: 32px; height: 32px; }
                     }
 
                     .maint-chat-drawer {
@@ -7334,67 +7227,60 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                            </div>
                            
                            <div class="maint-content-wrapper">
-                               <h1 class="h3 fw-bold mb-2" style="color: #212529 !important;">${title}</h1>
-                               <p class="mb-3" style="color: #6c757d !important;">${desc}</p>
+                               <h1 class="h3 fw-bold mb-2 maint-title">${title}</h1>
+                               <p class="mb-3 maint-muted">${desc}</p>
                                ${type === 'maintenance' ? '' : ''}
                                
                                <!-- Progress Section -->
                                <div class="text-start mb-3">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <small class="fw-bold" id="maintDetailDesc" style="font-size: 0.8rem; color: #6c757d !important;">${detailDesc}</small>
+                                        <small class="fw-bold maint-muted" id="maintDetailDesc" style="font-size: 0.8rem;">${detailDesc}</small>
                                         <small class="fw-bold" id="maintProgressPercent" style="color: ${colorMain}; font-size: 0.75rem;">${progressVal}%</small>
                                     </div>
                                     <div class="maint-progress">
                                         <div class="maint-progress-bar" id="maintProgressBar" style="width: ${progressVal}%"></div>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <small class="fw-semibold" style="font-size: 0.72rem; color: #6c757d !important;">Terakhir dicek</small>
+                                        <small class="fw-semibold maint-muted" style="font-size: 0.72rem;">Terakhir dicek</small>
                                         <small class="fw-bold font-monospace" id="maintHealthCheckAt" style="font-size: 0.72rem; color: ${colorMain};">--:--:--</small>
                                     </div>
-                                    <div class="small mt-1" id="maintConnWarn" style="color:#6c757d !important;"></div>
+                                    <div class="small mt-1 maint-muted" id="maintConnWarn"></div>
                                </div>
     
     
     
                                <div class="d-flex align-items-center justify-content-center gap-3 mb-3 p-2 rounded-3 maint-est-row" style="background: rgba(0,0,0,0.04);">
                                     <div class="text-start">
-                                        <small class="d-block text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: #6c757d !important;">Estimasi</small>
+                                        <small class="d-block text-uppercase fw-bold maint-muted" style="font-size: 0.65rem; letter-spacing: 1px;">Estimasi</small>
                                         <div class="d-flex align-items-baseline gap-2">
-                                            <span class="fw-bold font-monospace" id="maintEstNum" style="color: #212529 !important; font-size: 1.25rem; line-height: 1;">${estNum}</span>
-                                            <span class="fw-bold" id="maintEstUnit" style="color: #6c757d !important; font-size: 0.8rem;">${estUnit}</span>
+                                            <span class="fw-bold font-monospace maint-title" id="maintEstNum" style="font-size: 1.25rem; line-height: 1;">${estNum}</span>
+                                            <span class="fw-bold maint-muted" id="maintEstUnit" style="font-size: 0.8rem;">${estUnit}</span>
                                         </div>
-                                        <div class="small fw-semibold mt-1" style="color:#6c757d !important;">Selesai sekitar <span class="fw-bold font-monospace" id="maintEtaAt">--:--</span></div>
-                                        <div class="small mt-1" id="maintEtaNote" style="color:#6c757d !important;">Biasanya selesai lebih cepat kalau tidak ada kendala.</div>
+                                        <div class="small fw-semibold mt-1 maint-muted">Selesai sekitar <span class="fw-bold font-monospace" id="maintEtaAt">--:--</span></div>
+                                        <div class="small mt-1 maint-muted" id="maintEtaNote">Biasanya selesai lebih cepat kalau tidak ada kendala.</div>
                                     </div>
                                     <div class="vr mx-2 maint-est-sep"></div>
                                     <div class="text-end">
-                                         <small class="d-block text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: #6c757d !important;">Waktu</small>
+                                         <small class="d-block text-uppercase fw-bold maint-muted" style="font-size: 0.65rem; letter-spacing: 1px;">Waktu</small>
                                          <div id="maintenanceClock" class="fw-bold font-monospace" style="color: ${colorMain}; font-size: 0.9rem;">00:00:00</div>
                                     </div>
                                </div>
 
-                               <div class="maint-section" id="maintForumSection">
-                                   <div class="maint-section-title" style="margin-bottom: 8px;">
-                                     <span><i class="bi bi-chat-dots-fill me-2" style="color:${colorMain};"></i>Forum Chat</span>
-                                     <span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">klik tombol di kanan</span>
-                                   </div>
-                                   <div class="small" style="color:#6c757d !important;">Pilih room lewat tombol carousel di samping kanan, lalu chat besar akan muncul.</div>
-
                                    <div class="maint-section" style="margin-top: 12px;">
                                        <div class="maint-section-title"><span><i class="bi bi-heart-fill me-2" style="color:${colorMain};"></i>Terima kasih</span><span id="maintThemeNote" class="small fw-semibold" style="letter-spacing:0; text-transform:none;"></span></div>
-                                       <div class="small" style="color:#6c757d !important;">Terima kasih sudah menunggu. Kami tahu waktu kamu berharga, dan kami lagi fokus bikin layanan ini lebih stabil.</div>
+                                       <div class="small maint-muted">Terima kasih sudah menunggu. Kami tahu waktu kamu berharga, dan kami lagi fokus bikin layanan ini lebih stabil.</div>
                                        <div class="mt-3">
                                            <div class="maint-section-title"><span><i class="bi bi-shield-lock-fill me-2" style="color:${colorMain};"></i>Data Kamu</span></div>
-                                           <div class="small" style="color:#6c757d !important;"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
+                                           <div class="small maint-muted"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
                                        </div>
                                    </div>
 
                                    <div class="maint-section" style="margin-top: 12px;">
-                                       <div class="maint-section-title"><span><i class="bi bi-list-check me-2" style="color:${colorMain};"></i>Progress Detail</span><span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">lagi dikerjain</span></div>
+                                       <div class="maint-section-title"><span><i class="bi bi-list-check me-2" style="color:${colorMain};"></i>Progress Detail</span><span class="small fw-semibold maint-muted" style="letter-spacing:0; text-transform:none;">lagi dikerjain</span></div>
                                        <ul class="maint-mini-log" id="maintMiniLog">
-                                           <li><span class="dot done"></span><div><div class="fw-semibold">Database backup selesai</div><div class="small" style="color:#6c757d !important;">Amanin data & konfigurasi</div></div></li>
-                                           <li><span class="dot doing"></span><div><div class="fw-semibold">Optimasi server (berjalan)</div><div class="small" style="color:#6c757d !important;">Stabilitas & performa</div></div></li>
-                                           <li><span class="dot todo"></span><div><div class="fw-semibold">Deploy fitur baru (menunggu)</div><div class="small" style="color:#6c757d !important;">Update terakhir sebelum online</div></div></li>
+                                           <li><span class="dot done"></span><div><div class="fw-semibold">Database backup selesai</div><div class="small maint-muted">Amanin data & konfigurasi</div></div></li>
+                                           <li><span class="dot doing"></span><div><div class="fw-semibold">Optimasi server (berjalan)</div><div class="small maint-muted">Stabilitas & performa</div></div></li>
+                                           <li><span class="dot todo"></span><div><div class="fw-semibold">Deploy fitur baru (menunggu)</div><div class="small maint-muted">Update terakhir sebelum online</div></div></li>
                                        </ul>
                                    </div>
 
@@ -7414,13 +7300,12 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                            <span class="maint-badge"><span style="color:${colorMain};">●</span> Converter: Maintenance</span>
                                            <span class="maint-badge"><span style="color:#ef4444;">●</span> API YouTube: Rate limited</span>
                                        </div>
-                                       <div class="small mt-2" id="maintMetaLine" style="color:#6c757d !important;">Maintenance ID: <span class="fw-bold font-monospace" id="maintId">MT-000000</span> • Terakhir diperbarui: <span class="fw-bold font-monospace" id="maintLastUpdated">--:-- WIB</span></div>
+                                       <div class="small mt-2 maint-muted" id="maintMetaLine">Maintenance ID: <span class="fw-bold font-monospace" id="maintId">MT-000000</span> • Terakhir diperbarui: <span class="fw-bold font-monospace" id="maintLastUpdated">--:-- WIB</span></div>
                                        <div class="mt-3">
                                            <div class="maint-section-title"><span><i class="bi bi-lightbulb-fill me-2" style="color:${colorMain};"></i>Tips</span></div>
-                                           <div class="small" id="maintTipText" style="color:#6c757d !important;">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
+                                           <div class="small maint-muted" id="maintTipText">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
                                        </div>
                                    </div>
-                               </div>
                            </div>
 
                           <div class="maint-actions">
@@ -7441,8 +7326,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                        <i class="bi bi-clock me-2"></i>Cek lagi 5 menit
                                    </button>
                                </div>
-                               <div class="small mt-1" style="color:#6c757d !important;">Waktu ditampilkan sesuai zona waktu kamu. Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
-                               <div class="small mt-1" style="color:#6c757d !important;">Ada kendala? hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
+                               <div class="small mt-1 maint-muted">Waktu ditampilkan sesuai zona waktu kamu. Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
+                               <div class="small mt-1 maint-muted">Ada kendala? hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
                            </div>
                       </div>
 
@@ -7451,11 +7336,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                           <i class="bi bi-chat-dots-fill" style="color:${colorMain};"></i>
                           <span>Forum Chat</span>
                         </button>
-                        <div class="maint-chat-launcher-nav" aria-label="Navigasi room chat">
-                          <button type="button" class="maint-chat-launcher-mini" id="maintChatLauncherPrev" aria-label="Room sebelumnya"><i class="bi bi-chevron-left"></i></button>
-                          <div class="maint-chat-launcher-dots" id="maintChatLauncherDots" aria-label="Indikator room"></div>
-                          <button type="button" class="maint-chat-launcher-mini" id="maintChatLauncherNext" aria-label="Room berikutnya"><i class="bi bi-chevron-right"></i></button>
-                        </div>
                       </div>
 
                       <div class="maint-chat-drawer" id="maintChatDrawer" hidden>
@@ -7474,7 +7354,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                             </div>
                             <div class="maint-section-title" style="margin-bottom: 6px;">
                               <span><i class="bi bi-chat-square-text-fill me-2" style="color:${colorMain};"></i><span id="maintChatRoomName">Chat Umum</span></span>
-                              <span class="small fw-semibold" id="maintChatRoomLabel" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">room: umum</span>
+                              <span class="small fw-semibold maint-muted" id="maintChatRoomLabel" style="letter-spacing:0; text-transform:none;">room: umum</span>
                             </div>
 
                             <div class="maint-chat-box">
