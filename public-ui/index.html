@@ -5273,7 +5273,6 @@
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-warning text-dark border ms-2';
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
-                  try { window.initForumWidget && window.initForumWidget(); } catch {}
                   try { window.startMaintenanceHealthPoll && window.startMaintenanceHealthPoll(); } catch {}
                   return;
               }
@@ -5305,7 +5304,6 @@
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
                   try { window.applyMaintenanceHealth && window.applyMaintenanceHealth(data); } catch {}
-                  try { window.initForumWidget && window.initForumWidget(); } catch {}
                   try { window.startMaintenanceHealthPoll && window.startMaintenanceHealthPoll(); } catch {}
               } else {
                   // Online
@@ -5742,6 +5740,300 @@
       }
   };
 
+  window.initMaintenanceCarousel = function() {
+      try {
+          const track = document.getElementById('maintCarouselTrack');
+          const dotsWrap = document.getElementById('maintCarouselDots');
+          const prev = document.getElementById('maintCarouselPrev');
+          const next = document.getElementById('maintCarouselNext');
+          const sidePrev = document.getElementById('maintSidePrev');
+          const sideNext = document.getElementById('maintSideNext');
+          if (!track || !dotsWrap || !prev || !next) return;
+          const slides = Array.from(track.querySelectorAll('.maint-carousel-slide'));
+          if (!slides.length) return;
+
+          if (!dotsWrap.dataset.ready) {
+              dotsWrap.innerHTML = slides.map((_, i) => `<span class="maint-carousel-dot${i === 0 ? ' active' : ''}" data-i="${i}"></span>`).join('');
+              dotsWrap.dataset.ready = '1';
+              dotsWrap.addEventListener('click', (e) => {
+                  const t = e && e.target ? e.target : null;
+                  const i = t && t.dataset ? Number(t.dataset.i) : NaN;
+                  if (!Number.isFinite(i)) return;
+                  const x = slides[i].offsetLeft;
+                  track.scrollTo({ left: x, behavior: 'smooth' });
+              });
+          }
+
+          const setActive = () => {
+              const left = track.scrollLeft;
+              let best = 0;
+              let bestDist = Infinity;
+              slides.forEach((s, i) => {
+                  const d = Math.abs(s.offsetLeft - left);
+                  if (d < bestDist) { bestDist = d; best = i; }
+              });
+              const dots = Array.from(dotsWrap.querySelectorAll('.maint-carousel-dot'));
+              dots.forEach((d, i) => d.classList.toggle('active', i === best));
+              prev.disabled = best === 0;
+              next.disabled = best === slides.length - 1;
+          };
+
+          const go = (dir) => {
+              setActive();
+              const dots = Array.from(dotsWrap.querySelectorAll('.maint-carousel-dot'));
+              const current = dots.findIndex((d) => d.classList.contains('active'));
+              const idx = Math.max(0, Math.min(slides.length - 1, (current < 0 ? 0 : current) + dir));
+              const x = slides[idx].offsetLeft;
+              track.scrollTo({ left: x, behavior: 'smooth' });
+              window.setTimeout(setActive, 240);
+          };
+
+          prev.onclick = () => go(-1);
+          next.onclick = () => go(1);
+          if (sidePrev) sidePrev.onclick = () => go(-1);
+          if (sideNext) sideNext.onclick = () => go(1);
+          track.addEventListener('scroll', () => {
+              window.clearTimeout(track.__t);
+              track.__t = window.setTimeout(setActive, 80);
+          }, { passive: true });
+          window.addEventListener('resize', () => window.setTimeout(setActive, 100), { passive: true });
+          setActive();
+      } catch {}
+  };
+
+  window.destroyMaintenanceForumChat = function() {
+      const st = window.__maintForumChatState;
+      if (!st) return;
+      try { st.unsubscribe && st.unsubscribe(); } catch {}
+      try { st.authUnsub && st.authUnsub(); } catch {}
+      delete window.__maintForumChatState;
+  };
+
+  window.initMaintenanceForumChat = function() {
+      try {
+          const overlay = document.getElementById('maintenanceOverlay');
+          if (!overlay || overlay.hidden) return;
+          const messages = document.getElementById('maintChatMessages');
+          const input = document.getElementById('maintChatInput');
+          const send = document.getElementById('maintChatSend');
+          const loginOverlay = document.getElementById('maintChatLogin');
+          const loginBtn = document.getElementById('maintChatLoginBtn');
+          const status = document.getElementById('maintChatStatus');
+          if (!messages || !input || !send || !loginOverlay || !loginBtn) return;
+
+          if (window.__maintForumChatState?.inited) return;
+          const state = {
+              inited: true,
+              currentUser: null,
+              unsubscribe: null,
+              authUnsub: null,
+              stickBottom: true,
+          };
+          window.__maintForumChatState = state;
+
+          const safeText = (v) =>
+            String(v ?? "")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
+
+          const fmtTime = (ts) => {
+              try {
+                  const ms = ts?.toMillis?.() ? ts.toMillis() : 0;
+                  if (!ms) return "";
+                  return new Date(ms).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+              } catch {
+                  return "";
+              }
+          };
+
+          const waitForFirebase = ({ timeoutMs = 15000 } = {}) =>
+              new Promise((resolve, reject) => {
+                  const started = Date.now();
+                  const tick = () => {
+                      const m = window.firebaseModules;
+                      if (m?.db && m?.auth && m?.collection && m?.addDoc && m?.serverTimestamp && m?.onSnapshot && m?.query && m?.orderBy && m?.limit && m?.onAuthStateChanged && (m?.signInWithPopup || m?.signInWithRedirect) && m?.GoogleAuthProvider) {
+                          resolve(m);
+                          return;
+                      }
+                      if (Date.now() - started > timeoutMs) {
+                          reject(new Error("Firebase belum siap"));
+                          return;
+                      }
+                      setTimeout(tick, 250);
+                  };
+                  tick();
+              });
+
+          const setLoginState = (loggedIn) => {
+              loginOverlay.hidden = loggedIn;
+              input.disabled = !loggedIn;
+              send.disabled = !loggedIn;
+              if (status) {
+                  status.hidden = !loggedIn;
+                  if (loggedIn) status.textContent = 'Online';
+              }
+          };
+
+          const scrollToBottom = () => {
+              messages.scrollTop = messages.scrollHeight;
+          };
+
+          const render = (docs) => {
+              const atBottom =
+                Math.abs(messages.scrollTop + messages.clientHeight - messages.scrollHeight) < 24;
+              state.stickBottom = atBottom || state.stickBottom;
+              const html = docs
+                .map((docSnap) => {
+                    const data = docSnap.data?.() || {};
+                    const uid = String(data.uid || "");
+                    const me = state.currentUser && uid && uid === state.currentUser.uid;
+                    const name = safeText(data.name || "Warga");
+                    const text = safeText(data.text || "");
+                    const time = safeText(fmtTime(data.timestamp));
+                    return `
+                      <div class="maint-chat-msg ${me ? "me" : "other"}">
+                        <div class="maint-chat-bubble">
+                          <div class="small fw-semibold">${name}</div>
+                          <div>${text}</div>
+                          <div class="maint-chat-meta"><span>${time}</span></div>
+                        </div>
+                      </div>
+                    `;
+                })
+                .join("");
+              messages.innerHTML = html || '<div class="text-center text-secondary small">Belum ada chat. Mulai duluan ya.</div>';
+              if (state.stickBottom) scrollToBottom();
+          };
+
+          const stopListener = () => {
+              if (state.unsubscribe) {
+                  try { state.unsubscribe(); } catch {}
+                  state.unsubscribe = null;
+              }
+          };
+
+          const startListener = async () => {
+              try {
+                  if (!state.currentUser) {
+                      stopListener();
+                      messages.innerHTML = '<div class="text-center text-secondary small">Login dulu untuk lihat chat.</div>';
+                      return;
+                  }
+                  const m = await waitForFirebase();
+                  const { db, collection, query, orderBy, limit, onSnapshot } = m;
+                  stopListener();
+                  const colRef = collection(db, "forum-messages");
+                  const q = query(colRef, orderBy("timestamp", "desc"), limit(120));
+                  state.unsubscribe = onSnapshot(
+                    q,
+                    (snapshot) => {
+                        const docs = Array.from(snapshot.docs || [])
+                          .filter((docSnap) => {
+                              try {
+                                  const data = docSnap.data?.() || {};
+                                  return String(data.room || "umum") === "umum";
+                              } catch {
+                                  return false;
+                              }
+                          })
+                          .slice()
+                          .reverse();
+                        render(docs);
+                    },
+                    () => {
+                        messages.innerHTML = '<div class="text-center text-danger small">Gagal memuat chat. Coba refresh.</div>';
+                    }
+                  );
+              } catch (err) {
+                  const msg = safeText(String(err?.message || "Gagal memuat chat."));
+                  messages.innerHTML = `<div class="text-center text-danger small">${msg}</div>`;
+              }
+          };
+
+          const sendMessage = async () => {
+              const text = input.value.trim();
+              if (!text) return;
+              if (!state.currentUser) {
+                  setLoginState(false);
+                  if (typeof window.setToast === "function") window.setToast("Login dulu untuk kirim chat.", "warning");
+                  return;
+              }
+              send.disabled = true;
+              try {
+                  const m = await waitForFirebase();
+                  const { db, collection, addDoc, serverTimestamp } = m;
+                  await addDoc(collection(db, "forum-messages"), {
+                      text,
+                      uid: state.currentUser.uid,
+                      name: state.currentUser.displayName || "Warga",
+                      timestamp: serverTimestamp(),
+                      room: "umum",
+                  });
+                  input.value = "";
+                  state.stickBottom = true;
+                  scrollToBottom();
+              } catch (err) {
+                  const msg = String(err?.message || "Gagal kirim chat.");
+                  if (typeof window.setToast === "function") window.setToast(msg, "danger");
+              } finally {
+                  send.disabled = false;
+              }
+          };
+
+          send.addEventListener('click', sendMessage);
+          input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+              }
+          });
+          messages.addEventListener('scroll', () => {
+              const atBottom =
+                Math.abs(messages.scrollTop + messages.clientHeight - messages.scrollHeight) < 24;
+              state.stickBottom = atBottom;
+          });
+
+          loginBtn.addEventListener('click', async () => {
+              try {
+                  const m = await waitForFirebase();
+                  const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = m;
+                  loginBtn.disabled = true;
+                  loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
+                  const provider = new GoogleAuthProvider();
+                  provider.setCustomParameters({ prompt: 'select_account' });
+                  try {
+                      await signInWithPopup(auth, provider);
+                  } catch {
+                      await signInWithRedirect(auth, provider);
+                  }
+              } catch {
+                  if (typeof window.setToast === 'function') window.setToast('Login gagal.', 'danger');
+              } finally {
+                  loginBtn.disabled = false;
+                  loginBtn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="G" class="me-2">Masuk dengan Google';
+              }
+          });
+
+          waitForFirebase().then((m) => {
+              const { auth, onAuthStateChanged } = m;
+              state.authUnsub = onAuthStateChanged(auth, (user) => {
+                  state.currentUser = user || null;
+                  setLoginState(Boolean(state.currentUser));
+                  if (state.currentUser) startListener().catch(() => {});
+                  else stopListener();
+              });
+              setLoginState(Boolean(auth.currentUser));
+              if (auth.currentUser) {
+                  state.currentUser = auth.currentUser;
+                  startListener().catch(() => {});
+              }
+          }).catch(() => {
+              setLoginState(false);
+          });
+      } catch {}
+  };
+
 function showMaintenanceOverlay(show, type = 'maintenance') {
       let overlay = document.getElementById('maintenanceOverlay');
       if (!overlay && show) {
@@ -5765,6 +6057,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               document.documentElement.style.removeProperty('--maintenance-accent');
               document.documentElement.style.removeProperty('--maint-accent');
               try { window.destroyMaintenanceRadio && window.destroyMaintenanceRadio(); } catch {}
+              try { window.destroyMaintenanceForumChat && window.destroyMaintenanceForumChat(); } catch {}
           }
           if(show) {
               // Check if already showing same type to avoid reset
@@ -5861,7 +6154,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         width: 100%; height: 100%;
                         background: ${bgGradient};
                         display: flex; align-items: center; justify-content: center;
-                        padding: 1rem;
+                        padding: 1rem 1rem calc(1rem + 86px + env(safe-area-inset-bottom, 0px));
                         box-sizing: border-box;
                     }
                     .maint-card {
@@ -5880,12 +6173,28 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         color: #212529;
                         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
                         display: flex; flex-direction: column;
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(17,24,39,0.22) transparent;
+                        overscroll-behavior: contain;
                     }
+                    #maintenanceOverlay.maint-night .maint-card { scrollbar-color: rgba(229,231,235,0.22) transparent; }
+                    .maint-card::-webkit-scrollbar { width: 8px; height: 8px; }
+                    .maint-card::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.18); border-radius: 999px; }
+                    #maintenanceOverlay.maint-night .maint-card::-webkit-scrollbar-thumb { background: rgba(229,231,235,0.18); }
+                    .maint-card::-webkit-scrollbar-track { background: transparent; }
                     .maint-content-wrapper {
                         flex: 1;
                         overflow-y: auto;
                         margin-bottom: 1rem;
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(17,24,39,0.18) transparent;
+                        overscroll-behavior: contain;
                     }
+                    #maintenanceOverlay.maint-night .maint-content-wrapper { scrollbar-color: rgba(229,231,235,0.18) transparent; }
+                    .maint-content-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+                    .maint-content-wrapper::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.14); border-radius: 999px; }
+                    #maintenanceOverlay.maint-night .maint-content-wrapper::-webkit-scrollbar-thumb { background: rgba(229,231,235,0.14); }
+                    .maint-content-wrapper::-webkit-scrollbar-track { background: transparent; }
                     .maint-section {
                         text-align: left;
                         background: rgba(0,0,0,0.035);
@@ -5909,6 +6218,141 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         text-transform: uppercase;
                         margin-bottom: 8px;
                     }
+                    .maint-carousel {
+                        margin-top: 12px;
+                    }
+                    .maint-carousel-head {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 10px;
+                        margin-bottom: 10px;
+                    }
+                    .maint-carousel-head .title {
+                        font-weight: 950;
+                        letter-spacing: 0.06em;
+                        text-transform: uppercase;
+                        font-size: 0.8rem;
+                    }
+                    .maint-carousel-nav {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    .maint-carousel-btn {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: 12px;
+                        border: 1px solid rgba(0,0,0,0.08);
+                        background: rgba(255,255,255,0.75);
+                        display: inline-grid;
+                        place-items: center;
+                        cursor: pointer;
+                        box-shadow: 0 10px 26px rgba(15,23,42,.10);
+                    }
+                    #maintenanceOverlay.maint-night .maint-carousel-btn {
+                        border-color: rgba(255,255,255,0.12);
+                        background: rgba(255,255,255,0.10);
+                        color: #e5e7eb;
+                    }
+                    .maint-carousel-btn:active { filter: brightness(0.98); }
+                    #maintCarouselPrev,
+                    #maintCarouselNext {
+                        position: static;
+                        transform: none;
+                    }
+                    .maint-stage {
+                        position: relative;
+                        width: min(560px, 100%);
+                        display: grid;
+                        place-items: center;
+                    }
+                    .maint-side-btn {
+                        position: absolute;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 46px;
+                        height: 46px;
+                        border-radius: 999px;
+                        border: 1px solid rgba(0,0,0,0.08);
+                        background: rgba(255,255,255,0.85);
+                        backdrop-filter: blur(10px);
+                        display: grid;
+                        place-items: center;
+                        box-shadow: 0 18px 40px rgba(15,23,42,.16);
+                        cursor: pointer;
+                        z-index: 5;
+                        color: #111827;
+                    }
+                    #maintenanceOverlay.maint-night .maint-side-btn {
+                        border-color: rgba(255,255,255,0.12);
+                        background: rgba(255,255,255,0.10);
+                        color: #e5e7eb;
+                    }
+                    .maint-side-btn:disabled {
+                        opacity: 0.45;
+                        cursor: default;
+                    }
+                    #maintSidePrev { left: -14px; }
+                    #maintSideNext { right: -14px; }
+                    @media (max-width: 576px) {
+                        #maintSidePrev,
+                        #maintSideNext { display: none; }
+                    }
+                    @media (min-width: 577px) {
+                        #maintCarouselPrev,
+                        #maintCarouselNext { display: none; }
+                    }
+                    .maint-carousel-dots {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 6px 10px;
+                        border-radius: 999px;
+                        border: 1px solid rgba(0,0,0,0.06);
+                        background: rgba(255,255,255,0.65);
+                    }
+                    #maintenanceOverlay.maint-night .maint-carousel-dots {
+                        border-color: rgba(255,255,255,0.10);
+                        background: rgba(255,255,255,0.08);
+                    }
+                    .maint-carousel-dot {
+                        width: 7px;
+                        height: 7px;
+                        border-radius: 999px;
+                        background: rgba(148,163,184,0.9);
+                    }
+                    .maint-carousel-dot.active {
+                        background: var(--maintenance-accent, #fd7e14);
+                    }
+                    .maint-carousel-track {
+                        display: flex;
+                        gap: 10px;
+                        overflow-x: auto;
+                        scroll-snap-type: x mandatory;
+                        scroll-behavior: smooth;
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(17,24,39,0.14) transparent;
+                        -webkit-overflow-scrolling: touch;
+                        padding-bottom: 2px;
+                    }
+                    #maintenanceOverlay.maint-night .maint-carousel-track { scrollbar-color: rgba(229,231,235,0.14) transparent; }
+                    .maint-carousel-track::-webkit-scrollbar { height: 6px; }
+                    .maint-carousel-track::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.12); border-radius: 999px; }
+                    #maintenanceOverlay.maint-night .maint-carousel-track::-webkit-scrollbar-thumb { background: rgba(229,231,235,0.12); }
+                    .maint-carousel-track::-webkit-scrollbar-track { background: transparent; }
+                    .maint-carousel-slide {
+                        flex: 0 0 100%;
+                        scroll-snap-align: start;
+                        background: rgba(0,0,0,0.02);
+                        border: 1px solid rgba(0,0,0,0.05);
+                        border-radius: 16px;
+                        padding: 12px 12px;
+                    }
+                    #maintenanceOverlay.maint-night .maint-carousel-slide {
+                        background: rgba(255,255,255,0.06);
+                        border-color: rgba(255,255,255,0.08);
+                    }
                     .maint-mini-log {
                         list-style: none;
                         padding: 0;
@@ -5921,6 +6365,98 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         display: flex;
                         align-items: flex-start;
                         gap: 8px;
+                    }
+                    .maint-chat-box {
+                        position: relative;
+                        border-radius: 16px;
+                        border: 1px solid rgba(0,0,0,0.06);
+                        background: rgba(255,255,255,0.75);
+                        overflow: hidden;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-box {
+                        border-color: rgba(255,255,255,0.10);
+                        background: rgba(255,255,255,0.08);
+                    }
+                    .maint-chat-messages {
+                        height: min(320px, 42vh);
+                        overflow-y: auto;
+                        padding: 12px;
+                        background: #e5ddd5;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(17,24,39,0.25) transparent;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-messages {
+                        background: #0a141f;
+                        scrollbar-color: rgba(229,231,235,0.25) transparent;
+                    }
+                    .maint-chat-messages::-webkit-scrollbar { width: 8px; }
+                    .maint-chat-messages::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.25); border-radius: 999px; }
+                    #maintenanceOverlay.maint-night .maint-chat-messages::-webkit-scrollbar-thumb { background: rgba(229,231,235,0.25); }
+                    .maint-chat-input {
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 10px;
+                        border-top: 1px solid rgba(0,0,0,0.06);
+                        background: rgba(255,255,255,0.90);
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-input {
+                        border-top-color: rgba(255,255,255,0.10);
+                        background: rgba(17, 24, 39, 0.60);
+                    }
+                    .maint-chat-input input { border-radius: 999px; }
+                    .maint-chat-login {
+                        position: absolute;
+                        inset: 0;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                        padding: 14px;
+                        background: rgba(0,0,0,0.55);
+                        backdrop-filter: blur(6px);
+                        color: #fff;
+                        text-align: center;
+                    }
+                    .maint-chat-msg { display: flex; max-width: 100%; }
+                    .maint-chat-msg.me { justify-content: flex-end; }
+                    .maint-chat-msg.other { justify-content: flex-start; }
+                    .maint-chat-bubble {
+                        max-width: 82%;
+                        padding: 10px 12px;
+                        border-radius: 14px;
+                        line-height: 1.35;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+                        word-break: break-word;
+                    }
+                    .maint-chat-msg.me .maint-chat-bubble {
+                        background: #dcf8c6;
+                        color: #111b21;
+                        border-bottom-right-radius: 6px;
+                    }
+                    .maint-chat-msg.other .maint-chat-bubble {
+                        background: #fff;
+                        color: #111b21;
+                        border-bottom-left-radius: 6px;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-msg.me .maint-chat-bubble {
+                        background: #005c4b;
+                        color: #e9edef;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-msg.other .maint-chat-bubble {
+                        background: #1f2c34;
+                        color: #e9edef;
+                    }
+                    .maint-chat-meta {
+                        margin-top: 4px;
+                        font-size: 0.7rem;
+                        opacity: 0.75;
+                        display: flex;
+                        justify-content: flex-end;
                     }
                     .maint-mini-log .dot {
                         width: 10px;
@@ -6208,8 +6744,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         z-index: 20000;
                         transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                     }
-                    .faq-float-btn:hover { transform: scale(1.1); }
-                    .faq-float-btn:active { transform: scale(0.95); }
+                    .faq-float-btn:hover { transform: none; }
+                    .faq-float-btn:active { transform: none; }
 
                     .faq-float-panel {
                         position: fixed; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); right: calc(20px + env(safe-area-inset-right, 0px));
@@ -6273,7 +6809,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         .maint-container {
                             padding: 0.75rem 0.5rem calc(0.75rem + 86px + env(safe-area-inset-bottom, 0px));
                             align-items: center;
-                            justify-content: flex-start;
+                            justify-content: center;
                         }
                         .maint-card {
                             padding: 1.5rem 1rem;
@@ -6303,10 +6839,30 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         }
                         .faq-item { font-size: 0.75rem; }
                         .faq-item i { font-size: 1rem !important; }
+                        .maint-actions {
+                            gap: 8px;
+                            margin-top: 10px;
+                        }
+                        .maint-actions-row {
+                            flex-wrap: nowrap;
+                            overflow-x: auto;
+                            -webkit-overflow-scrolling: touch;
+                            scrollbar-width: none;
+                            justify-content: flex-start;
+                        }
+                        .maint-actions-row::-webkit-scrollbar { height: 0; }
+                        .maint-actions-row .btn {
+                            flex: 0 0 auto;
+                            min-width: auto;
+                            white-space: nowrap;
+                        }
                     }
                   </style>
                   <div class="maint-container">
-                      <div class="maint-card">
+                      <div class="maint-stage">
+                          <button type="button" class="maint-side-btn" id="maintSidePrev" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+                          <button type="button" class="maint-side-btn" id="maintSideNext" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
+                          <div class="maint-card">
                            <div class="maint-icon-wrap">
                                 <i id="maintIcon" class="bi ${iconClass}"></i>
                            </div>
@@ -6351,47 +6907,76 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                     </div>
                                </div>
 
-                               <div class="maint-section" id="maintEmpathyBox">
-                                   <div class="maint-section-title"><span><i class="bi bi-heart-fill me-2" style="color:${colorMain};"></i>Terima kasih</span><span id="maintThemeNote" class="small fw-semibold" style="letter-spacing:0; text-transform:none;"></span></div>
-                                   <div class="small" style="color:#6c757d !important;">Terima kasih sudah menunggu. Kami tahu waktu kamu berharga, dan kami lagi fokus bikin layanan ini lebih stabil.</div>
-                               </div>
-
-                               <div class="maint-section" id="maintDataSafe">
-                                   <div class="maint-section-title"><span><i class="bi bi-shield-lock-fill me-2" style="color:${colorMain};"></i>Data Kamu</span></div>
-                                   <div class="small" style="color:#6c757d !important;"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
-                               </div>
-
-                               <div class="maint-section" id="maintMiniLogSection">
-                                   <div class="maint-section-title"><span><i class="bi bi-list-check me-2" style="color:${colorMain};"></i>Progress Detail</span><span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">lagi dikerjain</span></div>
-                                   <ul class="maint-mini-log" id="maintMiniLog">
-                                       <li><span class="dot done"></span><div><div class="fw-semibold">Database backup selesai</div><div class="small" style="color:#6c757d !important;">Amanin data & konfigurasi</div></div></li>
-                                       <li><span class="dot doing"></span><div><div class="fw-semibold">Optimasi server (berjalan)</div><div class="small" style="color:#6c757d !important;">Stabilitas & performa</div></div></li>
-                                       <li><span class="dot todo"></span><div><div class="fw-semibold">Deploy fitur baru (menunggu)</div><div class="small" style="color:#6c757d !important;">Update terakhir sebelum online</div></div></li>
-                                   </ul>
-                               </div>
-
-                               <div class="maint-section" id="maintWhatsNewSection">
-                                   <div class="maint-section-title"><span><i class="bi bi-stars me-2" style="color:${colorMain};"></i>Setelah Maintenance</span></div>
-                                   <ul class="maint-mini-log" id="maintWhatsNew">
-                                       <li><span class="dot done"></span><div class="fw-semibold">Download lebih cepat</div></li>
-                                       <li><span class="dot done"></span><div class="fw-semibold">Error converter dikurangi</div></li>
-                                       <li><span class="dot done"></span><div class="fw-semibold">Tampilan mobile lebih ringan</div></li>
-                                   </ul>
-                               </div>
-
-                               <div class="maint-section" id="maintServiceSection">
-                                   <div class="maint-section-title"><span><i class="bi bi-hdd-network-fill me-2" style="color:${colorMain};"></i>Status Server</span></div>
-                                   <div class="maint-badges" id="maintServices">
-                                       <span class="maint-badge"><span style="color:#22c55e;">●</span> Database: OK</span>
-                                       <span class="maint-badge"><span style="color:${colorMain};">●</span> Converter: Maintenance</span>
-                                       <span class="maint-badge"><span style="color:#ef4444;">●</span> API YouTube: Rate limited</span>
+                               <div class="maint-section maint-carousel" id="maintForumCarousel">
+                                   <div class="maint-carousel-head">
+                                       <div class="title"><i class="bi bi-chat-dots-fill me-2" style="color:${colorMain};"></i>Forum Warga</div>
+                                       <div class="maint-carousel-nav">
+                                           <button type="button" class="maint-carousel-btn" id="maintCarouselPrev" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+                                           <div class="maint-carousel-dots" id="maintCarouselDots" aria-label="Indikator"></div>
+                                           <button type="button" class="maint-carousel-btn" id="maintCarouselNext" aria-label="Berikutnya"><i class="bi bi-chevron-right"></i></button>
+                                       </div>
                                    </div>
-                                   <div class="small mt-2" id="maintMetaLine" style="color:#6c757d !important;">Maintenance ID: <span class="fw-bold font-monospace" id="maintId">MT-000000</span> • Terakhir diperbarui: <span class="fw-bold font-monospace" id="maintLastUpdated">--:-- WIB</span></div>
-                               </div>
-
-                               <div class="maint-section" id="maintTipSection">
-                                   <div class="maint-section-title"><span><i class="bi bi-lightbulb-fill me-2" style="color:${colorMain};"></i>Tips</span></div>
-                                   <div class="small" id="maintTipText" style="color:#6c757d !important;">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
+                                   <div class="maint-carousel-track" id="maintCarouselTrack">
+                                      <div class="maint-carousel-slide">
+                                          <div class="maint-section-title"><span><i class="bi bi-chat-square-text-fill me-2" style="color:${colorMain};"></i>Chat Umum</span><span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">room: umum</span></div>
+                                          <div class="maint-chat-box">
+                                              <div class="maint-chat-login" id="maintChatLogin" hidden>
+                                                  <div class="fw-bold">Login dulu untuk ikut chat</div>
+                                                  <button type="button" class="btn btn-light rounded-pill fw-bold px-4" id="maintChatLoginBtn">
+                                                      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="G" class="me-2">
+                                                      Masuk dengan Google
+                                                  </button>
+                                                  <div class="small opacity-75">Chat ini sama persis dengan Forum Warga (Umum)</div>
+                                              </div>
+                                              <div class="maint-chat-messages" id="maintChatMessages"></div>
+                                              <div class="maint-chat-input">
+                                                  <input type="text" class="form-control" id="maintChatInput" placeholder="Ketik pesan..." autocomplete="off">
+                                                  <button type="button" class="btn btn-primary rounded-circle" id="maintChatSend" style="width:42px;height:42px;display:grid;place-items:center;">
+                                                      <i class="bi bi-send-fill"></i>
+                                                  </button>
+                                                  <span class="badge text-bg-success" id="maintChatStatus" hidden></span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                       <div class="maint-carousel-slide">
+                                           <div class="maint-section-title"><span><i class="bi bi-heart-fill me-2" style="color:${colorMain};"></i>Terima kasih</span><span id="maintThemeNote" class="small fw-semibold" style="letter-spacing:0; text-transform:none;"></span></div>
+                                           <div class="small" style="color:#6c757d !important;">Terima kasih sudah menunggu. Kami tahu waktu kamu berharga, dan kami lagi fokus bikin layanan ini lebih stabil.</div>
+                                           <div class="mt-3">
+                                               <div class="maint-section-title"><span><i class="bi bi-shield-lock-fill me-2" style="color:${colorMain};"></i>Data Kamu</span></div>
+                                               <div class="small" style="color:#6c757d !important;"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
+                                           </div>
+                                       </div>
+                                       <div class="maint-carousel-slide">
+                                           <div class="maint-section-title"><span><i class="bi bi-list-check me-2" style="color:${colorMain};"></i>Progress Detail</span><span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">lagi dikerjain</span></div>
+                                           <ul class="maint-mini-log" id="maintMiniLog">
+                                               <li><span class="dot done"></span><div><div class="fw-semibold">Database backup selesai</div><div class="small" style="color:#6c757d !important;">Amanin data & konfigurasi</div></div></li>
+                                               <li><span class="dot doing"></span><div><div class="fw-semibold">Optimasi server (berjalan)</div><div class="small" style="color:#6c757d !important;">Stabilitas & performa</div></div></li>
+                                               <li><span class="dot todo"></span><div><div class="fw-semibold">Deploy fitur baru (menunggu)</div><div class="small" style="color:#6c757d !important;">Update terakhir sebelum online</div></div></li>
+                                           </ul>
+                                       </div>
+                                       <div class="maint-carousel-slide">
+                                           <div class="maint-section-title"><span><i class="bi bi-stars me-2" style="color:${colorMain};"></i>Setelah Maintenance</span></div>
+                                           <ul class="maint-mini-log" id="maintWhatsNew">
+                                               <li><span class="dot done"></span><div class="fw-semibold">Download lebih cepat</div></li>
+                                               <li><span class="dot done"></span><div class="fw-semibold">Error converter dikurangi</div></li>
+                                               <li><span class="dot done"></span><div class="fw-semibold">Tampilan mobile lebih ringan</div></li>
+                                           </ul>
+                                       </div>
+                                       <div class="maint-carousel-slide">
+                                           <div class="maint-section-title"><span><i class="bi bi-hdd-network-fill me-2" style="color:${colorMain};"></i>Status Server</span></div>
+                                           <div class="maint-badges" id="maintServices">
+                                               <span class="maint-badge"><span style="color:#22c55e;">●</span> Database: OK</span>
+                                               <span class="maint-badge"><span style="color:${colorMain};">●</span> Converter: Maintenance</span>
+                                               <span class="maint-badge"><span style="color:#ef4444;">●</span> API YouTube: Rate limited</span>
+                                           </div>
+                                           <div class="small mt-2" id="maintMetaLine" style="color:#6c757d !important;">Maintenance ID: <span class="fw-bold font-monospace" id="maintId">MT-000000</span> • Terakhir diperbarui: <span class="fw-bold font-monospace" id="maintLastUpdated">--:-- WIB</span></div>
+                                           <div class="mt-3">
+                                               <div class="maint-section-title"><span><i class="bi bi-lightbulb-fill me-2" style="color:${colorMain};"></i>Tips</span></div>
+                                               <div class="small" id="maintTipText" style="color:#6c757d !important;">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
+                                           </div>
+                                       </div>
+                                   </div>
+                                   <div class="small mt-2" style="color:#6c757d !important;">Geser untuk pindah slide. Bisa juga pakai tombol panah.</div>
                                </div>
                            </div>
 
@@ -6406,8 +6991,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                    <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold" onclick="window.enableOnlineNotify && window.enableOnlineNotify()">
                                        <i class="bi bi-bell-fill me-2"></i>Beri tahu saat online
                                    </button>
-                               </div>
-                               <div class="maint-actions-row">
                                    <a class="btn btn-outline-secondary rounded-pill fw-bold" href="./status.html" target="_blank" rel="noopener">
                                        <i class="bi bi-activity me-2"></i>Status Page
                                    </a>
@@ -6418,6 +7001,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <div class="small mt-1" style="color:#6c757d !important;">Waktu ditampilkan sesuai zona waktu kamu. Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
                                <div class="small mt-1" style="color:#6c757d !important;">Ada kendala? hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
                            </div>
+                          </div>
                       </div>
                       
                       <!-- Floating FAQ Widget -->
@@ -6487,10 +7071,13 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               if(window.maintClockInterval) clearInterval(window.maintClockInterval);
               window.maintClockInterval = setInterval(updateMaintClock, 1000);
               updateMaintClock();
+              try { window.initMaintenanceCarousel && window.initMaintenanceCarousel(); } catch {}
               if (type === 'maintenance') {
                   try { window.initMaintenanceRadio && window.initMaintenanceRadio(); } catch {}
+                  try { window.initMaintenanceForumChat && window.initMaintenanceForumChat(); } catch {}
               } else {
                   try { window.destroyMaintenanceRadio && window.destroyMaintenanceRadio(); } catch {}
+                  try { window.destroyMaintenanceForumChat && window.destroyMaintenanceForumChat(); } catch {}
               }
 
               }
