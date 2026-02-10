@@ -8,18 +8,23 @@
     :root {
       --accent: #fd7e14;
       --bg: #0b1220;
-      --card: rgba(17, 18, 22, 0.92);
+      --card: rgba(17, 24, 39, 0.92);
+      --card2: rgba(15, 23, 42, 0.78);
       --text: #e5e7eb;
       --muted: rgba(229,231,235,0.72);
       --border: rgba(255,255,255,0.10);
+      --shadow: 0 22px 70px rgba(0,0,0,0.38);
+      --radius: 18px;
     }
     @media (prefers-color-scheme: light) {
       :root {
         --bg: #f6f7fb;
         --card: rgba(255,255,255,0.98);
+        --card2: rgba(255,255,255,0.92);
         --text: #111827;
         --muted: rgba(17,24,39,0.62);
         --border: rgba(17,24,39,0.08);
+        --shadow: 0 20px 60px rgba(0,0,0,0.10);
       }
     }
     body {
@@ -30,25 +35,46 @@
                   var(--bg);
       color: var(--text);
     }
+    * { box-sizing: border-box; }
     .wrap {
-      max-width: 900px;
+      max-width: 1020px;
       margin: 0 auto;
-      padding: 18px 14px 28px;
+      padding: 14px 14px 28px;
     }
     .top {
-      display: flex;
-      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding: 10px 0 12px;
+      backdrop-filter: blur(10px);
+    }
+    .top-inner {
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
+    }
+    @media (min-width: 860px) {
+      .top-inner { grid-template-columns: 1.2fr 0.8fr; align-items: end; }
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-weight: 900;
+      font-weight: 950;
       letter-spacing: 0.02em;
+      font-size: 1.02rem;
+    }
+    .meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    @media (min-width: 860px) {
+      .meta { justify-content: flex-end; }
     }
     .dot {
       width: 10px;
@@ -60,51 +86,94 @@
     .dot.ok { background: #22c55e; }
     .dot.warn { background: #f59e0b; }
     .dot.bad { background: #ef4444; }
-    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    @media (max-width: 540px) {
+      .actions {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .actions::-webkit-scrollbar { display: none; }
+      .actions > * { flex: 0 0 auto; }
+    }
     button, a.btn {
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.06);
       color: var(--text);
-      padding: 10px 12px;
-      border-radius: 999px;
-      font-weight: 800;
+      padding: 11px 12px;
+      border-radius: 14px;
+      font-weight: 900;
       cursor: pointer;
       text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
     }
     button.primary {
       background: var(--accent);
       border-color: transparent;
       color: #111827;
     }
+    button:hover, a.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(0,0,0,0.18); }
+    button:active, a.btn:active { transform: translateY(0px) scale(0.98); }
+    button:focus-visible, a.btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
     .grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
     }
     @media (min-width: 860px) {
-      .grid { grid-template-columns: 1.2fr 0.8fr; }
+      .grid { grid-template-columns: 1.25fr 0.75fr; }
     }
     .card {
       border: 1px solid var(--border);
       background: var(--card);
-      border-radius: 18px;
+      border-radius: var(--radius);
       padding: 14px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow);
+      transform: translateY(0);
+      transition: transform 220ms ease, box-shadow 220ms ease;
     }
-    .title {
+    @media (hover: hover) and (pointer: fine) {
+      .card:hover { transform: translateY(-2px); box-shadow: 0 28px 90px rgba(0,0,0,0.44); }
+    }
+    .card-head {
       display: flex;
       gap: 10px;
-      align-items: baseline;
+      align-items: flex-start;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
-    .title h1 {
-      font-size: 1.1rem;
+    .card-head h1 {
+      font-size: 1.15rem;
       margin: 0;
       letter-spacing: 0.02em;
+      font-weight: 950;
     }
+    .card-sub { color: var(--muted); font-size: 0.92rem; }
     .muted { color: var(--muted); }
-    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -116,6 +185,41 @@
       font-weight: 800;
       font-size: 0.85rem;
     }
+    .section {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .section-title {
+      font-weight: 950;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+    }
+    .k { font-weight: 950; }
     .mini {
       display: grid;
       gap: 8px;
@@ -134,8 +238,9 @@
     }
     .mini .k { font-weight: 900; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .mono.break { word-break: break-word; overflow-wrap: anywhere; }
     .progress {
-      height: 10px;
+      height: 12px;
       border-radius: 999px;
       background: rgba(255,255,255,0.10);
       border: 1px solid var(--border);
@@ -157,47 +262,115 @@
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+    .skeleton {
+      height: 12px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+      background-size: 200% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+    @media (prefers-color-scheme: light) {
+      .skeleton {
+        background: linear-gradient(90deg, rgba(17,24,39,0.06), rgba(17,24,39,0.12), rgba(17,24,39,0.06));
+      }
+    }
+    .footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button, a.btn, .card, .bar, .skeleton { transition: none !important; animation: none !important; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="top">
-      <div class="brand"><span class="dot" id="overallDot"></span> Status Server</div>
-      <div class="btns">
-        <button class="primary" id="refreshBtn">Refresh</button>
-        <button id="copyBtn">Salin status</button>
-        <button id="notifyBtn">Beri tahu saat online</button>
-        <a class="btn" href="./" target="_blank" rel="noopener">Kembali</a>
+      <div class="top-inner">
+        <div>
+          <div class="brand"><span class="dot" id="overallDot"></span> Status Server</div>
+          <div class="meta">
+            <span class="pill"><span class="dot" id="netDot"></span><span id="netText">Mengecek koneksi...</span></span>
+            <span class="pill mono" id="updated">--:-- WIB</span>
+            <span class="pill mono" id="tz">TZ</span>
+          </div>
+          <div class="actions">
+            <button class="primary" id="refreshBtn">Refresh</button>
+            <button id="copyBtn">Salin status</button>
+            <button id="notifyBtn">Beri tahu saat online</button>
+            <button id="laterBtn">Cek lagi 5 menit</button>
+            <a class="btn" href="./" target="_blank" rel="noopener">Kembali</a>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="grid">
       <div class="card">
-        <div class="title">
-          <h1 id="headline">Memuat status...</h1>
-          <div class="muted mono" id="updated">--:-- WIB</div>
+        <div class="card-head">
+          <div>
+            <h1 id="headline">Memuat status...</h1>
+            <div class="card-sub" id="desc">Mengambil data dari /api/health.</div>
+          </div>
+          <div class="pill mono break" id="healthPath">/api/health</div>
         </div>
-        <div class="muted" id="desc">Mengambil data dari /api/health.</div>
         <div class="progress"><div class="bar" id="progressBar"></div></div>
-        <div class="badges" id="serviceBadges"></div>
+        <div class="badges" id="serviceBadges">
+          <div class="badge"><span class="dot"></span><span class="skeleton" style="width: 180px;"></span></div>
+          <div class="badge"><span class="dot"></span><span class="skeleton" style="width: 160px;"></span></div>
+        </div>
+
+        <div class="section" id="maintBlock" hidden>
+          <div class="section-title">
+            <span>Progress Detail</span>
+            <span class="mono break" id="maintId">MT-000000</span>
+          </div>
+          <ul class="list" id="maintSteps"></ul>
+          <div class="muted" id="etaHuman" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="section" id="whatsNewBlock" hidden>
+          <div class="section-title"><span>Setelah Maintenance</span><span class="muted">what’s new</span></div>
+          <ul class="list" id="whatsNew"></ul>
+        </div>
       </div>
 
       <div class="card">
-        <div class="title">
-          <h1>Detail</h1>
-          <div class="muted mono" id="tz"></div>
+        <div class="card-head">
+          <div>
+            <h1>Detail</h1>
+            <div class="card-sub">Ringkasan teknis yang gampang dipahami</div>
+          </div>
+          <div class="pill mono break" id="uptime">uptime</div>
         </div>
         <ul class="mini" id="detailList"></ul>
-        <div class="muted" style="margin-top:10px;">
-          Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).
+        <div class="section">
+          <div class="section-title"><span>Data Kamu</span><span class="muted">aman</span></div>
+          <div class="muted"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
+        </div>
+        <div class="section">
+          <div class="section-title"><span>Kontak Darurat</span><span class="muted">support</span></div>
+          <div class="muted">Kalau maintenance lama atau ada kendala, hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
         </div>
       </div>
+    </div>
+
+    <div class="footer">
+      <div>System version: <span class="mono" id="ver">v4.0 stable</span></div>
+      <div>Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
     </div>
   </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
     const state = { data: null };
+    const APP_VERSION = 'v4.0 stable';
+    try { $('ver').textContent = APP_VERSION; } catch {}
 
     const setDot = (cls) => {
       const d = $('overallDot');
@@ -222,18 +395,82 @@
       return '';
     };
 
+    const setNet = () => {
+      const netDot = $('netDot');
+      const netText = $('netText');
+      if (!netDot || !netText) return;
+      let warn = '';
+      try {
+        if (navigator && navigator.onLine === false) warn = 'Offline';
+      } catch {}
+      try {
+        const c = navigator && navigator.connection ? navigator.connection : null;
+        const et = c && typeof c.effectiveType === 'string' ? c.effectiveType : '';
+        const dl = c && typeof c.downlink === 'number' ? c.downlink : null;
+        if (!warn && (et === 'slow-2g' || et === '2g' || (dl != null && dl < 1.2))) warn = 'Koneksi tidak stabil';
+      } catch {}
+      if (warn) {
+        netDot.className = 'dot warn';
+        netText.textContent = warn;
+      } else {
+        netDot.className = 'dot ok';
+        netText.textContent = 'Koneksi OK';
+      }
+    };
+
+    const safeText = (v) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    const normalizeMaintId = (raw) => {
+      const s = String(raw ?? '').trim();
+      if (!s) return '';
+      const m = s.match(/MT-[0-9A-Za-z_-]{6,}/);
+      if (m && m[0]) return m[0];
+      return s.split(/\s+/)[0].slice(0, 40);
+    };
+
+    const renderSteps = (steps, pct) => {
+      const el = $('maintSteps');
+      if (!el) return;
+      const renderItem = (status, text, detail) => {
+        const s = status === 'done' || status === 'doing' || status === 'todo' ? status : 'todo';
+        const dotCls = s === 'done' ? 'ok' : (s === 'doing' ? 'warn' : '');
+        const dot = `<span class="dot ${dotCls}"></span>`;
+        return `<li>${dot}<div><div class="k">${safeText(text)}</div>${detail ? `<div class="muted">${safeText(detail)}</div>` : ''}</div></li>`;
+      };
+      if (Array.isArray(steps) && steps.length) {
+        el.innerHTML = steps.slice(0, 7).map((s) => renderItem(String(s?.status || 'todo'), s?.text || s?.title || 'Task', s?.detail || s?.sub || '')).join('');
+        return;
+      }
+      const p = Number.isFinite(Number(pct)) ? Number(pct) : 45;
+      const s1 = p >= 30 ? 'done' : 'doing';
+      const s2 = p >= 70 ? 'done' : (p >= 30 ? 'doing' : 'todo');
+      const s3 = p >= 100 ? 'done' : (p >= 70 ? 'doing' : 'todo');
+      el.innerHTML = [
+        renderItem(s1, 'Database backup', s1 === 'done' ? 'Selesai' : 'Berjalan'),
+        renderItem(s2, 'Optimasi server', s2 === 'done' ? 'Selesai' : (s2 === 'doing' ? 'Berjalan' : 'Menunggu')),
+        renderItem(s3, 'Deploy rilis baru', s3 === 'done' ? 'Selesai' : (s3 === 'doing' ? 'Berjalan' : 'Menunggu')),
+      ].join('');
+    };
+
+    const renderWhatsNew = (wn) => {
+      const el = $('whatsNew');
+      if (!el) return;
+      const items = Array.isArray(wn) && wn.length ? wn.slice(0, 7) : ['⚡ Download lebih cepat', '🧠 Error converter dikurangi', '📱 Tampilan mobile lebih ringan'];
+      el.innerHTML = items.map((t) => `<li><span class="dot ok"></span><div class="k">${safeText(t)}</div></li>`).join('');
+    };
+
     const render = (data) => {
       state.data = data;
       const now = Date.now();
       $('updated').textContent = toWib(now);
-      $('tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      $('tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Timezone';
+      setNet();
 
       const maint = Boolean(data && data.maintenance);
       if (maint) {
         setDot('warn');
         $('headline').textContent = 'Maintenance (sedang berlangsung)';
         const info = data.maintenanceInfo || {};
-        $('desc').textContent = String(info.description || 'Kami sedang meningkatkan stabilitas dan performa.');
+        $('desc').textContent = String(info.description || 'Kami lagi ngerapihin sistem biar layanan lebih cepat dan stabil.');
         const pct = Number.isFinite(Number(info.progress)) ? Math.max(0, Math.min(100, Number(info.progress))) : null;
         const bar = $('progressBar');
         if (pct == null) {
@@ -243,6 +480,24 @@
           bar.className = 'bar fill';
           bar.style.width = pct + '%';
         }
+
+        try { $('healthPath').textContent = String(data.healthcheckPath || '/api/health'); } catch {}
+        try { $('maintBlock').hidden = false; } catch {}
+        try { $('whatsNewBlock').hidden = false; } catch {}
+        try { $('maintId').textContent = normalizeMaintId(info.id || ('MT-' + new Date().toISOString().slice(0,10).replaceAll('-',''))); } catch {}
+        renderSteps(info.steps, pct);
+        renderWhatsNew(info.whatsNew);
+        try {
+          const eta = $('etaHuman');
+          if (eta) {
+            const endAtMs = Number.isFinite(Number(info.etaEndAt)) ? Number(info.etaEndAt) : null;
+            if (endAtMs) {
+              eta.textContent = `Estimasi selesai sekitar ${toWib(endAtMs)}. Biasanya selesai lebih cepat kalau tidak ada kendala.`;
+            } else {
+              eta.textContent = 'Kami usahakan online sebelum estimasi. Progress akan terus diperbarui.';
+            }
+          }
+        } catch {}
       } else {
         setDot('ok');
         $('headline').textContent = 'Online';
@@ -250,6 +505,9 @@
         const bar = $('progressBar');
         bar.className = 'bar fill';
         bar.style.width = '100%';
+        try { $('healthPath').textContent = String(data.healthcheckPath || '/api/health'); } catch {}
+        try { $('maintBlock').hidden = true; } catch {}
+        try { $('whatsNewBlock').hidden = true; } catch {}
       }
 
       const badges = $('serviceBadges');
@@ -264,6 +522,12 @@
         el.innerHTML = `<span class="dot ${dotCls}"></span><span>${it.name}: <span class="mono">${it.status}</span></span>`;
         badges.appendChild(el);
       });
+      if (!items || !items.length) {
+        const el = document.createElement('div');
+        el.className = 'badge';
+        el.innerHTML = `<span class="dot ${maint ? 'warn' : 'ok'}"></span><span>Server: <span class="mono">${maint ? 'Maintenance' : 'Online'}</span></span>`;
+        badges.appendChild(el);
+      }
 
       const list = $('detailList');
       const out = [];
@@ -271,12 +535,16 @@
       out.push(['Uptime', data && typeof data.uptime === 'number' ? Math.round(data.uptime) + 's' : '-']);
       out.push(['Start', data && data.startTime ? toWib(data.startTime) : '-']);
       if (maint) {
-        const id = info && info.id ? info.id : '';
+        const id = normalizeMaintId(info && info.id ? info.id : '');
         if (id) out.push(['Maintenance ID', id]);
         if (info && info.detail) out.push(['Status', info.detail]);
         if (Number.isFinite(Number(info.etaEndAt))) out.push(['Estimasi selesai', toWib(Number(info.etaEndAt))]);
       }
       list.innerHTML = out.map(([k, v]) => `<li><div class="k">${k}</div><div class="mono muted">${String(v)}</div></li>`).join('');
+      try {
+        const u = $('uptime');
+        if (u) u.textContent = data && typeof data.uptime === 'number' ? `uptime ${Math.round(data.uptime)}s` : 'uptime';
+      } catch {}
     };
 
     const notifyOnline = () => {
@@ -312,8 +580,15 @@
       maybeFireNotify(data);
     };
 
-    $('refreshBtn').addEventListener('click', () => fetchHealth().catch(() => {}));
+    $('refreshBtn').addEventListener('click', () => {
+      $('refreshBtn').disabled = true;
+      fetchHealth().catch(() => {}).finally(() => { try { $('refreshBtn').disabled = false; } catch {} });
+    });
     $('notifyBtn').addEventListener('click', () => notifyOnline());
+    $('laterBtn').addEventListener('click', () => {
+      try { $('laterBtn').disabled = true; } catch {}
+      setTimeout(() => { try { location.reload(); } catch {} }, 5 * 60 * 1000);
+    });
     $('copyBtn').addEventListener('click', async () => {
       const d = state.data || {};
       const info = d.maintenanceInfo || {};
@@ -340,8 +615,8 @@
       $('headline').textContent = 'Tidak bisa memuat status';
       $('desc').textContent = 'Coba refresh atau cek koneksi internet.';
       $('progressBar').style.width = '100%';
+      setNet();
     });
   </script>
 </body>
 </html>
-
