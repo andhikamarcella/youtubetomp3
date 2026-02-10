@@ -6612,6 +6612,15 @@ app.get("/api/health", (req, res) => {
     const n = Number.parseInt(String(v ?? ""), 10);
     return Number.isFinite(n) ? n : null;
   };
+  const parseJsonEnv = (v) => {
+    const raw = typeof v === "string" ? v.trim() : "";
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
   const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
   const maintenance = process.env.MAINTENANCE_MODE === "true";
@@ -6626,9 +6635,14 @@ app.get("/api/health", (req, res) => {
     const etaEndAt = etaSeconds == null ? null : now + etaSeconds * 1000;
 
     maintenanceInfo = {
+      id: process.env.MAINTENANCE_ID || null,
       title: process.env.MAINTENANCE_TITLE || null,
       description: process.env.MAINTENANCE_DESC || null,
       detail: process.env.MAINTENANCE_DETAIL || null,
+      steps: parseJsonEnv(process.env.MAINTENANCE_STEPS_JSON),
+      whatsNew: parseJsonEnv(process.env.MAINTENANCE_WHATS_NEW_JSON),
+      tip: process.env.MAINTENANCE_TIP || null,
+      services: parseJsonEnv(process.env.MAINTENANCE_SERVICES_JSON),
       progress,
       etaSeconds,
       etaEndAt,
@@ -7451,9 +7465,10 @@ app.post("/api/convert-playlist", async (req, res) => {
 });
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
-const BEARER = process.env.ADMIN_BEARER || "dhika_sayang123!";
-const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || "03be2f61c7e05a997da38f9d365a0d948df08b44fcd7acb5c3d94ba31cef78f2"; // ytmp3yulid
-const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || "d5a500a4b29869a056a0b5a5e7b26bd295a4b264560b66a16a9dccf9bad7ef45"; // ytmp3yulidyeye
+const BEARER = process.env.ADMIN_BEARER || "";
+const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || "";
+const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || "";
+const ADMIN_ENABLED = Boolean(BEARER && ADMIN_USER_HASH && ADMIN_PASS_HASH);
 
 const hashText = (value) => createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
 
@@ -7470,6 +7485,9 @@ const safeCompare = (left, right) => {
 
 app.post("/admin/login", (req, res) => {
   try {
+    if (!ADMIN_ENABLED) {
+      return res.status(503).json({ error: "admin_disabled" });
+    }
     const { username = "", password = "" } = req.body || {};
     const validUser = safeCompare(hashText(username), ADMIN_USER_HASH);
     const validPass = safeCompare(hashText(password), ADMIN_PASS_HASH);
@@ -7484,9 +7502,11 @@ app.post("/admin/login", (req, res) => {
 
 app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
   try {
+    if (!ADMIN_ENABLED) {
+      return res.status(503).json({ error: "admin_disabled" });
+    }
     const auth = req.get("Authorization") || "";
     if (auth !== `Bearer ${BEARER}`) {
-      console.warn(`[Admin Auth Fail] Received: "${auth}" (len=${auth.length}), Expected: "Bearer ${BEARER.substring(0,3)}..." (len=${BEARER.length + 7})`);
       return res.status(401).json({ error: "unauthorized" });
     }
 
@@ -7521,6 +7541,7 @@ app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), a
 // Status cookies — ESM-friendly (tanpa require)
 app.get("/admin/cookies-status", (req, res) => {
   try {
+    if (!ADMIN_ENABLED) return res.json({ exists: false, disabled: true });
     if (!existsSync(COOKIES_PATH)) return res.json({ exists: false });
     const size = statSync(COOKIES_PATH).size;
     return res.json({ exists: true, path: COOKIES_PATH, bytes: size });
@@ -7531,6 +7552,9 @@ app.get("/admin/cookies-status", (req, res) => {
 
 app.get("/admin/download-cookies", async (req, res) => {
   try {
+    if (!ADMIN_ENABLED) {
+      return res.status(503).json({ error: "admin_disabled" });
+    }
     const auth = req.get("Authorization") || "";
     if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
 
