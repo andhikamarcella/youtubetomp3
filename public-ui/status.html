@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Status Server - YouTube to MP3</title>
+  <style>
+    :root {
+      --accent: #fd7e14;
+      --bg: #0b1220;
+      --card: rgba(17, 18, 22, 0.92);
+      --text: #e5e7eb;
+      --muted: rgba(229,231,235,0.72);
+      --border: rgba(255,255,255,0.10);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f7fb;
+        --card: rgba(255,255,255,0.98);
+        --text: #111827;
+        --muted: rgba(17,24,39,0.62);
+        --border: rgba(17,24,39,0.08);
+      }
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at 20% 0%, rgba(253,126,20,0.18), transparent 55%),
+                  radial-gradient(circle at 80% 0%, rgba(13,110,253,0.14), transparent 45%),
+                  var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #94a3b8;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.12);
+    }
+    .dot.ok { background: #22c55e; }
+    .dot.warn { background: #f59e0b; }
+    .dot.bad { background: #ef4444; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    button, a.btn {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    button.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: #111827;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 860px) {
+      .grid { grid-template-columns: 1.2fr 0.8fr; }
+    }
+    .card {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .title {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .title h1 {
+      font-size: 1.1rem;
+      margin: 0;
+      letter-spacing: 0.02em;
+    }
+    .muted { color: var(--muted); }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+    .mini {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .mini li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+    }
+    .mini .k { font-weight: 900; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .progress {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(255,255,255,0.20), rgba(255,255,255,0.05), rgba(255,255,255,0.20));
+      background-size: 200% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+    .bar.fill {
+      background: var(--accent);
+      animation: none;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><span class="dot" id="overallDot"></span> Status Server</div>
+      <div class="btns">
+        <button class="primary" id="refreshBtn">Refresh</button>
+        <button id="copyBtn">Salin status</button>
+        <button id="notifyBtn">Beri tahu saat online</button>
+        <a class="btn" href="./" target="_blank" rel="noopener">Kembali</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="title">
+          <h1 id="headline">Memuat status...</h1>
+          <div class="muted mono" id="updated">--:-- WIB</div>
+        </div>
+        <div class="muted" id="desc">Mengambil data dari /api/health.</div>
+        <div class="progress"><div class="bar" id="progressBar"></div></div>
+        <div class="badges" id="serviceBadges"></div>
+      </div>
+
+      <div class="card">
+        <div class="title">
+          <h1>Detail</h1>
+          <div class="muted mono" id="tz"></div>
+        </div>
+        <ul class="mini" id="detailList"></ul>
+        <div class="muted" style="margin-top:10px;">
+          Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { data: null };
+
+    const setDot = (cls) => {
+      const d = $('overallDot');
+      d.className = 'dot ' + cls;
+    };
+
+    const toWib = (ms) => {
+      try {
+        const d = new Date(ms);
+        return d.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      } catch {
+        return '--:-- WIB';
+      }
+    };
+
+    const badgeDot = (status) => {
+      const v = String(status || '').toLowerCase();
+      if (v.includes('ok') || v.includes('online') || v.includes('up')) return 'ok';
+      if (v.includes('warn') || v.includes('rate')) return 'warn';
+      if (v.includes('down') || v.includes('error') || v.includes('offline')) return 'bad';
+      if (v.includes('maint')) return 'warn';
+      return '';
+    };
+
+    const render = (data) => {
+      state.data = data;
+      const now = Date.now();
+      $('updated').textContent = toWib(now);
+      $('tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+
+      const maint = Boolean(data && data.maintenance);
+      if (maint) {
+        setDot('warn');
+        $('headline').textContent = 'Maintenance (sedang berlangsung)';
+        const info = data.maintenanceInfo || {};
+        $('desc').textContent = String(info.description || 'Kami sedang meningkatkan stabilitas dan performa.');
+        const pct = Number.isFinite(Number(info.progress)) ? Math.max(0, Math.min(100, Number(info.progress))) : null;
+        const bar = $('progressBar');
+        if (pct == null) {
+          bar.className = 'bar';
+          bar.style.width = '100%';
+        } else {
+          bar.className = 'bar fill';
+          bar.style.width = pct + '%';
+        }
+      } else {
+        setDot('ok');
+        $('headline').textContent = 'Online';
+        $('desc').textContent = 'Semua layanan utama berjalan.';
+        const bar = $('progressBar');
+        bar.className = 'bar fill';
+        bar.style.width = '100%';
+      }
+
+      const badges = $('serviceBadges');
+      badges.innerHTML = '';
+      const info = (data && data.maintenanceInfo) ? data.maintenanceInfo : {};
+      const services = info && info.services ? info.services : null;
+      const items = Array.isArray(services) ? services : (services && typeof services === 'object' ? Object.entries(services).map(([name, status]) => ({ name, status })) : null);
+      (items || []).slice(0, 10).forEach((it) => {
+        const dotCls = badgeDot(it.status);
+        const el = document.createElement('div');
+        el.className = 'badge';
+        el.innerHTML = `<span class="dot ${dotCls}"></span><span>${it.name}: <span class="mono">${it.status}</span></span>`;
+        badges.appendChild(el);
+      });
+
+      const list = $('detailList');
+      const out = [];
+      out.push(['Healthcheck', data && data.healthcheckPath ? data.healthcheckPath : '/api/health']);
+      out.push(['Uptime', data && typeof data.uptime === 'number' ? Math.round(data.uptime) + 's' : '-']);
+      out.push(['Start', data && data.startTime ? toWib(data.startTime) : '-']);
+      if (maint) {
+        const id = info && info.id ? info.id : '';
+        if (id) out.push(['Maintenance ID', id]);
+        if (info && info.detail) out.push(['Status', info.detail]);
+        if (Number.isFinite(Number(info.etaEndAt))) out.push(['Estimasi selesai', toWib(Number(info.etaEndAt))]);
+      }
+      list.innerHTML = out.map(([k, v]) => `<li><div class="k">${k}</div><div class="mono muted">${String(v)}</div></li>`).join('');
+    };
+
+    const notifyOnline = () => {
+      try { localStorage.setItem('maint_notify_online', '1'); } catch {}
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') return;
+      if (Notification.permission === 'denied') return;
+      Notification.requestPermission().catch(() => {});
+    };
+
+    const maybeFireNotify = (data) => {
+      try {
+        const wants = localStorage.getItem('maint_notify_online') === '1';
+        if (!wants) return;
+        if (data && data.maintenance === false) {
+          localStorage.removeItem('maint_notify_online');
+          const title = 'Server sudah online';
+          const body = 'Maintenance selesai. Kamu bisa coba lagi sekarang.';
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(title, { body }); } catch {}
+          } else {
+            alert(title + '\n' + body);
+          }
+        }
+      } catch {}
+    };
+
+    const fetchHealth = async () => {
+      const res = await fetch('/api/health?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      render(data);
+      maybeFireNotify(data);
+    };
+
+    $('refreshBtn').addEventListener('click', () => fetchHealth().catch(() => {}));
+    $('notifyBtn').addEventListener('click', () => notifyOnline());
+    $('copyBtn').addEventListener('click', async () => {
+      const d = state.data || {};
+      const info = d.maintenanceInfo || {};
+      const text = [
+        'Status Server',
+        `Maintenance: ${d.maintenance ? 'YA' : 'TIDAK'}`,
+        info.id ? `Maintenance ID: ${info.id}` : '',
+        info.detail ? `Detail: ${info.detail}` : '',
+        Number.isFinite(Number(info.progress)) ? `Progress: ${info.progress}%` : '',
+        Number.isFinite(Number(info.etaEndAt)) ? `Estimasi selesai: ${toWib(Number(info.etaEndAt))}` : '',
+        `URL: ${location.href}`,
+      ].filter(Boolean).join('\n');
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+        else alert(text);
+      } catch {
+        alert(text);
+      }
+    });
+
+    setInterval(() => fetchHealth().catch(() => {}), 10000);
+    fetchHealth().catch(() => {
+      setDot('bad');
+      $('headline').textContent = 'Tidak bisa memuat status';
+      $('desc').textContent = 'Coba refresh atau cek koneksi internet.';
+      $('progressBar').style.width = '100%';
+    });
+  </script>
+</body>
+</html>
+
