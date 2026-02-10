@@ -6351,11 +6351,18 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         overscroll-behavior: contain;
                     }
                     @media (min-width: 992px) {
+                        .maint-container {
+                            padding: 1.25rem;
+                        }
                         .maint-card {
                             max-width: 760px;
                             padding: 2.25rem 2.25rem;
                             border-radius: 24px;
-                            max-height: min(86vh, 860px);
+                            max-height: calc(100vh - 2.5rem);
+                            overflow-y: hidden;
+                        }
+                        .maint-content-wrapper {
+                            overflow: visible;
                         }
                         .maint-content-wrapper { text-align: left; }
                         .maint-summary {
