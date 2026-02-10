@@ -5688,14 +5688,7 @@
   window.openMaintenanceChat = function() {
       const overlay = document.getElementById('maintenanceOverlay');
       if (overlay) overlay.hidden = false;
-      const section = document.getElementById('maintForumSection') || document.getElementById('maintChatRoomCarousel');
-      if (section) {
-          try { section.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
-      }
-      const input = document.getElementById('maintChatInput');
-      if (input) {
-          try { input.focus(); } catch {}
-      }
+      if (typeof window.toggleMaintenanceChatDrawer === 'function') window.toggleMaintenanceChatDrawer(true);
   };
 
   window.openForumWidgetFromMaintenance = window.openMaintenanceChat;
@@ -5865,6 +5858,107 @@
 
           const initialIdx = Math.max(0, rooms.findIndex((b) => b.classList.contains('active')));
           setActiveByIndex(initialIdx, { scroll: false });
+      } catch {}
+  };
+
+  window.toggleMaintenanceChatDrawer = function(forceOpen = null) {
+      try {
+          const overlay = document.getElementById('maintenanceOverlay');
+          if (!overlay || overlay.hidden) return;
+          const drawer = document.getElementById('maintChatDrawer');
+          const openBtn = document.getElementById('maintChatLauncherOpen');
+          if (!drawer) return;
+          const shouldOpen = forceOpen === null ? Boolean(drawer.hidden) : Boolean(forceOpen);
+          drawer.hidden = !shouldOpen;
+          if (openBtn) openBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+          if (shouldOpen) {
+              const input = document.getElementById('maintChatInput');
+              if (input) {
+                  try { input.focus(); } catch {}
+              }
+          }
+      } catch {}
+  };
+
+  window.initMaintenanceChatLauncher = function() {
+      try {
+          const overlay = document.getElementById('maintenanceOverlay');
+          if (!overlay || overlay.hidden) return;
+          const launcher = document.getElementById('maintChatLauncher');
+          const openBtn = document.getElementById('maintChatLauncherOpen');
+          const prev = document.getElementById('maintChatLauncherPrev');
+          const next = document.getElementById('maintChatLauncherNext');
+          const dotsWrap = document.getElementById('maintChatLauncherDots');
+          const drawer = document.getElementById('maintChatDrawer');
+          const backdrop = document.getElementById('maintChatDrawerBackdrop');
+          const closeBtn = document.getElementById('maintChatDrawerClose');
+          const roomTrack = document.getElementById('maintChatRoomTrack');
+          if (!launcher || !openBtn || !prev || !next || !dotsWrap || !drawer || !roomTrack) return;
+          if (launcher.dataset.ready === '1') return;
+          launcher.dataset.ready = '1';
+
+          const rooms = () => Array.from(roomTrack.querySelectorAll('.maint-chat-room-btn'));
+
+          const setDots = () => {
+              const list = rooms();
+              const activeIdx = Math.max(0, list.findIndex((b) => b.classList.contains('active')));
+              dotsWrap.innerHTML = list
+                .map((_, i) => `<span class="maint-chat-launcher-dot${i === activeIdx ? ' active' : ''}" data-i="${i}"></span>`)
+                .join('');
+              prev.disabled = activeIdx === 0;
+              next.disabled = activeIdx === list.length - 1;
+          };
+
+          const setActiveIdx = (idx) => {
+              const list = rooms();
+              if (!list.length) return;
+              const safeIdx = Math.max(0, Math.min(list.length - 1, Number(idx) || 0));
+              const btn = list[safeIdx];
+              const room = btn?.dataset?.room || 'umum';
+              const label = (btn?.textContent || 'Chat').trim();
+              document.dispatchEvent(new CustomEvent('maint-chat-room-change', { detail: { room, label } }));
+              setDots();
+          };
+
+          openBtn.addEventListener('click', () => window.toggleMaintenanceChatDrawer(true));
+          if (backdrop) backdrop.addEventListener('click', () => window.toggleMaintenanceChatDrawer(false));
+          if (closeBtn) closeBtn.addEventListener('click', () => window.toggleMaintenanceChatDrawer(false));
+
+          prev.addEventListener('click', () => {
+              const list = rooms();
+              const idx = list.findIndex((b) => b.classList.contains('active'));
+              setActiveIdx((idx < 0 ? 0 : idx) - 1);
+              window.toggleMaintenanceChatDrawer(true);
+          });
+          next.addEventListener('click', () => {
+              const list = rooms();
+              const idx = list.findIndex((b) => b.classList.contains('active'));
+              setActiveIdx((idx < 0 ? 0 : idx) + 1);
+              window.toggleMaintenanceChatDrawer(true);
+          });
+
+          dotsWrap.addEventListener('click', (e) => {
+              const t = e && e.target ? e.target : null;
+              const i = t && t.dataset ? Number(t.dataset.i) : NaN;
+              if (!Number.isFinite(i)) return;
+              setActiveIdx(i);
+              window.toggleMaintenanceChatDrawer(true);
+          });
+
+          rooms().forEach((btn, i) => {
+              btn.addEventListener('click', () => {
+                  setActiveIdx(i);
+              });
+          });
+
+          document.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape' && !drawer.hidden) window.toggleMaintenanceChatDrawer(false);
+          });
+
+          const onRoomChange = () => setDots();
+          document.addEventListener('maint-chat-room-change', onRoomChange);
+
+          setDots();
       } catch {}
   };
 
@@ -6525,6 +6619,182 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         border-color: color-mix(in srgb, var(--maintenance-accent, #fd7e14) 60%, transparent);
                         box-shadow: 0 16px 34px rgba(15,23,42,.14);
                     }
+
+                    .maint-chat-launcher {
+                        position: fixed;
+                        top: 50%;
+                        right: calc(14px + env(safe-area-inset-right, 0px));
+                        transform: translateY(-50%);
+                        z-index: 10050;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        pointer-events: auto;
+                    }
+                    .maint-chat-launcher-btn {
+                        border: 1px solid rgba(0,0,0,0.10);
+                        background: rgba(255,255,255,0.88);
+                        color: #111827;
+                        border-radius: 999px;
+                        padding: 10px 12px;
+                        font-weight: 950;
+                        letter-spacing: 0.06em;
+                        text-transform: uppercase;
+                        font-size: 0.72rem;
+                        box-shadow: 0 16px 34px rgba(15,23,42,.18);
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-launcher-btn {
+                        border-color: rgba(255,255,255,0.12);
+                        background: rgba(17, 24, 39, 0.72);
+                        color: rgba(229,231,235,0.95);
+                    }
+                    .maint-chat-launcher-nav {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 6px 8px;
+                        border-radius: 999px;
+                        border: 1px solid rgba(0,0,0,0.08);
+                        background: rgba(255,255,255,0.82);
+                        box-shadow: 0 16px 34px rgba(15,23,42,.14);
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-launcher-nav {
+                        border-color: rgba(255,255,255,0.12);
+                        background: rgba(17, 24, 39, 0.68);
+                        color: rgba(229,231,235,0.95);
+                    }
+                    .maint-chat-launcher-mini {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: 999px;
+                        border: 0;
+                        background: rgba(0,0,0,0.06);
+                        display: grid;
+                        place-items: center;
+                        cursor: pointer;
+                        color: inherit;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-launcher-mini {
+                        background: rgba(255,255,255,0.10);
+                    }
+                    .maint-chat-launcher-dots {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 6px 8px;
+                        border-radius: 999px;
+                        background: rgba(0,0,0,0.05);
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-launcher-dots {
+                        background: rgba(255,255,255,0.08);
+                    }
+                    .maint-chat-launcher-dot {
+                        width: 7px;
+                        height: 7px;
+                        border-radius: 999px;
+                        background: rgba(148,163,184,0.9);
+                    }
+                    .maint-chat-launcher-dot.active {
+                        background: var(--maintenance-accent, #fd7e14);
+                    }
+                    @media (max-width: 576px) {
+                        .maint-chat-launcher {
+                            top: auto;
+                            bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+                            right: calc(12px + env(safe-area-inset-right, 0px));
+                            transform: none;
+                        }
+                        .maint-chat-launcher-btn { padding: 9px 10px; font-size: 0.68rem; }
+                        .maint-chat-launcher-nav { padding: 5px 6px; }
+                        .maint-chat-launcher-mini { width: 32px; height: 32px; }
+                    }
+
+                    .maint-chat-drawer {
+                        position: fixed;
+                        inset: 0;
+                        z-index: 10060;
+                        display: grid;
+                        grid-template-columns: 1fr;
+                    }
+                    .maint-chat-drawer[hidden] { display: none !important; }
+                    .maint-chat-drawer-backdrop {
+                        position: absolute;
+                        inset: 0;
+                        background: rgba(2,6,23,0.52);
+                        backdrop-filter: blur(4px);
+                    }
+                    .maint-chat-drawer-panel {
+                        position: absolute;
+                        top: calc(12px + env(safe-area-inset-top, 0px));
+                        right: calc(12px + env(safe-area-inset-right, 0px));
+                        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+                        width: min(460px, 94vw);
+                        background: rgba(255,255,255,0.96);
+                        border: 1px solid rgba(0,0,0,0.08);
+                        border-radius: 18px;
+                        box-shadow: 0 30px 90px rgba(0,0,0,0.28);
+                        overflow: hidden;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-drawer-panel {
+                        background: rgba(17, 24, 39, 0.94);
+                        border-color: rgba(255,255,255,0.10);
+                        color: rgba(229,231,235,0.95);
+                    }
+                    .maint-chat-drawer-header {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 10px;
+                        padding: 12px 12px;
+                        border-bottom: 1px solid rgba(0,0,0,0.06);
+                        background: linear-gradient(135deg, rgba(253,126,20,0.12), rgba(13,110,253,0.08));
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-drawer-header {
+                        border-bottom-color: rgba(255,255,255,0.10);
+                        background: linear-gradient(135deg, rgba(253,126,20,0.16), rgba(13,110,253,0.12));
+                    }
+                    .maint-chat-drawer-title {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-weight: 950;
+                        letter-spacing: 0.06em;
+                        text-transform: uppercase;
+                        font-size: 0.8rem;
+                    }
+                    .maint-chat-drawer-close {
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 999px;
+                        border: 1px solid rgba(0,0,0,0.08);
+                        background: rgba(255,255,255,0.80);
+                        display: grid;
+                        place-items: center;
+                        cursor: pointer;
+                    }
+                    #maintenanceOverlay.maint-night .maint-chat-drawer-close {
+                        border-color: rgba(255,255,255,0.12);
+                        background: rgba(255,255,255,0.10);
+                        color: rgba(229,231,235,0.95);
+                    }
+                    .maint-chat-drawer-body {
+                        padding: 12px 12px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        min-height: 0;
+                        flex: 1 1 auto;
+                    }
+                    .maint-chat-drawer-body .maint-chat-box {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                    }
                     #maintenanceOverlay.maint-night .maint-chat-box {
                         border-color: rgba(255,255,255,0.10);
                         background: rgba(255,255,255,0.08);
@@ -6999,6 +7269,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         .maint-chat-room-nav { margin-bottom: 8px; }
                         .maint-chat-room-btn { padding: 7px 10px; font-size: 0.68rem; }
                         .maint-chat-messages { height: min(260px, 36vh); padding: 10px; }
+                        .maint-chat-drawer-panel { width: min(520px, 96vw); }
 
                         .maint-est-row {
                             flex-direction: column;
@@ -7103,52 +7374,11 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                </div>
 
                                <div class="maint-section" id="maintForumSection">
-                                   <div class="maint-section-title" style="margin-bottom: 10px;">
-                                     <span><i class="bi bi-chat-dots-fill me-2" style="color:${colorMain};"></i>Forum Warga</span>
-                                     <span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">komunitas</span>
+                                   <div class="maint-section-title" style="margin-bottom: 8px;">
+                                     <span><i class="bi bi-chat-dots-fill me-2" style="color:${colorMain};"></i>Forum Chat</span>
+                                     <span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">klik tombol di kanan</span>
                                    </div>
-
-                                   <div class="maint-section maint-carousel" id="maintChatRoomCarousel">
-                                       <div class="maint-carousel-head">
-                                           <div class="title"><i class="bi bi-chat-square-text-fill me-2" style="color:${colorMain};"></i>Forum Chat</div>
-                                           <div class="maint-carousel-nav">
-                                               <button type="button" class="maint-carousel-btn" id="maintChatRoomPrev" aria-label="Room sebelumnya"><i class="bi bi-chevron-left"></i></button>
-                                               <div class="maint-carousel-dots" id="maintChatRoomDots" aria-label="Indikator room"></div>
-                                               <button type="button" class="maint-carousel-btn" id="maintChatRoomNext" aria-label="Room berikutnya"><i class="bi bi-chevron-right"></i></button>
-                                           </div>
-                                       </div>
-
-                                       <div class="maint-chat-room-nav">
-                                           <div class="maint-chat-room-track" id="maintChatRoomTrack" aria-label="Pilih room chat">
-                                               <button type="button" class="maint-chat-room-btn active" data-room="umum">Chat Umum</button>
-                                               <button type="button" class="maint-chat-room-btn" data-room="request">Chat Request</button>
-                                           </div>
-                                       </div>
-
-                                       <div class="maint-section-title">
-                                         <span><i class="bi bi-chat-square-text-fill me-2" style="color:${colorMain};"></i><span id="maintChatRoomName">Chat Umum</span></span>
-                                         <span class="small fw-semibold" id="maintChatRoomLabel" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">room: umum</span>
-                                       </div>
-
-                                       <div class="maint-chat-box">
-                                           <div class="maint-chat-login" id="maintChatLogin" hidden>
-                                               <div class="fw-bold">Login dulu untuk ikut chat</div>
-                                               <button type="button" class="btn btn-light rounded-pill fw-bold px-4" id="maintChatLoginBtn">
-                                                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="G" class="me-2">
-                                                   Masuk dengan Google
-                                               </button>
-                                               <div class="small opacity-75">Pilih room di atas untuk mulai ngobrol.</div>
-                                           </div>
-                                           <div class="maint-chat-messages" id="maintChatMessages"></div>
-                                           <div class="maint-chat-input">
-                                               <input type="text" class="form-control" id="maintChatInput" placeholder="Ketik pesan..." autocomplete="off">
-                                               <button type="button" class="btn btn-primary rounded-circle" id="maintChatSend" style="width:42px;height:42px;display:grid;place-items:center;">
-                                                   <i class="bi bi-send-fill"></i>
-                                               </button>
-                                               <span class="badge text-bg-success" id="maintChatStatus" hidden></span>
-                                           </div>
-                                       </div>
-                                   </div>
+                                   <div class="small" style="color:#6c757d !important;">Pilih room lewat tombol carousel di samping kanan, lalu chat besar akan muncul.</div>
 
                                    <div class="maint-section" style="margin-top: 12px;">
                                        <div class="maint-section-title"><span><i class="bi bi-heart-fill me-2" style="color:${colorMain};"></i>Terima kasih</span><span id="maintThemeNote" class="small fw-semibold" style="letter-spacing:0; text-transform:none;"></span></div>
@@ -7193,7 +7423,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                </div>
                            </div>
 
-                           <div class="maint-actions">
+                          <div class="maint-actions">
                                <button id="maintenanceCheckBtn" class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
                                    <i class="bi bi-arrow-clockwise me-2"></i>Cek status terbaru
                                </button>
@@ -7214,6 +7444,59 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <div class="small mt-1" style="color:#6c757d !important;">Waktu ditampilkan sesuai zona waktu kamu. Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
                                <div class="small mt-1" style="color:#6c757d !important;">Ada kendala? hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
                            </div>
+                      </div>
+
+                      <div class="maint-chat-launcher" id="maintChatLauncher" aria-label="Buka Forum Chat">
+                        <button type="button" class="maint-chat-launcher-btn" id="maintChatLauncherOpen" aria-haspopup="dialog" aria-expanded="false">
+                          <i class="bi bi-chat-dots-fill" style="color:${colorMain};"></i>
+                          <span>Forum Chat</span>
+                        </button>
+                        <div class="maint-chat-launcher-nav" aria-label="Navigasi room chat">
+                          <button type="button" class="maint-chat-launcher-mini" id="maintChatLauncherPrev" aria-label="Room sebelumnya"><i class="bi bi-chevron-left"></i></button>
+                          <div class="maint-chat-launcher-dots" id="maintChatLauncherDots" aria-label="Indikator room"></div>
+                          <button type="button" class="maint-chat-launcher-mini" id="maintChatLauncherNext" aria-label="Room berikutnya"><i class="bi bi-chevron-right"></i></button>
+                        </div>
+                      </div>
+
+                      <div class="maint-chat-drawer" id="maintChatDrawer" hidden>
+                        <div class="maint-chat-drawer-backdrop" id="maintChatDrawerBackdrop" aria-hidden="true"></div>
+                        <div class="maint-chat-drawer-panel" role="dialog" aria-modal="true" aria-label="Forum Chat">
+                          <div class="maint-chat-drawer-header">
+                            <div class="maint-chat-drawer-title"><i class="bi bi-chat-square-text-fill" style="color:${colorMain};"></i> Forum Chat</div>
+                            <button type="button" class="maint-chat-drawer-close" id="maintChatDrawerClose" aria-label="Tutup Forum Chat"><i class="bi bi-x-lg"></i></button>
+                          </div>
+                          <div class="maint-chat-drawer-body">
+                            <div class="maint-chat-room-nav" style="margin-bottom: 6px;">
+                              <div class="maint-chat-room-track" id="maintChatRoomTrack" aria-label="Pilih room chat">
+                                <button type="button" class="maint-chat-room-btn active" data-room="umum">Chat Umum</button>
+                                <button type="button" class="maint-chat-room-btn" data-room="request">Chat Request</button>
+                              </div>
+                            </div>
+                            <div class="maint-section-title" style="margin-bottom: 6px;">
+                              <span><i class="bi bi-chat-square-text-fill me-2" style="color:${colorMain};"></i><span id="maintChatRoomName">Chat Umum</span></span>
+                              <span class="small fw-semibold" id="maintChatRoomLabel" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">room: umum</span>
+                            </div>
+
+                            <div class="maint-chat-box">
+                              <div class="maint-chat-login" id="maintChatLogin" hidden>
+                                <div class="fw-bold">Login dulu untuk ikut chat</div>
+                                <button type="button" class="btn btn-light rounded-pill fw-bold px-4" id="maintChatLoginBtn">
+                                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" height="18" alt="G" class="me-2">
+                                  Masuk dengan Google
+                                </button>
+                                <div class="small opacity-75">Pilih room di atas untuk mulai ngobrol.</div>
+                              </div>
+                              <div class="maint-chat-messages" id="maintChatMessages"></div>
+                              <div class="maint-chat-input">
+                                <input type="text" class="form-control" id="maintChatInput" placeholder="Ketik pesan..." autocomplete="off">
+                                <button type="button" class="btn btn-primary rounded-circle" id="maintChatSend" style="width:42px;height:42px;display:grid;place-items:center;">
+                                  <i class="bi bi-send-fill"></i>
+                                </button>
+                                <span class="badge text-bg-success" id="maintChatStatus" hidden></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
                       <!-- Floating FAQ Widget -->
@@ -7283,7 +7566,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               if(window.maintClockInterval) clearInterval(window.maintClockInterval);
               window.maintClockInterval = setInterval(updateMaintClock, 1000);
               updateMaintClock();
-              try { window.initMaintenanceChatRoomCarousel && window.initMaintenanceChatRoomCarousel(); } catch {}
+              try { window.initMaintenanceChatLauncher && window.initMaintenanceChatLauncher(); } catch {}
               if (type === 'maintenance') {
                   try { window.initMaintenanceRadio && window.initMaintenanceRadio(); } catch {}
                   try { window.initMaintenanceForumChat && window.initMaintenanceForumChat(); } catch {}
