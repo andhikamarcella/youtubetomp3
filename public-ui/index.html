@@ -4342,7 +4342,7 @@
     </button>
   </div>
   <div class="maint-music-widget" id="maintMusicWidget" aria-live="polite">
-    <div class="maint-music-panel" id="maintMusicPanel">
+    <div class="maint-music-panel" id="maintMusicPanel" hidden>
       <div class="maint-music-header">
         <div class="maint-music-title"><i class="bi bi-music-note-beamed"></i> Backsound</div>
         <button type="button" class="btn-close" aria-label="Tutup Backsound" onclick="closeMaintMusic()"></button>
@@ -4372,7 +4372,7 @@
     </button>
   </div>
   <div class="forum-widget" id="forumWidget" aria-live="polite">
-    <div class="forum-widget-panel" id="forumWidgetPanel">
+    <div class="forum-widget-panel" id="forumWidgetPanel" hidden>
       <div class="forum-widget-header">
         <div class="forum-widget-title"><i class="bi bi-chat-dots-fill"></i> Forum Warga</div>
         <button type="button" class="btn-close" id="forumWidgetClose" aria-label="Tutup Forum Warga" onclick="closeForumWidget()"></button>
@@ -4396,8 +4396,8 @@
       </div>
     </div>
     <button type="button" class="forum-widget-toggle" id="forumWidgetToggle" aria-expanded="false">
-      <i class="bi bi-chat-dots-fill"></i> Forum
-      <span class="badge text-bg-success ms-1" id="forumWidgetStatus" hidden>●</span>
+      <i class="bi bi-chat-dots-fill"></i>
+      <span class="badge text-bg-success ms-1" id="forumWidgetStatus" hidden></span>
     </button>
   </div>
   <div class="reward-toast" id="rewardToast" role="status" aria-live="assertive"></div>
@@ -5264,6 +5264,7 @@
   
   async function checkServerStatus() {
       try {
+          try { window.__lastHealthcheckAt = new Date(); } catch {}
           try {
               const params = new URLSearchParams(window.location.search || '');
               if (params.get('maintenance') === '1') {
@@ -5271,6 +5272,7 @@
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-warning text-dark border ms-2';
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
+                  try { window.startMaintenanceHealthPoll && window.startMaintenanceHealthPoll(); } catch {}
                   return;
               }
           } catch {}
@@ -5300,6 +5302,8 @@
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-warning text-dark border ms-2';
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
+                  try { window.applyMaintenanceHealth && window.applyMaintenanceHealth(data); } catch {}
+                  try { window.startMaintenanceHealthPoll && window.startMaintenanceHealthPoll(); } catch {}
               } else {
                   // Online
                   window.isMaintenance = false;
@@ -5328,6 +5332,81 @@
       }
   }
   
+  window.applyMaintenanceHealth = function(data) {
+      try {
+          if (!data || typeof data !== 'object') return;
+          try { window.__lastHealthcheckAt = new Date(); } catch {}
+          try { window.__lastHealthData = data; } catch {}
+
+          if (data.maintenance === false) {
+              try { showMaintenanceOverlay(false); } catch {}
+              try { window.location.reload(); } catch {}
+              return;
+          }
+
+          const overlay = document.getElementById('maintenanceOverlay');
+          if (!overlay || overlay.hidden) return;
+
+          const info = data.maintenanceInfo || {};
+
+          const detailEl = document.getElementById('maintDetailDesc');
+          if (detailEl && info.detail) detailEl.textContent = String(info.detail);
+
+          const percentEl = document.getElementById('maintProgressPercent');
+          const barEl = document.getElementById('maintProgressBar');
+          const pct = Number.isFinite(Number(info.progress)) ? Math.max(0, Math.min(100, Number(info.progress))) : null;
+          if (pct != null) {
+              if (percentEl) percentEl.textContent = `${pct}%`;
+              if (barEl) barEl.style.width = `${pct}%`;
+          }
+
+          const estNumEl = document.getElementById('maintEstNum');
+          const estUnitEl = document.getElementById('maintEstUnit');
+          const etaAtEl = document.getElementById('maintEtaAt');
+          const etaSeconds = Number.isFinite(Number(info.etaSeconds)) ? Math.max(0, Number(info.etaSeconds)) : null;
+          const etaEndAt = Number.isFinite(Number(info.etaEndAt)) ? Number(info.etaEndAt) : null;
+
+          if (etaSeconds == null && etaEndAt == null) {
+              if (estNumEl) estNumEl.textContent = '—';
+              if (estUnitEl) estUnitEl.textContent = '';
+              if (etaAtEl) etaAtEl.textContent = '--:--';
+          } else {
+              let seconds = etaSeconds;
+              if (seconds == null && etaEndAt != null) seconds = Math.max(0, Math.round((etaEndAt - Date.now()) / 1000));
+              const mins = Math.max(0, Math.round(seconds / 60));
+              if (mins >= 60) {
+                  const hrs = Math.max(1, Math.round(mins / 60));
+                  if (estNumEl) estNumEl.textContent = String(hrs);
+                  if (estUnitEl) estUnitEl.textContent = 'Jam';
+              } else {
+                  if (estNumEl) estNumEl.textContent = String(mins);
+                  if (estUnitEl) estUnitEl.textContent = 'Menit';
+              }
+              const endAt = etaEndAt != null ? new Date(etaEndAt) : new Date(Date.now() + seconds * 1000);
+              if (etaAtEl) etaAtEl.textContent = endAt.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
+          }
+      } catch {}
+  };
+
+  window.startMaintenanceHealthPoll = function() {
+      try {
+          if (window.__maintHealthPoll) clearInterval(window.__maintHealthPoll);
+      } catch {}
+      const tick = async () => {
+          try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              const res = await fetch('/api/health?t=' + Date.now(), { signal: controller.signal });
+              clearTimeout(timeoutId);
+              if (!res.ok) return;
+              const data = await res.json();
+              try { window.applyMaintenanceHealth && window.applyMaintenanceHealth(data); } catch {}
+          } catch {}
+      };
+      tick();
+      window.__maintHealthPoll = setInterval(tick, 10000);
+  };
+
   window.manualCheckStatus = async function() {
       const btn = document.getElementById('maintenanceCheckBtn') || document.querySelector('#maintenanceOverlay button');
       if(!btn) return;
@@ -5346,20 +5425,23 @@
 
           if (res.ok) {
                const data = await res.json();
-               // If maintenance is FALSE, then we are back online
-               if (!data.maintenance) {
-                   btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Online!';
-                   btn.classList.remove('btn-warning', 'btn-danger', 'btn-primary'); 
-                   btn.classList.add('btn-success');
-                   
-                   // Small delay then reload
-                   setTimeout(() => {
-                       window.location.reload();
-                   }, 800);
-                   return;
+               try { window.applyMaintenanceHealth && window.applyMaintenanceHealth(data); } catch {}
+               if (!data.maintenance) return;
+               btn.innerHTML = originalHtml;
+               btn.disabled = false;
+               let toast = document.getElementById('maintToast');
+               if(!toast) {
+                   toast = document.createElement('div');
+                   toast.id = 'maintToast';
+                   toast.className = 'position-fixed start-50 translate-middle-x px-4 py-3 rounded-pill text-white shadow-lg d-flex align-items-center gap-2';
+                   toast.style.cssText = 'bottom: 100px; z-index: 10000; background: rgba(33,37,41,0.95); backdrop-filter: blur(4px); font-weight: 500; min-width: max-content;';
+                   document.body.appendChild(toast);
                }
+               toast.innerHTML = '<i class="bi bi-hourglass-split text-warning fs-5"></i><span>Masih maintenance, sabar ya...</span>';
+               toast.style.opacity = '1';
+               setTimeout(() => { try { toast.style.opacity = '0'; } catch {} }, 2200);
+               return;
           }
-          throw new Error('Still maintenance');
       } catch (e) {
           // Still maintenance or offline
           btn.innerHTML = originalHtml;
@@ -5474,7 +5556,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
       if (overlay) {
           overlay.hidden = !show;
           document.body.style.overflow = show ? 'hidden' : ''; // Lock body scroll when maintenance is active
-          document.body.classList.toggle('is-maintenance', Boolean(show) && String(type) === 'maintenance');
+          const t = String(type || 'maintenance');
+          const showWidgets = Boolean(show) && (t === 'maintenance' || t === 'deploying');
+          document.body.classList.toggle('is-maintenance', Boolean(show) && t === 'maintenance');
+          document.body.classList.toggle('maintenance-widgets', showWidgets);
           if (!show) {
               document.documentElement.style.removeProperty('--maintenance-accent');
               document.documentElement.style.removeProperty('--maint-accent');
@@ -5496,7 +5581,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin.';
               let detailDesc = 'Upgrade server & peningkatan performa sistem';
               let progressVal = 45;
-              let est = '2 Jam';
+              let estNum = '2';
+              let estUnit = 'Jam';
               let colorMain = '#fd7e14'; // Orange
               let colorLight = 'rgba(253, 126, 20, 0.15)';
               let bgGradient = 'linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%)';
@@ -5507,7 +5593,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                   desc = 'Aplikasi sedang diperbarui ke versi terbaru. Layanan akan segera kembali.';
                   detailDesc = 'Menerapkan fitur baru & optimasi database';
                   progressVal = 75;
-                  est = '5 Menit';
+                  estNum = '5';
+                  estUnit = 'Menit';
                   colorMain = '#0d6efd'; // Blue
                   colorLight = 'rgba(13, 110, 253, 0.15)';
                   bgGradient = 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)';
@@ -5517,7 +5604,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                   desc = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
                   detailDesc = 'Menunggu sambungan ulang...';
                   progressVal = 0;
-                  est = 'Tidak diketahui';
+                  estNum = '—';
+                  estUnit = '';
                   colorMain = '#dc3545'; // Red
                   colorLight = 'rgba(220, 53, 69, 0.15)';
                   bgGradient = 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)';
@@ -5898,13 +5986,17 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                ${type === 'maintenance' ? '' : ''}
                                
                                <!-- Progress Section -->
-                               <div class="text-start mb-3" ${progressVal === 0 ? 'hidden' : ''}>
+                               <div class="text-start mb-3">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <small class="fw-bold" style="font-size: 0.75rem; color: #6c757d !important;">${detailDesc}</small>
-                                        <small class="fw-bold" style="color: ${colorMain}; font-size: 0.75rem;">${progressVal}%</small>
+                                        <small class="fw-bold" id="maintDetailDesc" style="font-size: 0.8rem; color: #6c757d !important;">${detailDesc}</small>
+                                        <small class="fw-bold" id="maintProgressPercent" style="color: ${colorMain}; font-size: 0.75rem;">${progressVal}%</small>
                                     </div>
                                     <div class="maint-progress">
-                                        <div class="maint-progress-bar" style="width: ${progressVal}%"></div>
+                                        <div class="maint-progress-bar" id="maintProgressBar" style="width: ${progressVal}%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <small class="fw-semibold" style="font-size: 0.72rem; color: #6c757d !important;">Healthcheck</small>
+                                        <small class="fw-bold font-monospace" id="maintHealthCheckAt" style="font-size: 0.72rem; color: ${colorMain};">--:--:--</small>
                                     </div>
                                </div>
     
@@ -5913,7 +6005,11 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                <div class="d-flex align-items-center justify-content-center gap-3 mb-3 p-2 rounded-3" style="background: rgba(0,0,0,0.04);">
                                     <div class="text-start">
                                         <small class="d-block text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: #6c757d !important;">Estimasi</small>
-                                        <span class="fw-bold" style="color: #212529 !important; font-size: 0.9rem;">${est}</span>
+                                        <div class="d-flex align-items-baseline gap-2">
+                                            <span class="fw-bold font-monospace" id="maintEstNum" style="color: #212529 !important; font-size: 1.25rem; line-height: 1;">${estNum}</span>
+                                            <span class="fw-bold" id="maintEstUnit" style="color: #6c757d !important; font-size: 0.8rem;">${estUnit}</span>
+                                        </div>
+                                        <div class="small fw-semibold mt-1" style="color:#6c757d !important;">Selesai sekitar <span class="fw-bold font-monospace" id="maintEtaAt">--:--</span></div>
                                     </div>
                                     <div class="vr mx-2"></div>
                                     <div class="text-end">
@@ -5976,6 +6072,20 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                   if(el) {
                       const now = new Date();
                       el.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+                      const hc = document.getElementById('maintHealthCheckAt');
+                      if (hc) {
+                          const last = window.__lastHealthcheckAt instanceof Date ? window.__lastHealthcheckAt : now;
+                          hc.textContent = last.toLocaleTimeString('id-ID', { hour12: false });
+                      }
+                      const etaAt = document.getElementById('maintEtaAt');
+                      if (etaAt) {
+                          const info = window.__lastHealthData && window.__lastHealthData.maintenanceInfo ? window.__lastHealthData.maintenanceInfo : null;
+                          const endAtMs = info && Number.isFinite(Number(info.etaEndAt)) ? Number(info.etaEndAt) : null;
+                          if (endAtMs) {
+                              const endAt = new Date(endAtMs);
+                              etaAt.textContent = endAt.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                          }
+                      }
                   }
               }
               if(window.maintClockInterval) clearInterval(window.maintClockInterval);
@@ -6083,10 +6193,13 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               } catch {}
               if (!state.player) return;
               try { state.player.setVolume(v); } catch {}
+              if (v > 0) {
+                  try { localStorage.setItem('maint_audio_wants_sound', '1'); } catch {}
+                  if (!state.unlocked) state.unlocked = true;
+                  try { state.player.unMute(); } catch {}
+              }
               if (v === 0) {
                   try { state.player.mute(); } catch {}
-              } else if (state.unlocked) {
-                  try { state.player.unMute(); } catch {}
               }
               try { setMuteIcon(Boolean(state.player.isMuted && state.player.isMuted())); } catch {}
           };
