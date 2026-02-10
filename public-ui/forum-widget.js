@@ -118,23 +118,40 @@
   };
 
   const startListener = async () => {
-    const m = await waitForFirebase();
-    const { db, collection, query, where, orderBy, limit, onSnapshot } = m;
-    if (typeof where !== "function") return;
+    const { messages } = els();
+    try {
+      const m = await waitForFirebase();
+      const { db, collection, query, where, orderBy, limit, onSnapshot } = m;
+      if (typeof where !== "function") return;
 
-    if (state.unsubscribe) {
-      try {
-        state.unsubscribe();
-      } catch {}
-      state.unsubscribe = null;
+      if (state.unsubscribe) {
+        try {
+          state.unsubscribe();
+        } catch {}
+        state.unsubscribe = null;
+      }
+
+      const colRef = collection(db, "forum-messages");
+      const q = query(colRef, where("room", "==", "umum"), orderBy("timestamp", "desc"), limit(200));
+      state.unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const docs = Array.from(snapshot.docs || []).slice().reverse();
+          render(docs);
+        },
+        () => {
+          if (messages) {
+            messages.innerHTML =
+              '<div class="text-center text-danger small">Gagal memuat chat. Coba refresh.</div>';
+          }
+        }
+      );
+    } catch (err) {
+      if (messages) {
+        const msg = String(err?.message || "Gagal memuat chat.");
+        messages.innerHTML = `<div class="text-center text-danger small">${safeText(msg)}</div>`;
+      }
     }
-
-    const colRef = collection(db, "forum-messages");
-    const q = query(colRef, where("room", "==", "umum"), orderBy("timestamp", "desc"), limit(200));
-    state.unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = Array.from(snapshot.docs || []).slice().reverse();
-      render(docs);
-    });
   };
 
   const sendMessage = async () => {
@@ -142,13 +159,16 @@
     if (!input || !send) return;
     const text = input.value.trim();
     if (!text) return;
-    if (!state.currentUser) return;
-
-    const m = await waitForFirebase();
-    const { db, collection, addDoc, serverTimestamp } = m;
+    if (!state.currentUser) {
+      setLoginState(false);
+      if (typeof window.setToast === "function") window.setToast("Login dulu untuk kirim chat.", "warning");
+      return;
+    }
 
     send.disabled = true;
     try {
+      const m = await waitForFirebase();
+      const { db, collection, addDoc, serverTimestamp } = m;
       await addDoc(collection(db, "forum-messages"), {
         text,
         uid: state.currentUser.uid,
@@ -159,8 +179,10 @@
       input.value = "";
       state.stickBottom = true;
       scrollToBottom();
-    } catch {
-      if (typeof window.setToast === "function") window.setToast("Gagal kirim chat.", "danger");
+    } catch (err) {
+      const msg = String(err?.message || "Gagal kirim chat.");
+      if (typeof window.setToast === "function") window.setToast(msg, "danger");
+      else alert(msg);
     } finally {
       send.disabled = false;
     }
