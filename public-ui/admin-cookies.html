@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin - Upload cookies.txt</title>
+  <style>
+    :root { --accent:#fd7e14; --bg:#0b1220; --card:rgba(17,24,39,0.92); --text:#e5e7eb; --muted:rgba(229,231,235,0.72); --border:rgba(255,255,255,0.10); }
+    @media (prefers-color-scheme: light) { :root { --bg:#f6f7fb; --card:rgba(255,255,255,0.98); --text:#111827; --muted:rgba(17,24,39,0.62); --border:rgba(17,24,39,0.10); } }
+    body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; background: radial-gradient(circle at 20% 0%, rgba(253,126,20,0.18), transparent 55%), radial-gradient(circle at 80% 0%, rgba(13,110,253,0.14), transparent 45%), var(--bg); color:var(--text); }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 18px 14px 28px; }
+    .top { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-bottom: 14px; }
+    .brand { font-weight: 900; letter-spacing: 0.02em; }
+    .card { border:1px solid var(--border); background:var(--card); border-radius:18px; padding:14px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+    .grid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 860px) { .grid { grid-template-columns: 0.9fr 1.1fr; } }
+    label { display:block; font-size:0.85rem; font-weight:800; margin: 10px 0 6px; color: var(--muted); }
+    input[type="text"], input[type="password"], textarea { width:100%; box-sizing:border-box; padding: 12px 12px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); outline: none; }
+    textarea { min-height: 180px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .row { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    button, a.btn { border:1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); padding: 10px 12px; border-radius: 999px; font-weight: 900; cursor:pointer; text-decoration:none; }
+    button.primary { background: var(--accent); border-color: transparent; color:#111827; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .toast { margin-top: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); display:none; }
+    .toast.show { display:block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">Admin • Upload cookies.txt</div>
+      <div class="row" style="margin:0;">
+        <a class="btn" href="./" target="_blank" rel="noopener">Kembali</a>
+        <a class="btn" href="./status.html" target="_blank" rel="noopener">Status Page</a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div style="font-weight:900; letter-spacing:0.02em;">Login</div>
+        <div class="muted">Masuk dulu untuk dapat token admin.</div>
+        <label>Username</label>
+        <input id="username" type="text" value="ytmp3yulid" autocomplete="username" />
+        <label>Password</label>
+        <input id="password" type="password" autocomplete="current-password" />
+        <div class="row">
+          <button class="primary" id="loginBtn">Login</button>
+          <button id="logoutBtn">Logout</button>
+        </div>
+        <div class="toast" id="loginToast"></div>
+        <div class="muted" style="margin-top:10px;">
+          Catatan: kredensial dicek di server via hash (ENV). Jangan simpan password di frontend.
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:900; letter-spacing:0.02em;">Cookies</div>
+        <div class="muted">Upload isi cookies.txt (format Netscape). Dipakai untuk yt-dlp.</div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="refreshStatusBtn">Cek status</button>
+          <button id="downloadBtn">Download cookies</button>
+        </div>
+        <div class="toast show" id="statusBox"></div>
+
+        <label>Pilih file cookies.txt</label>
+        <input id="file" type="file" accept=".txt,text/plain" />
+
+        <label>Atau paste isi cookies.txt</label>
+        <textarea id="cookiesText" placeholder="# Netscape HTTP Cookie File ..."></textarea>
+
+        <div class="row">
+          <button class="primary" id="uploadBtn">Upload</button>
+          <button id="clearBtn">Clear</button>
+        </div>
+        <div class="toast" id="uploadToast"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const toast = (id, msg, ok = true) => {
+      const el = $(id);
+      el.className = 'toast show';
+      el.innerHTML = `<span class="mono">${ok ? 'OK' : 'ERR'}</span> — ${String(msg)}`;
+    };
+    const tokenKey = 'admin_bearer_token';
+    const getToken = () => sessionStorage.getItem(tokenKey) || '';
+    const setToken = (t) => sessionStorage.setItem(tokenKey, t || '');
+    const clearToken = () => sessionStorage.removeItem(tokenKey);
+
+    const refreshStatus = async () => {
+      const res = await fetch('/admin/cookies-status?t=' + Date.now());
+      const data = await res.json();
+      if (data && data.disabled) {
+        $('statusBox').innerHTML = 'Admin cookies dinonaktifkan. Set ENV: ADMIN_BEARER, ADMIN_USER_HASH, ADMIN_PASS_HASH.';
+        return;
+      }
+      if (!data.exists) {
+        $('statusBox').innerHTML = 'cookies.txt belum ada.';
+        return;
+      }
+      $('statusBox').innerHTML = `Ada cookies.txt — <span class="mono">${data.bytes}</span> bytes`;
+    };
+
+    $('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
+
+    $('loginBtn').addEventListener('click', async () => {
+      try {
+        const username = $('username').value || '';
+        const password = $('password').value || '';
+        const res = await fetch('/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+        setToken(data.token || '');
+        toast('loginToast', 'Login berhasil.');
+      } catch (e) {
+        toast('loginToast', e.message || 'Login gagal.', false);
+      }
+    });
+
+    $('logoutBtn').addEventListener('click', () => {
+      clearToken();
+      toast('loginToast', 'Logout.');
+    });
+
+    $('file').addEventListener('change', async () => {
+      const f = $('file').files && $('file').files[0];
+      if (!f) return;
+      const text = await f.text();
+      $('cookiesText').value = text;
+    });
+
+    $('uploadBtn').addEventListener('click', async () => {
+      try {
+        const token = getToken();
+        if (!token) throw new Error('Belum login (token kosong).');
+        const body = $('cookiesText').value || '';
+        if (!body.trim()) throw new Error('Isi cookies.txt kosong.');
+        const res = await fetch('/admin/upload-cookies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Authorization': 'Bearer ' + token },
+          body
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+        toast('uploadToast', `Upload sukses (${data.bytes} bytes).`);
+        refreshStatus().catch(() => {});
+      } catch (e) {
+        toast('uploadToast', e.message || 'Upload gagal.', false);
+      }
+    });
+
+    $('clearBtn').addEventListener('click', () => { $('cookiesText').value = ''; });
+
+    $('downloadBtn').addEventListener('click', async () => {
+      try {
+        const token = getToken();
+        if (!token) throw new Error('Belum login (token kosong).');
+        const res = await fetch('/admin/download-cookies', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cookies.txt';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        toast('uploadToast', e.message || 'Download gagal.', false);
+      }
+    });
+
+    refreshStatus().catch(() => {});
+  </script>
+</body>
+</html>
+
