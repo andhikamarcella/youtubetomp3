@@ -172,19 +172,20 @@ html[data-bs-theme='dark'] .forum-widget-msg.other .forum-widget-bubble {
 
 body.is-maintenance .forum-widget {
   display: flex;
-  bottom: 90px;
-  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: calc(20px + env(safe-area-inset-left, 0px));
   top: auto;
-  left: auto;
+  right: auto;
+  max-width: calc(100vw - 40px);
 }
 
 body.is-maintenance .forum-widget-panel {
-  width: min(420px, calc(100vw - 2.5rem));
-  max-height: min(680px, calc(100vh - 2.5rem));
+  width: min(420px, calc(100vw - 40px));
+  max-height: min(560px, calc(100vh - 140px));
   background: rgba(255, 255, 255, 0.98);
   border-color: rgba(0,0,0,0.08);
   box-shadow: 0 28px 70px rgba(0,0,0,0.28);
-  transform-origin: top right;
+  transform-origin: bottom left;
 }
 
 body.is-maintenance .forum-widget-header {
@@ -230,6 +231,11 @@ body.is-maintenance .forum-widget-toggle {
   font-weight: 800;
   letter-spacing: .02em;
   cursor: pointer;
+  height: 52px;
+  padding: 0 14px;
+  border-radius: 999px;
+  min-width: 112px;
+  box-shadow: 0 10px 26px rgba(15,23,42,.18);
 }
 
 body.is-maintenance .forum-widget:hover .forum-widget-panel {
@@ -241,8 +247,15 @@ body.is-maintenance .forum-widget:hover .forum-widget-panel {
 
 @media (max-width: 576px) {
   body.is-maintenance .forum-widget {
-    bottom: 84px;
-    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: calc(16px + env(safe-area-inset-left, 0px));
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    max-width: calc(100vw - 32px);
+  }
+
+  body.is-maintenance .forum-widget-panel {
+    width: calc(100vw - 32px);
+    max-height: min(520px, calc(100vh - 130px));
   }
 }
 
