@@ -1,0 +1,113 @@
+.maint-music-widget {
+  position: fixed;
+  z-index: 20000;
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .5rem;
+  max-width: min(420px, 92vw);
+}
+
+body.is-maintenance .maint-music-widget {
+  display: flex;
+  bottom: 20px;
+  right: 90px;
+  top: auto;
+  left: auto;
+}
+
+.maint-music-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: #ffffff;
+  color: var(--maint-accent, #fd7e14);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  font-size: 1.35rem;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.maint-music-toggle:hover { transform: scale(1.1); }
+.maint-music-toggle:active { transform: scale(0.95); }
+
+.maint-music-panel {
+  width: min(420px, calc(100vw - 2.5rem));
+  max-height: min(520px, calc(100vh - 140px));
+  border-radius: 1.2rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 28px 70px rgba(0,0,0,0.28);
+  display: flex;
+  flex-direction: column;
+  transform-origin: bottom right;
+  transform: scale(.96);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .18s ease, opacity .18s ease, visibility .18s ease;
+}
+
+body.is-maintenance .maint-music-widget:hover .maint-music-panel,
+body.is-maintenance .maint-music-widget.pinned .maint-music-panel {
+  transform: scale(1);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.maint-music-header {
+  padding: .85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--maint-accent, #fd7e14) 20%, #ffffff),
+    rgba(255,255,255,0.95)
+  );
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.maint-music-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-size: .75rem;
+  color: #111827;
+}
+
+.maint-music-body {
+  padding: 1rem;
+  display: grid;
+  gap: .75rem;
+}
+
+.maint-music-body .maint-radio-widget {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 1rem;
+  padding: .85rem;
+}
+
+@media (max-width: 576px) {
+  body.is-maintenance .maint-music-widget {
+    bottom: 16px;
+    right: 82px;
+  }
+  .maint-music-panel {
+    width: min(420px, calc(100vw - 40px));
+    max-height: min(560px, calc(100vh - 120px));
+  }
+}
