@@ -34,6 +34,7 @@
     });
 
   const els = () => ({
+    widget: document.getElementById("forumWidget"),
     panel: document.getElementById("forumWidgetPanel"),
     toggle: document.getElementById("forumWidgetToggle"),
     close: document.getElementById("forumWidgetClose"),
@@ -50,6 +51,25 @@
     currentUser: null,
     unsubscribe: null,
     stickBottom: true,
+  };
+
+  const setPinned = (pinned) => {
+    const { widget, toggle, status } = els();
+    if (!widget) return;
+    widget.classList.toggle("pinned", Boolean(pinned));
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", pinned ? "true" : "false");
+      const statusEl = status || document.getElementById("forumWidgetStatus");
+      toggle.innerHTML = pinned
+        ? '<i class="bi bi-x-lg"></i> Tutup'
+        : '<i class="bi bi-chat-dots-fill"></i> Forum';
+      if (statusEl) {
+        statusEl.hidden = !Boolean(state.currentUser);
+        statusEl.className = "badge text-bg-success ms-1";
+        statusEl.id = "forumWidgetStatus";
+        toggle.appendChild(statusEl);
+      }
+    }
   };
 
   const setLoginState = (loggedIn) => {
@@ -211,12 +231,11 @@
   };
 
   window.toggleForumWidget = (forceOpen = null) => {
-    const { panel, toggle, input } = els();
-    if (!panel) return;
-    const shouldOpen = forceOpen === null ? panel.hidden : Boolean(forceOpen);
-    panel.hidden = !shouldOpen;
-    if (toggle) toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
-    if (shouldOpen) {
+    const { widget, input } = els();
+    if (!widget) return;
+    const shouldPin = forceOpen === null ? !widget.classList.contains("pinned") : Boolean(forceOpen);
+    setPinned(shouldPin);
+    if (shouldPin) {
       init().catch(() => {});
       if (input && !input.disabled) input.focus();
     }
@@ -225,8 +244,12 @@
   window.initForumWidget = () => init().catch(() => {});
 
   document.addEventListener("DOMContentLoaded", () => {
-    const { toggle } = els();
+    const { toggle, widget } = els();
     if (toggle) toggle.addEventListener("click", () => window.toggleForumWidget());
+    if (widget) widget.addEventListener("pointerenter", () => init().catch(() => {}), { once: true });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") window.toggleForumWidget(false);
+    });
   });
 })();
 
