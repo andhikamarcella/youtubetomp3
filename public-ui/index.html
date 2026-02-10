@@ -4857,6 +4857,9 @@
           
           <div class="text-center">
               <img id="mpThumbnail" src="" alt="Album Art" class="mini-player-art">
+              <div id="mpVideoWrap" class="mini-player-video-wrap" hidden>
+                  <video id="globalVideoPlayer" class="mini-player-video" playsinline></video>
+              </div>
               
               <div class="mb-3">
                   <h5 id="mpTitle" class="fw-bold mb-1 text-truncate" style="font-size: 1rem;">Title</h5>
@@ -4941,6 +4944,30 @@
         border-radius: 16px;
         margin-bottom: 16px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .mini-player-video-wrap {
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.06);
+        margin-bottom: 16px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mini-player-video {
+        width: 100%;
+        height: auto;
+        max-height: min(56vh, 420px);
+        object-fit: contain;
+        background: rgba(0,0,0,0.35);
+        display: block;
+    }
+
+    .mini-player-card.is-video {
+        max-width: 520px;
     }
 
     /* Mobile Bottom Sheet Override */
@@ -15341,10 +15368,12 @@ $('#queueList')?.addEventListener('click', (e) => {
   (() => {
     const overlay = document.getElementById('miniPlayerOverlay');
     const audio = document.getElementById('globalAudioPlayer');
-    if (!overlay || !audio) return;
+    const video = document.getElementById('globalVideoPlayer');
+    if (!overlay || !audio || !video) return;
 
     const closeBtn = document.getElementById('closeMiniPlayer');
     const thumbnailEl = document.getElementById('mpThumbnail');
+    const videoWrapEl = document.getElementById('mpVideoWrap');
     const titleEl = document.getElementById('mpTitle');
     const artistEl = document.getElementById('mpArtist');
     const currentEl = document.getElementById('mpCurrentTime');
@@ -15363,8 +15392,35 @@ $('#queueList')?.addEventListener('click', (e) => {
       ready: false,
       lastUrl: '',
       seeking: false,
+      media: audio,
+      mode: 'audio',
     };
     window.__miniPlayerOverlayState = state;
+
+    const isVideoLike = (url, formatOrMime) => {
+      const f = String(formatOrMime || '').toLowerCase();
+      if (f.startsWith('video/')) return true;
+      if ([ 'mp4', 'webm', 'mkv', 'mov' ].includes(f)) return true;
+      const u = String(url || '').split('?')[0].toLowerCase();
+      return u.endsWith('.mp4') || u.endsWith('.webm') || u.endsWith('.mkv') || u.endsWith('.mov');
+    };
+
+    const setMode = (mode) => {
+      const nextMode = mode === 'video' ? 'video' : 'audio';
+      state.mode = nextMode;
+      state.media = nextMode === 'video' ? video : audio;
+      const card = overlay.querySelector('.mini-player-card');
+      if (card) card.classList.toggle('is-video', nextMode === 'video');
+
+      if (thumbnailEl) thumbnailEl.hidden = nextMode === 'video';
+      if (videoWrapEl) videoWrapEl.hidden = nextMode !== 'video';
+      if (nextMode !== 'video') {
+        try { video.pause(); } catch {}
+        try { video.removeAttribute('src'); video.load(); } catch {}
+      } else {
+        try { audio.pause(); } catch {}
+      }
+    };
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
     const fmtTime = (s) => {
@@ -15389,8 +15445,9 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     const syncProgress = () => {
       if (!progressEl || state.seeking) return;
-      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
-      const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const media = state.media || audio;
+      const dur = Number.isFinite(media.duration) ? media.duration : 0;
+      const cur = Number.isFinite(media.currentTime) ? media.currentTime : 0;
       if (dur > 0) {
         progressEl.max = String(dur);
         progressEl.value = String(cur);
@@ -15404,37 +15461,47 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     window.closeMiniPlayer = () => {
       try { audio.pause(); } catch {}
+      try { video.pause(); } catch {}
       hideOverlay();
     };
 
-    window.openMiniPlayer = async (url, title, artist, cover) => {
+    window.openMiniPlayer = async (url, title, artist, cover, formatOrMime) => {
       if (!url) return;
       state.lastUrl = String(url);
+      const wantsVideo = isVideoLike(url, formatOrMime);
+      setMode(wantsVideo ? 'video' : 'audio');
       if (titleEl) titleEl.textContent = title ? String(title) : 'Untitled';
       if (artistEl) artistEl.textContent = artist ? String(artist) : '';
       if (thumbnailEl) {
         const src = cover ? String(cover) : '';
         thumbnailEl.src = src;
-        thumbnailEl.style.display = src ? '' : 'none';
+        thumbnailEl.style.display = src && !wantsVideo ? '' : 'none';
       }
       if (downloadBtn) {
         downloadBtn.href = String(url);
       }
 
-      if (audio.src !== String(url)) {
-        audio.src = String(url);
+      const media = state.media || audio;
+      if (media.src !== String(url)) {
+        media.src = String(url);
+      }
+
+      if (wantsVideo) {
+        try {
+          video.preload = 'metadata';
+        } catch {}
       }
 
       if (volumeEl) {
         const v = clamp(Number(volumeEl.value), 0, 1);
-        audio.volume = Number.isFinite(v) ? v : 1;
+        media.volume = Number.isFinite(v) ? v : 1;
       }
 
       showOverlay();
       try {
-        await audio.play();
+        await media.play();
       } catch {}
-      setPlayIcon(!audio.paused);
+      setPlayIcon(!media.paused);
       syncProgress();
     };
 
@@ -15451,26 +15518,29 @@ $('#queueList')?.addEventListener('click', (e) => {
     }
     if (playPauseBtn) {
       playPauseBtn.addEventListener('click', async () => {
-        if (audio.paused) {
-          try { await audio.play(); } catch {}
+        const media = state.media || audio;
+        if (media.paused) {
+          try { await media.play(); } catch {}
         } else {
-          try { audio.pause(); } catch {}
+          try { media.pause(); } catch {}
         }
-        setPlayIcon(!audio.paused);
+        setPlayIcon(!media.paused);
       });
     }
     if (seekBackBtn) {
       seekBackBtn.addEventListener('click', () => {
-        const next = (Number.isFinite(audio.currentTime) ? audio.currentTime : 0) - 10;
-        audio.currentTime = Math.max(0, next);
+        const media = state.media || audio;
+        const next = (Number.isFinite(media.currentTime) ? media.currentTime : 0) - 10;
+        media.currentTime = Math.max(0, next);
         syncProgress();
       });
     }
     if (seekFwdBtn) {
       seekFwdBtn.addEventListener('click', () => {
-        const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
-        const next = (Number.isFinite(audio.currentTime) ? audio.currentTime : 0) + 10;
-        audio.currentTime = dur > 0 ? Math.min(dur, next) : Math.max(0, next);
+        const media = state.media || audio;
+        const dur = Number.isFinite(media.duration) ? media.duration : 0;
+        const next = (Number.isFinite(media.currentTime) ? media.currentTime : 0) + 10;
+        media.currentTime = dur > 0 ? Math.min(dur, next) : Math.max(0, next);
         syncProgress();
       });
     }
@@ -15479,7 +15549,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       progressEl.addEventListener('pointerup', () => { state.seeking = false; });
       progressEl.addEventListener('input', () => {
         const val = Number(progressEl.value);
-        if (Number.isFinite(val)) audio.currentTime = Math.max(0, val);
+        const media = state.media || audio;
+        if (Number.isFinite(val)) media.currentTime = Math.max(0, val);
         syncProgress();
       });
       progressEl.addEventListener('change', () => {
@@ -15490,14 +15561,33 @@ $('#queueList')?.addEventListener('click', (e) => {
     if (volumeEl) {
       volumeEl.addEventListener('input', () => {
         const v = clamp(Number(volumeEl.value), 0, 1);
-        audio.volume = Number.isFinite(v) ? v : 1;
+        const media = state.media || audio;
+        media.volume = Number.isFinite(v) ? v : 1;
       });
     }
 
-    audio.addEventListener('loadedmetadata', syncProgress);
+    const onMeta = () => {
+      if (state.mode === 'video') {
+        try {
+          const w = Number(video.videoWidth) || 0;
+          const h = Number(video.videoHeight) || 0;
+          if (w > 0 && h > 0 && videoWrapEl) {
+            videoWrapEl.style.aspectRatio = `${w} / ${h}`;
+          }
+        } catch {}
+      }
+      syncProgress();
+    };
+
+    audio.addEventListener('loadedmetadata', onMeta);
     audio.addEventListener('timeupdate', syncProgress);
     audio.addEventListener('play', () => setPlayIcon(true));
     audio.addEventListener('pause', () => setPlayIcon(false));
+
+    video.addEventListener('loadedmetadata', onMeta);
+    video.addEventListener('timeupdate', syncProgress);
+    video.addEventListener('play', () => setPlayIcon(true));
+    video.addEventListener('pause', () => setPlayIcon(false));
     document.addEventListener('keydown', onKeyDown);
   })();
 
@@ -15773,7 +15863,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       titleLink.addEventListener('click', (e) => {
           e.preventDefault();
           if (typeof window.openMiniPlayer === 'function') {
-             window.openMiniPlayer(item.downloadUrl, item?.meta?.title || item.fileName, item?.meta?.artist || 'Unknown Artist', item?.meta?.cover);
+             window.openMiniPlayer(item.downloadUrl, item?.meta?.title || item.fileName, item?.meta?.artist || 'Unknown Artist', item?.meta?.cover, item?.format);
           } else {
              window.open(item.downloadUrl, '_blank');
           }
