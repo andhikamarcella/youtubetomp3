@@ -29,7 +29,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     const { widget, toggle } = els();
     if (!widget || !toggle) return;
-    toggle.addEventListener("click", () => window.toggleMaintMusic());
+    if (!toggle.getAttribute("onclick")) toggle.addEventListener("click", () => window.toggleMaintMusic());
     window.closeMaintMusic();
     document.addEventListener("click", (e) => {
       const w = els().widget;
@@ -42,5 +42,14 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") window.closeMaintMusic();
     });
+    try {
+      if (window.__pendingMaintMusic === true) {
+        window.__pendingMaintMusic = null;
+        window.toggleMaintMusic();
+      } else if (window.__pendingMaintMusic === false) {
+        window.__pendingMaintMusic = null;
+        window.closeMaintMusic();
+      }
+    } catch {}
   });
 })();
