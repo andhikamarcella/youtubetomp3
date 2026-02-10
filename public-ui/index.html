@@ -5926,12 +5926,6 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                            <button id="maintenanceCheckBtn" class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
                                <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
                            </button>
-                           ${type === 'maintenance' ? `
-                           <button id="maintenanceHelpBtn" class="btn btn-lg w-100 rounded-pill fw-bold mt-2 hover-scale flex-shrink-0" style="background: transparent; border: 2px solid ${colorMain}; color: ${colorMain};" onclick="openMaintenanceChat()">
-                               <i class="bi bi-chat-dots-fill me-2"></i>Forum Warga
-                           </button>
-                           <div class="small mt-2" style="color:#6c757d !important;">Chat pop-up khusus Room Umum.</div>
-                           ` : ''}
                       </div>
                       
                       <!-- Floating FAQ Widget -->
