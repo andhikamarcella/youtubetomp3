@@ -5272,6 +5272,7 @@
                   if (statusDot) statusDot.className = 'badge rounded-pill bg-warning text-dark border ms-2';
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
+                  try { window.initForumWidget && window.initForumWidget(); } catch {}
                   try { window.startMaintenanceHealthPoll && window.startMaintenanceHealthPoll(); } catch {}
                   return;
               }
@@ -5303,6 +5304,7 @@
                   if (statusDot) statusDot.innerHTML = '<i class="bi bi-cone-striped me-1"></i>Maintenance';
                   showMaintenanceOverlay(true, 'maintenance');
                   try { window.applyMaintenanceHealth && window.applyMaintenanceHealth(data); } catch {}
+                  try { window.initForumWidget && window.initForumWidget(); } catch {}
                   try { window.startMaintenanceHealthPoll && window.startMaintenanceHealthPoll(); } catch {}
               } else {
                   // Online
@@ -5339,6 +5341,19 @@
           try { window.__lastHealthData = data; } catch {}
 
           if (data.maintenance === false) {
+              try {
+                  const wants = localStorage.getItem('maint_notify_online') === '1';
+                  if (wants) {
+                      localStorage.removeItem('maint_notify_online');
+                      const title = 'Server sudah online';
+                      const body = 'Maintenance selesai. Kamu bisa coba lagi sekarang.';
+                      if ('Notification' in window && Notification.permission === 'granted') {
+                          try { new Notification(title, { body }); } catch {}
+                      } else {
+                          try { alert(`${title}\n${body}`); } catch {}
+                      }
+                  }
+              } catch {}
               try { showMaintenanceOverlay(false); } catch {}
               try { window.location.reload(); } catch {}
               return;
@@ -5348,6 +5363,51 @@
           if (!overlay || overlay.hidden) return;
 
           const info = data.maintenanceInfo || {};
+          try {
+              const themeNote = document.getElementById('maintThemeNote');
+              if (themeNote) themeNote.textContent = overlay.classList.contains('maint-night') ? 'Mode gelap otomatis aktif' : '';
+          } catch {}
+
+          try {
+              const idEl = document.getElementById('maintId');
+              if (idEl) {
+                  const fallback = (() => {
+                      const d = new Date();
+                      const y = String(d.getFullYear());
+                      const m = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      return `MT-${y}${m}${day}`;
+                  })();
+                  idEl.textContent = String(info.id || fallback);
+              }
+          } catch {}
+
+          try {
+              const lastUpd = document.getElementById('maintLastUpdated');
+              if (lastUpd) {
+                  const t = new Date();
+                  lastUpd.textContent = `${t.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' })} WIB`;
+              }
+          } catch {}
+
+          try {
+              const connWarn = document.getElementById('maintConnWarn');
+              if (connWarn) {
+                  let warn = '';
+                  try {
+                      if (navigator && navigator.onLine === false) warn = '⚠️ Koneksi kamu sedang offline. Status mungkin terlambat diperbarui.';
+                  } catch {}
+                  try {
+                      const c = navigator && navigator.connection ? navigator.connection : null;
+                      const et = c && typeof c.effectiveType === 'string' ? c.effectiveType : '';
+                      const dl = c && typeof c.downlink === 'number' ? c.downlink : null;
+                      if (!warn && (et === 'slow-2g' || et === '2g' || (dl != null && dl < 1.2))) {
+                          warn = '⚠️ Koneksi kamu tidak stabil. Status mungkin terlambat diperbarui.';
+                      }
+                  } catch {}
+                  connWarn.textContent = warn;
+              }
+          } catch {}
 
           const detailEl = document.getElementById('maintDetailDesc');
           if (detailEl && info.detail) detailEl.textContent = String(info.detail);
@@ -5359,6 +5419,18 @@
               if (percentEl) percentEl.textContent = `${pct}%`;
               if (barEl) barEl.style.width = `${pct}%`;
           }
+          try {
+              const icon = document.getElementById('maintIcon');
+              const t = overlay && overlay.dataset && overlay.dataset.type ? String(overlay.dataset.type) : '';
+              if (icon && t === 'maintenance' && pct != null) {
+                  let cls = 'bi-cone-striped';
+                  if (pct <= 30) cls = 'bi-wrench-adjustable-circle';
+                  else if (pct <= 70) cls = 'bi-server';
+                  else if (pct < 100) cls = 'bi-rocket-takeoff-fill';
+                  else cls = 'bi-check-circle-fill';
+                  icon.className = `bi ${cls}${pct >= 100 ? ' is-done' : ''}`;
+              }
+          } catch {}
 
           const estNumEl = document.getElementById('maintEstNum');
           const estUnitEl = document.getElementById('maintEstUnit');
@@ -5385,7 +5457,135 @@
               const endAt = etaEndAt != null ? new Date(etaEndAt) : new Date(Date.now() + seconds * 1000);
               if (etaAtEl) etaAtEl.textContent = endAt.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
           }
+
+          try {
+              const tipEl = document.getElementById('maintTipText');
+              if (tipEl && info.tip) tipEl.textContent = String(info.tip);
+          } catch {}
+
+          try {
+              const stepsEl = document.getElementById('maintMiniLog');
+              const pct2 = pct == null ? null : pct;
+              const steps = Array.isArray(info.steps) ? info.steps : null;
+              if (stepsEl) {
+                  const normalizeStatus = (s) => (s === 'done' || s === 'doing' || s === 'todo' ? s : 'todo');
+                  const renderItem = (status, title, sub) => {
+                      const safeTitle = String(title || '');
+                      const safeSub = String(sub || '');
+                      return `<li><span class="dot ${status}"></span><div><div class="fw-semibold">${safeTitle}</div>${safeSub ? `<div class="small" style="color:#6c757d !important;">${safeSub}</div>` : ''}</div></li>`;
+                  };
+                  if (steps && steps.length) {
+                      stepsEl.innerHTML = steps
+                        .slice(0, 6)
+                        .map((it) => renderItem(normalizeStatus(String(it?.status || 'todo')), it?.text || it?.title || 'Task', it?.detail || it?.sub || ''))
+                        .join('');
+                  } else {
+                      const p = pct2 == null ? 45 : pct2;
+                      const s1 = p >= 30 ? 'done' : (p >= 0 ? 'doing' : 'todo');
+                      const s2 = p >= 70 ? 'done' : (p >= 30 ? 'doing' : 'todo');
+                      const s3 = p >= 100 ? 'done' : (p >= 70 ? 'doing' : 'todo');
+                      stepsEl.innerHTML = [
+                          renderItem(s1, 'Database backup', s1 === 'done' ? 'Selesai' : 'Berjalan'),
+                          renderItem(s2, 'Optimasi server', s2 === 'done' ? 'Selesai' : (s2 === 'doing' ? 'Berjalan' : 'Menunggu')),
+                          renderItem(s3, 'Deploy fitur baru', s3 === 'done' ? 'Selesai' : (s3 === 'doing' ? 'Berjalan' : 'Menunggu')),
+                      ].join('');
+                  }
+              }
+          } catch {}
+
+          try {
+              const wnEl = document.getElementById('maintWhatsNew');
+              const wn = Array.isArray(info.whatsNew) ? info.whatsNew : null;
+              if (wnEl && wn && wn.length) {
+                  wnEl.innerHTML = wn.slice(0, 6).map((t) => `<li><span class="dot done"></span><div class="fw-semibold">${String(t)}</div></li>`).join('');
+              }
+          } catch {}
+
+          try {
+              const svcEl = document.getElementById('maintServices');
+              const services = info.services;
+              if (svcEl && services) {
+                  const items = Array.isArray(services) ? services : null;
+                  const entries = !items && typeof services === 'object' ? Object.entries(services) : null;
+                  const toColor = (s) => {
+                      const v = String(s || '').toLowerCase();
+                      if (v.includes('ok') || v.includes('up') || v.includes('online') || v.includes('green')) return '#22c55e';
+                      if (v.includes('warn') || v.includes('yellow') || v.includes('rate')) return '#f59e0b';
+                      if (v.includes('maint') || v.includes('progress')) return 'var(--maintenance-accent, #fd7e14)';
+                      if (v.includes('down') || v.includes('error') || v.includes('red')) return '#ef4444';
+                      return '#94a3b8';
+                  };
+                  const render = (name, status) => `<span class="maint-badge"><span style="color:${toColor(status)};">●</span> ${String(name)}: ${String(status)}</span>`;
+                  if (items) {
+                      svcEl.innerHTML = items.slice(0, 8).map((it) => render(it?.name || 'Service', it?.status || 'Unknown')).join('');
+                  } else if (entries) {
+                      svcEl.innerHTML = entries.slice(0, 8).map(([k, v]) => render(k, v)).join('');
+                  }
+              }
+          } catch {}
+
       } catch {}
+  };
+
+  window.copyMaintenanceStatus = async function() {
+      try {
+          const id = (document.getElementById('maintId') || {}).textContent || '';
+          const pct = (document.getElementById('maintProgressPercent') || {}).textContent || '';
+          const detail = (document.getElementById('maintDetailDesc') || {}).textContent || '';
+          const etaAt = (document.getElementById('maintEtaAt') || {}).textContent || '';
+          const last = (document.getElementById('maintLastUpdated') || {}).textContent || '';
+          const line = [
+              `Maintenance ${id}`.trim(),
+              detail ? `Status: ${detail}` : '',
+              pct ? `Progress: ${pct}` : '',
+              etaAt ? `Estimasi selesai: ${etaAt}` : '',
+              last ? `Last updated: ${last}` : '',
+              `URL: ${location.href}`,
+          ].filter(Boolean).join('\n');
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(line);
+              if (typeof window.setToast === 'function') window.setToast('Status disalin.', 'success');
+          } else {
+              alert(line);
+          }
+      } catch {}
+  };
+
+  window.enableOnlineNotify = async function() {
+      try {
+          localStorage.setItem('maint_notify_online', '1');
+      } catch {}
+      try {
+          if (!('Notification' in window)) {
+              if (typeof window.setToast === 'function') window.setToast('Browser tidak mendukung notifikasi.', 'warning');
+              return;
+          }
+          if (Notification.permission === 'granted') {
+              if (typeof window.setToast === 'function') window.setToast('Notifikasi diaktifkan.', 'success');
+              return;
+          }
+          if (Notification.permission === 'denied') {
+              if (typeof window.setToast === 'function') window.setToast('Notifikasi diblokir browser.', 'warning');
+              return;
+          }
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') {
+              if (typeof window.setToast === 'function') window.setToast('Notifikasi diaktifkan.', 'success');
+          } else {
+              if (typeof window.setToast === 'function') window.setToast('Izin notifikasi tidak diberikan.', 'warning');
+          }
+      } catch {}
+  };
+
+  window.remindLater = function(minutes) {
+      const mins = Number.isFinite(Number(minutes)) ? Math.max(1, Math.min(60, Number(minutes))) : 5;
+      try { localStorage.setItem('maint_remind_minutes', String(mins)); } catch {}
+      try {
+          if (typeof window.setToast === 'function') window.setToast(`Oke, cek lagi ${mins} menit lagi.`, 'info');
+      } catch {}
+      window.setTimeout(() => {
+          try { window.location.reload(); } catch {}
+      }, mins * 60 * 1000);
   };
 
   window.startMaintenanceHealthPoll = function() {
@@ -5413,7 +5613,7 @@
       
       const originalHtml = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Cek...';
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Lagi cek server...';
       
       try {
           const controller = new AbortController();
@@ -5437,7 +5637,7 @@
                    toast.style.cssText = 'bottom: 100px; z-index: 10000; background: rgba(33,37,41,0.95); backdrop-filter: blur(4px); font-weight: 500; min-width: max-content;';
                    document.body.appendChild(toast);
                }
-               toast.innerHTML = '<i class="bi bi-hourglass-split text-warning fs-5"></i><span>Masih maintenance, sabar ya...</span>';
+               toast.innerHTML = '<i class="bi bi-hourglass-split text-warning fs-5"></i><span>Masih dalam perbaikan. Progress akan terus diperbarui.</span>';
                toast.style.opacity = '1';
                setTimeout(() => { try { toast.style.opacity = '0'; } catch {} }, 2200);
                return;
@@ -5454,7 +5654,7 @@
               toast.id = 'maintToast';
               toast.className = 'position-fixed start-50 translate-middle-x px-4 py-3 rounded-pill text-white shadow-lg d-flex align-items-center gap-2';
               toast.style.cssText = 'bottom: 100px; z-index: 10000; background: rgba(33,37,41,0.95); backdrop-filter: blur(4px); font-weight: 500; min-width: max-content;';
-              toast.innerHTML = '<i class="bi bi-hourglass-split text-warning fs-5"></i><span>Masih maintenance, sabar ya...</span>';
+              toast.innerHTML = '<i class="bi bi-hourglass-split text-warning fs-5"></i><span>Masih dalam perbaikan. Progress akan terus diperbarui.</span>';
               document.body.appendChild(toast);
           } else {
              // If already exists, just ensure it's visible and reset animation
@@ -5578,8 +5778,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
               let iconClass = 'bi-cone-striped';
               let title = 'Sedang Dalam Perbaikan';
-              let desc = 'Mohon maaf atas ketidaknyamanan ini. Server sedang menjalani maintenance rutin.';
-              let detailDesc = 'Upgrade server & peningkatan performa sistem';
+              let desc = 'Kami lagi ngerapihin sistem biar layanan lebih cepat dan stabil. Update progress-nya bisa kamu lihat di bawah ya.';
+              let detailDesc = 'Upgrade server supaya lebih cepat & stabil';
               let progressVal = 45;
               let estNum = '2';
               let estUnit = 'Jam';
@@ -5590,8 +5790,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               if (type === 'deploying') {
                   iconClass = 'bi-cloud-arrow-up-fill';
                   title = 'Server Sedang Update';
-                  desc = 'Aplikasi sedang diperbarui ke versi terbaru. Layanan akan segera kembali.';
-                  detailDesc = 'Menerapkan fitur baru & optimasi database';
+                  desc = 'Kami lagi deploy versi terbaru. Biasanya sebentar, tapi kami tetap pantau biar aman.';
+                  detailDesc = 'Deploy rilis baru & optimasi database';
                   progressVal = 75;
                   estNum = '5';
                   estUnit = 'Menit';
@@ -5601,8 +5801,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               } else if (type === 'offline') {
                   iconClass = 'bi-router-fill';
                   title = 'Koneksi Terputus';
-                  desc = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
-                  detailDesc = 'Menunggu sambungan ulang...';
+                  desc = 'Kami belum bisa menjangkau server. Bisa jadi koneksi kamu tidak stabil atau server sedang sibuk.';
+                  detailDesc = 'Menunggu sambungan ulang & cek jaringan';
                   progressVal = 0;
                   estNum = '—';
                   estUnit = '';
@@ -5613,6 +5813,12 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
               
               try { document.documentElement.style.setProperty('--maintenance-accent', colorMain); } catch {}
               try { document.documentElement.style.setProperty('--maint-accent', colorMain); } catch {}
+              let isNight = false;
+              try {
+                  const h = new Date().getHours();
+                  isNight = h >= 18 || h < 6;
+              } catch {}
+              try { overlay.classList.toggle('maint-night', Boolean(isNight)); } catch {}
               
               overlay.innerHTML = `
                   <style>
@@ -5627,6 +5833,28 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                     @keyframes maint-spin {
                         from { transform: rotate(0deg); }
                         to { transform: rotate(360deg); }
+                    }
+                    @keyframes maint-shimmer {
+                        0% { background-position: 200% 0; }
+                        100% { background-position: -200% 0; }
+                    }
+                    #maintenanceOverlay.maint-night .maint-container {
+                        background: radial-gradient(circle at 20% 20%, rgba(253,126,20,0.18), transparent 55%),
+                                    radial-gradient(circle at 80% 0%, rgba(13,110,253,0.14), transparent 45%),
+                                    linear-gradient(135deg, #0b1220 0%, #0f1b2d 60%, #0b1220 100%) !important;
+                    }
+                    #maintenanceOverlay.maint-night .maint-card {
+                        background: rgba(17, 24, 39, 0.92);
+                        color: #e5e7eb;
+                        border-color: rgba(255,255,255,0.08);
+                        box-shadow: 0 20px 70px rgba(0,0,0,0.35);
+                    }
+                    #maintenanceOverlay.maint-night p,
+                    #maintenanceOverlay.maint-night small {
+                        color: rgba(229,231,235,0.78) !important;
+                    }
+                    #maintenanceOverlay.maint-night .btn-close {
+                        filter: invert(1);
                     }
                     .maint-container {
                         width: 100%; height: 100%;
@@ -5657,6 +5885,100 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         overflow-y: auto;
                         margin-bottom: 1rem;
                     }
+                    .maint-section {
+                        text-align: left;
+                        background: rgba(0,0,0,0.035);
+                        border: 1px solid rgba(0,0,0,0.06);
+                        border-radius: 16px;
+                        padding: 12px 12px;
+                        margin-top: 12px;
+                    }
+                    #maintenanceOverlay.maint-night .maint-section {
+                        background: rgba(255,255,255,0.06);
+                        border-color: rgba(255,255,255,0.08);
+                    }
+                    .maint-section-title {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 10px;
+                        font-weight: 900;
+                        font-size: 0.8rem;
+                        letter-spacing: 0.06em;
+                        text-transform: uppercase;
+                        margin-bottom: 8px;
+                    }
+                    .maint-mini-log {
+                        list-style: none;
+                        padding: 0;
+                        margin: 0;
+                        display: grid;
+                        gap: 6px;
+                        font-size: 0.9rem;
+                    }
+                    .maint-mini-log li {
+                        display: flex;
+                        align-items: flex-start;
+                        gap: 8px;
+                    }
+                    .maint-mini-log .dot {
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 999px;
+                        margin-top: 6px;
+                        flex: 0 0 auto;
+                        background: rgba(99,102,241,0.45);
+                    }
+                    .maint-mini-log .dot.done { background: rgba(34,197,94,0.9); }
+                    .maint-mini-log .dot.doing { background: rgba(253,126,20,0.95); }
+                    .maint-mini-log .dot.todo { background: rgba(148,163,184,0.9); }
+                    .maint-badges {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                    }
+                    .maint-badge {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 6px 10px;
+                        border-radius: 999px;
+                        font-size: 0.78rem;
+                        font-weight: 800;
+                        background: rgba(255,255,255,0.7);
+                        border: 1px solid rgba(0,0,0,0.06);
+                        color: #111827;
+                    }
+                    #maintenanceOverlay.maint-night .maint-badge {
+                        background: rgba(255,255,255,0.08);
+                        border-color: rgba(255,255,255,0.10);
+                        color: #e5e7eb;
+                    }
+                    .maint-skeleton {
+                        height: 14px;
+                        border-radius: 10px;
+                        background: linear-gradient(90deg, rgba(0,0,0,0.05), rgba(0,0,0,0.12), rgba(0,0,0,0.05));
+                        background-size: 200% 100%;
+                        animation: maint-shimmer 1.6s ease-in-out infinite;
+                    }
+                    #maintenanceOverlay.maint-night .maint-skeleton {
+                        background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+                    }
+                    .maint-actions {
+                        display: grid;
+                        gap: 10px;
+                        margin-top: 12px;
+                    }
+                    .maint-actions-row {
+                        display: flex;
+                        gap: 10px;
+                        flex-wrap: wrap;
+                        justify-content: center;
+                    }
+                    .maint-actions-row .btn {
+                        flex: 1 1 auto;
+                        min-width: 160px;
+                    }
                     .maint-icon-wrap {
                         width: 80px; height: 80px;
                         background: ${colorLight};
@@ -5667,6 +5989,13 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                         margin: 0 auto 1rem;
                         position: relative;
                         flex-shrink: 0;
+                    }
+                    .maint-icon-wrap i {
+                        animation: maint-spin 14s linear infinite;
+                        transform-origin: 50% 50%;
+                    }
+                    .maint-icon-wrap i.is-done {
+                        animation: none;
                     }
                     .maint-icon-wrap::after {
                         content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -5977,7 +6306,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                   <div class="maint-container">
                       <div class="maint-card">
                            <div class="maint-icon-wrap">
-                                <i class="bi ${iconClass}"></i>
+                                <i id="maintIcon" class="bi ${iconClass}"></i>
                            </div>
                            
                            <div class="maint-content-wrapper">
@@ -5995,9 +6324,10 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                         <div class="maint-progress-bar" id="maintProgressBar" style="width: ${progressVal}%"></div>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <small class="fw-semibold" style="font-size: 0.72rem; color: #6c757d !important;">Healthcheck</small>
+                                        <small class="fw-semibold" style="font-size: 0.72rem; color: #6c757d !important;">Terakhir dicek</small>
                                         <small class="fw-bold font-monospace" id="maintHealthCheckAt" style="font-size: 0.72rem; color: ${colorMain};">--:--:--</small>
                                     </div>
+                                    <div class="small mt-1" id="maintConnWarn" style="color:#6c757d !important;"></div>
                                </div>
     
     
@@ -6010,6 +6340,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                             <span class="fw-bold" id="maintEstUnit" style="color: #6c757d !important; font-size: 0.8rem;">${estUnit}</span>
                                         </div>
                                         <div class="small fw-semibold mt-1" style="color:#6c757d !important;">Selesai sekitar <span class="fw-bold font-monospace" id="maintEtaAt">--:--</span></div>
+                                        <div class="small mt-1" id="maintEtaNote" style="color:#6c757d !important;">Biasanya selesai lebih cepat kalau tidak ada kendala.</div>
                                     </div>
                                     <div class="vr mx-2"></div>
                                     <div class="text-end">
@@ -6017,11 +6348,74 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                                          <div id="maintenanceClock" class="fw-bold font-monospace" style="color: ${colorMain}; font-size: 0.9rem;">00:00:00</div>
                                     </div>
                                </div>
+
+                               <div class="maint-section" id="maintEmpathyBox">
+                                   <div class="maint-section-title"><span><i class="bi bi-heart-fill me-2" style="color:${colorMain};"></i>Terima kasih</span><span id="maintThemeNote" class="small fw-semibold" style="letter-spacing:0; text-transform:none;"></span></div>
+                                   <div class="small" style="color:#6c757d !important;">Terima kasih sudah menunggu. Kami tahu waktu kamu berharga, dan kami lagi fokus bikin layanan ini lebih stabil.</div>
+                               </div>
+
+                               <div class="maint-section" id="maintDataSafe">
+                                   <div class="maint-section-title"><span><i class="bi bi-shield-lock-fill me-2" style="color:${colorMain};"></i>Data Kamu</span></div>
+                                   <div class="small" style="color:#6c757d !important;"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
+                               </div>
+
+                               <div class="maint-section" id="maintMiniLogSection">
+                                   <div class="maint-section-title"><span><i class="bi bi-list-check me-2" style="color:${colorMain};"></i>Progress Detail</span><span class="small fw-semibold" style="letter-spacing:0; text-transform:none; color:#6c757d !important;">lagi dikerjain</span></div>
+                                   <ul class="maint-mini-log" id="maintMiniLog">
+                                       <li><span class="dot done"></span><div><div class="fw-semibold">Database backup selesai</div><div class="small" style="color:#6c757d !important;">Amanin data & konfigurasi</div></div></li>
+                                       <li><span class="dot doing"></span><div><div class="fw-semibold">Optimasi server (berjalan)</div><div class="small" style="color:#6c757d !important;">Stabilitas & performa</div></div></li>
+                                       <li><span class="dot todo"></span><div><div class="fw-semibold">Deploy fitur baru (menunggu)</div><div class="small" style="color:#6c757d !important;">Update terakhir sebelum online</div></div></li>
+                                   </ul>
+                               </div>
+
+                               <div class="maint-section" id="maintWhatsNewSection">
+                                   <div class="maint-section-title"><span><i class="bi bi-stars me-2" style="color:${colorMain};"></i>Setelah Maintenance</span></div>
+                                   <ul class="maint-mini-log" id="maintWhatsNew">
+                                       <li><span class="dot done"></span><div class="fw-semibold">Download lebih cepat</div></li>
+                                       <li><span class="dot done"></span><div class="fw-semibold">Error converter dikurangi</div></li>
+                                       <li><span class="dot done"></span><div class="fw-semibold">Tampilan mobile lebih ringan</div></li>
+                                   </ul>
+                               </div>
+
+                               <div class="maint-section" id="maintServiceSection">
+                                   <div class="maint-section-title"><span><i class="bi bi-hdd-network-fill me-2" style="color:${colorMain};"></i>Status Server</span></div>
+                                   <div class="maint-badges" id="maintServices">
+                                       <span class="maint-badge"><span style="color:#22c55e;">●</span> Database: OK</span>
+                                       <span class="maint-badge"><span style="color:${colorMain};">●</span> Converter: Maintenance</span>
+                                       <span class="maint-badge"><span style="color:#ef4444;">●</span> API YouTube: Rate limited</span>
+                                   </div>
+                                   <div class="small mt-2" id="maintMetaLine" style="color:#6c757d !important;">Maintenance ID: <span class="fw-bold font-monospace" id="maintId">MT-000000</span> • Terakhir diperbarui: <span class="fw-bold font-monospace" id="maintLastUpdated">--:-- WIB</span></div>
+                               </div>
+
+                               <div class="maint-section" id="maintTipSection">
+                                   <div class="maint-section-title"><span><i class="bi bi-lightbulb-fill me-2" style="color:${colorMain};"></i>Tips</span></div>
+                                   <div class="small" id="maintTipText" style="color:#6c757d !important;">Gunakan format MP3 192kbps untuk kualitas terbaik.</div>
+                               </div>
                            </div>
 
-                           <button id="maintenanceCheckBtn" class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
-                               <i class="bi bi-arrow-clockwise me-2"></i>Cek Status
-                           </button>
+                           <div class="maint-actions">
+                               <button id="maintenanceCheckBtn" class="btn btn-lg w-100 rounded-pill fw-bold text-white shadow-sm hover-scale flex-shrink-0" style="background: ${colorMain}; border: none;" onclick="manualCheckStatus()">
+                                   <i class="bi bi-arrow-clockwise me-2"></i>Cek status terbaru
+                               </button>
+                               <div class="maint-actions-row">
+                                   <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold" onclick="window.copyMaintenanceStatus && window.copyMaintenanceStatus()">
+                                       <i class="bi bi-clipboard-check me-2"></i>Salin status
+                                   </button>
+                                   <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold" onclick="window.enableOnlineNotify && window.enableOnlineNotify()">
+                                       <i class="bi bi-bell-fill me-2"></i>Beri tahu saat online
+                                   </button>
+                               </div>
+                               <div class="maint-actions-row">
+                                   <a class="btn btn-outline-secondary rounded-pill fw-bold" href="./status.html" target="_blank" rel="noopener">
+                                       <i class="bi bi-activity me-2"></i>Status Page
+                                   </a>
+                                   <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold" onclick="window.remindLater && window.remindLater(5)">
+                                       <i class="bi bi-clock me-2"></i>Cek lagi 5 menit
+                                   </button>
+                               </div>
+                               <div class="small mt-1" style="color:#6c757d !important;">Waktu ditampilkan sesuai zona waktu kamu. Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
+                               <div class="small mt-1" style="color:#6c757d !important;">Ada kendala? hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
+                           </div>
                       </div>
                       
                       <!-- Floating FAQ Widget -->
@@ -6075,7 +6469,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
                       const hc = document.getElementById('maintHealthCheckAt');
                       if (hc) {
                           const last = window.__lastHealthcheckAt instanceof Date ? window.__lastHealthcheckAt : now;
-                          hc.textContent = last.toLocaleTimeString('id-ID', { hour12: false });
+                          hc.textContent = `${last.toLocaleTimeString('id-ID', { hour12: false })} WIB`;
                       }
                       const etaAt = document.getElementById('maintEtaAt');
                       if (etaAt) {
