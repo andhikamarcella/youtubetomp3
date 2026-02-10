@@ -4850,7 +4850,7 @@
   <!-- Mini Player Overlay -->
   <div id="miniPlayerOverlay" class="mini-player-overlay" hidden>
       <div class="mini-player-card">
-          <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="mini-player-topbar d-flex justify-content-between align-items-center mb-2">
               <h6 class="mb-0 text-white-50 text-uppercase small ls-1" style="font-size: 0.7rem;">Now Playing</h6>
               <button type="button" class="btn-close btn-close-white" id="closeMiniPlayer" style="font-size: 0.8rem;"></button>
           </div>
@@ -4932,6 +4932,34 @@
         transform: scale(0.9);
         transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         color: white;
+        position: relative;
+    }
+
+    .mini-player-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: linear-gradient(to bottom, rgba(18,18,18,0.95), rgba(18,18,18,0.65));
+        backdrop-filter: blur(6px);
+        padding-bottom: 10px;
+        margin-bottom: 6px !important;
+        border-top-left-radius: 18px;
+        border-top-right-radius: 18px;
+    }
+
+    #closeMiniPlayer {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 6;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: rgba(0,0,0,0.35);
+        border: 1px solid rgba(255,255,255,0.14);
+        padding: 0;
+        display: grid;
+        place-items: center;
     }
     .mini-player-overlay.show .mini-player-card {
         transform: scale(1);
@@ -4986,6 +5014,12 @@
             border-left: none;
             border-right: none;
             background: #121212;
+        }
+        #closeMiniPlayer {
+            top: calc(10px + env(safe-area-inset-top, 0px));
+            right: calc(10px + env(safe-area-inset-right, 0px));
+            width: 44px;
+            height: 44px;
         }
         .mini-player-overlay.show .mini-player-card {
             transform: translateY(0);
