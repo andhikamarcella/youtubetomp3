@@ -6608,12 +6608,41 @@ app.get("/api/server-time", (req, res) => {
 const startTime = Date.now();
 
 app.get("/api/health", (req, res) => {
+  const parseIntEnv = (v) => {
+    const n = Number.parseInt(String(v ?? ""), 10);
+    return Number.isFinite(n) ? n : null;
+  };
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+  const maintenance = process.env.MAINTENANCE_MODE === "true";
+  const now = Date.now();
+
+  let maintenanceInfo = null;
+  if (maintenance) {
+    const progressRaw = parseIntEnv(process.env.MAINTENANCE_PROGRESS);
+    const progress = progressRaw == null ? null : clamp(progressRaw, 0, 100);
+    const etaMinutesRaw = parseIntEnv(process.env.MAINTENANCE_ETA_MINUTES);
+    const etaSeconds = etaMinutesRaw == null ? null : clamp(etaMinutesRaw, 0, 7 * 24 * 60) * 60;
+    const etaEndAt = etaSeconds == null ? null : now + etaSeconds * 1000;
+
+    maintenanceInfo = {
+      title: process.env.MAINTENANCE_TITLE || null,
+      description: process.env.MAINTENANCE_DESC || null,
+      detail: process.env.MAINTENANCE_DETAIL || null,
+      progress,
+      etaSeconds,
+      etaEndAt,
+    };
+  }
+
   return res.json({
     ok: true,
     status: "online",
-    maintenance: process.env.MAINTENANCE_MODE === "true",
+    maintenance,
+    maintenanceInfo,
+    healthcheckPath: "/api/health",
     uptime: process.uptime(),
-    timestamp: Date.now(),
+    timestamp: now,
     startTime: startTime,
     storageDuration: "24h" // Default ephemeral storage policy
   });
