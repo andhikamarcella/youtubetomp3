@@ -476,6 +476,15 @@
     #forumModal .modal-footer {
       padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
     }
+
+    body.forum-modal-open .maint-music-widget,
+    body.forum-modal-open .faq-float-btn,
+    body.forum-modal-open .faq-float-panel,
+    body.forum-modal-open .forum-widget,
+    body.forum-modal-open .assistant-fab,
+    body.forum-modal-open .assistant-panel {
+      display: none !important;
+    }
   }
   [data-bs-theme="dark"] #forumChatArea {
     background-color: #0b141a;
@@ -20426,6 +20435,15 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumMessageInfoTime = document.getElementById('forumMessageInfoTime');
         const forumMessageInfoId = document.getElementById('forumMessageInfoId');
         const forumMessageInfoModal = forumMessageInfoModalEl ? new bootstrap.Modal(forumMessageInfoModalEl) : null;
+
+        if (forumModal) {
+            forumModal.addEventListener('shown.bs.modal', () => {
+                document.body.classList.add('forum-modal-open');
+            });
+            forumModal.addEventListener('hidden.bs.modal', () => {
+                document.body.classList.remove('forum-modal-open');
+            });
+        }
 
         // --- Helper Functions ---
         let isNearBottomState = true;
