@@ -5,28 +5,40 @@
     toggle: document.getElementById("maintMusicToggle"),
   });
 
-  const setPinned = (pinned) => {
+  const setOpen = (open) => {
     const { widget, toggle } = els();
     if (!widget) return;
-    widget.classList.toggle("pinned", Boolean(pinned));
+    widget.classList.toggle("open", Boolean(open));
+    const panel = document.getElementById("maintMusicPanel");
+    if (panel) panel.hidden = !Boolean(open);
     if (toggle) {
-      toggle.setAttribute("aria-expanded", pinned ? "true" : "false");
-      toggle.innerHTML = pinned ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-music-note-beamed"></i>';
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.setAttribute("aria-label", open ? "Tutup music" : "Buka music");
+      toggle.innerHTML = open ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-music-note-beamed"></i>';
     }
   };
 
   window.toggleMaintMusic = () => {
     const { widget } = els();
     if (!widget) return;
-    setPinned(!widget.classList.contains("pinned"));
+    setOpen(!widget.classList.contains("open"));
   };
 
-  window.closeMaintMusic = () => setPinned(false);
+  window.closeMaintMusic = () => setOpen(false);
 
   document.addEventListener("DOMContentLoaded", () => {
     const { widget, toggle } = els();
     if (!widget || !toggle) return;
     toggle.addEventListener("click", () => window.toggleMaintMusic());
+    window.closeMaintMusic();
+    document.addEventListener("click", (e) => {
+      const w = els().widget;
+      if (!w) return;
+      if (!w.classList.contains("open")) return;
+      const target = e.target;
+      if (target && w.contains(target)) return;
+      window.closeMaintMusic();
+    });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") window.closeMaintMusic();
     });
