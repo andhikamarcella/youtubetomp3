@@ -886,12 +886,70 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: "10mb" }));
 app.use(cors());
 
-// Configure Cloudinary
-cloudinary.config({ 
-  cloud_name: 'dgbal8btf', 
-  api_key: '422728616314883', 
-  api_secret: 'Nh3_vvxXVaQSEyJXqguIiI5YTbE' 
-});
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config({ secure: true });
+} else {
+  console.warn("CLOUDINARY_URL belum diset; upload gambar forum & sync stiker via Cloudinary tidak aktif.");
+}
+
+const parseCloudinaryUrl = (raw) => {
+  const input = String(raw || "").trim();
+  if (!input) return null;
+  const m = input.match(/^cloudinary:\/\/([^:]+):([^@]+)@(.+)$/);
+  if (!m) return null;
+  return { apiKey: m[1], apiSecret: m[2], cloudName: m[3] };
+};
+
+const signCloudinaryParams = (params, apiSecret) => {
+  const entries = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && String(v) !== "")
+    .sort(([a], [b]) => a.localeCompare(b));
+  const base = entries.map(([k, v]) => `${k}=${String(v)}`).join("&");
+  return createHash("sha1").update(base + apiSecret).digest("hex");
+};
+
+const uploadAudioToCloudinary = async ({ filePath, publicId, folder, mimeType }) => {
+  const cfg = parseCloudinaryUrl(process.env.CLOUDINARY_AUDIO_URL);
+  if (!cfg) return null;
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const paramsToSign = {
+    folder,
+    overwrite: "true",
+    public_id: publicId,
+    timestamp,
+  };
+  const signature = signCloudinaryParams(paramsToSign, cfg.apiSecret);
+
+  const { FormData, File } = await import("undici");
+  const buf = await fsp.readFile(filePath);
+  const fileName = basename(filePath);
+  const file = new File([buf], fileName, { type: mimeType || "audio/mpeg" });
+  const form = new FormData();
+  form.set("file", file);
+  form.set("api_key", cfg.apiKey);
+  form.set("timestamp", String(timestamp));
+  form.set("signature", signature);
+  form.set("folder", folder);
+  form.set("public_id", publicId);
+  form.set("overwrite", "true");
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${cfg.cloudName}/video/upload`;
+  const res = await fetch(endpoint, { method: "POST", body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = typeof data?.error?.message === "string" ? data.error.message : "Upload Cloudinary gagal";
+    const err = new Error(msg);
+    err.details = data;
+    throw err;
+  }
+  return {
+    url: data.secure_url,
+    publicId: data.public_id,
+    bytes: data.bytes,
+    duration: data.duration,
+  };
+};
 
 // ==== Direktori publik & jobs ====
 const PUBLIC_DIR = join(__dirname, "public");
@@ -6296,6 +6354,33 @@ const convertSingle = async (payload = {}) => {
     savedPath,
     progressId: progressId || null,
   };
+
+  try {
+    const fmtLower = String(finalExt || "").toLowerCase();
+    const abrNum = Number(targetAbr);
+    const allowed = new Set([320, 256, 192, 128, 64]);
+    if (fmtLower === "mp3" && allowed.has(abrNum) && process.env.CLOUDINARY_AUDIO_URL) {
+      emitProgress({ stage: "uploading", message: "Menyimpan ke cloud", percent: 99 });
+      const uploaded = await uploadAudioToCloudinary({
+        filePath: fullPath,
+        publicId: `${id}-${abrNum}kbps`,
+        folder: `audio/mp3/${abrNum}kbps`,
+        mimeType: "audio/mpeg",
+      });
+      if (uploaded?.url) {
+        response.cloudinaryAudio = {
+          url: uploaded.url,
+          publicId: uploaded.publicId,
+          abr: abrNum,
+          bytes: uploaded.bytes,
+          duration: uploaded.duration,
+        };
+      }
+    }
+  } catch (err) {
+    logs += `\n[Warning] Cloud upload gagal: ${String(err?.message || err)}`;
+    response.logs = (logs || "").slice(-8000);
+  }
   
   CacheStore.set(cacheKey, response);
   
@@ -6344,6 +6429,7 @@ const buildConversionContext = (payload = {}, overrides = {}) => {
 const buildHistoryRecordPayload = (payload = {}, result = {}) => {
   const metadata = result?.metadata || {};
   const durationSeconds = Number(metadata.duration || payload.durationSeconds || 0) || 0;
+  const cloudUrl = result?.cloudinaryAudio?.url || null;
   return {
     title:
       metadata.title || metadata.cleanTitle || payload.title || result.baseName || null,
@@ -6352,7 +6438,8 @@ const buildHistoryRecordPayload = (payload = {}, result = {}) => {
     format: result.format || payload.format || null,
     bitrate: payload.abr || payload.bitrate || null,
     sourceUrl: metadata.webpageUrl || payload.url || null,
-    downloadUrl: result.downloadUrl || null,
+    downloadUrl: cloudUrl || result.downloadUrl || null,
+    cloudUrl,
     durationSeconds,
     preview: metadata.preview || null,
     command: sanitizeHistoryCommand(payload),
