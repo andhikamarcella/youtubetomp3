@@ -15903,9 +15903,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       titleLink.addEventListener('click', (e) => {
           e.preventDefault();
           if (typeof window.openMiniPlayer === 'function') {
-             window.openMiniPlayer(item.downloadUrl, item?.meta?.title || item.fileName, item?.meta?.artist || 'Unknown Artist', item?.meta?.cover, item?.format);
+             window.openMiniPlayer(item.cloudUrl || item.downloadUrl, item?.meta?.title || item.fileName, item?.meta?.artist || 'Unknown Artist', item?.meta?.cover, item?.format);
           } else {
-             window.open(item.downloadUrl, '_blank');
+             window.open(item.cloudUrl || item.downloadUrl, '_blank');
           }
       });
       
@@ -15930,7 +15930,7 @@ $('#queueList')?.addEventListener('click', (e) => {
 
       const downloadBtn = document.createElement('a');
       downloadBtn.className = 'btn btn-sm btn-outline-primary';
-      downloadBtn.href = item.downloadUrl;
+      downloadBtn.href = item.cloudUrl || item.downloadUrl;
       if (item.fileName) downloadBtn.setAttribute('download', item.fileName);
       downloadBtn.title = translateMessage('Download');
       const downloadIcon = document.createElement('i');
@@ -15949,7 +15949,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       copyBtn.appendChild(copyIcon);
       copyBtn.addEventListener('click', async () => {
         try {
-          await navigator.clipboard.writeText(item.downloadUrl);
+          await navigator.clipboard.writeText(item.cloudUrl || item.downloadUrl);
           setToast('Link disalin');
         } catch {
           setToast('Tidak bisa menyalin');
@@ -18397,6 +18397,8 @@ $('#queueList')?.addEventListener('click', (e) => {
       const backendBase = getBackend() || window.location.origin;
       if (!convertData.downloadUrl) throw new Error('Link download kosong dari server.');
       const absoluteDownload = new URL(convertData.downloadUrl, backendBase).href;
+      const cloudPlayUrl = convertData?.cloudinaryAudio?.url ? String(convertData.cloudinaryAudio.url) : '';
+      const absolutePlayUrl = cloudPlayUrl || absoluteDownload;
       $('#downloadLink').href = absoluteDownload;
       $('#downloadLink').setAttribute('download', convertData.fileName || 'audio');
       $('#downloadLink').classList.add('step-active');
@@ -18516,7 +18518,9 @@ $('#queueList')?.addEventListener('click', (e) => {
           }
         : null;
       pushHistory({
-        downloadUrl: absoluteDownload,
+        downloadUrl: absolutePlayUrl,
+        serverUrl: absoluteDownload,
+        cloudUrl: cloudPlayUrl,
         format: convertData.format,
         abr: body.abr,
         fileName: convertData.fileName,
@@ -18534,13 +18538,13 @@ $('#queueList')?.addEventListener('click', (e) => {
         channels: convertData.channels || null,
       };
       state.lastDownload = {
-        url: absoluteDownload,
+        url: absolutePlayUrl,
         fileName: convertData.fileName || previewMeta.fileName || 'audio',
         format: convertData.format || body.format,
         mimeType: convertData.mimeType || null,
       };
       updateDriveUi();
-      showAudioPreview(absoluteDownload, previewMeta);
+      showAudioPreview(absolutePlayUrl, previewMeta);
       setToast(translateMessage('Berhasil diproses'));
       updateAiStatus('Konversi selesai', 'success');
       registerConversionSuccess('direct', {
@@ -19484,7 +19488,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       
       pushHistory({
         originalUrl: url,
-        downloadUrl: result.downloadUrl,
+        downloadUrl: (result?.cloudinaryAudio?.url ? String(result.cloudinaryAudio.url) : '') || absoluteFromRelative(result.downloadUrl),
+        serverUrl: absoluteFromRelative(result.downloadUrl),
+        cloudUrl: result?.cloudinaryAudio?.url ? String(result.cloudinaryAudio.url) : '',
         fileName: result.fileName,
         fileSize: result.fileSize || result.size || 0,
         format: result.format,
@@ -19616,7 +19622,9 @@ $('#queueList')?.addEventListener('click', (e) => {
       // Add to history (reuse basic history logic)
       pushHistory({
         originalUrl: url,
-        downloadUrl: result.downloadUrl,
+        downloadUrl: (result?.cloudinaryAudio?.url ? String(result.cloudinaryAudio.url) : '') || absoluteFromRelative(result.downloadUrl),
+        serverUrl: absoluteFromRelative(result.downloadUrl),
+        cloudUrl: result?.cloudinaryAudio?.url ? String(result.cloudinaryAudio.url) : '',
         fileName: result.fileName,
         fileSize: result.fileSize || 0,
         format: 'mp3',
