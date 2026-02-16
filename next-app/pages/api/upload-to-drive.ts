@@ -29,6 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!jobId || typeof jobId !== 'string') {
     return res.status(400).json({ error: 'jobId is required' });
   }
+  // Ensure jobId cannot alter the request path structure
+  if (!/^[A-Za-z0-9_-]+$/.test(jobId)) {
+    return res.status(400).json({ error: 'Invalid jobId format' });
+  }
 
   try {
     const pool = getPool();
@@ -74,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(status).json({ error: status === 404 ? 'Job not found' : 'Forbidden' });
     }
 
-    const workerUrl = `${workerBase.replace(/\/$/, '')}/final-url/${jobId}`;
+    const workerUrl = `${workerBase.replace(/\/$/, '')}/final-url/${encodeURIComponent(jobId)}`;
     const workerResponse = await fetch(workerUrl, {
       headers: {
         Authorization: `Bearer ${workerSecret}`,
