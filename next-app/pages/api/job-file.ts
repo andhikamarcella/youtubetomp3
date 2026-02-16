@@ -24,16 +24,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing jobId' });
   }
 
+  const jobIdStr = String(jobId).trim();
+  // Restrict jobId to a safe format to prevent SSRF/path-manipulation via the worker URL.
+  // Adjust this pattern if your job IDs use a different, known-safe format.
+  const jobIdPattern = /^[A-Za-z0-9_-]+$/;
+  if (!jobIdPattern.test(jobIdStr)) {
+    return res.status(400).json({ error: 'Invalid jobId' });
+  }
+
   try {
     // TODO: Permit admin-controlled overrides for customer support investigations.
-    await assertJobOwnership(jobId, session.id);
+    await assertJobOwnership(jobIdStr, session.id);
   } catch (error: any) {
     const status = typeof error?.statusCode === 'number' ? error.statusCode : 403;
     return res.status(status).json({ error: status === 404 ? 'Job not found' : 'Forbidden' });
   }
 
   try {
-    const workerUrl = `${workerBase.replace(/\/$/, '')}/file/${jobId}`;
+    const workerUrl = `${workerBase.replace(/\/$/, '')}/file/${jobIdStr}`;
     const workerResponse = await fetch(workerUrl, {
       headers: {
         Authorization: `Bearer ${workerSecret}`,
