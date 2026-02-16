@@ -23,6 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!jobId) {
     return res.status(400).json({ error: 'Missing jobId' });
   }
+  if (!isValidJobId(jobId)) {
+    return res.status(400).json({ error: 'Invalid jobId format' });
+  }
 
   try {
     // TODO: Allow scoped admin support overrides when diagnosing jobs for other users.
@@ -50,6 +53,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('/api/job-status error', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
+}
+
+function isValidJobId(jobId: string): boolean {
+  if (typeof jobId !== 'string') {
+    return false;
+  }
+  // Restrict to a reasonable length and safe characters for a single path segment.
+  if (jobId.length === 0 || jobId.length > 128) {
+    return false;
+  }
+  return /^[A-Za-z0-9_-]+$/.test(jobId);
 }
 
 function safeJson(raw: string): any {
