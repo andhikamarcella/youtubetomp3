@@ -19,7 +19,11 @@ router.use((req, res, next) => {
 });
 
 router.post("/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
-  const body = req.body || "";
+  const rawBody = req.body;
+  if (typeof rawBody !== "string") {
+    return res.status(400).json({ error: "invalid body type" });
+  }
+  const body = rawBody || "";
   if (!body.trim()) return res.status(400).json({ error: "empty body" });
   await fs.promises.writeFile(COOKIE_PATH, body, "utf8");
   if (WORKER_BASE && WORKER_SECRET) {
