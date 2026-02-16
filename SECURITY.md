@@ -23,7 +23,7 @@ Please DO NOT create a public GitHub issue for security vulnerabilities.
 
 Instead, report it privately via:
 
-- Email: help.ytconv@gmail.com   
+- Email: help.ytconv@proton.me   
   *(replace this with your real email)*
 
 Include the following information:
