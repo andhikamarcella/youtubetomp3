@@ -310,10 +310,33 @@ const spotifyApiGet = async (url) => {
   return response.json().catch(() => null);
 };
 
-const fetchSpotifyTrendingTracks = async ({ limit = 6 } = {}) => {
-  const playlistId = "37i9dQZEVXbMDoHDwVN2tF";
+const parseSpotifyPlaylistId = (input) => {
+  const raw = String(input || "").trim();
+  if (!raw) return "";
+  const direct = /spotify:playlist:([0-9A-Za-z]{22})/i.exec(raw);
+  if (direct) return direct[1];
+  try {
+    const u = new URL(raw);
+    if (u.host === "open.spotify.com" || u.host === "play.spotify.com") {
+      const parts = u.pathname.split("/").filter(Boolean);
+      if (parts[0]?.startsWith("intl-")) parts.shift();
+      if (parts[0] === "embed") parts.shift();
+      const idx = parts.findIndex((p) => p.toLowerCase() === "playlist");
+      const candidate = idx >= 0 ? parts[idx + 1] : "";
+      if (candidate && /^[0-9A-Za-z]{22}$/.test(candidate)) return candidate;
+    }
+  } catch {}
+  if (/^[0-9A-Za-z]{22}$/.test(raw)) return raw;
+  return "";
+};
+
+const fetchSpotifyTrendingTracks = async ({ limit = 6, playlistId } = {}) => {
+  const fallbackPlaylistId = "37i9dQZF1DX2L0iB23Enbq";
+  const envPlaylist = parseSpotifyPlaylistId(process.env.TRENDING_SPOTIFY_PLAYLIST_URL) ||
+    parseSpotifyPlaylistId(process.env.TRENDING_SPOTIFY_PLAYLIST_ID);
+  const resolvedPlaylistId = parseSpotifyPlaylistId(playlistId) || envPlaylist || fallbackPlaylistId;
   const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
-  const url = new URL(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`);
+  const url = new URL(`https://api.spotify.com/v1/playlists/${resolvedPlaylistId}/tracks`);
   url.searchParams.set("market", "ID");
   url.searchParams.set("limit", String(Math.max(10, safeLimit)));
   const payload = await spotifyApiGet(url.toString());
@@ -7098,8 +7121,10 @@ app.get("/api/tool-versions", async (req, res) => {
 app.get("/api/trending-now", async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(12, Number(req.query.limit) || 6));
+    const includeYoutube = String(req.query.includeYoutube || "") === "1";
     const force = String(req.query.force || "") === "1";
-    const cacheKey = `trending-now:v1:${limit}`;
+    const playlistId = parseSpotifyPlaylistId(req.query.playlist || "");
+    const cacheKey = `trending-now:v2:${limit}:${includeYoutube ? 1 : 0}:${playlistId || "default"}`;
     const cached = CacheStore.get(cacheKey);
     const ttlMs = 15 * 60 * 1000;
     if (!force && cached?.items && Date.now() - (cached.cachedAt || 0) < ttlMs) {
@@ -7108,7 +7133,7 @@ app.get("/api/trending-now", async (req, res) => {
 
     let spotifyItems = [];
     if (isSpotifyConfigured) {
-      spotifyItems = await fetchSpotifyTrendingTracks({ limit });
+      spotifyItems = await fetchSpotifyTrendingTracks({ limit, playlistId });
     }
 
     if (!spotifyItems.length) {
@@ -7123,36 +7148,47 @@ app.get("/api/trending-now", async (req, res) => {
       spotifyItems = fallback.slice(0, limit);
     }
 
-    const items = [];
-    for (let i = 0; i < spotifyItems.length; i += 1) {
-      const row = spotifyItems[i];
+    const items = spotifyItems.map((row, idx) => {
       const query = [row.title, row.artist].filter(Boolean).join(" ").trim();
-      let yt = null;
-      try {
-        const info = await fetchVideoInfo({ keyword: `${query} audio`, preferLang: "id" });
-        yt = info
-          ? {
-              id: info.id || "",
-              title: info.title || row.title,
-              url: info.webpageUrl || (info.id ? `https://www.youtube.com/watch?v=${info.id}` : ""),
-              thumbnail: info.thumbnail || info.cover || "",
-              channel: info.uploader || info.channel || info.artist || "",
-            }
-          : null;
-      } catch {
-        yt = null;
-      }
-      items.push({
-        rank: i + 1,
+      return {
+        rank: idx + 1,
         title: row.title,
         artist: row.artist,
         query,
-        youtube: yt,
+        youtube: null,
         spotify: {
           url: row.spotifyUrl,
           cover: row.spotifyCover,
         },
-      });
+      };
+    });
+
+    if (includeYoutube) {
+      const concurrency = 2;
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < items.length) {
+          const i = cursor;
+          cursor += 1;
+          const row = items[i];
+          if (!row?.query) continue;
+          try {
+            const info = await fetchVideoInfo({ keyword: `${row.query} audio`, preferLang: "id" });
+            row.youtube = info
+              ? {
+                  id: info.id || "",
+                  title: info.title || row.title,
+                  url: info.webpageUrl || (info.id ? `https://www.youtube.com/watch?v=${info.id}` : ""),
+                  thumbnail: info.thumbnail || info.cover || "",
+                  channel: info.uploader || info.channel || info.artist || "",
+                }
+              : null;
+          } catch {
+            row.youtube = null;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
     }
 
     CacheStore.set(cacheKey, { items });

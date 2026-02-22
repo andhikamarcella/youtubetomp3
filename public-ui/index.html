@@ -1020,11 +1020,18 @@
     .trending-artist { font-size: .82rem; color: var(--bs-secondary); }
     .trending-item { opacity: 0; transform: translateY(8px); animation: trendingIn 320ms ease forwards; }
     @keyframes trendingIn { to { opacity: 1; transform: translateY(0); } }
-    #seasonalOverlay { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-    #mainContent { position: relative; z-index: 1; }
-    body.skin-ramadhan .ramadhan-garland { position: absolute; top: 0; left: 0; right: 0; height: 170px; }
+    .modal { z-index: 20000; }
+    .modal-backdrop { z-index: 19990; }
+    .modal-backdrop.show { opacity: .6; }
+    .about-logo-stack { position: relative; width: 100%; height: 100%; transform: translateZ(30px); }
+    .about-logo-stack img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+    .about-logo-shadow { transform: translateZ(10px) translateY(10px) scale(1.02); filter: blur(0.4px) brightness(0.55) saturate(0.7); opacity: 0.75; }
+    .about-logo-main { transform: translateZ(40px); filter: drop-shadow(0 26px 36px rgba(0,0,0,0.45)); }
+    #seasonalOverlay { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+    #mainContent { position: relative; z-index: 2; }
+    body.skin-ramadhan .ramadhan-garland { position: absolute; top: 74px; left: 0; right: 0; height: 170px; }
     body.skin-ramadhan .ramadhan-garland::before { content: ''; position: absolute; top: 34px; left: -5vw; right: -5vw; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent); opacity: 0.7; }
-    body.skin-ramadhan .ramadhan-lantern { position: absolute; top: 44px; width: 44px; height: 66px; border-radius: 14px; background: radial-gradient(circle at 30% 30%, rgba(250,204,21,0.65), rgba(34,197,94,0.25) 55%, rgba(15,23,42,0.2) 100%); border: 1px solid rgba(255,255,255,0.16); box-shadow: 0 14px 34px rgba(15,23,42,0.35), 0 0 22px rgba(250,204,21,0.14); transform-origin: 50% -14px; animation: lanternSwing 3.6s ease-in-out infinite; }
+    body.skin-ramadhan .ramadhan-lantern { position: absolute; top: 40px; width: 48px; height: 74px; border-radius: 16px; background: radial-gradient(circle at 30% 28%, rgba(250,204,21,0.72), rgba(34,197,94,0.28) 55%, rgba(15,23,42,0.12) 100%); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 18px 44px rgba(15,23,42,0.4), 0 0 32px rgba(250,204,21,0.18); transform-origin: 50% -14px; animation: lanternSwing 3.6s ease-in-out infinite; }
     body.skin-ramadhan .ramadhan-lantern::before { content: ''; position: absolute; top: -18px; left: 50%; width: 2px; height: 18px; transform: translateX(-50%); background: rgba(255,255,255,0.22); }
     body.skin-ramadhan .ramadhan-lantern::after { content: ''; position: absolute; top: -10px; left: 50%; width: 18px; height: 10px; transform: translateX(-50%); border-radius: 999px 999px 8px 8px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.12); }
     body.skin-ramadhan .ramadhan-lantern.l1 { left: 10%; }
@@ -3954,7 +3961,7 @@
   <!-- Forum Modal (Task 6) - Redesigned -->
   <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-md-down">
-      <div class="modal-content border-0 shadow-lg bg-dark" style="border-radius: 1.5rem;">
+      <div class="modal-content border-0 shadow-lg bg-dark" style="border-radius: 1.5rem; background: rgba(6, 10, 18, 0.98) !important;">
         
         <!-- Header -->
         <div class="modal-header border-bottom-0 p-3 align-items-center justify-content-between" style="background: linear-gradient(135deg, #1a1d21 0%, #212529 100%); color: white;">
@@ -4020,7 +4027,7 @@
              </div>
            </div>
            <!-- Wallpaper Background -->
-           <div class="position-absolute top-0 start-0 w-100 h-100 opacity-25" style="background-image: url('https://transparenttextures.com/patterns/cubes.png'); pointer-events: none;"></div>
+           <div class="position-absolute top-0 start-0 w-100 h-100 opacity-10" style="background-image: url('https://transparenttextures.com/patterns/cubes.png'); pointer-events: none;"></div>
            
            <div id="forumLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-2 bg-black bg-opacity-75 text-center p-4">
              <div class="d-flex flex-column align-items-center gap-3">
@@ -4973,7 +4980,10 @@
            <div class="tilt-wrapper d-inline-block mb-4" style="perspective: 1000px;">
               <div id="aboutLogo3D" class="tilt-card" style="width: 160px; height: 160px; transform-style: preserve-3d; cursor: pointer; transition: transform 0.1s;">
                  <div class="position-absolute w-100 h-100 rounded-circle bg-primary opacity-25 blur-xl" style="filter: blur(40px); transform: translateZ(-50px);"></div>
-                 <img src="./icons/icon-3d.svg" alt="Logo" class="img-fluid" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.4)); transform: translateZ(30px);">
+                 <div class="about-logo-stack">
+                   <img class="about-logo-shadow" src="./icons/icon.svg" alt="" aria-hidden="true">
+                   <img class="about-logo-main" src="./icons/icon.svg" alt="Logo">
+                 </div>
               </div>
            </div>
            <h4 class="fw-bold mb-2 title-mono">YouTube to MP3</h4>
@@ -16406,14 +16416,18 @@ $('#queueList')?.addEventListener('click', (e) => {
     const emptyState = $('#trendingEmpty');
     if (emptyState) emptyState.textContent = 'Memuat trending...';
     try {
-      const res = await fetch('/api/trending-now?limit=6');
+      const res = await fetch('/api/trending-now?limit=6&includeYoutube=1');
       const payload = await res.json().catch(() => null);
       const items = Array.isArray(payload?.items) ? payload.items : [];
       if (!res.ok) throw new Error(payload?.error || 'Gagal memuat trending');
       renderTrendingNow(items);
     } catch {
-      if (emptyState) emptyState.textContent = 'Gagal memuat trending.';
-      renderTrendingNow([]);
+      const ul = $('#trendingList');
+      if (ul) ul.innerHTML = '';
+      if (emptyState) {
+        emptyState.style.display = '';
+        emptyState.textContent = 'Gagal memuat trending.';
+      }
     }
   };
 
