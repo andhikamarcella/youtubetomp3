@@ -1020,25 +1020,26 @@
     .trending-artist { font-size: .82rem; color: var(--bs-secondary); }
     .trending-item { opacity: 0; transform: translateY(8px); animation: trendingIn 320ms ease forwards; }
     @keyframes trendingIn { to { opacity: 1; transform: translateY(0); } }
-    .modal { z-index: 20000; }
-    .modal-backdrop { z-index: 19990; }
-    .modal-backdrop.show { opacity: .6; }
+    body.has-open-modal .navbar.sticky-top,
+    body.modal-open .navbar.sticky-top { z-index: 0 !important; pointer-events: none !important; }
+    body .modal { z-index: 30000 !important; }
+    body .modal-backdrop { z-index: 29990 !important; }
+    body .modal-backdrop.show { opacity: .6 !important; }
+    body .modal .btn-close { position: relative; z-index: 10; }
+    body.has-open-modal .assistant-fab,
+    body.has-open-modal #forumWidget,
+    body.has-open-modal .mode-switch-btn { pointer-events: none !important; }
+
+    html[data-bs-theme='light'] body { background-color: #f8fafc; }
+    html[data-bs-theme='light'] .card { box-shadow: 0 14px 32px rgba(15,23,42,.08); }
+    html[data-bs-theme='light'] #forumModal .modal-content { background: #ffffff !important; color: #0b1220; }
+    html[data-bs-theme='light'] #forumModal .modal-body { background: #ffffff; }
+    html[data-bs-theme='light'] .chat-date-separator { background: rgba(2, 6, 23, 0.06); color: rgba(2, 6, 23, 0.72); }
     .about-logo-stack { position: relative; width: 100%; height: 100%; transform: translateZ(30px); }
     .about-logo-stack img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
     .about-logo-shadow { transform: translateZ(10px) translateY(10px) scale(1.02); filter: blur(0.4px) brightness(0.55) saturate(0.7); opacity: 0.75; }
     .about-logo-main { transform: translateZ(40px); filter: drop-shadow(0 26px 36px rgba(0,0,0,0.45)); }
-    #seasonalOverlay { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
-    #mainContent { position: relative; z-index: 2; }
-    body.skin-ramadhan .ramadhan-garland { position: absolute; top: 74px; left: 0; right: 0; height: 170px; }
-    body.skin-ramadhan .ramadhan-garland::before { content: ''; position: absolute; top: 34px; left: -5vw; right: -5vw; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent); opacity: 0.7; }
-    body.skin-ramadhan .ramadhan-lantern { position: absolute; top: 40px; width: 48px; height: 74px; border-radius: 16px; background: radial-gradient(circle at 30% 28%, rgba(250,204,21,0.72), rgba(34,197,94,0.28) 55%, rgba(15,23,42,0.12) 100%); border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 18px 44px rgba(15,23,42,0.4), 0 0 32px rgba(250,204,21,0.18); transform-origin: 50% -14px; animation: lanternSwing 3.6s ease-in-out infinite; }
-    body.skin-ramadhan .ramadhan-lantern::before { content: ''; position: absolute; top: -18px; left: 50%; width: 2px; height: 18px; transform: translateX(-50%); background: rgba(255,255,255,0.22); }
-    body.skin-ramadhan .ramadhan-lantern::after { content: ''; position: absolute; top: -10px; left: 50%; width: 18px; height: 10px; transform: translateX(-50%); border-radius: 999px 999px 8px 8px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.12); }
-    body.skin-ramadhan .ramadhan-lantern.l1 { left: 10%; }
-    body.skin-ramadhan .ramadhan-lantern.l2 { left: 32%; animation-duration: 4.2s; opacity: 0.92; }
-    body.skin-ramadhan .ramadhan-lantern.l3 { left: 58%; animation-duration: 3.9s; opacity: 0.92; }
-    body.skin-ramadhan .ramadhan-lantern.l4 { left: 84%; animation-duration: 4.4s; opacity: 0.88; }
-    @keyframes lanternSwing { 0% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } 100% { transform: rotate(-2deg); } }
+    #mainContent { position: relative; z-index: 1; }
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; position: relative; }
     .dropzone.dragover { background: rgba(28,38,62,.08); border-color: var(--bs-primary); }
     .dropzone.requires-login { opacity: .6; cursor: not-allowed; }
@@ -1641,14 +1642,6 @@
   
 </head>
 <body>
-  <div id="seasonalOverlay" aria-hidden="true" hidden>
-    <div class="ramadhan-garland">
-      <span class="ramadhan-lantern l1"></span>
-      <span class="ramadhan-lantern l2"></span>
-      <span class="ramadhan-lantern l3"></span>
-      <span class="ramadhan-lantern l4"></span>
-    </div>
-  </div>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
     <div class="container d-flex align-items-center gap-3">
@@ -3961,7 +3954,7 @@
   <!-- Forum Modal (Task 6) - Redesigned -->
   <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-md-down">
-      <div class="modal-content border-0 shadow-lg bg-dark" style="border-radius: 1.5rem; background: rgba(6, 10, 18, 0.98) !important;">
+      <div class="modal-content border-0 shadow-lg bg-dark" style="border-radius: 1.5rem;">
         
         <!-- Header -->
         <div class="modal-header border-bottom-0 p-3 align-items-center justify-content-between" style="background: linear-gradient(135deg, #1a1d21 0%, #212529 100%); color: white;">
@@ -15540,6 +15533,15 @@ $('#queueList')?.addEventListener('click', (e) => {
     requestAnimationFrame(drawRunner);
   });
 
+  const updateModalLayerState = () => {
+    try {
+      document.body.classList.toggle('has-open-modal', Boolean(document.querySelector('.modal.show')));
+    } catch {}
+  };
+  document.addEventListener('shown.bs.modal', updateModalLayerState);
+  document.addEventListener('hidden.bs.modal', updateModalLayerState);
+  updateModalLayerState();
+
   function initWelcome(){
     const card = $('#welcomeCard');
     if(!card) return;
@@ -16366,7 +16368,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       a.className = 'd-flex align-items-center gap-3 w-100 text-decoration-none';
       a.style.color = 'inherit';
 
-      const thumbUrl = item?.youtube?.thumbnail || item?.thumbnail || item?.spotify?.cover || '';
+      const thumbUrl = item?.youtube?.thumbnail || item?.thumbnail || item?.spotify?.cover || './trending-placeholder.svg';
       let coverNode;
       if (thumbUrl) {
         const img = document.createElement('img');
@@ -16414,21 +16416,28 @@ $('#queueList')?.addEventListener('click', (e) => {
 
   const fetchTrendingNow = async () => {
     const emptyState = $('#trendingEmpty');
+    const ul = $('#trendingList');
     if (emptyState) emptyState.textContent = 'Memuat trending...';
-    try {
-      const res = await fetch('/api/trending-now?limit=6&includeYoutube=1');
-      const payload = await res.json().catch(() => null);
-      const items = Array.isArray(payload?.items) ? payload.items : [];
-      if (!res.ok) throw new Error(payload?.error || 'Gagal memuat trending');
-      renderTrendingNow(items);
-    } catch {
-      const ul = $('#trendingList');
-      if (ul) ul.innerHTML = '';
-      if (emptyState) {
-        emptyState.style.display = '';
-        emptyState.textContent = 'Gagal memuat trending.';
+    let lastErr = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 900 * attempt));
+        const res = await fetch(`/api/trending-now?limit=6&force=${attempt ? 1 : 0}`, { cache: 'no-store' });
+        const payload = await res.json().catch(() => null);
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        if (!res.ok) throw new Error(payload?.error || 'Gagal memuat trending');
+        renderTrendingNow(items);
+        return;
+      } catch (e) {
+        lastErr = e;
       }
     }
+    if (ul) ul.innerHTML = '';
+    if (emptyState) {
+      emptyState.style.display = '';
+      emptyState.textContent = 'Gagal memuat trending.';
+    }
+    try { console.warn('Trending fetch failed:', lastErr); } catch {}
   };
 
   $('#clearHistory')?.addEventListener('click', () => {
