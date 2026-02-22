@@ -1015,8 +1015,23 @@
     }
     .history-link { word-break: break-all; }
     .trending-cover { width: 44px; height: 44px; border-radius: .9rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.12), rgba(255,255,255,.04)); border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); }
+    .trending-thumb { width: 44px; height: 44px; border-radius: .9rem; object-fit: cover; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent); box-shadow: 0 10px 22px rgba(15,23,42,.18); }
     .trending-title { font-weight: 700; line-height: 1.15; }
     .trending-artist { font-size: .82rem; color: var(--bs-secondary); }
+    .trending-item { opacity: 0; transform: translateY(8px); animation: trendingIn 320ms ease forwards; }
+    @keyframes trendingIn { to { opacity: 1; transform: translateY(0); } }
+    #seasonalOverlay { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    #mainContent { position: relative; z-index: 1; }
+    body.skin-ramadhan .ramadhan-garland { position: absolute; top: 0; left: 0; right: 0; height: 170px; }
+    body.skin-ramadhan .ramadhan-garland::before { content: ''; position: absolute; top: 34px; left: -5vw; right: -5vw; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent); opacity: 0.7; }
+    body.skin-ramadhan .ramadhan-lantern { position: absolute; top: 44px; width: 44px; height: 66px; border-radius: 14px; background: radial-gradient(circle at 30% 30%, rgba(250,204,21,0.65), rgba(34,197,94,0.25) 55%, rgba(15,23,42,0.2) 100%); border: 1px solid rgba(255,255,255,0.16); box-shadow: 0 14px 34px rgba(15,23,42,0.35), 0 0 22px rgba(250,204,21,0.14); transform-origin: 50% -14px; animation: lanternSwing 3.6s ease-in-out infinite; }
+    body.skin-ramadhan .ramadhan-lantern::before { content: ''; position: absolute; top: -18px; left: 50%; width: 2px; height: 18px; transform: translateX(-50%); background: rgba(255,255,255,0.22); }
+    body.skin-ramadhan .ramadhan-lantern::after { content: ''; position: absolute; top: -10px; left: 50%; width: 18px; height: 10px; transform: translateX(-50%); border-radius: 999px 999px 8px 8px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.12); }
+    body.skin-ramadhan .ramadhan-lantern.l1 { left: 10%; }
+    body.skin-ramadhan .ramadhan-lantern.l2 { left: 32%; animation-duration: 4.2s; opacity: 0.92; }
+    body.skin-ramadhan .ramadhan-lantern.l3 { left: 58%; animation-duration: 3.9s; opacity: 0.92; }
+    body.skin-ramadhan .ramadhan-lantern.l4 { left: 84%; animation-duration: 4.4s; opacity: 0.88; }
+    @keyframes lanternSwing { 0% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } 100% { transform: rotate(-2deg); } }
     .dropzone { border: 2px dashed var(--bs-border-color); border-radius: 1rem; padding: 1rem; text-align:center; transition: .2s; position: relative; }
     .dropzone.dragover { background: rgba(28,38,62,.08); border-color: var(--bs-primary); }
     .dropzone.requires-login { opacity: .6; cursor: not-allowed; }
@@ -1237,9 +1252,40 @@
     .legendary-dex li { padding: .35rem .85rem; border-radius: 999px; font-size: .75rem; letter-spacing: .05em; border: 1px solid color-mix(in srgb, var(--bs-border-color) 65%, transparent); background: color-mix(in srgb, var(--bs-body-bg) 92%, transparent); }
     .legendary-dex li.captured { border-color: rgba(255,193,7,.65); background: rgba(255,193,7,.12); color: rgba(255,193,7,.95); font-weight: 600; }
     .legendary-dex li.is-locked { opacity: .55; font-style: italic; }
-    body.theme-neo { --exp-accent: #0d6efd; }
-    body.theme-aurora { --exp-accent: #6f42c1; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(111,66,193,.25), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(32,201,151,.2), transparent); }
-    body.theme-midnight { --exp-accent: #20c997; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(32,201,151,.3), transparent), radial-gradient(40rem 30rem at 0% 100%, rgba(13,110,253,.2), transparent); }
+    body.theme-neo {
+      --exp-accent: #0d6efd;
+      --bs-primary: #0d6efd;
+      --bs-info: #0dcaf0;
+      --bs-success: #20c997;
+      --bs-warning: #ffc107;
+      background-image:
+        radial-gradient(52rem 42rem at 100% 0%, rgba(13,110,253,.32), transparent),
+        radial-gradient(42rem 36rem at 0% 100%, rgba(32,201,151,.22), transparent),
+        linear-gradient(180deg, rgba(23,35,63,.92) 0%, rgba(23,35,63,0) 55%);
+    }
+    body.theme-aurora {
+      --exp-accent: #a855f7;
+      --bs-primary: #a855f7;
+      --bs-info: #60a5fa;
+      --bs-success: #34d399;
+      --bs-warning: #fbbf24;
+      background-image:
+        radial-gradient(52rem 42rem at 100% 0%, rgba(168,85,247,.34), transparent),
+        radial-gradient(52rem 42rem at 0% 100%, rgba(52,211,153,.26), transparent),
+        radial-gradient(38rem 28rem at 55% 25%, rgba(96,165,250,.18), transparent),
+        linear-gradient(180deg, rgba(23,35,63,.92) 0%, rgba(23,35,63,0) 55%);
+    }
+    body.theme-midnight {
+      --exp-accent: #22c55e;
+      --bs-primary: #22c55e;
+      --bs-info: #38bdf8;
+      --bs-success: #22c55e;
+      --bs-warning: #fde047;
+      background-image:
+        radial-gradient(54rem 44rem at 100% 0%, rgba(34,197,94,.32), transparent),
+        radial-gradient(46rem 40rem at 0% 100%, rgba(56,189,248,.18), transparent),
+        linear-gradient(180deg, rgba(3,40,21,.92) 0%, rgba(23,35,63,0) 55%);
+    }
     body.theme-halloween { --exp-accent: #fd7e14; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(253,126,20,.28), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(111,66,193,.28), transparent); }
     body.theme-holiday { --exp-accent: #20c997; background-image: radial-gradient(55rem 45rem at 100% 0%, rgba(32,201,151,.32), transparent), radial-gradient(55rem 45rem at 0% 100%, rgba(255,214,102,.28), transparent); }
     body.theme-valentine { --exp-accent: #e2558f; background-image: radial-gradient(60rem 40rem at 100% 0%, rgba(226,85,143,.32), transparent), radial-gradient(40rem 35rem at 0% 100%, rgba(111,66,193,.26), transparent); }
@@ -1588,6 +1634,14 @@
   
 </head>
 <body>
+  <div id="seasonalOverlay" aria-hidden="true" hidden>
+    <div class="ramadhan-garland">
+      <span class="ramadhan-lantern l1"></span>
+      <span class="ramadhan-lantern l2"></span>
+      <span class="ramadhan-lantern l3"></span>
+      <span class="ramadhan-lantern l4"></span>
+    </div>
+  </div>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
     <div class="container d-flex align-items-center gap-3">
@@ -1626,7 +1680,6 @@
             <span class="seconds">00</span>
         </div>
         <span class="badge text-bg-warning" id="offlineBadge" hidden><i class="bi bi-wifi-off me-1"></i>Offline</span>
-          <span class="badge rounded-pill text-bg-success" id="seasonalBadge" hidden>🟩 Ketupat Ramadhan Mode</span>
         <button class="btn btn-outline-success d-none d-lg-inline-flex" id="installAppBtn" type="button" hidden>
           <i class="bi bi-download"></i>
           <span class="d-none d-sm-inline ms-1">Install</span>
@@ -3031,6 +3084,33 @@
                     </div>
                   </div>
                 </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-gen-5">
+                      <i class="bi bi-spotify me-2 text-success"></i>Bisa convert dari Spotify juga?
+                    </button>
+                  </h2>
+                  <div id="q-gen-5" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                    <div class="accordion-body text-secondary">
+                      Bisa. Tempel link track Spotify, lalu sistem akan mengambil metadata (judul/artist/cover) dan mencari audio yang cocok.
+                      <div class="mt-2 small">
+                        Tips: kalau hasilnya tidak cocok, pakai <strong>Cari judul lagu</strong> dan tulis ulang judul + artis.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q-gen-6">
+                      <i class="bi bi-fire me-2 text-danger"></i>Kenapa Trending Now kadang berbeda / telat update?
+                    </button>
+                  </h2>
+                  <div id="q-gen-6" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                    <div class="accordion-body text-secondary">
+                      Trending diambil dari chart musik dan metadata video, lalu di-cache sebentar supaya cepat dan stabil. Biasanya akan update otomatis dalam beberapa menit.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -3896,6 +3976,18 @@
              </div>
           </div>
           <div class="d-flex align-items-center gap-2">
+            <div id="forumCallMini" class="d-none align-items-center gap-2 me-1">
+              <span id="forumCallTimer" class="badge rounded-pill text-bg-success">00:00</span>
+              <button id="forumMicBtn" class="btn btn-sm btn-outline-light rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Mic on/off">
+                <i class="bi bi-mic"></i>
+              </button>
+              <button id="forumEndCallBtn" class="btn btn-sm btn-outline-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="End call">
+                <i class="bi bi-telephone-x"></i>
+              </button>
+            </div>
+            <button id="forumCallBtn" class="btn btn-sm btn-outline-info rounded-circle d-none d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Call">
+                <i class="bi bi-telephone"></i>
+            </button>
             <button id="forumReportBtn" class="btn btn-sm btn-outline-warning rounded-circle d-none d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Laporkan">
                 <i class="bi bi-flag"></i>
             </button>
@@ -4027,6 +4119,42 @@
                 <i class="bi bi-send-fill fs-5 ms-1"></i>
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="forumRemoteAudio" autoplay playsinline hidden></audio>
+
+  <div class="modal fade" id="forumCallPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-telephone me-2"></i>Voice Call</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="text-secondary small mb-2">Pilih 1 user di room ini untuk telepon (1-on-1).</div>
+          <div id="forumCallUserList" class="list-group"></div>
+          <div id="forumCallUserEmpty" class="text-secondary small" hidden>Belum ada user lain online.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="forumIncomingCallModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-telephone-inbound me-2"></i>Panggilan Masuk</h5>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">Dari: <span id="forumIncomingCaller" class="fw-semibold">Warga</span></div>
+          <div class="text-secondary small">Voice call only (mic).</div>
+        </div>
+        <div class="modal-footer">
+          <button id="forumDeclineCallBtn" type="button" class="btn btn-outline-secondary">Tolak</button>
+          <button id="forumAcceptCallBtn" type="button" class="btn btn-success"><i class="bi bi-telephone me-1"></i>Angkat</button>
         </div>
       </div>
     </div>
@@ -4601,6 +4729,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="/socket.io/socket.io.js" defer></script>
   <script src="./vendor/qrcode.js" defer data-qr-lib="local"></script>
   
 
@@ -4844,7 +4973,7 @@
            <div class="tilt-wrapper d-inline-block mb-4" style="perspective: 1000px;">
               <div id="aboutLogo3D" class="tilt-card" style="width: 160px; height: 160px; transform-style: preserve-3d; cursor: pointer; transition: transform 0.1s;">
                  <div class="position-absolute w-100 h-100 rounded-circle bg-primary opacity-25 blur-xl" style="filter: blur(40px); transform: translateZ(-50px);"></div>
-                 <img src="./icons/icon.svg" alt="Logo" class="img-fluid" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.4)); transform: translateZ(30px);">
+                 <img src="./icons/icon-3d.svg" alt="Logo" class="img-fluid" style="filter: drop-shadow(0 20px 30px rgba(0,0,0,0.4)); transform: translateZ(30px);">
               </div>
            </div>
            <h4 class="fw-bold mb-2 title-mono">YouTube to MP3</h4>
@@ -10711,6 +10840,37 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     return audioCtx;
   };
 
+  const playUiFx = (type) => {
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    gain.connect(ctx.destination);
+
+    const tone = (freq, start, dur, shape = 'sine') => {
+      const o = ctx.createOscillator();
+      o.type = shape;
+      o.frequency.setValueAtTime(freq, start);
+      o.connect(gain);
+      o.start(start);
+      o.stop(start + dur);
+    };
+
+    if (type === 'convert_click') {
+      tone(520, now, 0.06, 'triangle');
+      tone(820, now + 0.02, 0.06, 'triangle');
+      return;
+    }
+    if (type === 'convert_done') {
+      tone(660, now, 0.08, 'sine');
+      tone(880, now + 0.06, 0.10, 'sine');
+      return;
+    }
+  };
+
   const showRewardToast = (text) => {
     if (!rewardToast || !text) return;
     rewardToast.textContent = text;
@@ -12290,7 +12450,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
   const SEASONAL_SKINS = {
     default: { theme: 'neo', hint: '' },
-    ramadhan: { theme: 'midnight', hint: '🟩 Ketupat Ramadhan Mode aktif • suasana hijau & lampu ornamen Ramadhan.' },
+    ramadhan: { theme: 'midnight', hint: '' },
     valentine: { theme: 'aurora', hint: 'Valentine Bloom aktif • bagikan link private biar makin manis.' },
     halloween: { theme: 'midnight', hint: 'Halloween vibes! Cari easter egg di Legendary Catch Challenge.' },
     holiday: { theme: 'midnight', hint: 'Holiday sparkle hadir. Putar Lucky Spin untuk hadiah spesial.' }
@@ -12333,14 +12493,9 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     document.body.classList.add(`theme-${resolved.theme}`);
     applySeasonalSkin(resolved.skin);
     state.experience.seasonalSkin = resolved.skin;
-    const seasonalBadge = document.getElementById('seasonalBadge');
-    if (seasonalBadge) {
-      if (resolved.skin === 'ramadhan') {
-        seasonalBadge.hidden = false;
-        seasonalBadge.textContent = '🟩 Ketupat Ramadhan Mode';
-      } else {
-        seasonalBadge.hidden = true;
-      }
+    const seasonalOverlay = document.getElementById('seasonalOverlay');
+    if (seasonalOverlay) {
+      seasonalOverlay.hidden = resolved.skin !== 'ramadhan';
     }
     if (rewardHubHint) {
       const baseHint = rewardBaseHint || 'Kumpulkan streak harian untuk tiket ekstra dan cari kata kunci rahasia di pencarian lagu.';
@@ -16158,36 +16313,67 @@ $('#queueList')?.addEventListener('click', (e) => {
     });
   };
 
-  const TRENDING_NOW = [
-    { slug: 'bad-bunny-dtmf', title: 'DtMF', artist: 'Bad Bunny' },
-    { slug: 'bad-bunny-titi-me-pregunto', title: 'Tití Me Preguntó', artist: 'Bad Bunny' },
-    { slug: 'huntrx-golden', title: 'Golden', artist: 'HUNTRX, EJAE, AUDREY NUNA, REI AMI' },
-    { slug: 'alex-warren-ordinary', title: 'Ordinary', artist: 'Alex Warren' },
-    { slug: 'ice-spice-big-guy', title: 'Big Guy', artist: 'Ice Spice' },
-    { slug: 'shakira-zoo', title: 'Zoo', artist: 'Shakira' },
-  ];
+  const getKeywordInputEl = () => {
+    const el = document.getElementById('keywordInput');
+    if (el && el.tagName === 'INPUT') return el;
+    return null;
+  };
 
-  const renderTrendingNow = () => {
+  const pasteToKeywordInput = (text) => {
+    const input = getKeywordInputEl();
+    if (!input) return false;
+    input.value = String(text || '');
+    try {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch {
+      // ignore
+    }
+    input.focus();
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  };
+
+  const renderTrendingNow = (items) => {
     const ul = $('#trendingList');
     const emptyState = $('#trendingEmpty');
     if (!ul) return;
     ul.innerHTML = '';
-    const items = Array.isArray(TRENDING_NOW) ? TRENDING_NOW : [];
-    if (emptyState) emptyState.style.display = items.length ? 'none' : '';
-    if (!items.length) return;
+    const safeItems = Array.isArray(items) ? items : [];
+    if (emptyState) {
+      emptyState.style.display = safeItems.length ? 'none' : '';
+      if (!safeItems.length) emptyState.textContent = 'Belum ada trending.';
+    }
+    if (!safeItems.length) return;
 
-    items.forEach((item) => {
+    safeItems.forEach((item, idx) => {
       const li = document.createElement('li');
-      li.className = 'list-group-item';
+      li.className = 'list-group-item trending-item';
+      li.style.animationDelay = `${Math.min(8, idx) * 40}ms`;
+
       const a = document.createElement('a');
-      a.href = `/discover/${encodeURIComponent(item.slug)}`;
+      a.href = '#';
       a.className = 'd-flex align-items-center gap-3 w-100 text-decoration-none';
       a.style.color = 'inherit';
 
-      const cover = document.createElement('div');
-      cover.className = 'trending-cover';
-      cover.innerHTML = '<i class="bi bi-music-note-beamed" aria-hidden="true"></i>';
-      a.appendChild(cover);
+      const thumbUrl = item?.youtube?.thumbnail || item?.thumbnail || item?.spotify?.cover || '';
+      let coverNode;
+      if (thumbUrl) {
+        const img = document.createElement('img');
+        img.className = 'trending-thumb';
+        img.width = 44;
+        img.height = 44;
+        img.loading = 'lazy';
+        img.src = thumbUrl;
+        img.alt = item?.title || 'Trending';
+        coverNode = img;
+      } else {
+        const cover = document.createElement('div');
+        cover.className = 'trending-cover';
+        cover.innerHTML = '<i class="bi bi-music-note-beamed" aria-hidden="true"></i>';
+        coverNode = cover;
+      }
+      a.appendChild(coverNode);
 
       const meta = document.createElement('div');
       meta.className = 'flex-grow-1';
@@ -16195,18 +16381,40 @@ $('#queueList')?.addEventListener('click', (e) => {
 
       const title = document.createElement('div');
       title.className = 'trending-title text-truncate';
-      title.textContent = item.title;
+      title.textContent = item?.title || 'Trending';
       meta.appendChild(title);
 
       const artist = document.createElement('div');
       artist.className = 'trending-artist text-truncate';
-      artist.textContent = item.artist;
+      artist.textContent = item?.artist || '';
       meta.appendChild(artist);
 
       a.appendChild(meta);
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const q = item?.query || [item?.title, item?.artist].filter(Boolean).join(' ').trim();
+        if (pasteToKeywordInput(q)) {
+          setToast('Judul dipaste ke pencarian.', 'success');
+        }
+      });
       li.appendChild(a);
       ul.appendChild(li);
     });
+  };
+
+  const fetchTrendingNow = async () => {
+    const emptyState = $('#trendingEmpty');
+    if (emptyState) emptyState.textContent = 'Memuat trending...';
+    try {
+      const res = await fetch('/api/trending-now?limit=6');
+      const payload = await res.json().catch(() => null);
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      if (!res.ok) throw new Error(payload?.error || 'Gagal memuat trending');
+      renderTrendingNow(items);
+    } catch {
+      if (emptyState) emptyState.textContent = 'Gagal memuat trending.';
+      renderTrendingNow([]);
+    }
   };
 
   $('#clearHistory')?.addEventListener('click', () => {
@@ -18213,7 +18421,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   });
 
   // ===== Convert handler =====
-  $('#convertBtn').addEventListener('click', () => { if(navigator.vibrate) navigator.vibrate(50); doConvert(null, $('#autoDownload').checked); });
+  $('#convertBtn').addEventListener('click', () => { playUiFx('convert_click'); if(navigator.vibrate) navigator.vibrate(50); doConvert(null, $('#autoDownload').checked); });
   $('#downloadAllBtn').addEventListener('click', () => { if(navigator.vibrate) navigator.vibrate(50); doConvertQueue(); });
   $('#downloadZipBtn').addEventListener('click', () => { if(navigator.vibrate) navigator.vibrate(50); downloadPlaylistZip(); });
   if (subtitleBtn) subtitleBtn.addEventListener('click', handleSubtitle);
@@ -18520,6 +18728,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       $('#downloadLink').setAttribute('download', convertData.fileName || 'audio');
       $('#downloadLink').classList.add('step-active');
       $('#resultWrap').hidden = false;
+      playUiFx('convert_done');
 
       // START: File Expiry & Location Info (Task 1)
       const resultWrap = document.getElementById('resultWrap');
@@ -19434,6 +19643,8 @@ $('#queueList')?.addEventListener('click', (e) => {
 
     const format = document.querySelector('input[name="basic-fmt"]:checked')?.value || 'mp3';
 
+    playUiFx('convert_click');
+
     // Duplicate Detector
     const dup = checkDuplicate(url);
     if (dup && dup.format === format) {
@@ -19486,6 +19697,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       setToast('Menggunakan file dari cache');
       vibrate([50, 50]);
+      playUiFx('convert_done');
   };
 
   const startBasicProgressWatcher = (id) => {
@@ -19602,6 +19814,7 @@ $('#queueList')?.addEventListener('click', (e) => {
       }
       
       vibrate([50, 50, 50]);
+      playUiFx('convert_done');
       
       pushHistory({
         originalUrl: url,
@@ -20064,7 +20277,7 @@ $('#queueList')?.addEventListener('click', (e) => {
   
       if (state.experience.narratorAuto) narrateGuide();
       renderHistory();
-      if (typeof renderTrendingNow === 'function') renderTrendingNow();
+      if (typeof fetchTrendingNow === 'function') fetchTrendingNow();
       renderQueue();
       applyFormatPolicy();
       updateBackendBadge();
@@ -20787,17 +21000,8 @@ $('#queueList')?.addEventListener('click', (e) => {
         function formatWhatsAppDate(timestamp) {
             if (!timestamp || !timestamp.seconds) return '';
             const date = new Date(timestamp.seconds * 1000);
-            const now = new Date();
-            const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-            const yesterday = new Date(now);
-            yesterday.setDate(now.getDate() - 1);
-            const isYesterday = date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
-            
             const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            
-            if (isToday) return timeStr;
-            if (isYesterday) return 'Kemarin ' + timeStr;
-            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + timeStr;
+            return timeStr;
         }
 
         function dayKeyFromTimestamp(timestamp) {
@@ -21453,6 +21657,412 @@ $('#queueList')?.addEventListener('click', (e) => {
         const forumRoomKeyStorage = 'forum_room';
         let activeForumRoom = localStorage.getItem(forumRoomKeyStorage) || 'umum';
 
+        const forumCallBtn = document.getElementById('forumCallBtn');
+        const forumCallMini = document.getElementById('forumCallMini');
+        const forumCallTimer = document.getElementById('forumCallTimer');
+        const forumMicBtn = document.getElementById('forumMicBtn');
+        const forumEndCallBtn = document.getElementById('forumEndCallBtn');
+        const forumRemoteAudio = document.getElementById('forumRemoteAudio');
+        const forumCallPickerModalEl = document.getElementById('forumCallPickerModal');
+        const forumCallPickerModal = forumCallPickerModalEl ? new bootstrap.Modal(forumCallPickerModalEl) : null;
+        const forumCallUserList = document.getElementById('forumCallUserList');
+        const forumCallUserEmpty = document.getElementById('forumCallUserEmpty');
+        const forumIncomingCallModalEl = document.getElementById('forumIncomingCallModal');
+        const forumIncomingCallModal = forumIncomingCallModalEl ? new bootstrap.Modal(forumIncomingCallModalEl) : null;
+        const forumIncomingCaller = document.getElementById('forumIncomingCaller');
+        const forumAcceptCallBtn = document.getElementById('forumAcceptCallBtn');
+        const forumDeclineCallBtn = document.getElementById('forumDeclineCallBtn');
+
+        let forumSocket = null;
+        let forumSocketConnected = false;
+        let forumPresenceUsers = [];
+
+        let callState = {
+          status: 'idle',
+          room: '',
+          callId: '',
+          peerUserId: '',
+          peerName: '',
+          pc: null,
+          localStream: null,
+          remoteStream: null,
+          micEnabled: true,
+          startedAt: 0,
+          timer: 0,
+          pendingOffer: null,
+        };
+
+        let cachedIceServers = null;
+        let cachedIceServersAt = 0;
+
+        const getIceServers = async () => {
+          const age = Date.now() - cachedIceServersAt;
+          if (cachedIceServers && age < 5 * 60 * 1000) return cachedIceServers;
+          const userId = currentUser?.uid ? encodeURIComponent(currentUser.uid) : '';
+          try {
+            const res = await fetch(`/api/turn-credentials${userId ? `?userId=${userId}` : ''}`, { cache: 'no-store' });
+            const payload = await res.json().catch(() => null);
+            if (res.ok && payload && Array.isArray(payload.iceServers) && payload.iceServers.length) {
+              cachedIceServers = payload.iceServers;
+              cachedIceServersAt = Date.now();
+              return cachedIceServers;
+            }
+          } catch {}
+          cachedIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+          cachedIceServersAt = Date.now();
+          return cachedIceServers;
+        };
+
+        const formatCallDuration = (ms) => {
+          const sec = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+          const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+          const ss = String(sec % 60).padStart(2, '0');
+          return `${mm}:${ss}`;
+        };
+
+        const setCallUi = () => {
+          if (!forumCallMini || !forumCallTimer || !forumMicBtn || !forumEndCallBtn) return;
+          if (callState.status === 'connected') {
+            forumCallMini.classList.remove('d-none');
+            forumCallMini.classList.add('d-flex');
+            forumCallTimer.textContent = formatCallDuration(Date.now() - callState.startedAt);
+            const icon = forumMicBtn.querySelector('i');
+            if (icon) icon.className = callState.micEnabled ? 'bi bi-mic' : 'bi bi-mic-mute';
+          } else if (callState.status === 'calling') {
+            forumCallMini.classList.remove('d-none');
+            forumCallMini.classList.add('d-flex');
+            forumCallTimer.textContent = 'Calling...';
+            const icon = forumMicBtn.querySelector('i');
+            if (icon) icon.className = callState.micEnabled ? 'bi bi-mic' : 'bi bi-mic-mute';
+          } else {
+            forumCallMini.classList.add('d-none');
+            forumCallMini.classList.remove('d-flex');
+          }
+        };
+
+        const stopCallTimer = () => {
+          if (callState.timer) clearInterval(callState.timer);
+          callState.timer = 0;
+        };
+
+        const startCallTimer = () => {
+          stopCallTimer();
+          callState.timer = window.setInterval(() => {
+            if (callState.status !== 'connected') return;
+            setCallUi();
+          }, 500);
+        };
+
+        const cleanupPeer = () => {
+          stopCallTimer();
+          try {
+            if (callState.pc) callState.pc.onicecandidate = null;
+          } catch {}
+          try {
+            callState.pc?.close?.();
+          } catch {}
+          callState.pc = null;
+          if (callState.localStream) {
+            try { callState.localStream.getTracks().forEach((t) => t.stop()); } catch {}
+          }
+          callState.localStream = null;
+          callState.remoteStream = null;
+          callState.pendingOffer = null;
+          callState.peerUserId = '';
+          callState.peerName = '';
+          callState.callId = '';
+          callState.status = 'idle';
+          callState.micEnabled = true;
+          callState.startedAt = 0;
+          if (forumRemoteAudio) {
+            try { forumRemoteAudio.srcObject = null; } catch {}
+          }
+          setCallUi();
+        };
+
+        const createPeerConnection = async () => {
+          const pc = new RTCPeerConnection({
+            iceServers: await getIceServers(),
+          });
+          pc.ontrack = (evt) => {
+            const [stream] = evt.streams || [];
+            if (!stream) return;
+            callState.remoteStream = stream;
+            if (forumRemoteAudio) {
+              try { forumRemoteAudio.srcObject = stream; } catch {}
+            }
+          };
+          pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'connected') {
+              callState.status = 'connected';
+              callState.startedAt = Date.now();
+              startCallTimer();
+              setCallUi();
+            }
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+              if (callState.status !== 'idle') {
+                cleanupPeer();
+              }
+            }
+          };
+          return pc;
+        };
+
+        const ensureForumSocket = () => {
+          if (forumSocket) return forumSocket;
+          if (typeof window.io !== 'function') return null;
+          forumSocket = window.io({
+            transports: ['websocket', 'polling'],
+          });
+          forumSocket.on('connect', () => {
+            forumSocketConnected = true;
+            joinForumPresence(activeForumRoom);
+          });
+          forumSocket.on('disconnect', () => {
+            forumSocketConnected = false;
+            forumPresenceUsers = [];
+            renderCallUserList();
+          });
+          forumSocket.on('forum:users', (payload) => {
+            if (!payload || payload.room !== activeForumRoom) return;
+            forumPresenceUsers = Array.isArray(payload.users) ? payload.users : [];
+            renderCallUserList();
+          });
+          forumSocket.on('call:offer', (payload) => {
+            if (!payload?.callId || !payload?.offer) return;
+            if (callState.status !== 'idle') {
+              try {
+                forumSocket.emit('call:end', {
+                  room: payload.room,
+                  callId: payload.callId,
+                  toUserId: payload.fromUserId,
+                });
+              } catch {}
+              return;
+            }
+            callState.pendingOffer = payload;
+            callState.callId = String(payload.callId);
+            callState.peerUserId = String(payload.fromUserId || '');
+            callState.peerName = String(payload.fromName || 'Warga');
+            if (forumIncomingCaller) forumIncomingCaller.textContent = callState.peerName;
+            forumIncomingCallModal?.show?.();
+          });
+          forumSocket.on('call:answer', async (payload) => {
+            if (!payload?.callId || payload.callId !== callState.callId) return;
+            if (!callState.pc) return;
+            try {
+              await callState.pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+            } catch {}
+          });
+          forumSocket.on('call:ice', async (payload) => {
+            if (!payload?.callId || payload.callId !== callState.callId) return;
+            if (!callState.pc) return;
+            try {
+              await callState.pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            } catch {}
+          });
+          forumSocket.on('call:end', (payload) => {
+            if (!payload?.callId || payload.callId !== callState.callId) return;
+            cleanupPeer();
+            setToast('Panggilan berakhir');
+          });
+          return forumSocket;
+        };
+
+        function joinForumPresence(roomKey) {
+          if (!currentUser) return;
+          const socket = ensureForumSocket();
+          if (!socket) return;
+          const room = String(roomKey || 'umum');
+          socket.emit('forum:join', {
+            room,
+            userId: currentUser.uid,
+            name: currentUser.displayName || currentUser.email || 'Warga',
+          });
+        }
+
+        function renderCallUserList() {
+          if (!forumCallUserList || !forumCallUserEmpty) return;
+          const myId = currentUser?.uid || '';
+          const users = (Array.isArray(forumPresenceUsers) ? forumPresenceUsers : []).filter((u) => u && u.userId && u.userId !== myId);
+          forumCallUserList.innerHTML = '';
+          if (!users.length) {
+            forumCallUserEmpty.hidden = false;
+            return;
+          }
+          forumCallUserEmpty.hidden = true;
+          users.forEach((u) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between';
+            btn.innerHTML = `<span class="fw-semibold">${String(u.name || 'Warga').replace(/</g, '&lt;')}</span><span class="badge rounded-pill text-bg-info">Call</span>`;
+            btn.addEventListener('click', () => {
+              forumCallPickerModal?.hide?.();
+              startOutgoingCall(String(u.userId), String(u.name || 'Warga'));
+            });
+            forumCallUserList.appendChild(btn);
+          });
+        }
+
+        const startOutgoingCall = async (toUserId, toName) => {
+          if (!currentUser) return;
+          const socket = ensureForumSocket();
+          if (!socket) {
+            setToast('Call belum siap (socket).');
+            return;
+          }
+          if (callState.status !== 'idle') return;
+          callState.status = 'calling';
+          callState.room = activeForumRoom;
+          callState.callId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          callState.peerUserId = toUserId;
+          callState.peerName = toName;
+          setCallUi();
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            callState.localStream = stream;
+            callState.micEnabled = true;
+            const pc = await createPeerConnection();
+            callState.pc = pc;
+            stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+            pc.onicecandidate = (evt) => {
+              if (!evt.candidate) return;
+              socket.emit('call:ice', {
+                room: activeForumRoom,
+                callId: callState.callId,
+                toUserId,
+                candidate: evt.candidate,
+              });
+            };
+            const offer = await pc.createOffer({ offerToReceiveAudio: true });
+            await pc.setLocalDescription(offer);
+            socket.emit('call:offer', {
+              room: activeForumRoom,
+              callId: callState.callId,
+              toUserId,
+              offer: pc.localDescription,
+            });
+            setToast(`Calling ${toName}...`);
+          } catch (err) {
+            cleanupPeer();
+            setToast('Gagal memulai call: ' + (err?.message || 'unknown'));
+          }
+        };
+
+        const acceptIncomingCall = async () => {
+          const payload = callState.pendingOffer;
+          if (!payload) return;
+          const socket = ensureForumSocket();
+          if (!socket) return;
+          callState.status = 'calling';
+          callState.room = activeForumRoom;
+          setCallUi();
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            callState.localStream = stream;
+            callState.micEnabled = true;
+            const pc = await createPeerConnection();
+            callState.pc = pc;
+            stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+            pc.onicecandidate = (evt) => {
+              if (!evt.candidate) return;
+              socket.emit('call:ice', {
+                room: payload.room,
+                callId: payload.callId,
+                toUserId: payload.fromUserId,
+                candidate: evt.candidate,
+              });
+            };
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('call:answer', {
+              room: payload.room,
+              callId: payload.callId,
+              toUserId: payload.fromUserId,
+              answer: pc.localDescription,
+            });
+            callState.pendingOffer = null;
+            setToast('Call tersambung...');
+          } catch (err) {
+            cleanupPeer();
+            setToast('Gagal menerima call: ' + (err?.message || 'unknown'));
+          }
+        };
+
+        const declineIncomingCall = () => {
+          const payload = callState.pendingOffer;
+          if (!payload) return;
+          const socket = ensureForumSocket();
+          try {
+            socket?.emit?.('call:end', {
+              room: payload.room,
+              callId: payload.callId,
+              toUserId: payload.fromUserId,
+            });
+          } catch {}
+          cleanupPeer();
+        };
+
+        const endCurrentCall = () => {
+          const socket = ensureForumSocket();
+          if (socket && callState.peerUserId && callState.callId) {
+            try {
+              socket.emit('call:end', {
+                room: activeForumRoom,
+                callId: callState.callId,
+                toUserId: callState.peerUserId,
+              });
+            } catch {}
+          }
+          cleanupPeer();
+        };
+
+        if (forumCallBtn) {
+          forumCallBtn.addEventListener('click', () => {
+            if (!currentUser) return;
+            if (callState.status !== 'idle') {
+              setToast('Sedang dalam panggilan.');
+              return;
+            }
+            renderCallUserList();
+            forumCallPickerModal?.show?.();
+          });
+        }
+
+        if (forumMicBtn) {
+          forumMicBtn.addEventListener('click', () => {
+            if (!callState.localStream) return;
+            const tracks = callState.localStream.getAudioTracks();
+            if (!tracks.length) return;
+            callState.micEnabled = !callState.micEnabled;
+            tracks.forEach((t) => {
+              t.enabled = callState.micEnabled;
+            });
+            setCallUi();
+          });
+        }
+
+        if (forumEndCallBtn) {
+          forumEndCallBtn.addEventListener('click', () => {
+            endCurrentCall();
+          });
+        }
+
+        if (forumAcceptCallBtn) {
+          forumAcceptCallBtn.addEventListener('click', async () => {
+            forumIncomingCallModal?.hide?.();
+            await acceptIncomingCall();
+          });
+        }
+
+        if (forumDeclineCallBtn) {
+          forumDeclineCallBtn.addEventListener('click', () => {
+            forumIncomingCallModal?.hide?.();
+            declineIncomingCall();
+          });
+        }
+
         function isPrivateRoomKey(key) {
           return typeof key === 'string' && /^priv-\d{4,10}$/.test(key);
         }
@@ -21530,6 +22140,10 @@ $('#queueList')?.addEventListener('click', (e) => {
             else forumCopyRoomBtn.classList.add('d-none');
           }
           applyRoomUiRules();
+          if (currentUser) {
+            joinForumPresence(roomKey);
+            renderCallUserList();
+          }
         }
 
         function handleRoomSelection(value) {
@@ -22143,6 +22757,7 @@ $('#queueList')?.addEventListener('click', (e) => {
                     forumInput.disabled = false;
                     updateSendButtonState();
                     if(forumLogoutBtn) forumLogoutBtn.classList.remove('d-none');
+                    if(forumCallBtn) forumCallBtn.classList.remove('d-none');
                     if(forumReportBtn) forumReportBtn.classList.remove('d-none');
                     if(forumDeleteAllBtn) {
                         if (user.email === adminEmail) forumDeleteAllBtn.classList.remove('d-none');
@@ -22150,15 +22765,26 @@ $('#queueList')?.addEventListener('click', (e) => {
                     }
                     startChatListener();
                     applyRoomUiRules();
+                    ensureForumSocket();
+                    joinForumPresence(activeForumRoom);
+                    renderCallUserList();
                 } else {
                     forumLoginOverlay.classList.remove('d-none');
                     forumLoginOverlay.classList.add('d-flex');
                     forumInput.disabled = true;
                     updateSendButtonState();
                     if(forumLogoutBtn) forumLogoutBtn.classList.add('d-none');
+                    if(forumCallBtn) forumCallBtn.classList.add('d-none');
                     if(forumReportBtn) forumReportBtn.classList.add('d-none');
                     if(forumDeleteAllBtn) forumDeleteAllBtn.classList.add('d-none');
                     if(unsubscribe) unsubscribe();
+                    endCurrentCall();
+                    try { forumSocket?.emit?.('forum:leave'); } catch {}
+                    try { forumSocket?.disconnect?.(); } catch {}
+                    forumSocket = null;
+                    forumSocketConnected = false;
+                    forumPresenceUsers = [];
+                    renderCallUserList();
                     if (forumLoadingOverlay) {
                       forumLoadingOverlay.classList.remove('d-flex');
                       forumLoadingOverlay.classList.add('d-none');

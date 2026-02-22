@@ -3,7 +3,7 @@ import cors from "cors";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { promises as fsp } from "node:fs";
-import { request as httpRequest } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,6 +38,7 @@ try {
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
 import { nanoid } from "nanoid";
+import { Server as SocketIOServer } from "socket.io";
 import {
   upsertGoogleUser,
   recordConversionForUser,
@@ -96,6 +97,11 @@ const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const isGroqConfigured = Boolean(GROQ_API_KEY);
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
+
+const SPOTIFY_CLIENT_ID = (process.env.SPOTIFY_CLIENT_ID || "").trim();
+const SPOTIFY_CLIENT_SECRET = (process.env.SPOTIFY_CLIENT_SECRET || "").trim();
+const isSpotifyConfigured = Boolean(SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET);
+let spotifyTokenCache = { token: "", expiresAt: 0 };
 
 const base64Url = (value) => Buffer.from(value).toString("base64url");
 const parseBase64Json = (value) => {
@@ -242,6 +248,94 @@ const createResponseObject = (urlStr, statusCode, statusMessage, headersObj, bod
     arrayBuffer: async () => arrayBuf,
     clone: () => createResponseObject(urlStr, statusCode, statusMessage, headersObj, Buffer.from(baseBuffer)),
   };
+};
+
+const getSpotifyAccessToken = async () => {
+  if (spotifyTokenCache.token && Date.now() < spotifyTokenCache.expiresAt) {
+    return spotifyTokenCache.token;
+  }
+  if (!isSpotifyConfigured) {
+    throw new Error("Spotify credentials belum dikonfigurasi");
+  }
+  const auth = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString("base64");
+  const response = await safeFetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${auth}`,
+      Accept: "application/json",
+      "User-Agent": "Mozilla/5.0",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("Retry-After") || 5);
+    await new Promise((r) => setTimeout(r, (retryAfter + 1) * 1000));
+    return getSpotifyAccessToken();
+  }
+  if (!response.ok) {
+    throw new Error(`Spotify auth gagal (status ${response.status})`);
+  }
+  const payload = await response.json().catch(() => null);
+  if (!payload?.access_token || !payload?.expires_in) {
+    throw new Error("Spotify auth response tidak valid");
+  }
+  spotifyTokenCache = {
+    token: payload.access_token,
+    expiresAt: Date.now() + (Number(payload.expires_in) - 60) * 1000,
+  };
+  return spotifyTokenCache.token;
+};
+
+const spotifyApiGet = async (url) => {
+  const token = await getSpotifyAccessToken();
+  const response = await safeFetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "User-Agent": "Mozilla/5.0",
+      Referer: "https://open.spotify.com/",
+      Origin: "https://open.spotify.com",
+    },
+  });
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("Retry-After") || 5);
+    await new Promise((r) => setTimeout(r, (retryAfter + 1) * 1000));
+    return spotifyApiGet(url);
+  }
+  if (!response.ok) {
+    throw new Error(`Spotify API gagal (status ${response.status})`);
+  }
+  return response.json().catch(() => null);
+};
+
+const fetchSpotifyTrendingTracks = async ({ limit = 6 } = {}) => {
+  const playlistId = "37i9dQZEVXbMDoHDwVN2tF";
+  const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
+  const url = new URL(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`);
+  url.searchParams.set("market", "ID");
+  url.searchParams.set("limit", String(Math.max(10, safeLimit)));
+  const payload = await spotifyApiGet(url.toString());
+  const rows = Array.isArray(payload?.items) ? payload.items : [];
+  const items = [];
+  for (const row of rows) {
+    const track = row?.track;
+    if (!track?.name) continue;
+    const artists = Array.isArray(track.artists) ? track.artists.map((a) => a?.name).filter(Boolean) : [];
+    const artist = artists.join(", ");
+    const images = Array.isArray(track.album?.images) ? track.album.images : [];
+    const cover = images[0]?.url || "";
+    const spotifyUrl = track.external_urls?.spotify || (track.id ? `https://open.spotify.com/track/${track.id}` : "");
+    items.push({
+      title: String(track.name),
+      artist: String(artist || ""),
+      spotifyUrl,
+      spotifyCover: cover,
+    });
+    if (items.length >= safeLimit) break;
+  }
+  return items;
 };
 
 const verifyGoogleIdToken = async (credential) => {
@@ -7001,6 +7095,103 @@ app.get("/api/tool-versions", async (req, res) => {
   }
 });
 
+app.get("/api/trending-now", async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(12, Number(req.query.limit) || 6));
+    const force = String(req.query.force || "") === "1";
+    const cacheKey = `trending-now:v1:${limit}`;
+    const cached = CacheStore.get(cacheKey);
+    const ttlMs = 15 * 60 * 1000;
+    if (!force && cached?.items && Date.now() - (cached.cachedAt || 0) < ttlMs) {
+      return res.json({ ok: true, source: "cache", cachedAt: cached.cachedAt || null, items: cached.items });
+    }
+
+    let spotifyItems = [];
+    if (isSpotifyConfigured) {
+      spotifyItems = await fetchSpotifyTrendingTracks({ limit });
+    }
+
+    if (!spotifyItems.length) {
+      const fallback = [
+        { title: "DtMF", artist: "Bad Bunny", spotifyUrl: "", spotifyCover: "" },
+        { title: "Tití Me Preguntó", artist: "Bad Bunny", spotifyUrl: "", spotifyCover: "" },
+        { title: "Golden", artist: "HUNTRX, EJAE, AUDREY NUNA, REI AMI", spotifyUrl: "", spotifyCover: "" },
+        { title: "Ordinary", artist: "Alex Warren", spotifyUrl: "", spotifyCover: "" },
+        { title: "Big Guy", artist: "Ice Spice", spotifyUrl: "", spotifyCover: "" },
+        { title: "Zoo", artist: "Shakira", spotifyUrl: "", spotifyCover: "" },
+      ];
+      spotifyItems = fallback.slice(0, limit);
+    }
+
+    const items = [];
+    for (let i = 0; i < spotifyItems.length; i += 1) {
+      const row = spotifyItems[i];
+      const query = [row.title, row.artist].filter(Boolean).join(" ").trim();
+      let yt = null;
+      try {
+        const info = await fetchVideoInfo({ keyword: `${query} audio`, preferLang: "id" });
+        yt = info
+          ? {
+              id: info.id || "",
+              title: info.title || row.title,
+              url: info.webpageUrl || (info.id ? `https://www.youtube.com/watch?v=${info.id}` : ""),
+              thumbnail: info.thumbnail || info.cover || "",
+              channel: info.uploader || info.channel || info.artist || "",
+            }
+          : null;
+      } catch {
+        yt = null;
+      }
+      items.push({
+        rank: i + 1,
+        title: row.title,
+        artist: row.artist,
+        query,
+        youtube: yt,
+        spotify: {
+          url: row.spotifyUrl,
+          cover: row.spotifyCover,
+        },
+      });
+    }
+
+    CacheStore.set(cacheKey, { items });
+    const stored = CacheStore.get(cacheKey);
+    return res.json({ ok: true, source: "live", cachedAt: stored?.cachedAt || Date.now(), items });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "Gagal memuat trending" });
+  }
+});
+
+app.get("/api/turn-credentials", async (req, res) => {
+  try {
+    const secret = (process.env.TURN_SHARED_SECRET || "").trim();
+    const urlsRaw = (process.env.TURN_URLS || "").trim();
+    if (!secret || !urlsRaw) {
+      return res.status(503).json({ error: "turn_not_configured" });
+    }
+    const ttl = Math.max(60, Math.min(24 * 60 * 60, Number(process.env.TURN_TTL_SECONDS) || 6 * 60 * 60));
+    const userId = String(req.query.userId || "").slice(0, 80);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const exp = nowSec + ttl;
+    const username = userId ? `${exp}:${userId}` : String(exp);
+    const credential = createHmac("sha1", secret).update(username).digest("base64");
+    const urls = urlsRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return res.json({
+      ttl,
+      iceServers: [
+        { urls: ["stun:stun.l.google.com:19302"] },
+        { urls, username, credential },
+      ],
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "turn_error" });
+  }
+});
+
 app.post("/api/video-info", async (req, res) => {
   try {
     const body = req.body || {};
@@ -7675,11 +7866,158 @@ app.get("/internal/worker/cookies", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
-const server = app.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
+
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: true,
+    credentials: true,
+  },
+});
+
+const roomUsers = new Map();
+const socketState = new Map();
+
+const getOrCreateRoomMap = (room) => {
+  const key = String(room || "umum");
+  if (!roomUsers.has(key)) roomUsers.set(key, new Map());
+  return roomUsers.get(key);
+};
+
+const broadcastRoomUsers = (room) => {
+  const users = Array.from(getOrCreateRoomMap(room).values()).map((u) => ({
+    userId: u.userId,
+    name: u.name,
+  }));
+  io.to(`forum:${room}`).emit("forum:users", { room, users });
+};
+
+io.on("connection", (socket) => {
+  socket.on("forum:join", (payload) => {
+    const room = String(payload?.room || "umum");
+    const userId = String(payload?.userId || socket.id);
+    const name = String(payload?.name || "Warga");
+    const prev = socketState.get(socket.id);
+    if (prev?.room && prev.room !== room) {
+      try {
+        socket.leave(`forum:${prev.room}`);
+      } catch {}
+      const prevRoomMap = getOrCreateRoomMap(prev.room);
+      prevRoomMap.delete(prev.userId);
+      broadcastRoomUsers(prev.room);
+    }
+
+    socket.join(`forum:${room}`);
+    socketState.set(socket.id, { room, userId, name });
+    const map = getOrCreateRoomMap(room);
+    map.set(userId, { userId, name, socketId: socket.id });
+    broadcastRoomUsers(room);
+  });
+
+  socket.on("forum:leave", () => {
+    const prev = socketState.get(socket.id);
+    if (!prev) return;
+    try {
+      socket.leave(`forum:${prev.room}`);
+    } catch {}
+    const map = getOrCreateRoomMap(prev.room);
+    map.delete(prev.userId);
+    socketState.delete(socket.id);
+    broadcastRoomUsers(prev.room);
+  });
+
+  socket.on("call:offer", (payload) => {
+    const from = socketState.get(socket.id);
+    if (!from) return;
+    const room = String(payload?.room || from.room || "umum");
+    const toUserId = String(payload?.toUserId || "");
+    const offer = payload?.offer;
+    const callId = String(payload?.callId || "");
+    if (!toUserId || !offer || !callId) return;
+    const map = getOrCreateRoomMap(room);
+    const target = map.get(toUserId);
+    if (!target?.socketId) return;
+    io.to(target.socketId).emit("call:offer", {
+      room,
+      callId,
+      fromUserId: from.userId,
+      fromName: from.name,
+      offer,
+    });
+  });
+
+  socket.on("call:answer", (payload) => {
+    const from = socketState.get(socket.id);
+    if (!from) return;
+    const room = String(payload?.room || from.room || "umum");
+    const toUserId = String(payload?.toUserId || "");
+    const answer = payload?.answer;
+    const callId = String(payload?.callId || "");
+    if (!toUserId || !answer || !callId) return;
+    const map = getOrCreateRoomMap(room);
+    const target = map.get(toUserId);
+    if (!target?.socketId) return;
+    io.to(target.socketId).emit("call:answer", {
+      room,
+      callId,
+      fromUserId: from.userId,
+      answer,
+    });
+  });
+
+  socket.on("call:ice", (payload) => {
+    const from = socketState.get(socket.id);
+    if (!from) return;
+    const room = String(payload?.room || from.room || "umum");
+    const toUserId = String(payload?.toUserId || "");
+    const candidate = payload?.candidate;
+    const callId = String(payload?.callId || "");
+    if (!toUserId || !candidate || !callId) return;
+    const map = getOrCreateRoomMap(room);
+    const target = map.get(toUserId);
+    if (!target?.socketId) return;
+    io.to(target.socketId).emit("call:ice", {
+      room,
+      callId,
+      fromUserId: from.userId,
+      candidate,
+    });
+  });
+
+  socket.on("call:end", (payload) => {
+    const from = socketState.get(socket.id);
+    if (!from) return;
+    const room = String(payload?.room || from.room || "umum");
+    const toUserId = String(payload?.toUserId || "");
+    const callId = String(payload?.callId || "");
+    if (!toUserId || !callId) return;
+    const map = getOrCreateRoomMap(room);
+    const target = map.get(toUserId);
+    if (target?.socketId) {
+      io.to(target.socketId).emit("call:end", {
+        room,
+        callId,
+        fromUserId: from.userId,
+      });
+    }
+  });
+
+  socket.on("disconnect", () => {
+    const prev = socketState.get(socket.id);
+    if (!prev) return;
+    const map = getOrCreateRoomMap(prev.room);
+    map.delete(prev.userId);
+    socketState.delete(socket.id);
+    broadcastRoomUsers(prev.room);
+  });
+});
+
+const server = httpServer.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
 
 export {
   app,
   server,
+  io,
   buildAssistantResponse,
   sanitizeFormatOptions,
   FORMAT_RULES,
