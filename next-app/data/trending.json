@@ -1,50 +1,50 @@
 [
   {
     "slug": "bad-bunny-dtmf",
-    "title": "Bad Bunny DTMF",
-    "query": "Bad Bunny DTMF",
-    "description": "Download Bad Bunny DTMF MP3 & MP4"
+    "title": "DtMF",
+    "artist": "Bad Bunny",
+    "query": "Bad Bunny DtMF",
+    "description": "Download Bad Bunny DtMF MP3 & MP4",
+    "imageUrl": "/trending-placeholder.svg"
   },
   {
-    "slug": "taylor-swift-cruel-summer",
-    "title": "Taylor Swift Cruel Summer",
-    "query": "Taylor Swift Cruel Summer",
-    "description": "Download Taylor Swift Cruel Summer MP3 & MP4"
+    "slug": "bad-bunny-titi-me-pregunto",
+    "title": "Tití Me Preguntó",
+    "artist": "Bad Bunny",
+    "query": "Bad Bunny Tití Me Preguntó",
+    "description": "Download Bad Bunny Tití Me Preguntó MP3 & MP4",
+    "imageUrl": "/trending-placeholder.svg"
   },
   {
-    "slug": "the-weeknd-blinding-lights",
-    "title": "The Weeknd Blinding Lights",
-    "query": "The Weeknd Blinding Lights",
-    "description": "Download The Weeknd Blinding Lights MP3 & MP4"
+    "slug": "huntrx-golden",
+    "title": "Golden",
+    "artist": "HUNTRX, EJAE, AUDREY NUNA, REI AMI",
+    "query": "HUNTRX Golden",
+    "description": "Download Golden MP3 & MP4",
+    "imageUrl": "/trending-placeholder.svg"
   },
   {
-    "slug": "billie-eilish-birds-of-a-feather",
-    "title": "Billie Eilish Birds of a Feather",
-    "query": "Billie Eilish Birds of a Feather",
-    "description": "Download Billie Eilish Birds of a Feather MP3 & MP4"
+    "slug": "alex-warren-ordinary",
+    "title": "Ordinary",
+    "artist": "Alex Warren",
+    "query": "Alex Warren Ordinary",
+    "description": "Download Alex Warren Ordinary MP3 & MP4",
+    "imageUrl": "/trending-placeholder.svg"
   },
   {
-    "slug": "ariana-grande-we-cant-be-friends",
-    "title": "Ariana Grande We Can\u2019t Be Friends",
-    "query": "Ariana Grande We Can't Be Friends",
-    "description": "Download Ariana Grande We Can't Be Friends MP3 & MP4"
+    "slug": "ice-spice-big-guy",
+    "title": "Big Guy",
+    "artist": "Ice Spice",
+    "query": "Ice Spice Big Guy",
+    "description": "Download Ice Spice Big Guy MP3 & MP4",
+    "imageUrl": "/trending-placeholder.svg"
   },
   {
-    "slug": "bruno-mars-24k-magic",
-    "title": "Bruno Mars 24K Magic",
-    "query": "Bruno Mars 24K Magic",
-    "description": "Download Bruno Mars 24K Magic MP3 & MP4"
-  },
-  {
-    "slug": "tulus-hati-hati-di-jalan",
-    "title": "Tulus Hati-Hati di Jalan",
-    "query": "Tulus Hati-Hati di Jalan",
-    "description": "Download Tulus Hati-Hati di Jalan MP3 & MP4"
-  },
-  {
-    "slug": "rich-brian-100-degrees",
-    "title": "Rich Brian 100 Degrees",
-    "query": "Rich Brian 100 Degrees",
-    "description": "Download Rich Brian 100 Degrees MP3 & MP4"
+    "slug": "shakira-zoo",
+    "title": "Zoo",
+    "artist": "Shakira",
+    "query": "Shakira Zoo",
+    "description": "Download Shakira Zoo MP3 & MP4",
+    "imageUrl": "/trending-placeholder.svg"
   }
 ]

@@ -59,7 +59,13 @@ export function useSeasonalTheme() {
         }
         setState({ status: 'success', theme: payload.theme, hijriDateText: payload.hijriDateText || null, error: null });
       } catch (e) {
-        if ((e as any)?.name === 'AbortError') return;
+        const err = e as any;
+        const isAbort =
+          controller.signal.aborted ||
+          err?.name === 'AbortError' ||
+          String(err?.message || '').toLowerCase().includes('abort') ||
+          String(err || '').toLowerCase().includes('abort');
+        if (isAbort) return;
         setState((s) => ({ ...s, status: 'error', theme: s.theme || SEASONAL_THEMES.default, error: 'Failed to load seasonal theme.' }));
       }
     };

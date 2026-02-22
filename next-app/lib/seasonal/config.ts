@@ -13,9 +13,9 @@ export const SEASONAL_THEMES: Record<SeasonalThemeId, SeasonalTheme> = {
   ramadhan: {
     id: 'ramadhan',
     label: 'Ramadhan',
-    badge: '🌙 Ramadhan Mode Active',
-    gradient: { from: '#062b1a', to: '#05110c' },
-    accent: '#34d399',
+    badge: '🟩 Ketupat Ramadhan Mode',
+    gradient: { from: '#064e2a', to: '#02170d' },
+    accent: '#22c55e',
     effect: 'stars',
   },
   independence: {

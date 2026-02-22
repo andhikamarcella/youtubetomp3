@@ -14,8 +14,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const item = findTrendingBySlug(slug);
   if (!item) return {};
-  const title = `Download ${item.title} MP3 & MP4`;
-  const description = item.description || `Convert and download ${item.title} as MP3, M4A, or MP4.`;
+  const fullTitle = item.artist ? `${item.artist} ${item.title}` : item.title;
+  const title = `Download ${fullTitle} MP3 & MP4`;
+  const description = item.description || `Convert and download ${fullTitle} as MP3, M4A, or MP4.`;
   return {
     title,
     description,
@@ -34,10 +35,12 @@ export default async function DiscoverSlugPage({ params }: { params: Promise<{ s
   const item = findTrendingBySlug(slug);
   if (!item) notFound();
   const cached = await getCachedSearchItems(item.query);
+  const fullTitle = item.artist ? `${item.artist} ${item.title}` : item.title;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'MusicRecording',
     name: item.title,
+    byArtist: item.artist ? { '@type': 'MusicGroup', name: item.artist } : undefined,
     url: `/discover/${encodeURIComponent(item.slug)}`,
   };
 
@@ -59,7 +62,8 @@ export default async function DiscoverSlugPage({ params }: { params: Promise<{ s
 
       <div className="card p-4">
         <h1 className="section-title mb-2">{item.title}</h1>
-        <p className="text-secondary mb-4">Download {item.title} MP3 & MP4. Results load instantly when cached.</p>
+        {item.artist ? <p className="text-secondary mb-2">{item.artist}</p> : null}
+        <p className="text-secondary mb-4">Download {fullTitle} MP3 & MP4. Results load instantly when cached.</p>
         <DiscoverSearchClient
           initialQuery={item.query}
           syncToUrl={false}

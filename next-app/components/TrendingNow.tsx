@@ -1,10 +1,15 @@
+'use client';
+
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 type TrendingItem = {
   slug: string;
   title: string;
+  artist?: string;
   description?: string;
+  imageUrl?: string;
 };
 
 export default function TrendingNow() {
@@ -29,10 +34,12 @@ export default function TrendingNow() {
   }, []);
 
   return (
-    <div className="card p-4">
+    <div className="card p-4 trending-card">
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <h2 className="section-title mb-0">Trending Now</h2>
-        <Link className="btn btn-outline-light btn-sm" href="/discover">
+        <h2 className="mb-0" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>
+          Trending Now
+        </h2>
+        <Link className="btn btn-outline-dark btn-sm" href="/discover">
           Discover
         </Link>
       </div>
@@ -42,22 +49,29 @@ export default function TrendingNow() {
           Loading trending…
         </div>
       )}
-      {state.status === 'error' && <p className="text-warning mt-3 mb-0">Failed to load trending items.</p>}
+      {state.status === 'error' && <p className="text-danger mt-3 mb-0">Failed to load trending items.</p>}
       {state.status === 'success' && (
         <div className="mt-3">
           {state.items.length === 0 ? (
             <p className="text-secondary mb-0">No trending items yet.</p>
           ) : (
-            <div className="list-group">
+            <div className="trending-list">
               {state.items.map((item) => (
                 <Link
                   key={item.slug}
                   href={`/discover/${encodeURIComponent(item.slug)}`}
-                  className="list-group-item list-group-item-action bg-transparent text-light border-secondary"
+                  className="trending-row"
                 >
-                  <div className="d-flex flex-column gap-1">
-                    <div className="fw-semibold">{item.title}</div>
-                    {item.description ? <div className="text-secondary small">{item.description}</div> : null}
+                  <Image
+                    src={item.imageUrl || '/trending-placeholder.svg'}
+                    alt={item.title}
+                    width={44}
+                    height={44}
+                    className="trending-thumb"
+                  />
+                  <div className="trending-meta">
+                    <div className="trending-title">{item.title}</div>
+                    <div className="trending-artist">{item.artist || item.description || 'Trending'}</div>
                   </div>
                 </Link>
               ))}

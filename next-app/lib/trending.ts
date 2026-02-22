@@ -4,7 +4,9 @@ export type TrendingItem = {
   slug: string;
   title: string;
   query: string;
+  artist?: string;
   description?: string;
+  imageUrl?: string;
 };
 
 export function getTrendingMock(): TrendingItem[] {

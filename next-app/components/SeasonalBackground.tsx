@@ -72,6 +72,12 @@ function SeasonalEffects({ theme, reduced }: { theme: SeasonalTheme; reduced: bo
         <div className="seasonal-stars" />
         <div className="seasonal-moon" />
         <div className="seasonal-pulse" />
+        {theme.id === 'ramadhan' ? (
+          <>
+            <div className="seasonal-ramadhan-lights" />
+            <div className="seasonal-ramadhan-ketupat" />
+          </>
+        ) : null}
       </>
     );
   }
