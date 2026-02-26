@@ -7037,6 +7037,36 @@ app.post("/api/qr-login/consume", async (req, res) => {
   return res.json({ ok: true, token: sessionToken, user: summary });
 });
 
+app.post("/api/qr-login/decode", async (req, res) => {
+  const imageDataUrl = typeof req.body?.imageDataUrl === "string" ? req.body.imageDataUrl.trim() : "";
+  if (!imageDataUrl) {
+    return res.status(400).json({ error: "Data gambar kosong" });
+  }
+  const match = imageDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match?.[2]) {
+    return res.status(400).json({ error: "Format gambar tidak valid" });
+  }
+  try {
+    const mimeType = match[1] || "image/png";
+    const buffer = Buffer.from(match[2], "base64");
+    const form = new FormData();
+    const blob = new Blob([buffer], { type: mimeType });
+    form.append("file", blob, "qr.png");
+    const resp = await fetch("https://api.qrserver.com/v1/read-qr-code/", {
+      method: "POST",
+      body: form,
+    });
+    const payload = await resp.json().catch(() => null);
+    const raw = payload?.[0]?.symbol?.[0]?.data || "";
+    if (!raw) {
+      return res.status(404).json({ error: "QR tidak terbaca" });
+    }
+    return res.json({ ok: true, data: raw });
+  } catch (err) {
+    return res.status(500).json({ error: "Gagal membaca QR" });
+  }
+});
+
 app.post("/api/logout", async (req, res) => {
   const user = await resolveRequestUser(req);
   if (user) {

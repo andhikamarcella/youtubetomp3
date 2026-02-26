@@ -15891,6 +15891,8 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     scanning: false,
     scanTimer: null,
     stream: null,
+    decodeInFlight: false,
+    captureCanvas: null,
   };
 
   const formatQrExpiry = (expiresAt) => {
@@ -16004,17 +16006,63 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     }
   };
 
+  const supportsBarcodeDetector = () => 'BarcodeDetector' in window;
+
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Gagal membaca file'));
+    reader.readAsDataURL(file);
+  });
+
+  const decodeQrViaServer = async (imageDataUrl) => {
+    if (qrLoginState.decodeInFlight) return '';
+    qrLoginState.decodeInFlight = true;
+    try {
+      const { data } = await postJson('/api/qr-login/decode', { imageDataUrl });
+      return data?.data || '';
+    } finally {
+      qrLoginState.decodeInFlight = false;
+    }
+  };
+
+  const captureVideoFrame = () => {
+    if (!profileQrCamera) return '';
+    const width = profileQrCamera.videoWidth || 0;
+    const height = profileQrCamera.videoHeight || 0;
+    if (!width || !height) return '';
+    if (!qrLoginState.captureCanvas) {
+      qrLoginState.captureCanvas = document.createElement('canvas');
+    }
+    const canvas = qrLoginState.captureCanvas;
+    canvas.width = Math.min(width, 720);
+    canvas.height = Math.round(canvas.width * (height / width));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    ctx.drawImage(profileQrCamera, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png', 0.92);
+  };
+
   const scanQrFromFile = async (file) => {
     if (!file) return;
-    if (!('BarcodeDetector' in window)) {
-      setProfileQrMessage('Browser belum mendukung scan QR dari file.', 'text-danger');
-      return;
-    }
     try {
-      const bitmap = await createImageBitmap(file);
-      const detector = new BarcodeDetector({ formats: ['qr_code'] });
-      const codes = await detector.detect(bitmap);
-      const raw = codes?.[0]?.rawValue || '';
+      if (supportsBarcodeDetector()) {
+        const bitmap = await createImageBitmap(file);
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const codes = await detector.detect(bitmap);
+        const raw = codes?.[0]?.rawValue || '';
+        if (raw) {
+          await consumeQrLogin(raw);
+          return;
+        }
+      }
+      setProfileQrMessage('Membaca QR lewat server...', 'text-secondary');
+      const dataUrl = await readFileAsDataUrl(file);
+      const raw = await decodeQrViaServer(dataUrl);
+      if (!raw) {
+        setProfileQrMessage('QR tidak terbaca dari file.', 'text-danger');
+        return;
+      }
       await consumeQrLogin(raw);
     } catch (err) {
       setProfileQrMessage('Gagal membaca QR dari file.', 'text-danger');
@@ -16022,12 +16070,16 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
   };
 
   const startQrCamera = async () => {
-    if (!('BarcodeDetector' in window)) {
-      setProfileQrMessage('Browser belum mendukung kamera QR.', 'text-danger');
-      return;
-    }
     try {
       stopQrCamera();
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setProfileQrMessage('Perangkat tidak mendukung kamera.', 'text-danger');
+        return;
+      }
+      if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        setProfileQrMessage('Kamera butuh HTTPS. Buka lewat https:// atau localhost.', 'text-danger');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       qrLoginState.stream = stream;
       if (profileQrCamera) {
@@ -16036,20 +16088,25 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
       }
       if (profileQrCameraWrap) profileQrCameraWrap.hidden = false;
       qrLoginState.scanning = true;
-      const detector = new BarcodeDetector({ formats: ['qr_code'] });
       const scan = async () => {
         if (!qrLoginState.scanning) return;
         let raw = '';
-        try {
-          const codes = await detector.detect(profileQrCamera);
-          raw = codes?.[0]?.rawValue || '';
-        } catch {}
+        if (supportsBarcodeDetector()) {
+          try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const codes = await detector.detect(profileQrCamera);
+            raw = codes?.[0]?.rawValue || '';
+          } catch {}
+        } else {
+          const frame = captureVideoFrame();
+          if (frame) raw = await decodeQrViaServer(frame);
+        }
         if (raw) {
           qrLoginState.scanning = false;
           await consumeQrLogin(raw);
           return;
         }
-        qrLoginState.scanTimer = setTimeout(scan, 350);
+        qrLoginState.scanTimer = setTimeout(scan, 650);
       };
       scan();
     } catch (err) {
