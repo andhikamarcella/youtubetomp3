@@ -16008,6 +16008,17 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
 
   const supportsBarcodeDetector = () => 'BarcodeDetector' in window;
 
+  let jsQrDecodePromise = null;
+  const loadJsQrDecoder = async () => {
+    if (window.jsQR) return window.jsQR;
+    if (!jsQrDecodePromise) {
+      jsQrDecodePromise = import('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.es6.min.js')
+        .then((mod) => mod?.default || mod?.jsQR || window.jsQR || null)
+        .catch(() => null);
+    }
+    return jsQrDecodePromise;
+  };
+
   const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -16043,6 +16054,23 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     return canvas.toDataURL('image/png', 0.92);
   };
 
+  const decodeQrWithJsQr = async (file) => {
+    const jsQr = await loadJsQrDecoder();
+    if (typeof jsQr !== 'function') return '';
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return '';
+    ctx.drawImage(bitmap, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const decoded = jsQr(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: 'attemptBoth',
+    });
+    return decoded?.data || '';
+  };
+
   const scanQrFromFile = async (file) => {
     if (!file) return;
     try {
@@ -16055,6 +16083,12 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
           await consumeQrLogin(raw);
           return;
         }
+      }
+      setProfileQrMessage('Mencoba membaca QR lokal...', 'text-secondary');
+      const localRaw = await decodeQrWithJsQr(file);
+      if (localRaw) {
+        await consumeQrLogin(localRaw);
+        return;
       }
       setProfileQrMessage('Membaca QR lewat server...', 'text-secondary');
       const dataUrl = await readFileAsDataUrl(file);
