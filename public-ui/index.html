@@ -16058,7 +16058,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     }
   };
 
-  const maybeConsumeQrFromHash = () => {
+  function maybeConsumeQrFromHash() {
     const hash = window.location.hash || '';
     const match = hash.match(/qr-login=([^&]+)/i);
     if (!match?.[1]) return;
@@ -16067,7 +16067,7 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
     try {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     } catch {}
-  };
+  }
 
   const resetSourcePreview = () => {
     if (sourcePreviewAudio) {
