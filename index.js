@@ -147,6 +147,46 @@ const verifySessionToken = (token) => {
   return payload;
 };
 
+const QR_LOGIN_TTL_MS = Number(process.env.QR_LOGIN_TTL_MS || 1000 * 60 * 5);
+const qrLoginTokens = new Map();
+
+const issueQrLoginToken = (userId) => {
+  const token = nanoid(32);
+  const now = Date.now();
+  const entry = {
+    token,
+    userId,
+    createdAt: now,
+    expiresAt: now + QR_LOGIN_TTL_MS,
+    usedAt: null,
+  };
+  qrLoginTokens.set(token, entry);
+  return entry;
+};
+
+const consumeQrLoginToken = (token) => {
+  if (!token) return { error: "Token kosong", status: 400 };
+  const entry = qrLoginTokens.get(token);
+  if (!entry) return { error: "QR tidak valid atau sudah kedaluwarsa", status: 404 };
+  if (entry.usedAt) return { error: "QR sudah dipakai", status: 409 };
+  if (entry.expiresAt < Date.now()) {
+    qrLoginTokens.delete(token);
+    return { error: "QR sudah kedaluwarsa", status: 410 };
+  }
+  entry.usedAt = Date.now();
+  qrLoginTokens.delete(token);
+  return { entry };
+};
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, entry] of qrLoginTokens.entries()) {
+    if (!entry || entry.expiresAt < now || entry.usedAt) {
+      qrLoginTokens.delete(token);
+    }
+  }
+}, 1000 * 60).unref?.();
+
 const getBearerTokenFromRequest = (req) => {
   const header = req.get("Authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -6962,6 +7002,39 @@ app.get("/api/session", async (req, res) => {
   if (!user) return res.status(401).json({ error: "Belum login" });
   const summary = await buildUserSummaryById(user.id);
   return res.json({ ok: true, user: summary });
+});
+
+app.post("/api/qr-login/issue", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+  const entry = issueQrLoginToken(user.id);
+  const host = req.get("host") || "";
+  const scheme = req.protocol || "https";
+  const loginUrl = `${scheme}://${host}/#qr-login=${entry.token}`;
+  const summary = await buildUserSummaryById(user.id);
+  return res.json({
+    ok: true,
+    token: entry.token,
+    loginUrl,
+    expiresAt: entry.expiresAt,
+    ttlMs: QR_LOGIN_TTL_MS,
+    user: summary,
+  });
+});
+
+app.post("/api/qr-login/consume", async (req, res) => {
+  const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+  const result = consumeQrLoginToken(token);
+  if (result?.error) {
+    return res.status(result.status || 400).json({ error: result.error });
+  }
+  const entry = result.entry;
+  const summary = await buildUserSummaryById(entry.userId);
+  if (!summary) {
+    return res.status(404).json({ error: "Akun tidak ditemukan" });
+  }
+  const sessionToken = createSessionToken(summary.id);
+  return res.json({ ok: true, token: sessionToken, user: summary });
 });
 
 app.post("/api/logout", async (req, res) => {

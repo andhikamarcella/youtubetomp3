@@ -4912,6 +4912,35 @@
                  <i class="bi bi-stars me-2"></i> Buka Experience
                </button>
              </div>
+            <div class="mt-3 p-3 border rounded-3 bg-body-tertiary" id="profileQrSection">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="fw-semibold">Login via QR</div>
+                <span class="badge text-bg-secondary" id="profileQrStatus">Perlu login Google</span>
+              </div>
+              <p class="small text-secondary mb-2" id="profileQrHint">Login Google dulu untuk membuat QR. Gunakan kamera atau upload QR untuk masuk di perangkat lain.</p>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <button class="btn btn-sm btn-primary" id="profileQrGenerateBtn"><i class="bi bi-qr-code me-1"></i>Generate QR</button>
+                <button class="btn btn-sm btn-outline-primary" id="profileQrRefreshBtn"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                <button class="btn btn-sm btn-outline-secondary" id="profileQrUploadBtn"><i class="bi bi-upload me-1"></i>Upload QR</button>
+                <button class="btn btn-sm btn-outline-secondary" id="profileQrCameraBtn"><i class="bi bi-camera-video me-1"></i>Kamera</button>
+                <input type="file" id="profileQrUploadInput" accept="image/*" hidden>
+              </div>
+              <div class="row g-3 align-items-start">
+                <div class="col-12 col-sm-auto">
+                  <div id="profileQrWrap" class="border rounded-3 bg-white p-2" style="width: 176px; height: 176px;">
+                    <canvas id="profileQrCanvas" width="156" height="156"></canvas>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="small text-secondary" id="profileQrMessage">Belum ada QR. Klik Generate untuk membuat QR login.</div>
+                  <div class="small text-secondary mt-1" id="profileQrExpiry"></div>
+                </div>
+              </div>
+              <div id="profileQrCameraWrap" class="mt-3 rounded-3 border overflow-hidden bg-dark" hidden>
+                <video id="profileQrCamera" playsinline muted autoplay style="width:100%; height: 220px; object-fit: cover;"></video>
+                <div class="p-2 small text-secondary">Arahkan kamera ke QR sampai terdeteksi.</div>
+              </div>
+            </div>
              <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
                 <button class="btn btn-sm btn-light text-primary fw-bold rounded-pill px-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings">
                   <i class="bi bi-gear-fill me-1"></i> Settings
@@ -10137,6 +10166,20 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
   const playlistShareCard = $('#playlistShareCard');
   const playlistQrCanvas = $('#playlistQr');
   const playlistQrWrap = $('#playlistQrWrap');
+  const profileQrSection = $('#profileQrSection');
+  const profileQrCanvas = $('#profileQrCanvas');
+  const profileQrWrap = $('#profileQrWrap');
+  const profileQrStatus = $('#profileQrStatus');
+  const profileQrHint = $('#profileQrHint');
+  const profileQrMessage = $('#profileQrMessage');
+  const profileQrExpiry = $('#profileQrExpiry');
+  const profileQrGenerateBtn = $('#profileQrGenerateBtn');
+  const profileQrRefreshBtn = $('#profileQrRefreshBtn');
+  const profileQrUploadBtn = $('#profileQrUploadBtn');
+  const profileQrUploadInput = $('#profileQrUploadInput');
+  const profileQrCameraBtn = $('#profileQrCameraBtn');
+  const profileQrCameraWrap = $('#profileQrCameraWrap');
+  const profileQrCamera = $('#profileQrCamera');
   const backgroundList = $('#backgroundList');
   const backgroundEmpty = $('#backgroundEmpty');
   const urlDropOverlay = $('#urlDropOverlay');
@@ -11825,7 +11868,45 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
        if (logoutBtn) logoutBtn.hidden = true;
        if (loginHint) loginHint.hidden = false;
     }
+    if (!user) {
+      qrLoginState.token = '';
+      qrLoginState.loginUrl = '';
+      qrLoginState.expiresAt = 0;
+    }
+    updateProfileQrUi();
   };
+
+  if (profileQrGenerateBtn && !profileQrGenerateBtn.dataset.bound) {
+    profileQrGenerateBtn.dataset.bound = 'true';
+    profileQrGenerateBtn.addEventListener('click', () => issueQrLogin());
+  }
+  if (profileQrRefreshBtn && !profileQrRefreshBtn.dataset.bound) {
+    profileQrRefreshBtn.dataset.bound = 'true';
+    profileQrRefreshBtn.addEventListener('click', () => issueQrLogin());
+  }
+  if (profileQrUploadBtn && profileQrUploadInput && !profileQrUploadBtn.dataset.bound) {
+    profileQrUploadBtn.dataset.bound = 'true';
+    profileQrUploadBtn.addEventListener('click', () => profileQrUploadInput.click());
+    profileQrUploadInput.addEventListener('change', (event) => {
+      const file = event.target?.files?.[0];
+      if (file) scanQrFromFile(file);
+      profileQrUploadInput.value = '';
+    });
+  }
+  if (profileQrCameraBtn && !profileQrCameraBtn.dataset.bound) {
+    profileQrCameraBtn.dataset.bound = 'true';
+    profileQrCameraBtn.addEventListener('click', () => {
+      if (qrLoginState.scanning) stopQrCamera();
+      else startQrCamera();
+    });
+  }
+  const profileModalEl = document.getElementById('profileModal');
+  if (profileModalEl && !profileModalEl.dataset.qrBound) {
+    profileModalEl.dataset.qrBound = 'true';
+    profileModalEl.addEventListener('hidden.bs.modal', () => stopQrCamera());
+  }
+  window.addEventListener('hashchange', maybeConsumeQrFromHash);
+  maybeConsumeQrFromHash();
 
   const updateAvatarUi = () => {
     const points = Number(state.experience.points) || 0;
@@ -15801,6 +15882,191 @@ function showMaintenanceOverlay(show, type = 'maintenance') {
       ctx.textBaseline = 'middle';
       ctx.fillText('QR gagal dimuat', canvas.width / 2, canvas.height / 2);
     });
+  };
+
+  const qrLoginState = {
+    token: '',
+    loginUrl: '',
+    expiresAt: 0,
+    scanning: false,
+    scanTimer: null,
+    stream: null,
+  };
+
+  const formatQrExpiry = (expiresAt) => {
+    if (!expiresAt) return '';
+    const diff = Math.max(0, expiresAt - Date.now());
+    const sec = Math.ceil(diff / 1000);
+    const min = Math.floor(sec / 60);
+    const rem = sec % 60;
+    if (sec <= 0) return 'QR kedaluwarsa';
+    if (min >= 1) return `Kedaluwarsa dalam ${min}m ${rem}s`;
+    return `Kedaluwarsa dalam ${rem}s`;
+  };
+
+  const extractQrLoginToken = (raw) => {
+    if (!raw || typeof raw !== 'string') return '';
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
+    const matchHash = trimmed.match(/qr-login=([^&]+)/i);
+    if (matchHash?.[1]) return decodeURIComponent(matchHash[1]);
+    const matchToken = trimmed.match(/token=([^&]+)/i);
+    if (matchToken?.[1]) return decodeURIComponent(matchToken[1]);
+    return trimmed;
+  };
+
+  const stopQrCamera = () => {
+    if (qrLoginState.scanTimer) {
+      clearTimeout(qrLoginState.scanTimer);
+      qrLoginState.scanTimer = null;
+    }
+    qrLoginState.scanning = false;
+    if (qrLoginState.stream) {
+      qrLoginState.stream.getTracks().forEach((track) => track.stop());
+      qrLoginState.stream = null;
+    }
+    if (profileQrCameraWrap) profileQrCameraWrap.hidden = true;
+    if (profileQrCamera) profileQrCamera.srcObject = null;
+  };
+
+  const setProfileQrMessage = (text, tone) => {
+    if (!profileQrMessage) return;
+    profileQrMessage.textContent = text || '';
+    profileQrMessage.classList.remove('text-danger', 'text-success', 'text-secondary');
+    if (tone) profileQrMessage.classList.add(tone);
+    else profileQrMessage.classList.add('text-secondary');
+  };
+
+  const updateProfileQrUi = () => {
+    if (!profileQrSection) return;
+    const loggedIn = Boolean(state.auth.user && state.auth.token);
+    if (profileQrGenerateBtn) profileQrGenerateBtn.disabled = !loggedIn;
+    if (profileQrRefreshBtn) profileQrRefreshBtn.disabled = !loggedIn;
+    if (profileQrStatus) {
+      profileQrStatus.textContent = loggedIn ? 'Siap dibuat' : 'Perlu login Google';
+      profileQrStatus.className = `badge ${loggedIn ? 'text-bg-success' : 'text-bg-secondary'}`;
+    }
+    if (profileQrHint) {
+      profileQrHint.textContent = loggedIn
+        ? 'Generate QR untuk login di perangkat lain. QR berlaku singkat demi keamanan.'
+        : 'Login Google dulu untuk membuat QR. Kamu tetap bisa upload/scan QR untuk login.';
+    }
+    if (!qrLoginState.token) {
+      renderQr(profileQrCanvas, profileQrWrap, '');
+      if (profileQrExpiry) profileQrExpiry.textContent = '';
+      if (loggedIn) setProfileQrMessage('Belum ada QR. Klik Generate untuk membuat QR login.', 'text-secondary');
+    } else {
+      renderQr(profileQrCanvas, profileQrWrap, qrLoginState.loginUrl || qrLoginState.token);
+      if (profileQrExpiry) profileQrExpiry.textContent = formatQrExpiry(qrLoginState.expiresAt);
+    }
+  };
+
+  const issueQrLogin = async () => {
+    try {
+      if (!state.auth.user || !state.auth.token) {
+        setProfileQrMessage('Login Google dulu untuk membuat QR.', 'text-danger');
+        updateProfileQrUi();
+        return;
+      }
+      setProfileQrMessage('Membuat QR login...', 'text-secondary');
+      const { data } = await postJson('/api/qr-login/issue', {});
+      qrLoginState.token = data?.token || '';
+      qrLoginState.loginUrl = data?.loginUrl || '';
+      qrLoginState.expiresAt = Number(data?.expiresAt) || 0;
+      setProfileQrMessage('QR siap digunakan. Scan di perangkat lain untuk login.', 'text-success');
+      updateProfileQrUi();
+    } catch (err) {
+      setProfileQrMessage(err?.message || 'Gagal membuat QR', 'text-danger');
+    }
+  };
+
+  const consumeQrLogin = async (value) => {
+    const token = extractQrLoginToken(value);
+    if (!token) {
+      setProfileQrMessage('QR tidak valid.', 'text-danger');
+      return;
+    }
+    try {
+      setProfileQrMessage('Memverifikasi QR...', 'text-secondary');
+      const { data } = await postJson('/api/qr-login/consume', { token });
+      if (data?.token) persistAuthToken(data.token);
+      if (data?.user) {
+        applyUserSummary(data.user, { origin: 'qr' });
+        if (window.updateForumAuthUI) window.updateForumAuthUI(data.user);
+      }
+      setProfileQrMessage('Login berhasil lewat QR.', 'text-success');
+      updateAccountUi();
+      if (window.updateProfileModal) window.updateProfileModal();
+      fetchUserSession({ silent: true });
+      stopQrCamera();
+    } catch (err) {
+      setProfileQrMessage(err?.message || 'QR gagal dipakai', 'text-danger');
+    }
+  };
+
+  const scanQrFromFile = async (file) => {
+    if (!file) return;
+    if (!('BarcodeDetector' in window)) {
+      setProfileQrMessage('Browser belum mendukung scan QR dari file.', 'text-danger');
+      return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      const detector = new BarcodeDetector({ formats: ['qr_code'] });
+      const codes = await detector.detect(bitmap);
+      const raw = codes?.[0]?.rawValue || '';
+      await consumeQrLogin(raw);
+    } catch (err) {
+      setProfileQrMessage('Gagal membaca QR dari file.', 'text-danger');
+    }
+  };
+
+  const startQrCamera = async () => {
+    if (!('BarcodeDetector' in window)) {
+      setProfileQrMessage('Browser belum mendukung kamera QR.', 'text-danger');
+      return;
+    }
+    try {
+      stopQrCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      qrLoginState.stream = stream;
+      if (profileQrCamera) {
+        profileQrCamera.srcObject = stream;
+        await profileQrCamera.play().catch(() => {});
+      }
+      if (profileQrCameraWrap) profileQrCameraWrap.hidden = false;
+      qrLoginState.scanning = true;
+      const detector = new BarcodeDetector({ formats: ['qr_code'] });
+      const scan = async () => {
+        if (!qrLoginState.scanning) return;
+        let raw = '';
+        try {
+          const codes = await detector.detect(profileQrCamera);
+          raw = codes?.[0]?.rawValue || '';
+        } catch {}
+        if (raw) {
+          qrLoginState.scanning = false;
+          await consumeQrLogin(raw);
+          return;
+        }
+        qrLoginState.scanTimer = setTimeout(scan, 350);
+      };
+      scan();
+    } catch (err) {
+      stopQrCamera();
+      setProfileQrMessage('Kamera tidak dapat digunakan.', 'text-danger');
+    }
+  };
+
+  const maybeConsumeQrFromHash = () => {
+    const hash = window.location.hash || '';
+    const match = hash.match(/qr-login=([^&]+)/i);
+    if (!match?.[1]) return;
+    const token = decodeURIComponent(match[1]);
+    consumeQrLogin(token);
+    try {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    } catch {}
   };
 
   const resetSourcePreview = () => {
