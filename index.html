@@ -789,6 +789,11 @@
         <button type="button" class="btn-close btn-close-white" id="assistantClose"></button>
       </header>
       <div class="assistant-body">
+        <div class="d-flex justify-content-end mb-2">
+          <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#qrLoginModal">
+            <i class="bi bi-qr-code-scan me-1"></i>Login QR
+          </button>
+        </div>
         <div id="chatMessages" class="chat-messages mb-3"></div>
         <div id="assistantSuggestions" class="mt-2 d-flex flex-wrap gap-1"></div>
         <div id="assistantLocal" class="mt-2 d-flex flex-wrap gap-1"></div>
@@ -805,9 +810,46 @@
     </button>
   </div>
 
+  <div class="modal fade" id="qrLoginModal" tabindex="-1" aria-labelledby="qrLoginModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header">
+          <h5 class="modal-title" id="qrLoginModalLabel"><i class="bi bi-qr-code me-2"></i>Login dengan QR</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-secondary mb-3">Generate QR butuh login Google dulu. Setelah itu QR bisa dipakai untuk login via kamera atau upload gambar QR.</p>
+          <div class="d-grid gap-2 mb-3">
+            <button type="button" class="btn btn-primary" id="generateQrLoginBtn">
+              <i class="bi bi-shield-lock me-1"></i>Generate QR Login
+            </button>
+          </div>
+          <div id="qrPreviewWrap" class="text-center mb-3" hidden>
+            <canvas id="qrLoginCanvas" class="bg-white p-2 rounded"></canvas>
+            <div class="small text-secondary mt-2">QR berlaku 5 menit.</div>
+          </div>
+          <hr class="border-secondary">
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-outline-success" id="startQrCameraBtn">
+              <i class="bi bi-camera me-1"></i>Scan via Kamera
+            </button>
+            <label class="btn btn-outline-light mb-0" for="qrUploadInput">
+              <i class="bi bi-upload me-1"></i>Upload Gambar QR
+            </label>
+            <input type="file" id="qrUploadInput" accept="image/*" class="d-none">
+          </div>
+          <div id="qrReader" class="mt-3" hidden></div>
+          <p class="small mt-3 mb-0" id="qrLoginStatus">Belum ada aktivitas QR.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/waveform-viewer@1.0.0/dist/waveform-viewer.min.js"></script>
   <script>
   document.addEventListener('DOMContentLoaded', () => {
@@ -1740,20 +1782,22 @@ $('#queueList')?.addEventListener('click', (e) => {
     
     // Google Sign-In
     function initGoogleSignIn() {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-        client_id: state.googleClientId || ($('#googleClientId')?.value || ''),
-          callback: handleGoogleSignIn
+      if (!window.google) return;
+      const clientId = state.googleClientId || ($('#googleClientId')?.value || '');
+      if (!clientId) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleSignIn
+      });
+
+      const signInBtn = $('#googleSignInBtn');
+      if (signInBtn) {
+        window.google.accounts.id.renderButton(signInBtn, {
+          theme: 'outline',
+          size: 'small',
+          type: 'icon'
         });
-        
-        const signInBtn = $('#googleSignInBtn');
-        if (signInBtn) {
-          window.google.accounts.id.renderButton(signInBtn, {
-            theme: 'outline',
-            size: 'small',
-            type: 'icon'
-          });
-        }
+      }
       const signInNav = $('#googleSignInNav');
       if (signInNav) {
         window.google.accounts.id.renderButton(signInNav, {
@@ -1762,24 +1806,35 @@ $('#queueList')?.addEventListener('click', (e) => {
           shape: 'pill'
         });
       }
-      }
     }
     
-    function handleGoogleSignIn(response) {
+    async function handleGoogleSignIn(response) {
       try {
+        const loginResult = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential })
+        });
+
+        if (!loginResult.ok) {
+          const errData = await loginResult.json().catch(() => ({}));
+          throw new Error(errData?.error || 'Login Google gagal');
+        }
+
         const payload = JSON.parse(atob(response.credential.split('.')[1]));
         currentUser = {
           name: payload.name,
           email: payload.email,
           photoURL: payload.picture,
-          sub: payload.sub
+          sub: payload.sub,
+          credential: response.credential
         };
         localStorage.setItem('userSession', JSON.stringify(currentUser));
         updateProfilePhoto();
         setToast(`Login berhasil sebagai ${currentUser.name}`);
       } catch (e) {
         console.error('Google sign-in error:', e);
-        setToast('Login gagal');
+        setToast(e?.message || 'Login gagal');
       }
     }
     
@@ -1890,19 +1945,144 @@ $('#queueList')?.addEventListener('click', (e) => {
       signInBtn.addEventListener('click', () => {
         if (currentUser) {
           logout();
+          return;
+        }
+        if (window.google?.accounts?.id) {
+          window.google.accounts.id.prompt();
         } else {
-          // For demo, create a mock user
-          currentUser = {
-            name: 'Demo User',
-            email: 'demo@example.com',
-            photoURL: 'https://picsum.photos/seed/demo/32/32.jpg'
-          };
-          localStorage.setItem('userSession', JSON.stringify(currentUser));
-          updateProfilePhoto();
-          setToast('Login demo berhasil');
+          setToast('Google Sign-In belum siap');
         }
       });
     }
+
+    const qrLoginStatusEl = $('#qrLoginStatus');
+    const qrPreviewWrap = $('#qrPreviewWrap');
+    const qrLoginCanvas = $('#qrLoginCanvas');
+    const qrReaderEl = $('#qrReader');
+    const qrUploadInput = $('#qrUploadInput');
+    const qrStoreKey = 'ytmp3.qr.login';
+    let qrScanner = null;
+
+    const setQrStatus = (msg, isError = false) => {
+      if (!qrLoginStatusEl) return;
+      qrLoginStatusEl.textContent = msg;
+      qrLoginStatusEl.classList.toggle('text-danger', Boolean(isError));
+      qrLoginStatusEl.classList.toggle('text-success', !isError && /berhasil/i.test(msg));
+    };
+
+    function generateQrToken() {
+      return `ytmp3-login:${Math.random().toString(36).slice(2)}:${Date.now()}`;
+    }
+
+    async function renderQr(token) {
+      if (!window.QRCode || !qrLoginCanvas) {
+        setQrStatus('Library QR belum siap.', true);
+        return;
+      }
+      await window.QRCode.toCanvas(qrLoginCanvas, token, {
+        width: 210,
+        margin: 2,
+        color: { dark: '#111111', light: '#ffffff' }
+      });
+      qrPreviewWrap?.removeAttribute('hidden');
+    }
+
+    async function generateLoginQr() {
+      if (!currentUser?.email || !currentUser?.sub) {
+        setQrStatus('Login Google dulu untuk generate QR.', true);
+        setToast('Silakan login Google dulu');
+        return;
+      }
+
+      const token = generateQrToken();
+      const expiresAt = Date.now() + (5 * 60 * 1000);
+      const session = {
+        token,
+        expiresAt,
+        user: {
+          name: currentUser.name,
+          email: currentUser.email,
+          photoURL: currentUser.photoURL,
+          sub: currentUser.sub,
+          credential: currentUser.credential || null
+        }
+      };
+      localStorage.setItem(qrStoreKey, JSON.stringify(session));
+      await renderQr(token);
+      setQrStatus('QR login berhasil digenerate. Scan dari device ini untuk simulasi login.');
+    }
+
+    function completeQrLogin(decodedText) {
+      try {
+        const raw = localStorage.getItem(qrStoreKey);
+        if (!raw) throw new Error('QR login belum pernah dibuat.');
+        const session = JSON.parse(raw);
+        if (Date.now() > Number(session.expiresAt || 0)) throw new Error('QR login sudah kadaluarsa.');
+        if (decodedText !== session.token) throw new Error('QR tidak cocok.');
+        currentUser = { ...session.user };
+        localStorage.setItem('userSession', JSON.stringify(currentUser));
+        updateProfilePhoto();
+        setToast(`Login QR berhasil sebagai ${currentUser.name || currentUser.email}`);
+        setQrStatus('Login QR berhasil.', false);
+      } catch (err) {
+        setQrStatus(err?.message || 'Login QR gagal.', true);
+      }
+    }
+
+    async function startQrCameraScan() {
+      if (!window.Html5Qrcode) {
+        setQrStatus('Scanner QR belum siap.', true);
+        return;
+      }
+      qrReaderEl?.removeAttribute('hidden');
+      if (!qrScanner) qrScanner = new Html5Qrcode('qrReader');
+      try {
+        await qrScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            completeQrLogin(decodedText);
+            qrScanner?.stop().catch(() => {});
+          },
+          () => {}
+        );
+        setQrStatus('Arahkan kamera ke QR login.');
+      } catch (err) {
+        setQrStatus('Tidak bisa akses kamera. Coba upload gambar QR.', true);
+      }
+    }
+
+    $('#generateQrLoginBtn')?.addEventListener('click', () => {
+      generateLoginQr();
+    });
+
+    $('#startQrCameraBtn')?.addEventListener('click', () => {
+      startQrCameraScan();
+    });
+
+    qrUploadInput?.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!window.Html5Qrcode) {
+        setQrStatus('Scanner QR belum siap.', true);
+        return;
+      }
+      try {
+        const text = await Html5Qrcode.scanFile(file, true);
+        completeQrLogin(text);
+      } catch {
+        setQrStatus('QR pada gambar tidak terbaca.', true);
+      } finally {
+        event.target.value = '';
+      }
+    });
+
+    $('#qrLoginModal')?.addEventListener('hidden.bs.modal', () => {
+      if (qrScanner) {
+        qrScanner.stop().catch(() => {});
+      }
+      qrReaderEl?.setAttribute('hidden', '');
+    });
     
     function renderSuggestions(list){
       assistantSugEl.innerHTML = '';
