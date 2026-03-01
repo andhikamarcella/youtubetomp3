@@ -8023,8 +8023,9 @@ app.get("/api/turn-credentials", async (req, res) => {
   } catch (err) {
     console.warn("Fallback to static ICE due to Metered failure", err?.message);
     const iceServers = [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      { urls: 'turn:standard.relay.metered.ca:80', username: '58f25dcefc88997a05a5fbbb', credential: 'ulLNhCZCp6eQkFu3' },
+      { urls: 'turn:standard.relay.metered.ca:443?transport=tcp', username: '58f25dcefc88997a05a5fbbb', credential: 'ulLNhCZCp6eQkFu3' }
     ];
     return res.json({ iceServers });
   }

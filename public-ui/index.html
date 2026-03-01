@@ -26526,8 +26526,8 @@
 
             // Utter fallback array if both fail
             cachedIceServers = [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
+              { urls: 'stun:stun.relay.metered.ca:80' },
+              { urls: 'turn:standard.relay.metered.ca:80', username: '58f25dcefc88997a05a5fbbb', credential: 'ulLNhCZCp6eQkFu3' }
             ];
             cachedIceServersAt = Date.now();
             return cachedIceServers;
@@ -26613,8 +26613,10 @@
           };
 
           const createPeerConnection = async () => {
+            const servers = await getIceServers();
+            console.log("Using ICE Servers for this PC:", servers);
             const pc = new RTCPeerConnection({
-              iceServers: await getIceServers(),
+              iceServers: servers,
               iceTransportPolicy: 'all', // explicitly allow relay (TURN)
               bundlePolicy: 'max-bundle',
               rtcpMuxPolicy: 'require',
@@ -26803,23 +26805,45 @@
               const pc = await createPeerConnection();
               callState.pc = pc;
               stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+              let isLocalDescriptionSet = false;
+              const localCandidatesQueue = [];
+
               pc.onicecandidate = (evt) => {
                 if (!evt.candidate) {
                   console.log('[WebRTC Caller] ICE Gathering finished.');
                   return;
                 }
                 console.log('[WebRTC Caller] Generated candidate:', evt.candidate.candidate);
-                socket.emit('call:ice', {
-                  room: activeForumRoom,
-                  callId: callState.callId,
-                  toUserId,
-                  candidate: evt.candidate,
-                });
+
+                const emitCandidate = (candidate) => {
+                  socket.emit('call:ice', {
+                    room: activeForumRoom,
+                    callId: callState.callId,
+                    toUserId,
+                    candidate,
+                  });
+                };
+
+                if (isLocalDescriptionSet) {
+                  emitCandidate(evt.candidate);
+                } else {
+                  localCandidatesQueue.push(evt.candidate);
+                }
               };
 
               // Only create offer once audio tracks are explicitly added (prevent timing issues)
               const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
               await pc.setLocalDescription(offer);
+              isLocalDescriptionSet = true;
+
+              localCandidatesQueue.forEach((c) => {
+                socket.emit('call:ice', {
+                  room: activeForumRoom,
+                  callId: callState.callId,
+                  toUserId,
+                  candidate: c,
+                });
+              });
 
               socket.emit('call:offer', {
                 room: activeForumRoom,
@@ -26861,22 +26885,46 @@
               const pc = await createPeerConnection();
               callState.pc = pc;
               stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+              let isLocalDescriptionSet = false;
+              const localCandidatesQueue = [];
+
               pc.onicecandidate = (evt) => {
                 if (!evt.candidate) {
                   console.log('[WebRTC Receiver] ICE Gathering finished.');
                   return;
                 }
                 console.log('[WebRTC Receiver] Generated candidate:', evt.candidate.candidate);
+
+                const emitCandidate = (candidate) => {
+                  socket.emit('call:ice', {
+                    room: payload.room,
+                    callId: payload.callId,
+                    toUserId: payload.fromUserId,
+                    candidate,
+                  });
+                };
+
+                if (isLocalDescriptionSet) {
+                  emitCandidate(evt.candidate);
+                } else {
+                  localCandidatesQueue.push(evt.candidate);
+                }
+              };
+
+              await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              isLocalDescriptionSet = true;
+
+              localCandidatesQueue.forEach((c) => {
                 socket.emit('call:ice', {
                   room: payload.room,
                   callId: payload.callId,
                   toUserId: payload.fromUserId,
-                  candidate: evt.candidate,
+                  candidate: c,
                 });
-              };
-              await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
+              });
+
               socket.emit('call:answer', {
                 room: payload.room,
                 callId: payload.callId,
