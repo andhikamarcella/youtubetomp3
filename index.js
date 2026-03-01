@@ -7,8 +7,6 @@ import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { join, dirname, resolve as pathResolve, basename } from "node:path";
-import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import axios from "axios";
 
