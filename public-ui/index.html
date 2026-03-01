@@ -8197,7 +8197,7 @@
       </div>
     </div>
 
-    <audio id="forumRemoteAudio" autoplay playsinline hidden></audio>
+    <audio id="forumRemoteAudio" autoplay playsinline style="display: none;"></audio>
 
     <div class="modal fade" id="forumCallPickerModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -26772,6 +26772,8 @@
               btn.className = 'list-group-item list-group-item-action d-flex align-items-center justify-content-between';
               btn.innerHTML = `<span class="fw-semibold">${String(u.name || 'Warga').replace(/</g, '&lt;')}</span><span class="badge rounded-pill text-bg-info">Call</span>`;
               btn.addEventListener('click', () => {
+                // IMPORTANT: Synchronous user gesture to unlock audio element for Safari/iOS
+                if (forumRemoteAudio) forumRemoteAudio.play().catch(() => { });
                 forumCallPickerModal?.hide?.();
                 startOutgoingCall(String(u.userId), String(u.name || 'Warga'));
               });
@@ -26982,6 +26984,8 @@
 
           if (forumAcceptCallBtn) {
             forumAcceptCallBtn.addEventListener('click', async () => {
+              // IMPORTANT: Synchronous user gesture to unlock audio element for Safari/iOS
+              if (forumRemoteAudio) forumRemoteAudio.play().catch(() => { });
               forumIncomingCallModal?.hide?.();
               await acceptIncomingCall();
             });
