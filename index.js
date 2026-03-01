@@ -1,4 +1,5 @@
 import express from "express";
+import compression from "compression";
 import cors from "cors";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
@@ -1041,6 +1042,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 app.set("trust proxy", 1);
+app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(cors());
 
@@ -7236,7 +7238,11 @@ app.get("/api/trending-now", async (req, res) => {
 
     let spotifyItems = [];
     if (isSpotifyConfigured) {
-      spotifyItems = await fetchSpotifyTrendingTracks({ limit, playlistId });
+      try {
+        spotifyItems = await fetchSpotifyTrendingTracks({ limit, playlistId });
+      } catch (e) {
+        console.error("Spotify API error, using fallback:", e.message);
+      }
     }
 
     if (!spotifyItems.length) {

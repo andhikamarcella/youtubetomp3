@@ -36,7 +36,7 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="icon" sizes="192x192" href="./icons/icon.svg">
   <link rel="mask-icon" href="./icons/icon-maskable.svg" color="#0d6efd">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 
@@ -54,14 +54,47 @@
     onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
     onload="this.onload=null;this.rel='stylesheet'">
-  <link rel="stylesheet" href="./forum-widget.css">
-  <link rel="stylesheet" href="./music-widget.css">
+  <link rel="preload" as="style" href="./forum-widget.css" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="./forum-widget.css">
+  </noscript>
+  <link rel="preload" as="style" href="./music-widget.css" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="./music-widget.css">
+  </noscript>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
   <noscript>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   </noscript>
   <style>
+    /* Accessibility Contrast Fixes for Dark Mode */
+    [data-bs-theme="dark"] .text-muted,
+    [data-bs-theme="dark"] .text-secondary {
+      color: #b0b3b8 !important;
+    }
+
+    [data-bs-theme="dark"] .opacity-50 {
+      opacity: 0.75 !important;
+    }
+
+    [data-bs-theme="dark"] .text-white-50 {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+
+    [data-bs-theme="dark"] .btn-outline-primary {
+      color: #79b0fe !important;
+      border-color: #79b0fe !important;
+    }
+
+    [data-bs-theme="dark"] .bg-success-subtle {
+      background-color: #0f5132 !important;
+    }
+
+    [data-bs-theme="dark"] .text-success-emphasis {
+      color: #75b798 !important;
+    }
+
     /* iOS Emoji Support & Font Stack */
     @font-face {
       font-family: "Apple Color Emoji";
@@ -5131,7 +5164,7 @@
               <div class="alert alert-success border-0 bg-success-subtle text-success-emphasis mb-4 rounded-4">
                 <i class="bi bi-check-circle-fill me-2 fs-4"></i><span class="fs-5 fw-bold">Berhasil! Lagu siap.</span>
               </div>
-              <a id="gaptek-download-link" href="javascript:void(0)"
+              <a id="gaptek-download-link" role="button"
                 class="btn btn-success w-100 rounded-pill mb-3 shadow hover-scale"
                 style="font-size: 1.8rem; padding: 1rem;">
                 <i class="bi bi-file-earmark-music-fill me-2"></i> SIMPAN MP3
@@ -5171,7 +5204,7 @@
                 <span class="input-group-text bg-transparent"><i class="bi bi-link-45deg"></i></span>
                 <input type="url" id="basic-url" class="form-control" placeholder="Tempel link YouTube di sini..."
                   autocomplete="off">
-                <button class="btn btn-outline-secondary" type="button" id="basicPasteBtn"><i
+                <button class="btn btn-outline-secondary" type="button" id="basicPasteBtn" aria-label="Paste Link"><i
                     class="bi bi-clipboard"></i></button>
               </div>
             </div>
@@ -5190,7 +5223,7 @@
               </div>
               <div class="col-6">
                 <label class="form-label fw-semibold">Kualitas</label>
-                <select id="basic-quality" class="form-select form-select-lg">
+                <select id="basic-quality" class="form-select form-select-lg" aria-label="Kualitas Video">
                   <option value="best">Terbaik</option>
                   <option value="standard" selected>Standar</option>
                   <option value="low">Hemat Data</option>
@@ -5224,7 +5257,7 @@
             </div>
 
             <div id="basic-result" class="mt-3 text-center" hidden>
-              <a id="basic-download-link" href="javascript:void(0)" class="btn btn-success w-100 rounded-pill mb-2"><i
+              <a id="basic-download-link" role="button" class="btn btn-success w-100 rounded-pill mb-2"><i
                   class="bi bi-check-lg me-1"></i> Download File</a>
               <button class="btn btn-link text-secondary btn-sm" id="basic-reset-btn">Convert Lagi</button>
 
@@ -5907,9 +5940,9 @@
                           type="button"><i class="bi bi-clipboard"></i> Salin teks</button>
                       </div>
                       <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                        <a id="subtitleSrtLink" class="btn btn-sm btn-primary" href="javascript:void(0)"><i
+                        <a id="subtitleSrtLink" class="btn btn-sm btn-primary" role="button"><i
                             class="bi bi-filetype-srt"></i> Download .srt</a>
-                        <a id="subtitleTxtLink" class="btn btn-sm btn-outline-primary" href="javascript:void(0)"><i
+                        <a id="subtitleTxtLink" class="btn btn-sm btn-outline-primary" role="button"><i
                             class="bi bi-filetype-txt"></i> Download .txt</a>
                         <button id="subtitleShareBtn" class="btn btn-sm btn-outline-secondary" type="button"><i
                             class="bi bi-share"></i> Share</button>
@@ -5941,7 +5974,7 @@
                   <div class="alert alert-success d-flex align-items-center mb-2" role="alert">
                     <i class="bi bi-check-circle me-2"></i>
                     <div>
-                      Selesai! <a id="downloadLink" class="alert-link" href="javascript:void(0)">Download hasil</a>
+                      Selesai! <a id="downloadLink" class="alert-link" role="button">Download hasil</a>
                       <button class="btn btn-sm btn-outline-success ms-1 border-0" id="copyFileNameBtn"
                         title="Salin nama file"
                         style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;">
@@ -6179,8 +6212,7 @@
                   <div class="alert alert-info d-flex align-items-center" role="alert">
                     <i class="bi bi-collection-play me-2"></i>
                     <div>
-                      Playlist ZIP siap! <a id="playlistDownloadLink" class="alert-link"
-                        href="javascript:void(0)">Download ZIP</a>
+                      Playlist ZIP siap! <a id="playlistDownloadLink" class="alert-link" role="button">Download ZIP</a>
                       <div class="small text-secondary" id="playlistInfo"></div>
                     </div>
                   </div>
@@ -8567,7 +8599,8 @@
             <div class="walkthrough-progress">
               <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
                 aria-labelledby="walkthroughProgressLabel">
-                <div class="progress-bar" id="walkthroughProgressBar" style="width: 33%;" aria-valuenow="33"></div>
+                <div class="progress-bar" id="walkthroughProgressBar" role="progressbar" style="width: 33%;"
+                  aria-valuenow="33"></div>
               </div>
               <div class="walkthrough-progress-label" id="walkthroughProgressLabel">Langkah 1 dari 3</div>
             </div>
@@ -8982,7 +9015,7 @@
     </div>
 
     <!-- Welcome Mode Selection Modal -->
-    <div class="modal fade" id="welcomeModeModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
+    <div class="modal fade" id="welcomeModeModal" tabindex="-1" aria-label="Pilih Mode UI" data-bs-backdrop="static"
       data-bs-keyboard="false">
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg"
@@ -8998,7 +9031,7 @@
                   id="selectGaptekMode" role="button">
                   <div class="card-body p-4">
                     <div class="display-4 text-success mb-3"><i class="bi bi-emoji-smile"></i></div>
-                    <h4 class="fw-bold text-success">Mode Saya Gaptek</h4>
+                    <h3 class="fw-bold text-success fs-4">Mode Saya Gaptek</h3>
                     <p class="text-muted small">Paling gampang! Khusus yang nggak mau ribet sama sekali.</p>
                     <ul class="list-unstyled text-start small text-secondary mx-auto" style="max-width: 200px;">
                       <li><i class="bi bi-check-circle-fill text-success me-2"></i>Cuma 1 Tombol</li>
@@ -9015,7 +9048,7 @@
                   id="selectBasicMode" role="button">
                   <div class="card-body p-4">
                     <div class="display-4 text-primary mb-3"><i class="bi bi-magic"></i></div>
-                    <h4 class="fw-bold text-primary">Basic Mode</h4>
+                    <h3 class="fw-bold text-primary fs-4">Basic Mode</h3>
                     <p class="text-muted small">Tampilan standar. Bisa pilih MP3 atau MP4 dengan mudah.</p>
                     <ul class="list-unstyled text-start small text-secondary mx-auto" style="max-width: 200px;">
                       <li><i class="bi bi-check-circle-fill text-success me-2"></i>MP3 / MP4</li>
@@ -9032,7 +9065,7 @@
                   id="selectAdvancedMode" role="button">
                   <div class="card-body p-4">
                     <div class="display-4 text-secondary mb-3"><i class="bi bi-sliders"></i></div>
-                    <h4 class="fw-bold">Advanced Mode</h4>
+                    <h3 class="fw-bold fs-4">Advanced Mode</h3>
                     <p class="text-muted small">Kontrol penuh. Edit metadata, potong lagu, dan lainnya.</p>
                     <ul class="list-unstyled text-start small text-secondary mx-auto" style="max-width: 200px;">
                       <li><i class="bi bi-check-circle-fill text-secondary me-2"></i>Editor Metadata</li>
@@ -9731,7 +9764,7 @@
         ref,
         uploadBytes,
         getDownloadURL
-      };
+   ;
     </script>
     <script>
       // Sound Effects System (AudioContext)
@@ -9796,8 +9829,7 @@
             if (window.playGameSound) window.playGameSound('click');
           }
         }
-      }, true);
-
+      }, tru
 
     </script>
 
@@ -13708,12 +13740,7 @@
           }
         }, true); // Use Capture phase to ensure we catch it first
 
-        // REMOVED: Old individual event listeners to avoid conflicts
-        /*
-        navButtons.forEach((btn) => {
-          btn.addEventListener('click', (e) => { ... });
-        });
-        */
+        // REMOVED: Old individual event listeners to avoid conf                         navButtons.forEach((btn)                btn.addEventListener('click', (e) => { ..                          */
 
         openProfileButtons.forEach((btn) => {
           btn.addEventListener('click', () => {
@@ -25521,20 +25548,7 @@
         function initBackButtonFriendly() {
           let isBackNavigation = false;
 
-          // 1. Handle Section Navigation
-          /* REMOVED: Handled by global delegated handler
-          const navButtons = document.querySelectorAll('[data-section-target]');
-          navButtons.forEach(btn => {
-              btn.addEventListener('click', (e) => {
-                  if (isBackNavigation) return;
-                  const target = btn.dataset.sectionTarget;
-                  // Only push if different (simple check)
-                  if (history.state?.section !== target) {
-                      history.pushState({ section: target }, '', '#' + target);
-                  }
-              });
-          });
-          */
+          // 1. Handle Section Navig                /* REMOVED: Handled by global delegated ha                const navButtons = document.querySelectorAll('[data-section-targe                navButtons.forEach(btn                    btn.addEventListener('click', (e)                        if (isBackNavigation) re                        const target = btn.dataset.sectionTa                        // Only push if different (simple c                        if (history.state?.section !== targ                            history.pushState({ section: target }, '', '#' + tar                                                                    */
 
           // 2. Handle Modals & Offcanvas
           // Use capture to ensure we catch dynamic ones if attached to body, but simple querySelectorAll is usually enough for static
@@ -29202,10 +29216,6 @@
 
       });
 
-
-
-
-
     </script>
     <script>
       (function () {
@@ -29251,7 +29261,7 @@
           e.preventDefault();
           try { window.openForumFromFooter && window.openForumFromFooter(); } catch { }
         });
-      });
+    ;
     </script>
     <script src="./forum-widget.js" defer></script>
     <script src="./music-widget.js" defer></script>
