@@ -26579,6 +26579,9 @@
           const createPeerConnection = async () => {
             const pc = new RTCPeerConnection({
               iceServers: await getIceServers(),
+              iceTransportPolicy: 'all', // explicitly allow relay (TURN)
+              bundlePolicy: 'max-bundle',
+              rtcpMuxPolicy: 'require',
             });
             pc.ontrack = (evt) => {
               const [stream] = evt.streams || [];
@@ -26600,13 +26603,30 @@
                 console.error('[WebRTC] Connection failed or closed', pc.connectionState);
                 if (callState.status !== 'idle') {
                   cleanupPeer();
-                  setToast('Koneksi terputus (P2P failed).', 'danger');
+                  if (typeof window.setToast === 'function') window.setToast('Koneksi terputus (P2P failed).', 'danger');
                 }
               }
             };
+
             pc.oniceconnectionstatechange = () => {
               console.log('[WebRTC] ICE Connection state:', pc.iceConnectionState);
+              if (pc.iceConnectionState === 'failed') {
+                console.error('[WebRTC] ICE Connection Failed - Cannot establish P2P or Relay connection.');
+                if (callState.status !== 'idle') {
+                  cleanupPeer();
+                  if (typeof window.setToast === 'function') window.setToast('Koneksi terputus (ICE Failed).', 'danger');
+                }
+              }
             };
+
+            pc.onicegatheringstatechange = () => {
+              console.log('[WebRTC] ICE Gathering State:', pc.iceGatheringState);
+            };
+
+            pc.onsignalingstatechange = () => {
+              console.log('[WebRTC] Signaling State:', pc.signalingState);
+            };
+
             return pc;
           };
 
@@ -26740,7 +26760,11 @@
               callState.pc = pc;
               stream.getTracks().forEach((t) => pc.addTrack(t, stream));
               pc.onicecandidate = (evt) => {
-                if (!evt.candidate) return;
+                if (!evt.candidate) {
+                  console.log('[WebRTC Caller] ICE Gathering finished.');
+                  return;
+                }
+                console.log('[WebRTC Caller] Generated candidate:', evt.candidate.candidate);
                 socket.emit('call:ice', {
                   room: activeForumRoom,
                   callId: callState.callId,
@@ -26748,18 +26772,32 @@
                   candidate: evt.candidate,
                 });
               };
-              const offer = await pc.createOffer({ offerToReceiveAudio: true });
+
+              // Only create offer once audio tracks are explicitly added (prevent timing issues)
+              const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
               await pc.setLocalDescription(offer);
+
               socket.emit('call:offer', {
                 room: activeForumRoom,
                 callId: callState.callId,
                 toUserId,
                 offer: pc.localDescription,
               });
-              setToast(`Calling ${toName}...`);
+
+              if (typeof window.setToast === 'function') window.setToast(`Calling ${toName}...`);
+
+              // Set a timeout to cancel the call if not answered/connected
+              callState.timer = setTimeout(() => {
+                if (callState.status === 'calling') {
+                  cleanupPeer();
+                  if (typeof window.setToast === 'function') window.setToast('Panggilan tidak dijawab (Timeout)', 'warning');
+                }
+              }, 45000); // 45 seconds
+
             } catch (err) {
+              console.error('[WebRTC Call Error]', err);
               cleanupPeer();
-              setToast('Gagal memulai call: ' + (err?.message || 'unknown'));
+              if (typeof window.setToast === 'function') window.setToast('Gagal memulai call: ' + (err?.message || 'unknown'), 'danger');
             }
           };
 
@@ -26779,7 +26817,11 @@
               callState.pc = pc;
               stream.getTracks().forEach((t) => pc.addTrack(t, stream));
               pc.onicecandidate = (evt) => {
-                if (!evt.candidate) return;
+                if (!evt.candidate) {
+                  console.log('[WebRTC Receiver] ICE Gathering finished.');
+                  return;
+                }
+                console.log('[WebRTC Receiver] Generated candidate:', evt.candidate.candidate);
                 socket.emit('call:ice', {
                   room: payload.room,
                   callId: payload.callId,
@@ -26808,10 +26850,17 @@
                 }
               }
 
-              setToast('Call tersambung...');
+              if (typeof window.setToast === 'function') window.setToast('Call tersambung...', 'success');
+
+              // Clear timeout if there was one
+              if (callState.timer && typeof callState.timer !== 'number') {
+                clearTimeout(callState.timer);
+              }
+
             } catch (err) {
+              console.error('[WebRTC Accept Error]', err);
               cleanupPeer();
-              setToast('Gagal menerima call: ' + (err?.message || 'unknown'));
+              if (typeof window.setToast === 'function') window.setToast('Gagal menerima call: ' + (err?.message || 'unknown'), 'danger');
             }
           };
 
