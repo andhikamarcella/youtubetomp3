@@ -7980,7 +7980,9 @@ app.get("/admin/download-cookies", async (req, res) => {
     return res.send(text);
   } catch (e) {
     if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
-  });
+    return res.status(500).json({ error: e.message });
+  }
+});
 
 // User's explicitly requested dynamic TURN endpoint
 app.get("/api/turn", async (req, res) => {
