@@ -7987,8 +7987,9 @@ app.get("/admin/download-cookies", async (req, res) => {
 // User's explicitly requested dynamic TURN endpoint
 app.get("/api/turn", async (req, res) => {
   try {
+    const apiKey = process.env.TURN_API_KEY || "7bb7d1bfd87f29842119eec69eba12d3af0e";
     const response = await axios.get(
-      "https://ytconv.metered.live/api/v1/turn/credentials?apiKey=Ub1KyjyR4c4XSV_xjSMGszkeKY6xhbpRfKkhxSqAoK5wPmNG"
+      `https://ytconv.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`
     );
     res.json(response.data);
   } catch (err) {
@@ -8000,8 +8001,9 @@ app.get("/api/turn", async (req, res) => {
 app.get("/api/turn-credentials", async (req, res) => {
   // Providing dynamic fallback public TURN/STUN servers to clients.
   try {
+    const apiKey = process.env.TURN_API_KEY || "7bb7d1bfd87f29842119eec69eba12d3af0e";
     const response = await axios.get(
-      "https://ytconv.metered.live/api/v1/turn/credentials?apiKey=Ub1KyjyR4c4XSV_xjSMGszkeKY6xhbpRfKkhxSqAoK5wPmNG"
+      `https://ytconv.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`
     );
 
     // metered returns an array of objects or an object. Let's ensure standard format.
