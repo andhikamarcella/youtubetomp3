@@ -26604,9 +26604,13 @@
             pc.ontrack = (evt) => {
               const [stream] = evt.streams || [];
               if (!stream) return;
+              console.log("REMOTE STREAM RECEIVED", stream);
               callState.remoteStream = stream;
               if (forumRemoteAudio) {
-                try { forumRemoteAudio.srcObject = stream; } catch { }
+                try {
+                  forumRemoteAudio.srcObject = stream;
+                  forumRemoteAudio.play().catch(e => console.error("Audio play error", e));
+                } catch (err) { console.error("Could not set srcObject", err); }
               }
             };
             pc.onconnectionstatechange = () => {
