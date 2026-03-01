@@ -6908,7 +6908,7 @@ app.get("/api/health", (req, res) => {
 
 app.get("/api/cheats/config", (req, res) => {
   if (!CHEATS_ENABLED) {
-    return res.status(404).json({ error: "Cheat dimatikan" });
+    return res.json({ ok: true, enabled: false });
   }
   return res.json({ ok: true, enabled: true });
 });
