@@ -47,9 +47,13 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
+  <link rel="preload" as="style"
     href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
-    rel="stylesheet">
+    onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+  </noscript>
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     onload="this.onload=null;this.rel='stylesheet'">
   <link rel="preload" as="style" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
@@ -83,8 +87,8 @@
     }
 
     [data-bs-theme="dark"] .btn-outline-primary {
-      color: #79b0fe !important;
-      border-color: #79b0fe !important;
+      color: #9ec5fe !important;
+      border-color: #9ec5fe !important;
     }
 
     [data-bs-theme="dark"] .bg-success-subtle {
@@ -5024,8 +5028,12 @@
     }
   </style>
   <!-- Cropper.js -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
+    onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  </noscript>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js" defer></script>
 
 </head>
 
@@ -5309,7 +5317,7 @@
         <!-- Basic History -->
         <div class="card shadow-sm border-0 mx-auto mt-4" style="max-width: 600px;">
           <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pb-0">
-            <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Riwayat Terakhir</h6>
+            <h3 class="mb-0 fw-bold fs-6"><i class="bi bi-clock-history me-2"></i>Riwayat Terakhir</h3>
             <button class="btn btn-sm btn-link text-decoration-none text-secondary p-0" id="clearBasicHistoryBtn"
               style="font-size: 0.9rem;">Hapus Semua</button>
           </div>
@@ -8600,7 +8608,7 @@
               <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
                 aria-labelledby="walkthroughProgressLabel">
                 <div class="progress-bar" id="walkthroughProgressBar" role="progressbar" style="width: 33%;"
-                  aria-valuenow="33"></div>
+                  aria-valuenow="33" aria-label="Walkthrough progress"></div>
               </div>
               <div class="walkthrough-progress-label" id="walkthroughProgressLabel">Langkah 1 dari 3</div>
             </div>
@@ -9764,7 +9772,7 @@
         ref,
         uploadBytes,
         getDownloadURL
-   ;
+      };
     </script>
     <script>
       // Sound Effects System (AudioContext)
@@ -9829,7 +9837,7 @@
             if (window.playGameSound) window.playGameSound('click');
           }
         }
-      }, tru
+      }, true);
 
     </script>
 
@@ -29261,7 +29269,7 @@
           e.preventDefault();
           try { window.openForumFromFooter && window.openForumFromFooter(); } catch { }
         });
-    ;
+      });
     </script>
     <script src="./forum-widget.js" defer></script>
     <script src="./music-widget.js" defer></script>
@@ -29310,13 +29318,8 @@
       </div>
     </div>
 
-    <!-- Ringtones -->
-    <audio id="ringtoneConnecting" loop>
-      <source src="https://actions.google.com/sounds/v1/telephones/phone_ringing.ogg" type="audio/ogg">
-    </audio>
-    <audio id="ringtoneIncoming" loop>
-      <source src="https://actions.google.com/sounds/v1/telephones/telephone_ring_01.ogg" type="audio/ogg">
-    </audio>
+    <audio id="ringtoneConnecting" loop preload="none"></audio>
+    <audio id="ringtoneIncoming" loop preload="none"></audio>
 
 </body>
 
