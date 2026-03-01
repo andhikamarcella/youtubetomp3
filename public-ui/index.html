@@ -26481,8 +26481,29 @@
                 cachedIceServersAt = Date.now();
                 return cachedIceServers;
               }
-            } catch { }
-            cachedIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+            } catch (e) { console.error('Failed to fetch TURN credentials', e); }
+            cachedIceServers = [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' },
+              { urls: 'stun:stun3.l.google.com:19302' },
+              { urls: 'stun:stun4.l.google.com:19302' },
+              {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject',
+              },
+              {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject',
+              },
+              {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject',
+              }
+            ];
             cachedIceServersAt = Date.now();
             return cachedIceServers;
           };
@@ -26568,6 +26589,7 @@
               }
             };
             pc.onconnectionstatechange = () => {
+              console.log('[WebRTC] Connection state changed:', pc.connectionState);
               if (pc.connectionState === 'connected') {
                 callState.status = 'connected';
                 callState.startedAt = Date.now();
@@ -26575,10 +26597,15 @@
                 setCallUi();
               }
               if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+                console.error('[WebRTC] Connection failed or closed', pc.connectionState);
                 if (callState.status !== 'idle') {
                   cleanupPeer();
+                  setToast('Koneksi terputus (P2P failed).', 'danger');
                 }
               }
+            };
+            pc.oniceconnectionstatechange = () => {
+              console.log('[WebRTC] ICE Connection state:', pc.iceConnectionState);
             };
             return pc;
           };
