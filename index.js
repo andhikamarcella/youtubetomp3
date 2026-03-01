@@ -7,7 +7,10 @@ import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { join, dirname, resolve as pathResolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { join, dirname, resolve as pathResolve, basename } from "node:path";
+import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
+import axios from "axios";
 
 console.log("Initializing application...");
 console.log("Node version:", process.version);
@@ -365,7 +368,7 @@ const parseSpotifyPlaylistId = (input) => {
       const candidate = idx >= 0 ? parts[idx + 1] : "";
       if (candidate && /^[0-9A-Za-z]{22}$/.test(candidate)) return candidate;
     }
-  } catch {}
+  } catch { }
   if (/^[0-9A-Za-z]{22}$/.test(raw)) return raw;
   return "";
 };
@@ -446,7 +449,7 @@ const createFetchFallback = () => {
 
       const requestFn = target.protocol === "http:" ? httpRequest
         : target.protocol === "https:" ? httpsRequest
-        : null;
+          : null;
       if (!requestFn) {
         reject(new Error(`Protocol tidak didukung: ${target.protocol}`));
         return;
@@ -669,16 +672,16 @@ Jika percakapan biasa/edukasi/diagnosa:
 `;
 
   // Build messages array
-  const clientStateMsg = context.clientState 
+  const clientStateMsg = context.clientState
     ? { role: "system", content: `**Current User State (Context):**\n${JSON.stringify(context.clientState, null, 2)}` }
     : null;
 
   const messages = [
     { role: "system", content: systemPrompt },
     ...(clientStateMsg ? [clientStateMsg] : []),
-    ...history.map(msg => ({ 
-      role: msg.role === 'bot' ? 'assistant' : 'user', 
-      content: msg.text || "" 
+    ...history.map(msg => ({
+      role: msg.role === 'bot' ? 'assistant' : 'user',
+      content: msg.text || ""
     })),
     { role: "user", content: prompt }
   ];
@@ -706,7 +709,7 @@ Jika percakapan biasa/edukasi/diagnosa:
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "{}";
-    
+
     try {
       return JSON.parse(content);
     } catch (e) {
@@ -862,16 +865,16 @@ const buildYoutubeEntryFromApiItem = (item) => {
   if (!id) return null;
   const thumbnails = snippet.thumbnails
     ? Object.values(snippet.thumbnails)
-        .map((thumb) =>
-          thumb && thumb.url
-            ? {
-                url: String(thumb.url),
-                width: Number.isFinite(thumb.width) ? Number(thumb.width) : undefined,
-                height: Number.isFinite(thumb.height) ? Number(thumb.height) : undefined,
-              }
-            : null,
-        )
-        .filter(Boolean)
+      .map((thumb) =>
+        thumb && thumb.url
+          ? {
+            url: String(thumb.url),
+            width: Number.isFinite(thumb.width) ? Number(thumb.width) : undefined,
+            height: Number.isFinite(thumb.height) ? Number(thumb.height) : undefined,
+          }
+          : null,
+      )
+      .filter(Boolean)
     : [];
   const duration = parseIso8601DurationSeconds(details.duration);
   const entry = {
@@ -1036,7 +1039,7 @@ const fetchVideoInfoFromYoutubeApi = async ({ rawUrl, rawKeyword, language }) =>
 };
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = dirname(__filename);
+const __dirname = dirname(__filename);
 
 const app = express();
 app.set("trust proxy", 1);
@@ -1110,9 +1113,9 @@ const uploadAudioToCloudinary = async ({ filePath, publicId, folder, mimeType })
 
 // ==== Direktori publik & jobs ====
 const PUBLIC_DIR = join(__dirname, "public");
-const JOBS_DIR   = join(PUBLIC_DIR, "jobs");
+const JOBS_DIR = join(PUBLIC_DIR, "jobs");
 if (!existsSync(PUBLIC_DIR)) mkdirSync(PUBLIC_DIR, { recursive: true });
-if (!existsSync(JOBS_DIR))   mkdirSync(JOBS_DIR,   { recursive: true });
+if (!existsSync(JOBS_DIR)) mkdirSync(JOBS_DIR, { recursive: true });
 
 const PUBLIC_ROOT = pathResolve(PUBLIC_DIR);
 // direktori tambahan seperti thumbnail/cloud sudah dihapus
@@ -1258,9 +1261,9 @@ const abrToQ = (abr) => {
   if (n >= 192) return "2";
   if (n >= 160) return "3";
   if (n >= 128) return "4";
-  if (n >= 96)  return "5";
-  if (n >= 80)  return "6";
-  if (n >= 64)  return "7";
+  if (n >= 96) return "5";
+  if (n >= 80) return "6";
+  if (n >= 64) return "7";
   return "8";
 };
 
@@ -1358,7 +1361,7 @@ const runCommandCapture = (command, args = [], timeoutMs = 5000) =>
       const proc = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
       let stdout = "";
       let stderr = "";
-      
+
       const timer = setTimeout(() => {
         proc.kill();
         reject(new Error("Command timed out"));
@@ -1419,7 +1422,7 @@ const detectYtDlpVersion = async () => {
     try {
       const output = await attempt();
       if (output) return output.split(/\r?\n/)[0].trim();
-    } catch {}
+    } catch { }
   }
   return null;
 };
@@ -1436,7 +1439,7 @@ const detectFfmpegVersion = async () => {
         const match = firstLine.match(/ffmpeg version\s+(.+)/i);
         return match ? match[1].trim() : firstLine.trim();
       }
-    } catch {}
+    } catch { }
   }
   return null;
 };
@@ -1446,9 +1449,9 @@ const fetchGithubLatestTag = async (repo) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const releaseResp = await safeFetch(`https://api.github.com/repos/${repo}/releases/latest`, { 
+    const releaseResp = await safeFetch(`https://api.github.com/repos/${repo}/releases/latest`, {
       headers,
-      signal: controller.signal 
+      signal: controller.signal
     });
     if (releaseResp?.ok) {
       const json = await releaseResp.json().catch(() => null);
@@ -1458,14 +1461,14 @@ const fetchGithubLatestTag = async (repo) => {
     if (releaseResp?.status && releaseResp.status !== 404) {
       return null;
     }
-  } catch {} finally {
+  } catch { } finally {
     clearTimeout(timeout);
   }
-  
+
   const controllerTags = new AbortController();
   const timeoutTags = setTimeout(() => controllerTags.abort(), 5000);
   try {
-    const tagsResp = await safeFetch(`https://api.github.com/repos/${repo}/tags?per_page=1`, { 
+    const tagsResp = await safeFetch(`https://api.github.com/repos/${repo}/tags?per_page=1`, {
       headers,
       signal: controllerTags.signal
     });
@@ -1822,7 +1825,7 @@ const extractSpotifyIdFromUrl = (value = "") => {
     if (trackIdx >= 0 && parts[trackIdx + 1] && /^[0-9A-Za-z]{22}$/.test(parts[trackIdx + 1])) {
       return parts[trackIdx + 1];
     }
-  } catch {}
+  } catch { }
   return "";
 };
 
@@ -1880,7 +1883,7 @@ const extractSpotifyDetails = async (rawUrl) => {
   if (!rawUrl) return null;
   const url = rawUrl.trim();
   const guessedId = extractSpotifyIdFromUrl(url);
-  
+
   // Gunakan Spotify Web API HANYA untuk metadata, download akan dilakukan dari YouTube Music/YouTube via yt-dlp
   let spotifyMetadata = null;
   try {
@@ -1895,7 +1898,7 @@ const extractSpotifyDetails = async (rawUrl) => {
   if (spotifyMetadata && spotifyMetadata.title) {
     // Query untuk YouTube/YouTube Music: "judul lagu artis audio"
     const searchQuery = `${(spotifyMetadata.title || "").trim()} ${(spotifyMetadata.artist || "").trim()} audio`.trim();
-    
+
     return {
       title: spotifyMetadata.title || "",
       artist: spotifyMetadata.artist || "",
@@ -2225,14 +2228,14 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
     entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
   } catch (err) {
-      // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa dengan query "judul artis audio"
-      if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
-        // Update query untuk YouTube biasa: "judul artis audio"
-        const spotifyTitle = (originalSource.title || "").trim();
-        const spotifyArtist = (originalSource.artist || "").trim();
-        const joined = [spotifyTitle, spotifyArtist, "audio"].filter(Boolean).join(" ").trim();
-        const fallbackQuery = joined || target.replace("ytmsearch1:", "");
-        const fallbackTarget = `ytsearch1:${fallbackQuery}`;
+    // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa dengan query "judul artis audio"
+    if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
+      // Update query untuk YouTube biasa: "judul artis audio"
+      const spotifyTitle = (originalSource.title || "").trim();
+      const spotifyArtist = (originalSource.artist || "").trim();
+      const joined = [spotifyTitle, spotifyArtist, "audio"].filter(Boolean).join(" ").trim();
+      const fallbackQuery = joined || target.replace("ytmsearch1:", "");
+      const fallbackTarget = `ytsearch1:${fallbackQuery}`;
       const fallbackArgs = [
         "--dump-single-json",
         "--skip-download",
@@ -2250,7 +2253,7 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       fallbackArgs.push("--js-runtimes", "node");
       fallbackArgs.push("--remote-components", "ejs:github");
       fallbackArgs.push(fallbackTarget);
-      
+
       try {
         const fallbackJson = await runYtDlpJson(fallbackArgs, { label: "ytsearch-fallback" });
         entry = Array.isArray(fallbackJson?.entries) && fallbackJson.entries.length ? fallbackJson.entries[0] : fallbackJson;
@@ -2319,7 +2322,7 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       if (metadata.id3) {
         metadata.id3.cover = "";
       }
-      
+
       // Cover Spotify (HD) - SELALU digunakan
       // Spotify API returns images sorted by size (largest first), so images[0] is HD
       if (originalSource.cover) {
@@ -2534,13 +2537,13 @@ const probeAudioLoudness = async (inputPath) => {
         const iMatch = /Integrated loudness:\s+I:\s+([-\d\.]+)\s+LUFS/.exec(stderr);
         const peakMatch = /True peak:\s+Peak:\s+([-\d\.]+)\s+(dBTP|dBFS)/.exec(stderr);
         const lraMatch = /Loudness range:\s+LRA:\s+([-\d\.]+)\s+LU/.exec(stderr);
-        
+
         if (!iMatch) {
           console.log(`[Probe Warning] No loudness stats found for ${inputPath}`);
           console.log('Stderr dump:', stderr.slice(-1000));
           return resolve(null);
         }
-        
+
         const result = {
           lufs: parseFloat(iMatch[1]),
           peak: peakMatch ? parseFloat(peakMatch[1]) : null,
@@ -2568,30 +2571,30 @@ const generateWaveformData = async (inputPath, points = 100) => {
     "-f", "data",
     "-"
   ];
-  
+
   return await new Promise((resolve) => {
     const bin = ffmpegPath || "ffmpeg";
     const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "ignore"] });
     const chunks = [];
-    
+
     proc.stdout.on("data", (chunk) => chunks.push(chunk));
     proc.on("error", () => resolve([]));
-    
+
     proc.on("close", () => {
       const buffer = Buffer.concat(chunks);
       if (buffer.length === 0) return resolve([]);
-      
+
       const data = [];
       const step = Math.ceil(buffer.length / points);
-      
+
       for (let i = 0; i < points; i++) {
         let max = 0;
         const start = i * step;
         const end = Math.min(start + step, buffer.length);
-        
+
         for (let j = start; j < end; j++) {
-           const val = Math.abs(buffer[j] - 128);
-           if (val > max) max = val;
+          const val = Math.abs(buffer[j] - 128);
+          if (val > max) max = val;
         }
         data.push(parseFloat((max / 128).toFixed(2)));
       }
@@ -3684,24 +3687,24 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
     let suggestions = [];
 
     if (typeof aiResponse === 'object') {
-        reply = aiResponse.reply || "Maaf, ada kendala.";
-        action = aiResponse.action;
-        params = aiResponse.params;
-        suggestions = aiResponse.suggestions || [];
+      reply = aiResponse.reply || "Maaf, ada kendala.";
+      action = aiResponse.action;
+      params = aiResponse.params;
+      suggestions = aiResponse.suggestions || [];
     } else {
-        reply = String(aiResponse);
+      reply = String(aiResponse);
     }
 
     // Default suggestions if none provided
     if (!suggestions || suggestions.length === 0) {
-        suggestions = [
-          "Cara convert", 
-          "Pilih format", 
-          "Trim audio", 
-          "Metadata", 
-          "Antrian", 
-          "Pengaturan"
-        ].slice(0, 4);
+      suggestions = [
+        "Cara convert",
+        "Pilih format",
+        "Trim audio",
+        "Metadata",
+        "Antrian",
+        "Pengaturan"
+      ].slice(0, 4);
     }
 
     return {
@@ -3712,7 +3715,7 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
     };
   } catch (error) {
     console.error("[Assistant] Groq API error:", error);
-    
+
     // Fallback to basic responses
     const fallbackResponses = {
       "convert": "**Oke!** Paste URL → Pilih **MP3** → Convert. **Gampang!**",
@@ -3728,7 +3731,7 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
 
     const lowerRaw = raw.toLowerCase();
     let reply = "**Hai!** Mau convert video? **Kirim URLnya!**";
-    
+
     for (const [key, value] of Object.entries(fallbackResponses)) {
       if (lowerRaw.includes(key)) {
         reply = value;
@@ -3810,7 +3813,7 @@ const enqueueBackgroundJob = (payload = {}) => {
   backgroundJobs.set(id, job);
   backgroundQueue.push(id);
   job.queuePosition = backgroundQueue.length;
-  processBackgroundQueue().catch(() => {});
+  processBackgroundQueue().catch(() => { });
   return job;
 };
 
@@ -4884,8 +4887,7 @@ const fetchSubtitleViaWatch = async ({ url, langOpt, preferAuto }) => {
   }
 
   appendLog(
-    `pilih track ${track.lang || track.originalLang || "unknown"} (${track.ext || "srv3"})${
-      track.translated ? " · translate" : ""
+    `pilih track ${track.lang || track.originalLang || "unknown"} (${track.ext || "srv3"})${track.translated ? " · translate" : ""
     }${track.auto ? " · auto" : ""}`,
   );
 
@@ -5045,17 +5047,17 @@ const ffmpegToMp3 = (input, output, opts = {}) => {
     if (sampleRate) args.push("-ar", String(sampleRate));
     if (cover) {
       args.push(
-        "-map","0:a","-map","1:v",
-        "-id3v2_version","3",
-        "-c:v","mjpeg",
-        "-metadata:s:v","title=Album cover",
-        "-metadata:s:v","comment=Cover (front)",
-        "-disposition:v:0","attached_pic"
+        "-map", "0:a", "-map", "1:v",
+        "-id3v2_version", "3",
+        "-c:v", "mjpeg",
+        "-metadata:s:v", "title=Album cover",
+        "-metadata:s:v", "comment=Cover (front)",
+        "-disposition:v:0", "attached_pic"
       );
     } else {
-      args.push("-map","0:a","-vn");
+      args.push("-map", "0:a", "-vn");
     }
-    args.push("-codec:a","libmp3lame","-b:a",`${abr}k`, output);
+    args.push("-codec:a", "libmp3lame", "-b:a", `${abr}k`, output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
@@ -5077,7 +5079,7 @@ const ffmpegToFlac = (input, output, opts = {}) => {
     const args = ["-y"];
     const { start, end } = trim || {};
     const hasStart = typeof start === "number" && !isNaN(start);
-    const hasEnd   = typeof end === "number" && !isNaN(end);
+    const hasEnd = typeof end === "number" && !isNaN(end);
     if (hasStart) args.push("-ss", String(start));
     args.push("-i", input);
     if (cover) args.push("-i", cover);
@@ -5094,16 +5096,16 @@ const ffmpegToFlac = (input, output, opts = {}) => {
     if (sampleRate) args.push("-ar", String(sampleRate));
     if (cover) {
       args.push(
-        "-map","0:a","-map","1:v",
-        "-c:v","mjpeg",
-        "-metadata:s:v","title=Album cover",
-        "-metadata:s:v","comment=Cover (front)",
-        "-disposition:v:0","attached_pic"
+        "-map", "0:a", "-map", "1:v",
+        "-c:v", "mjpeg",
+        "-metadata:s:v", "title=Album cover",
+        "-metadata:s:v", "comment=Cover (front)",
+        "-disposition:v:0", "attached_pic"
       );
     } else {
-      args.push("-map","0:a","-vn");
+      args.push("-map", "0:a", "-vn");
     }
-    args.push("-codec:a","flac","-compression_level","12", output);
+    args.push("-codec:a", "flac", "-compression_level", "12", output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
@@ -5142,17 +5144,17 @@ const ffmpegToM4a = (input, output, opts = {}) => {
     if (sampleRate) args.push("-ar", String(sampleRate));
     if (cover) {
       args.push(
-        "-map","0:a","-map","1:v",
-        "-c:v","mjpeg",
-        "-metadata:s:v","title=Album cover",
-        "-metadata:s:v","comment=Cover (front)",
-        "-disposition:v:0","attached_pic"
+        "-map", "0:a", "-map", "1:v",
+        "-c:v", "mjpeg",
+        "-metadata:s:v", "title=Album cover",
+        "-metadata:s:v", "comment=Cover (front)",
+        "-disposition:v:0", "attached_pic"
       );
     } else {
-      args.push("-map","0:a","-vn");
+      args.push("-map", "0:a", "-vn");
     }
     const targetAbr = Number(abr) || 192;
-    args.push("-codec:a","aac","-b:a",`${targetAbr}k`, output);
+    args.push("-codec:a", "aac", "-b:a", `${targetAbr}k`, output);
     const ff = spawn(ffmpegPath || "ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let logs = "";
     ff.stdout.on("data", (d) => (logs += d.toString()));
@@ -5780,7 +5782,7 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
     if (existsSync(COOKIES_PATH)) {
       scriptArgs.push(COOKIES_PATH);
     }
-    
+
     const pyCmd = process.platform === "win32" ? "python" : "python3";
     const py = spawn(pyCmd, scriptArgs, { stdio: ["ignore", "pipe", "pipe"] });
 
@@ -5803,7 +5805,7 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
         const lastLines = lines.slice(-3).join('; ');
         let msg = `Downloader helper gagal (Code: ${code}): ${lastLines}`;
         if (/Sign in|cookies|restricted|private|confirm your age/i.test(pyLogs)) {
-             msg += " [HINT: Video mungkin dibatasi. Coba upload cookies terbaru di Admin Panel]";
+          msg += " [HINT: Video mungkin dibatasi. Coba upload cookies terbaru di Admin Panel]";
         }
         const error = new Error(msg);
         error.logs = baseLogs + pyLogs;
@@ -5872,550 +5874,550 @@ const convertSingle = async (payload = {}) => {
   }
   const emitProgress = progressId
     ? (patch) => updateProgress(progressId, patch)
-    : () => {};
+    : () => { };
   const finalizeProgress = progressId
     ? (stage, extra) => finishProgress(progressId, stage, extra)
-    : () => {};
+    : () => { };
 
   try {
     emitProgress({ stage: "validating", message: "Memvalidasi input", percent: 3 });
 
-  let metadata = null;
-  if (!url || !/^https?:\/\//.test(url)) {
-    if (!keywordQuery) {
-      throw new Error("URL atau kata kunci tidak valid");
+    let metadata = null;
+    if (!url || !/^https?:\/\//.test(url)) {
+      if (!keywordQuery) {
+        throw new Error("URL atau kata kunci tidak valid");
+      }
+      try {
+        metadata = await fetchVideoInfo({ keyword: keywordQuery, preferLang: preferredLang });
+        url = metadata?.webpageUrl || "";
+        emitProgress({ stage: "metadata", message: "Mencari dari kata kunci", percent: 7 });
+      } catch (err) {
+        const error = new Error(err?.message || "Tidak menemukan hasil pencarian");
+        error.logs = err?.logs;
+        throw error;
+      }
     }
-    try {
-      metadata = await fetchVideoInfo({ keyword: keywordQuery, preferLang: preferredLang });
-      url = metadata?.webpageUrl || "";
-      emitProgress({ stage: "metadata", message: "Mencari dari kata kunci", percent: 7 });
-    } catch (err) {
-      const error = new Error(err?.message || "Tidak menemukan hasil pencarian");
-      error.logs = err?.logs;
-      throw error;
+
+    if (!url || !/^https?:\/\//.test(url)) {
+      throw new Error("URL tidak valid");
     }
-  }
 
-  if (!url || !/^https?:\/\//.test(url)) {
-    throw new Error("URL tidak valid");
-  }
-
-  emitProgress({ stage: "metadata", message: "Mengambil metadata", percent: 8 });
-  if (!metadata) {
-    metadata = await fetchVideoInfo({ url, preferLang: preferredLang }).catch(() => null);
-  }
-
-  if (metadata?.webpageUrl) {
-    url = metadata.webpageUrl;
-  }
-
-  emitProgress({ stage: "metadata", message: "Metadata siap", percent: 12 });
-
-  // === DUPLICATE DETECTOR / CACHE CHECK ===
-  const cacheKeyPayload = {
-    videoId: metadata?.id || metadata?.videoId || url,
-    format,
-    abr,
-    sampleRate,
-    trim,
-    normalize,
-    atmos,
-    speedMode,
-    denoise,
-    volumeBoost,
-    enhancer,
-    soundEffect,
-    smartResume,
-    videoQuality: videoQualityPreference,
-    id3: id3 || {} // Include metadata in cache key to distinguish custom tags
-  };
-  const cacheKey = createHash("md5").update(JSON.stringify(cacheKeyPayload)).digest("hex");
-  
-  const cached = CacheStore.get(cacheKey);
-  /* Cache disabled for debugging Audio Insight
-  if (cached && cached.fileName) {
-     const cachedPath = join(process.cwd(), 'public/jobs', cached.fileName);
-     if (existsSync(cachedPath)) {
-        emitProgress({ stage: "encoding", message: "Mengambil dari cache", percent: 100 });
-        // Return cached result with duplicate flag
-        return { ...cached, isDuplicate: true, logs: cached.logs + '\n[Info] Retrieved from cache.' };
-     }
-  }
-  */
-  // === END DUPLICATE DETECTOR ===
-
-  if (metadata?.originalSource) {
-    originalSource = originalSource
-      ? { ...originalSource, ...metadata.originalSource }
-      : metadata.originalSource;
-  }
-
-  if (!metadata && originalSource) {
-    metadata = { originalSource };
-    if (originalSource.previewUrl) {
-      metadata.preview = {
-        url: originalSource.previewUrl,
-        provider: originalSource.type || "spotify",
-        type: "audio",
-        embedUrl: originalSource.embedUrl || "",
-        duration: originalSource.previewDuration || null,
-        durationMs: originalSource.previewDurationMs || null,
-      };
+    emitProgress({ stage: "metadata", message: "Mengambil metadata", percent: 8 });
+    if (!metadata) {
+      metadata = await fetchVideoInfo({ url, preferLang: preferredLang }).catch(() => null);
     }
-  } else if (metadata && originalSource && !metadata.originalSource && originalSource.type !== "unknown") {
-    metadata.originalSource = originalSource;
-    if (originalSource.previewUrl && (!metadata.preview || typeof metadata.preview !== "object")) {
-      metadata.preview = {
-        url: originalSource.previewUrl,
-        provider: originalSource.type || "spotify",
-        type: "audio",
-        embedUrl: originalSource.embedUrl || "",
-        duration: originalSource.previewDuration || null,
-        durationMs: originalSource.previewDurationMs || null,
-      };
+
+    if (metadata?.webpageUrl) {
+      url = metadata.webpageUrl;
     }
-  }
 
-  if (!coverUrl && metadata?.cover) {
-    coverUrl = metadata.cover;
-  }
+    emitProgress({ stage: "metadata", message: "Metadata siap", percent: 12 });
 
-  const fmt = String(format || "").toLowerCase();
-  if (!SUPPORTED_FORMATS.has(fmt)) {
-    throw new Error("Format tidak didukung");
-  }
-  const isVideoFormat = VIDEO_FORMATS.has(fmt);
-  const previewProvider = (metadata?.preview?.provider || metadata?.originalSource?.type || "").toLowerCase();
-  const spotifyPreviewUrl = !isVideoFormat && previewProvider === "spotify"
-    ? (metadata?.preview?.url || metadata?.originalSource?.previewUrl || "")
-    : "";
-  if (!VALID_SPEED_MODES.has(speedMode || "normal")) {
-    throw new Error("Mode kecepatan tidak dikenali");
-  }
+    // === DUPLICATE DETECTOR / CACHE CHECK ===
+    const cacheKeyPayload = {
+      videoId: metadata?.id || metadata?.videoId || url,
+      format,
+      abr,
+      sampleRate,
+      trim,
+      normalize,
+      atmos,
+      speedMode,
+      denoise,
+      volumeBoost,
+      enhancer,
+      soundEffect,
+      smartResume,
+      videoQuality: videoQualityPreference,
+      id3: id3 || {} // Include metadata in cache key to distinguish custom tags
+    };
+    const cacheKey = createHash("md5").update(JSON.stringify(cacheKeyPayload)).digest("hex");
 
-  const denoiseEnabled = typeof denoise === "string"
-    ? ["1", "true", "yes", "on"].includes(denoise.toLowerCase())
-    : !!denoise;
-
-  let boostValue = Number(volumeBoost);
-  if (Number.isNaN(boostValue)) boostValue = 0;
-  boostValue = clamp(boostValue, -20, 20);
-
-  const enhancerKey = typeof enhancer === "string" ? enhancer.trim().toLowerCase() : "none";
-  const VALID_ENHANCERS = new Set(["none", "clarity", "warm", "club"]);
-  const enhancerMode = VALID_ENHANCERS.has(enhancerKey) ? enhancerKey : "none";
-
-  const soundEffectKey = typeof soundEffect === "string" ? soundEffect.trim().toLowerCase() : "none";
-  const VALID_SOUND_EFFECTS = new Set(["none", "reverb", "echo", "lofi"]);
-  const soundEffectMode = VALID_SOUND_EFFECTS.has(soundEffectKey) ? soundEffectKey : "none";
-
-  const vpnMode = typeof vpnFriendly === "string"
-    ? ["1", "true", "yes", "on"].includes(vpnFriendly.trim().toLowerCase())
-    : !!vpnFriendly;
-  const resumeMode = typeof smartResume === "string"
-    ? ["1", "true", "yes", "on"].includes(smartResume.trim().toLowerCase())
-    : !!smartResume;
-
-  let sr;
-  if (sampleRate !== undefined) {
-    sr = Number(sampleRate);
-    if (Number.isNaN(sr) || sr <= 0) {
-      throw new Error("sampleRate tidak valid");
+    const cached = CacheStore.get(cacheKey);
+    /* Cache disabled for debugging Audio Insight
+    if (cached && cached.fileName) {
+       const cachedPath = join(process.cwd(), 'public/jobs', cached.fileName);
+       if (existsSync(cachedPath)) {
+          emitProgress({ stage: "encoding", message: "Mengambil dari cache", percent: 100 });
+          // Return cached result with duplicate flag
+          return { ...cached, isDuplicate: true, logs: cached.logs + '\n[Info] Retrieved from cache.' };
+       }
     }
-  }
+    */
+    // === END DUPLICATE DETECTOR ===
 
-  const sanitizedOptions = sanitizeFormatOptions(fmt, {
-    abr,
-    sampleRate: sr,
-    speedMode,
-    videoQuality: videoQualityPreference,
-  });
-  const effectiveSpeedMode = sanitizedOptions.speedMode || "normal";
-  const targetAbr = sanitizedOptions.abr != null ? sanitizedOptions.abr : (fmt === "mp3" ? Number(abr) || 192 : null);
-  sr = sanitizedOptions.sampleRate !== undefined ? sanitizedOptions.sampleRate : sr;
-  const targetVideoQuality = sanitizedOptions.videoQuality || "best";
+    if (metadata?.originalSource) {
+      originalSource = originalSource
+        ? { ...originalSource, ...metadata.originalSource }
+        : metadata.originalSource;
+    }
 
-  let trimOpt = null;
-  if (trim && (trim.start !== undefined || trim.end !== undefined)) {
-    const hasStart = trim.start !== undefined;
-    const hasEnd = trim.end !== undefined;
-    const startVal = hasStart ? Number(trim.start) : 0;
-    const endVal = hasEnd ? Number(trim.end) : undefined;
-    if ((hasStart && Number.isNaN(startVal)) ||
+    if (!metadata && originalSource) {
+      metadata = { originalSource };
+      if (originalSource.previewUrl) {
+        metadata.preview = {
+          url: originalSource.previewUrl,
+          provider: originalSource.type || "spotify",
+          type: "audio",
+          embedUrl: originalSource.embedUrl || "",
+          duration: originalSource.previewDuration || null,
+          durationMs: originalSource.previewDurationMs || null,
+        };
+      }
+    } else if (metadata && originalSource && !metadata.originalSource && originalSource.type !== "unknown") {
+      metadata.originalSource = originalSource;
+      if (originalSource.previewUrl && (!metadata.preview || typeof metadata.preview !== "object")) {
+        metadata.preview = {
+          url: originalSource.previewUrl,
+          provider: originalSource.type || "spotify",
+          type: "audio",
+          embedUrl: originalSource.embedUrl || "",
+          duration: originalSource.previewDuration || null,
+          durationMs: originalSource.previewDurationMs || null,
+        };
+      }
+    }
+
+    if (!coverUrl && metadata?.cover) {
+      coverUrl = metadata.cover;
+    }
+
+    const fmt = String(format || "").toLowerCase();
+    if (!SUPPORTED_FORMATS.has(fmt)) {
+      throw new Error("Format tidak didukung");
+    }
+    const isVideoFormat = VIDEO_FORMATS.has(fmt);
+    const previewProvider = (metadata?.preview?.provider || metadata?.originalSource?.type || "").toLowerCase();
+    const spotifyPreviewUrl = !isVideoFormat && previewProvider === "spotify"
+      ? (metadata?.preview?.url || metadata?.originalSource?.previewUrl || "")
+      : "";
+    if (!VALID_SPEED_MODES.has(speedMode || "normal")) {
+      throw new Error("Mode kecepatan tidak dikenali");
+    }
+
+    const denoiseEnabled = typeof denoise === "string"
+      ? ["1", "true", "yes", "on"].includes(denoise.toLowerCase())
+      : !!denoise;
+
+    let boostValue = Number(volumeBoost);
+    if (Number.isNaN(boostValue)) boostValue = 0;
+    boostValue = clamp(boostValue, -20, 20);
+
+    const enhancerKey = typeof enhancer === "string" ? enhancer.trim().toLowerCase() : "none";
+    const VALID_ENHANCERS = new Set(["none", "clarity", "warm", "club"]);
+    const enhancerMode = VALID_ENHANCERS.has(enhancerKey) ? enhancerKey : "none";
+
+    const soundEffectKey = typeof soundEffect === "string" ? soundEffect.trim().toLowerCase() : "none";
+    const VALID_SOUND_EFFECTS = new Set(["none", "reverb", "echo", "lofi"]);
+    const soundEffectMode = VALID_SOUND_EFFECTS.has(soundEffectKey) ? soundEffectKey : "none";
+
+    const vpnMode = typeof vpnFriendly === "string"
+      ? ["1", "true", "yes", "on"].includes(vpnFriendly.trim().toLowerCase())
+      : !!vpnFriendly;
+    const resumeMode = typeof smartResume === "string"
+      ? ["1", "true", "yes", "on"].includes(smartResume.trim().toLowerCase())
+      : !!smartResume;
+
+    let sr;
+    if (sampleRate !== undefined) {
+      sr = Number(sampleRate);
+      if (Number.isNaN(sr) || sr <= 0) {
+        throw new Error("sampleRate tidak valid");
+      }
+    }
+
+    const sanitizedOptions = sanitizeFormatOptions(fmt, {
+      abr,
+      sampleRate: sr,
+      speedMode,
+      videoQuality: videoQualityPreference,
+    });
+    const effectiveSpeedMode = sanitizedOptions.speedMode || "normal";
+    const targetAbr = sanitizedOptions.abr != null ? sanitizedOptions.abr : (fmt === "mp3" ? Number(abr) || 192 : null);
+    sr = sanitizedOptions.sampleRate !== undefined ? sanitizedOptions.sampleRate : sr;
+    const targetVideoQuality = sanitizedOptions.videoQuality || "best";
+
+    let trimOpt = null;
+    if (trim && (trim.start !== undefined || trim.end !== undefined)) {
+      const hasStart = trim.start !== undefined;
+      const hasEnd = trim.end !== undefined;
+      const startVal = hasStart ? Number(trim.start) : 0;
+      const endVal = hasEnd ? Number(trim.end) : undefined;
+      if ((hasStart && Number.isNaN(startVal)) ||
         (hasEnd && Number.isNaN(endVal)) ||
         (hasStart && hasEnd && endVal < startVal)) {
-      throw new Error("trim tidak valid");
+        throw new Error("trim tidak valid");
+      }
+      trimOpt = {};
+      if (hasStart) trimOpt.start = startVal;
+      if (hasEnd) trimOpt.end = endVal;
     }
-    trimOpt = {};
-    if (hasStart) trimOpt.start = startVal;
-    if (hasEnd) trimOpt.end = endVal;
-  }
 
-  const id = nanoid(10);
-  const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
-  const metaBaseRaw = metadata?.cleanTitle || metadata?.title || keywordQuery || "";
-  const manualFileName = sanitizeFileName(fileName || "");
-  const id3Title = sanitizeFileName(id3?.title || "");
-  const metaArtist = sanitizeFileName(id3?.artist || metadata?.artist || metadata?.author || "");
-  const titleCandidate = sanitizeFileName(metaBaseRaw || id3?.title || keywordQuery || id) || id;
-  const bitrateLabel = !isVideoFormat && (targetAbr || sanitizedOptions.abr)
-    ? `${targetAbr || sanitizedOptions.abr}kbps`
-    : "";
-  let qualityLabel = "";
-  if (isVideoFormat) {
-    qualityLabel = targetVideoQuality && targetVideoQuality !== "best"
-      ? `${targetVideoQuality}p`
+    const id = nanoid(10);
+    const outTpl = join(JOBS_DIR, `${id}.%(ext)s`);
+    const metaBaseRaw = metadata?.cleanTitle || metadata?.title || keywordQuery || "";
+    const manualFileName = sanitizeFileName(fileName || "");
+    const id3Title = sanitizeFileName(id3?.title || "");
+    const metaArtist = sanitizeFileName(id3?.artist || metadata?.artist || metadata?.author || "");
+    const titleCandidate = sanitizeFileName(metaBaseRaw || id3?.title || keywordQuery || id) || id;
+    const bitrateLabel = !isVideoFormat && (targetAbr || sanitizedOptions.abr)
+      ? `${targetAbr || sanitizedOptions.abr}kbps`
       : "";
-  } else if (!bitrateLabel && sr) {
-    qualityLabel = `${Math.round((sr || 0) / 1000)}kHz`;
-  }
-  const suffixTokens = [bitrateLabel, qualityLabel].filter(Boolean);
-  const autoPattern = [metaArtist, titleCandidate].filter(Boolean).join(" - ") || titleCandidate;
-  const autoName = suffixTokens.length
-    ? `${autoPattern} (${suffixTokens.join(" · ")})`
-    : autoPattern;
-  const autoBaseName = sanitizeFileName(autoName) || titleCandidate || id;
-  const baseName = manualFileName || id3Title || autoBaseName;
-
-  let coverPath = null;
-  if (coverUrl && /^https?:\/\//.test(coverUrl) && ["mp3", "m4a", "flac"].includes(fmt)) {
-    try {
-      const imgResp = await safeFetch(coverUrl);
-      if (imgResp.ok) {
-        const buf = Buffer.from(await imgResp.arrayBuffer());
-        coverPath = join(JOBS_DIR, `${id}.cover.jpg`);
-        await fsp.writeFile(coverPath, buf);
-      }
-    } catch {}
-  }
-
-  const args = ["--newline", "--no-progress"];
-  if (ffmpegPath) {
-    args.push("--ffmpeg-location", ffmpegPath);
-  }
-  if (existsSync(COOKIES_PATH)) {
-    args.push("--cookies", COOKIES_PATH);
-  }
-  args.push("--js-runtimes", "node");
-  args.push("--remote-components", "ejs:github");
-  if (noPlaylist) args.push("--no-playlist");
-  args.push("-o", outTpl);
-
-  emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
-
-  const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
-  const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
-
-  if (isVideoFormat) {
-    const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
-    if (selector) args.push("-f", selector);
-    if (fmt === "mp4") {
-      args.push("--merge-output-format", "mp4");
-    } else if (fmt === "webm") {
-      args.push("--merge-output-format", "webm");
-    } else if (fmt === "mkv") {
-      args.push("--merge-output-format", "mkv");
+    let qualityLabel = "";
+    if (isVideoFormat) {
+      qualityLabel = targetVideoQuality && targetVideoQuality !== "best"
+        ? `${targetVideoQuality}p`
+        : "";
+    } else if (!bitrateLabel && sr) {
+      qualityLabel = `${Math.round((sr || 0) / 1000)}kHz`;
     }
-  } else if (fmt === "m4a") {
-    args.push("-f", "bestaudio[ext=m4a]/bestaudio/best");
-  } else if (fmt === "alac") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "alac");
-  } else if (fmt === "aac") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "aac");
-    if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
-  } else if (fmt === "opus") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "opus");
-    if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
-  } else if (fmt === "flac") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "flac");
-  } else if (fmt === "mp3") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(sanitizedAbrForDownload));
-  } else if (fmt === "wav") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "wav");
-  } else if (fmt === "aiff") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "wav");
-  } else if (fmt === "caf") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "wav");
-  } else if (fmt === "ogg") {
-    args.push("-f", baseAudioSelector);
-    args.push("-x", "--audio-format", "ogg");
-  }
-  if (resumeMode) {
-    args.push("--continue", "--no-overwrites");
-  }
-  if (vpnMode) {
-    const chunkSize = String(process.env.VPN_HTTP_CHUNK_SIZE || "4M");
-    args.push("--concurrent-fragments", "1", "--http-chunk-size", chunkSize);
-    const proxyUrl = process.env.VPN_PROXY_URL;
-    if (proxyUrl) args.push("--proxy", proxyUrl);
-  }
-  if (vpnMode || resumeMode) {
-    const retryCount = String(process.env.VPN_RETRY_COUNT || 12);
-    const fragmentRetry = String(process.env.VPN_FRAGMENT_RETRY_COUNT || 12);
-    args.push("--retries", retryCount, "--fragment-retries", fragmentRetry);
-  }
-  args.push(url);
+    const suffixTokens = [bitrateLabel, qualityLabel].filter(Boolean);
+    const autoPattern = [metaArtist, titleCandidate].filter(Boolean).join(" - ") || titleCandidate;
+    const autoName = suffixTokens.length
+      ? `${autoPattern} (${suffixTokens.join(" · ")})`
+      : autoPattern;
+    const autoBaseName = sanitizeFileName(autoName) || titleCandidate || id;
+    const baseName = manualFileName || id3Title || autoBaseName;
 
-  const mapDownloadPercent = (pct) => 15 + (Math.min(Math.max(Number(pct) || 0, 0), 100) * 0.65);
-  const handleDownloadProgress = (info) => {
-    if (!info || typeof info.percent !== "number") return;
-    const details = [];
-    if (info.etaLabel) details.push(`ETA ${info.etaLabel}`);
-    else if (typeof info.etaSeconds === "number" && info.etaSeconds >= 0) details.push(`ETA ${info.etaSeconds}s`);
-    if (info.speed) details.push(info.speed);
-    if (info.size) details.push(info.size);
-    emitProgress({
-      stage: "downloading",
-      percent: mapDownloadPercent(info.percent),
-      etaSeconds: typeof info.etaSeconds === "number" ? info.etaSeconds : null,
-      etaLabel: info.etaLabel || "",
-      speed: info.speed || "",
-      size: info.size || "",
-      message: `Mengunduh${details.length ? ` · ${details.join(" · ")}` : ""}`,
-    });
-  };
-
-  let logs = "";
-  let downloadResult = null;
-
-  // Untuk Spotify: metadata dari spotDL, download dari YouTube Music/YouTube via yt-dlp
-  // Preview URL hanya untuk metadata, tidak digunakan untuk download
-
-  if (!downloadResult) {
-    try {
-      downloadResult = await runYtDlpDownload({ args, id, onProgress: handleDownloadProgress });
-      logs = downloadResult.logs || "";
-    } catch (err) {
-      const baseLogs = err.logs || "";
-      if (isVideoFormat) {
-        if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-        const videoError = new Error(err.message || "Gagal mengunduh");
-        videoError.logs = (baseLogs || "").slice(-8000);
-        throw videoError;
-      }
-      const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "");
-      if (shouldRetryWithFallbackArgs) {
-        try {
-          emitProgress({ stage: "downloading", message: "Mencoba mode kompatibilitas", percent: mapDownloadPercent(18) });
-          const fallbackArgs = buildYtDlpFallbackArgs(args);
-          downloadResult = await runYtDlpDownload({ args: fallbackArgs, id, onProgress: handleDownloadProgress });
-          logs = downloadResult.logs || baseLogs;
-        } catch (retryErr) {
-          logs = retryErr?.logs || logs || baseLogs;
+    let coverPath = null;
+    if (coverUrl && /^https?:\/\//.test(coverUrl) && ["mp3", "m4a", "flac"].includes(fmt)) {
+      try {
+        const imgResp = await safeFetch(coverUrl);
+        if (imgResp.ok) {
+          const buf = Buffer.from(await imgResp.arrayBuffer());
+          coverPath = join(JOBS_DIR, `${id}.cover.jpg`);
+          await fsp.writeFile(coverPath, buf);
         }
-      }
-      if (!downloadResult) {
-        try {
-          emitProgress({ stage: "downloading", message: "Downloader cadangan", percent: mapDownloadPercent(20) });
-          downloadResult = await runPythonDownload({ url, id, baseLogs });
-          logs = downloadResult.logs || baseLogs;
-        } catch (pyErr) {
-          if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-          const finalError = new Error(pyErr.message || err.message || "Gagal mengunduh");
-          const combinedLogs = [logs, baseLogs, pyErr.logs].filter(Boolean).join("\n");
-          finalError.logs = combinedLogs.slice(-8000);
-          throw finalError;
-        }
-      }
+      } catch { }
     }
-  }
 
-  if (!downloadResult) {
-    if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-    throw new Error("Gagal mengunduh");
-  }
+    const args = ["--newline", "--no-progress"];
+    if (ffmpegPath) {
+      args.push("--ffmpeg-location", ffmpegPath);
+    }
+    if (existsSync(COOKIES_PATH)) {
+      args.push("--cookies", COOKIES_PATH);
+    }
+    args.push("--js-runtimes", "node");
+    args.push("--remote-components", "ejs:github");
+    if (noPlaylist) args.push("--no-playlist");
+    args.push("-o", outTpl);
 
-  let { filename, fullPath, ext } = downloadResult;
-  logs = (downloadResult.logs || logs || "").slice(-8000);
+    emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
 
-  emitProgress({ stage: "processing", message: "Memproses audio", percent: 82 });
+    const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
+    const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
 
-  const audioProbe = await probeAudioStream(fullPath).catch(() => null);
-  // Calculate LUFS before conversion (for "Original" stats)
-  // Note: This might add some processing time
-  const audioInsightBefore = await probeAudioLoudness(fullPath).catch(() => null);
-  if (audioInsightBefore) {
-    audioInsightBefore.waveform = await generateWaveformData(fullPath).catch(() => []);
-  }
-  
-  const detectedSampleRate = audioProbe?.sampleRate;
-  const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
-  const filters = buildAudioFilters({
-    normalize,
-    speedMode: effectiveSpeedMode,
-    denoise: denoiseEnabled,
-    volumeBoost: boostValue,
-    enhancer: enhancerMode,
-    soundEffect: soundEffectMode,
-    sampleRate: filterSampleRate,
-    sourceSampleRate: detectedSampleRate,
-  });
-
-  const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
-    if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
-    return acc;
-  }, {});
-  if (!id3Clean.title && metadata?.id3?.title) id3Clean.title = metadata.id3.title;
-  if (!id3Clean.artist && metadata?.id3?.artist) id3Clean.artist = metadata.id3.artist;
-  if (!id3Clean.album && metadata?.id3?.album) id3Clean.album = metadata.id3.album;
-  if (!id3Clean.genre) {
-    const autoGenre = buildAiTags({
-      title: id3Clean.title || baseName,
-      channel: id3Clean.artist || "",
-    }).genre;
-    if (autoGenre) id3Clean.genre = autoGenre;
-  }
-  const hasId3 = Object.keys(id3Clean).length > 0;
-  const hasTrim = !!trimOpt && Object.keys(trimOpt).length > 0;
-  const hasFilters = filters.length > 0;
-  const hasCover = !!coverPath;
-  const rule = FORMAT_RULES[fmt];
-  const detectedRate = parseSampleRate(detectedSampleRate);
-  const needSampleRate = sr !== undefined || (!!rule?.sampleRates?.length && !rule.sampleRates.includes(detectedRate));
-  const finalSamplePreference = sr !== undefined ? sr : (needSampleRate ? filterSampleRate : undefined);
-
-  const finalize = async (targetExt, converter, extraOpts = {}) => {
-    const tmpOut = join(JOBS_DIR, `${id}.tmp.${targetExt}`);
-    await converter(fullPath, tmpOut, {
-      ...extraOpts,
-      trim: trimOpt || {},
-      sampleRate: finalSamplePreference,
-      filters,
-    });
-    await fsp.unlink(fullPath);
-    filename = `${id}.${targetExt}`;
-    fullPath = join(JOBS_DIR, filename);
-    await fsp.rename(tmpOut, fullPath);
-    ext = targetExt;
-  };
-
-  emitProgress({ stage: "encoding", message: "Mengonversi dengan ffmpeg", percent: 88 });
-
-  try {
-    if (fmt === "mp3") {
-      const needConvert = ext !== "mp3" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("mp3", ffmpegToMp3, { abr: targetAbr || 192, id3: id3Clean, cover: coverPath });
-      }
-    } else if (fmt === "flac") {
-      const needConvert = ext !== "flac" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("flac", ffmpegToFlac, { id3: id3Clean, cover: coverPath });
+    if (isVideoFormat) {
+      const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
+      if (selector) args.push("-f", selector);
+      if (fmt === "mp4") {
+        args.push("--merge-output-format", "mp4");
+      } else if (fmt === "webm") {
+        args.push("--merge-output-format", "webm");
+      } else if (fmt === "mkv") {
+        args.push("--merge-output-format", "mkv");
       }
     } else if (fmt === "m4a") {
-      const needConvert = ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath, abr: targetAbr || 192 });
-      }
-    } else if (fmt === "aac") {
-      const needConvert = ext !== "aac" || hasId3 || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("aac", ffmpegToAac, { id3: id3Clean, abr: targetAbr || 256 });
-      }
-    } else if (fmt === "opus") {
-      const needConvert = ext !== "opus" || hasId3 || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("opus", ffmpegToOpus, { id3: id3Clean, abr: targetAbr || 192 });
-      }
-    } else if (fmt === "wav") {
-      const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("wav", ffmpegToWav, {});
-      }
-    } else if (fmt === "aiff") {
-      const needConvert = ext !== "aiff" || hasId3 || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("aiff", ffmpegToAiff, { id3: id3Clean });
-      }
+      args.push("-f", "bestaudio[ext=m4a]/bestaudio/best");
     } else if (fmt === "alac") {
-      const needConvert =
-        ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
-      if (needConvert) {
-        await finalize("m4a", ffmpegToAlac, { id3: id3Clean, sampleRate: sr });
-      }
-      ext = "m4a";
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "alac");
+    } else if (fmt === "aac") {
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "aac");
+      if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
+    } else if (fmt === "opus") {
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "opus");
+      if (sanitizedAbrForDownload) args.push("--audio-quality", abrToQ(sanitizedAbrForDownload));
+    } else if (fmt === "flac") {
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "flac");
+    } else if (fmt === "mp3") {
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "mp3", "--audio-quality", abrToQ(sanitizedAbrForDownload));
+    } else if (fmt === "wav") {
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "wav");
+    } else if (fmt === "aiff") {
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "wav");
     } else if (fmt === "caf") {
-      const needConvert = ext !== "caf" || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("caf", ffmpegToCaf, {});
-      }
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "wav");
     } else if (fmt === "ogg") {
-      const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
-      if (needConvert) {
-        await finalize("ogg", ffmpegToOgg, {});
-      }
-    } else if (fmt === "mp4") {
-      const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
-      const needConvert =
-        ext !== "mp4" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
-      if (needConvert) {
-        await finalize("mp4", ffmpegToMp4Video, {
-          abr: targetAbr || undefined,
-          preferCopyAudio,
-        });
-      }
-    } else if (fmt === "webm") {
-      const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
-      const needConvert =
-        ext !== "webm" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
-      if (needConvert) {
-        await finalize("webm", ffmpegToWebmVideo, {
-          abr: targetAbr || undefined,
-          preferCopyAudio,
-        });
-      }
-    } else if (fmt === "mkv") {
-      const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
-      const needConvert =
-        ext !== "mkv" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
-      if (needConvert) {
-        await finalize("mkv", ffmpegToMkvVideo, {
-          abr: targetAbr || undefined,
-          preferCopyAudio,
-        });
+      args.push("-f", baseAudioSelector);
+      args.push("-x", "--audio-format", "ogg");
+    }
+    if (resumeMode) {
+      args.push("--continue", "--no-overwrites");
+    }
+    if (vpnMode) {
+      const chunkSize = String(process.env.VPN_HTTP_CHUNK_SIZE || "4M");
+      args.push("--concurrent-fragments", "1", "--http-chunk-size", chunkSize);
+      const proxyUrl = process.env.VPN_PROXY_URL;
+      if (proxyUrl) args.push("--proxy", proxyUrl);
+    }
+    if (vpnMode || resumeMode) {
+      const retryCount = String(process.env.VPN_RETRY_COUNT || 12);
+      const fragmentRetry = String(process.env.VPN_FRAGMENT_RETRY_COUNT || 12);
+      args.push("--retries", retryCount, "--fragment-retries", fragmentRetry);
+    }
+    args.push(url);
+
+    const mapDownloadPercent = (pct) => 15 + (Math.min(Math.max(Number(pct) || 0, 0), 100) * 0.65);
+    const handleDownloadProgress = (info) => {
+      if (!info || typeof info.percent !== "number") return;
+      const details = [];
+      if (info.etaLabel) details.push(`ETA ${info.etaLabel}`);
+      else if (typeof info.etaSeconds === "number" && info.etaSeconds >= 0) details.push(`ETA ${info.etaSeconds}s`);
+      if (info.speed) details.push(info.speed);
+      if (info.size) details.push(info.size);
+      emitProgress({
+        stage: "downloading",
+        percent: mapDownloadPercent(info.percent),
+        etaSeconds: typeof info.etaSeconds === "number" ? info.etaSeconds : null,
+        etaLabel: info.etaLabel || "",
+        speed: info.speed || "",
+        size: info.size || "",
+        message: `Mengunduh${details.length ? ` · ${details.join(" · ")}` : ""}`,
+      });
+    };
+
+    let logs = "";
+    let downloadResult = null;
+
+    // Untuk Spotify: metadata dari spotDL, download dari YouTube Music/YouTube via yt-dlp
+    // Preview URL hanya untuk metadata, tidak digunakan untuk download
+
+    if (!downloadResult) {
+      try {
+        downloadResult = await runYtDlpDownload({ args, id, onProgress: handleDownloadProgress });
+        logs = downloadResult.logs || "";
+      } catch (err) {
+        const baseLogs = err.logs || "";
+        if (isVideoFormat) {
+          if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+          const videoError = new Error(err.message || "Gagal mengunduh");
+          videoError.logs = (baseLogs || "").slice(-8000);
+          throw videoError;
+        }
+        const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "");
+        if (shouldRetryWithFallbackArgs) {
+          try {
+            emitProgress({ stage: "downloading", message: "Mencoba mode kompatibilitas", percent: mapDownloadPercent(18) });
+            const fallbackArgs = buildYtDlpFallbackArgs(args);
+            downloadResult = await runYtDlpDownload({ args: fallbackArgs, id, onProgress: handleDownloadProgress });
+            logs = downloadResult.logs || baseLogs;
+          } catch (retryErr) {
+            logs = retryErr?.logs || logs || baseLogs;
+          }
+        }
+        if (!downloadResult) {
+          try {
+            emitProgress({ stage: "downloading", message: "Downloader cadangan", percent: mapDownloadPercent(20) });
+            downloadResult = await runPythonDownload({ url, id, baseLogs });
+            logs = downloadResult.logs || baseLogs;
+          } catch (pyErr) {
+            if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+            const finalError = new Error(pyErr.message || err.message || "Gagal mengunduh");
+            const combinedLogs = [logs, baseLogs, pyErr.logs].filter(Boolean).join("\n");
+            finalError.logs = combinedLogs.slice(-8000);
+            throw finalError;
+          }
+        }
       }
     }
-  } catch (err) {
-    if (coverPath) try { await fsp.unlink(coverPath); } catch {}
-    const error = new Error(err.message || "ffmpeg gagal");
-    error.logs = (logs + (err.logs || "")).slice(-8000);
-    throw error;
-  }
 
-  emitProgress({ stage: "encoding", message: "Finishing", percent: 93 });
+    if (!downloadResult) {
+      if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+      throw new Error("Gagal mengunduh");
+    }
 
-  if (coverPath) try { await fsp.unlink(coverPath); } catch {}
+    let { filename, fullPath, ext } = downloadResult;
+    logs = (downloadResult.logs || logs || "").slice(-8000);
 
-  const audioInsightAfter = await probeAudioLoudness(fullPath).catch(() => null);
-  if (audioInsightAfter) {
-    audioInsightAfter.waveform = await generateWaveformData(fullPath).catch(() => []);
-  }
-  
-  const audioInsight = {
-    before: audioInsightBefore || null,
-    after: audioInsightAfter || null,
-    lufs: audioInsightAfter?.lufs ?? audioInsightBefore?.lufs,
-    peak: audioInsightAfter?.peak ?? audioInsightBefore?.peak,
-    dr: audioInsightAfter?.lra ?? audioInsightBefore?.lra,
-    targetLufs: normalize ? '-14 LUFS' : 'Original',
-  };
+    emitProgress({ stage: "processing", message: "Memproses audio", percent: 82 });
 
-  const downloadUrl = `/public/jobs/${filename}`;
-  const finalExt = ext;
-  const downloadFileName = `${baseName}.${finalExt}`;
-  const finalSampleRate = finalSamplePreference
-    ? Math.round(finalSamplePreference)
-    : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
-  const metadataResponse = metadata
-    ? {
+    const audioProbe = await probeAudioStream(fullPath).catch(() => null);
+    // Calculate LUFS before conversion (for "Original" stats)
+    // Note: This might add some processing time
+    const audioInsightBefore = await probeAudioLoudness(fullPath).catch(() => null);
+    if (audioInsightBefore) {
+      audioInsightBefore.waveform = await generateWaveformData(fullPath).catch(() => []);
+    }
+
+    const detectedSampleRate = audioProbe?.sampleRate;
+    const filterSampleRate = deriveFilterSampleRate(fmt, sr, detectedSampleRate);
+    const filters = buildAudioFilters({
+      normalize,
+      speedMode: effectiveSpeedMode,
+      denoise: denoiseEnabled,
+      volumeBoost: boostValue,
+      enhancer: enhancerMode,
+      soundEffect: soundEffectMode,
+      sampleRate: filterSampleRate,
+      sourceSampleRate: detectedSampleRate,
+    });
+
+    const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
+      if (v !== undefined && v !== null && String(v).trim() !== "") acc[k] = v;
+      return acc;
+    }, {});
+    if (!id3Clean.title && metadata?.id3?.title) id3Clean.title = metadata.id3.title;
+    if (!id3Clean.artist && metadata?.id3?.artist) id3Clean.artist = metadata.id3.artist;
+    if (!id3Clean.album && metadata?.id3?.album) id3Clean.album = metadata.id3.album;
+    if (!id3Clean.genre) {
+      const autoGenre = buildAiTags({
+        title: id3Clean.title || baseName,
+        channel: id3Clean.artist || "",
+      }).genre;
+      if (autoGenre) id3Clean.genre = autoGenre;
+    }
+    const hasId3 = Object.keys(id3Clean).length > 0;
+    const hasTrim = !!trimOpt && Object.keys(trimOpt).length > 0;
+    const hasFilters = filters.length > 0;
+    const hasCover = !!coverPath;
+    const rule = FORMAT_RULES[fmt];
+    const detectedRate = parseSampleRate(detectedSampleRate);
+    const needSampleRate = sr !== undefined || (!!rule?.sampleRates?.length && !rule.sampleRates.includes(detectedRate));
+    const finalSamplePreference = sr !== undefined ? sr : (needSampleRate ? filterSampleRate : undefined);
+
+    const finalize = async (targetExt, converter, extraOpts = {}) => {
+      const tmpOut = join(JOBS_DIR, `${id}.tmp.${targetExt}`);
+      await converter(fullPath, tmpOut, {
+        ...extraOpts,
+        trim: trimOpt || {},
+        sampleRate: finalSamplePreference,
+        filters,
+      });
+      await fsp.unlink(fullPath);
+      filename = `${id}.${targetExt}`;
+      fullPath = join(JOBS_DIR, filename);
+      await fsp.rename(tmpOut, fullPath);
+      ext = targetExt;
+    };
+
+    emitProgress({ stage: "encoding", message: "Mengonversi dengan ffmpeg", percent: 88 });
+
+    try {
+      if (fmt === "mp3") {
+        const needConvert = ext !== "mp3" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("mp3", ffmpegToMp3, { abr: targetAbr || 192, id3: id3Clean, cover: coverPath });
+        }
+      } else if (fmt === "flac") {
+        const needConvert = ext !== "flac" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("flac", ffmpegToFlac, { id3: id3Clean, cover: coverPath });
+        }
+      } else if (fmt === "m4a") {
+        const needConvert = ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("m4a", ffmpegToM4a, { id3: id3Clean, cover: coverPath, abr: targetAbr || 192 });
+        }
+      } else if (fmt === "aac") {
+        const needConvert = ext !== "aac" || hasId3 || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("aac", ffmpegToAac, { id3: id3Clean, abr: targetAbr || 256 });
+        }
+      } else if (fmt === "opus") {
+        const needConvert = ext !== "opus" || hasId3 || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("opus", ffmpegToOpus, { id3: id3Clean, abr: targetAbr || 192 });
+        }
+      } else if (fmt === "wav") {
+        const needConvert = ext !== "wav" || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("wav", ffmpegToWav, {});
+        }
+      } else if (fmt === "aiff") {
+        const needConvert = ext !== "aiff" || hasId3 || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("aiff", ffmpegToAiff, { id3: id3Clean });
+        }
+      } else if (fmt === "alac") {
+        const needConvert =
+          ext !== "m4a" || hasId3 || hasTrim || hasFilters || hasCover || needSampleRate;
+        if (needConvert) {
+          await finalize("m4a", ffmpegToAlac, { id3: id3Clean, sampleRate: sr });
+        }
+        ext = "m4a";
+      } else if (fmt === "caf") {
+        const needConvert = ext !== "caf" || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("caf", ffmpegToCaf, {});
+        }
+      } else if (fmt === "ogg") {
+        const needConvert = ext !== "ogg" || hasTrim || hasFilters || needSampleRate;
+        if (needConvert) {
+          await finalize("ogg", ffmpegToOgg, {});
+        }
+      } else if (fmt === "mp4") {
+        const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
+        const needConvert =
+          ext !== "mp4" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
+        if (needConvert) {
+          await finalize("mp4", ffmpegToMp4Video, {
+            abr: targetAbr || undefined,
+            preferCopyAudio,
+          });
+        }
+      } else if (fmt === "webm") {
+        const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
+        const needConvert =
+          ext !== "webm" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
+        if (needConvert) {
+          await finalize("webm", ffmpegToWebmVideo, {
+            abr: targetAbr || undefined,
+            preferCopyAudio,
+          });
+        }
+      } else if (fmt === "mkv") {
+        const preferCopyAudio = !hasFilters && !needSampleRate && (targetAbr == null);
+        const needConvert =
+          ext !== "mkv" || hasTrim || hasFilters || needSampleRate || targetAbr != null;
+        if (needConvert) {
+          await finalize("mkv", ffmpegToMkvVideo, {
+            abr: targetAbr || undefined,
+            preferCopyAudio,
+          });
+        }
+      }
+    } catch (err) {
+      if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+      const error = new Error(err.message || "ffmpeg gagal");
+      error.logs = (logs + (err.logs || "")).slice(-8000);
+      throw error;
+    }
+
+    emitProgress({ stage: "encoding", message: "Finishing", percent: 93 });
+
+    if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+
+    const audioInsightAfter = await probeAudioLoudness(fullPath).catch(() => null);
+    if (audioInsightAfter) {
+      audioInsightAfter.waveform = await generateWaveformData(fullPath).catch(() => []);
+    }
+
+    const audioInsight = {
+      before: audioInsightBefore || null,
+      after: audioInsightAfter || null,
+      lufs: audioInsightAfter?.lufs ?? audioInsightBefore?.lufs,
+      peak: audioInsightAfter?.peak ?? audioInsightBefore?.peak,
+      dr: audioInsightAfter?.lra ?? audioInsightBefore?.lra,
+      targetLufs: normalize ? '-14 LUFS' : 'Original',
+    };
+
+    const downloadUrl = `/public/jobs/${filename}`;
+    const finalExt = ext;
+    const downloadFileName = `${baseName}.${finalExt}`;
+    const finalSampleRate = finalSamplePreference
+      ? Math.round(finalSamplePreference)
+      : (filters.some((f) => /^aresample=/.test(f)) ? filterSampleRate : detectedSampleRate) || null;
+    const metadataResponse = metadata
+      ? {
         id: metadata.id || null,
         title: metadata.title || null,
         cleanTitle: metadata.cleanTitle || null,
@@ -6432,123 +6434,123 @@ const convertSingle = async (payload = {}) => {
         originalSource: metadata.originalSource || null,
         preview: metadata.preview
           ? {
-              url: metadata.preview.url || null,
-              provider: metadata.preview.provider || null,
-              type: metadata.preview.type || null,
-              embedUrl: metadata.preview.embedUrl || null,
-              duration: metadata.preview.duration || null,
-              durationMs: metadata.preview.durationMs || null,
-            }
+            url: metadata.preview.url || null,
+            provider: metadata.preview.provider || null,
+            type: metadata.preview.type || null,
+            embedUrl: metadata.preview.embedUrl || null,
+            duration: metadata.preview.duration || null,
+            durationMs: metadata.preview.durationMs || null,
+          }
           : null,
       }
-    : null;
-  emitProgress({ stage: "ringtone", message: "Menyiapkan ringtone", percent: 95 });
-  const ringtoneVariants = await createRingtoneVariants({
-    sourcePath: fullPath,
-    id,
-    baseName,
-    trimOpt,
-    request: ringtoneRequest,
-  });
-  if (Array.isArray(ringtoneVariants) && ringtoneVariants.length) {
-    emitProgress({ stage: "ringtone", message: "Ringtone siap", percent: 97 });
-  }
+      : null;
+    emitProgress({ stage: "ringtone", message: "Menyiapkan ringtone", percent: 95 });
+    const ringtoneVariants = await createRingtoneVariants({
+      sourcePath: fullPath,
+      id,
+      baseName,
+      trimOpt,
+      request: ringtoneRequest,
+    });
+    if (Array.isArray(ringtoneVariants) && ringtoneVariants.length) {
+      emitProgress({ stage: "ringtone", message: "Ringtone siap", percent: 97 });
+    }
 
-  // Handle Output Folder Management (Auto-save)
-  const outputDir = payload.outputDir ? String(payload.outputDir).trim() : null;
-  const organizeBy = payload.organizeBy ? String(payload.organizeBy).trim() : 'none';
-  let savedPath = null;
+    // Handle Output Folder Management (Auto-save)
+    const outputDir = payload.outputDir ? String(payload.outputDir).trim() : null;
+    const organizeBy = payload.organizeBy ? String(payload.organizeBy).trim() : 'none';
+    let savedPath = null;
 
-  if (outputDir) {
+    if (outputDir) {
+      try {
+        emitProgress({ stage: "saving", message: "Menyimpan ke folder tujuan", percent: 98 });
+        let targetDir = outputDir;
+
+        // Sanitization helper
+        const sanitizeName = (name) => (name || 'Unknown').replace(/[<>:"/\\|?*]+/g, '_').trim();
+
+        if (organizeBy === 'artist') {
+          const artistName = sanitizeName(metadata?.artist || metadata?.author || 'Unknown Artist');
+          targetDir = join(outputDir, artistName);
+        } else if (organizeBy === 'playlist') {
+          const playlistName = sanitizeName(metadata?.playlist || metadata?.album || 'Unknown Playlist');
+          targetDir = join(outputDir, playlistName);
+        }
+
+        await fsp.mkdir(targetDir, { recursive: true });
+        const targetPath = join(targetDir, downloadFileName);
+
+        // Copy instead of move to keep downloadUrl valid for browser
+        await fsp.copyFile(fullPath, targetPath);
+        savedPath = targetPath;
+        logs += `\n[Info] File saved to: ${targetPath}`;
+      } catch (err) {
+        logs += `\n[Warning] Gagal menyimpan ke folder output: ${err.message}`;
+      }
+    }
+
+    const response = {
+      ok: true,
+      id,
+      format: finalExt,
+      downloadUrl,
+      fileName: downloadFileName,
+      logs: (logs || "").slice(-8000),
+      baseName,
+      fullPath,
+      ext: finalExt,
+      sampleRate: finalSampleRate,
+      channels: audioProbe?.channels || null,
+      speedMode: effectiveSpeedMode,
+      soundEffect: soundEffectMode,
+      vpnFriendly: vpnMode,
+      smartResume: resumeMode,
+      videoQuality: targetVideoQuality,
+      spotifyPreview: downloadResult?.source === "spotify-preview",
+      metadata: metadataResponse,
+      ringtones: ringtoneVariants,
+      audioInsight,
+      savedPath,
+      progressId: progressId || null,
+    };
+
     try {
-      emitProgress({ stage: "saving", message: "Menyimpan ke folder tujuan", percent: 98 });
-      let targetDir = outputDir;
-      
-      // Sanitization helper
-      const sanitizeName = (name) => (name || 'Unknown').replace(/[<>:"/\\|?*]+/g, '_').trim();
-
-      if (organizeBy === 'artist') {
-        const artistName = sanitizeName(metadata?.artist || metadata?.author || 'Unknown Artist');
-        targetDir = join(outputDir, artistName);
-      } else if (organizeBy === 'playlist') {
-        const playlistName = sanitizeName(metadata?.playlist || metadata?.album || 'Unknown Playlist');
-        targetDir = join(outputDir, playlistName);
+      const fmtLower = String(finalExt || "").toLowerCase();
+      const abrNum = Number(targetAbr);
+      const allowed = new Set([320, 256, 192, 128, 64]);
+      if (fmtLower === "mp3" && allowed.has(abrNum) && process.env.CLOUDINARY_AUDIO_URL) {
+        emitProgress({ stage: "uploading", message: "Menyimpan ke cloud", percent: 99 });
+        const uploaded = await uploadAudioToCloudinary({
+          filePath: fullPath,
+          publicId: `${id}-${abrNum}kbps`,
+          folder: `audio/mp3/${abrNum}kbps`,
+          mimeType: "audio/mpeg",
+        });
+        if (uploaded?.url) {
+          response.cloudinaryAudio = {
+            url: uploaded.url,
+            publicId: uploaded.publicId,
+            abr: abrNum,
+            bytes: uploaded.bytes,
+            duration: uploaded.duration,
+          };
+        }
       }
-
-      await fsp.mkdir(targetDir, { recursive: true });
-      const targetPath = join(targetDir, downloadFileName);
-      
-      // Copy instead of move to keep downloadUrl valid for browser
-      await fsp.copyFile(fullPath, targetPath);
-      savedPath = targetPath;
-      logs += `\n[Info] File saved to: ${targetPath}`;
     } catch (err) {
-      logs += `\n[Warning] Gagal menyimpan ke folder output: ${err.message}`;
+      logs += `\n[Warning] Cloud upload gagal: ${String(err?.message || err)}`;
+      response.logs = (logs || "").slice(-8000);
     }
-  }
 
-  const response = {
-    ok: true,
-    id,
-    format: finalExt,
-    downloadUrl,
-    fileName: downloadFileName,
-    logs: (logs || "").slice(-8000),
-    baseName,
-    fullPath,
-    ext: finalExt,
-    sampleRate: finalSampleRate,
-    channels: audioProbe?.channels || null,
-    speedMode: effectiveSpeedMode,
-    soundEffect: soundEffectMode,
-    vpnFriendly: vpnMode,
-    smartResume: resumeMode,
-    videoQuality: targetVideoQuality,
-    spotifyPreview: downloadResult?.source === "spotify-preview",
-    metadata: metadataResponse,
-    ringtones: ringtoneVariants,
-    audioInsight,
-    savedPath,
-    progressId: progressId || null,
-  };
+    CacheStore.set(cacheKey, response);
 
-  try {
-    const fmtLower = String(finalExt || "").toLowerCase();
-    const abrNum = Number(targetAbr);
-    const allowed = new Set([320, 256, 192, 128, 64]);
-    if (fmtLower === "mp3" && allowed.has(abrNum) && process.env.CLOUDINARY_AUDIO_URL) {
-      emitProgress({ stage: "uploading", message: "Menyimpan ke cloud", percent: 99 });
-      const uploaded = await uploadAudioToCloudinary({
-        filePath: fullPath,
-        publicId: `${id}-${abrNum}kbps`,
-        folder: `audio/mp3/${abrNum}kbps`,
-        mimeType: "audio/mpeg",
-      });
-      if (uploaded?.url) {
-        response.cloudinaryAudio = {
-          url: uploaded.url,
-          publicId: uploaded.publicId,
-          abr: abrNum,
-          bytes: uploaded.bytes,
-          duration: uploaded.duration,
-        };
-      }
+    if (progressId) {
+      finalizeProgress("complete", { message: "Konversi selesai" });
     }
+    return response;
   } catch (err) {
-    logs += `\n[Warning] Cloud upload gagal: ${String(err?.message || err)}`;
-    response.logs = (logs || "").slice(-8000);
+    finalizeProgress("error", { message: err?.message || "Konversi gagal" });
+    throw err;
   }
-  
-  CacheStore.set(cacheKey, response);
-  
-  if (progressId) {
-    finalizeProgress("complete", { message: "Konversi selesai" });
-  }
-  return response;
-} catch (err) {
-  finalizeProgress("error", { message: err?.message || "Konversi gagal" });
-  throw err;
-}
 };
 
 const sanitizeHistoryCommand = (payload = {}) => {
@@ -6664,15 +6666,15 @@ const downloadSubtitle = async (payload = {}) => {
     const plain = srtToPlainText(result.srt);
     const lines = plain
       ? plain
-          .split(/\n+/)
-          .map((line) => line.trim())
-          .filter(Boolean)
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean)
       : [];
     const words = plain
       ? plain
-          .trim()
-          .split(/\s+/)
-          .filter(Boolean)
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
       : [];
     const preview = buildSubtitlePreview(plain);
     finalTxtName = `${finalStem}.txt`;
@@ -6698,10 +6700,10 @@ const downloadSubtitle = async (payload = {}) => {
     };
   } catch (err) {
     if (finalSrtName) {
-      try { await fsp.unlink(join(JOBS_DIR, finalSrtName)); } catch {}
+      try { await fsp.unlink(join(JOBS_DIR, finalSrtName)); } catch { }
     }
     if (finalTxtName) {
-      try { await fsp.unlink(join(JOBS_DIR, finalTxtName)); } catch {}
+      try { await fsp.unlink(join(JOBS_DIR, finalTxtName)); } catch { }
     }
     const message = err.message || fetchError?.message || "Gagal mengambil subtitle";
     const error = new Error(message);
@@ -6723,17 +6725,17 @@ app.post("/api/upload-forum-image", async (req, res) => {
     if (!image) {
       return res.status(400).json({ error: "No image provided" });
     }
-    
+
     // Upload to Cloudinary
     const result = await cloudinary.uploader.upload(image, {
       folder: "forum_uploads",
       resource_type: "image"
     });
-    
-    return res.json({ 
-      ok: true, 
+
+    return res.json({
+      ok: true,
       url: result.secure_url,
-      public_id: result.public_id 
+      public_id: result.public_id
     });
   } catch (err) {
     console.error("Cloudinary upload error:", err);
@@ -6770,28 +6772,28 @@ app.get("/api/support/hall-of-fame", async (req, res) => {
     const recent = await listRecentSupports({ limit });
     const topMonthSafe = Array.isArray(topMonth)
       ? topMonth.map((row) => ({
-          rank: row.rank,
-          name: row.name,
-          totalAmount: row.totalAmount,
-          lastAt: row.lastAt,
-        }))
+        rank: row.rank,
+        name: row.name,
+        totalAmount: row.totalAmount,
+        lastAt: row.lastAt,
+      }))
       : [];
     const topAllSafe = Array.isArray(topAll)
       ? topAll.map((row) => ({
-          rank: row.rank,
-          name: row.name,
-          totalAmount: row.totalAmount,
-          lastAt: row.lastAt,
-        }))
+        rank: row.rank,
+        name: row.name,
+        totalAmount: row.totalAmount,
+        lastAt: row.lastAt,
+      }))
       : [];
     const recentSafe = Array.isArray(recent)
       ? recent.map((row) => ({
-          id: row.id,
-          createdAt: row.createdAt,
-          amountRaw: row.amountRaw,
-          donatorName: row.donatorName,
-          message: row.message,
-        }))
+        id: row.id,
+        createdAt: row.createdAt,
+        amountRaw: row.amountRaw,
+        donatorName: row.donatorName,
+        message: row.message,
+      }))
       : [];
     return res.json({ ok: true, topMonth: topMonthSafe, topAll: topAllSafe, recent: recentSafe });
   } catch (err) {
@@ -6966,8 +6968,8 @@ app.post("/api/users/:id/xp", async (req, res) => {
   const eventKey = typeof event_id === "string" && event_id.trim()
     ? event_id.trim()
     : typeof eventId === "string" && eventId.trim()
-    ? eventId.trim()
-    : `client-sync:${targetId}:${Date.now()}`;
+      ? eventId.trim()
+      : `client-sync:${targetId}:${Date.now()}`;
   const reasonText = typeof reason === "string" && reason.trim() ? reason.trim() : "client-sync";
 
   try {
@@ -7112,7 +7114,7 @@ app.post("/api/history/:id/redownload", async (req, res) => {
       try {
         await fsp.access(filePath);
         return res.json({ ok: true, downloadUrl: entry.downloadUrl, cached: true });
-      } catch {}
+      } catch { }
     }
   }
   if (entry.payload && typeof entry.payload === "object") {
@@ -7279,12 +7281,12 @@ app.get("/api/trending-now", async (req, res) => {
             const info = await fetchVideoInfo({ keyword: `${row.query} audio`, preferLang: "id" });
             row.youtube = info
               ? {
-                  id: info.id || "",
-                  title: info.title || row.title,
-                  url: info.webpageUrl || (info.id ? `https://www.youtube.com/watch?v=${info.id}` : ""),
-                  thumbnail: info.thumbnail || info.cover || "",
-                  channel: info.uploader || info.channel || info.artist || "",
-                }
+                id: info.id || "",
+                title: info.title || row.title,
+                url: info.webpageUrl || (info.id ? `https://www.youtube.com/watch?v=${info.id}` : ""),
+                thumbnail: info.thumbnail || info.cover || "",
+                channel: info.uploader || info.channel || info.artist || "",
+              }
               : null;
           } catch {
             row.youtube = null;
@@ -7844,17 +7846,17 @@ app.post("/api/convert-playlist", async (req, res) => {
         });
       });
     } finally {
-      try { await fsp.rm(tempDir, { recursive: true, force: true }); } catch {}
+      try { await fsp.rm(tempDir, { recursive: true, force: true }); } catch { }
     }
 
     let zipSize = 0;
     try {
       const stat = await fsp.stat(zipPath);
       zipSize = Number(stat.size) || 0;
-    } catch {}
+    } catch { }
 
     if (ZIP_SIZE_LIMIT_BYTES && zipSize > ZIP_SIZE_LIMIT_BYTES) {
-      try { await fsp.unlink(zipPath); } catch {}
+      try { await fsp.unlink(zipPath); } catch { }
       return res.status(400).json({ error: `ZIP melebihi batas ${Math.round(ZIP_SIZE_LIMIT_BYTES / (1024 * 1024))} MB` });
     }
 
@@ -7984,32 +7986,50 @@ app.get("/admin/download-cookies", async (req, res) => {
   }
 });
 
-app.get("/api/turn-credentials", (req, res) => {
-  // Providing fallback public TURN/STUN servers to clients.
-  // In production, you can replace this with paid TURN services (e.g. Twilio, Metered) dynamically.
-  const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    }
-  ];
-  return res.json({ iceServers });
+});
+
+// User's explicitly requested dynamic TURN endpoint
+app.get("/api/turn", async (req, res) => {
+  try {
+    const response = await axios.get(
+      "https://ytconv.metered.live/api/v1/turn/credentials?apiKey=Ub1KyjyR4c4XSV_xjSMGszkeKY6xhbpRfKkhxSqAoK5wPmNG"
+    );
+    res.json(response.data);
+  } catch (err) {
+    console.error("TURN credentials fetch failed:", err?.message);
+    res.status(500).json({ error: "Failed to fetch ICE servers." });
+  }
+});
+
+app.get("/api/turn-credentials", async (req, res) => {
+  // Providing dynamic fallback public TURN/STUN servers to clients.
+  try {
+    const response = await axios.get(
+      "https://ytconv.metered.live/api/v1/turn/credentials?apiKey=Ub1KyjyR4c4XSV_xjSMGszkeKY6xhbpRfKkhxSqAoK5wPmNG"
+    );
+
+    // metered returns an array of objects or an object. Let's ensure standard format.
+    const items = Array.isArray(response.data) ? response.data : [response.data];
+    let iceServers = [];
+
+    items.forEach(item => {
+      // some APIs return nested iceServers, some return the array flat.
+      if (item.iceServers) iceServers = iceServers.concat(item.iceServers);
+      else if (item.urls) iceServers.push(item);
+    });
+
+    // If parsing fails or API returns something unexpected, fallback.
+    if (!iceServers.length) iceServers = response.data;
+
+    return res.json({ iceServers });
+  } catch (err) {
+    console.warn("Fallback to static ICE due to Metered failure", err?.message);
+    const iceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ];
+    return res.json({ iceServers });
+  }
 });
 
 app.get("/internal/worker/cookies", async (req, res) => {
@@ -8068,7 +8088,7 @@ io.on("connection", (socket) => {
     if (prev?.room && prev.room !== room) {
       try {
         socket.leave(`forum:${prev.room}`);
-      } catch {}
+      } catch { }
       const prevRoomMap = getOrCreateRoomMap(prev.room);
       prevRoomMap.delete(prev.userId);
       broadcastRoomUsers(prev.room);
@@ -8086,7 +8106,7 @@ io.on("connection", (socket) => {
     if (!prev) return;
     try {
       socket.leave(`forum:${prev.room}`);
-    } catch {}
+    } catch { }
     const map = getOrCreateRoomMap(prev.room);
     map.delete(prev.userId);
     socketState.delete(socket.id);

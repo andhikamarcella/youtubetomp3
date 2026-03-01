@@ -26471,38 +26471,56 @@
 
           const getIceServers = async () => {
             const age = Date.now() - cachedIceServersAt;
+            // Cache the TURN credentials for 5 minutes so we don't spam the API key limits
             if (cachedIceServers && age < 5 * 60 * 1000) return cachedIceServers;
-            const userId = currentUser?.uid ? encodeURIComponent(currentUser.uid) : '';
+
             try {
-              const res = await fetch(`/api/turn-credentials${userId ? `?userId=${userId}` : ''}`, { cache: 'no-store' });
+              // Priority 1: User's requested API endpoint
+              const res = await fetch("/api/turn", { cache: 'no-store' });
+              const ice = await res.json().catch(() => null);
+
+              if (res.ok && ice) {
+                // Determine format
+                let parsedIceServers = [];
+                if (Array.isArray(ice)) {
+                  ice.forEach(item => {
+                    if (item.iceServers) parsedIceServers = parsedIceServers.concat(item.iceServers);
+                    else if (item.urls) parsedIceServers.push(item);
+                  });
+                } else if (ice.iceServers) {
+                  parsedIceServers = ice.iceServers;
+                } else if (ice.urls) {
+                  parsedIceServers = [ice];
+                }
+
+                if (!parsedIceServers.length && Array.isArray(ice)) parsedIceServers = ice;
+
+                if (parsedIceServers && parsedIceServers.length > 0) {
+                  cachedIceServers = parsedIceServers;
+                  cachedIceServersAt = Date.now();
+                  console.log("[WebRTC] Successfully fetched dynamic TURN servers from /api/turn", cachedIceServers);
+                  return cachedIceServers;
+                }
+              }
+            } catch (err) {
+              console.error('[WebRTC] Failed to fetch /api/turn', err);
+            }
+
+            // Fallback to /api/turn-credentials if /api/turn fails or hasn't deployed fully
+            try {
+              const res = await fetch("/api/turn-credentials", { cache: 'no-store' });
               const payload = await res.json().catch(() => null);
               if (res.ok && payload && Array.isArray(payload.iceServers) && payload.iceServers.length) {
                 cachedIceServers = payload.iceServers;
                 cachedIceServersAt = Date.now();
                 return cachedIceServers;
               }
-            } catch (e) { console.error('Failed to fetch TURN credentials', e); }
+            } catch (e) { console.error('Failed to fetch fallback TURN credentials', e); }
+
+            // Utter fallback array if both fail
             cachedIceServers = [
               { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-              { urls: 'stun:stun2.l.google.com:19302' },
-              { urls: 'stun:stun3.l.google.com:19302' },
-              { urls: 'stun:stun4.l.google.com:19302' },
-              {
-                urls: 'turn:openrelay.metered.ca:80',
-                username: 'openrelayproject',
-                credential: 'openrelayproject',
-              },
-              {
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelayproject',
-                credential: 'openrelayproject',
-              },
-              {
-                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelayproject',
-                credential: 'openrelayproject',
-              }
+              { urls: 'stun:stun1.l.google.com:19302' }
             ];
             cachedIceServersAt = Date.now();
             return cachedIceServers;
