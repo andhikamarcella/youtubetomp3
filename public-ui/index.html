@@ -26431,10 +26431,16 @@
           let activeForumRoom = localStorage.getItem(forumRoomKeyStorage) || 'umum';
 
           const forumCallBtn = document.getElementById('forumCallBtn');
-          const forumCallMini = document.getElementById('forumCallMini');
-          const forumCallTimer = document.getElementById('forumCallTimer');
-          const forumMicBtn = document.getElementById('forumMicBtn');
-          const forumEndCallBtn = document.getElementById('forumEndCallBtn');
+          const waCallOverlay = document.getElementById('waCallOverlay');
+          const waCallName = document.getElementById('waCallName');
+          const waCallStatus = document.getElementById('waCallStatus');
+          const waSpeakerBtn = document.getElementById('waSpeakerBtn');
+          const waMicBtn = document.getElementById('waMicBtn');
+          const waMicIcon = document.getElementById('waMicIcon');
+          const waEndCallBtn = document.getElementById('waEndCallBtn');
+          const ringtoneConnecting = document.getElementById('ringtoneConnecting');
+          const ringtoneIncoming = document.getElementById('ringtoneIncoming');
+          let isSpeakerOn = false;
           const forumRemoteAudio = document.getElementById('forumRemoteAudio');
           const forumCallPickerModalEl = document.getElementById('forumCallPickerModal');
           const forumCallPickerModal = forumCallPickerModalEl ? new bootstrap.Modal(forumCallPickerModalEl) : null;
@@ -26464,6 +26470,7 @@
             timer: 0,
             pendingOffer: null,
             iceQueue: [],
+            isOutgoing: false,
           };
 
           let cachedIceServers = null;
@@ -26534,22 +26541,33 @@
           };
 
           const setCallUi = () => {
-            if (!forumCallMini || !forumCallTimer || !forumMicBtn || !forumEndCallBtn) return;
+            if (!waCallOverlay) return;
             if (callState.status === 'connected') {
-              forumCallMini.classList.remove('d-none');
-              forumCallMini.classList.add('d-flex');
-              forumCallTimer.textContent = formatCallDuration(Date.now() - callState.startedAt);
-              const icon = forumMicBtn.querySelector('i');
-              if (icon) icon.className = callState.micEnabled ? 'bi bi-mic' : 'bi bi-mic-mute';
+              waCallOverlay.classList.remove('d-none');
+              waCallOverlay.classList.add('d-flex');
+              if (waCallName) waCallName.textContent = callState.peerName || 'Warga';
+              if (waCallStatus) waCallStatus.textContent = formatCallDuration(Date.now() - callState.startedAt);
+              if (ringtoneConnecting) ringtoneConnecting.pause();
+              if (ringtoneIncoming) ringtoneIncoming.pause();
+              if (waMicIcon) waMicIcon.className = callState.micEnabled ? 'bi bi-mic-fill fs-3' : 'bi bi-mic-mute-fill fs-3 text-danger';
             } else if (callState.status === 'calling') {
-              forumCallMini.classList.remove('d-none');
-              forumCallMini.classList.add('d-flex');
-              forumCallTimer.textContent = 'Calling...';
-              const icon = forumMicBtn.querySelector('i');
-              if (icon) icon.className = callState.micEnabled ? 'bi bi-mic' : 'bi bi-mic-mute';
+              waCallOverlay.classList.remove('d-none');
+              waCallOverlay.classList.add('d-flex');
+              if (waCallName) waCallName.textContent = callState.peerName || 'Warga';
+              if (waCallStatus) waCallStatus.textContent = 'Calling...';
+              if (ringtoneConnecting && ringtoneConnecting.paused && callState.isOutgoing) ringtoneConnecting.play().catch(() => { });
+              if (waMicIcon) waMicIcon.className = callState.micEnabled ? 'bi bi-mic-fill fs-3' : 'bi bi-mic-mute-fill fs-3 text-danger';
             } else {
-              forumCallMini.classList.add('d-none');
-              forumCallMini.classList.remove('d-flex');
+              waCallOverlay.classList.add('d-none');
+              waCallOverlay.classList.remove('d-flex');
+              if (ringtoneConnecting) {
+                ringtoneConnecting.pause();
+                ringtoneConnecting.currentTime = 0;
+              }
+              if (ringtoneIncoming) {
+                ringtoneIncoming.pause();
+                ringtoneIncoming.currentTime = 0;
+              }
             }
           };
 
@@ -26690,6 +26708,7 @@
               callState.peerName = String(payload.fromName || 'Warga');
               if (forumIncomingCaller) forumIncomingCaller.textContent = callState.peerName;
               forumIncomingCallModal?.show?.();
+              if (ringtoneIncoming && ringtoneIncoming.paused) ringtoneIncoming.play().catch(() => { });
             });
             forumSocket.on('call:answer', async (payload) => {
               if (!payload?.callId || payload.callId !== callState.callId) return;
@@ -26773,6 +26792,7 @@
             callState.callId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
             callState.peerUserId = toUserId;
             callState.peerName = toName;
+            callState.isOutgoing = true;
             setCallUi();
             try {
               const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -26830,6 +26850,7 @@
             if (!socket) return;
             callState.status = 'calling';
             callState.room = activeForumRoom;
+            callState.isOutgoing = false;
             setCallUi();
             try {
               const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -26926,8 +26947,8 @@
             });
           }
 
-          if (forumMicBtn) {
-            forumMicBtn.addEventListener('click', () => {
+          if (waMicBtn) {
+            waMicBtn.addEventListener('click', () => {
               if (!callState.localStream) return;
               const tracks = callState.localStream.getAudioTracks();
               if (!tracks.length) return;
@@ -26939,8 +26960,22 @@
             });
           }
 
-          if (forumEndCallBtn) {
-            forumEndCallBtn.addEventListener('click', () => {
+          if (waSpeakerBtn) {
+            waSpeakerBtn.addEventListener('click', async () => {
+              isSpeakerOn = !isSpeakerOn;
+              waSpeakerBtn.style.background = isSpeakerOn ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)';
+              if (forumRemoteAudio && typeof forumRemoteAudio.setSinkId === 'function') {
+                try {
+                  await forumRemoteAudio.setSinkId(isSpeakerOn ? 'speaker' : '');
+                } catch (e) {
+                  console.warn("setSinkId fail", e);
+                }
+              }
+            });
+          }
+
+          if (waEndCallBtn) {
+            waEndCallBtn.addEventListener('click', () => {
               endCurrentCall();
             });
           }
@@ -26954,6 +26989,10 @@
 
           if (forumDeclineCallBtn) {
             forumDeclineCallBtn.addEventListener('click', () => {
+              if (ringtoneIncoming) {
+                ringtoneIncoming.pause();
+                ringtoneIncoming.currentTime = 0;
+              }
               forumIncomingCallModal?.hide?.();
               declineIncomingCall();
             });
@@ -29164,6 +29203,59 @@
     </script>
     <script src="./forum-widget.js" defer></script>
     <script src="./music-widget.js" defer></script>
+
+    <!-- WhatsApp Style WebRTC Call Overlay -->
+    <div id="waCallOverlay"
+      class="d-none position-fixed top-0 start-0 w-100 h-100 flex-column align-items-center justify-content-center text-white"
+      style="z-index: 9999; transition: opacity 0.3s; background: linear-gradient(135deg, #1a2a3a 0%, #0d161d 100%);">
+
+      <!-- Top Section -->
+      <div class="position-absolute top-0 w-100 p-4 text-center mt-3">
+        <h5 class="fw-normal mb-1 opacity-75"><i class="bi bi-shield-lock-fill text-success me-1"></i> End-to-end
+          encrypted</h5>
+      </div>
+
+      <!-- Avatar & Info -->
+      <div class="text-center mb-5" style="margin-top: -80px;">
+        <div
+          class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto mb-4 shadow-lg position-relative"
+          style="width: 140px; height: 140px; border: 4px solid rgba(255,255,255,0.1);">
+          <i class="bi bi-person-fill text-white opacity-50" style="font-size: 6rem;"></i>
+        </div>
+        <h2 id="waCallName" class="display-5 fw-semibold mb-2">Warga</h2>
+        <p id="waCallStatus" class="fs-5 text-white-50 mb-0">Calling...</p>
+      </div>
+
+      <!-- Actions -->
+      <div
+        class="position-absolute bottom-0 w-100 pb-5 pt-3 px-4 d-flex justify-content-center gap-4 align-items-center"
+        style="background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);">
+        <button id="waSpeakerBtn"
+          class="btn btn-dark text-white rounded-circle p-0 d-flex align-items-center justify-content-center border-0 shadow position-relative transition-all"
+          style="width: 65px; height: 65px; background: rgba(255,255,255,0.15) !important;" title="Speaker">
+          <i class="bi bi-volume-up-fill fs-3"></i>
+        </button>
+        <button id="waMicBtn"
+          class="btn btn-dark text-white rounded-circle p-0 d-flex align-items-center justify-content-center border-0 shadow position-relative transition-all"
+          style="width: 65px; height: 65px; background: rgba(255,255,255,0.15) !important;" title="Mute">
+          <i class="bi bi-mic-fill fs-3" id="waMicIcon"></i>
+        </button>
+        <button id="waEndCallBtn"
+          class="btn btn-danger text-white rounded-circle p-0 d-flex align-items-center justify-content-center shadow-lg transition-all"
+          style="width: 75px; height: 75px; margin-left: 10px;" title="End Call">
+          <i class="bi bi-telephone-x-fill fs-1"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Ringtones -->
+    <audio id="ringtoneConnecting" loop>
+      <source src="https://actions.google.com/sounds/v1/telephones/phone_ringing.ogg" type="audio/ogg">
+    </audio>
+    <audio id="ringtoneIncoming" loop>
+      <source src="https://actions.google.com/sounds/v1/telephones/telephone_ring_01.ogg" type="audio/ogg">
+    </audio>
+
 </body>
 
 </html>
