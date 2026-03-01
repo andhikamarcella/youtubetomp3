@@ -7984,6 +7984,34 @@ app.get("/admin/download-cookies", async (req, res) => {
   }
 });
 
+app.get("/api/turn-credentials", (req, res) => {
+  // Providing fallback public TURN/STUN servers to clients.
+  // In production, you can replace this with paid TURN services (e.g. Twilio, Metered) dynamically.
+  const iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    }
+  ];
+  return res.json({ iceServers });
+});
+
 app.get("/internal/worker/cookies", async (req, res) => {
   try {
     const workerSecret = process.env.WORKER_SHARED_SECRET;
