@@ -377,10 +377,10 @@ const fetchSpotifyTrendingTracks = async ({ limit = 6, playlistId } = {}) => {
     parseSpotifyPlaylistId(process.env.TRENDING_SPOTIFY_PLAYLIST_ID);
   const resolvedPlaylistId = parseSpotifyPlaylistId(playlistId) || envPlaylist || fallbackPlaylistId;
   const safeLimit = Math.max(1, Math.min(12, Number(limit) || 6));
-  const url = new URL(`https://api.spotify.com/v1/playlists/${resolvedPlaylistId}/tracks`);
-  url.searchParams.set("market", "ID");
-  url.searchParams.set("limit", String(Math.max(10, safeLimit)));
-  const payload = await spotifyApiGet(url.toString());
+
+  // Use the exact format requested by the user, stripping out any potentially failing query params like market
+  const url = `https://api.spotify.com/v1/playlists/${resolvedPlaylistId}/tracks?limit=${safeLimit}`;
+  const payload = await spotifyApiGet(url);
   const rows = Array.isArray(payload?.items) ? payload.items : [];
   const items = [];
   for (const row of rows) {
