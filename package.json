@@ -13,7 +13,7 @@
     "cors": "^2.8.5",
     "express": "^4.22.1",
     "firebase-admin": "^13.5.0",
-    "nanoid": "^5.1.5",
+    "nanoid": "^5.1.7",
     "nodemailer": "^7.0.11",
     "socket.io": "^4.8.1"
   },
