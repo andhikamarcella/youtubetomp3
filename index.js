@@ -8236,7 +8236,22 @@ io.on("connection", (socket) => {
   });
 });
 
-const server = httpServer.listen(PORT, HOST, () => console.log(`Server jalan di ${HOST}:${PORT}`));
+const server = httpServer.listen(PORT, HOST, () => {
+  console.log(`Server jalan di ${HOST}:${PORT}`);
+  
+  // 💥 Auto Maintenance: Keep yt-dlp up-to-date
+  const autoUpdate = () => {
+    console.log("[Auto-Maintenance] Checking for yt-dlp updates...");
+    const updateProc = spawn("yt-dlp", ["-U"]);
+    updateProc.on('close', (code) => {
+        console.log(`[Auto-Maintenance] yt-dlp update finished with code ${code}`);
+    });
+  };
+  
+  // Run once immediately on startup, then every 24 hours
+  setTimeout(autoUpdate, 5000); 
+  setInterval(autoUpdate, 24 * 60 * 60 * 1000);
+});
 
 export {
   app,

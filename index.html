@@ -871,6 +871,96 @@
             </div>
           </div>
 
+          <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-patch-question me-2 text-primary fs-5"></i>
+                <h5 class="mb-0">FAQ & Bantuan (Pasti Solved!)</h5>
+              </div>
+              <div class="accordion accordion-flush" id="faqAccordion">
+                
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                      Kenapa tampil tulisan "Age-restricted" / Gagal?
+                    </button>
+                  </h2>
+                  <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body small text-secondary py-2">
+                      YouTube memblokir video yang butuh login (seperti konten dewasa/kekerasan). **Solusi:** Admin server harus upload file <code>cookies.txt</code> agar server bisa bypass blokiran.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                      Kenapa "Konversi" terasa sangat cepat?
+                    </button>
+                  </h2>
+                  <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body small text-secondary py-2">
+                       Sistem kami memiliki **Smart Caching Layer**. Jika video yang sama sudah pernah didownload dengan setelan yang sama dalam 24 jam terakhir, server langsung melempar file yang sudah ada (Waktu tunggu = 0 detik!).
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                      Lagu yang saya download gagal diputar di iPhone/Apple Music!
+                    </button>
+                  </h2>
+                  <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body small text-secondary py-2">
+                      Secara default MP3 mendukung semua, namun Apple lebih bersahabat dengan format **M4A (Spotify-like HQ)**. Pilih format tersebut di Menu <em>Format Siap Pakai</em> sebelum klik Convert.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                      Fitur baru tidak muncul di HP / Laptop saya?
+                    </button>
+                  </h2>
+                  <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body small text-secondary py-2">
+                      Browser Anda mungkin menyimpan *cache* versi website yang lama. Coba lakukan **Hard Refresh** (CTRL + F5) atau buka lewat mode Incognito/Private. Jika server baru diupdate, jangan lupa minta Admin restart node servernya.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                      Cara simpan lagu jadi playlist favorit?
+                    </button>
+                  </h2>
+                  <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body small text-secondary py-2">
+                      Pergi ke kolom **Riwayat** di sebelah kanan. Klik icon **Bintang (⭐)** pada baris lagu, dan file akan tersimpan permanen di Tab <em>Favorites</em>. Anda bahkan bisa langsung play dari Floating Mini Player!
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                      Bisa convert Playlist panjang sekaligus?
+                    </button>
+                  </h2>
+                  <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body small text-secondary py-2">
+                      Bisa! Hilangkan centang pada <strong>"Abaikan playlist"</strong>. Sistem akan antre dan convert otomatis. Batasan performa bergantung dari spesifikasi server hosting aplikasi ini.
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
           <div class="card shadow-sm">
             <div class="card-body p-4">
               <div class="d-flex align-items-center mb-2">
