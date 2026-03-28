@@ -631,7 +631,7 @@ const callGroqAPI = async (prompt, context = {}) => {
 
   const history = Array.isArray(context.history) ? context.history : [];
 
-  const systemPrompt = `Anda adalah **AI Audio Mentor & Coach** profesional di sistem **Dikalfe Project** (YouTube to MP3).
+  const systemPrompt = `Anda adalah **AI Audio Mentor & Coach + Customer Service Navigator** profesional di platform **YTConv** (YouTube to MP3).
 Tugas Anda adalah membimbing user, mendiagnosa masalah, dan menjelaskan konsep audio dengan adaptif.
 
 **1. Level Penjelasan (Adaptive Communication):**
@@ -657,6 +657,10 @@ Pahami fitur aktif saat ini:
 - **Nyambung**: Ingat konteks chat sebelumnya. Jangan lupa apa yang baru dibahas.
 - **Konsisten**: Jangan berubah pendapat dalam satu sesi kecuali ada data baru.
 - **Humanis**: Sapa user, gunakan emoji yang relevan, jangan kaku.
+
+- Gunakan bahasa yang sama dengan user. Jika user memakai bahasa campuran/daerah, tetap tanggapi dengan sopan dan mudah dipahami.
+- Pahami pertanyaan dalam berbagai bahasa (Indonesia, Inggris, Melayu, Jawa informal, dll) lalu jawab dalam bahasa user.
+- Jika user terlihat bingung, tampilkan alur jelas dalam format langkah 1-2-3.
 
 **Format Output (JSON Only jika Action diperlukan):**
 Jika user ingin melakukan aksi (convert, setting), kembalikan JSON:
@@ -3681,12 +3685,12 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
       instructions: `Kamu adalah Customer Service AI dari YTConv (situs konverter YouTube terbaik di Indonesia). 
 Nama kamu: YTConv CS Bot.
 Sifat kamu: Ramah, profesional, super helpful, dan sangat paham platform YTConv.
-Bahasa: Sesuaikan dengan bahasa yang user gunakan (Indonesia atau Inggris).
+Bahasa: Sesuaikan dengan bahasa user (multibahasa: Indonesia, Inggris, Melayu, campuran slang sopan, dll).
 Alur bantu:
 1. Sapa dan identifikasi masalah user.
 2. Tanyakan detail jika perlu.
 3. Berikan solusi langkah demi langkah yang jelas.
-4. Jika tidak bisa diselesaikan, sarankan buat tiket dengan mengembalikan action: 'open_ticket'.
+4. Jika tidak bisa diselesaikan, sarankan buat tiket dengan mengembalikan action: 'open_ticket' dan isi params.context ringkasan masalah.
 5. Selalu profesional, JANGAN sebut 'Dikalfe Project'. Selalu sebut platformnya sebagai 'YTConv'.
 
 Features di YTConv:
@@ -3712,7 +3716,7 @@ Jika user sangat butuh bantuan lanjut atau masalah teknis kompleks:
 - Respons dengan menyarankan buat tiket
 - Return JSON: {"reply": "...", "action": "open_ticket", "params": {"context": "[ringkasan masalah user]"}}
 
-Kontak darurat: forumwargaytmp3@gmail.com`,
+Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, sebelah tombol Lapor WhatsApp).`,
       features: ["Convert", "Trim", "Metadata", "Queue", "History", "Settings"],
       timestamp: new Date().toISOString(),
       history: history,
@@ -8136,6 +8140,23 @@ const INDONESIAN_BADWORDS = [
   'kurang ajar','ngentot','coli','bacot','ngaco','bgst','bgs','g0blok'
 ];
 
+
+const SUPPORT_CONTACT_EMAIL = process.env.SUPPORT_CONTACT_EMAIL || "forumwargaytmp3@gmail.com";
+
+const sendSupportEmail = async ({ subject, lines = [], html = null, to = SUPPORT_CONTACT_EMAIL }) => {
+  const transport = getMailTransport();
+  if (!transport) return { sent: false, reason: "mail_transport_unavailable" };
+  const from = process.env.NOTIFY_FROM_EMAIL || process.env.NOTIFY_EMAIL_FROM || "no-reply@youtubetomp3.app";
+  const text = Array.isArray(lines) ? lines.filter(Boolean).join("\n") : String(lines || "");
+  try {
+    await transport.sendMail({ to, from, subject: String(subject || "YTConv Notification"), text, html: html || undefined });
+    return { sent: true };
+  } catch (err) {
+    console.warn("[support-email] gagal mengirim email", err);
+    return { sent: false, reason: err?.message || String(err) };
+  }
+};
+
 app.post('/api/contact', async (req, res) => {
   try {
     const { ticketId, name, email, category, message, proofs } = req.body || {};
@@ -8157,7 +8178,6 @@ app.post('/api/contact', async (req, res) => {
     // Log the ticket for admin
     console.log('[YTConv CS Ticket]', JSON.stringify(ticket));
 
-    // Mock email sending: print to console (real implementation would use nodemailer or SendGrid)
     const emailBody = [
       `=== YTConv Support Ticket ===`,
       `Ticket ID : ${tid}`,
@@ -8166,14 +8186,68 @@ app.post('/api/contact', async (req, res) => {
       `Message   : ${message}`,
       `Proofs    : ${ticket.proofCount} attachment(s)`,
       `Time      : ${ticket.submittedAt}`,
-      `To        : forumwargaytmp3@gmail.com`
+      `To        : ${SUPPORT_CONTACT_EMAIL}`
     ].join('\n');
     console.log('[YTConv CS Email]\n' + emailBody);
 
-    res.json({ ok: true, ticketId: tid, message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.' });
+    const subject = `[YTConv Ticket] ${tid} • ${ticket.category}`;
+    const emailResult = await sendSupportEmail({ subject, lines: [emailBody] });
+    if (!emailResult.sent) {
+      console.warn(`[YTConv CS Ticket] email belum terkirim untuk ${tid}: ${emailResult.reason || 'unknown reason'}`);
+    }
+
+    res.json({
+      ok: true,
+      ticketId: tid,
+      message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.',
+      emailStatus: emailResult.sent ? 'sent' : 'queued',
+    });
   } catch (e) {
     console.error('[/api/contact error]', e);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+
+
+app.post('/api/forum/moderation-report', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const reportId = 'MOD-' + Date.now().toString(36).toUpperCase().slice(-8);
+    const payload = {
+      reportId,
+      userId: String(body.userId || '').slice(0, 100),
+      name: String(body.name || 'Warga').slice(0, 80),
+      email: String(body.email || '').slice(0, 200),
+      text: String(body.text || '').slice(0, 2000),
+      violationCount: Number(body.violationCount || 0),
+      room: String(body.room || 'umum').slice(0, 50),
+      submittedAt: new Date().toISOString(),
+      ip: req.ip,
+    };
+
+    console.warn('[Forum AutoMod Report]', JSON.stringify(payload));
+
+    const lines = [
+      '=== Forum Auto Moderation Report ===',
+      `Report ID : ${payload.reportId}`,
+      `User      : ${payload.name} (${payload.userId || '-'})`,
+      `Email     : ${payload.email || '-'}`,
+      `Room      : ${payload.room}`,
+      `Count     : ${payload.violationCount}/5`,
+      `Message   : ${payload.text}`,
+      `Time      : ${payload.submittedAt}`,
+    ];
+
+    const emailResult = await sendSupportEmail({
+      subject: `[Forum AutoMod] ${payload.reportId} • ${payload.violationCount}/5`,
+      lines,
+    });
+
+    return res.json({ ok: true, reportId, emailStatus: emailResult.sent ? 'sent' : 'queued' });
+  } catch (e) {
+    console.error('[/api/forum/moderation-report error]', e);
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -8223,7 +8297,7 @@ io.on("connection", (socket) => {
     const rec = userViolations.get(userId) || { count: 0, banned: false };
     if (rec.banned) {
       socket.emit("forum:banned", {
-        message: "Kamu telah diblokir dari forum karena 5 pelanggaran bahasa. Silakan buat tiket appeal melalui YTConv CS Bot.",
+        message: "Kamu telah diblokir dari forum karena 5 pelanggaran bahasa. Silakan ajukan appeal via AI Navigator / tiket bantuan.",
         appealUrl: "#"
       });
       return;
@@ -8270,10 +8344,21 @@ io.on("connection", (socket) => {
     const rec = userViolations.get(from.userId);
     if (rec?.banned) {
       const appealId = 'APL-' + Date.now().toString(36).toUpperCase().slice(-8);
-      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${new Date().toISOString()}`);
+      const submittedAt = new Date().toISOString();
+      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${submittedAt}`);
+      const appealLines = [
+        '=== Forum Appeal Request ===',
+        `Appeal ID : ${appealId}`,
+        `User ID   : ${from.userId}`,
+        `Name      : ${from.name}`,
+        `Room      : ${from.room || 'umum'}`,
+        `Time      : ${submittedAt}`,
+        'SLA       : 2x24 jam',
+      ];
+      await sendSupportEmail({ subject: `[Forum Appeal] ${appealId}`, lines: appealLines });
       socket.emit("forum:appealSubmitted", {
         appealId,
-        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Email konfirmasi dari forumwargaytmp3@gmail.com akan dikirim segera.`
+        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
       });
     }
   });
