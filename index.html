@@ -1151,6 +1151,45 @@
       </div>
     </div>
 
+    <!-- ===== Forum Chat Modal ===== -->
+    <div class="modal fade" id="forumModal" tabindex="-1" aria-labelledby="forumModalLabel">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header" style="background: linear-gradient(135deg,#0d6efd,#6610f2);">
+            <span style="font-size:1.2rem;">💬</span>
+            <h5 class="modal-title ms-2 text-white" id="forumModalLabel">Forum Warga YTConv</h5>
+            <span class="badge bg-success ms-2" id="forumOnlineBadge">0 online</span>
+            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-0">
+            <!-- Moderation notice bar -->
+            <div id="forumModBar" class="alert alert-warning alert-dismissible m-2 py-2 small d-none">
+              <i class="bi bi-shield-exclamation me-1"></i><span id="forumModMsg"></span>
+              <button type="button" class="btn-close" onclick="document.getElementById('forumModBar').classList.add('d-none')"></button>
+            </div>
+            <div id="forumBanBar" class="alert alert-danger m-2 py-2 small d-none">
+              <i class="bi bi-slash-circle me-1"></i><span id="forumBanMsg"></span>
+              <button type="button" class="btn btn-sm btn-outline-danger ms-2" id="forumAppealBtn">Ajukan Appeal</button>
+            </div>
+            <!-- Messages container -->
+            <div id="forumMessages" style="height:350px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+          <div class="modal-footer flex-column gap-2 align-items-stretch">
+            <div class="d-flex gap-2 align-items-center">
+              <input type="text" id="forumNickname" class="form-control form-control-sm w-auto" placeholder="Nama kamu..." maxlength="30" style="min-width:120px;">
+              <span class="text-muted small">—</span>
+              <span id="forumRoomLabel" class="badge bg-secondary">Ruang: Umum</span>
+            </div>
+            <div class="d-flex gap-2">
+              <input type="text" id="forumInput" class="form-control" placeholder="Ketik pesan... (bahasa sopan ya!)" maxlength="500" id="forumInput">
+              <button class="btn btn-primary" id="forumSendBtn"><i class="bi bi-send"></i></button>
+            </div>
+            <div class="text-muted" style="font-size:0.7rem;"><i class="bi bi-shield-check text-success"></i> Pesan dipantau otomatis. Kata kasar langsung dihapus. 5x pelanggaran = banned.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== Ticket / Hubungi Kami Contact Modal ===== -->
     <div class="modal fade" id="ticketContactModal" tabindex="-1" aria-labelledby="ticketContactLabel">
       <div class="modal-dialog modal-lg">
