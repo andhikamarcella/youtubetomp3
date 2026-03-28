@@ -7186,7 +7186,33 @@ app.post("/api/convert", async (req, res) => {
       return res.status(status).json({ error: message });
     }
     delete payload.captchaToken;
-    const result = await convertSingle(payload);
+    
+    // 🛑 Content Restriction Layer
+    const blockList = ["slot", "gacor", "judi", "porn", "bokep", "xxx"];
+    const inputStr = String(payload.url || payload.keyword || "").toLowerCase();
+    if (blockList.some(keyword => inputStr.includes(keyword))) {
+      return res.status(403).json({ error: "Video/URL ini diblokir (Content Restriction Layer). Coba yang lain." });
+    }
+
+    // 🥇 Smart Cache Layer
+    let result = null;
+    const cacheKey = `smart_cache:${payload.url}:${payload.format}:${payload.abr}`;
+    const cachedResult = CacheStore.get(cacheKey);
+    
+    if (cachedResult) {
+      console.log(`[Smart Cache] Instant hit for ${cacheKey}`);
+      result = cachedResult;
+      result.fromCache = true;
+    } else {
+      result = await convertSingle(payload);
+      if (result && result.downloadUrl) {
+         CacheStore.set(cacheKey, result, 24 * 60 * 60 * 1000); // Cache 24 jam
+      }
+    }
+    
+    // 🏷️ Watermark Invisible (Tracking)
+    result.trackingId = "WT-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1000);
+
     if (user) {
       const historyPayload = buildHistoryRecordPayload(payload, result);
       const xpGain = computeXpForConversion(payload, result);
