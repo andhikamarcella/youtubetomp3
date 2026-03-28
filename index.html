@@ -2504,6 +2504,21 @@
            }
         }
 
+        // Multi Language Auto Detect
+        const lang = navigator.language || navigator.userLanguage || "id";
+        if (!lang.startsWith('id')) {
+            const convertBtnText = document.querySelector('#convertBtn');
+            if(convertBtnText) convertBtnText.innerHTML = '<i class="bi bi-magic"></i> Convert Now';
+            const autoSrv = document.querySelector('#serverSel option[value="auto"]');
+            if(autoSrv) autoSrv.innerHTML = 'Auto (Fastest) ⚡';
+        }
+
+        // Developer API Footer
+        const devFooter = document.createElement('div');
+        devFooter.className = 'text-center mt-5 pb-3 text-muted small';
+        devFooter.innerHTML = `&copy; ${new Date().getFullYear()} YT2MP3. <a href="#" onclick="alert('Public Developers API:\\n\\nPOST /api/convert\\nBody: { url: \\'https://youtube...\\' }\\nResponse: { downloadUrl, trackingId, format, fileName }'); return false;" class="text-secondary fw-semibold text-decoration-none"><i class="bi bi-code-slash"></i> Developers API</a>`;
+        document.body.appendChild(devFooter);
+
         // Welcome back & Credits
         const lastVisit = localStorage.getItem('lastVisitYtmp3');
         if (lastVisit) {

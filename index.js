@@ -4145,6 +4145,7 @@ const buildAudioFilters = ({
   soundEffect = "none",
   sampleRate,
   sourceSampleRate,
+  crossfade = false
 } = {}) => {
   const filters = [];
   const baseSampleRate =
@@ -4182,6 +4183,10 @@ const buildAudioFilters = ({
     } else if (soundEffect === "lofi") {
       filters.push("aresample=12000", "acrusher=bits=8:mode=log:mix=0.6");
     }
+  }
+  if (crossfade) {
+      // Fake a gapless/crossfade smoothing by fading in to remove pop sounds on playback
+      filters.push("afade=t=in:ss=0:d=1.5");
   }
   if (normalize) filters.push("loudnorm=I=-14:TP=-1.5:LRA=11");
   return filters;
@@ -6259,6 +6264,7 @@ const convertSingle = async (payload = {}) => {
       soundEffect: soundEffectMode,
       sampleRate: filterSampleRate,
       sourceSampleRate: detectedSampleRate,
+      crossfade: !!payload.crossfade
     });
 
     const id3Clean = Object.entries(id3 || {}).reduce((acc, [k, v]) => {
