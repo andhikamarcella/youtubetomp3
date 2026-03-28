@@ -3672,9 +3672,47 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
   }
 
   try {
-    // Use Groq API for intelligent responses
+    // Use AI for intelligent CS responses
     const aiResponse = await callGroqAPI(raw, {
-      website: "YouTube to MP3 Converter",
+      website: "YTConv",
+      siteUrl: "https://ytconv.up.railway.app",
+      siteName: "YTConv - YouTube to MP3/M4A Converter",
+      role: "customer_service",
+      instructions: `Kamu adalah Customer Service AI dari YTConv (situs konverter YouTube terbaik di Indonesia). 
+Nama kamu: YTConv CS Bot.
+Sifat kamu: Ramah, profesional, super helpful, dan sangat paham platform YTConv.
+Bahasa: Sesuaikan dengan bahasa yang user gunakan (Indonesia atau Inggris).
+Alur bantu:
+1. Sapa dan identifikasi masalah user.
+2. Tanyakan detail jika perlu.
+3. Berikan solusi langkah demi langkah yang jelas.
+4. Jika tidak bisa diselesaikan, sarankan buat tiket dengan mengembalikan action: 'open_ticket'.
+5. Selalu profesional, JANGAN sebut 'Dikalfe Project'. Selalu sebut platformnya sebagai 'YTConv'.
+
+Features di YTConv:
+- Convert YouTube → MP3, M4A, FLAC, WAV, OGG, OPUS
+- Trim audio (potong bagian tertentu)
+- Edit metadata/ID3 tags (judul, artis, album)
+- Normalisasi volume
+- Antrian multi-link
+- Riwayat download
+- Favorites/Playlist
+- Floating Mini Player
+- Voice Command
+- Format: Spotify-like (M4A), Ringtone (MP3 trimmed), DJ Loop
+- Smart Cache (download sama tidak perlu proses ulang)
+
+Kendala umum:
+- Error 'age-restricted': perlu upload cookies.txt valid
+- Video tidak bisa: coba URL berbeda atau hubungi CS
+- Format tidak bisa dimainkan di iPhone: gunakan M4A
+- Lambat: pilih format M4A, centang 'Abaikan playlist'
+
+Jika user sangat butuh bantuan lanjut atau masalah teknis kompleks:
+- Respons dengan menyarankan buat tiket
+- Return JSON: {"reply": "...", "action": "open_ticket", "params": {"context": "[ringkasan masalah user]"}}
+
+Kontak darurat: forumwargaytmp3@gmail.com`,
       features: ["Convert", "Trim", "Metadata", "Queue", "History", "Settings"],
       timestamp: new Date().toISOString(),
       history: history,
@@ -8088,7 +8126,57 @@ app.get("/internal/worker/cookies", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+// ===== /api/contact: Ticket Submission Endpoint =====
+const userViolations = new Map(); // userId -> { count, banned, bannedAt }
+
+const INDONESIAN_BADWORDS = [
+  'anjing','bangsat','brengsek','goblok','bodoh','tolol','idiot','bajingan',
+  'sialan','kampret','keparat','babi','kontol','memek','tai','monyet','asu',
+  'cuk','jancok','jancuk','dancok','setan','laknat','nggak tau diri','mampus',
+  'kurang ajar','ngentot','coli','bacot','ngaco','bgst','bgs','g0blok'
+];
+
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { ticketId, name, email, category, message, proofs } = req.body || {};
+    if (!name || !email || !message) {
+      return res.status(400).json({ ok: false, error: 'Lengkapi data tiket' });
+    }
+    const tid = ticketId || ('TKT-' + Date.now().toString(36).toUpperCase().slice(-8));
+    const ticket = {
+      ticketId: tid,
+      name: String(name).slice(0, 100),
+      email: String(email).slice(0, 200),
+      category: String(category || 'lainnya').slice(0, 50),
+      message: String(message).slice(0, 2000),
+      proofCount: Array.isArray(proofs) ? proofs.length : 0,
+      submittedAt: new Date().toISOString(),
+      ip: req.ip
+    };
+
+    // Log the ticket for admin
+    console.log('[YTConv CS Ticket]', JSON.stringify(ticket));
+
+    // Mock email sending: print to console (real implementation would use nodemailer or SendGrid)
+    const emailBody = [
+      `=== YTConv Support Ticket ===`,
+      `Ticket ID : ${tid}`,
+      `From      : ${name} <${email}>`,
+      `Category  : ${category}`,
+      `Message   : ${message}`,
+      `Proofs    : ${ticket.proofCount} attachment(s)`,
+      `Time      : ${ticket.submittedAt}`,
+      `To        : forumwargaytmp3@gmail.com`
+    ].join('\n');
+    console.log('[YTConv CS Email]\n' + emailBody);
+
+    res.json({ ok: true, ticketId: tid, message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.' });
+  } catch (e) {
+    console.error('[/api/contact error]', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 const HOST = process.env.HOST || "0.0.0.0";
 
 const httpServer = createServer(app);
@@ -8117,6 +8205,78 @@ const broadcastRoomUsers = (room) => {
 };
 
 io.on("connection", (socket) => {
+  socket.on("forum:chatMessage", async (payload) => {
+    const from = socketState.get(socket.id);
+    if (!from) return;
+    const room = String(from.room || "umum");
+    const text = String(payload?.text || "").trim();
+    const userId = from.userId;
+
+    if (!text) return;
+
+    // Auto Moderation: Check bad words
+    const lower = text.toLowerCase();
+    const isBad = INDONESIAN_BADWORDS.some(w => lower.includes(w));
+
+    // Check if user already banned
+    const rec = userViolations.get(userId) || { count: 0, banned: false };
+    if (rec.banned) {
+      socket.emit("forum:banned", {
+        message: "Kamu telah diblokir dari forum karena 5 pelanggaran bahasa. Silakan buat tiket appeal melalui YTConv CS Bot.",
+        appealUrl: "#"
+      });
+      return;
+    }
+
+    if (isBad) {
+      rec.count += 1;
+      const remaining = 5 - rec.count;
+      if (rec.count >= 5) {
+        rec.banned = true;
+        rec.bannedAt = Date.now();
+        userViolations.set(userId, rec);
+        // Auto-report to admin log
+        console.warn(`[Forum AutoMod] USER BANNED: userId=${userId} name=${from.name} after 5 violations.`);
+        socket.emit("forum:modAction", {
+          type: "ban",
+          message: "🚫 Kamu telah diblokir permanen dari forum karena 5x pelanggaran bahasa kasar. Untuk appeal, hubungi YTConv CS Bot dan ketik 'saya mau appeal'."
+        });
+        // Broadcast moderation event to room (anonymous)
+        io.to(`forum:${room}`).emit("forum:modNotice", { message: "Seorang pengguna telah diblokir oleh sistem moderasi otomatis." });
+      } else {
+        userViolations.set(userId, rec);
+        socket.emit("forum:modAction", {
+          type: "warning",
+          count: rec.count,
+          message: `⚠️ Peringatan ${rec.count}/5: Pesan kamu mengandung kata tidak sopan dan telah dihapus. (${remaining} peringatan lagi sebelum diblokir)`
+        });
+      }
+      return; // don't broadcast
+    }
+
+    // Broadcast clean message to room
+    io.to(`forum:${room}`).emit("forum:chatMessage", {
+      userId,
+      name: from.name,
+      text,
+      at: Date.now()
+    });
+  });
+
+  socket.on("forum:appeal", async (payload) => {
+    const from = socketState.get(socket.id);
+    if (!from) return;
+    const rec = userViolations.get(from.userId);
+    if (rec?.banned) {
+      const appealId = 'APL-' + Date.now().toString(36).toUpperCase().slice(-8);
+      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${new Date().toISOString()}`);
+      socket.emit("forum:appealSubmitted", {
+        appealId,
+        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Email konfirmasi dari forumwargaytmp3@gmail.com akan dikirim segera.`
+      });
+    }
+  });
+
   socket.on("forum:join", (payload) => {
     const room = String(payload?.room || "umum");
     const userId = String(payload?.userId || socket.id);

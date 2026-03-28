@@ -1108,12 +1108,13 @@
     <footer class="app-footer">
       <div class="container">
         <p class="mb-2">Made with <i class="bi bi-heart-fill text-danger mx-1"></i> and <i
-            class="bi bi-code-slash text-primary mx-1"></i></p>
+            class="bi bi-code-slash text-primary mx-1"></i> for <strong>YTConv</strong></p>
         <div class="mb-3">
           <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a> &bull;
-          <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a>
+          <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a> &bull;
+          <a href="#" data-bs-toggle="modal" data-bs-target="#ticketContactModal"><i class="bi bi-envelope me-1"></i>Email Bantuan</a>
         </div>
-        <p class="text-muted small">&copy; 2024 YouTube Converter. All rights reserved.</p>
+        <p class="text-muted small">&copy; 2026 YTConv. All rights reserved. &mdash; <a class="text-muted" href="mailto:forumwargaytmp3@gmail.com">forumwargaytmp3@gmail.com</a></p>
       </div>
     </footer>
 
@@ -1150,16 +1151,74 @@
       </div>
     </div>
 
-    <!-- AI Navigator -->
+    <!-- ===== Ticket / Hubungi Kami Contact Modal ===== -->
+    <div class="modal fade" id="ticketContactModal" tabindex="-1" aria-labelledby="ticketContactLabel">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <span style="font-size:1.2rem;">🎫</span>
+            <h5 class="modal-title ms-2" id="ticketContactLabel">Buat Tiket Bantuan — YTConv CS</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info d-flex align-items-center gap-2 small py-2">
+              <i class="bi bi-robot"></i> <span>Tiket ini akan dikirim ke <strong>forumwargaytmp3@gmail.com</strong> dan dibalas dalam 1x24 jam.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Ticket ID (Auto)</label>
+                <input type="text" id="ticketId" class="form-control bg-light" readonly>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Nama Lengkap <span class="text-danger">*</span></label>
+                <input type="text" id="ticketName" class="form-control" placeholder="Nama kamu...">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Email Kamu <span class="text-danger">*</span></label>
+                <input type="email" id="ticketEmail" class="form-control" placeholder="email@kamu.com">
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Kategori Masalah</label>
+                <select id="ticketCategory" class="form-select">
+                  <option value="konversi">Gagal Konversi / Error</option>
+                  <option value="download">Link Download Tidak Bisa</option>
+                  <option value="akun">Akun / Login</option>
+                  <option value="forum">Laporan Forum / Kasar</option>
+                  <option value="lainnya">Lainnya</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Deskripsi Masalah <span class="text-danger">*</span></label>
+                <textarea id="ticketMessage" class="form-control" rows="4" placeholder="Ceritakan masalahmu secara detail..."></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Bukti / Screenshot (Opsional)</label>
+                <input type="file" id="ticketProof" class="form-control" accept="image/*,video/*" multiple>
+                <div class="form-text">Upload foto/video error maks 5MB.</div>
+                <div id="ticketProofPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-primary" id="ticketSubmitBtn">
+              <i class="bi bi-send"></i> Kirim Tiket
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Navigator (YTConv Customer Service) -->
     <div class="assistant-fab" id="assistantFab">
       <div class="assistant-panel shadow-lg" id="assistantPanel" hidden>
-        <header class="d-flex align-items-center gap-2">
-          <div class="assistant-avatar">
-            <i class="bi bi-robot"></i>
+        <header class="d-flex align-items-center gap-2" style="background: linear-gradient(135deg, #0d6efd, #6610f2); padding: 10px 14px; border-radius: 12px 12px 0 0;">
+          <div class="assistant-avatar" style="background: rgba(255,255,255,0.2);">
+            <i class="bi bi-headset" style="color: #fff; font-size: 1.2rem;"></i>
           </div>
           <div class="flex-grow-1">
-            <div class="fw-semibold">AI Navigator</div>
-            <div class="small text-success">Online</div>
+            <div class="fw-bold text-white">YTConv CS</div>
+            <div class="small d-flex align-items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span><span class="text-white opacity-75">Siap Membantu 24/7</span></div>
           </div>
           <div id="googleSignInBtn"
             style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; cursor: pointer;"
@@ -1169,6 +1228,9 @@
           </div>
           <button type="button" class="btn-close btn-close-white" id="assistantClose"></button>
         </header>
+        <div style="background: linear-gradient(135deg, #0d6efd, #6610f2); padding: 0 14px 8px; font-size: 0.75rem; color: rgba(255,255,255,0.7);">
+          <i class="bi bi-shield-check me-1"></i>CS YTConv • Tiket otomatis dibuat jika butuh bantuan lanjut
+        </div>
         <div class="assistant-body">
           <div id="chatMessages" class="chat-messages mb-3"></div>
           <div id="assistantSuggestions" class="mt-2 d-flex flex-wrap gap-1"></div>
@@ -1176,14 +1238,17 @@
         </div>
         <div class="assistant-input-area">
           <div class="d-flex gap-2">
-            <input type="text" id="assistantInput" class="form-control form-control-sm" placeholder="Ketik pesan...">
+            <input type="text" id="assistantInput" class="form-control form-control-sm" placeholder="Tanya apapun ke YTConv CS...">
             <button type="button" class="btn btn-primary btn-sm" id="assistantSend">Kirim</button>
+          </div>
+          <div class="text-center mt-1">
+            <button type="button" class="btn btn-link btn-sm text-muted p-0" id="csOpenTicketBtn"><i class="bi bi-ticket-perforated"></i> Buat Tiket Dukungan</button>
           </div>
         </div>
       </div>
       <button type="button" class="btn btn-primary rounded-pill assistant-toggle" id="assistantToggle"
-        aria-label="Buka AI Navigator">
-        <i class="bi bi-robot"></i> <span class="d-none d-sm-inline">AI Navigator</span>
+        aria-label="Buka YTConv CS">
+        <i class="bi bi-headset"></i> <span class="d-none d-sm-inline">YTConv CS</span>
       </button>
     </div>
 
@@ -2451,14 +2516,27 @@
               const resp = await fetch(api('/api/assistant-chat'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: text })
+                body: JSON.stringify({ prompt: text, history: [] })
               });
               const data = await resp.json();
+
+              // Handle special ticket autofill action
+              if (data.action === 'open_ticket') {
+                 addMessage(data.reply || 'Membuatkan tiket bantuan...', false);
+                 const tid = document.getElementById('ticketId');
+                 if (tid && !tid.value) tid.value = 'TKT-' + Date.now().toString(36).toUpperCase().slice(-8);
+                 const tm = document.getElementById('ticketMessage');
+                 if (tm && data.params?.context) tm.value = data.params.context;
+                 const modal = document.getElementById('ticketContactModal');
+                 if (modal && window.bootstrap?.Modal) new window.bootstrap.Modal(modal).show();
+                 return;
+              }
+
               addMessage(data.reply || 'Maaf, saya tidak bisa memproses permintaan Anda.', false);
               renderSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
               renderLocalSpotlights();
             } catch {
-              addMessage('Tidak bisa menghubungi AI Navigator', false);
+              addMessage('Tidak bisa menghubungi YTConv CS saat ini. Silakan hubungi kami langsung di **forumwargaytmp3@gmail.com** atau klik tombol **Email Bantuan** di footer.', false);
             }
           }
 
@@ -2534,6 +2612,110 @@
            playerDiv.classList.add('d-none');
            playerDiv.classList.remove('d-flex');
         });
+
+        // ===== TICKET SYSTEM =====
+        function generateTicketId() {
+           return 'TKT-' + Date.now().toString(36).toUpperCase().slice(-6) + '-' + Math.floor(Math.random() * 900 + 100);
+        }
+
+        const ticketModal = document.getElementById('ticketContactModal');
+        if (ticketModal) {
+           ticketModal.addEventListener('show.bs.modal', () => {
+              const tid = document.getElementById('ticketId');
+              if (tid && !tid.value) tid.value = generateTicketId();
+           });
+        }
+
+        // Photo preview
+        const ticketProof = document.getElementById('ticketProof');
+        const proofPreview = document.getElementById('ticketProofPreview');
+        if (ticketProof && proofPreview) {
+           ticketProof.addEventListener('change', () => {
+              proofPreview.innerHTML = '';
+              Array.from(ticketProof.files).slice(0, 4).forEach(file => {
+                 const reader = new FileReader();
+                 reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width:80px;height:60px;object-fit:cover;border-radius:8px;border:2px solid #0d6efd';
+                    proofPreview.appendChild(img);
+                 };
+                 reader.readAsDataURL(file);
+              });
+           });
+        }
+
+        // Submit ticket
+        const ticketSubmitBtn = document.getElementById('ticketSubmitBtn');
+        if (ticketSubmitBtn) {
+           ticketSubmitBtn.addEventListener('click', async () => {
+              const name = document.getElementById('ticketName')?.value?.trim();
+              const email = document.getElementById('ticketEmail')?.value?.trim();
+              const message = document.getElementById('ticketMessage')?.value?.trim();
+              const ticketId = document.getElementById('ticketId')?.value;
+              const category = document.getElementById('ticketCategory')?.value;
+
+              if (!name || !email || !message) {
+                 setToast('Harap isi Nama, Email, dan Deskripsi Masalah!');
+                 return;
+              }
+
+              ticketSubmitBtn.disabled = true;
+              ticketSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mengirim...';
+
+              // Encode proofs as base64
+              const proofs = [];
+              if (ticketProof?.files?.length) {
+                 for (const f of Array.from(ticketProof.files).slice(0, 4)) {
+                    await new Promise(res => {
+                       const r = new FileReader();
+                       r.onload = (e) => { proofs.push({ name: f.name, data: e.target.result }); res(); };
+                       r.readAsDataURL(f);
+                    });
+                 }
+              }
+
+              try {
+                 const resp = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticketId, name, email, category, message, proofs })
+                 });
+                 const data = await resp.json();
+                 if (data.ok) {
+                    setToast(`🎫 Tiket ${ticketId} berhasil dikirim! Cek email dalam 1x24 jam.`);
+                    // Close modal
+                    const bsm = window.bootstrap?.Modal?.getInstance(ticketModal);
+                    if (bsm) bsm.hide(); else ticketModal.style.display = 'none';
+                    // Reset
+                    document.getElementById('ticketId').value = '';
+                    document.getElementById('ticketName').value = '';
+                    document.getElementById('ticketEmail').value = '';
+                    document.getElementById('ticketMessage').value = '';
+                    if (ticketProof) ticketProof.value = '';
+                    if (proofPreview) proofPreview.innerHTML = '';
+                 } else {
+                    setToast('Gagal kirim tiket: ' + (data.error || 'Error tidak diketahui'));
+                 }
+              } catch {
+                 setToast('Koneksi gagal. Coba email langsung ke forumwargaytmp3@gmail.com');
+              }
+
+              ticketSubmitBtn.disabled = false;
+              ticketSubmitBtn.innerHTML = '<i class="bi bi-send"></i> Kirim Tiket';
+           });
+        }
+
+        // CS open ticket button inside the chat
+        const csOpenTicketBtn = document.getElementById('csOpenTicketBtn');
+        if (csOpenTicketBtn) {
+           csOpenTicketBtn.addEventListener('click', () => {
+              const tid = document.getElementById('ticketId');
+              if (tid) tid.value = generateTicketId();
+              const modal = document.getElementById('ticketContactModal');
+              if (modal && window.bootstrap?.Modal) new window.bootstrap.Modal(modal).show();
+           });
+        }
 
         // Trending Real-Time API integration
         // Append a new UI component below the main card
