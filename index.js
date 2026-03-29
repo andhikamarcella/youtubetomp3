@@ -1115,6 +1115,30 @@ const uploadAudioToCloudinary = async ({ filePath, publicId, folder, mimeType })
   };
 };
 
+const extractCloudinaryPublicIdFromUrl = (rawUrl) => {
+  const value = String(rawUrl || "").trim();
+  if (!value) return "";
+  try {
+    const parsed = new URL(value);
+    const marker = "/upload/";
+    const idx = parsed.pathname.indexOf(marker);
+    if (idx < 0) return "";
+    let rest = parsed.pathname.slice(idx + marker.length);
+    rest = rest.replace(/^v\d+\//, "");
+    rest = rest.replace(/^\/+/, "");
+    if (!rest) return "";
+    const slash = rest.lastIndexOf("/");
+    const fileName = slash >= 0 ? rest.slice(slash + 1) : rest;
+    const folder = slash >= 0 ? rest.slice(0, slash) : "";
+    const dot = fileName.lastIndexOf(".");
+    const noExt = dot > 0 ? fileName.slice(0, dot) : fileName;
+    const joined = folder ? `${folder}/${noExt}` : noExt;
+    return decodeURIComponent(joined).trim();
+  } catch {
+    return "";
+  }
+};
+
 // ==== Direktori publik & jobs ====
 const PUBLIC_DIR = join(__dirname, "public");
 const JOBS_DIR = join(PUBLIC_DIR, "jobs");
@@ -7185,6 +7209,45 @@ app.post("/api/history/:id/redownload", async (req, res) => {
     }
   }
   return res.status(404).json({ error: "File tidak tersedia" });
+});
+
+app.post("/api/cloudinary/delete", async (req, res) => {
+  const user = await requireUserSession(req, res);
+  if (!user) return;
+
+  if (!process.env.CLOUDINARY_URL && !process.env.CLOUDINARY_AUDIO_URL) {
+    return res.status(503).json({ ok: false, error: "Cloudinary belum dikonfigurasi" });
+  }
+
+  const rawUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  if (!rawUrl) {
+    return res.status(400).json({ ok: false, error: "URL cloud wajib diisi" });
+  }
+
+  const publicId = extractCloudinaryPublicIdFromUrl(rawUrl);
+  if (!publicId) {
+    return res.status(400).json({ ok: false, error: "URL Cloudinary tidak valid" });
+  }
+
+  const allowedPrefix = `ytconv/user-library/${user.id}/`;
+  if (!publicId.startsWith(allowedPrefix)) {
+    return res.status(403).json({ ok: false, error: "Tidak diizinkan menghapus file ini" });
+  }
+
+  try {
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "video",
+      invalidate: true,
+    });
+    const status = String(result?.result || "").toLowerCase();
+    if (!status || (status !== "ok" && status !== "not found")) {
+      const msg = typeof result?.result === "string" ? result.result : "Gagal menghapus file Cloudinary";
+      return res.status(502).json({ ok: false, error: msg });
+    }
+    return res.json({ ok: true, publicId, result: status });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || "Gagal hapus file di Cloudinary" });
+  }
 });
 
 app.get("/api/referral-code", async (req, res) => {
