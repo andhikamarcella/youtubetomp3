@@ -22551,7 +22551,11 @@
             const baseName = (currentDownloadName || 'ytconv-audio').replace(/[^\w.\- ]+/g, '').trim() || 'ytconv-audio';
             const ext = (lastPreviewMeta?.format || 'mp3').toLowerCase();
             const file = new File([blob], `${baseName}.${ext}`, { type: blob.type || 'audio/mpeg' });
-            const cloudUrl = await uploadToCloudinaryAuto(file, `ytconv/user-library/${state.auth.user.id || 'anon'}`);
+            const uploader = window.uploadToCloudinaryAuto || window.uploadToCloudinary || null;
+            if (typeof uploader !== 'function') {
+              throw new Error('Uploader Cloudinary belum siap. Reload halaman lalu coba lagi.');
+            }
+            const cloudUrl = await uploader(file, `ytconv/user-library/${state.auth.user.id || 'anon'}`);
             if (!cloudUrl) throw new Error('Cloudinary tidak mengembalikan URL');
             if (saveCloudinaryStatus) {
               saveCloudinaryStatus.innerHTML = `Berhasil disimpan: <a href=\"${cloudUrl}\" target=\"_blank\" rel=\"noopener noreferrer\">Buka file cloud</a>`;
@@ -28429,6 +28433,7 @@
               xhr.send(formData);
             });
           }
+          try { window.uploadToCloudinary = uploadToCloudinary; } catch { }
 
           async function uploadToCloudinaryAuto(file, folder = null) {
             const apiKey = '422728616314883';
@@ -28469,6 +28474,7 @@
               xhr.send(formData);
             });
           }
+          try { window.uploadToCloudinaryAuto = uploadToCloudinaryAuto; } catch { }
 
           async function uploadToCloudinaryVideo(file, folder = null) {
             const apiKey = '422728616314883';
