@@ -9437,6 +9437,7 @@
 
     <!-- EmailJS SDK -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
 
     <!-- Mini Player Overlay -->
     <div id="miniPlayerOverlay" class="mini-player-overlay" hidden>
@@ -9459,9 +9460,10 @@
           </div>
 
           <!-- Progress -->
+          <div id="mpWaveform" class="mp-waveform mb-2" role="slider" aria-label="Waveform seek"></div>
           <div class="d-flex align-items-center gap-2 mb-2">
             <span id="mpCurrentTime" class="time-label">0:00</span>
-            <input type="range" class="form-range" id="mpProgressBar" value="0" min="0" step="0.1">
+            <input type="range" class="form-range" id="mpProgressBar" value="0" min="0" step="0.1" hidden>
             <span id="mpDuration" class="time-label">0:00</span>
           </div>
 
@@ -9651,6 +9653,20 @@
       .player-btn-primary:active {
         transform: scale(0.95);
         background-color: #e0e0e0;
+      }
+
+      .mp-waveform {
+        width: 100%;
+        min-height: 76px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 6px 4px;
+        cursor: pointer;
+        overflow: hidden;
+      }
+
+      .mp-waveform canvas {
+        border-radius: 8px;
       }
 
       .time-label {
@@ -20692,6 +20708,7 @@
           const currentEl = document.getElementById('mpCurrentTime');
           const durationEl = document.getElementById('mpDuration');
           const progressEl = document.getElementById('mpProgressBar');
+          const waveformEl = document.getElementById('mpWaveform');
           const playPauseBtn = document.getElementById('mpPlayPause');
           const seekBackBtn = document.getElementById('mpSeekBack');
           const seekFwdBtn = document.getElementById('mpSeekFwd');
@@ -20707,6 +20724,7 @@
             seeking: false,
             media: audio,
             mode: 'audio',
+            wave: null,
           };
           window.__miniPlayerOverlayState = state;
 
@@ -20727,11 +20745,38 @@
 
             if (thumbnailEl) thumbnailEl.hidden = nextMode === 'video';
             if (videoWrapEl) videoWrapEl.hidden = nextMode !== 'video';
+            if (progressEl) progressEl.hidden = nextMode === 'audio';
+            if (waveformEl) waveformEl.hidden = nextMode !== 'audio';
             if (nextMode !== 'video') {
               try { video.pause(); } catch { }
               try { video.removeAttribute('src'); video.load(); } catch { }
             } else {
               try { audio.pause(); } catch { }
+            }
+          };
+
+          const ensureWaveform = () => {
+            if (!waveformEl || state.wave || typeof window.WaveSurfer?.create !== 'function') return;
+            state.wave = window.WaveSurfer.create({
+              container: waveformEl,
+              media: audio,
+              waveColor: 'rgba(255,255,255,0.35)',
+              progressColor: '#ffffff',
+              cursorColor: 'rgba(255,255,255,0.85)',
+              cursorWidth: 2,
+              height: 62,
+              barWidth: 2,
+              barGap: 1.6,
+              barRadius: 2,
+              normalize: true,
+              dragToSeek: true,
+            });
+            if (typeof state.wave.on === 'function') {
+              state.wave.on('ready', syncProgress);
+              state.wave.on('interaction', syncProgress);
+              state.wave.on('timeupdate', syncProgress);
+              state.wave.on('play', () => setPlayIcon(true));
+              state.wave.on('pause', () => setPlayIcon(false));
             }
           };
 
@@ -20795,7 +20840,14 @@
             }
 
             const media = state.media || audio;
-            if (media.src !== String(url)) {
+            if (state.mode === 'audio') {
+              ensureWaveform();
+              if (state.wave) {
+                state.wave.load(String(url));
+              } else if (media.src !== String(url)) {
+                media.src = String(url);
+              }
+            } else if (media.src !== String(url)) {
               media.src = String(url);
             }
 
@@ -20833,9 +20885,17 @@
             playPauseBtn.addEventListener('click', async () => {
               const media = state.media || audio;
               if (media.paused) {
-                try { await media.play(); } catch { }
+                if (state.mode === 'audio' && state.wave) {
+                  try { await state.wave.play(); } catch { }
+                } else {
+                  try { await media.play(); } catch { }
+                }
               } else {
-                try { media.pause(); } catch { }
+                if (state.mode === 'audio' && state.wave) {
+                  try { state.wave.pause(); } catch { }
+                } else {
+                  try { media.pause(); } catch { }
+                }
               }
               setPlayIcon(!media.paused);
             });
@@ -20876,6 +20936,9 @@
               const v = clamp(Number(volumeEl.value), 0, 1);
               const media = state.media || audio;
               media.volume = Number.isFinite(v) ? v : 1;
+              if (state.mode === 'audio' && state.wave) {
+                try { state.wave.setVolume(media.volume); } catch { }
+              }
             });
           }
 
@@ -21098,11 +21161,31 @@
           renderHistory();
           if (typeof renderBasicHistory === 'function') renderBasicHistory();
         };
-        const removeHistory = (idx) => {
+        const removeHistory = async (idx) => {
           const list = loadCloudHistoryOnly();
+          const item = list[idx];
+          if (!item) return;
+
+          const confirmed = window.confirm('Hapus item riwayat ini? File cloud juga akan dihapus dari Cloudinary.');
+          if (!confirmed) return;
+
+          if (item.cloudUrl) {
+            try {
+              await postJson('/api/cloudinary/delete', { url: item.cloudUrl }, {
+                fallbackMessage: 'Gagal menghapus file di Cloudinary',
+                logLabel: '/api/cloudinary/delete',
+              });
+            } catch (err) {
+              setToast(err?.message || 'Gagal menghapus file di Cloudinary.', 'danger');
+              return;
+            }
+          }
+
           list.splice(idx, 1);
           localStorage.setItem(historyKey, JSON.stringify(list));
           renderHistory();
+          if (typeof renderBasicHistory === 'function') renderBasicHistory();
+          setToast('Riwayat dan file cloud berhasil dihapus.', 'success');
         };
         const renderHistory = () => {
           const list = loadCloudHistoryOnly();
