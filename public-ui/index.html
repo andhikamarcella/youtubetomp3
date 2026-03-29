@@ -12957,6 +12957,7 @@
         const EMAILJS_PUBLIC_KEY = 'jT-4e85nCgIpRJak5';
         const EMAILJS_SERVICE_ID = 'service_733722j';
         const EMAILJS_TEMPLATE_ID = 'template_rdmekih';
+        const EMAILJS_AUTOREPLY_TEMPLATE_ID = 'template_58uztm9';
 
         function initEmailContact() {
           const form = document.getElementById('emailForm');
@@ -13038,7 +13039,7 @@
               };
 
               const sendViaEmailJs = async (ticketPayload, backendData = {}) => {
-                if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+                if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_AUTOREPLY_TEMPLATE_ID) {
                   throw new Error('EmailJS belum dikonfigurasi');
                 }
                 window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
@@ -13052,7 +13053,7 @@
                   file_link: firstLink || 'Tidak ada file',
                   date: ticketPayload.date,
                 };
-                await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
+                await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_AUTOREPLY_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
                 return true;
               };
 
@@ -13065,7 +13066,7 @@
               if (!resp.ok || !result?.ok) {
                 // Fallback: try direct EmailJS send if backend path fails
                 await sendViaEmailJs(payload, result);
-              } else if (result?.emailStatus !== 'sent') {
+              } else if (result?.emailStatus !== 'sent' || result?.autoReplyEmailStatus !== 'sent') {
                 // Backend accepted ticket but SMTP path unavailable -> fallback to EmailJS
                 await sendViaEmailJs(payload, result);
               }
