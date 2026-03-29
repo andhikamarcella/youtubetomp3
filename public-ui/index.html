@@ -12999,12 +12999,30 @@
 
             try {
               const files = Array.from((proofInput && proofInput.files) ? proofInput.files : []).slice(0, 4);
-              const proofs = await Promise.all(files.map((file) => new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, dataUrl: reader.result });
-                reader.onerror = () => reject(new Error(`Gagal membaca file ${file.name}`));
-                reader.readAsDataURL(file);
-              })));
+              const proofs = [];
+              for (const file of files) {
+                let uploadedUrl = '';
+                try {
+                  if (typeof uploadToCloudinaryAuto === 'function') {
+                    uploadedUrl = await uploadToCloudinaryAuto(file, 'ytconv/support-tickets');
+                  }
+                } catch (uploadErr) {
+                  console.warn('Upload Cloudinary langsung gagal, fallback dataUrl', uploadErr);
+                }
+
+                if (uploadedUrl) {
+                  proofs.push({ name: file.name, type: file.type, size: file.size, url: uploadedUrl });
+                  continue;
+                }
+
+                const fallbackProof = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, dataUrl: reader.result });
+                  reader.onerror = () => reject(new Error(`Gagal membaca file ${file.name}`));
+                  reader.readAsDataURL(file);
+                });
+                proofs.push(fallbackProof);
+              }
 
               const payload = {
                 ticketId: ticketIdInput?.value || generateTicketId(),
@@ -13013,6 +13031,7 @@
                 category: form.category?.value || 'teknis',
                 message: form.message?.value?.trim() || '',
                 proofs,
+                file_link: proofs[0]?.url || '',
                 date: dateInput?.value || new Date().toISOString(),
                 userAgent: navigator.userAgent || '',
                 pageUrl: window.location.href,
