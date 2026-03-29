@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Statistik • YTConv</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
+    <header class="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-extrabold">📊 Dashboard Statistik Realtime</h1>
+        <p class="text-slate-400 text-sm">Live metrics untuk penggunaan user dan ticket support.</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/admin/tickets" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm">Admin Tickets</a>
+        <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Refresh</button>
+      </div>
+    </header>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <form id="loginForm" class="grid sm:grid-cols-4 gap-2">
+        <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" required>
+        <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" required>
+        <button class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold" type="submit">Login</button>
+        <div id="authState" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm">Belum login</div>
+      </form>
+    </section>
+
+    <section class="grid md:grid-cols-4 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Total Ticket</div><div id="mTotalTickets" class="text-2xl font-bold">0</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Socket Active</div><div id="mSocket" class="text-2xl font-bold">0</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Forum Rooms</div><div id="mRooms" class="text-2xl font-bold">0</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Uptime</div><div id="mUptime" class="text-sm font-bold">-</div></div>
+    </section>
+
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">Distribusi Status Ticket</h2>
+        <div id="statusBars" class="space-y-2"></div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">Runtime Memory</h2>
+        <ul id="runtimeMem" class="space-y-1 text-sm text-slate-300"></ul>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 class="font-bold mb-2">Ticket Terbaru</h2>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm"><thead class="text-slate-400"><tr><th class="text-left py-2 pr-2">ID</th><th class="text-left py-2 pr-2">Kategori</th><th class="text-left py-2 pr-2">Status</th><th class="text-left py-2">Waktu Lokal</th></tr></thead><tbody id="newestRows"></tbody></table>
+      </div>
+    </section>
+  </main>
+
+<script>
+const TOKEN_KEY = 'ytconv_admin_bearer';
+const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
+const getToken = () => (localStorage.getItem(TOKEN_KEY) || '').trim();
+const setToken = (v) => localStorage.setItem(TOKEN_KEY, v || '');
+const formatBytes = (n) => `${(Number(n || 0) / (1024 * 1024)).toFixed(2)} MB`;
+const el = (id) => document.getElementById(id);
+const formatUptime = (sec=0) => {
+  sec = Number(sec || 0);
+  const h = Math.floor(sec / 3600); const m = Math.floor((sec % 3600) / 60); const s = Math.floor(sec % 60);
+  return `${h}j ${m}m ${s}d`;
+};
+
+async function login(evt){
+  evt.preventDefault();
+  const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:el('username').value, password:el('password').value }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok || !data.token) { el('authState').textContent = 'Login gagal'; return; }
+  setToken(data.token);
+  el('authState').textContent = 'Login aktif';
+  loadStats();
+}
+
+async function loadStats(){
+  const token = getToken();
+  if (!token) return;
+  const res = await fetch('/api/admin/stats', { headers:{ Authorization:`Bearer ${token}` } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) { el('authState').textContent = 'Token invalid'; return; }
+  el('authState').textContent = `Aktif • ${fmt.format(new Date(data.timestamp))}`;
+  el('mTotalTickets').textContent = data.tickets?.total || 0;
+  el('mSocket').textContent = data.activeSocketClients || 0;
+  el('mRooms').textContent = data.forumRooms || 0;
+  el('mUptime').textContent = formatUptime(data.uptimeSeconds || 0);
+
+  const byStatus = data.tickets?.byStatus || {};
+  const total = Math.max(1, Number(data.tickets?.total || 0));
+  el('statusBars').innerHTML = Object.entries(byStatus).map(([k,v]) => {
+    const pct = Math.round((Number(v) / total) * 100);
+    return `<div><div class="flex justify-between text-xs mb-1"><span>${k}</span><span>${v} (${pct}%)</span></div><div class="h-2 rounded-full bg-slate-800"><div class="h-2 rounded-full bg-indigo-500" style="width:${pct}%"></div></div></div>`;
+  }).join('') || '<div class="text-sm text-slate-400">Belum ada data status.</div>';
+
+  el('runtimeMem').innerHTML = `
+    <li>RSS: <b>${formatBytes(data.runtime?.rss)}</b></li>
+    <li>Heap Used: <b>${formatBytes(data.runtime?.heapUsed)}</b></li>
+    <li>Heap Total: <b>${formatBytes(data.runtime?.heapTotal)}</b></li>
+    <li>External: <b>${formatBytes(data.runtime?.external)}</b></li>`;
+
+  el('newestRows').innerHTML = (data.tickets?.newest || []).map((t) => `
+    <tr class="border-t border-slate-800"><td class="py-2 pr-2">${t.ticketId}</td><td class="py-2 pr-2">${t.category || '-'}</td><td class="py-2 pr-2">${t.statusLabel || t.status || '-'}</td><td class="py-2">${t.submittedAt ? fmt.format(new Date(t.submittedAt)) : '-'}</td></tr>
+  `).join('') || '<tr><td class="py-2 text-slate-400" colspan="4">Belum ada tiket.</td></tr>';
+}
+
+el('loginForm').addEventListener('submit', login);
+el('refreshBtn').addEventListener('click', () => loadStats().catch(() => {}));
+if (getToken()) { el('authState').textContent = 'Token tersimpan'; loadStats(); }
+setInterval(() => { if (getToken()) loadStats().catch(() => {}); }, 5000);
+</script>
+</body>
+</html>
