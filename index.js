@@ -7980,6 +7980,12 @@ const safeCompare = (left, right) => {
   }
 };
 
+const isAdminBearerValid = (req) => {
+  if (!ADMIN_ENABLED) return false;
+  const auth = req.get("Authorization") || "";
+  return auth === `Bearer ${BEARER}`;
+};
+
 app.post("/admin/login", (req, res) => {
   try {
     if (!ADMIN_ENABLED) {
@@ -8132,6 +8138,7 @@ app.get("/internal/worker/cookies", async (req, res) => {
 
 // ===== /api/contact: Ticket Submission Endpoint =====
 const userViolations = new Map(); // userId -> { count, banned, bannedAt }
+const supportTickets = new Map(); // ticketId -> ticket payload
 
 const INDONESIAN_BADWORDS = [
   'anjing','bangsat','brengsek','goblok','bodoh','tolol','idiot','bajingan',
@@ -8253,13 +8260,72 @@ app.post('/api/contact', async (req, res) => {
       console.warn(`[YTConv CS Ticket] email belum terkirim untuk ${tid}: ${emailResult.reason || 'unknown reason'}`);
     }
 
+    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket/${encodeURIComponent(tid)}`;
+    const autoReplyHtml = `
+<div style="font-family: Arial, sans-serif; background:#f4f6f9; padding:20px;">
+  <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
+    <div style="background: linear-gradient(135deg, #4f46e5, #06b6d4); padding:20px; color:white;">
+      <h2 style="margin:0;">📩 Laporan Diterima</h2>
+      <p style="margin:5px 0 0; font-size:13px;">YtConv Support System</p>
+    </div>
+    <div style="padding:25px;">
+      <p style="font-size:16px;">Halo <b>${ticket.name}</b>,</p>
+      <p>Terima kasih telah mengirimkan laporan. Kami telah menerima pesan kamu dan saat ini sedang dalam proses penanganan.</p>
+      <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin:20px 0;">
+        <p style="margin:5px 0;"><b>🆔 ID Tiket:</b> ${tid}</p>
+        <p style="margin:5px 0;"><b>📂 Kategori:</b> ${ticket.category}</p>
+        <p style="margin:5px 0;"><b>🕒 Waktu:</b> ${ticket.submittedAt}</p>
+      </div>
+      <div style="margin-top:15px;">
+        <p style="margin-bottom:5px;"><b>💬 Pesan kamu:</b></p>
+        <div style="background:#fafafa; padding:12px; border-radius:6px; font-size:14px;">${ticket.message.replace(/\n/g, "<br>")}</div>
+      </div>
+      <p style="margin-top:20px;">⏳ Estimasi respon: <b>2x24 jam</b><br>Mohon simpan ID tiket kamu untuk keperluan tracking.</p>
+      <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
+      <div style="text-align:center; margin:25px 0;">
+        <span style="background:#4f46e5; color:white; padding:10px 18px; border-radius:6px; font-size:14px;">Tiket kamu sedang diproses 🚀</span>
+      </div>
+    </div>
+    <div style="background:#f9fafb; padding:15px; text-align:center; font-size:12px; color:#777;">
+      Email ini dikirim otomatis oleh sistem Forum Warga.<br>Mohon tidak membalas email ini.
+    </div>
+  </div>
+</div>`;
+    const autoReplyLines = [
+      `Halo ${ticket.name},`,
+      `Tiket ${tid} sudah diterima.`,
+      `Kategori: ${ticket.category}`,
+      `Waktu: ${ticket.submittedAt}`,
+      `Cek status: ${statusLink}`,
+    ];
+    const autoReplyResult = await sendSupportEmail({
+      to: ticket.email,
+      subject: `[TIKET ${tid}] Laporan kamu sudah diterima`,
+      lines: autoReplyLines,
+      html: autoReplyHtml,
+    });
+
+    supportTickets.set(tid, {
+      ...ticket,
+      proofs: uploadedProofs,
+      status: "received",
+      statusLabel: "Diterima",
+      statusUpdatedAt: ticket.submittedAt,
+      statusHistory: [{ status: "received", label: "Diterima", at: ticket.submittedAt, note: "Tiket dibuat oleh user" }],
+      adminReply: "",
+      statusLink,
+      autoReplyEmailStatus: autoReplyResult.sent ? "sent" : "queued",
+    });
+
     res.json({
       ok: true,
       ticketId: tid,
       message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.',
       emailStatus: emailResult.sent ? 'sent' : 'queued',
+      autoReplyEmailStatus: autoReplyResult.sent ? 'sent' : 'queued',
       fileLink: firstFileLink || null,
       fileLinks: uploadedProofs.map((f) => f.url),
+      statusLink,
     });
   } catch (e) {
     console.error('[/api/contact error]', e);
@@ -8308,6 +8374,101 @@ app.post('/api/forum/moderation-report', async (req, res) => {
     console.error('[/api/forum/moderation-report error]', e);
     return res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+app.get("/api/ticket/:ticketId", (req, res) => {
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_invalid" });
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  return res.json({
+    ok: true,
+    ticket: {
+      ticketId: ticket.ticketId,
+      name: ticket.name,
+      email: ticket.email,
+      category: ticket.category,
+      message: ticket.message,
+      status: ticket.status,
+      statusLabel: ticket.statusLabel,
+      statusUpdatedAt: ticket.statusUpdatedAt,
+      statusHistory: ticket.statusHistory || [],
+      adminReply: ticket.adminReply || "",
+      submittedAt: ticket.submittedAt,
+      proofs: (ticket.proofs || []).map((p) => ({ name: p.name, url: p.url, type: p.type, size: p.size })),
+    },
+  });
+});
+
+app.get("/api/admin/tickets", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const items = Array.from(supportTickets.values())
+    .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
+    .map((ticket) => ({
+      ticketId: ticket.ticketId,
+      name: ticket.name,
+      email: ticket.email,
+      category: ticket.category,
+      message: ticket.message,
+      status: ticket.status,
+      statusLabel: ticket.statusLabel,
+      statusUpdatedAt: ticket.statusUpdatedAt,
+      submittedAt: ticket.submittedAt,
+      proofs: ticket.proofs || [],
+      adminReply: ticket.adminReply || "",
+    }));
+  return res.json({ ok: true, tickets: items });
+});
+
+app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const status = String(req.body?.status || ticket.status || "received").trim().toLowerCase();
+  const statusLabel = String(req.body?.statusLabel || "").trim() || ({
+    received: "Diterima",
+    reviewing: "Diproses",
+    waiting_user: "Menunggu User",
+    resolved: "Selesai",
+    rejected: "Ditolak",
+  }[status] || status);
+  const adminReply = String(req.body?.adminReply || "").slice(0, 4000);
+  const nowIso = new Date().toISOString();
+  ticket.status = status;
+  ticket.statusLabel = statusLabel;
+  ticket.statusUpdatedAt = nowIso;
+  if (adminReply) ticket.adminReply = adminReply;
+  if (!Array.isArray(ticket.statusHistory)) ticket.statusHistory = [];
+  ticket.statusHistory.push({ status, label: statusLabel, at: nowIso, note: adminReply || "Update status admin" });
+  supportTickets.set(ticketId, ticket);
+
+  const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket/${encodeURIComponent(ticketId)}`;
+  const replyHtml = `
+  <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
+    <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
+      <h3 style="margin-top:0;">Update Status Tiket ${ticketId}</h3>
+      <p>Status terbaru: <b>${statusLabel}</b></p>
+      ${adminReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${adminReply.replace(/\n/g, "<br>")}</div>` : ""}
+      <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
+    </div>
+  </div>`;
+  await sendSupportEmail({
+    to: ticket.email,
+    subject: `[TIKET ${ticketId}] Update status: ${statusLabel}`,
+    lines: [`Tiket ${ticketId} status terbaru: ${statusLabel}`, `Cek status: ${statusLink}`],
+    html: replyHtml,
+  });
+
+  return res.json({ ok: true, ticket });
+});
+
+app.get("/ticket/:ticketId", (req, res) => {
+  res.sendFile(join(__dirname, "public-ui", "ticket-status.html"));
+});
+
+app.get("/admin/tickets", (req, res) => {
+  res.sendFile(join(__dirname, "public-ui", "admin-tickets.html"));
 });
 
 const PORT = process.env.PORT || 3000;
