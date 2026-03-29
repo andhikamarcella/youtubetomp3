@@ -22581,6 +22581,24 @@
             if (saveCloudinaryStatus) {
               saveCloudinaryStatus.innerHTML = `Berhasil disimpan: <a href=\"${cloudUrl}\" target=\"_blank\" rel=\"noopener noreferrer\">Buka file cloud</a>`;
             }
+            pushHistory({
+              originalUrl: $('#url')?.value?.trim() || '',
+              downloadUrl: cloudUrl,
+              serverUrl: currentDownloadUrl || '',
+              cloudUrl,
+              fileName: currentDownloadName || `${baseName}.${ext}`,
+              fileSize: Number(blob.size || 0),
+              format: lastPreviewMeta?.format || ext,
+              abr: Number($('#abr')?.value || 0) || undefined,
+              meta: {
+                title: $('#id3Title')?.value?.trim() || lastPreviewMeta?.title || currentDownloadName || '',
+                artist: $('#id3Artist')?.value?.trim() || '',
+                album: $('#id3Album')?.value?.trim() || '',
+                cover: $('#coverPreview')?.src || '',
+              },
+            });
+            if (typeof renderHistory === 'function') renderHistory();
+            if (typeof renderBasicHistory === 'function') renderBasicHistory();
             setToast('Lagu berhasil disimpan ke Cloudinary.', 'success');
           } catch (err) {
             console.error('savePreviewToCloudinary error', err);
