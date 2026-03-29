@@ -20667,6 +20667,16 @@
 
         // ===== History =====
         const historyKey = 'ytmp3.history.v1';
+        const loadCloudHistoryOnly = () => {
+          const raw = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          const cleaned = Array.isArray(raw)
+            ? raw.filter((item) => item && typeof item.cloudUrl === 'string' && item.cloudUrl.trim())
+            : [];
+          if (cleaned.length !== (Array.isArray(raw) ? raw.length : 0)) {
+            localStorage.setItem(historyKey, JSON.stringify(cleaned));
+          }
+          return cleaned;
+        };
 
         (() => {
           const overlay = document.getElementById('miniPlayerOverlay');
@@ -20895,7 +20905,7 @@
         })();
 
         const renderBasicHistory = () => {
-          const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          const list = loadCloudHistoryOnly();
           const container = document.getElementById('basic-history-list');
           if (!container) return;
           container.innerHTML = '';
@@ -20927,7 +20937,7 @@
           }
 
           if (list.length === 0) {
-            container.innerHTML = '<div class="text-center opacity-50 p-4">Belum ada riwayat</div>';
+            container.innerHTML = '<div class="text-center opacity-50 p-4">Belum ada riwayat cloud. Login Google + simpan ke Cloudinary dulu.</div>';
             return;
           }
 
@@ -20950,7 +20960,7 @@
                  <button type="button" class="btn btn-outline-info btn-insight" title="Audio Insight (LUFS)">
                     <i class="bi bi-graph-up-arrow"></i>
                  </button>
-                 <a href="${item.downloadUrl}" class="btn btn-primary" download onclick="if(navigator.vibrate) navigator.vibrate(20)">
+                 <a href="${item.cloudUrl || item.downloadUrl}" class="btn btn-primary" download onclick="if(navigator.vibrate) navigator.vibrate(20)">
                     <i class="bi bi-download me-1"></i> Download
                  </a>
             </div>
@@ -21073,21 +21083,29 @@
         };
 
         const pushHistory = (entry) => {
-          const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          if (!state?.auth?.user) {
+            setToast('Login Google dulu supaya riwayat tersimpan lintas deploy.', 'warning');
+            return;
+          }
+          if (!entry?.cloudUrl) {
+            // User asked history should only keep cloud-saved items.
+            return;
+          }
+          const list = loadCloudHistoryOnly();
           if (!entry.originalUrl) entry.originalUrl = $('#url')?.value?.trim() || '';
-          list.unshift({ ...entry, at: Date.now() });
+          list.unshift({ ...entry, at: Date.now(), savedType: 'cloudinary' });
           localStorage.setItem(historyKey, JSON.stringify(list.slice(0, 20))); // Increased limit slightly
           renderHistory();
           if (typeof renderBasicHistory === 'function') renderBasicHistory();
         };
         const removeHistory = (idx) => {
-          const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          const list = loadCloudHistoryOnly();
           list.splice(idx, 1);
           localStorage.setItem(historyKey, JSON.stringify(list));
           renderHistory();
         };
         const renderHistory = () => {
-          const list = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          const list = loadCloudHistoryOnly();
           const ul = $('#historyList');
           const emptyState = $('#historyEmpty');
           if (!ul) return;
@@ -21120,7 +21138,10 @@
             ul.appendChild(statsDiv);
           }
 
-          if (emptyState) emptyState.style.display = list.length ? 'none' : '';
+          if (emptyState) {
+            emptyState.style.display = list.length ? 'none' : '';
+            if (!list.length) emptyState.textContent = 'Belum ada riwayat cloud. Login Google lalu simpan ke Cloudinary.';
+          }
 
           list.forEach((item, idx) => {
             const li = document.createElement('li');
@@ -21166,7 +21187,7 @@
             titleLink.addEventListener('click', (e) => {
               e.preventDefault();
               if (typeof window.openMiniPlayer === 'function') {
-                window.openMiniPlayer(item.cloudUrl || item.downloadUrl, item?.meta?.title || item.fileName, item?.meta?.artist || 'Unknown Artist', item?.meta?.cover, item?.format);
+                window.openMiniPlayer(item.cloudUrl, item?.meta?.title || item.fileName, item?.meta?.artist || 'Unknown Artist', item?.meta?.cover, item?.format);
               } else {
                 window.open(item.cloudUrl || item.downloadUrl, '_blank');
               }
@@ -24653,7 +24674,7 @@
         };
 
         const checkDuplicate = (url, title = '') => {
-          const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+          const history = loadCloudHistoryOnly();
 
           const extractId = (u) => {
             try {
