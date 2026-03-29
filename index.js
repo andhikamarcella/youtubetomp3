@@ -631,7 +631,7 @@ const callGroqAPI = async (prompt, context = {}) => {
 
   const history = Array.isArray(context.history) ? context.history : [];
 
-  const systemPrompt = `Anda adalah **AI Audio Mentor & Coach** profesional di sistem **Dikalfe Project** (YouTube to MP3).
+  const systemPrompt = `Anda adalah **AI Audio Mentor & Coach + Customer Service Navigator** profesional di platform **YTConv** (YouTube to MP3).
 Tugas Anda adalah membimbing user, mendiagnosa masalah, dan menjelaskan konsep audio dengan adaptif.
 
 **1. Level Penjelasan (Adaptive Communication):**
@@ -657,6 +657,10 @@ Pahami fitur aktif saat ini:
 - **Nyambung**: Ingat konteks chat sebelumnya. Jangan lupa apa yang baru dibahas.
 - **Konsisten**: Jangan berubah pendapat dalam satu sesi kecuali ada data baru.
 - **Humanis**: Sapa user, gunakan emoji yang relevan, jangan kaku.
+
+- Gunakan bahasa yang sama dengan user. Jika user memakai bahasa campuran/daerah, tetap tanggapi dengan sopan dan mudah dipahami.
+- Pahami pertanyaan dalam berbagai bahasa (Indonesia, Inggris, Melayu, Jawa informal, dll) lalu jawab dalam bahasa user.
+- Jika user terlihat bingung, tampilkan alur jelas dalam format langkah 1-2-3.
 
 **Format Output (JSON Only jika Action diperlukan):**
 Jika user ingin melakukan aksi (convert, setting), kembalikan JSON:
@@ -3681,12 +3685,12 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
       instructions: `Kamu adalah Customer Service AI dari YTConv (situs konverter YouTube terbaik di Indonesia). 
 Nama kamu: YTConv CS Bot.
 Sifat kamu: Ramah, profesional, super helpful, dan sangat paham platform YTConv.
-Bahasa: Sesuaikan dengan bahasa yang user gunakan (Indonesia atau Inggris).
+Bahasa: Sesuaikan dengan bahasa user (multibahasa: Indonesia, Inggris, Melayu, campuran slang sopan, dll).
 Alur bantu:
 1. Sapa dan identifikasi masalah user.
 2. Tanyakan detail jika perlu.
 3. Berikan solusi langkah demi langkah yang jelas.
-4. Jika tidak bisa diselesaikan, sarankan buat tiket dengan mengembalikan action: 'open_ticket'.
+4. Jika tidak bisa diselesaikan, sarankan buat tiket dengan mengembalikan action: 'open_ticket' dan isi params.context ringkasan masalah.
 5. Selalu profesional, JANGAN sebut 'Dikalfe Project'. Selalu sebut platformnya sebagai 'YTConv'.
 
 Features di YTConv:
@@ -3712,7 +3716,7 @@ Jika user sangat butuh bantuan lanjut atau masalah teknis kompleks:
 - Respons dengan menyarankan buat tiket
 - Return JSON: {"reply": "...", "action": "open_ticket", "params": {"context": "[ringkasan masalah user]"}}
 
-Kontak darurat: forumwargaytmp3@gmail.com`,
+Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, sebelah tombol Lapor WhatsApp).`,
       features: ["Convert", "Trim", "Metadata", "Queue", "History", "Settings"],
       timestamp: new Date().toISOString(),
       history: history,
@@ -7976,6 +7980,12 @@ const safeCompare = (left, right) => {
   }
 };
 
+const isAdminBearerValid = (req) => {
+  if (!ADMIN_ENABLED) return false;
+  const auth = req.get("Authorization") || "";
+  return auth === `Bearer ${BEARER}`;
+};
+
 app.post("/admin/login", (req, res) => {
   try {
     if (!ADMIN_ENABLED) {
@@ -8128,6 +8138,7 @@ app.get("/internal/worker/cookies", async (req, res) => {
 
 // ===== /api/contact: Ticket Submission Endpoint =====
 const userViolations = new Map(); // userId -> { count, banned, bannedAt }
+const supportTickets = new Map(); // ticketId -> ticket payload
 
 const INDONESIAN_BADWORDS = [
   'anjing','bangsat','brengsek','goblok','bodoh','tolol','idiot','bajingan',
@@ -8135,6 +8146,23 @@ const INDONESIAN_BADWORDS = [
   'cuk','jancok','jancuk','dancok','setan','laknat','nggak tau diri','mampus',
   'kurang ajar','ngentot','coli','bacot','ngaco','bgst','bgs','g0blok'
 ];
+
+
+const SUPPORT_CONTACT_EMAIL = process.env.SUPPORT_CONTACT_EMAIL || "forumwargaytmp3@gmail.com";
+
+const sendSupportEmail = async ({ subject, lines = [], html = null, to = SUPPORT_CONTACT_EMAIL }) => {
+  const transport = getMailTransport();
+  if (!transport) return { sent: false, reason: "mail_transport_unavailable" };
+  const from = process.env.NOTIFY_FROM_EMAIL || process.env.NOTIFY_EMAIL_FROM || "no-reply@youtubetomp3.app";
+  const text = Array.isArray(lines) ? lines.filter(Boolean).join("\n") : String(lines || "");
+  try {
+    await transport.sendMail({ to, from, subject: String(subject || "YTConv Notification"), text, html: html || undefined });
+    return { sent: true };
+  } catch (err) {
+    console.warn("[support-email] gagal mengirim email", err);
+    return { sent: false, reason: err?.message || String(err) };
+  }
+};
 
 app.post('/api/contact', async (req, res) => {
   try {
@@ -8154,27 +8182,293 @@ app.post('/api/contact', async (req, res) => {
       ip: req.ip
     };
 
+    const uploadedProofs = [];
+    if (Array.isArray(proofs) && proofs.length) {
+      const limited = proofs.slice(0, 4);
+      for (const proof of limited) {
+        const directUrl = typeof proof?.url === "string" ? proof.url.trim() : "";
+        if (/^https?:\/\//i.test(directUrl)) {
+          uploadedProofs.push({
+            name: String(proof?.name || "attachment"),
+            url: directUrl,
+            type: String(proof?.type || ""),
+            size: Number(proof?.size || 0) || 0,
+          });
+          continue;
+        }
+        const dataUrl = typeof proof?.dataUrl === "string" ? proof.dataUrl : "";
+        if (!dataUrl.startsWith("data:")) continue;
+        try {
+          const isVideo = /^data:video\//i.test(dataUrl);
+          const result = await cloudinary.uploader.upload(dataUrl, {
+            folder: "ytconv/support-tickets",
+            resource_type: isVideo ? "video" : "image",
+            public_id: `${tid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            overwrite: false,
+          });
+          if (result?.secure_url) {
+            uploadedProofs.push({
+              name: String(proof?.name || result?.original_filename || "attachment"),
+              url: String(result.secure_url),
+              type: String(proof?.type || ""),
+              size: Number(proof?.size || 0) || 0,
+            });
+          }
+        } catch (uploadErr) {
+          console.warn("[/api/contact] gagal upload proof ke Cloudinary", uploadErr?.message || uploadErr);
+        }
+      }
+    }
+
     // Log the ticket for admin
     console.log('[YTConv CS Ticket]', JSON.stringify(ticket));
 
-    // Mock email sending: print to console (real implementation would use nodemailer or SendGrid)
     const emailBody = [
       `=== YTConv Support Ticket ===`,
       `Ticket ID : ${tid}`,
       `From      : ${name} <${email}>`,
       `Category  : ${category}`,
       `Message   : ${message}`,
-      `Proofs    : ${ticket.proofCount} attachment(s)`,
+      `Proofs    : ${uploadedProofs.length} attachment(s)`,
       `Time      : ${ticket.submittedAt}`,
-      `To        : forumwargaytmp3@gmail.com`
+      `To        : ${SUPPORT_CONTACT_EMAIL}`
     ].join('\n');
     console.log('[YTConv CS Email]\n' + emailBody);
 
-    res.json({ ok: true, ticketId: tid, message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.' });
+    const firstFileLink = uploadedProofs[0]?.url || "";
+    const filesHtml = uploadedProofs.length
+      ? `<ul>${uploadedProofs.map((f) => `<li><a href="${String(f.url)}" target="_blank" rel="noopener noreferrer">${String(f.name || "Lihat File")}</a></li>`).join("")}</ul>`
+      : "<span>Tidak ada file</span>";
+    const htmlBody = `
+<p style="font-family: helvetica, arial, sans-serif;">Halo Admin,</p>
+<p style="font-family: helvetica, arial, sans-serif;">Ada pesan baru dari <b>Forum Warga</b>.</p>
+<hr>
+<p style="font-family: helvetica, arial, sans-serif;"><b>🆔 ID Tiket:</b> ${tid}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>👤 Nama:</b> ${ticket.name}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>📧 Email:</b> ${ticket.email}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>📂 Kategori:</b> ${ticket.category}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>💬 Pesan:</b><br>${ticket.message.replace(/\n/g, "<br>")}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>📎 File:</b><br>${filesHtml}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>🕒 Waktu:</b> ${ticket.submittedAt}</p>
+<hr>
+<p style="font-family: helvetica, arial, sans-serif; font-size: 12px; color: gray;">Pesan ini dikirim otomatis oleh sistem Forum Warga.<br>Mohon tidak membalas email ini.</p>
+`;
+
+    const subject = `[YTConv Ticket] ${tid} • ${ticket.category}`;
+    const emailResult = await sendSupportEmail({ subject, lines: [emailBody], html: htmlBody });
+    if (!emailResult.sent) {
+      console.warn(`[YTConv CS Ticket] email belum terkirim untuk ${tid}: ${emailResult.reason || 'unknown reason'}`);
+    }
+
+    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket/${encodeURIComponent(tid)}`;
+    const autoReplyHtml = `
+<div style="font-family: Arial, sans-serif; background:#f4f6f9; padding:20px;">
+  <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
+    <div style="background: linear-gradient(135deg, #4f46e5, #06b6d4); padding:20px; color:white;">
+      <h2 style="margin:0;">📩 Laporan Diterima</h2>
+      <p style="margin:5px 0 0; font-size:13px;">YtConv Support System</p>
+    </div>
+    <div style="padding:25px;">
+      <p style="font-size:16px;">Halo <b>${ticket.name}</b>,</p>
+      <p>Terima kasih telah mengirimkan laporan. Kami telah menerima pesan kamu dan saat ini sedang dalam proses penanganan.</p>
+      <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin:20px 0;">
+        <p style="margin:5px 0;"><b>🆔 ID Tiket:</b> ${tid}</p>
+        <p style="margin:5px 0;"><b>📂 Kategori:</b> ${ticket.category}</p>
+        <p style="margin:5px 0;"><b>🕒 Waktu:</b> ${ticket.submittedAt}</p>
+      </div>
+      <div style="margin-top:15px;">
+        <p style="margin-bottom:5px;"><b>💬 Pesan kamu:</b></p>
+        <div style="background:#fafafa; padding:12px; border-radius:6px; font-size:14px;">${ticket.message.replace(/\n/g, "<br>")}</div>
+      </div>
+      <p style="margin-top:20px;">⏳ Estimasi respon: <b>2x24 jam</b><br>Mohon simpan ID tiket kamu untuk keperluan tracking.</p>
+      <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
+      <div style="text-align:center; margin:25px 0;">
+        <span style="background:#4f46e5; color:white; padding:10px 18px; border-radius:6px; font-size:14px;">Tiket kamu sedang diproses 🚀</span>
+      </div>
+    </div>
+    <div style="background:#f9fafb; padding:15px; text-align:center; font-size:12px; color:#777;">
+      Email ini dikirim otomatis oleh sistem Forum Warga.<br>Mohon tidak membalas email ini.
+    </div>
+  </div>
+</div>`;
+    const autoReplyLines = [
+      `Halo ${ticket.name},`,
+      `Tiket ${tid} sudah diterima.`,
+      `Kategori: ${ticket.category}`,
+      `Waktu: ${ticket.submittedAt}`,
+      `Cek status: ${statusLink}`,
+    ];
+    const autoReplyResult = await sendSupportEmail({
+      to: ticket.email,
+      subject: `[TIKET ${tid}] Laporan kamu sudah diterima`,
+      lines: autoReplyLines,
+      html: autoReplyHtml,
+    });
+
+    supportTickets.set(tid, {
+      ...ticket,
+      proofs: uploadedProofs,
+      status: "received",
+      statusLabel: "Diterima",
+      statusUpdatedAt: ticket.submittedAt,
+      statusHistory: [{ status: "received", label: "Diterima", at: ticket.submittedAt, note: "Tiket dibuat oleh user" }],
+      adminReply: "",
+      statusLink,
+      autoReplyEmailStatus: autoReplyResult.sent ? "sent" : "queued",
+    });
+
+    res.json({
+      ok: true,
+      ticketId: tid,
+      message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.',
+      emailStatus: emailResult.sent ? 'sent' : 'queued',
+      autoReplyEmailStatus: autoReplyResult.sent ? 'sent' : 'queued',
+      fileLink: firstFileLink || null,
+      fileLinks: uploadedProofs.map((f) => f.url),
+      statusLink,
+    });
   } catch (e) {
     console.error('[/api/contact error]', e);
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+
+
+app.post('/api/forum/moderation-report', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const reportId = 'MOD-' + Date.now().toString(36).toUpperCase().slice(-8);
+    const payload = {
+      reportId,
+      userId: String(body.userId || '').slice(0, 100),
+      name: String(body.name || 'Warga').slice(0, 80),
+      email: String(body.email || '').slice(0, 200),
+      text: String(body.text || '').slice(0, 2000),
+      violationCount: Number(body.violationCount || 0),
+      room: String(body.room || 'umum').slice(0, 50),
+      submittedAt: new Date().toISOString(),
+      ip: req.ip,
+    };
+
+    console.warn('[Forum AutoMod Report]', JSON.stringify(payload));
+
+    const lines = [
+      '=== Forum Auto Moderation Report ===',
+      `Report ID : ${payload.reportId}`,
+      `User      : ${payload.name} (${payload.userId || '-'})`,
+      `Email     : ${payload.email || '-'}`,
+      `Room      : ${payload.room}`,
+      `Count     : ${payload.violationCount}/5`,
+      `Message   : ${payload.text}`,
+      `Time      : ${payload.submittedAt}`,
+    ];
+
+    const emailResult = await sendSupportEmail({
+      subject: `[Forum AutoMod] ${payload.reportId} • ${payload.violationCount}/5`,
+      lines,
+    });
+
+    return res.json({ ok: true, reportId, emailStatus: emailResult.sent ? 'sent' : 'queued' });
+  } catch (e) {
+    console.error('[/api/forum/moderation-report error]', e);
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get("/api/ticket/:ticketId", (req, res) => {
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_invalid" });
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  return res.json({
+    ok: true,
+    ticket: {
+      ticketId: ticket.ticketId,
+      name: ticket.name,
+      email: ticket.email,
+      category: ticket.category,
+      message: ticket.message,
+      status: ticket.status,
+      statusLabel: ticket.statusLabel,
+      statusUpdatedAt: ticket.statusUpdatedAt,
+      statusHistory: ticket.statusHistory || [],
+      adminReply: ticket.adminReply || "",
+      submittedAt: ticket.submittedAt,
+      proofs: (ticket.proofs || []).map((p) => ({ name: p.name, url: p.url, type: p.type, size: p.size })),
+    },
+  });
+});
+
+app.get("/api/admin/tickets", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const items = Array.from(supportTickets.values())
+    .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
+    .map((ticket) => ({
+      ticketId: ticket.ticketId,
+      name: ticket.name,
+      email: ticket.email,
+      category: ticket.category,
+      message: ticket.message,
+      status: ticket.status,
+      statusLabel: ticket.statusLabel,
+      statusUpdatedAt: ticket.statusUpdatedAt,
+      submittedAt: ticket.submittedAt,
+      proofs: ticket.proofs || [],
+      adminReply: ticket.adminReply || "",
+    }));
+  return res.json({ ok: true, tickets: items });
+});
+
+app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const status = String(req.body?.status || ticket.status || "received").trim().toLowerCase();
+  const statusLabel = String(req.body?.statusLabel || "").trim() || ({
+    received: "Diterima",
+    reviewing: "Diproses",
+    waiting_user: "Menunggu User",
+    resolved: "Selesai",
+    rejected: "Ditolak",
+  }[status] || status);
+  const adminReply = String(req.body?.adminReply || "").slice(0, 4000);
+  const nowIso = new Date().toISOString();
+  ticket.status = status;
+  ticket.statusLabel = statusLabel;
+  ticket.statusUpdatedAt = nowIso;
+  if (adminReply) ticket.adminReply = adminReply;
+  if (!Array.isArray(ticket.statusHistory)) ticket.statusHistory = [];
+  ticket.statusHistory.push({ status, label: statusLabel, at: nowIso, note: adminReply || "Update status admin" });
+  supportTickets.set(ticketId, ticket);
+
+  const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket/${encodeURIComponent(ticketId)}`;
+  const replyHtml = `
+  <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
+    <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
+      <h3 style="margin-top:0;">Update Status Tiket ${ticketId}</h3>
+      <p>Status terbaru: <b>${statusLabel}</b></p>
+      ${adminReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${adminReply.replace(/\n/g, "<br>")}</div>` : ""}
+      <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
+    </div>
+  </div>`;
+  await sendSupportEmail({
+    to: ticket.email,
+    subject: `[TIKET ${ticketId}] Update status: ${statusLabel}`,
+    lines: [`Tiket ${ticketId} status terbaru: ${statusLabel}`, `Cek status: ${statusLink}`],
+    html: replyHtml,
+  });
+
+  return res.json({ ok: true, ticket });
+});
+
+app.get("/ticket/:ticketId", (req, res) => {
+  res.sendFile(join(__dirname, "public-ui", "ticket-status.html"));
+});
+
+app.get("/admin/tickets", (req, res) => {
+  res.sendFile(join(__dirname, "public-ui", "admin-tickets.html"));
 });
 
 const PORT = process.env.PORT || 3000;
@@ -8223,7 +8517,7 @@ io.on("connection", (socket) => {
     const rec = userViolations.get(userId) || { count: 0, banned: false };
     if (rec.banned) {
       socket.emit("forum:banned", {
-        message: "Kamu telah diblokir dari forum karena 5 pelanggaran bahasa. Silakan buat tiket appeal melalui YTConv CS Bot.",
+        message: "Kamu telah diblokir dari forum karena 5 pelanggaran bahasa. Silakan ajukan appeal via AI Navigator / tiket bantuan.",
         appealUrl: "#"
       });
       return;
@@ -8270,10 +8564,21 @@ io.on("connection", (socket) => {
     const rec = userViolations.get(from.userId);
     if (rec?.banned) {
       const appealId = 'APL-' + Date.now().toString(36).toUpperCase().slice(-8);
-      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${new Date().toISOString()}`);
+      const submittedAt = new Date().toISOString();
+      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${submittedAt}`);
+      const appealLines = [
+        '=== Forum Appeal Request ===',
+        `Appeal ID : ${appealId}`,
+        `User ID   : ${from.userId}`,
+        `Name      : ${from.name}`,
+        `Room      : ${from.room || 'umum'}`,
+        `Time      : ${submittedAt}`,
+        'SLA       : 2x24 jam',
+      ];
+      await sendSupportEmail({ subject: `[Forum Appeal] ${appealId}`, lines: appealLines });
       socket.emit("forum:appealSubmitted", {
         appealId,
-        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Email konfirmasi dari forumwargaytmp3@gmail.com akan dikirim segera.`
+        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
       });
     }
   });
