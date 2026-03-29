@@ -25909,7 +25909,7 @@
               break;
 
             case 'converting':
-              try { ensureForumSocket()?.emit('conversion_start'); } catch { }
+              try { ensureForumSocket()?.emit('conversion_start', { source: 'cta_state' }); } catch { }
               set(convertBtn, true);
               set(downloadAllBtn, true);
               set(downloadZipBtn, true);
@@ -25923,7 +25923,7 @@
               break;
 
             case 'completed':
-              try { ensureForumSocket()?.emit('conversion_success'); } catch { }
+              try { ensureForumSocket()?.emit('conversion_success', { source: 'cta_state' }); } catch { }
               // In completed state, we might want to allow "Clear" or "Convert New"
               // But the primary focus should be the Result Card (which has its own buttons)
               // We enable "Clear" so user can reset
@@ -27249,14 +27249,32 @@
           const ensureForumSocket = () => {
             if (forumSocket) return forumSocket;
             if (typeof window.io !== 'function') return null;
+            const telemetryClientId = (() => {
+              const key = 'ytconv_client_id_v1';
+              let id = localStorage.getItem(key);
+              if (!id) {
+                id = `cid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+                localStorage.setItem(key, id);
+              }
+              return id;
+            })();
+            const abVariant = (() => {
+              const key = 'ytconv_ab_variant_v1';
+              let v = localStorage.getItem(key);
+              if (!v) {
+                v = Math.random() < 0.5 ? 'A' : 'B';
+                localStorage.setItem(key, v);
+              }
+              return v;
+            })();
             const reportPageChange = () => {
               try {
-                forumSocket?.emit('page_change', { page: window.location.pathname || '/' });
+                forumSocket?.emit('page_change', { page: window.location.pathname || '/', clientId: telemetryClientId, abVariant });
               } catch { }
             };
             const reportUserAction = (action, detail = '') => {
               try {
-                forumSocket?.emit('user_action', { action, detail });
+                forumSocket?.emit('user_action', { action, detail, clientId: telemetryClientId, abVariant });
               } catch { }
             };
             window.reportUserAction = reportUserAction;
