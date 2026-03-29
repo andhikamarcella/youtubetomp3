@@ -8202,6 +8202,38 @@ app.get("/internal/worker/cookies", async (req, res) => {
 // ===== /api/contact: Ticket Submission Endpoint =====
 const userViolations = new Map(); // userId -> { count, banned, bannedAt }
 const supportTickets = new Map(); // ticketId -> ticket payload
+const activityLogs = [];
+const MAX_ACTIVITY_LOGS = 300;
+const conversionMetrics = {
+  entered: 0,
+  started: 0,
+  success: 0,
+  errors: 0,
+  errorReasons: {},
+  durations: [],
+};
+const controlState = {
+  convertEnabled: true,
+  queueLength: 0,
+  processing: 0,
+  waiting: 0,
+};
+const healthMetrics = {
+  requestCount: 0,
+  errorCount: 0,
+  totalResponseMs: 0,
+};
+
+const pushActivityLog = (type, message, meta = {}) => {
+  activityLogs.unshift({
+    id: `LOG-${Date.now().toString(36).toUpperCase()}`,
+    type,
+    message,
+    meta,
+    at: new Date().toISOString(),
+  });
+  if (activityLogs.length > MAX_ACTIVITY_LOGS) activityLogs.length = MAX_ACTIVITY_LOGS;
+};
 
 const INDONESIAN_BADWORDS = [
   'anjing','bangsat','brengsek','goblok','bodoh','tolol','idiot','bajingan',
@@ -8226,6 +8258,17 @@ const sendSupportEmail = async ({ subject, lines = [], html = null, to = SUPPORT
     return { sent: false, reason: err?.message || String(err) };
   }
 };
+
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    const elapsed = Date.now() - startedAt;
+    healthMetrics.requestCount += 1;
+    healthMetrics.totalResponseMs += elapsed;
+    if (res.statusCode >= 500) healthMetrics.errorCount += 1;
+  });
+  next();
+});
 
 app.post('/api/contact', async (req, res) => {
   try {
@@ -8376,9 +8419,16 @@ app.post('/api/contact', async (req, res) => {
       statusUpdatedAt: ticket.submittedAt,
       statusHistory: [{ status: "received", label: "Diterima", at: ticket.submittedAt, note: "Tiket dibuat oleh user" }],
       adminReply: "",
+      chatHistory: [{
+        id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
+        sender: "user",
+        message: ticket.message,
+        at: ticket.submittedAt,
+      }],
       statusLink,
       autoReplyEmailStatus: autoReplyResult.sent ? "sent" : "queued",
     });
+    pushActivityLog("ticket_created", `Tiket ${tid} dibuat`, { ticketId: tid, category: ticket.category });
     io.emit("admin:newTicket", {
       ticketId: tid,
       submittedAt: ticket.submittedAt,
@@ -8465,6 +8515,7 @@ app.get("/api/ticket/:ticketId", (req, res) => {
       statusUpdatedAt: ticket.statusUpdatedAt,
       statusHistory: ticket.statusHistory || [],
       adminReply: ticket.adminReply || "",
+      chatHistory: ticket.chatHistory || [],
       submittedAt: ticket.submittedAt,
       proofs: (ticket.proofs || []).map((p) => ({ name: p.name, url: p.url, type: p.type, size: p.size })),
     },
@@ -8517,6 +8568,14 @@ app.get("/api/admin/stats", (req, res) => {
     return acc;
   }, {});
   const memory = process.memoryUsage?.() || {};
+  const durations = conversionMetrics.durations.length ? conversionMetrics.durations : [0];
+  const avgDuration = durations.reduce((a, b) => a + b, 0) / Math.max(1, conversionMetrics.durations.length);
+  const maxDuration = Math.max(...durations);
+  const minDuration = conversionMetrics.durations.length ? Math.min(...durations) : 0;
+  const avgResponseMs = healthMetrics.requestCount ? (healthMetrics.totalResponseMs / healthMetrics.requestCount) : 0;
+  const errorRate = healthMetrics.requestCount ? (healthMetrics.errorCount / healthMetrics.requestCount) * 100 : 0;
+  const cpu = process.cpuUsage();
+  const cpuLoadEstimate = Number((((cpu.user + cpu.system) / 1000) / Math.max(1, process.uptime() * 1000) * 100).toFixed(2));
   return res.json({
     ok: true,
     timestamp: Date.now(),
@@ -8563,6 +8622,35 @@ app.get("/api/admin/stats", (req, res) => {
       conversion: getConversionStats(),
       users: getLiveUsers(),
     },
+    conversionFunnel: {
+      entered: conversionMetrics.entered,
+      started: conversionMetrics.started,
+      success: conversionMetrics.success,
+    },
+    processingTime: {
+      avgMs: Number(avgDuration.toFixed(2)),
+      minMs: Number(minDuration.toFixed(2)),
+      maxMs: Number(maxDuration.toFixed(2)),
+    },
+    queue: {
+      length: controlState.queueLength,
+      processing: controlState.processing,
+      waiting: controlState.waiting,
+    },
+    health: {
+      cpuPercentEstimate: cpuLoadEstimate,
+      avgResponseMs: Number(avgResponseMs.toFixed(2)),
+      errorRate: Number(errorRate.toFixed(2)),
+      requestCount: healthMetrics.requestCount,
+    },
+    errors: {
+      total: conversionMetrics.errors,
+      reasons: conversionMetrics.errorReasons,
+    },
+    activityLogs: activityLogs.slice(0, 80),
+    control: {
+      convertEnabled: controlState.convertEnabled,
+    },
     runtime: {
       rss: Number(memory.rss || 0),
       heapUsed: Number(memory.heapUsed || 0),
@@ -8601,6 +8689,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
     adminReply,
     statusUpdatedAt: nowIso,
   });
+  pushActivityLog("ticket_updated", `Tiket ${ticketId} diubah ke ${statusLabel}`, { ticketId, status });
 
   const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
   const replyHtml = `
@@ -8629,6 +8718,8 @@ app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), 
   if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
+  const adminCount = Array.isArray(ticket.chatHistory) ? ticket.chatHistory.filter((x) => x?.sender === "admin").length : 0;
+  if (adminCount >= 3) return res.status(400).json({ ok: false, error: "admin_chat_limit_reached", limit: 3 });
   const nowIso = new Date().toISOString();
   const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
@@ -8640,7 +8731,57 @@ app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), 
   ticket.chatHistory.push(chatEntry);
   supportTickets.set(ticketId, ticket);
   io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+  pushActivityLog("admin_reply", `Admin membalas tiket ${ticketId}`, { ticketId });
   return res.json({ ok: true, chat: chatEntry, ticketId });
+});
+
+app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, res) => {
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const text = String(req.body?.message || "").trim();
+  if (!text) return res.status(400).json({ ok: false, error: "message_required" });
+  const userCount = Array.isArray(ticket.chatHistory) ? ticket.chatHistory.filter((x) => x?.sender === "user").length : 0;
+  if (userCount >= 3) return res.status(400).json({ ok: false, error: "user_chat_limit_reached", limit: 3 });
+  const nowIso = new Date().toISOString();
+  const chatEntry = {
+    id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
+    sender: "user",
+    message: text.slice(0, 2000),
+    at: nowIso,
+  };
+  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
+  ticket.chatHistory.push(chatEntry);
+  ticket.status = ticket.status === "resolved" ? "reviewing" : ticket.status;
+  ticket.statusLabel = ticket.status === "reviewing" ? "Diproses" : ticket.statusLabel;
+  ticket.statusUpdatedAt = nowIso;
+  supportTickets.set(ticketId, ticket);
+  io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+  io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
+  pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
+  return res.json({ ok: true, chat: chatEntry, ticketId, remaining: Math.max(0, 3 - (userCount + 1)) });
+});
+
+app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const action = String(req.body?.action || "").trim();
+  if (action === "toggle_convert") {
+    controlState.convertEnabled = !controlState.convertEnabled;
+  } else if (action === "clear_queue") {
+    controlState.queueLength = 0;
+    controlState.processing = 0;
+    controlState.waiting = 0;
+  } else if (action === "kick_user") {
+    const socketId = String(req.body?.socketId || "");
+    const target = io.sockets.sockets.get(socketId);
+    if (target) target.disconnect(true);
+  } else {
+    return res.status(400).json({ ok: false, error: "unknown_action" });
+  }
+  pushActivityLog("admin_control", `Control action: ${action}`, { action });
+  io.emit("admin:controlUpdated", { ...controlState });
+  emitDashboardStats();
+  return res.json({ ok: true, control: { ...controlState } });
 });
 
 app.get("/ticket/:ticketId", (req, res) => {
@@ -8696,6 +8837,8 @@ const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, use
   page: user.page || "unknown",
   room: user.room || null,
   status: user.status || "idle",
+  durationSeconds: user.connectedAt ? Math.max(0, Math.floor((Date.now() - new Date(user.connectedAt).getTime()) / 1000)) : 0,
+  journey: Array.isArray(user.journey) ? user.journey.join(" → ") : "",
   userAgent: user.userAgent || "",
   connectedAt: user.connectedAt || null,
   lastSeenAt: user.lastSeenAt || null,
@@ -8730,10 +8873,14 @@ io.on("connection", (socket) => {
     page: "unknown",
     room: null,
     status: "idle",
+    journey: [],
+    convertStartedAt: null,
     userAgent: socket.handshake?.headers?.["user-agent"] || "",
     connectedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
   });
+  conversionMetrics.entered += 1;
+  pushActivityLog("user_connected", `Socket ${socket.id} connected`, { socketId: socket.id });
   emitDashboardStats();
 
   socket.on("page_change", (payload) => {
@@ -8741,6 +8888,9 @@ io.on("connection", (socket) => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
     rec.page = page || "unknown";
+    rec.journey = Array.isArray(rec.journey) ? rec.journey : [];
+    rec.journey.push(rec.page);
+    if (rec.journey.length > 12) rec.journey = rec.journey.slice(-12);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
     emitDashboardStats();
@@ -8749,7 +8899,18 @@ io.on("connection", (socket) => {
   socket.on("conversion_start", () => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
+    if (!controlState.convertEnabled) {
+      socket.emit("conversion_blocked", { message: "Konversi sedang dinonaktifkan admin sementara." });
+      return;
+    }
     rec.status = "converting";
+    rec.convertStartedAt = Date.now();
+    rec.journey = Array.isArray(rec.journey) ? rec.journey : [];
+    rec.journey.push("convert:start");
+    conversionMetrics.started += 1;
+    controlState.processing += 1;
+    controlState.queueLength = Math.max(controlState.queueLength, controlState.processing);
+    controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
     emitDashboardStats();
@@ -8759,6 +8920,18 @@ io.on("connection", (socket) => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
     rec.status = "success";
+    rec.journey = Array.isArray(rec.journey) ? rec.journey : [];
+    rec.journey.push("convert:success");
+    if (rec.convertStartedAt) {
+      conversionMetrics.durations.push(Date.now() - rec.convertStartedAt);
+      if (conversionMetrics.durations.length > 1000) conversionMetrics.durations.shift();
+    }
+    rec.convertStartedAt = null;
+    conversionMetrics.success += 1;
+    controlState.processing = Math.max(0, controlState.processing - 1);
+    controlState.queueLength = Math.max(0, controlState.queueLength - 1);
+    controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
+    pushActivityLog("conversion_success", `Conversion success from ${socket.id}`, { socketId: socket.id });
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
     emitDashboardStats();
@@ -8770,6 +8943,25 @@ io.on("connection", (socket) => {
     rec.status = "idle";
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    emitDashboardStats();
+  });
+
+  socket.on("conversion_error", (payload) => {
+    const rec = activeUsers.get(socket.id);
+    const reason = String(payload?.reason || "unknown_error").slice(0, 120);
+    conversionMetrics.errors += 1;
+    conversionMetrics.errorReasons[reason] = (conversionMetrics.errorReasons[reason] || 0) + 1;
+    controlState.processing = Math.max(0, controlState.processing - 1);
+    controlState.queueLength = Math.max(0, controlState.queueLength - 1);
+    controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
+    if (rec) {
+      rec.status = "idle";
+      rec.journey = Array.isArray(rec.journey) ? rec.journey : [];
+      rec.journey.push(`convert:error:${reason}`);
+      rec.lastSeenAt = new Date().toISOString();
+      activeUsers.set(socket.id, rec);
+    }
+    pushActivityLog("conversion_error", `Conversion error ${reason}`, { socketId: socket.id, reason });
     emitDashboardStats();
   });
 
@@ -8988,6 +9180,7 @@ io.on("connection", (socket) => {
       broadcastRoomUsers(prev.room);
     }
     activeUsers.delete(socket.id);
+    pushActivityLog("user_disconnected", `Socket ${socket.id} disconnected`, { socketId: socket.id });
     emitDashboardStats();
   });
 });

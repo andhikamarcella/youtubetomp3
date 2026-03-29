@@ -37,6 +37,17 @@
         <ul id="history" class="space-y-2"></ul>
       </div>
     </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <div class="font-semibold mb-2">💬 Chat Tiket (maks 3 chat user + 3 chat admin)</div>
+      <div id="chatHistory" class="h-64 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-2"></div>
+      <div class="mt-2 text-xs text-slate-400">Sisa chat user: <span id="remaining">3</span></div>
+      <form id="chatForm" class="mt-3 flex gap-2">
+        <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Tulis balasan ke admin...">
+        <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500" type="submit">Kirim</button>
+      </form>
+      <div id="chatHint" class="mt-2 text-xs text-slate-400"></div>
+    </section>
   </main>
 <script>
 const query = new URLSearchParams(location.search);
@@ -56,6 +67,12 @@ const msgEl = document.getElementById('msg');
 const replyEl = document.getElementById('reply');
 const historyEl = document.getElementById('history');
 const hintEl = document.getElementById('hint');
+const chatHistoryEl = document.getElementById('chatHistory');
+const remainingEl = document.getElementById('remaining');
+const chatInputEl = document.getElementById('chatInput');
+const chatHintEl = document.getElementById('chatHint');
+
+let currentTicket = null;
 
 tidEl.textContent = ticketId || '-';
 if (!queryTicketId && routeTicketId) hintEl.textContent = `Mode kompatibilitas aktif dari route lama /ticket/${routeTicketId}`;
@@ -68,6 +85,22 @@ function asLocal(iso){
   return fmt.format(d);
 }
 
+function renderChat(chatHistory = []) {
+  chatHistoryEl.innerHTML = chatHistory.map((c) => {
+    const isAdmin = c.sender === 'admin';
+    return `<div class="rounded-lg p-2 text-sm ${isAdmin ? 'bg-indigo-900/40 border border-indigo-700' : 'bg-slate-900 border border-slate-700'}"><div class="text-[11px] text-slate-400 mb-1">${isAdmin ? 'admin' : 'user'} • ${asLocal(c.at)}</div><div>${String(c.message || '').replace(/</g, '&lt;')}</div></div>`;
+  }).join('') || '<div class="text-slate-500 text-sm">Belum ada chat.</div>';
+  chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+
+  const userCount = chatHistory.filter((x) => x?.sender === 'user').length;
+  const remaining = Math.max(0, 3 - userCount);
+  remainingEl.textContent = String(remaining);
+  const blocked = remaining <= 0;
+  chatInputEl.disabled = blocked;
+  if (blocked) chatHintEl.textContent = 'Batas chat user sudah habis (maksimal 3).';
+  else chatHintEl.textContent = 'Kamu masih bisa kirim chat ke admin.';
+}
+
 async function refresh(){
   if (!ticketId) return;
   try {
@@ -75,6 +108,7 @@ async function refresh(){
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) throw new Error(d.error || 'ticket_not_found');
     const t = d.ticket || {};
+    currentTicket = t;
     statusWrap.innerHTML = badge(t.statusLabel || t.status, t.status);
     updatedEl.textContent = asLocal(t.statusUpdatedAt);
     msgEl.textContent = t.message || '-';
@@ -86,11 +120,30 @@ async function refresh(){
       li.innerHTML = `<div class="flex items-center justify-between gap-2"><div>${badge(x.label || x.status, x.status)}</div><div class="text-xs text-slate-500">${asLocal(x.at)}</div></div>${x.note ? `<div class="text-sm text-slate-300 mt-1">${x.note}</div>` : ''}`;
       historyEl.appendChild(li);
     });
+    renderChat(t.chatHistory || []);
   } catch (e) {
     statusWrap.innerHTML = badge('Tiket tidak ditemukan', 'rejected');
     replyEl.textContent = e.message || 'unknown_error';
   }
 }
+
+document.getElementById('chatForm').addEventListener('submit', async (evt) => {
+  evt.preventDefault();
+  const message = chatInputEl.value.trim();
+  if (!message || !ticketId) return;
+  const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) {
+    chatHintEl.textContent = d.error === 'user_chat_limit_reached' ? 'Limit chat user sudah 3x.' : (d.error || 'Gagal kirim chat');
+    return;
+  }
+  chatInputEl.value = '';
+  await refresh();
+});
 
 refresh();
 setInterval(refresh, 5000);

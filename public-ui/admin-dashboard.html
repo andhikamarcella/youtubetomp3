@@ -6,24 +6,21 @@
   <title>Admin Statistik • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/framer-motion@11.11.17/dist/framer-motion.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100">
-  <audio id="notifAudio" preload="auto">
-    <source src="data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YTAAAAABAQICAgMDAwQEBAUFBQYGBgcHCAgJCQoKCwsMDQ0ODg8PEBAQERESExMUFBQVFRYWFxcYGBkZGhobGxwcHR0eHh8f" type="audio/wav" />
-  </audio>
-
+<body class="min-h-screen bg-slate-950 text-slate-100 transition-colors" id="appBody">
+  <audio id="notifAudio" preload="auto"><source src="data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YTAAAAABAQICAgMDAwQEBAUFBQYGBgcHCAgJCQoKCwsMDQ0ODg8PEBAQERESExMUFBQVFRYWFxcYGBkZGhobGxwcHR0eHh8f" type="audio/wav" /></audio>
   <div id="toastWrap" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
   <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
     <header class="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800 p-5 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-extrabold">📊 Dashboard Statistik Realtime</h1>
-        <p class="text-slate-300 text-sm">Realtime helpdesk + analytics (ticket, chat, user activity, conversion).</p>
+        <p class="text-slate-300 text-sm">Realtime helpdesk + analytics + monitoring center.</p>
       </div>
       <div class="flex gap-2 items-center">
+        <button id="themeBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">🌙/☀️ Theme</button>
         <a id="adminTicketsBtn" href="/admin/tickets" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold inline-flex items-center gap-2">Admin Tickets <span id="adminTicketBadge" class="hidden min-w-5 h-5 px-1 rounded-full bg-rose-500 text-[11px] leading-5 text-center">0</span></a>
         <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Refresh</button>
       </div>
@@ -38,16 +35,75 @@
       </form>
     </section>
 
-    <section class="grid md:grid-cols-4 gap-3" id="metricCards"></section>
+    <section id="metricCards" class="grid md:grid-cols-4 gap-3"></section>
 
-    <section class="grid lg:grid-cols-2 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-3">Grafik Ticket per Hari (7 hari)</h2>
-        <canvas id="lineChart" height="130"></canvas>
+    <section class="grid lg:grid-cols-3 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-2">
+        <h2 class="font-bold mb-2">📊 Charts</h2>
+        <div class="grid md:grid-cols-2 gap-3">
+          <div><div class="text-sm text-slate-300 mb-1">Ticket per Hari (7 hari)</div><canvas id="lineChart" height="120"></canvas></div>
+          <div><div class="text-sm text-slate-300 mb-1">Status Pie</div><canvas id="pieChart" height="120"></canvas></div>
+        </div>
+      </div>
+      <aside class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🚨 Realtime Alerts</h2>
+        <div id="alertHint" class="text-xs text-slate-400 mb-2">Event-based alert aktif.</div>
+        <ul id="alertHistory" class="space-y-2 text-xs max-h-60 overflow-auto"></ul>
+      </aside>
+    </section>
+
+    <section class="grid lg:grid-cols-4 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-2">
+        <h2 class="font-bold mb-2">🎯 Conversion Funnel</h2>
+        <div class="space-y-2 text-sm">
+          <div class="h-8 rounded bg-indigo-800/50 px-3 flex items-center justify-between"><span>Visited</span><b id="fVisited">0</b></div>
+          <div class="h-8 rounded bg-amber-800/50 px-3 flex items-center justify-between"><span>Start Convert</span><b id="fStarted">0</b></div>
+          <div class="h-8 rounded bg-emerald-800/50 px-3 flex items-center justify-between"><span>Success</span><b id="fSuccess">0</b></div>
+        </div>
       </div>
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-3">Pie Status Ticket</h2>
-        <canvas id="pieChart" height="130"></canvas>
+        <h2 class="font-bold mb-2">⏱️ Processing Time</h2>
+        <div class="text-sm space-y-1">
+          <div>Avg: <b id="pAvg">0</b> ms</div>
+          <div>Fastest: <b id="pMin">0</b> ms</div>
+          <div>Slowest: <b id="pMax">0</b> ms</div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🌡️ System Health</h2>
+        <div class="text-sm space-y-1">
+          <div>CPU Est: <b id="hCpu">0</b>%</div>
+          <div>API Resp: <b id="hResp">0</b> ms</div>
+          <div>Error Rate: <b id="hErr">0</b>%</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-3 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">📦 Queue Monitor</h2>
+        <div class="text-sm space-y-1">
+          <div>Length: <b id="qLen">0</b></div>
+          <div>Processing: <b id="qProc">0</b></div>
+          <div>Waiting: <b id="qWait">0</b></div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">❌ Error Tracking</h2>
+        <div class="text-sm mb-1">Total: <b id="eTotal">0</b></div>
+        <ul id="eReasons" class="text-xs space-y-1"></ul>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🎛️ Control Panel</h2>
+        <div class="text-xs text-slate-400 mb-2">Control realtime sistem.</div>
+        <div class="space-y-2">
+          <button id="toggleConvertBtn" class="w-full px-3 py-2 rounded bg-amber-600 hover:bg-amber-500 text-sm">Toggle Convert</button>
+          <button id="clearQueueBtn" class="w-full px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm">Clear Queue</button>
+          <div class="flex gap-2">
+            <input id="kickSocketId" placeholder="Socket ID" class="flex-1 px-2 py-2 rounded bg-slate-950 border border-slate-700 text-xs" />
+            <button id="kickUserBtn" class="px-2 py-2 rounded bg-rose-600 hover:bg-rose-500 text-xs">Kick</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -56,293 +112,145 @@
         <div class="flex flex-wrap gap-2 mb-3">
           <input id="searchId" placeholder="Search by ID..." class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
           <select id="filterStatus" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm">
-            <option value="">Semua Status</option>
-            <option value="received">Open / Diterima</option>
-            <option value="reviewing">Pending / Diproses</option>
-            <option value="resolved">Selesai</option>
-            <option value="rejected">Ditolak</option>
+            <option value="">Semua Status</option><option value="received">Open / Diterima</option><option value="reviewing">Pending / Diproses</option><option value="resolved">Selesai</option><option value="rejected">Ditolak</option>
           </select>
-          <input id="filterCategory" placeholder="Kategori (teknis dll)" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
+          <input id="filterCategory" placeholder="Kategori" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
           <input id="filterDate" type="date" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
           <button id="exportBtn" type="button" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Export Excel</button>
         </div>
-
         <div class="overflow-auto rounded-xl border border-slate-800">
-          <table class="min-w-full text-sm">
-            <thead class="text-slate-300 bg-slate-800/80">
-              <tr>
-                <th class="text-left p-2">ID</th><th class="text-left p-2">Kategori</th><th class="text-left p-2">Status</th><th class="text-left p-2">Waktu</th><th class="text-left p-2">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="ticketRows"></tbody>
-          </table>
+          <table class="min-w-full text-sm"><thead class="text-slate-300 bg-slate-800/80"><tr><th class="text-left p-2">ID</th><th class="text-left p-2">Kategori</th><th class="text-left p-2">Status</th><th class="text-left p-2">Waktu</th><th class="text-left p-2">Aksi</th></tr></thead><tbody id="ticketRows"></tbody></table>
         </div>
       </div>
-
       <aside class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">Live Activity</h2>
-        <div class="space-y-2 text-sm">
-          <div class="rounded-lg bg-slate-950 border border-slate-800 p-2">👥 Active Users: <b id="activeUsers">0</b></div>
-          <div class="rounded-lg bg-slate-950 border border-slate-800 p-2">⚡ Converting: <b id="convertingUsers">0</b> | ✅ Success: <b id="successUsers">0</b></div>
-          <div class="rounded-lg bg-slate-950 border border-slate-800 p-2">
-            <div class="font-semibold mb-1">Page Activity</div>
-            <ul id="pageStats" class="text-slate-300"></ul>
-          </div>
-          <div class="rounded-lg bg-slate-950 border border-slate-800 p-2">
-            <div class="font-semibold mb-1">Room Activity</div>
-            <ul id="roomStats" class="text-slate-300"></ul>
-          </div>
+        <h2 class="font-bold mb-2">👥 Live Activity</h2>
+        <div class="text-sm space-y-2">
+          <div class="rounded bg-slate-950 p-2 border border-slate-800">Active Users: <b id="activeUsers">0</b></div>
+          <div class="rounded bg-slate-950 p-2 border border-slate-800">Converting: <b id="convertingUsers">0</b> • Success: <b id="successUsers">0</b></div>
+          <div class="rounded bg-slate-950 p-2 border border-slate-800"><div class="font-semibold">Page</div><ul id="pageStats"></ul></div>
+          <div class="rounded bg-slate-950 p-2 border border-slate-800"><div class="font-semibold">Room</div><ul id="roomStats"></ul></div>
         </div>
       </aside>
     </section>
 
-    <section id="detailPanel" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <div class="flex justify-between gap-2">
-        <h2 class="font-bold">🧾 Detail Ticket <span id="dTicketId" class="text-indigo-300"></span></h2>
-        <button id="closeDetailBtn" type="button" class="px-2 py-1 rounded bg-slate-700 text-xs">Tutup</button>
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 class="font-bold mb-2">🧍 Live User Table + Journey</h2>
+      <div class="overflow-auto rounded-xl border border-slate-800">
+        <table class="min-w-full text-xs"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="text-left p-2">Socket</th><th class="text-left p-2">Page</th><th class="text-left p-2">Room</th><th class="text-left p-2">Status</th><th class="text-left p-2">Duration</th><th class="text-left p-2">Journey</th></tr></thead><tbody id="liveUserRows"></tbody></table>
       </div>
-      <div id="detailSkeleton" class="py-6 text-slate-400">Loading detail...</div>
+    </section>
+
+    <section id="detailPanel" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <div class="flex justify-between gap-2"><h2 class="font-bold">🧾 Detail Ticket <span id="dTicketId" class="text-indigo-300"></span></h2><button id="closeDetailBtn" type="button" class="px-2 py-1 rounded bg-slate-700 text-xs">Tutup</button></div>
+      <div id="detailSkeleton" class="py-6 text-slate-400 animate-pulse">Loading detail...</div>
       <div id="detailContent" class="hidden grid lg:grid-cols-2 gap-4 mt-2">
         <div class="space-y-2 text-sm">
-          <div><b>Nama:</b> <span id="dName">-</span></div>
-          <div><b>Email:</b> <span id="dEmail">-</span></div>
-          <div><b>Kategori:</b> <span id="dCategory">-</span></div>
-          <div><b>Status:</b> <span id="dStatus">-</span></div>
+          <div><b>Nama:</b> <span id="dName">-</span></div><div><b>Email:</b> <span id="dEmail">-</span></div><div><b>Kategori:</b> <span id="dCategory">-</span></div><div><b>Status:</b> <span id="dStatus">-</span></div>
           <div><b>Pesan:</b> <p id="dMessage" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 whitespace-pre-wrap"></p></div>
-          <div>
-            <b>Foto/Bukti:</b>
-            <div id="dProofs" class="mt-2 grid grid-cols-2 gap-2"></div>
-          </div>
+          <div><b>Foto/Bukti:</b><div id="dProofs" class="mt-2 grid grid-cols-2 gap-2"></div></div>
         </div>
         <div>
-          <h3 class="font-semibold mb-2">💬 Chat Realtime</h3>
+          <h3 class="font-semibold mb-2">💬 Chat Realtime (Admin max 3x)</h3>
           <div id="chatHistory" class="h-52 overflow-auto bg-slate-950 border border-slate-800 rounded-lg p-2 space-y-2"></div>
-          <form id="chatForm" class="mt-2 flex gap-2">
-            <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" placeholder="Balas tiket..." />
-            <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm" type="submit">Kirim</button>
-          </form>
-          <h4 class="font-semibold mt-3 mb-1">Riwayat Status</h4>
-          <ul id="statusHistory" class="text-sm text-slate-300 space-y-1"></ul>
+          <form id="chatForm" class="mt-2 flex gap-2"><input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" placeholder="Balas tiket..." /><button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm" type="submit">Kirim</button></form>
+          <div id="chatLimitHint" class="text-xs text-slate-400 mt-1"></div>
+          <h4 class="font-semibold mt-3 mb-1">Riwayat Status</h4><ul id="statusHistory" class="text-sm text-slate-300 space-y-1"></ul>
         </div>
       </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 class="font-bold mb-2">🧾 Activity Log (Audit Trail)</h2>
+      <ul id="activityLogs" class="max-h-48 overflow-auto text-xs space-y-1"></ul>
     </section>
   </main>
 
 <script>
-const TOKEN_KEY = 'ytconv_admin_bearer';
-const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
-const el = (id) => document.getElementById(id);
-const getToken = () => (localStorage.getItem(TOKEN_KEY) || '').trim();
-const setToken = (v) => localStorage.setItem(TOKEN_KEY, v || '');
-const formatBytes = (n) => `${(Number(n || 0)/(1024*1024)).toFixed(2)} MB`;
-const formatUptime = (sec=0) => `${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
+const TOKEN_KEY='ytconv_admin_bearer';
+const fmt=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'});
+const el=(id)=>document.getElementById(id);
+const getToken=()=> (localStorage.getItem(TOKEN_KEY)||'').trim();
+const setToken=(v)=> localStorage.setItem(TOKEN_KEY,v||'');
+const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
+const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
+let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null};
+let socket=null;
 
-let state = { allTickets: [], filteredTickets: [], currentTicket: null, unread: 0, lineChart: null, pieChart: null };
-let socket = null;
+const toast=(m,type='info')=>{const n=document.createElement('div');n.className=`px-3 py-2 rounded-lg border text-sm shadow ${type==='error'?'bg-rose-950 border-rose-700':type==='warn'?'bg-amber-950 border-amber-700':'bg-slate-900 border-slate-700'}`;n.textContent=m;el('toastWrap').appendChild(n);setTimeout(()=>n.remove(),3800);};
+const playNotif=()=>{try{el('notifAudio').currentTime=0;el('notifAudio').play().catch(()=>{});}catch{}};
+const setBadge=(count)=>{state.unread=Math.max(0,Number(count||0));el('adminTicketBadge').textContent=String(state.unread);el('adminTicketBadge').classList.toggle('hidden',state.unread<=0);};
 
-function toast(message, type='info') {
-  const wrap = el('toastWrap');
-  const node = document.createElement('div');
-  node.className = `px-3 py-2 rounded-lg border text-sm shadow ${type==='error'?'bg-rose-950 border-rose-700':'bg-slate-900 border-slate-700'}`;
-  node.textContent = message;
-  wrap.appendChild(node);
-  setTimeout(()=>node.remove(), 3500);
+function pushAlert(message,level='warn'){const at=new Date().toISOString();state.alerts.unshift({message,level,at});if(state.alerts.length>30)state.alerts.length=30;el('alertHistory').innerHTML=state.alerts.map((a)=>`<li class="rounded p-2 border ${a.level==='critical'?'bg-rose-950 border-rose-700':'bg-amber-950 border-amber-700'}">${a.message}<div class="text-[10px] text-slate-400">${fmt.format(new Date(a.at))}</div></li>`).join('');toast(message,a.level==='critical'?'error':'warn');playNotif();}
+
+function evaluateAlerts(data){
+  const converting=data.live?.conversion?.converting||0;
+  if(converting>=5) pushAlert(`🚨 ${converting} user converting bersamaan`,'critical');
+  if((data.runtime?.heapUsed||0) > 200*1024*1024) pushAlert('⚠️ Memory usage naik drastis','warn');
+  const active=data.live?.activeUsers||0;
+  const prev=state.lastSnapshot?.activeUsers||0;
+  if(prev>0 && active>=prev*1.8) pushAlert(`📈 Traffic spike: ${prev} → ${active}`,'warn');
+  state.lastSnapshot={activeUsers:active};
 }
 
-function playNotif() { try { el('notifAudio').currentTime = 0; el('notifAudio').play().catch(()=>{}); } catch {} }
-
-function setBadge(count) {
-  state.unread = Math.max(0, Number(count||0));
-  el('adminTicketBadge').textContent = String(state.unread);
-  el('adminTicketBadge').classList.toggle('hidden', state.unread <= 0);
+function renderMetrics(data){
+  const cards=[['Total Ticket',data.tickets?.total||0],['Socket Active',data.activeSocketClients||0],['Forum Rooms',data.forumRooms||0],['Uptime',formatUptime(data.uptimeSeconds||0)],['Memory RSS',formatBytes(data.runtime?.rss)],['Heap Used',formatBytes(data.runtime?.heapUsed)],['Converting',data.live?.conversion?.converting||0],['Success',data.live?.conversion?.success||0]];
+  el('metricCards').innerHTML=cards.map(([k,v])=>`<div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">${k}</div><div class="text-xl font-bold transition-all">${v}</div></div>`).join('');
 }
 
-function renderMetrics(data) {
-  const cards = [
-    ['Total Ticket', data.tickets?.total || 0],
-    ['Socket Active', data.activeSocketClients || 0],
-    ['Forum Rooms', data.forumRooms || 0],
-    ['Uptime', formatUptime(data.uptimeSeconds || 0)],
-    ['Memory RSS', formatBytes(data.runtime?.rss)],
-    ['Heap Used', formatBytes(data.runtime?.heapUsed)],
-    ['Converting', data.live?.conversion?.converting || 0],
-    ['Success', data.live?.conversion?.success || 0],
-  ];
-  el('metricCards').innerHTML = cards.map(([k,v]) => `<div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">${k}</div><div class="text-xl font-bold">${v}</div></div>`).join('');
+function updateCharts(data){
+  const perDay=data.tickets?.perDay||[];const statuses=data.tickets?.byStatus||{};
+  state.lineChart?.destroy();state.pieChart?.destroy();
+  state.lineChart=new Chart(el('lineChart'),{type:'line',data:{labels:perDay.map(d=>d.date.slice(5)),datasets:[{label:'Tickets',data:perDay.map(d=>d.total),borderColor:'#818cf8',backgroundColor:'rgba(99,102,241,.25)',fill:true,tension:.35}]},options:{plugins:{legend:{labels:{color:'#cbd5e1'}}},scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}});
+  state.pieChart=new Chart(el('pieChart'),{type:'pie',data:{labels:['Open','Pending','Rejected'],datasets:[{data:[statuses.received||0,statuses.reviewing||0,statuses.rejected||0],backgroundColor:['#22c55e','#f59e0b','#ef4444']}]},options:{plugins:{legend:{labels:{color:'#cbd5e1'}}}}});
 }
 
-function updateCharts(data) {
-  const perDay = data.tickets?.perDay || [];
-  const statuses = data.tickets?.byStatus || {};
-  const lineCfg = {
-    type: 'line', data: { labels: perDay.map(d=>d.date.slice(5)), datasets: [{ label:'Tickets', data: perDay.map(d=>d.total), borderColor:'#818cf8', backgroundColor:'rgba(99,102,241,.25)', fill:true, tension:.35 }] },
-    options: { plugins: { legend: { labels: { color:'#cbd5e1' } } }, scales: { x:{ ticks:{ color:'#94a3b8' } }, y:{ ticks:{ color:'#94a3b8' } } } }
-  };
-  const pieCfg = {
-    type:'pie', data:{ labels:['Open','Pending','Rejected'], datasets:[{ data:[statuses.received||0, statuses.reviewing||0, statuses.rejected||0], backgroundColor:['#22c55e','#f59e0b','#ef4444'] }] },
-    options:{ plugins:{ legend:{ labels:{ color:'#cbd5e1' } } } }
-  };
-  state.lineChart?.destroy();
-  state.pieChart?.destroy();
-  state.lineChart = new Chart(el('lineChart'), lineCfg);
-  state.pieChart = new Chart(el('pieChart'), pieCfg);
+function applyFilters(){const q=el('searchId').value.trim().toLowerCase();const st=el('filterStatus').value;const cat=el('filterCategory').value.trim().toLowerCase();const date=el('filterDate').value;state.filteredTickets=state.allTickets.filter((t)=>{const idOk=!q||String(t.ticketId||'').toLowerCase().includes(q);const statusOk=!st||String(t.status||'')===st;const catOk=!cat||String(t.category||'').toLowerCase().includes(cat);const dateOk=!date||String(t.submittedAt||'').slice(0,10)===date;return idOk&&statusOk&&catOk&&dateOk;});renderTicketRows();}
+function renderTicketRows(){el('ticketRows').innerHTML=state.filteredTickets.map((t)=>`<tr class="border-t border-slate-800 hover:bg-slate-800/40"><td class="p-2 font-semibold">${t.ticketId}</td><td class="p-2">${t.category||'-'}</td><td class="p-2">${t.statusLabel||t.status||'-'}</td><td class="p-2">${t.submittedAt?fmt.format(new Date(t.submittedAt)):'-'}</td><td class="p-2"><button data-open="${t.ticketId}" class="px-2 py-1 rounded bg-indigo-600 text-xs">Detail</button></td></tr>`).join('')||'<tr><td class="p-3 text-slate-400" colspan="5">Belum ada tiket</td></tr>';}
+
+function renderLive(data){
+  el('activeUsers').textContent=data.live?.activeUsers ?? data.activeSocketClients ?? 0;
+  el('convertingUsers').textContent=data.live?.conversion?.converting||0;
+  el('successUsers').textContent=data.live?.conversion?.success||0;
+  el('pageStats').innerHTML=Object.entries(data.live?.pageStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
+  el('roomStats').innerHTML=Object.entries(data.live?.roomStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
+  const users=data.live?.users||[];
+  el('liveUserRows').innerHTML=users.map((u)=>`<tr class="border-t border-slate-800"><td class="p-2">${u.socketId}</td><td class="p-2">${u.page||'-'}</td><td class="p-2">${u.room||'-'}</td><td class="p-2">${u.status||'-'}</td><td class="p-2">${u.durationSeconds||0}s</td><td class="p-2">${(u.journey||'-').replace(/</g,'&lt;')}</td></tr>`).join('')||'<tr><td class="p-2" colspan="6">Tidak ada user.</td></tr>';
 }
 
-function applyFilters() {
-  const q = el('searchId').value.trim().toLowerCase();
-  const st = el('filterStatus').value;
-  const cat = el('filterCategory').value.trim().toLowerCase();
-  const date = el('filterDate').value;
-  state.filteredTickets = state.allTickets.filter((t) => {
-    const idOk = !q || String(t.ticketId||'').toLowerCase().includes(q);
-    const statusOk = !st || String(t.status||'') === st;
-    const catOk = !cat || String(t.category||'').toLowerCase().includes(cat);
-    const dateOk = !date || String(t.submittedAt||'').slice(0,10) === date;
-    return idOk && statusOk && catOk && dateOk;
-  });
-  renderTicketRows();
+function renderAdvanced(data){
+  el('fVisited').textContent=data.conversionFunnel?.entered||0;el('fStarted').textContent=data.conversionFunnel?.started||0;el('fSuccess').textContent=data.conversionFunnel?.success||0;
+  el('pAvg').textContent=data.processingTime?.avgMs||0;el('pMin').textContent=data.processingTime?.minMs||0;el('pMax').textContent=data.processingTime?.maxMs||0;
+  el('qLen').textContent=data.queue?.length||0;el('qProc').textContent=data.queue?.processing||0;el('qWait').textContent=data.queue?.waiting||0;
+  el('hCpu').textContent=data.health?.cpuPercentEstimate||0;el('hResp').textContent=data.health?.avgResponseMs||0;el('hErr').textContent=data.health?.errorRate||0;
+  el('eTotal').textContent=data.errors?.total||0;
+  el('eReasons').innerHTML=Object.entries(data.errors?.reasons||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
+  el('activityLogs').innerHTML=(data.activityLogs||[]).map((l)=>`<li class="rounded border border-slate-800 bg-slate-950 p-2">${l.type}: ${l.message}<div class="text-[10px] text-slate-400">${fmt.format(new Date(l.at))}</div></li>`).join('')||'<li>-</li>';
+  el('toggleConvertBtn').textContent=(data.control?.convertEnabled ? 'Disable Convert Sementara' : 'Enable Convert Lagi');
+  evaluateAlerts(data);
 }
 
-function renderTicketRows() {
-  el('ticketRows').innerHTML = state.filteredTickets.map((t) => `
-    <tr class="border-t border-slate-800 hover:bg-slate-800/40">
-      <td class="p-2 font-semibold">${t.ticketId}</td>
-      <td class="p-2">${t.category || '-'}</td>
-      <td class="p-2">${t.statusLabel || t.status || '-'}</td>
-      <td class="p-2">${t.submittedAt ? fmt.format(new Date(t.submittedAt)) : '-'}</td>
-      <td class="p-2"><button data-open="${t.ticketId}" class="px-2 py-1 rounded bg-indigo-600 text-xs">Detail</button></td>
-    </tr>
-  `).join('') || '<tr><td class="p-3 text-slate-400" colspan="5">Belum ada tiket</td></tr>';
-}
+async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);applyFilters();}
 
-function renderLive(data) {
-  el('activeUsers').textContent = data.live?.activeUsers ?? data.activeSocketClients ?? 0;
-  el('convertingUsers').textContent = data.live?.conversion?.converting || 0;
-  el('successUsers').textContent = data.live?.conversion?.success || 0;
-  const pageStats = data.live?.pageStats || {};
-  const roomStats = data.live?.roomStats || {};
-  el('pageStats').innerHTML = Object.entries(pageStats).map(([k,v]) => `<li>${k}: <b>${v}</b></li>`).join('') || '<li class="text-slate-500">-</li>';
-  el('roomStats').innerHTML = Object.entries(roomStats).map(([k,v]) => `<li>${k}: <b>${v}</b></li>`).join('') || '<li class="text-slate-500">-</li>';
-}
+function renderChatHistory(items){el('chatHistory').innerHTML=items.map((c)=>`<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender||'system'} • ${c.at?fmt.format(new Date(c.at)):'-'}</div><div>${(c.message||'').replace(/</g,'&lt;')}</div></div>`).join('')||'<div class="text-slate-500 text-xs">Belum ada chat.</div>';const adminCount=items.filter((x)=>x?.sender==='admin').length;const remain=Math.max(0,3-adminCount);el('chatLimitHint').textContent=`Sisa chat admin: ${remain}`;el('chatInput').disabled=remain<=0;el('chatHistory').scrollTop=el('chatHistory').scrollHeight;}
 
-async function loadStats() {
-  const token = getToken();
-  if (!token) return;
-  const res = await fetch('/api/admin/stats', { headers: { Authorization:`Bearer ${token}` } });
-  const data = await res.json().catch(()=>({}));
-  if (!res.ok || !data.ok) { el('authState').textContent = 'Token invalid'; return; }
-  el('authState').textContent = `Aktif • ${fmt.format(new Date(data.timestamp))}`;
-  state.allTickets = data.tickets?.all || [];
-  renderMetrics(data); updateCharts(data); renderLive(data); applyFilters();
-}
+async function openDetail(ticketId){state.currentTicket=state.allTickets.find(t=>t.ticketId===ticketId)||null;el('detailPanel').classList.remove('hidden');el('dTicketId').textContent=ticketId;el('detailSkeleton').classList.remove('hidden');el('detailContent').classList.add('hidden');setTimeout(()=>{const t=state.currentTicket;if(!t)return;el('dName').textContent=t.name||'-';el('dEmail').textContent=t.email||'-';el('dCategory').textContent=t.category||'-';el('dStatus').textContent=t.statusLabel||t.status||'-';el('dMessage').textContent=t.message||'-';el('dProofs').innerHTML=(t.proofs||[]).map((p)=>`<a href="${p.url}" target="_blank" class="rounded-lg border border-slate-700 overflow-hidden bg-slate-900"><img src="${p.url}" class="w-full h-24 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'p-2 text-xs\\'>${p.name||'Attachment'}</div>'"></a>`).join('')||'<div class="text-slate-500 text-xs">Tidak ada attachment</div>';renderChatHistory(t.chatHistory||[]);el('statusHistory').innerHTML=(t.statusHistory||[]).map((s)=>`<li>• ${s.label||s.status} — ${s.at?fmt.format(new Date(s.at)):'-'}</li>`).join('')||'<li class="text-slate-500">Belum ada riwayat</li>';el('detailSkeleton').classList.add('hidden');el('detailContent').classList.remove('hidden');},350);}
 
-async function openDetail(ticketId) {
-  state.currentTicket = state.allTickets.find(t => t.ticketId === ticketId) || null;
-  el('detailPanel').classList.remove('hidden');
-  el('dTicketId').textContent = ticketId;
-  el('detailSkeleton').classList.remove('hidden');
-  el('detailContent').classList.add('hidden');
-  requestAnimationFrame(() => {
-    el('detailPanel').scrollIntoView({ behavior:'smooth', block:'start' });
-  });
-  setTimeout(() => {
-    const t = state.currentTicket;
-    if (!t) return;
-    el('dName').textContent = t.name || '-';
-    el('dEmail').textContent = t.email || '-';
-    el('dCategory').textContent = t.category || '-';
-    el('dStatus').textContent = t.statusLabel || t.status || '-';
-    el('dMessage').textContent = t.message || '-';
-    el('dProofs').innerHTML = (t.proofs || []).map((p) => `<a href="${p.url}" target="_blank" class="rounded-lg border border-slate-700 overflow-hidden bg-slate-900"><img src="${p.url}" class="w-full h-24 object-cover" onerror="this.parentElement.innerHTML='<div class=\'p-2 text-xs\'>${p.name || 'Attachment'}</div>'"></a>`).join('') || '<div class="text-slate-500 text-xs">Tidak ada attachment</div>';
-    renderChatHistory(t.chatHistory || []);
-    el('statusHistory').innerHTML = (t.statusHistory || []).map((s) => `<li>• ${s.label || s.status} — ${s.at ? fmt.format(new Date(s.at)) : '-'}</li>`).join('') || '<li class="text-slate-500">Belum ada riwayat</li>';
-    el('detailSkeleton').classList.add('hidden');
-    el('detailContent').classList.remove('hidden');
-  }, 450);
-}
+async function sendChat(evt){evt.preventDefault();if(!state.currentTicket)return;const token=getToken();const message=el('chatInput').value.trim();if(!message)return;const r=await fetch(`/api/admin/tickets/${encodeURIComponent(state.currentTicket.ticketId)}/chat`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({message})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Gagal kirim chat','error');el('chatInput').value='';toast('Balasan terkirim');loadStats().catch(()=>{});}
 
-function renderChatHistory(items) {
-  el('chatHistory').innerHTML = items.map((c) => `<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender || 'system'} • ${c.at ? fmt.format(new Date(c.at)) : '-'}</div><div>${(c.message || '').replace(/</g,'&lt;')}</div></div>`).join('') || '<div class="text-slate-500 text-xs">Belum ada chat.</div>';
-  el('chatHistory').scrollTop = el('chatHistory').scrollHeight;
-}
+function exportExcel(){const rows=state.filteredTickets.map((t)=>({ID:t.ticketId,Nama:t.name,Email:t.email,Kategori:t.category,Status:t.statusLabel||t.status,SubmittedAt:t.submittedAt}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tickets');XLSX.writeFile(wb,`tickets-${Date.now()}.xlsx`);}
 
-async function sendChat(evt) {
-  evt.preventDefault();
-  if (!state.currentTicket) return;
-  const token = getToken();
-  const message = el('chatInput').value.trim();
-  if (!message) return;
-  const r = await fetch(`/api/admin/tickets/${encodeURIComponent(state.currentTicket.ticketId)}/chat`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` }, body:JSON.stringify({ message }) });
-  const d = await r.json().catch(()=>({}));
-  if (!r.ok || !d.ok) return toast('Gagal kirim chat','error');
-  el('chatInput').value = '';
-  toast('Balasan terkirim');
-}
+function initSocket(){if(socket)return;socket=io({transports:['websocket','polling']});socket.on('connect',()=>socket.emit('page_change',{page:'/admin/dashboard'}));socket.on('dashboard_stats',(payload)=>renderLive({live:{...payload,conversion:payload.conversion||{}}}));socket.on('admin:newTicket',(payload)=>{setBadge(state.unread+1);toast(`Ticket baru: ${payload.ticketId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:ticketUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:ticketChat',(payload)=>{if(state.currentTicket?.ticketId===payload.ticketId){state.currentTicket.chatHistory=[...(state.currentTicket.chatHistory||[]),payload.chat];renderChatHistory(state.currentTicket.chatHistory||[]);}toast(`Chat baru di ${payload.ticketId}`);playNotif();});socket.on('admin:controlUpdated',()=>loadStats().catch(()=>{}));}
 
-function exportExcel() {
-  const rows = state.filteredTickets.map((t) => ({ ID: t.ticketId, Nama: t.name, Email: t.email, Kategori: t.category, Status: t.statusLabel || t.status, SubmittedAt: t.submittedAt }));
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Tickets');
-  XLSX.writeFile(wb, `tickets-${Date.now()}.xlsx`);
-}
+async function control(action,extra={}){const token=getToken();const r=await fetch('/api/admin/control',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action,...extra})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Control gagal','error');toast(`Action ${action} berhasil`);loadStats().catch(()=>{});}
 
-function initSocket() {
-  if (socket) return;
-  socket = io({ transports:['websocket','polling'] });
-  socket.on('connect', () => socket.emit('page_change', { page:'/admin/dashboard' }));
-  socket.on('dashboard_stats', (payload) => renderLive({ live: { ...payload, conversion: payload.conversion || {} } }));
-  socket.on('admin:newTicket', (payload) => {
-    setBadge(state.unread + 1);
-    toast(`Ticket baru: ${payload.ticketId}`);
-    playNotif();
-    loadStats().catch(()=>{});
-  });
-  socket.on('admin:ticketUpdated', (payload) => {
-    toast(`Ticket ${payload.ticketId} diupdate ke ${payload.statusLabel || payload.status}`);
-    loadStats().catch(()=>{});
-  });
-  socket.on('admin:ticketChat', (payload) => {
-    if (state.currentTicket?.ticketId === payload.ticketId) {
-      state.currentTicket.chatHistory = [...(state.currentTicket.chatHistory || []), payload.chat];
-      renderChatHistory(state.currentTicket.chatHistory || []);
-    }
-    toast(`Chat baru di ${payload.ticketId}`);
-    playNotif();
-  });
-}
+async function login(evt){evt.preventDefault();const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:el('username').value,password:el('password').value})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok||!data.token)return toast('Login gagal','error');setToken(data.token);el('authState').textContent='Login aktif';toast('Login berhasil');await loadStats();initSocket();}
 
-async function login(evt) {
-  evt.preventDefault();
-  const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:el('username').value, password:el('password').value }) });
-  const data = await res.json().catch(()=>({}));
-  if (!res.ok || !data.ok || !data.token) return toast('Login gagal','error');
-  setToken(data.token);
-  el('authState').textContent = 'Login aktif';
-  toast('Login berhasil');
-  await loadStats();
-  initSocket();
-}
+el('loginForm').addEventListener('submit',login);el('refreshBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('closeDetailBtn').addEventListener('click',()=>el('detailPanel').classList.add('hidden'));el('chatForm').addEventListener('submit',sendChat);el('exportBtn').addEventListener('click',exportExcel);['searchId','filterStatus','filterCategory','filterDate'].forEach((id)=>el(id).addEventListener('input',applyFilters));el('ticketRows').addEventListener('click',(evt)=>{const btn=evt.target.closest('button[data-open]');if(!btn)return;openDetail(btn.getAttribute('data-open'));});el('adminTicketsBtn').addEventListener('click',()=>setBadge(0));
+el('toggleConvertBtn').addEventListener('click',()=>control('toggle_convert'));el('clearQueueBtn').addEventListener('click',()=>control('clear_queue'));el('kickUserBtn').addEventListener('click',()=>control('kick_user',{socketId:el('kickSocketId').value.trim()}));
+el('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('bg-slate-950');document.body.classList.toggle('bg-slate-100');document.body.classList.toggle('text-slate-100');document.body.classList.toggle('text-slate-900');});
 
-el('loginForm').addEventListener('submit', login);
-el('refreshBtn').addEventListener('click', () => loadStats().catch(()=>{}));
-el('closeDetailBtn').addEventListener('click', () => el('detailPanel').classList.add('hidden'));
-el('chatForm').addEventListener('submit', sendChat);
-el('exportBtn').addEventListener('click', exportExcel);
-['searchId','filterStatus','filterCategory','filterDate'].forEach((id) => el(id).addEventListener('input', applyFilters));
-el('ticketRows').addEventListener('click', (evt) => {
-  const btn = evt.target.closest('button[data-open]');
-  if (!btn) return;
-  openDetail(btn.getAttribute('data-open'));
-});
-el('adminTicketsBtn').addEventListener('click', () => setBadge(0));
-
-if (getToken()) {
-  el('authState').textContent = 'Token tersimpan';
-  loadStats().catch(()=>{});
-  initSocket();
-}
-setInterval(() => { if (getToken()) loadStats().catch(()=>{}); }, 8000);
+if(getToken()){el('authState').textContent='Token tersimpan';loadStats().catch(()=>{});initSocket();}
+setInterval(()=>{if(getToken()) loadStats().catch(()=>{});},8000);
 </script>
 </body>
 </html>

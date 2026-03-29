@@ -27314,6 +27314,10 @@
               cleanupPeer();
               setToast('Panggilan berakhir');
             });
+            forumSocket.on('conversion_blocked', (payload) => {
+              if (typeof setToast === 'function') setToast(payload?.message || 'Konversi dinonaktifkan sementara oleh admin.', 'warning');
+              window.manageCTAState?.('idle');
+            });
             window.addEventListener('popstate', reportPageChange);
             window.addEventListener('hashchange', reportPageChange);
             return forumSocket;
