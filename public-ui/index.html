@@ -5469,7 +5469,9 @@
                         <i class="bi bi-music-note-beamed text-success"></i>
                         <strong id="sourcePreviewLabel">Preview Spotify</strong>
                       </div>
-                      <audio id="sourcePreviewAudio" class="w-100 mt-2" controls preload="none"></audio>
+                      <audio id="sourcePreviewAudio" class="w-100 mt-2" controls preload="none"
+                        controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture
+                        oncontextmenu="return false"></audio>
                     </div>
                   </div>
                 </div>
@@ -6112,9 +6114,41 @@
                           <i class="bi bi-play-circle-fill text-primary"></i>
                           <strong>Preview Media</strong>
                         </div>
-                        <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"></audio>
+                        <audio id="previewPlayer" class="w-100 mt-2" controls preload="none"
+                          controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture
+                          oncontextmenu="return false"></audio>
                         <video id="previewVideo" class="w-100 mt-3" controls preload="metadata" playsinline
+                          controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture
+                          oncontextmenu="return false"
                           hidden></video>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                          <button id="prevRewindBtn" class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-skip-backward"></i> 10s</button>
+                          <button id="prevPlayPauseBtn" class="btn btn-sm btn-outline-primary" type="button"><i class="bi bi-play-fill"></i> Play/Pause</button>
+                          <button id="prevForwardBtn" class="btn btn-sm btn-outline-secondary" type="button">10s <i class="bi bi-skip-forward"></i></button>
+                          <label class="small text-secondary ms-1 mb-0">Kecepatan</label>
+                          <select id="previewSpeedSelect" class="form-select form-select-sm" style="max-width:120px">
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1.0x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                          </select>
+                          <span class="badge text-bg-dark"><i class="bi bi-shield-lock"></i> Download dinonaktifkan di preview</span>
+                        </div>
+                        <div class="card border-0 bg-body-secondary mt-3">
+                          <div class="card-body py-2">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                              <strong class="me-auto">Paket User</strong>
+                              <span class="badge text-bg-info" id="activePlanBadge">Belum pilih paket</span>
+                              <button id="chooseFreePlanBtn" type="button" class="btn btn-sm btn-outline-success">Pilih Free</button>
+                              <button id="choosePremiumPlanBtn" type="button" class="btn btn-sm btn-outline-primary">Pilih Premium (Gratis)</button>
+                            </div>
+                            <div class="small text-secondary mt-1">Keduanya gratis saat ini. Pilih salah satu untuk lanjut fitur simpan cloud.</div>
+                          </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                          <button id="saveCloudinaryBtn" type="button" class="btn btn-sm btn-outline-warning"><i class="bi bi-cloud-upload"></i> Simpan lagu ke Cloudinary</button>
+                          <span class="small text-secondary" id="saveCloudinaryStatus">Login Google + pilih paket untuk menyimpan.</span>
+                        </div>
 
                         <div id="shareWrap" class="mt-3" hidden>
                           <div class="d-flex flex-wrap align-items-center gap-2">
@@ -13749,6 +13783,15 @@
         const previewPlayer = $('#previewPlayer');
         const previewWrap = $('#previewWrap');
         const previewVideo = $('#previewVideo');
+        const prevRewindBtn = $('#prevRewindBtn');
+        const prevPlayPauseBtn = $('#prevPlayPauseBtn');
+        const prevForwardBtn = $('#prevForwardBtn');
+        const previewSpeedSelect = $('#previewSpeedSelect');
+        const chooseFreePlanBtn = $('#chooseFreePlanBtn');
+        const choosePremiumPlanBtn = $('#choosePremiumPlanBtn');
+        const activePlanBadge = $('#activePlanBadge');
+        const saveCloudinaryBtn = $('#saveCloudinaryBtn');
+        const saveCloudinaryStatus = $('#saveCloudinaryStatus');
         const qrCanvas = $('#downloadQr');
         const qrWrap = $('#qrWrap');
         const thumbEl = $('#thumb');
@@ -22428,6 +22471,101 @@
           if (name) parts.push(name);
           miniSubtitle.textContent = parts.join(' • ');
         };
+
+        const getActivePreviewMedia = () => {
+          if (previewVideo && !previewVideo.hidden && previewVideo.src) return previewVideo;
+          return previewPlayer;
+        };
+        const seekPreview = (deltaSec = 0) => {
+          const media = getActivePreviewMedia();
+          if (!media || !Number.isFinite(media.duration)) return;
+          media.currentTime = Math.max(0, Math.min(media.duration, (media.currentTime || 0) + deltaSec));
+        };
+        prevRewindBtn?.addEventListener('click', () => seekPreview(-10));
+        prevForwardBtn?.addEventListener('click', () => seekPreview(10));
+        prevPlayPauseBtn?.addEventListener('click', () => {
+          const media = getActivePreviewMedia();
+          if (!media) return;
+          if (media.paused) media.play().catch(() => { });
+          else media.pause();
+        });
+        previewSpeedSelect?.addEventListener('change', () => {
+          const rate = Number(previewSpeedSelect.value || 1);
+          if (previewPlayer) previewPlayer.playbackRate = rate;
+          if (previewVideo) previewVideo.playbackRate = rate;
+        });
+
+        const PLAN_KEY = 'ytconv_subscription_plan';
+        const readPlan = () => {
+          try { return localStorage.getItem(PLAN_KEY) || ''; } catch { return ''; }
+        };
+        const writePlan = (plan) => {
+          try { localStorage.setItem(PLAN_KEY, plan); } catch { }
+        };
+        const renderPlan = () => {
+          const plan = readPlan();
+          if (!activePlanBadge) return;
+          if (!plan) {
+            activePlanBadge.className = 'badge text-bg-secondary';
+            activePlanBadge.textContent = 'Belum pilih paket';
+            return;
+          }
+          const isPremium = plan === 'premium';
+          activePlanBadge.className = `badge ${isPremium ? 'text-bg-primary' : 'text-bg-success'}`;
+          activePlanBadge.textContent = isPremium ? 'Premium (Gratis)' : 'Free';
+        };
+        const choosePlan = (plan) => {
+          const label = plan === 'premium' ? 'Premium (Gratis)' : 'Free';
+          if (!confirm(`Pilih paket ${label}? Kamu bisa ganti lagi kapan saja.`)) return;
+          writePlan(plan);
+          renderPlan();
+          if (saveCloudinaryStatus) saveCloudinaryStatus.textContent = `Paket aktif: ${label}. Kamu bisa simpan lagu ke Cloudinary.`;
+          setToast(`Paket ${label} aktif.`, 'success');
+        };
+        chooseFreePlanBtn?.addEventListener('click', () => choosePlan('free'));
+        choosePremiumPlanBtn?.addEventListener('click', () => choosePlan('premium'));
+        renderPlan();
+
+        const savePreviewToCloudinary = async () => {
+          if (!state?.auth?.user) {
+            setToast('Login Google dulu untuk simpan lagu ke Cloudinary.', 'warning');
+            if (saveCloudinaryStatus) saveCloudinaryStatus.textContent = 'Gagal: wajib login Google dulu.';
+            return;
+          }
+          const plan = readPlan();
+          if (!plan) {
+            setToast('Pilih paket Free/Premium dulu sebelum simpan.', 'warning');
+            if (saveCloudinaryStatus) saveCloudinaryStatus.textContent = 'Gagal: paket belum dipilih.';
+            return;
+          }
+          if (!currentDownloadUrl) {
+            setToast('Belum ada lagu yang bisa disimpan.', 'warning');
+            return;
+          }
+          if (saveCloudinaryBtn) saveCloudinaryBtn.disabled = true;
+          if (saveCloudinaryStatus) saveCloudinaryStatus.textContent = 'Mengunggah ke Cloudinary...';
+          try {
+            const resp = await fetch(currentDownloadUrl);
+            if (!resp.ok) throw new Error(`Fetch file gagal (${resp.status})`);
+            const blob = await resp.blob();
+            const baseName = (currentDownloadName || 'ytconv-audio').replace(/[^\w.\- ]+/g, '').trim() || 'ytconv-audio';
+            const ext = (lastPreviewMeta?.format || 'mp3').toLowerCase();
+            const file = new File([blob], `${baseName}.${ext}`, { type: blob.type || 'audio/mpeg' });
+            const cloudUrl = await uploadToCloudinaryAuto(file, `ytconv/user-library/${state.auth.user.id || 'anon'}`);
+            if (!cloudUrl) throw new Error('Cloudinary tidak mengembalikan URL');
+            if (saveCloudinaryStatus) {
+              saveCloudinaryStatus.innerHTML = `Berhasil disimpan: <a href=\"${cloudUrl}\" target=\"_blank\" rel=\"noopener noreferrer\">Buka file cloud</a>`;
+            }
+            setToast('Lagu berhasil disimpan ke Cloudinary.', 'success');
+          } catch (err) {
+            console.error('savePreviewToCloudinary error', err);
+            if (saveCloudinaryStatus) saveCloudinaryStatus.textContent = `Gagal simpan: ${err.message || 'unknown error'}`;
+            setToast('Gagal simpan ke Cloudinary.', 'danger');
+          } finally {
+            if (saveCloudinaryBtn) saveCloudinaryBtn.disabled = false;
+          }
+        };
+        saveCloudinaryBtn?.addEventListener('click', () => savePreviewToCloudinary());
 
         const updateMiniPlayState = () => {
           if (!miniPlayBtn || !previewPlayer) return;
