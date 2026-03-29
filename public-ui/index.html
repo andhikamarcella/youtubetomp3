@@ -13037,6 +13037,25 @@
                 pageUrl: window.location.href,
               };
 
+              const sendViaEmailJs = async (ticketPayload, backendData = {}) => {
+                if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
+                  throw new Error('EmailJS belum dikonfigurasi');
+                }
+                window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+                const firstLink = backendData?.fileLink || ticketPayload.file_link || '';
+                const templateParams = {
+                  ticket_id: ticketPayload.ticketId,
+                  name: ticketPayload.name,
+                  email: ticketPayload.email,
+                  category: ticketPayload.category,
+                  message: ticketPayload.message,
+                  file_link: firstLink || 'Tidak ada file',
+                  date: ticketPayload.date,
+                };
+                await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
+                return true;
+              };
+
               const resp = await fetch('/api/contact', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -13044,7 +13063,11 @@
               });
               const result = await resp.json().catch(() => ({}));
               if (!resp.ok || !result?.ok) {
-                throw new Error(result?.error || 'Gagal mengirim tiket bantuan');
+                // Fallback: try direct EmailJS send if backend path fails
+                await sendViaEmailJs(payload, result);
+              } else if (result?.emailStatus !== 'sent') {
+                // Backend accepted ticket but SMTP path unavailable -> fallback to EmailJS
+                await sendViaEmailJs(payload, result);
               }
 
               setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, 'success');
