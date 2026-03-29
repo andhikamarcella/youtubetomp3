@@ -3,208 +3,122 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin - Upload cookies.txt</title>
+  <title>Admin Cookies • YTConv</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root { --accent:#fd7e14; --bg:#0b1220; --card:rgba(17,24,39,0.92); --card2:rgba(15,23,42,0.78); --text:#e5e7eb; --muted:rgba(229,231,235,0.72); --border:rgba(255,255,255,0.10); --shadow:0 22px 70px rgba(0,0,0,0.38); }
-    @media (prefers-color-scheme: light) { :root { --bg:#f6f7fb; --card:rgba(255,255,255,0.98); --card2:rgba(255,255,255,0.92); --text:#111827; --muted:rgba(17,24,39,0.62); --border:rgba(17,24,39,0.10); --shadow:0 20px 60px rgba(0,0,0,0.10); } }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; background: radial-gradient(circle at 20% 0%, rgba(253,126,20,0.18), transparent 55%), radial-gradient(circle at 80% 0%, rgba(13,110,253,0.14), transparent 45%), var(--bg); color:var(--text); }
-    .wrap { max-width: 860px; margin: 0 auto; padding: 14px 14px 28px; }
-    .top { position: sticky; top: 0; z-index: 5; padding: 10px 0 12px; backdrop-filter: blur(10px); }
-    .top-inner { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-    .brand { font-weight: 950; letter-spacing: 0.02em; display:flex; align-items:center; gap:10px; }
-    .dot { width:10px; height:10px; border-radius:999px; background:#94a3b8; box-shadow:0 0 0 3px rgba(255,255,255,0.12); }
-    .dot.ok{background:#22c55e;} .dot.warn{background:#f59e0b;} .dot.bad{background:#ef4444;}
-    .actions { display:flex; gap:10px; flex-wrap:wrap; }
-    @media (max-width: 540px) { .actions { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; } .actions::-webkit-scrollbar{display:none;} .actions>*{flex:0 0 auto;} }
-    .card { border:1px solid var(--border); background:var(--card); border-radius:18px; padding:14px; box-shadow: var(--shadow); transform: translateY(0); transition: transform 220ms ease, box-shadow 220ms ease; }
-    @media (hover:hover) and (pointer:fine) { .card:hover { transform: translateY(-2px); box-shadow: 0 28px 90px rgba(0,0,0,0.44); } }
-    .section { background: var(--card2); border:1px solid var(--border); border-radius:16px; padding:12px; margin-top: 12px; }
-    .title { font-weight: 950; letter-spacing: 0.02em; }
-    .muted { color: var(--muted); font-size: 0.92rem; }
-    label { display:block; font-size:0.85rem; font-weight:900; margin: 12px 0 6px; color: var(--muted); }
-    input[type="text"], input[type="password"] { width:100%; padding: 12px 12px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); outline: none; }
-    input[type="file"] { width:100%; }
-    .row { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-    button, a.btn { border:1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text); padding: 11px 12px; border-radius: 14px; font-weight: 950; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease; }
-    button.primary { background: var(--accent); border-color: transparent; color:#111827; }
-    button:hover, a.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(0,0,0,0.18); }
-    button:active, a.btn:active { transform: translateY(0px) scale(0.98); }
-    button:focus-visible, a.btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .toast { margin-top: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); display:none; }
-    .toast.show { display:block; animation: toast-in 220ms ease-out; }
-    @keyframes toast-in { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .hidden { display:none !important; }
-    @media (prefers-reduced-motion: reduce) { button, a.btn, .card { transition:none !important; } .toast.show { animation:none !important; } }
+    @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
+    .fade-in { animation: fadeIn .35s ease both; }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="top">
-      <div class="top-inner">
-        <div class="brand"><span class="dot" id="pageDot"></span> Admin Cookies</div>
-        <div class="actions">
-          <a class="btn" href="./" rel="noopener">Halaman Utama</a>
-          <a class="btn" href="./status.html" rel="noopener">Status Page</a>
-          <button id="logoutBtn" class="hidden">Logout</button>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <main class="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
+    <header class="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3 fade-in">
+      <div>
+        <h1 class="text-xl md:text-2xl font-extrabold">🍪 Admin Cookies Manager</h1>
+        <p class="text-slate-400 text-sm">Upload dan monitor cookies.txt dengan UI yang lebih rapi.</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <a href="/admin/dashboard" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm">Dashboard</a>
+        <a href="/admin/tickets" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm">Admin Tickets</a>
+      </div>
+    </header>
+
+    <section id="loginView" class="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3 fade-in">
+      <div class="font-bold">Login Admin</div>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" autocomplete="username">
+        <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" autocomplete="current-password">
+      </div>
+      <div class="flex gap-2">
+        <button id="loginBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold">Login</button>
+      </div>
+      <div id="loginToast" class="text-sm"></div>
+    </section>
+
+    <section id="uploadView" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3 fade-in">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <div class="font-bold">Upload cookies.txt</div>
+          <div class="text-sm text-slate-400">Status realtime akan refresh otomatis.</div>
         </div>
-      </div>
-    </div>
-
-    <div class="card" id="loginView">
-      <div class="title">Login dulu</div>
-      <div class="muted">Setelah login, tinggal pilih file cookies.txt dan upload.</div>
-      <label>Username</label>
-      <input id="username" type="text" value="ytmp3yulid" autocomplete="username" />
-      <label>Password</label>
-      <input id="password" type="password" autocomplete="current-password" />
-      <div class="row">
-        <button class="primary" id="loginBtn">Login</button>
-      </div>
-      <div class="toast" id="loginToast"></div>
-    </div>
-
-    <div class="card hidden" id="uploadView">
-      <div class="title">Upload cookies.txt</div>
-      <div class="muted">Pastikan format cookies Netscape. Setelah upload, sistem langsung pakai cookies terbaru.</div>
-
-      <div class="section">
-        <div class="muted">Status cookies:</div>
-        <div class="toast show" id="statusBox"></div>
+        <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Logout</button>
       </div>
 
-      <label>Pilih file cookies.txt</label>
-      <input id="file" type="file" accept=".txt,text/plain" />
-
-      <div class="row">
-        <button class="primary" id="uploadBtn">Upload</button>
-        <button id="refreshStatusBtn">Refresh status</button>
+      <div class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm">
+        <div class="text-slate-400">Status Cookies</div>
+        <div id="statusBox" class="font-medium mt-1">Memuat...</div>
       </div>
-      <div class="toast" id="uploadToast"></div>
-    </div>
-  </div>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const toast = (id, msg, ok = true) => {
-      const el = $(id);
-      el.className = 'toast show';
-      el.innerHTML = `<span class="mono">${ok ? 'OK' : 'ERR'}</span> — ${String(msg)}`;
-    };
-    const tokenKey = 'admin_bearer_token';
-    const legacyKey = 'ytmp3_admin_bearer';
-    const getToken = () => (sessionStorage.getItem(tokenKey) || localStorage.getItem(legacyKey) || '').trim();
-    const setToken = (t) => {
-      const v = String(t || '').trim();
-      sessionStorage.setItem(tokenKey, v);
-      localStorage.setItem(legacyKey, v);
-    };
-    const clearToken = () => {
-      sessionStorage.removeItem(tokenKey);
-      localStorage.removeItem(legacyKey);
-    };
+      <input id="file" type="file" accept=".txt,text/plain" class="block w-full text-sm file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-100 hover:file:bg-slate-600" />
+      <div class="flex gap-2 flex-wrap">
+        <button id="uploadBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold">Upload</button>
+        <button id="refreshStatusBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600">Refresh</button>
+      </div>
+      <div id="uploadToast" class="text-sm"></div>
+    </section>
+  </main>
 
-    const setLoggedInUi = (loggedIn) => {
-      const loginView = $('loginView');
-      const uploadView = $('uploadView');
-      const logoutBtn = $('logoutBtn');
-      if (loginView) loginView.classList.toggle('hidden', loggedIn);
-      if (uploadView) uploadView.classList.toggle('hidden', !loggedIn);
-      if (logoutBtn) logoutBtn.classList.toggle('hidden', !loggedIn);
-      const dot = $('pageDot');
-      if (dot) dot.className = 'dot ' + (loggedIn ? 'ok' : 'warn');
-    };
+<script>
+const $ = (id) => document.getElementById(id);
+const tokenKey = 'admin_bearer_token';
+const legacyKey = 'ytmp3_admin_bearer';
+const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
+const getToken = () => (sessionStorage.getItem(tokenKey) || localStorage.getItem(legacyKey) || '').trim();
+const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorage.setItem(legacyKey, t || ''); };
+const clearToken = () => { sessionStorage.removeItem(tokenKey); localStorage.removeItem(legacyKey); };
+const toast = (id, msg, ok = true) => { const el = $(id); el.className = `text-sm ${ok ? 'text-emerald-300' : 'text-rose-300'}`; el.textContent = msg; };
+const setLoggedInUi = (inState) => { $('loginView').classList.toggle('hidden', inState); $('uploadView').classList.toggle('hidden', !inState); };
 
-    const refreshStatus = async () => {
-      const res = await fetch('/admin/cookies-status?t=' + Date.now());
-      const data = await res.json().catch(() => ({}));
-      const isDisabled = Boolean(data && data.disabled);
-      const dot = $('pageDot');
-      const loginBtn = $('loginBtn');
-      if (isDisabled) {
-        if (dot) dot.className = 'dot bad';
-        if (loginBtn) loginBtn.disabled = true;
-        toast('loginToast', 'Admin belum diaktifkan di server. Set ENV: ADMIN_BEARER, ADMIN_USER_HASH, ADMIN_PASS_HASH (Railway Variables).', false);
-        const box = $('statusBox');
-        if (box) box.innerHTML = 'Admin cookies dinonaktifkan. Set ENV: ADMIN_BEARER, ADMIN_USER_HASH, ADMIN_PASS_HASH.';
-        return data;
-      }
-      if (loginBtn) loginBtn.disabled = false;
-      if (dot && !getToken()) dot.className = 'dot warn';
-      const box = $('statusBox');
-      if (!box) return data;
-      if (!data.exists) {
-        box.innerHTML = 'cookies.txt belum ada.';
-        return data;
-      }
-      box.innerHTML = `Ada cookies.txt — <span class="mono">${data.bytes}</span> bytes`;
-      return data;
-    };
+async function refreshStatus(){
+  const res = await fetch('/admin/cookies-status?t=' + Date.now());
+  const data = await res.json().catch(() => ({}));
+  if (data.disabled) {
+    $('statusBox').innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
+    return;
+  }
+  if (!data.exists) {
+    $('statusBox').innerHTML = `<span class="text-amber-300">Belum ada cookies.txt</span> • ${fmt.format(new Date())}`;
+    return;
+  }
+  $('statusBox').innerHTML = `<span class="text-emerald-300">Tersedia</span> • ${Number(data.bytes || 0).toLocaleString()} bytes • ${fmt.format(new Date())}`;
+}
 
-    $('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
-
-    $('loginBtn').addEventListener('click', async () => {
-      try {
-        $('loginBtn').disabled = true;
-        const username = $('username').value || '';
-        const password = $('password').value || '';
-        const res = await fetch('/admin/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-        setToken(data.token || '');
-        try { $('password').value = ''; } catch {}
-        toast('loginToast', 'Login berhasil. Silakan upload cookies.txt.');
-        setLoggedInUi(true);
-        refreshStatus().catch(() => {});
-      } catch (e) {
-        toast('loginToast', e.message || 'Login gagal.', false);
-      } finally {
-        try { $('loginBtn').disabled = false; } catch {}
-      }
+$('loginBtn').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/admin/login', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:$('username').value || '', password:$('password').value || '' })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.token) throw new Error(data.error || 'Login gagal');
+    setToken(data.token);
+    $('password').value = '';
+    toast('loginToast', 'Login berhasil.');
+    setLoggedInUi(true);
+    refreshStatus();
+  } catch (e) { toast('loginToast', e.message || 'Login gagal', false); }
+});
 
-    $('logoutBtn').addEventListener('click', () => {
-      clearToken();
-      setLoggedInUi(false);
-      toast('loginToast', 'Logout.');
-    });
+$('logoutBtn').addEventListener('click', () => { clearToken(); setLoggedInUi(false); toast('loginToast', 'Logout berhasil.'); });
+$('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
 
-    $('uploadBtn').addEventListener('click', async () => {
-      try {
-        const token = getToken();
-        if (!token) throw new Error('Belum login (token kosong).');
-        const f = $('file').files && $('file').files[0];
-        if (!f) throw new Error('Pilih file cookies.txt dulu.');
-        const body = await f.text();
-        if (!body.trim()) throw new Error('Isi cookies.txt kosong.');
-        $('uploadBtn').disabled = true;
-        const res = await fetch('/admin/upload-cookies', {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Authorization': 'Bearer ' + token },
-          body
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-        toast('uploadToast', `Upload sukses (${data.bytes} bytes).`);
-        refreshStatus().catch(() => {});
-      } catch (e) {
-        toast('uploadToast', e.message || 'Upload gagal.', false);
-      } finally {
-        try { $('uploadBtn').disabled = false; } catch {}
-      }
-    });
-    const boot = () => {
-      const token = getToken();
-      setLoggedInUi(Boolean(token));
-      refreshStatus().catch(() => {});
-    };
-    boot();
-  </script>
+$('uploadBtn').addEventListener('click', async () => {
+  try {
+    const token = getToken();
+    if (!token) throw new Error('Belum login');
+    const file = $('file').files?.[0];
+    if (!file) throw new Error('Pilih file cookies.txt dulu');
+    const body = await file.text();
+    const res = await fetch('/admin/upload-cookies', { method:'POST', headers:{ 'Content-Type':'text/plain; charset=utf-8', Authorization:'Bearer ' + token }, body });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    toast('uploadToast', `Upload sukses (${Number(data.bytes || 0).toLocaleString()} bytes).`);
+    refreshStatus();
+  } catch (e) { toast('uploadToast', e.message || 'Upload gagal', false); }
+});
+
+setLoggedInUi(Boolean(getToken()));
+refreshStatus().catch(() => {});
+setInterval(() => { if (getToken()) refreshStatus().catch(() => {}); }, 10000);
+</script>
 </body>
 </html>
