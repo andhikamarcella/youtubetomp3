@@ -8218,6 +8218,12 @@ const controlState = {
   processing: 0,
   waiting: 0,
 };
+const retentionUsers = new Map();
+const apiRouteStats = new Map();
+const abMetrics = {
+  A: { started: 0, success: 0 },
+  B: { started: 0, success: 0 },
+};
 const healthMetrics = {
   requestCount: 0,
   errorCount: 0,
@@ -8266,6 +8272,12 @@ app.use((req, res, next) => {
     healthMetrics.requestCount += 1;
     healthMetrics.totalResponseMs += elapsed;
     if (res.statusCode >= 500) healthMetrics.errorCount += 1;
+    const routeKey = `${req.method} ${req.path}`;
+    const rec = apiRouteStats.get(routeKey) || { hits: 0, errors: 0, totalMs: 0 };
+    rec.hits += 1;
+    rec.totalMs += elapsed;
+    if (res.statusCode >= 400) rec.errors += 1;
+    apiRouteStats.set(routeKey, rec);
   });
   next();
 });
@@ -8576,6 +8588,21 @@ app.get("/api/admin/stats", (req, res) => {
   const errorRate = healthMetrics.requestCount ? (healthMetrics.errorCount / healthMetrics.requestCount) * 100 : 0;
   const cpu = process.cpuUsage();
   const cpuLoadEstimate = Number((((cpu.user + cpu.system) / 1000) / Math.max(1, process.uptime() * 1000) * 100).toFixed(2));
+  const apiStats = Array.from(apiRouteStats.entries()).map(([route, rec]) => ({
+    route,
+    hits: rec.hits,
+    errors: rec.errors,
+    avgMs: Number((rec.totalMs / Math.max(1, rec.hits)).toFixed(2)),
+  })).sort((a, b) => b.hits - a.hits).slice(0, 20);
+  const returningUsers = Array.from(retentionUsers.values()).filter((u) => Number(u.sessions || 0) > 1).length;
+  const newUsers = Math.max(0, retentionUsers.size - returningUsers);
+  const successRate = conversionMetrics.started ? (conversionMetrics.success / conversionMetrics.started) * 100 : 0;
+  const predictedNextHourUsers = Number(((conversionMetrics.entered / Math.max(1, process.uptime() / 3600))).toFixed(0));
+  const smartInsights = [];
+  if (successRate < 40 && conversionMetrics.started >= 5) smartInsights.push("Conversion success rendah dibanding jumlah start.");
+  if (conversionMetrics.errors >= 3) smartInsights.push("Error conversion meningkat, cek error tracking.");
+  if ((healthMetrics.errorCount / Math.max(1, healthMetrics.requestCount)) > 0.05) smartInsights.push("Error API rate di atas 5%.");
+  if (!smartInsights.length) smartInsights.push("Sistem relatif stabil dalam window monitoring saat ini.");
   return res.json({
     ok: true,
     timestamp: Date.now(),
@@ -8646,6 +8673,18 @@ app.get("/api/admin/stats", (req, res) => {
     errors: {
       total: conversionMetrics.errors,
       reasons: conversionMetrics.errorReasons,
+    },
+    apiMonitoring: apiStats,
+    retention: {
+      totalUsers: retentionUsers.size,
+      newUsers,
+      returningUsers,
+    },
+    abTesting: abMetrics,
+    smartInsights,
+    predictive: {
+      nextHourUsers: predictedNextHourUsers,
+      peakHourHint: "Biasanya traffic puncak sekitar 20:00-22:00 (estimasi rule-based).",
     },
     activityLogs: activityLogs.slice(0, 80),
     control: {
@@ -8840,6 +8879,9 @@ const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, use
   durationSeconds: user.connectedAt ? Math.max(0, Math.floor((Date.now() - new Date(user.connectedAt).getTime()) / 1000)) : 0,
   journey: Array.isArray(user.journey) ? user.journey.join(" → ") : "",
   actions: Array.isArray(user.actionTrail) ? user.actionTrail : [],
+  clientId: user.clientId || "",
+  abVariant: user.abVariant || "A",
+  geo: user.geo || { country: "unknown", city: "unknown" },
   userAgent: user.userAgent || "",
   connectedAt: user.connectedAt || null,
   lastSeenAt: user.lastSeenAt || null,
@@ -8877,6 +8919,12 @@ io.on("connection", (socket) => {
     journey: [],
     actionTrail: [],
     convertStartedAt: null,
+    clientId: "",
+    abVariant: "A",
+    geo: {
+      country: String(socket.handshake?.headers?.["cf-ipcountry"] || socket.handshake?.headers?.["x-vercel-ip-country"] || "unknown"),
+      city: String(socket.handshake?.headers?.["x-vercel-ip-city"] || "unknown"),
+    },
     userAgent: socket.handshake?.headers?.["user-agent"] || "",
     connectedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
@@ -8889,6 +8937,18 @@ io.on("connection", (socket) => {
     const page = String(payload?.page || "unknown").slice(0, 128);
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
+    const clientId = String(payload?.clientId || rec.clientId || "").slice(0, 120);
+    const abVariant = String(payload?.abVariant || rec.abVariant || "A").toUpperCase() === "B" ? "B" : "A";
+    rec.clientId = clientId;
+    rec.abVariant = abVariant;
+    if (clientId) {
+      const retentionRec = retentionUsers.get(clientId) || { sessions: 0, lastSeenAt: null };
+      if (!retentionRec.lastSeenAt || (Date.now() - new Date(retentionRec.lastSeenAt).getTime()) > 30 * 60 * 1000) {
+        retentionRec.sessions += 1;
+      }
+      retentionRec.lastSeenAt = new Date().toISOString();
+      retentionUsers.set(clientId, retentionRec);
+    }
     rec.page = page || "unknown";
     rec.journey = Array.isArray(rec.journey) ? rec.journey : [];
     rec.journey.push(rec.page);
@@ -8917,9 +8977,11 @@ io.on("connection", (socket) => {
     emitDashboardStats();
   });
 
-  socket.on("conversion_start", () => {
+  socket.on("conversion_start", (payload) => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
+    const incomingVariant = String(payload?.abVariant || rec.abVariant || "A").toUpperCase() === "B" ? "B" : "A";
+    rec.abVariant = incomingVariant;
     if (!controlState.convertEnabled) {
       socket.emit("conversion_blocked", { message: "Konversi sedang dinonaktifkan admin sementara." });
       return;
@@ -8929,6 +8991,7 @@ io.on("connection", (socket) => {
     rec.journey = Array.isArray(rec.journey) ? rec.journey : [];
     rec.journey.push("convert:start");
     conversionMetrics.started += 1;
+    abMetrics[rec.abVariant || "A"].started += 1;
     controlState.processing += 1;
     controlState.queueLength = Math.max(controlState.queueLength, controlState.processing);
     controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
@@ -8949,6 +9012,7 @@ io.on("connection", (socket) => {
     }
     rec.convertStartedAt = null;
     conversionMetrics.success += 1;
+    abMetrics[rec.abVariant || "A"].success += 1;
     controlState.processing = Math.max(0, controlState.processing - 1);
     controlState.queueLength = Math.max(0, controlState.queueLength - 1);
     controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);

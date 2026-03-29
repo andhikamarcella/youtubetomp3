@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 transition-colors" id="appBody">
@@ -20,7 +22,10 @@
         <p class="text-slate-300 text-sm">Realtime helpdesk + analytics + monitoring center.</p>
       </div>
       <div class="flex gap-2 items-center">
+        <span class="px-2 py-1 rounded-full bg-emerald-900 text-emerald-300 text-xs animate-pulse">🟢 LIVE</span>
         <button id="themeBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">🌙/☀️ Theme</button>
+        <button id="exportPngBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Export PNG</button>
+        <button id="exportPdfBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Export PDF</button>
         <a id="adminTicketsBtn" href="/admin/tickets" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold inline-flex items-center gap-2">Admin Tickets <span id="adminTicketBadge" class="hidden min-w-5 h-5 px-1 rounded-full bg-rose-500 text-[11px] leading-5 text-center">0</span></a>
         <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Refresh</button>
       </div>
@@ -80,6 +85,35 @@
     </section>
 
     <section class="grid lg:grid-cols-3 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🧠 Smart Insight</h2>
+        <ul id="smartInsights" class="text-sm space-y-1"></ul>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🧪 A/B Monitor</h2>
+        <div class="text-sm">A Started: <b id="abAStarted">0</b> • A Success: <b id="abASuccess">0</b></div>
+        <div class="text-sm mt-1">B Started: <b id="abBStarted">0</b> • B Success: <b id="abBSuccess">0</b></div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">⏳ Retention + Predictive</h2>
+        <div class="text-sm">New: <b id="retNew">0</b> • Returning: <b id="retReturning">0</b></div>
+        <div class="text-sm mt-1">Prediksi 1 jam: <b id="predNextHour">0</b> user</div>
+        <div id="predPeak" class="text-xs text-slate-400 mt-1">-</div>
+      </div>
+</section>
+
+<section class="grid lg:grid-cols-2 gap-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🌍 Geo Tracking</h2>
+        <ul id="geoStats" class="text-sm space-y-1"></ul>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">📡 API Monitoring</h2>
+        <ul id="apiStats" class="text-xs space-y-1 max-h-36 overflow-auto"></ul>
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-1 gap-3">
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
         <h2 class="font-bold mb-2">📦 Queue Monitor</h2>
         <div class="text-sm space-y-1">
@@ -142,6 +176,14 @@
         <div class="text-xs text-slate-400 mb-1">User Action Stream</div>
         <ul id="userActionStream" class="max-h-32 overflow-auto text-xs space-y-1"></ul>
       </div>
+      <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-2">
+        <div class="text-xs text-slate-400 mb-1">🎥 Session Replay (event timeline)</div>
+        <div class="flex gap-2 mb-2">
+          <input id="replaySocketId" class="flex-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-xs" placeholder="Socket ID untuk replay" />
+          <button id="replayBtn" class="px-2 py-1 rounded bg-indigo-600 text-xs">Replay</button>
+        </div>
+        <ul id="replayTimeline" class="max-h-40 overflow-auto text-xs space-y-1"></ul>
+      </div>
     </section>
 
     <section id="detailPanel" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
@@ -177,7 +219,7 @@ const getToken=()=> (localStorage.getItem(TOKEN_KEY)||'').trim();
 const setToken=(v)=> localStorage.setItem(TOKEN_KEY,v||'');
 const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
 const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
-let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null};
+let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[]};
 let socket=null;
 
 const toast=(m,type='info')=>{const n=document.createElement('div');n.className=`px-3 py-2 rounded-lg border text-sm shadow ${type==='error'?'bg-rose-950 border-rose-700':type==='warn'?'bg-amber-950 border-amber-700':'bg-slate-900 border-slate-700'}`;n.textContent=m;el('toastWrap').appendChild(n);setTimeout(()=>n.remove(),3800);};
@@ -218,6 +260,7 @@ function renderLive(data){
   el('pageStats').innerHTML=Object.entries(data.live?.pageStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
   el('roomStats').innerHTML=Object.entries(data.live?.roomStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
   const users=data.live?.users||[];
+  state.latestUsers = users;
   el('liveUserRows').innerHTML=users.map((u)=>{const lastAction=Array.isArray(u.actions)&&u.actions.length?u.actions[u.actions.length-1]:null;return `<tr class="border-t border-slate-800"><td class="p-2">${u.socketId}</td><td class="p-2">${u.page||'-'}</td><td class="p-2">${u.room||'-'}</td><td class="p-2">${u.status||'-'}</td><td class="p-2">${u.durationSeconds||0}s</td><td class="p-2">${(u.journey||'-').replace(/</g,'&lt;')}</td><td class="p-2">${lastAction ? `${lastAction.action} (${new Date(lastAction.at).toLocaleTimeString()})` : '-'}</td></tr>`;}).join('')||'<tr><td class="p-2" colspan="7">Tidak ada user.</td></tr>';
   const allActions=users.flatMap((u)=>Array.isArray(u.actions)?u.actions.map((a)=>({socketId:u.socketId,...a})):[]).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,40);
   el('userActionStream').innerHTML=allActions.map((a)=>`<li class="border border-slate-800 rounded p-1">${a.socketId.slice(0,8)} • ${a.action}${a.detail?` — ${a.detail}`:''}<div class="text-[10px] text-slate-500">${fmt.format(new Date(a.at))}</div></li>`).join('')||'<li class="text-slate-500">Belum ada action.</li>';
@@ -230,6 +273,19 @@ function renderAdvanced(data){
   el('hCpu').textContent=data.health?.cpuPercentEstimate||0;el('hResp').textContent=data.health?.avgResponseMs||0;el('hErr').textContent=data.health?.errorRate||0;
   el('eTotal').textContent=data.errors?.total||0;
   el('eReasons').innerHTML=Object.entries(data.errors?.reasons||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
+  el('smartInsights').innerHTML=(data.smartInsights||[]).map((s)=>`<li>• ${s}</li>`).join('')||'<li>-</li>';
+  el('abAStarted').textContent=data.abTesting?.A?.started||0;
+  el('abASuccess').textContent=data.abTesting?.A?.success||0;
+  el('abBStarted').textContent=data.abTesting?.B?.started||0;
+  el('abBSuccess').textContent=data.abTesting?.B?.success||0;
+  el('retNew').textContent=data.retention?.newUsers||0;
+  el('retReturning').textContent=data.retention?.returningUsers||0;
+  el('predNextHour').textContent=data.predictive?.nextHourUsers||0;
+  el('predPeak').textContent=data.predictive?.peakHourHint||'-';
+  const geoCounts={};
+  (data.live?.users||[]).forEach((u)=>{const key=`${u.geo?.country||'unknown'} / ${u.geo?.city||'unknown'}`;geoCounts[key]=(geoCounts[key]||0)+1;});
+  el('geoStats').innerHTML=Object.entries(geoCounts).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
+  el('apiStats').innerHTML=(data.apiMonitoring||[]).map((a)=>`<li class="border border-slate-800 rounded p-1">${a.route}<br>hits:${a.hits} • err:${a.errors} • avg:${a.avgMs}ms</li>`).join('')||'<li>-</li>';
   el('activityLogs').innerHTML=(data.activityLogs||[]).map((l)=>`<li class="rounded border border-slate-800 bg-slate-950 p-2">${l.type}: ${l.message}<div class="text-[10px] text-slate-400">${fmt.format(new Date(l.at))}</div></li>`).join('')||'<li>-</li>';
   el('toggleConvertBtn').textContent=(data.control?.convertEnabled ? 'Disable Convert Sementara' : 'Enable Convert Lagi');
   evaluateAlerts(data);
@@ -254,6 +310,9 @@ async function login(evt){evt.preventDefault();const res=await fetch('/admin/log
 el('loginForm').addEventListener('submit',login);el('refreshBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('closeDetailBtn').addEventListener('click',()=>el('detailPanel').classList.add('hidden'));el('chatForm').addEventListener('submit',sendChat);el('exportBtn').addEventListener('click',exportExcel);['searchId','filterStatus','filterCategory','filterDate'].forEach((id)=>el(id).addEventListener('input',applyFilters));el('ticketRows').addEventListener('click',(evt)=>{const btn=evt.target.closest('button[data-open]');if(!btn)return;openDetail(btn.getAttribute('data-open'));});el('adminTicketsBtn').addEventListener('click',()=>setBadge(0));
 el('toggleConvertBtn').addEventListener('click',()=>control('toggle_convert'));el('clearQueueBtn').addEventListener('click',()=>control('clear_queue'));el('kickUserBtn').addEventListener('click',()=>control('kick_user',{socketId:el('kickSocketId').value.trim()}));
 el('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('bg-slate-950');document.body.classList.toggle('bg-slate-100');document.body.classList.toggle('text-slate-100');document.body.classList.toggle('text-slate-900');});
+el('replayBtn').addEventListener('click',()=>{const sid=el('replaySocketId').value.trim();const user=state.latestUsers.find((u)=>u.socketId===sid);const timeline=Array.isArray(user?.actions)?user.actions:[];el('replayTimeline').innerHTML=timeline.map((a)=>`<li class=\"border border-slate-800 rounded p-1\">${a.action}${a.detail?` — ${a.detail}`:''}<div class=\"text-[10px] text-slate-500\">${fmt.format(new Date(a.at))}</div></li>`).join('')||'<li class=\"text-slate-500\">Timeline kosong / socket tidak ditemukan.</li>';});
+el('exportPngBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`dashboard-${Date.now()}.png`;a.click();});
+el('exportPdfBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const img=canvas.toDataURL('image/png');const { jsPDF }=window.jspdf;const pdf=new jsPDF('p','pt','a4');const w=pdf.internal.pageSize.getWidth();const h=(canvas.height/canvas.width)*w;pdf.addImage(img,'PNG',0,0,w,h);pdf.save(`dashboard-${Date.now()}.pdf`);});
 
 if(getToken()){el('authState').textContent='Token tersimpan';loadStats().catch(()=>{});initSocket();}
 setInterval(()=>{if(getToken()) loadStats().catch(()=>{});},8000);
