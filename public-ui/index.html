@@ -25885,6 +25885,7 @@
 
           switch (state) {
             case 'idle':
+              try { ensureForumSocket()?.emit('conversion_idle'); } catch { }
               set(convertBtn, false);
               set(downloadAllBtn, true);
               set(downloadZipBtn, true);
@@ -25899,6 +25900,7 @@
               break;
 
             case 'converting':
+              try { ensureForumSocket()?.emit('conversion_start'); } catch { }
               set(convertBtn, true);
               set(downloadAllBtn, true);
               set(downloadZipBtn, true);
@@ -25912,6 +25914,7 @@
               break;
 
             case 'completed':
+              try { ensureForumSocket()?.emit('conversion_success'); } catch { }
               // In completed state, we might want to allow "Clear" or "Convert New"
               // But the primary focus should be the Result Card (which has its own buttons)
               // We enable "Clear" so user can reset
@@ -27237,11 +27240,17 @@
           const ensureForumSocket = () => {
             if (forumSocket) return forumSocket;
             if (typeof window.io !== 'function') return null;
+            const reportPageChange = () => {
+              try {
+                forumSocket?.emit('page_change', { page: window.location.pathname || '/' });
+              } catch { }
+            };
             forumSocket = window.io({
               transports: ['websocket', 'polling'],
             });
             forumSocket.on('connect', () => {
               forumSocketConnected = true;
+              reportPageChange();
               joinForumPresence(activeForumRoom);
             });
             forumSocket.on('disconnect', () => {
@@ -27305,6 +27314,8 @@
               cleanupPeer();
               setToast('Panggilan berakhir');
             });
+            window.addEventListener('popstate', reportPageChange);
+            window.addEventListener('hashchange', reportPageChange);
             return forumSocket;
           };
 
