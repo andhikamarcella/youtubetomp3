@@ -8175,6 +8175,44 @@ app.post('/api/contact', async (req, res) => {
       ip: req.ip
     };
 
+    const uploadedProofs = [];
+    if (Array.isArray(proofs) && proofs.length) {
+      const limited = proofs.slice(0, 4);
+      for (const proof of limited) {
+        const directUrl = typeof proof?.url === "string" ? proof.url.trim() : "";
+        if (/^https?:\/\//i.test(directUrl)) {
+          uploadedProofs.push({
+            name: String(proof?.name || "attachment"),
+            url: directUrl,
+            type: String(proof?.type || ""),
+            size: Number(proof?.size || 0) || 0,
+          });
+          continue;
+        }
+        const dataUrl = typeof proof?.dataUrl === "string" ? proof.dataUrl : "";
+        if (!dataUrl.startsWith("data:")) continue;
+        try {
+          const isVideo = /^data:video\//i.test(dataUrl);
+          const result = await cloudinary.uploader.upload(dataUrl, {
+            folder: "ytconv/support-tickets",
+            resource_type: isVideo ? "video" : "image",
+            public_id: `${tid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            overwrite: false,
+          });
+          if (result?.secure_url) {
+            uploadedProofs.push({
+              name: String(proof?.name || result?.original_filename || "attachment"),
+              url: String(result.secure_url),
+              type: String(proof?.type || ""),
+              size: Number(proof?.size || 0) || 0,
+            });
+          }
+        } catch (uploadErr) {
+          console.warn("[/api/contact] gagal upload proof ke Cloudinary", uploadErr?.message || uploadErr);
+        }
+      }
+    }
+
     // Log the ticket for admin
     console.log('[YTConv CS Ticket]', JSON.stringify(ticket));
 
@@ -8184,14 +8222,33 @@ app.post('/api/contact', async (req, res) => {
       `From      : ${name} <${email}>`,
       `Category  : ${category}`,
       `Message   : ${message}`,
-      `Proofs    : ${ticket.proofCount} attachment(s)`,
+      `Proofs    : ${uploadedProofs.length} attachment(s)`,
       `Time      : ${ticket.submittedAt}`,
       `To        : ${SUPPORT_CONTACT_EMAIL}`
     ].join('\n');
     console.log('[YTConv CS Email]\n' + emailBody);
 
+    const firstFileLink = uploadedProofs[0]?.url || "";
+    const filesHtml = uploadedProofs.length
+      ? `<ul>${uploadedProofs.map((f) => `<li><a href="${String(f.url)}" target="_blank" rel="noopener noreferrer">${String(f.name || "Lihat File")}</a></li>`).join("")}</ul>`
+      : "<span>Tidak ada file</span>";
+    const htmlBody = `
+<p style="font-family: helvetica, arial, sans-serif;">Halo Admin,</p>
+<p style="font-family: helvetica, arial, sans-serif;">Ada pesan baru dari <b>Forum Warga</b>.</p>
+<hr>
+<p style="font-family: helvetica, arial, sans-serif;"><b>🆔 ID Tiket:</b> ${tid}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>👤 Nama:</b> ${ticket.name}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>📧 Email:</b> ${ticket.email}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>📂 Kategori:</b> ${ticket.category}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>💬 Pesan:</b><br>${ticket.message.replace(/\n/g, "<br>")}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>📎 File:</b><br>${filesHtml}</p>
+<p style="font-family: helvetica, arial, sans-serif;"><b>🕒 Waktu:</b> ${ticket.submittedAt}</p>
+<hr>
+<p style="font-family: helvetica, arial, sans-serif; font-size: 12px; color: gray;">Pesan ini dikirim otomatis oleh sistem Forum Warga.<br>Mohon tidak membalas email ini.</p>
+`;
+
     const subject = `[YTConv Ticket] ${tid} • ${ticket.category}`;
-    const emailResult = await sendSupportEmail({ subject, lines: [emailBody] });
+    const emailResult = await sendSupportEmail({ subject, lines: [emailBody], html: htmlBody });
     if (!emailResult.sent) {
       console.warn(`[YTConv CS Ticket] email belum terkirim untuk ${tid}: ${emailResult.reason || 'unknown reason'}`);
     }
@@ -8201,6 +8258,8 @@ app.post('/api/contact', async (req, res) => {
       ticketId: tid,
       message: 'Tiket diterima, tim akan membalas dalam 1x24 jam.',
       emailStatus: emailResult.sent ? 'sent' : 'queued',
+      fileLink: firstFileLink || null,
+      fileLinks: uploadedProofs.map((f) => f.url),
     });
   } catch (e) {
     console.error('[/api/contact error]', e);
