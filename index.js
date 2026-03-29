@@ -8379,6 +8379,14 @@ app.post('/api/contact', async (req, res) => {
       statusLink,
       autoReplyEmailStatus: autoReplyResult.sent ? "sent" : "queued",
     });
+    io.emit("admin:newTicket", {
+      ticketId: tid,
+      submittedAt: ticket.submittedAt,
+      category: ticket.category,
+      status: "received",
+      statusLabel: "Diterima",
+      name: ticket.name,
+    });
 
     res.json({
       ok: true,
@@ -8485,7 +8493,24 @@ app.get("/api/admin/tickets", (req, res) => {
 
 app.get("/api/admin/stats", (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const now = new Date();
+  const dayBuckets = new Map();
   const tickets = Array.from(supportTickets.values());
+  tickets.forEach((ticket) => {
+    const submittedAt = ticket?.submittedAt ? new Date(ticket.submittedAt) : null;
+    if (!submittedAt || Number.isNaN(submittedAt.getTime())) return;
+    const key = submittedAt.toISOString().slice(0, 10);
+    dayBuckets.set(key, (dayBuckets.get(key) || 0) + 1);
+  });
+  const ticketsPerDay = Array.from({ length: 7 }).map((_, idx) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - idx));
+    const key = date.toISOString().slice(0, 10);
+    return {
+      date: key,
+      total: dayBuckets.get(key) || 0,
+    };
+  });
   const byStatus = tickets.reduce((acc, t) => {
     const key = String(t?.status || "received");
     acc[key] = (acc[key] || 0) + 1;
@@ -8501,6 +8526,22 @@ app.get("/api/admin/stats", (req, res) => {
     tickets: {
       total: tickets.length,
       byStatus,
+      all: tickets
+        .slice()
+        .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
+        .map((t) => ({
+          ticketId: t.ticketId,
+          status: t.status,
+          statusLabel: t.statusLabel,
+          submittedAt: t.submittedAt,
+          category: t.category,
+          email: t.email,
+          name: t.name,
+          message: t.message,
+          proofs: t.proofs || [],
+          statusHistory: t.statusHistory || [],
+          chatHistory: t.chatHistory || [],
+        })),
       newest: tickets
         .slice()
         .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
@@ -8513,6 +8554,14 @@ app.get("/api/admin/stats", (req, res) => {
           category: t.category,
           email: t.email,
         })),
+      perDay: ticketsPerDay,
+    },
+    live: {
+      activeUsers: activeUsers.size,
+      pageStats: getLiveBreakdown("page"),
+      roomStats: getLiveBreakdown("room"),
+      conversion: getConversionStats(),
+      users: getLiveUsers(),
     },
     runtime: {
       rss: Number(memory.rss || 0),
@@ -8545,6 +8594,13 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
   if (!Array.isArray(ticket.statusHistory)) ticket.statusHistory = [];
   ticket.statusHistory.push({ status, label: statusLabel, at: nowIso, note: adminReply || "Update status admin" });
   supportTickets.set(ticketId, ticket);
+  io.emit("admin:ticketUpdated", {
+    ticketId,
+    status,
+    statusLabel,
+    adminReply,
+    statusUpdatedAt: nowIso,
+  });
 
   const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
   const replyHtml = `
@@ -8564,6 +8620,27 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
   });
 
   return res.json({ ok: true, ticket });
+});
+
+app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const text = String(req.body?.message || "").trim();
+  if (!text) return res.status(400).json({ ok: false, error: "message_required" });
+  const nowIso = new Date().toISOString();
+  const chatEntry = {
+    id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
+    sender: "admin",
+    message: text.slice(0, 2000),
+    at: nowIso,
+  };
+  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
+  ticket.chatHistory.push(chatEntry);
+  supportTickets.set(ticketId, ticket);
+  io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+  return res.json({ ok: true, chat: chatEntry, ticketId });
 });
 
 app.get("/ticket/:ticketId", (req, res) => {
@@ -8593,6 +8670,46 @@ const io = new SocketIOServer(httpServer, {
 
 const roomUsers = new Map();
 const socketState = new Map();
+const activeUsers = new Map();
+
+const getLiveBreakdown = (field) => {
+  const result = {};
+  activeUsers.forEach((user) => {
+    const key = String(user?.[field] || "unknown");
+    result[key] = (result[key] || 0) + 1;
+  });
+  return result;
+};
+
+const getConversionStats = () => {
+  let converting = 0;
+  let success = 0;
+  activeUsers.forEach((user) => {
+    if (user?.status === "converting") converting += 1;
+    if (user?.status === "success") success += 1;
+  });
+  return { converting, success };
+};
+
+const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, user]) => ({
+  socketId,
+  page: user.page || "unknown",
+  room: user.room || null,
+  status: user.status || "idle",
+  userAgent: user.userAgent || "",
+  connectedAt: user.connectedAt || null,
+  lastSeenAt: user.lastSeenAt || null,
+}));
+
+const emitDashboardStats = () => {
+  io.emit("dashboard_stats", {
+    totalUsers: activeUsers.size,
+    pageStats: getLiveBreakdown("page"),
+    roomStats: getLiveBreakdown("room"),
+    conversion: getConversionStats(),
+    users: getLiveUsers(),
+  });
+};
 
 const getOrCreateRoomMap = (room) => {
   const key = String(room || "umum");
@@ -8609,6 +8726,53 @@ const broadcastRoomUsers = (room) => {
 };
 
 io.on("connection", (socket) => {
+  activeUsers.set(socket.id, {
+    page: "unknown",
+    room: null,
+    status: "idle",
+    userAgent: socket.handshake?.headers?.["user-agent"] || "",
+    connectedAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
+  });
+  emitDashboardStats();
+
+  socket.on("page_change", (payload) => {
+    const page = String(payload?.page || "unknown").slice(0, 128);
+    const rec = activeUsers.get(socket.id);
+    if (!rec) return;
+    rec.page = page || "unknown";
+    rec.lastSeenAt = new Date().toISOString();
+    activeUsers.set(socket.id, rec);
+    emitDashboardStats();
+  });
+
+  socket.on("conversion_start", () => {
+    const rec = activeUsers.get(socket.id);
+    if (!rec) return;
+    rec.status = "converting";
+    rec.lastSeenAt = new Date().toISOString();
+    activeUsers.set(socket.id, rec);
+    emitDashboardStats();
+  });
+
+  socket.on("conversion_success", () => {
+    const rec = activeUsers.get(socket.id);
+    if (!rec) return;
+    rec.status = "success";
+    rec.lastSeenAt = new Date().toISOString();
+    activeUsers.set(socket.id, rec);
+    emitDashboardStats();
+  });
+
+  socket.on("conversion_idle", () => {
+    const rec = activeUsers.get(socket.id);
+    if (!rec) return;
+    rec.status = "idle";
+    rec.lastSeenAt = new Date().toISOString();
+    activeUsers.set(socket.id, rec);
+    emitDashboardStats();
+  });
+
   socket.on("forum:chatMessage", async (payload) => {
     const from = socketState.get(socket.id);
     if (!from) return;
@@ -8708,9 +8872,16 @@ io.on("connection", (socket) => {
 
     socket.join(`forum:${room}`);
     socketState.set(socket.id, { room, userId, name });
+    const active = activeUsers.get(socket.id);
+    if (active) {
+      active.room = room;
+      active.lastSeenAt = new Date().toISOString();
+      activeUsers.set(socket.id, active);
+    }
     const map = getOrCreateRoomMap(room);
     map.set(userId, { userId, name, socketId: socket.id });
     broadcastRoomUsers(room);
+    emitDashboardStats();
   });
 
   socket.on("forum:leave", () => {
@@ -8722,7 +8893,14 @@ io.on("connection", (socket) => {
     const map = getOrCreateRoomMap(prev.room);
     map.delete(prev.userId);
     socketState.delete(socket.id);
+    const active = activeUsers.get(socket.id);
+    if (active) {
+      active.room = null;
+      active.lastSeenAt = new Date().toISOString();
+      activeUsers.set(socket.id, active);
+    }
     broadcastRoomUsers(prev.room);
+    emitDashboardStats();
   });
 
   socket.on("call:offer", (payload) => {
@@ -8803,11 +8981,14 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     const prev = socketState.get(socket.id);
-    if (!prev) return;
-    const map = getOrCreateRoomMap(prev.room);
-    map.delete(prev.userId);
-    socketState.delete(socket.id);
-    broadcastRoomUsers(prev.room);
+    if (prev) {
+      const map = getOrCreateRoomMap(prev.room);
+      map.delete(prev.userId);
+      socketState.delete(socket.id);
+      broadcastRoomUsers(prev.room);
+    }
+    activeUsers.delete(socket.id);
+    emitDashboardStats();
   });
 });
 
