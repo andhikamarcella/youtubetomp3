@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Statistik • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
+    .fade-in { animation: fadeIn .35s ease both; }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
-    <header class="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3">
+    <header class="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3 fade-in">
       <div>
         <h1 class="text-2xl font-extrabold">📊 Dashboard Statistik Realtime</h1>
         <p class="text-slate-400 text-sm">Live metrics untuk penggunaan user dan ticket support.</p>
@@ -19,7 +23,7 @@
       </div>
     </header>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in">
       <form id="loginForm" class="grid sm:grid-cols-4 gap-2">
         <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" required>
         <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" required>
@@ -28,14 +32,14 @@
       </form>
     </section>
 
-    <section class="grid md:grid-cols-4 gap-3">
+    <section class="grid md:grid-cols-4 gap-3 fade-in">
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Total Ticket</div><div id="mTotalTickets" class="text-2xl font-bold">0</div></div>
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Socket Active</div><div id="mSocket" class="text-2xl font-bold">0</div></div>
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Forum Rooms</div><div id="mRooms" class="text-2xl font-bold">0</div></div>
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">Uptime</div><div id="mUptime" class="text-sm font-bold">-</div></div>
     </section>
 
-    <section class="grid md:grid-cols-2 gap-3">
+    <section class="grid md:grid-cols-2 gap-3 fade-in">
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
         <h2 class="font-bold mb-2">Distribusi Status Ticket</h2>
         <div id="statusBars" class="space-y-2"></div>
@@ -46,7 +50,7 @@
       </div>
     </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in">
       <h2 class="font-bold mb-2">Ticket Terbaru</h2>
       <div class="overflow-auto">
         <table class="min-w-full text-sm"><thead class="text-slate-400"><tr><th class="text-left py-2 pr-2">ID</th><th class="text-left py-2 pr-2">Kategori</th><th class="text-left py-2 pr-2">Status</th><th class="text-left py-2">Waktu Lokal</th></tr></thead><tbody id="newestRows"></tbody></table>
