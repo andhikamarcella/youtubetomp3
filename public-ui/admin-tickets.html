@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Tickets - YTConv</title>
+  <style>
+    body{font-family:Arial;background:#0b1220;color:#e5e7eb;padding:20px}
+    table{width:100%;border-collapse:collapse}
+    td,th{border:1px solid #374151;padding:8px;vertical-align:top}
+    input,select,textarea,button{background:#111827;color:#fff;border:1px solid #374151;border-radius:6px;padding:6px}
+    .wrap{max-width:1200px;margin:auto}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .muted{color:#9ca3af}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>📋 Dashboard Laporan Admin</h2>
+
+    <form id="loginForm" class="row">
+      <input id="username" placeholder="Username admin" autocomplete="username" required>
+      <input id="password" type="password" placeholder="Password admin" autocomplete="current-password" required>
+      <button type="submit">Login Admin</button>
+      <button type="button" onclick="logout()">Logout</button>
+    </form>
+
+    <div class="row">
+      <input id="token" placeholder="Bearer token admin" style="min-width:280px">
+      <button onclick="loadTickets()">Muat Tiket</button>
+      <span class="muted" id="authState">Belum login</span>
+    </div>
+
+    <table>
+      <thead>
+      <tr><th>ID</th><th>Pengirim</th><th>Kategori</th><th>Pesan</th><th>Status</th><th>Balas Admin</th><th>Aksi</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+<script>
+const TOKEN_KEY = 'ytconv_admin_bearer';
+
+function setAuthState(text){
+  const el = document.getElementById('authState');
+  if (el) el.textContent = text;
+}
+
+function getToken(){
+  return (document.getElementById('token').value || '').trim();
+}
+
+function saveToken(token){
+  if (!token) return;
+  localStorage.setItem(TOKEN_KEY, token);
+  document.getElementById('token').value = token;
+}
+
+function clearToken(){
+  localStorage.removeItem(TOKEN_KEY);
+  document.getElementById('token').value = '';
+}
+
+async function loginAdmin(evt){
+  if (evt) evt.preventDefault();
+  const username = (document.getElementById('username').value || '').trim();
+  const password = document.getElementById('password').value || '';
+  try {
+    const r = await fetch('/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok || !d.token) {
+      throw new Error(d.error || 'login_failed');
+    }
+    saveToken(d.token);
+    setAuthState('Login berhasil');
+    await loadTickets();
+  } catch (err) {
+    setAuthState('Login gagal: ' + err.message);
+  }
+}
+
+async function loadTickets(){
+  const token = getToken();
+  const tb = document.getElementById('rows');
+  if (!token) {
+    tb.innerHTML = "<tr><td colspan='7'>Token admin belum tersedia. Silakan login dulu.</td></tr>";
+    setAuthState('Belum login');
+    return;
+  }
+
+  const r = await fetch('/api/admin/tickets', { headers: { Authorization: `Bearer ${token}` } });
+  const d = await r.json().catch(() => ({}));
+  tb.innerHTML='';
+  if(!r.ok || !d.ok){
+    tb.innerHTML = `<tr><td colspan='7'>${d.error || 'Unauthorized'}</td></tr>`;
+    setAuthState('Token invalid/expired');
+    return;
+  }
+
+  setAuthState('Login aktif');
+  d.tickets.forEach((t) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.ticketId}</td><td>${t.name}<br><small>${t.email}</small></td><td>${t.category}</td><td>${(t.message||'').slice(0,160)}</td><td><select id='st-${t.ticketId}'><option value='received'>Diterima</option><option value='reviewing'>Diproses</option><option value='waiting_user'>Menunggu User</option><option value='resolved'>Selesai</option><option value='rejected'>Ditolak</option></select></td><td><textarea id='rp-${t.ticketId}' rows='3' placeholder='Balasan admin ke user...'>${t.adminReply||''}</textarea></td><td><button onclick="updateTicket('${t.ticketId}')">Update</button><div><a href='/ticket-status.html?ticket_id=${encodeURIComponent(t.ticketId)}' target='_blank'>Lihat status</a></div></td>`;
+    tb.appendChild(tr);
+    const sel = tr.querySelector(`#st-${t.ticketId}`);
+    if (sel) sel.value = t.status || 'received';
+  });
+}
+
+async function updateTicket(id){
+  const token = getToken();
+  const status = document.getElementById(`st-${id}`).value;
+  const adminReply = document.getElementById(`rp-${id}`).value;
+  const r = await fetch(`/api/admin/tickets/${encodeURIComponent(id)}`, {
+    method:'PATCH',
+    headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+    body:JSON.stringify({ status, adminReply })
+  });
+  const d = await r.json().catch(() => ({}));
+  alert(d.ok ? 'Update berhasil & email user terkirim' : 'Gagal: ' + (d.error || 'unknown'));
+  if (d.ok) loadTickets();
+}
+
+function logout(){
+  clearToken();
+  setAuthState('Logout berhasil');
+  document.getElementById('rows').innerHTML = "<tr><td colspan='7'>Silakan login admin.</td></tr>";
+}
+
+(function init(){
+  const stored = localStorage.getItem(TOKEN_KEY);
+  if (stored) {
+    document.getElementById('token').value = stored;
+    setAuthState('Token tersimpan');
+    loadTickets();
+  }
+  document.getElementById('loginForm').addEventListener('submit', loginAdmin);
+})();
+
+setInterval(() => {
+  if (getToken()) loadTickets();
+}, 8000);
+</script>
+</body>
+</html>
