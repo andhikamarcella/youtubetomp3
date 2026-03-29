@@ -8839,6 +8839,7 @@ const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, use
   status: user.status || "idle",
   durationSeconds: user.connectedAt ? Math.max(0, Math.floor((Date.now() - new Date(user.connectedAt).getTime()) / 1000)) : 0,
   journey: Array.isArray(user.journey) ? user.journey.join(" → ") : "",
+  actions: Array.isArray(user.actionTrail) ? user.actionTrail : [],
   userAgent: user.userAgent || "",
   connectedAt: user.connectedAt || null,
   lastSeenAt: user.lastSeenAt || null,
@@ -8874,6 +8875,7 @@ io.on("connection", (socket) => {
     room: null,
     status: "idle",
     journey: [],
+    actionTrail: [],
     convertStartedAt: null,
     userAgent: socket.handshake?.headers?.["user-agent"] || "",
     connectedAt: new Date().toISOString(),
@@ -8893,6 +8895,25 @@ io.on("connection", (socket) => {
     if (rec.journey.length > 12) rec.journey = rec.journey.slice(-12);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    emitDashboardStats();
+  });
+
+  socket.on("user_action", (payload) => {
+    const rec = activeUsers.get(socket.id);
+    if (!rec) return;
+    const action = String(payload?.action || "unknown_action").slice(0, 120);
+    const detail = String(payload?.detail || "").slice(0, 200);
+    rec.actionTrail = Array.isArray(rec.actionTrail) ? rec.actionTrail : [];
+    rec.actionTrail.push({
+      action,
+      detail,
+      at: new Date().toISOString(),
+      page: rec.page || "unknown",
+    });
+    if (rec.actionTrail.length > 40) rec.actionTrail = rec.actionTrail.slice(-40);
+    rec.lastSeenAt = new Date().toISOString();
+    activeUsers.set(socket.id, rec);
+    pushActivityLog("user_action", `${socket.id}: ${action}`, { socketId: socket.id, action, detail });
     emitDashboardStats();
   });
 

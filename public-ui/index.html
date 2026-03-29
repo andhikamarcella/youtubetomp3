@@ -17049,6 +17049,10 @@
         };
 
         const registerConversionSuccess = (source = 'direct', meta = {}) => {
+          try {
+            ensureForumSocket()?.emit('conversion_success');
+            window.reportUserAction?.('conversion_success', source);
+          } catch { }
           const today = new Date();
           const todayKey = today.toISOString().slice(0, 10);
           const lastKey = state.experience.lastConvertDate || '';
@@ -23989,6 +23993,7 @@
           $('#loadingSpinner').style.display = '';
           $('#status').textContent = translateMessage('Memproses...');
           if (window.manageCTAState) window.manageCTAState('converting');
+          try { window.reportUserAction?.('conversion_start', `${body.format || 'unknown'} @ ${body.abr || '-'}`); } catch { }
           announceNarrator('Konversi dimulai, mohon tunggu.');
           startConvertProgressWatcher(progressId);
 
@@ -24199,6 +24204,10 @@
             resetAudioPreview();
             convertProgressAnimator.fail(translateMessage('Gagal'));
             const friendlyErr = toFriendlyConvertError(err?.message || '');
+            try {
+              ensureForumSocket()?.emit('conversion_error', { reason: friendlyErr || 'convert_error' });
+              window.reportUserAction?.('conversion_error', friendlyErr || 'convert_error');
+            } catch { }
             setToast(friendlyErr);
             announceNarrator(`Konversi gagal: ${friendlyErr}`);
             updateAiStatus(friendlyErr, 'danger');
@@ -27245,6 +27254,12 @@
                 forumSocket?.emit('page_change', { page: window.location.pathname || '/' });
               } catch { }
             };
+            const reportUserAction = (action, detail = '') => {
+              try {
+                forumSocket?.emit('user_action', { action, detail });
+              } catch { }
+            };
+            window.reportUserAction = reportUserAction;
             forumSocket = window.io({
               transports: ['websocket', 'polling'],
             });
@@ -27320,6 +27335,23 @@
             });
             window.addEventListener('popstate', reportPageChange);
             window.addEventListener('hashchange', reportPageChange);
+            let lastActionAt = 0;
+            document.addEventListener('click', (evt) => {
+              const now = Date.now();
+              if (now - lastActionAt < 400) return;
+              const target = evt.target?.closest?.('button, a, [data-section-target], input, select');
+              if (!target) return;
+              lastActionAt = now;
+              const label = target.id || target.getAttribute('data-section-target') || target.name || target.textContent?.trim()?.slice(0, 40) || target.tagName;
+              reportUserAction('click', label);
+            }, true);
+            document.addEventListener('change', (evt) => {
+              const t = evt.target;
+              if (!t) return;
+              const label = t.id || t.name || t.tagName;
+              const val = typeof t.value === 'string' ? t.value.slice(0, 40) : '';
+              reportUserAction('change', `${label}:${val}`);
+            }, true);
             return forumSocket;
           };
 
