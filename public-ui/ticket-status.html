@@ -1,11 +1,77 @@
 <!doctype html>
 <html lang="id">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Status Tiket - YTConv</title>
-<style>body{font-family:Arial;background:#0b1220;color:#e5e7eb;padding:24px} .card{max-width:760px;margin:auto;background:#111827;border:1px solid #374151;border-radius:12px;padding:18px} a{color:#60a5fa} .muted{color:#9ca3af} .ok{color:#34d399}</style></head>
-<body><div class="card"><h2>🔎 Cek Status Tiket</h2><div>ID Tiket: <b id="tid">-</b></div><div>Status: <b id="status">-</b></div><div class="muted" id="updated"></div><hr><div><b>Pesan User</b><div id="msg" class="muted"></div></div><div style="margin-top:12px"><b>Balasan Admin</b><div id="reply" class="muted"></div></div><div style="margin-top:12px"><b>Riwayat</b><ul id="history"></ul></div></div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Status Tiket - YTConv</title>
+  <style>
+    body{font-family:Arial;background:#0b1220;color:#e5e7eb;padding:24px}
+    .card{max-width:760px;margin:auto;background:#111827;border:1px solid #374151;border-radius:12px;padding:18px}
+    a{color:#60a5fa}
+    .muted{color:#9ca3af}
+    .warn{color:#fbbf24}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔎 Cek Status Tiket</h2>
+    <div>ID Tiket: <b id="tid">-</b></div>
+    <div>Status: <b id="status">-</b></div>
+    <div class="muted" id="updated"></div>
+    <div class="warn" id="hint" style="margin-top:10px"></div>
+    <hr>
+    <div><b>Pesan User</b><div id="msg" class="muted"></div></div>
+    <div style="margin-top:12px"><b>Balasan Admin</b><div id="reply" class="muted"></div></div>
+    <div style="margin-top:12px"><b>Riwayat</b><ul id="history"></ul></div>
+  </div>
 <script>
-const ticketId=(location.pathname.split('/').pop()||new URLSearchParams(location.search).get('id')||'').toUpperCase();
-document.getElementById('tid').textContent=ticketId||'-';
-async function refresh(){if(!ticketId)return;try{const r=await fetch(`/api/ticket/${encodeURIComponent(ticketId)}`);const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'not found');const t=d.ticket;document.getElementById('status').textContent=t.statusLabel||t.status;document.getElementById('updated').textContent='Update: '+(t.statusUpdatedAt||'-');document.getElementById('msg').textContent=t.message||'-';document.getElementById('reply').textContent=t.adminReply||'Belum ada balasan admin';const h=document.getElementById('history');h.innerHTML='';(t.statusHistory||[]).slice().reverse().forEach(x=>{const li=document.createElement('li');li.textContent=`${x.at||''} • ${x.label||x.status}`;h.appendChild(li);});}catch(e){document.getElementById('status').textContent='Tiket tidak ditemukan';document.getElementById('reply').textContent=e.message;}}
-refresh();setInterval(refresh,5000);
-</script></body></html>
+const query = new URLSearchParams(location.search);
+const queryTicketId = (query.get('ticket_id') || query.get('id') || '').trim().toUpperCase();
+const pathParts = location.pathname.split('/').filter(Boolean);
+const routeTicketId = pathParts[0] === 'ticket' && pathParts[1] ? String(pathParts[1]).trim().toUpperCase() : '';
+const ticketId = queryTicketId || routeTicketId;
+
+const tidEl = document.getElementById('tid');
+const statusEl = document.getElementById('status');
+const updatedEl = document.getElementById('updated');
+const msgEl = document.getElementById('msg');
+const replyEl = document.getElementById('reply');
+const historyEl = document.getElementById('history');
+const hintEl = document.getElementById('hint');
+
+tidEl.textContent = ticketId || '-';
+
+if (!queryTicketId && routeTicketId) {
+  hintEl.textContent = 'Tip: Link baru menggunakan ?ticket_id=' + encodeURIComponent(routeTicketId);
+} else if (!ticketId) {
+  hintEl.textContent = 'Masukkan ticket_id di URL. Contoh: ticket-status.html?ticket_id=TKT-XXXX';
+}
+
+async function refresh(){
+  if(!ticketId) return;
+  try {
+    const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}`);
+    const d = await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.error || 'not found');
+    const t = d.ticket;
+    statusEl.textContent = t.statusLabel || t.status || '-';
+    updatedEl.textContent = 'Update: ' + (t.statusUpdatedAt || '-');
+    msgEl.textContent = t.message || '-';
+    replyEl.textContent = t.adminReply || 'Belum ada balasan admin';
+    historyEl.innerHTML = '';
+    (t.statusHistory || []).slice().reverse().forEach((x) => {
+      const li = document.createElement('li');
+      li.textContent = `${x.at || ''} • ${x.label || x.status}`;
+      historyEl.appendChild(li);
+    });
+  } catch (e) {
+    statusEl.textContent = 'Tiket tidak ditemukan';
+    replyEl.textContent = e.message;
+  }
+}
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
