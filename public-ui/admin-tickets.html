@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Tickets • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeInUp { from { opacity:.0; transform:translateY(8px);} to {opacity:1; transform:translateY(0);} }
+    .fade-in-up { animation: fadeInUp .28s ease both; }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
-    <header class="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur p-4 md:p-5">
+    <header class="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur p-4 md:p-5 fade-in-up">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">🎫 Admin Ticket Dashboard</h1>
@@ -16,14 +20,14 @@
         </div>
         <div class="flex gap-2 flex-wrap">
           <a href="/admin/dashboard" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Statistik</a>
-          <a href="/admin-cookies.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">Admin Cookies</a>
+          <a href="/admin/cookies.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">Admin Cookies</a>
           <a href="/status.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">Status Page</a>
         </div>
       </div>
     </header>
 
     <section class="grid md:grid-cols-3 gap-3">
-      <form id="loginForm" class="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+      <form id="loginForm" class="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-3 fade-in-up">
         <div class="font-bold">Login Admin</div>
         <div class="grid sm:grid-cols-3 gap-2">
           <input id="username" placeholder="Username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" required>
@@ -34,14 +38,14 @@
           </div>
         </div>
       </form>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-1">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-1 fade-in-up">
         <div class="text-sm text-slate-400">Status Auth</div>
         <div id="authState" class="font-semibold">Belum login</div>
         <div id="lastSync" class="text-xs text-slate-500">Belum ada sinkronisasi</div>
       </div>
     </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in-up">
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-bold">Daftar Tiket</h2>
         <button onclick="loadTickets()" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-sm font-semibold">Refresh</button>
@@ -61,8 +65,20 @@
 
 <script>
 const TOKEN_KEY = 'ytconv_admin_bearer';
+const DRAFT_KEY = 'ytconv_ticket_drafts_v1';
 const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const esc = (v='') => String(v).replace(/[&<>'\"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const STATUS_TEMPLATES = {
+  received: 'Halo, tiket kamu sudah kami terima. Tim kami akan review secepatnya.',
+  reviewing: 'Halo, tiket kamu sedang kami proses. Mohon tunggu update berikutnya ya.',
+  waiting_user: 'Halo, kami butuh info tambahan dari kamu supaya tiket bisa lanjut diproses.',
+  resolved: 'Halo, masalah kamu sudah kami selesaikan. Kalau masih ada kendala, balas tiket ini ya.',
+  rejected: 'Halo, tiket ditolak karena data belum cukup/invalid. Silakan kirim detail tambahan.'
+};
+const draftStore = (() => {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}') || {}; } catch { return {}; }
+})();
+const saveDraftStore = () => localStorage.setItem(DRAFT_KEY, JSON.stringify(draftStore));
 
 const statusBadge = (status='received', label='Diterima') => {
   const map = {
@@ -79,6 +95,12 @@ function setAuthState(text){ document.getElementById('authState').textContent = 
 function setLastSync(){ document.getElementById('lastSync').textContent = 'Sinkronisasi: ' + fmt.format(new Date()); }
 function getToken(){ return (localStorage.getItem(TOKEN_KEY) || '').trim(); }
 function saveToken(token){ localStorage.setItem(TOKEN_KEY, token || ''); }
+function setDraft(id, patch = {}) {
+  draftStore[id] = { ...(draftStore[id] || {}), ...patch, updatedAt: Date.now() };
+  saveDraftStore();
+}
+function getDraft(id) { return draftStore[id] || null; }
+function clearDraft(id) { delete draftStore[id]; saveDraftStore(); }
 
 async function loginAdmin(evt){
   evt?.preventDefault();
@@ -129,7 +151,14 @@ async function loadTickets(){
           <option value="received">Diterima</option><option value="reviewing">Diproses</option><option value="waiting_user">Menunggu User</option><option value="resolved">Selesai</option><option value="rejected">Ditolak</option>
         </select>
       </td>
-      <td class="py-3 pr-2"><textarea id="rp-${esc(t.ticketId)}" rows="3" class="w-full px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs" placeholder="Balasan admin...">${esc(t.adminReply || '')}</textarea></td>
+      <td class="py-3 pr-2">
+        <div class="space-y-2">
+          <textarea id="rp-${esc(t.ticketId)}" rows="3" class="w-full px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs" placeholder="Balasan admin...">${esc(t.adminReply || '')}</textarea>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" data-template="${esc(t.ticketId)}" class="px-2 py-1 text-[11px] rounded bg-slate-700 hover:bg-slate-600">Gunakan template status</button>
+          </div>
+        </div>
+      </td>
       <td class="py-3">
         <div class="flex flex-col gap-2">
           <button onclick="updateTicket('${esc(t.ticketId)}')" class="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">Simpan</button>
@@ -137,8 +166,26 @@ async function loadTickets(){
         </div>
       </td>`;
     tb.appendChild(row);
-    const sel = row.querySelector(`#st-${CSS.escape(t.ticketId)}`);
+    const id = t.ticketId;
+    const sel = row.querySelector(`#st-${CSS.escape(id)}`);
     if (sel) sel.value = t.status || 'received';
+    const replyEl = row.querySelector(`#rp-${CSS.escape(id)}`);
+    const draft = getDraft(id);
+    if (draft) {
+      if (sel && draft.status) sel.value = draft.status;
+      if (replyEl && typeof draft.adminReply === 'string') replyEl.value = draft.adminReply;
+    }
+    sel?.addEventListener('change', () => setDraft(id, { status: sel.value, adminReply: replyEl?.value || '' }));
+    replyEl?.addEventListener('input', () => setDraft(id, { status: sel?.value || 'received', adminReply: replyEl.value }));
+    row.querySelector(`[data-template=\"${CSS.escape(id)}\"]`)?.addEventListener('click', () => {
+      const template = STATUS_TEMPLATES[sel?.value || 'received'] || '';
+      if (!replyEl) return;
+      if (replyEl.value.trim()) {
+        if (!confirm('Balasan sudah ada. Ganti dengan template status?')) return;
+      }
+      replyEl.value = template;
+      setDraft(id, { status: sel?.value || 'received', adminReply: replyEl.value });
+    });
   });
   setAuthState('Login aktif');
   setLastSync();
@@ -151,7 +198,10 @@ async function updateTicket(id){
   const r = await fetch(`/api/admin/tickets/${encodeURIComponent(id)}`, { method:'PATCH', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` }, body:JSON.stringify({ status, adminReply }) });
   const d = await r.json().catch(() => ({}));
   alert(d.ok ? 'Update berhasil.' : 'Gagal: ' + (d.error || 'unknown'));
-  if (d.ok) loadTickets();
+  if (d.ok) {
+    clearDraft(id);
+    loadTickets();
+  }
 }
 
 function logout(){ localStorage.removeItem(TOKEN_KEY); setAuthState('Logout berhasil'); loadTickets(); }
