@@ -12959,6 +12959,51 @@
         const EMAILJS_TEMPLATE_ID = 'template_rdmekih';
         const EMAILJS_AUTOREPLY_TEMPLATE_ID = 'template_58uztm9';
 
+        function showTicketSuccessCard({ ticketId = '', statusLink = '', autoReplySent = true } = {}) {
+          const old = document.getElementById('ticketSuccessOverlay');
+          if (old) old.remove();
+          const overlay = document.createElement('div');
+          overlay.id = 'ticketSuccessOverlay';
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:1085;background:rgba(2,6,23,.62);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .25s ease;';
+          overlay.innerHTML = `
+            <div style="max-width:420px;width:100%;background:#0f172a;border:1px solid rgba(148,163,184,.35);border-radius:18px;padding:20px;color:#e2e8f0;box-shadow:0 20px 45px rgba(2,6,23,.5);transform:translateY(18px) scale(.96);transition:transform .28s cubic-bezier(.2,.8,.2,1);">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <div style="width:38px;height:38px;border-radius:999px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:20px;">✅</div>
+                <div>
+                  <div style="font-weight:800;font-size:1.05rem;">Tiket berhasil terkirim</div>
+                  <div style="font-size:.9rem;color:#cbd5e1;">ID Tiket: <b>${ticketId || '-'}</b></div>
+                </div>
+              </div>
+              <div style="font-size:.9rem;color:#cbd5e1;line-height:1.45;">
+                Tim support akan memproses laporan kamu. Simpan ID tiket ini untuk tracking status.
+              </div>
+              <div style="font-size:.83rem;color:${autoReplySent ? '#93c5fd' : '#fbbf24'};margin-top:10px;">
+                ${autoReplySent ? 'Auto-reply berhasil dikirim ke email kamu.' : 'Tiket berhasil dibuat, tapi auto-reply belum terkirim. Silakan cek folder spam / kirim ulang.'}
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+                ${statusLink ? `<a href="${statusLink}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Cek Status Tiket</a>` : ''}
+                <button type="button" class="btn btn-sm btn-outline-light" id="ticketSuccessCloseBtn">Tutup</button>
+              </div>
+            </div>`;
+          document.body.appendChild(overlay);
+          requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            const card = overlay.firstElementChild;
+            if (card) card.style.transform = 'translateY(0) scale(1)';
+          });
+          const close = () => {
+            overlay.style.opacity = '0';
+            const card = overlay.firstElementChild;
+            if (card) card.style.transform = 'translateY(16px) scale(.96)';
+            setTimeout(() => overlay.remove(), 220);
+          };
+          overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+          });
+          overlay.querySelector('#ticketSuccessCloseBtn')?.addEventListener('click', close);
+          setTimeout(close, 6500);
+        }
+
         function initEmailContact() {
           const form = document.getElementById('emailForm');
           const submitBtn = document.getElementById('emailSubmitBtn');
@@ -13044,6 +13089,7 @@
                 }
                 window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
                 const firstLink = backendData?.fileLink || ticketPayload.file_link || '';
+                const statusLink = backendData?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(ticketPayload.ticketId || '')}`;
                 const templateParams = {
                   ticket_id: ticketPayload.ticketId,
                   name: ticketPayload.name,
@@ -13052,9 +13098,19 @@
                   message: ticketPayload.message,
                   file_link: firstLink || 'Tidak ada file',
                   date: ticketPayload.date,
+                  status_link: statusLink,
                 };
-                await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_AUTOREPLY_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
-                return true;
+                let lastErr = null;
+                for (let i = 0; i < 3; i++) {
+                  try {
+                    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_AUTOREPLY_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
+                    return true;
+                  } catch (err) {
+                    lastErr = err;
+                    await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+                  }
+                }
+                throw lastErr || new Error('Gagal mengirim auto-reply EmailJS');
               };
 
               const resp = await fetch('/api/contact', {
@@ -13064,14 +13120,21 @@
               });
               const result = await resp.json().catch(() => ({}));
               if (!resp.ok || !result?.ok) {
-                // Fallback: try direct EmailJS send if backend path fails
-                await sendViaEmailJs(payload, result);
-              } else if (result?.emailStatus !== 'sent' || result?.autoReplyEmailStatus !== 'sent') {
-                // Backend accepted ticket but SMTP path unavailable -> fallback to EmailJS
-                await sendViaEmailJs(payload, result);
+                throw new Error(result?.error || 'Gagal membuat tiket ke server');
+              }
+              let autoReplySent = false;
+              try {
+                autoReplySent = await sendViaEmailJs(payload, result);
+              } catch (mailErr) {
+                console.error('Auto-reply EmailJS gagal', mailErr);
               }
 
-              setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, 'success');
+              setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, autoReplySent ? 'success' : 'warning');
+              showTicketSuccessCard({
+                ticketId: payload.ticketId,
+                statusLink: result?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(payload.ticketId)}`,
+                autoReplySent
+              });
               form.reset();
               if (proofPreview) proofPreview.textContent = '';
               if (ticketIdInput) ticketIdInput.value = generateTicketId();
