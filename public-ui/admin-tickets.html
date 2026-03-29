@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Tickets • YTConv</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeInUp { from { opacity:.0; transform:translateY(8px);} to {opacity:1; transform:translateY(0);} }
+    .fade-in-up { animation: fadeInUp .28s ease both; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
+    <header class="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur p-4 md:p-5 fade-in-up">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">🎫 Admin Ticket Dashboard</h1>
+          <p class="text-slate-400 text-sm">Realtime ticket monitoring + update status user.</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <a href="/admin/dashboard" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Statistik</a>
+          <a href="/admin/cookies.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">Admin Cookies</a>
+          <a href="/status.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">Status Page</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid md:grid-cols-3 gap-3">
+      <form id="loginForm" class="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-3 fade-in-up">
+        <div class="font-bold">Login Admin</div>
+        <div class="grid sm:grid-cols-3 gap-2">
+          <input id="username" placeholder="Username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" required>
+          <input id="password" type="password" placeholder="Password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" required>
+          <div class="flex gap-2">
+            <button class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold" type="submit">Login</button>
+            <button class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600" type="button" onclick="logout()">Logout</button>
+          </div>
+        </div>
+      </form>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-1 fade-in-up">
+        <div class="text-sm text-slate-400">Status Auth</div>
+        <div id="authState" class="font-semibold">Belum login</div>
+        <div id="lastSync" class="text-xs text-slate-500">Belum ada sinkronisasi</div>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in-up">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-bold">Daftar Tiket</h2>
+        <button onclick="loadTickets()" class="px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-sm font-semibold">Refresh</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="text-left py-2 pr-2">ID</th><th class="text-left py-2 pr-2">Pengirim</th><th class="text-left py-2 pr-2">Kategori</th><th class="text-left py-2 pr-2">Pesan</th><th class="text-left py-2 pr-2">Status</th><th class="text-left py-2 pr-2">Balasan</th><th class="text-left py-2">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script>
+const TOKEN_KEY = 'ytconv_admin_bearer';
+const DRAFT_KEY = 'ytconv_ticket_drafts_v1';
+const fmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const esc = (v='') => String(v).replace(/[&<>'\"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const STATUS_TEMPLATES = {
+  received: 'Halo, tiket kamu sudah kami terima. Tim kami akan review secepatnya.',
+  reviewing: 'Halo, tiket kamu sedang kami proses. Mohon tunggu update berikutnya ya.',
+  waiting_user: 'Halo, kami butuh info tambahan dari kamu supaya tiket bisa lanjut diproses.',
+  resolved: 'Halo, masalah kamu sudah kami selesaikan. Kalau masih ada kendala, balas tiket ini ya.',
+  rejected: 'Halo, tiket ditolak karena data belum cukup/invalid. Silakan kirim detail tambahan.'
+};
+const draftStore = (() => {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}') || {}; } catch { return {}; }
+})();
+const saveDraftStore = () => localStorage.setItem(DRAFT_KEY, JSON.stringify(draftStore));
+
+const statusBadge = (status='received', label='Diterima') => {
+  const map = {
+    received:'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    reviewing:'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    waiting_user:'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    resolved:'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    rejected:'bg-rose-500/20 text-rose-300 border-rose-500/40'
+  };
+  return `<span class="px-2 py-1 rounded-full border text-xs font-semibold ${map[status] || 'bg-slate-700/50 text-slate-200 border-slate-600'}">${esc(label)}</span>`;
+};
+
+function setAuthState(text){ document.getElementById('authState').textContent = text; }
+function setLastSync(){ document.getElementById('lastSync').textContent = 'Sinkronisasi: ' + fmt.format(new Date()); }
+function getToken(){ return (localStorage.getItem(TOKEN_KEY) || '').trim(); }
+function saveToken(token){ localStorage.setItem(TOKEN_KEY, token || ''); }
+function setDraft(id, patch = {}) {
+  draftStore[id] = { ...(draftStore[id] || {}), ...patch, updatedAt: Date.now() };
+  saveDraftStore();
+}
+function getDraft(id) { return draftStore[id] || null; }
+function clearDraft(id) { delete draftStore[id]; saveDraftStore(); }
+
+async function loginAdmin(evt){
+  evt?.preventDefault();
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  try {
+    const r = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username, password }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok || !d.token) throw new Error(d.error || 'Login gagal');
+    saveToken(d.token);
+    setAuthState('Login aktif');
+    await loadTickets();
+  } catch (e) {
+    setAuthState('Login gagal: ' + e.message);
+  }
+}
+
+async function loadTickets(){
+  const token = getToken();
+  const tb = document.getElementById('rows');
+  if (!token) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`; return; }
+  const r = await fetch('/api/admin/tickets', { headers:{ Authorization:`Bearer ${token}` } });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) {
+    tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(d.error || 'unauthorized')}</td></tr>`;
+    setAuthState('Token invalid/expired');
+    return;
+  }
+  tb.innerHTML = '';
+  if (!d.tickets?.length) {
+    tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Belum ada tiket masuk.</td></tr>`;
+  }
+  d.tickets.forEach((t) => {
+    const row = document.createElement('tr');
+    row.className = 'border-b border-slate-800 align-top';
+    const submitted = t.submittedAt ? fmt.format(new Date(t.submittedAt)) : '-';
+    row.innerHTML = `
+      <td class="py-3 pr-2">
+        <div class="font-semibold">${esc(t.ticketId)}</div>
+        <div class="text-xs text-slate-500">${submitted}</div>
+      </td>
+      <td class="py-3 pr-2"><div>${esc(t.name || '-')}</div><div class="text-xs text-slate-400">${esc(t.email || '-')}</div></td>
+      <td class="py-3 pr-2"><span class="px-2 py-1 rounded-md bg-slate-800 text-xs">${esc(t.category || '-')}</span></td>
+      <td class="py-3 pr-2 max-w-sm"><div class="line-clamp-4 whitespace-pre-wrap text-slate-300">${esc(t.message || '-')}</div></td>
+      <td class="py-3 pr-2">
+        <div class="mb-2">${statusBadge(t.status, t.statusLabel || t.status)}</div>
+        <select id="st-${esc(t.ticketId)}" class="w-full px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs">
+          <option value="received">Diterima</option><option value="reviewing">Diproses</option><option value="waiting_user">Menunggu User</option><option value="resolved">Selesai</option><option value="rejected">Ditolak</option>
+        </select>
+      </td>
+      <td class="py-3 pr-2">
+        <div class="space-y-2">
+          <textarea id="rp-${esc(t.ticketId)}" rows="3" class="w-full px-2 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs" placeholder="Balasan admin...">${esc(t.adminReply || '')}</textarea>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" data-template="${esc(t.ticketId)}" class="px-2 py-1 text-[11px] rounded bg-slate-700 hover:bg-slate-600">Gunakan template status</button>
+          </div>
+        </div>
+      </td>
+      <td class="py-3">
+        <div class="flex flex-col gap-2">
+          <button onclick="updateTicket('${esc(t.ticketId)}')" class="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">Simpan</button>
+          <a href="/ticket-status.html?ticket_id=${encodeURIComponent(t.ticketId)}" target="_blank" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-center">Lihat Status</a>
+        </div>
+      </td>`;
+    tb.appendChild(row);
+    const id = t.ticketId;
+    const sel = row.querySelector(`#st-${CSS.escape(id)}`);
+    if (sel) sel.value = t.status || 'received';
+    const replyEl = row.querySelector(`#rp-${CSS.escape(id)}`);
+    const draft = getDraft(id);
+    if (draft) {
+      if (sel && draft.status) sel.value = draft.status;
+      if (replyEl && typeof draft.adminReply === 'string') replyEl.value = draft.adminReply;
+    }
+    sel?.addEventListener('change', () => setDraft(id, { status: sel.value, adminReply: replyEl?.value || '' }));
+    replyEl?.addEventListener('input', () => setDraft(id, { status: sel?.value || 'received', adminReply: replyEl.value }));
+    row.querySelector(`[data-template=\"${CSS.escape(id)}\"]`)?.addEventListener('click', () => {
+      const template = STATUS_TEMPLATES[sel?.value || 'received'] || '';
+      if (!replyEl) return;
+      if (replyEl.value.trim()) {
+        if (!confirm('Balasan sudah ada. Ganti dengan template status?')) return;
+      }
+      replyEl.value = template;
+      setDraft(id, { status: sel?.value || 'received', adminReply: replyEl.value });
+    });
+  });
+  setAuthState('Login aktif');
+  setLastSync();
+}
+
+async function updateTicket(id){
+  const token = getToken();
+  const status = document.getElementById(`st-${id}`).value;
+  const adminReply = document.getElementById(`rp-${id}`).value;
+  const r = await fetch(`/api/admin/tickets/${encodeURIComponent(id)}`, { method:'PATCH', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` }, body:JSON.stringify({ status, adminReply }) });
+  const d = await r.json().catch(() => ({}));
+  alert(d.ok ? 'Update berhasil.' : 'Gagal: ' + (d.error || 'unknown'));
+  if (d.ok) {
+    clearDraft(id);
+    loadTickets();
+  }
+}
+
+function logout(){ localStorage.removeItem(TOKEN_KEY); setAuthState('Logout berhasil'); loadTickets(); }
+
+document.getElementById('loginForm').addEventListener('submit', loginAdmin);
+if (getToken()) loadTickets(); else document.getElementById('rows').innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`;
+setInterval(() => { if (getToken()) loadTickets(); }, 8000);
+</script>
+</body>
+</html>

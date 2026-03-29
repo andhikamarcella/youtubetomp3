@@ -3,620 +3,185 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Status Server - YouTube to MP3</title>
+  <title>Status & Maintenance • YTConv</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root {
-      --accent: #fd7e14;
-      --bg: #0b1220;
-      --card: rgba(17, 24, 39, 0.92);
-      --card2: rgba(15, 23, 42, 0.78);
-      --text: #e5e7eb;
-      --muted: rgba(229,231,235,0.72);
-      --border: rgba(255,255,255,0.10);
-      --shadow: 0 22px 70px rgba(0,0,0,0.38);
-      --radius: 18px;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f6f7fb;
-        --card: rgba(255,255,255,0.98);
-        --card2: rgba(255,255,255,0.92);
-        --text: #111827;
-        --muted: rgba(17,24,39,0.62);
-        --border: rgba(17,24,39,0.08);
-        --shadow: 0 20px 60px rgba(0,0,0,0.10);
-      }
-    }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: radial-gradient(circle at 20% 0%, rgba(253,126,20,0.18), transparent 55%),
-                  radial-gradient(circle at 80% 0%, rgba(13,110,253,0.14), transparent 45%),
-                  var(--bg);
-      color: var(--text);
-    }
-    * { box-sizing: border-box; }
-    .wrap {
-      max-width: 1020px;
-      margin: 0 auto;
-      padding: 14px 14px 28px;
-    }
-    .top {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      padding: 10px 0 12px;
-      backdrop-filter: blur(10px);
-    }
-    .top-inner {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-    @media (min-width: 860px) {
-      .top-inner { grid-template-columns: 1.2fr 0.8fr; align-items: end; }
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 950;
-      letter-spacing: 0.02em;
-      font-size: 1.02rem;
-    }
-    .meta {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      align-items: center;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-    @media (min-width: 860px) {
-      .meta { justify-content: flex-end; }
-    }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: #94a3b8;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.12);
-    }
-    .dot.ok { background: #22c55e; }
-    .dot.warn { background: #f59e0b; }
-    .dot.bad { background: #ef4444; }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      font-weight: 900;
-      white-space: nowrap;
-    }
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-    @media (max-width: 540px) {
-      .actions {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .actions::-webkit-scrollbar { display: none; }
-      .actions > * { flex: 0 0 auto; }
-    }
-    button, a.btn {
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      padding: 11px 12px;
-      border-radius: 14px;
-      font-weight: 900;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
-    }
-    button.primary {
-      background: var(--accent);
-      border-color: transparent;
-      color: #111827;
-    }
-    button:hover, a.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(0,0,0,0.18); }
-    button:active, a.btn:active { transform: translateY(0px) scale(0.98); }
-    button:focus-visible, a.btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-    @media (min-width: 860px) {
-      .grid { grid-template-columns: 1.25fr 0.75fr; }
-    }
-    .card {
-      border: 1px solid var(--border);
-      background: var(--card);
-      border-radius: var(--radius);
-      padding: 14px;
-      box-shadow: var(--shadow);
-      transform: translateY(0);
-      transition: transform 220ms ease, box-shadow 220ms ease;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .card:hover { transform: translateY(-2px); box-shadow: 0 28px 90px rgba(0,0,0,0.44); }
-    }
-    .card-head {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .card-head h1 {
-      font-size: 1.15rem;
-      margin: 0;
-      letter-spacing: 0.02em;
-      font-weight: 950;
-    }
-    .card-sub { color: var(--muted); font-size: 0.92rem; }
-    .muted { color: var(--muted); }
-    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      font-weight: 800;
-      font-size: 0.85rem;
-    }
-    .section {
-      background: var(--card2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 12px;
-      margin-top: 12px;
-    }
-    .section-title {
-      font-weight: 950;
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 8px;
-    }
-    .list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 10px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(255,255,255,0.05);
-    }
-    .k { font-weight: 950; }
-    .mini {
-      display: grid;
-      gap: 8px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-    .mini li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 10px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(255,255,255,0.05);
-    }
-    .mini .k { font-weight: 900; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .mono.break { word-break: break-word; overflow-wrap: anywhere; }
-    .progress {
-      height: 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid var(--border);
-      overflow: hidden;
-      margin-top: 10px;
-    }
-    .bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, rgba(255,255,255,0.20), rgba(255,255,255,0.05), rgba(255,255,255,0.20));
-      background-size: 200% 100%;
-      animation: shimmer 1.6s ease-in-out infinite;
-    }
-    .bar.fill {
-      background: var(--accent);
-      animation: none;
-    }
-    @keyframes shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    .skeleton {
-      height: 12px;
-      border-radius: 10px;
-      background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.16), rgba(255,255,255,0.08));
-      background-size: 200% 100%;
-      animation: shimmer 1.6s ease-in-out infinite;
-    }
-    @media (prefers-color-scheme: light) {
-      .skeleton {
-        background: linear-gradient(90deg, rgba(17,24,39,0.06), rgba(17,24,39,0.12), rgba(17,24,39,0.06));
-      }
-    }
-    .footer {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 0.88rem;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      button, a.btn, .card, .bar, .skeleton { transition: none !important; animation: none !important; }
-    }
+    @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
+    .fade-in { animation: fadeIn .35s ease both; }
+    @keyframes pulseSoft { 0%,100% { box-shadow:0 0 0 0 rgba(59,130,246,.2);} 50% { box-shadow:0 0 0 12px rgba(59,130,246,0);} }
+    .pulse-soft { animation: pulseSoft 2.4s ease-in-out infinite; }
+    @keyframes marqueeSlide { 0% { transform: translateX(8px); opacity:0;} 10%,90% { transform:translateX(0); opacity:1;} 100% { transform:translateX(-8px); opacity:0;} }
+    .tip-animate { animation: marqueeSlide 5s ease-in-out infinite; }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="top">
-      <div class="top-inner">
-        <div>
-          <div class="brand"><span class="dot" id="overallDot"></span> Status Server</div>
-          <div class="meta">
-            <span class="pill"><span class="dot" id="netDot"></span><span id="netText">Mengecek koneksi...</span></span>
-            <span class="pill mono" id="updated">--:-- WIB</span>
-            <span class="pill mono" id="tz">TZ</span>
-          </div>
-          <div class="actions">
-            <button class="primary" id="refreshBtn">Refresh</button>
-            <button id="copyBtn">Salin status</button>
-            <button id="notifyBtn">Beri tahu saat online</button>
-            <button id="laterBtn">Cek lagi 5 menit</button>
-            <a class="btn" href="./" target="_blank" rel="noopener">Kembali</a>
-          </div>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <main class="max-w-5xl mx-auto p-4 md:p-6 space-y-4">
+    <header class="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3 fade-in">
+      <div>
+        <h1 class="text-2xl font-extrabold">📡 YTConv Status Page</h1>
+        <p class="text-slate-400 text-sm">Realtime health, maintenance info, dan uptime server.</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <span id="healthChip" class="px-3 py-2 rounded-lg bg-slate-800 text-sm">Memuat...</span>
+        <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Refresh</button>
+      </div>
+    </header>
+
+    <section class="grid md:grid-cols-3 gap-3 fade-in">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-sm">Server Time</div><div id="serverTime" class="font-bold mt-1">-</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-sm">Uptime</div><div id="uptime" class="font-bold mt-1">-</div></div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-sm">Next Check</div><div id="nextTick" class="font-bold mt-1">-</div></div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-4 fade-in">
+      <h2 class="text-lg font-bold">🔧 Maintenance Mode</h2>
+      <div id="maintenanceBox" class="rounded-xl border border-slate-700 bg-slate-950 p-4 text-slate-300">Memuat data maintenance...</div>
+      <div>
+        <div class="text-sm text-slate-400 mb-1">Progress</div>
+        <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden"><div id="progressBar" class="h-full w-0 bg-amber-500 transition-all duration-500"></div></div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-3 text-sm">
+        <div class="rounded-xl border border-slate-700 bg-slate-950 p-3"><div class="text-slate-400">Detail</div><div id="maintDetail" class="mt-1">-</div></div>
+        <div class="rounded-xl border border-slate-700 bg-slate-950 p-3"><div class="text-slate-400">ETA Lokal User</div><div id="maintEta" class="mt-1">-</div></div>
+      </div>
+      <div class="rounded-xl border border-indigo-700/40 bg-indigo-500/10 p-3 pulse-soft">
+        <div class="text-xs text-indigo-300 uppercase tracking-wide">Live Tip</div>
+        <div id="liveTip" class="font-semibold tip-animate">Sambil menunggu maintenance, kamu bisa bookmark halaman ini agar update status lebih cepat.</div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-3">
+        <div class="rounded-xl border border-slate-700 bg-slate-950 p-3">
+          <div class="font-semibold mb-2">🧭 Progress Steps</div>
+          <ul id="stepsList" class="space-y-2 text-sm"></ul>
+        </div>
+        <div class="rounded-xl border border-slate-700 bg-slate-950 p-3">
+          <div class="font-semibold mb-2">🧩 Service Status</div>
+          <div id="servicesGrid" class="grid grid-cols-1 gap-2 text-sm"></div>
         </div>
       </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5 fade-in">
+      <h2 class="text-lg font-bold mb-3">✨ Visualized Response</h2>
+      <div id="visualSummary" class="grid md:grid-cols-3 gap-3 text-sm"></div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5 fade-in">
+      <h2 class="text-lg font-bold mb-3">📋 Raw Response</h2>
+      <details class="rounded-xl border border-slate-700 bg-slate-950 p-2" open>
+        <summary class="cursor-pointer text-sm text-slate-300 px-2 py-1">Tampilkan / sembunyikan JSON raw</summary>
+        <pre id="raw" class="text-xs whitespace-pre-wrap p-4 overflow-auto"></pre>
+      </details>
+    </section>
+  </main>
+
+<script>
+const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'full', timeStyle:'long' });
+let countdown = 20;
+let tipIdx = 0;
+const tips = [
+  'Tip: Saat maintenance aktif, hasil download lama tetap aman.',
+  'Tip: Kamu bisa refresh manual kapan saja dengan tombol Refresh.',
+  'Tip: Simpan page ini di bookmark supaya gampang cek update.',
+  'Tip: ETA dihitung berdasarkan zona waktu perangkat kamu.'
+];
+
+function formatDuration(sec){
+  if (!Number.isFinite(sec)) return '-';
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  return `${d ? d + 'h ' : ''}${h}j ${m}m ${s}d`;
+}
+
+async function loadStatus(){
+  countdown = 20;
+  const res = await fetch('/api/health?t=' + Date.now());
+  const data = await res.json().catch(() => ({}));
+  const maint = Boolean(data?.maintenance);
+  document.getElementById('healthChip').textContent = maint ? 'Maintenance Aktif' : 'Server Normal';
+  document.getElementById('healthChip').className = 'px-3 py-2 rounded-lg text-sm ' + (maint ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30');
+  document.getElementById('serverTime').textContent = fmt.format(new Date(data?.timestamp || Date.now()));
+  document.getElementById('uptime').textContent = formatDuration(Number(data?.uptime || 0));
+
+  const info = data?.maintenanceInfo || {};
+  document.getElementById('maintenanceBox').innerHTML = maint
+    ? `<div class="font-semibold text-amber-300">${info?.title || 'Maintenance sedang berjalan'}</div><div class="mt-1">${info?.description || 'Kami sedang melakukan peningkatan sistem.'}</div>`
+    : '<div class="font-semibold text-emerald-300">Tidak ada maintenance aktif.</div>';
+
+  const pct = Number.isFinite(Number(info?.progress)) ? Math.max(0, Math.min(100, Number(info.progress))) : 0;
+  document.getElementById('progressBar').style.width = `${pct}%`;
+  document.getElementById('maintDetail').textContent = info?.detail || '-';
+  document.getElementById('maintEta').textContent = info?.etaEndAt ? fmt.format(new Date(info.etaEndAt)) : (info?.etaSeconds ? `~ ${formatDuration(info.etaSeconds)}` : '-');
+  renderSteps(info?.steps);
+  renderServices(info?.services);
+  renderVisualSummary(data);
+  document.getElementById('raw').textContent = JSON.stringify(data, null, 2);
+}
+
+function renderSteps(steps){
+  const el = document.getElementById('stepsList');
+  const arr = Array.isArray(steps) ? steps : [];
+  if (!arr.length) {
+    el.innerHTML = '<li class=\"text-slate-400\">Belum ada langkah maintenance.</li>';
+    return;
+  }
+  el.innerHTML = arr.map((step) => {
+    const status = String(step?.status || 'pending').toLowerCase();
+    const style = status === 'in_progress'
+      ? 'border-amber-500/50 bg-amber-500/10 text-amber-200'
+      : status === 'completed'
+        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-200'
+        : 'border-slate-600 bg-slate-800/60 text-slate-300';
+    return `<li class=\"rounded-lg border px-3 py-2 ${style}\"><div class=\"font-semibold\">${step?.text || '-'}</div><div class=\"text-xs opacity-80 mt-1\">${step?.detail || '-'}</div></li>`;
+  }).join('');
+}
+
+function renderServices(services){
+  const el = document.getElementById('servicesGrid');
+  const entries = services && typeof services === 'object' ? Object.entries(services) : [];
+  if (!entries.length) {
+    el.innerHTML = '<div class=\"text-slate-400\">Belum ada data service.</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([name, value]) => {
+    const v = String(value || '').toLowerCase();
+    const cls = v.includes('maintenance') ? 'text-amber-300 border-amber-500/40 bg-amber-500/10' : v.includes('up') || v.includes('online') ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' : 'text-slate-300 border-slate-600 bg-slate-800/60';
+    return `<div class=\"rounded-lg border px-3 py-2 ${cls}\"><div class=\"font-semibold\">${name}</div><div class=\"text-xs mt-1\">${value}</div></div>`;
+  }).join('');
+}
+
+function renderVisualSummary(data){
+  const info = data?.maintenanceInfo || {};
+  const cards = [
+    ['Status', data?.maintenance ? 'Maintenance' : 'Online'],
+    ['Healthcheck Path', data?.healthcheckPath || '-'],
+    ['Maintenance ID', info?.id || '-'],
+    ['Progress', Number.isFinite(Number(info?.progress)) ? `${Number(info.progress)}%` : '-'],
+    ['Uptime', formatDuration(Number(data?.uptime || 0))],
+    ['Timestamp', fmt.format(new Date(data?.timestamp || Date.now()))],
+  ];
+  document.getElementById('visualSummary').innerHTML = cards.map(([k,v]) => `
+    <div class=\"rounded-xl border border-slate-700 bg-slate-950 p-3\">
+      <div class=\"text-xs text-slate-400 uppercase tracking-wide\">${k}</div>
+      <div class=\"font-semibold mt-1 break-words\">${v}</div>
     </div>
+  `).join('');
+}
 
-    <div class="grid">
-      <div class="card">
-        <div class="card-head">
-          <div>
-            <h1 id="headline">Memuat status...</h1>
-            <div class="card-sub" id="desc">Mengambil data dari /api/health.</div>
-          </div>
-          <div class="pill mono break" id="healthPath">/api/health</div>
-        </div>
-        <div class="progress"><div class="bar" id="progressBar"></div></div>
-        <div class="badges" id="serviceBadges">
-          <div class="badge"><span class="dot"></span><span class="skeleton" style="width: 180px;"></span></div>
-          <div class="badge"><span class="dot"></span><span class="skeleton" style="width: 160px;"></span></div>
-        </div>
+document.getElementById('refreshBtn').addEventListener('click', () => loadStatus().catch((e) => alert(e.message)));
+setInterval(() => {
+  countdown = Math.max(0, countdown - 1);
+  document.getElementById('nextTick').textContent = `${countdown} detik`;
+  if (countdown === 0) loadStatus().catch(() => {});
+}, 1000);
+setInterval(() => {
+  tipIdx = (tipIdx + 1) % tips.length;
+  const tipEl = document.getElementById('liveTip');
+  if (tipEl) tipEl.textContent = tips[tipIdx];
+}, 5000);
 
-        <div class="section" id="maintBlock" hidden>
-          <div class="section-title">
-            <span>Progress Detail</span>
-            <span class="mono break" id="maintId">MT-000000</span>
-          </div>
-          <ul class="list" id="maintSteps"></ul>
-          <div class="muted" id="etaHuman" style="margin-top:10px;"></div>
-        </div>
-
-        <div class="section" id="whatsNewBlock" hidden>
-          <div class="section-title"><span>Setelah Maintenance</span><span class="muted">what’s new</span></div>
-          <ul class="list" id="whatsNew"></ul>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <div>
-            <h1>Detail</h1>
-            <div class="card-sub">Ringkasan teknis yang gampang dipahami</div>
-          </div>
-          <div class="pill mono break" id="uptime">uptime</div>
-        </div>
-        <ul class="mini" id="detailList"></ul>
-        <div class="section">
-          <div class="section-title"><span>Data Kamu</span><span class="muted">aman</span></div>
-          <div class="muted"><b>Data kamu aman.</b> Maintenance tidak menghapus file, link, atau riwayat download.</div>
-        </div>
-        <div class="section">
-          <div class="section-title"><span>Kontak Darurat</span><span class="muted">support</span></div>
-          <div class="muted">Kalau maintenance lama atau ada kendala, hubungi: <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div>System version: <span class="mono" id="ver">v4.0 stable</span></div>
-      <div>Jika tampilan belum berubah setelah online, coba refresh (Ctrl + F5).</div>
-    </div>
-  </div>
-
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const state = { data: null };
-    const APP_VERSION = 'v4.0 stable';
-    try { $('ver').textContent = APP_VERSION; } catch {}
-
-    const setDot = (cls) => {
-      const d = $('overallDot');
-      d.className = 'dot ' + cls;
-    };
-
-    const toWib = (ms) => {
-      try {
-        const d = new Date(ms);
-        return d.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' }) + ' WIB';
-      } catch {
-        return '--:-- WIB';
-      }
-    };
-
-    const badgeDot = (status) => {
-      const v = String(status || '').toLowerCase();
-      if (v.includes('ok') || v.includes('online') || v.includes('up')) return 'ok';
-      if (v.includes('warn') || v.includes('rate')) return 'warn';
-      if (v.includes('down') || v.includes('error') || v.includes('offline')) return 'bad';
-      if (v.includes('maint')) return 'warn';
-      return '';
-    };
-
-    const setNet = () => {
-      const netDot = $('netDot');
-      const netText = $('netText');
-      if (!netDot || !netText) return;
-      let warn = '';
-      try {
-        if (navigator && navigator.onLine === false) warn = 'Offline';
-      } catch {}
-      try {
-        const c = navigator && navigator.connection ? navigator.connection : null;
-        const et = c && typeof c.effectiveType === 'string' ? c.effectiveType : '';
-        const dl = c && typeof c.downlink === 'number' ? c.downlink : null;
-        if (!warn && (et === 'slow-2g' || et === '2g' || (dl != null && dl < 1.2))) warn = 'Koneksi tidak stabil';
-      } catch {}
-      if (warn) {
-        netDot.className = 'dot warn';
-        netText.textContent = warn;
-      } else {
-        netDot.className = 'dot ok';
-        netText.textContent = 'Koneksi OK';
-      }
-    };
-
-    const safeText = (v) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-    const normalizeMaintId = (raw) => {
-      const s = String(raw ?? '').trim();
-      if (!s) return '';
-      const m = s.match(/MT-[0-9A-Za-z_-]{6,}/);
-      if (m && m[0]) return m[0];
-      return s.split(/\s+/)[0].slice(0, 40);
-    };
-
-    const renderSteps = (steps, pct) => {
-      const el = $('maintSteps');
-      if (!el) return;
-      const renderItem = (status, text, detail) => {
-        const s = status === 'done' || status === 'doing' || status === 'todo' ? status : 'todo';
-        const dotCls = s === 'done' ? 'ok' : (s === 'doing' ? 'warn' : '');
-        const dot = `<span class="dot ${dotCls}"></span>`;
-        return `<li>${dot}<div><div class="k">${safeText(text)}</div>${detail ? `<div class="muted">${safeText(detail)}</div>` : ''}</div></li>`;
-      };
-      if (Array.isArray(steps) && steps.length) {
-        el.innerHTML = steps.slice(0, 7).map((s) => renderItem(String(s?.status || 'todo'), s?.text || s?.title || 'Task', s?.detail || s?.sub || '')).join('');
-        return;
-      }
-      const p = Number.isFinite(Number(pct)) ? Number(pct) : 45;
-      const s1 = p >= 30 ? 'done' : 'doing';
-      const s2 = p >= 70 ? 'done' : (p >= 30 ? 'doing' : 'todo');
-      const s3 = p >= 100 ? 'done' : (p >= 70 ? 'doing' : 'todo');
-      el.innerHTML = [
-        renderItem(s1, 'Database backup', s1 === 'done' ? 'Selesai' : 'Berjalan'),
-        renderItem(s2, 'Optimasi server', s2 === 'done' ? 'Selesai' : (s2 === 'doing' ? 'Berjalan' : 'Menunggu')),
-        renderItem(s3, 'Deploy rilis baru', s3 === 'done' ? 'Selesai' : (s3 === 'doing' ? 'Berjalan' : 'Menunggu')),
-      ].join('');
-    };
-
-    const renderWhatsNew = (wn) => {
-      const el = $('whatsNew');
-      if (!el) return;
-      const items = Array.isArray(wn) && wn.length ? wn.slice(0, 7) : ['⚡ Download lebih cepat', '🧠 Error converter dikurangi', '📱 Tampilan mobile lebih ringan'];
-      el.innerHTML = items.map((t) => `<li><span class="dot ok"></span><div class="k">${safeText(t)}</div></li>`).join('');
-    };
-
-    const render = (data) => {
-      state.data = data;
-      const now = Date.now();
-      $('updated').textContent = toWib(now);
-      $('tz').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Timezone';
-      setNet();
-
-      const maint = Boolean(data && data.maintenance);
-      if (maint) {
-        setDot('warn');
-        $('headline').textContent = 'Maintenance (sedang berlangsung)';
-        const info = data.maintenanceInfo || {};
-        $('desc').textContent = String(info.description || 'Kami lagi ngerapihin sistem biar layanan lebih cepat dan stabil.');
-        const pct = Number.isFinite(Number(info.progress)) ? Math.max(0, Math.min(100, Number(info.progress))) : null;
-        const bar = $('progressBar');
-        if (pct == null) {
-          bar.className = 'bar';
-          bar.style.width = '100%';
-        } else {
-          bar.className = 'bar fill';
-          bar.style.width = pct + '%';
-        }
-
-        try { $('healthPath').textContent = String(data.healthcheckPath || '/api/health'); } catch {}
-        try { $('maintBlock').hidden = false; } catch {}
-        try { $('whatsNewBlock').hidden = false; } catch {}
-        try { $('maintId').textContent = normalizeMaintId(info.id || ('MT-' + new Date().toISOString().slice(0,10).replaceAll('-',''))); } catch {}
-        renderSteps(info.steps, pct);
-        renderWhatsNew(info.whatsNew);
-        try {
-          const eta = $('etaHuman');
-          if (eta) {
-            const endAtMs = Number.isFinite(Number(info.etaEndAt)) ? Number(info.etaEndAt) : null;
-            if (endAtMs) {
-              eta.textContent = `Estimasi selesai sekitar ${toWib(endAtMs)}. Biasanya selesai lebih cepat kalau tidak ada kendala.`;
-            } else {
-              eta.textContent = 'Kami usahakan online sebelum estimasi. Progress akan terus diperbarui.';
-            }
-          }
-        } catch {}
-      } else {
-        setDot('ok');
-        $('headline').textContent = 'Online';
-        $('desc').textContent = 'Semua layanan utama berjalan.';
-        const bar = $('progressBar');
-        bar.className = 'bar fill';
-        bar.style.width = '100%';
-        try { $('healthPath').textContent = String(data.healthcheckPath || '/api/health'); } catch {}
-        try { $('maintBlock').hidden = true; } catch {}
-        try { $('whatsNewBlock').hidden = true; } catch {}
-      }
-
-      const badges = $('serviceBadges');
-      badges.innerHTML = '';
-      const info = (data && data.maintenanceInfo) ? data.maintenanceInfo : {};
-      const services = info && info.services ? info.services : null;
-      const items = Array.isArray(services) ? services : (services && typeof services === 'object' ? Object.entries(services).map(([name, status]) => ({ name, status })) : null);
-      (items || []).slice(0, 10).forEach((it) => {
-        const dotCls = badgeDot(it.status);
-        const el = document.createElement('div');
-        el.className = 'badge';
-        el.innerHTML = `<span class="dot ${dotCls}"></span><span>${it.name}: <span class="mono">${it.status}</span></span>`;
-        badges.appendChild(el);
-      });
-      if (!items || !items.length) {
-        const el = document.createElement('div');
-        el.className = 'badge';
-        el.innerHTML = `<span class="dot ${maint ? 'warn' : 'ok'}"></span><span>Server: <span class="mono">${maint ? 'Maintenance' : 'Online'}</span></span>`;
-        badges.appendChild(el);
-      }
-
-      const list = $('detailList');
-      const out = [];
-      out.push(['Healthcheck', data && data.healthcheckPath ? data.healthcheckPath : '/api/health']);
-      out.push(['Uptime', data && typeof data.uptime === 'number' ? Math.round(data.uptime) + 's' : '-']);
-      out.push(['Start', data && data.startTime ? toWib(data.startTime) : '-']);
-      if (maint) {
-        const id = normalizeMaintId(info && info.id ? info.id : '');
-        if (id) out.push(['Maintenance ID', id]);
-        if (info && info.detail) out.push(['Status', info.detail]);
-        if (Number.isFinite(Number(info.etaEndAt))) out.push(['Estimasi selesai', toWib(Number(info.etaEndAt))]);
-      }
-      list.innerHTML = out.map(([k, v]) => `<li><div class="k">${k}</div><div class="mono muted">${String(v)}</div></li>`).join('');
-      try {
-        const u = $('uptime');
-        if (u) u.textContent = data && typeof data.uptime === 'number' ? `uptime ${Math.round(data.uptime)}s` : 'uptime';
-      } catch {}
-    };
-
-    const notifyOnline = () => {
-      try { localStorage.setItem('maint_notify_online', '1'); } catch {}
-      if (!('Notification' in window)) return;
-      if (Notification.permission === 'granted') return;
-      if (Notification.permission === 'denied') return;
-      Notification.requestPermission().catch(() => {});
-    };
-
-    const maybeFireNotify = (data) => {
-      try {
-        const wants = localStorage.getItem('maint_notify_online') === '1';
-        if (!wants) return;
-        if (data && data.maintenance === false) {
-          localStorage.removeItem('maint_notify_online');
-          const title = 'Server sudah online';
-          const body = 'Maintenance selesai. Kamu bisa coba lagi sekarang.';
-          if ('Notification' in window && Notification.permission === 'granted') {
-            try { new Notification(title, { body }); } catch {}
-          } else {
-            alert(title + '\n' + body);
-          }
-        }
-      } catch {}
-    };
-
-    const fetchHealth = async () => {
-      const res = await fetch('/api/health?t=' + Date.now(), { cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      render(data);
-      maybeFireNotify(data);
-    };
-
-    $('refreshBtn').addEventListener('click', () => {
-      $('refreshBtn').disabled = true;
-      fetchHealth().catch(() => {}).finally(() => { try { $('refreshBtn').disabled = false; } catch {} });
-    });
-    $('notifyBtn').addEventListener('click', () => notifyOnline());
-    $('laterBtn').addEventListener('click', () => {
-      try { $('laterBtn').disabled = true; } catch {}
-      setTimeout(() => { try { location.reload(); } catch {} }, 5 * 60 * 1000);
-    });
-    $('copyBtn').addEventListener('click', async () => {
-      const d = state.data || {};
-      const info = d.maintenanceInfo || {};
-      const text = [
-        'Status Server',
-        `Maintenance: ${d.maintenance ? 'YA' : 'TIDAK'}`,
-        info.id ? `Maintenance ID: ${info.id}` : '',
-        info.detail ? `Detail: ${info.detail}` : '',
-        Number.isFinite(Number(info.progress)) ? `Progress: ${info.progress}%` : '',
-        Number.isFinite(Number(info.etaEndAt)) ? `Estimasi selesai: ${toWib(Number(info.etaEndAt))}` : '',
-        `URL: ${location.href}`,
-      ].filter(Boolean).join('\n');
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
-        else alert(text);
-      } catch {
-        alert(text);
-      }
-    });
-
-    setInterval(() => fetchHealth().catch(() => {}), 10000);
-    fetchHealth().catch(() => {
-      setDot('bad');
-      $('headline').textContent = 'Tidak bisa memuat status';
-      $('desc').textContent = 'Coba refresh atau cek koneksi internet.';
-      $('progressBar').style.width = '100%';
-      setNet();
-    });
-  </script>
+loadStatus().catch((e) => { document.getElementById('raw').textContent = String(e?.message || e); });
+</script>
 </body>
 </html>
