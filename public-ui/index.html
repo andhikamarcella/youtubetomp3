@@ -12978,7 +12978,7 @@
                 Tim support akan memproses laporan kamu. Simpan ID tiket ini untuk tracking status.
               </div>
               <div style="font-size:.83rem;color:${autoReplySent ? '#93c5fd' : '#fbbf24'};margin-top:10px;">
-                ${autoReplySent ? 'Auto-reply berhasil dikirim ke email kamu.' : 'Tiket berhasil dibuat, tapi auto-reply belum terkirim. Silakan cek folder spam / kirim ulang.'}
+                ${autoReplySent ? 'Email admin + auto-reply user berhasil dikirim.' : 'Tiket berhasil dibuat, tapi sebagian email (admin/auto-reply) belum terkirim. Cek folder spam atau ulangi.'}
               </div>
               <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
                 ${statusLink ? `<a href="${statusLink}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Cek Status Tiket</a>` : ''}
@@ -12991,7 +12991,10 @@
             const card = overlay.firstElementChild;
             if (card) card.style.transform = 'translateY(0) scale(1)';
           });
+          let closed = false;
           const close = () => {
+            if (closed) return;
+            closed = true;
             overlay.style.opacity = '0';
             const card = overlay.firstElementChild;
             if (card) card.style.transform = 'translateY(16px) scale(.96)';
@@ -13001,7 +13004,7 @@
             if (e.target === overlay) close();
           });
           overlay.querySelector('#ticketSuccessCloseBtn')?.addEventListener('click', close);
-          setTimeout(close, 6500);
+          setTimeout(close, 3200);
         }
 
         function initEmailContact() {
@@ -13083,27 +13086,15 @@
                 pageUrl: window.location.href,
               };
 
-              const sendViaEmailJs = async (ticketPayload, backendData = {}) => {
-                if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_AUTOREPLY_TEMPLATE_ID) {
+              const sendTemplateEmailJs = async (templateId, templateParams) => {
+                if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !templateId) {
                   throw new Error('EmailJS belum dikonfigurasi');
                 }
                 window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-                const firstLink = backendData?.fileLink || ticketPayload.file_link || '';
-                const statusLink = backendData?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(ticketPayload.ticketId || '')}`;
-                const templateParams = {
-                  ticket_id: ticketPayload.ticketId,
-                  name: ticketPayload.name,
-                  email: ticketPayload.email,
-                  category: ticketPayload.category,
-                  message: ticketPayload.message,
-                  file_link: firstLink || 'Tidak ada file',
-                  date: ticketPayload.date,
-                  status_link: statusLink,
-                };
                 let lastErr = null;
                 for (let i = 0; i < 3; i++) {
                   try {
-                    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_AUTOREPLY_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
+                    await window.emailjs.send(EMAILJS_SERVICE_ID, templateId, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
                     return true;
                   } catch (err) {
                     lastErr = err;
@@ -13122,19 +13113,45 @@
               if (!resp.ok || !result?.ok) {
                 throw new Error(result?.error || 'Gagal membuat tiket ke server');
               }
+              const firstLink = result?.fileLink || payload.file_link || '';
+              const statusLink = result?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(payload.ticketId || '')}`;
+              const sharedParams = {
+                ticket_id: payload.ticketId,
+                name: payload.name,
+                email: payload.email,
+                category: payload.category,
+                message: payload.message,
+                file_link: firstLink || 'Tidak ada file',
+                date: payload.date,
+                status_link: statusLink,
+              };
               let autoReplySent = false;
+              let adminEmailSent = false;
               try {
-                autoReplySent = await sendViaEmailJs(payload, result);
+                const [adminResult, autoReplyResult] = await Promise.allSettled([
+                  sendTemplateEmailJs(EMAILJS_TEMPLATE_ID, sharedParams),
+                  sendTemplateEmailJs(EMAILJS_AUTOREPLY_TEMPLATE_ID, sharedParams),
+                ]);
+                adminEmailSent = adminResult.status === 'fulfilled';
+                autoReplySent = autoReplyResult.status === 'fulfilled';
               } catch (mailErr) {
                 console.error('Auto-reply EmailJS gagal', mailErr);
               }
 
-              setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, autoReplySent ? 'success' : 'warning');
+              const allSent = autoReplySent && adminEmailSent;
+              setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, allSent ? 'success' : 'warning');
               showTicketSuccessCard({
                 ticketId: payload.ticketId,
-                statusLink: result?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(payload.ticketId)}`,
-                autoReplySent
+                statusLink,
+                autoReplySent: allSent
               });
+              try {
+                const modalEl = document.getElementById('emailModal');
+                if (modalEl && window.bootstrap?.Modal) {
+                  const instance = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
+                  instance.hide();
+                }
+              } catch {}
               form.reset();
               if (proofPreview) proofPreview.textContent = '';
               if (ticketIdInput) ticketIdInput.value = generateTicketId();
