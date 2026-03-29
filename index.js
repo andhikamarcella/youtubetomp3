@@ -6932,7 +6932,7 @@ app.get("/api/health", (req, res) => {
       id: process.env.MAINTENANCE_ID || null,
       title: process.env.MAINTENANCE_TITLE || null,
       description: process.env.MAINTENANCE_DESC || null,
-      detail: process.env.MAINTENANCE_DETAIL || null,
+      detail: process.env.MAINTENANCE_DETAIL || process.env.RAILWAY_GIT_COMMIT_MESSAGE || process.env.VERCEL_GIT_COMMIT_MESSAGE || null,
       steps: parseJsonEnv(process.env.MAINTENANCE_STEPS_JSON),
       whatsNew: parseJsonEnv(process.env.MAINTENANCE_WHATS_NEW_JSON),
       tip: process.env.MAINTENANCE_TIP || null,
@@ -8260,7 +8260,7 @@ app.post('/api/contact', async (req, res) => {
       console.warn(`[YTConv CS Ticket] email belum terkirim untuk ${tid}: ${emailResult.reason || 'unknown reason'}`);
     }
 
-    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket/${encodeURIComponent(tid)}`;
+    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(tid)}`;
     const autoReplyHtml = `
 <div style="font-family: Arial, sans-serif; background:#f4f6f9; padding:20px;">
   <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
@@ -8443,7 +8443,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
   ticket.statusHistory.push({ status, label: statusLabel, at: nowIso, note: adminReply || "Update status admin" });
   supportTickets.set(ticketId, ticket);
 
-  const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket/${encodeURIComponent(ticketId)}`;
+  const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
   const replyHtml = `
   <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
     <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
@@ -8464,7 +8464,9 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
 });
 
 app.get("/ticket/:ticketId", (req, res) => {
-  res.sendFile(join(__dirname, "public-ui", "ticket-status.html"));
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  if (!ticketId) return res.sendFile(join(__dirname, "public-ui", "ticket-status.html"));
+  return res.redirect(302, `/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`);
 });
 
 app.get("/admin/tickets", (req, res) => {
