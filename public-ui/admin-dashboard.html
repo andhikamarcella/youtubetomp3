@@ -136,7 +136,11 @@
     <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
       <h2 class="font-bold mb-2">🧍 Live User Table + Journey</h2>
       <div class="overflow-auto rounded-xl border border-slate-800">
-        <table class="min-w-full text-xs"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="text-left p-2">Socket</th><th class="text-left p-2">Page</th><th class="text-left p-2">Room</th><th class="text-left p-2">Status</th><th class="text-left p-2">Duration</th><th class="text-left p-2">Journey</th></tr></thead><tbody id="liveUserRows"></tbody></table>
+        <table class="min-w-full text-xs"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="text-left p-2">Socket</th><th class="text-left p-2">Page</th><th class="text-left p-2">Room</th><th class="text-left p-2">Status</th><th class="text-left p-2">Duration</th><th class="text-left p-2">Journey</th><th class="text-left p-2">Last Action</th></tr></thead><tbody id="liveUserRows"></tbody></table>
+      </div>
+      <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-2">
+        <div class="text-xs text-slate-400 mb-1">User Action Stream</div>
+        <ul id="userActionStream" class="max-h-32 overflow-auto text-xs space-y-1"></ul>
       </div>
     </section>
 
@@ -214,7 +218,9 @@ function renderLive(data){
   el('pageStats').innerHTML=Object.entries(data.live?.pageStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
   el('roomStats').innerHTML=Object.entries(data.live?.roomStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
   const users=data.live?.users||[];
-  el('liveUserRows').innerHTML=users.map((u)=>`<tr class="border-t border-slate-800"><td class="p-2">${u.socketId}</td><td class="p-2">${u.page||'-'}</td><td class="p-2">${u.room||'-'}</td><td class="p-2">${u.status||'-'}</td><td class="p-2">${u.durationSeconds||0}s</td><td class="p-2">${(u.journey||'-').replace(/</g,'&lt;')}</td></tr>`).join('')||'<tr><td class="p-2" colspan="6">Tidak ada user.</td></tr>';
+  el('liveUserRows').innerHTML=users.map((u)=>{const lastAction=Array.isArray(u.actions)&&u.actions.length?u.actions[u.actions.length-1]:null;return `<tr class="border-t border-slate-800"><td class="p-2">${u.socketId}</td><td class="p-2">${u.page||'-'}</td><td class="p-2">${u.room||'-'}</td><td class="p-2">${u.status||'-'}</td><td class="p-2">${u.durationSeconds||0}s</td><td class="p-2">${(u.journey||'-').replace(/</g,'&lt;')}</td><td class="p-2">${lastAction ? `${lastAction.action} (${new Date(lastAction.at).toLocaleTimeString()})` : '-'}</td></tr>`;}).join('')||'<tr><td class="p-2" colspan="7">Tidak ada user.</td></tr>';
+  const allActions=users.flatMap((u)=>Array.isArray(u.actions)?u.actions.map((a)=>({socketId:u.socketId,...a})):[]).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,40);
+  el('userActionStream').innerHTML=allActions.map((a)=>`<li class="border border-slate-800 rounded p-1">${a.socketId.slice(0,8)} • ${a.action}${a.detail?` — ${a.detail}`:''}<div class="text-[10px] text-slate-500">${fmt.format(new Date(a.at))}</div></li>`).join('')||'<li class="text-slate-500">Belum ada action.</li>';
 }
 
 function renderAdvanced(data){
