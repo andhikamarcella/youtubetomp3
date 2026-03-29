@@ -5636,6 +5636,40 @@
                     data-i18n-placeholder="placeholderId3Album" />
                   <input id="id3Genre" type="text" class="form-control" placeholder="Genre"
                     data-i18n-placeholder="placeholderId3Genre" />
+                  <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" id="autoMetaSmart" checked>
+                    <label class="form-check-label" for="autoMetaSmart">Smart Auto Metadata + Cover HD</label>
+                  </div>
+                  <div class="d-flex align-items-center gap-2 mt-2 small text-secondary">
+                    <img id="id3CoverPreview" alt="Cover Preview" class="rounded border" style="width:40px;height:40px;object-fit:cover;" hidden>
+                    <span id="id3CoverText">Cover akan terisi otomatis dari source terbaik.</span>
+                  </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label" for="convertServerMode">Multi Server Selector</label>
+                    <select id="convertServerMode" class="form-select">
+                      <option value="auto" selected>Auto</option>
+                      <option value="fast">Server cepat</option>
+                      <option value="stable">Server stabil</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="crossfadeSeconds">Crossfade</label>
+                    <select id="crossfadeSeconds" class="form-select">
+                      <option value="0" selected>Off</option>
+                      <option value="2">2 detik</option>
+                      <option value="4">4 detik</option>
+                      <option value="6">6 detik</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" id="gaplessPlayback" checked>
+                      <label class="form-check-label" for="gaplessPlayback">Gapless playback</label>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="form-check form-switch mb-3">
@@ -8009,7 +8043,7 @@
             </div>
           </div>
           <div class="modal-footer border-top-0 d-flex justify-content-center bg-body-tertiary">
-            <small class="text-muted fw-bold">By Dikalfe Project</small>
+            <small class="text-muted fw-bold">By YTConv Team</small>
           </div>
         </div>
       </div>
@@ -8846,7 +8880,7 @@
             <p class="small text-secondary mb-2">
               Platform konversi media modern yang cepat, aman, dan mudah digunakan.
             </p>
-            <div class="small text-secondary">By Dikalfe Project</div>
+            <div class="small text-secondary">By YTConv Team</div>
           </div>
           <div class="col-md-4 mb-3 mb-md-0">
             <h6 class="fw-bold mb-3">Tentang Kami</h6>
@@ -8876,7 +8910,7 @@
               </a>
               <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal"
                 data-bs-target="#emailModal">
-                <i class="bi bi-envelope"></i> Email
+                <i class="bi bi-envelope"></i> Email Bantuan
               </button>
             </div>
           </div>
@@ -8966,7 +9000,7 @@
 
         <div class="border-top mt-4 pt-3 text-center small text-secondary">
           <div class="mb-2">
-            • 2026 Dikalfe Project
+            • 2026 YTConv
             <span id="appVersionBadge" class="badge rounded-pill bg-light text-dark border ms-2">Loading...</span>
             <span id="serverStatusDot" class="badge rounded-pill bg-secondary border ms-2"><i
                 class="bi bi-activity me-1"></i>Checking...</span>
@@ -9330,15 +9364,36 @@
                   placeholder="email@contoh.com" required>
               </div>
               <div class="mb-3">
+                <label for="emailTicketId" class="form-label small fw-semibold text-secondary">ID Tiket</label>
+                <input type="text" class="form-control rounded-pill bg-body-tertiary" id="emailTicketId" readonly>
+              </div>
+              <div class="mb-3">
+                <label for="emailCategory" class="form-label small fw-semibold text-secondary">Kategori</label>
+                <select class="form-select rounded-pill bg-body-tertiary" name="category" id="emailCategory">
+                  <option value="teknis">Masalah Teknis</option>
+                  <option value="forum">Forum & Moderasi</option>
+                  <option value="akun">Akun & Login</option>
+                  <option value="fitur">Saran Fitur</option>
+                </select>
+              </div>
+              <div class="mb-3">
                 <label for="emailMsg" class="form-label small fw-semibold text-secondary">Pesan</label>
                 <textarea class="form-control bg-body-tertiary" name="message" id="emailMsg" rows="4"
                   style="border-radius: 1rem;" placeholder="Ceritakan masalah atau saranmu..." required></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="emailProof" class="form-label small fw-semibold text-secondary">Upload bukti (foto/video)</label>
+                <input type="file" class="form-control" id="emailProof" accept="image/*,video/*" multiple>
+                <div id="emailProofPreview" class="small text-secondary mt-1"></div>
+              </div>
+              <div class="alert alert-info small py-2">
+                <i class="bi bi-info-circle me-1"></i>Ticket otomatis dikirim ke <strong>forumwargaytmp3@gmail.com</strong>. Waktu respon estimasi 2x24 jam.
               </div>
               <!-- Hidden Date Field -->
               <input type="hidden" name="date" id="emailDate">
 
               <button type="submit" id="emailSubmitBtn" class="btn btn-primary w-100 rounded-pill fw-bold py-2 mt-2">
-                <i class="bi bi-send-fill me-2"></i> Kirim Pesan
+                <i class="bi bi-send-fill me-2"></i> Kirim Tiket CS
               </button>
             </form>
           </div>
@@ -12902,48 +12957,190 @@
         const EMAILJS_PUBLIC_KEY = 'jT-4e85nCgIpRJak5';
         const EMAILJS_SERVICE_ID = 'service_733722j';
         const EMAILJS_TEMPLATE_ID = 'template_rdmekih';
+        const EMAILJS_AUTOREPLY_TEMPLATE_ID = 'template_58uztm9';
+
+        function showTicketSuccessCard({ ticketId = '', statusLink = '', autoReplySent = true } = {}) {
+          const old = document.getElementById('ticketSuccessOverlay');
+          if (old) old.remove();
+          const overlay = document.createElement('div');
+          overlay.id = 'ticketSuccessOverlay';
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:1085;background:rgba(2,6,23,.62);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .25s ease;';
+          overlay.innerHTML = `
+            <div style="max-width:420px;width:100%;background:#0f172a;border:1px solid rgba(148,163,184,.35);border-radius:18px;padding:20px;color:#e2e8f0;box-shadow:0 20px 45px rgba(2,6,23,.5);transform:translateY(18px) scale(.96);transition:transform .28s cubic-bezier(.2,.8,.2,1);">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <div style="width:38px;height:38px;border-radius:999px;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:20px;">✅</div>
+                <div>
+                  <div style="font-weight:800;font-size:1.05rem;">Tiket berhasil terkirim</div>
+                  <div style="font-size:.9rem;color:#cbd5e1;">ID Tiket: <b>${ticketId || '-'}</b></div>
+                </div>
+              </div>
+              <div style="font-size:.9rem;color:#cbd5e1;line-height:1.45;">
+                Tim support akan memproses laporan kamu. Simpan ID tiket ini untuk tracking status.
+              </div>
+              <div style="font-size:.83rem;color:${autoReplySent ? '#93c5fd' : '#fbbf24'};margin-top:10px;">
+                ${autoReplySent ? 'Auto-reply berhasil dikirim ke email kamu.' : 'Tiket berhasil dibuat, tapi auto-reply belum terkirim. Silakan cek folder spam / kirim ulang.'}
+              </div>
+              <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+                ${statusLink ? `<a href="${statusLink}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">Cek Status Tiket</a>` : ''}
+                <button type="button" class="btn btn-sm btn-outline-light" id="ticketSuccessCloseBtn">Tutup</button>
+              </div>
+            </div>`;
+          document.body.appendChild(overlay);
+          requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            const card = overlay.firstElementChild;
+            if (card) card.style.transform = 'translateY(0) scale(1)';
+          });
+          const close = () => {
+            overlay.style.opacity = '0';
+            const card = overlay.firstElementChild;
+            if (card) card.style.transform = 'translateY(16px) scale(.96)';
+            setTimeout(() => overlay.remove(), 220);
+          };
+          overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+          });
+          overlay.querySelector('#ticketSuccessCloseBtn')?.addEventListener('click', close);
+          setTimeout(close, 6500);
+        }
 
         function initEmailContact() {
           const form = document.getElementById('emailForm');
           const submitBtn = document.getElementById('emailSubmitBtn');
           const dateInput = document.getElementById('emailDate');
+          const ticketIdInput = document.getElementById('emailTicketId');
+          const proofInput = document.getElementById('emailProof');
+          const proofPreview = document.getElementById('emailProofPreview');
           if (!form || !submitBtn) return;
+
+          const generateTicketId = () => `TKT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+
+          const ensureTicketId = () => {
+            if (ticketIdInput && !ticketIdInput.value) ticketIdInput.value = generateTicketId();
+          };
+
+          document.getElementById('emailModal')?.addEventListener('show.bs.modal', ensureTicketId);
+          ensureTicketId();
+
+          if (proofInput && proofPreview) {
+            proofInput.addEventListener('change', () => {
+              const files = Array.from(proofInput.files || []).slice(0, 4);
+              if (!files.length) {
+                proofPreview.textContent = 'Belum ada file bukti dipilih.';
+                return;
+              }
+              proofPreview.textContent = files.map((f) => `${f.name} (${Math.ceil(f.size / 1024)} KB)`).join(' • ');
+            });
+          }
 
           form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID) {
-              setToast('Form laporan email belum dikonfigurasi. Hubungi admin.', 'danger');
-              return;
-            }
-
-            if (dateInput) {
-              dateInput.value = new Date().toLocaleString('id-ID');
-            }
+            if (dateInput) dateInput.value = new Date().toLocaleString('id-ID');
+            ensureTicketId();
 
             const originalHtml = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Mengirim...';
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Mengirim tiket...';
 
             try {
-              window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+              const files = Array.from((proofInput && proofInput.files) ? proofInput.files : []).slice(0, 4);
+              const proofs = [];
+              for (const file of files) {
+                let uploadedUrl = '';
+                try {
+                  if (typeof uploadToCloudinaryAuto === 'function') {
+                    uploadedUrl = await uploadToCloudinaryAuto(file, 'ytconv/support-tickets');
+                  }
+                } catch (uploadErr) {
+                  console.warn('Upload Cloudinary langsung gagal, fallback dataUrl', uploadErr);
+                }
 
-              const formData = {
-                name: form.name?.value || '',
-                email: form.email?.value || '',
-                message: form.message?.value || '',
+                if (uploadedUrl) {
+                  proofs.push({ name: file.name, type: file.type, size: file.size, url: uploadedUrl });
+                  continue;
+                }
+
+                const fallbackProof = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, dataUrl: reader.result });
+                  reader.onerror = () => reject(new Error(`Gagal membaca file ${file.name}`));
+                  reader.readAsDataURL(file);
+                });
+                proofs.push(fallbackProof);
+              }
+
+              const payload = {
+                ticketId: ticketIdInput?.value || generateTicketId(),
+                name: form.name?.value?.trim() || '',
+                email: form.email?.value?.trim() || '',
+                category: form.category?.value || 'teknis',
+                message: form.message?.value?.trim() || '',
+                proofs,
+                file_link: proofs[0]?.url || '',
                 date: dateInput?.value || new Date().toISOString(),
-                user_agent: navigator.userAgent || '',
-                page_url: window.location.href,
+                userAgent: navigator.userAgent || '',
+                pageUrl: window.location.href,
               };
 
-              await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, formData, { publicKey: EMAILJS_PUBLIC_KEY });
+              const sendViaEmailJs = async (ticketPayload, backendData = {}) => {
+                if (!window.emailjs || !EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_AUTOREPLY_TEMPLATE_ID) {
+                  throw new Error('EmailJS belum dikonfigurasi');
+                }
+                window.emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+                const firstLink = backendData?.fileLink || ticketPayload.file_link || '';
+                const statusLink = backendData?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(ticketPayload.ticketId || '')}`;
+                const templateParams = {
+                  ticket_id: ticketPayload.ticketId,
+                  name: ticketPayload.name,
+                  email: ticketPayload.email,
+                  category: ticketPayload.category,
+                  message: ticketPayload.message,
+                  file_link: firstLink || 'Tidak ada file',
+                  date: ticketPayload.date,
+                  status_link: statusLink,
+                };
+                let lastErr = null;
+                for (let i = 0; i < 3; i++) {
+                  try {
+                    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_AUTOREPLY_TEMPLATE_ID, templateParams, { publicKey: EMAILJS_PUBLIC_KEY });
+                    return true;
+                  } catch (err) {
+                    lastErr = err;
+                    await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+                  }
+                }
+                throw lastErr || new Error('Gagal mengirim auto-reply EmailJS');
+              };
 
-              setToast('Pesan berhasil dikirim. Terima kasih!', 'success');
+              const resp = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+              const result = await resp.json().catch(() => ({}));
+              if (!resp.ok || !result?.ok) {
+                throw new Error(result?.error || 'Gagal membuat tiket ke server');
+              }
+              let autoReplySent = false;
+              try {
+                autoReplySent = await sendViaEmailJs(payload, result);
+              } catch (mailErr) {
+                console.error('Auto-reply EmailJS gagal', mailErr);
+              }
+
+              setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, autoReplySent ? 'success' : 'warning');
+              showTicketSuccessCard({
+                ticketId: payload.ticketId,
+                statusLink: result?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(payload.ticketId)}`,
+                autoReplySent
+              });
               form.reset();
+              if (proofPreview) proofPreview.textContent = '';
+              if (ticketIdInput) ticketIdInput.value = generateTicketId();
             } catch (err) {
-              console.error('EmailJS error', err);
-              setToast('Gagal mengirim pesan. Coba lagi atau gunakan kontak admin.', 'danger');
+              console.error('Email ticket error', err);
+              setToast('Gagal mengirim tiket. Silakan email langsung ke forumwargaytmp3@gmail.com', 'danger');
             } finally {
               submitBtn.disabled = false;
               submitBtn.innerHTML = originalHtml;
@@ -14263,6 +14460,12 @@
         const id3ArtistInput = $('#id3Artist');
         const id3AlbumInput = $('#id3Album');
         const id3Genre = $('#id3Genre');
+        const autoMetaSmartToggle = $('#autoMetaSmart');
+        const id3CoverPreview = $('#id3CoverPreview');
+        const id3CoverText = $('#id3CoverText');
+        const convertServerMode = $('#convertServerMode');
+        const crossfadeSecondsSelect = $('#crossfadeSeconds');
+        const gaplessPlaybackToggle = $('#gaplessPlayback');
         const markManualInput = (input) => {
           if (!input) return;
           const handleManualFlag = () => {
@@ -17901,6 +18104,27 @@
                 const tips = data.suggestions.slice(0, 3).map((tip) => `- ${tip}`).join('\n');
                 reply += `\n\nSaran cepat:\n${tips}`;
               }
+
+              if (data.action === 'open_ticket') {
+                const modalEl = document.getElementById('emailModal');
+                const ticketMsg = document.getElementById('emailMsg');
+                const ticketIdEl = document.getElementById('emailTicketId');
+                const categoryEl = document.getElementById('emailCategory');
+                if (ticketIdEl && !ticketIdEl.value) {
+                  const seed = Date.now().toString(36).toUpperCase().slice(-8);
+                  ticketIdEl.value = `TKT-${seed}`;
+                }
+                if (ticketMsg && data?.params?.context) {
+                  ticketMsg.value = `Ringkasan dari AI Navigator:\n${data.params.context}\n\nDetail tambahan:`;
+                }
+                if (categoryEl && /forum|kasar|moderasi/i.test(String(data?.params?.context || ''))) {
+                  categoryEl.value = 'forum';
+                }
+                if (modalEl && window.bootstrap?.Modal) {
+                  window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                }
+                reply += '\n\nSaya sudah siapkan form tiket bantuan. Silakan cek data lalu kirim ya.';
+              }
             }
           } catch (err) {
             console.error('Gagal mengambil jawaban AI', err);
@@ -17936,7 +18160,7 @@
         const ensureAssistantWelcome = () => {
           if (!assistantMessages) return;
           if (!state.assistantHistory.length) {
-            addAssistantMessage('Navigator siap bantu. Tanyakan apa saja soal fitur converter ini.', 'bot');
+            addAssistantMessage('Navigator YTConv siap bantu seperti customer service. Tanyakan apa saja dengan bahasa kamu, nanti aku kasih alur langkah yang jelas.', 'bot');
           } else {
             state.assistantHistory.forEach((msg) => addAssistantMessage(msg.text, msg.role));
           }
@@ -19348,29 +19572,41 @@
               resetSourcePreview();
             }
           }
+          const smartAutoMetaOn = !autoMetaSmartToggle || !!autoMetaSmartToggle.checked;
           const metaId3 = info.id3 || {};
-          if (autoFillId3 || (fillEmptyId3 && id3TitleInput && !id3TitleInput.value.trim())) {
+          if (smartAutoMetaOn && (autoFillId3 || (fillEmptyId3 && id3TitleInput && !id3TitleInput.value.trim()))) {
             if (id3TitleInput) {
               id3TitleInput.value = metaId3.title || displayTitle;
               id3TitleInput.dataset.auto = '1';
             }
           }
-          if (autoFillId3 || (fillEmptyId3 && id3ArtistInput && !id3ArtistInput.value.trim())) {
+          if (smartAutoMetaOn && (autoFillId3 || (fillEmptyId3 && id3ArtistInput && !id3ArtistInput.value.trim()))) {
             if (id3ArtistInput) {
               id3ArtistInput.value = metaId3.artist || artist;
               id3ArtistInput.dataset.auto = '1';
             }
           }
-          if (autoFillId3 || (fillEmptyId3 && id3AlbumInput && !id3AlbumInput.value.trim())) {
+          if (smartAutoMetaOn && (autoFillId3 || (fillEmptyId3 && id3AlbumInput && !id3AlbumInput.value.trim()))) {
             if (id3AlbumInput) {
               id3AlbumInput.value = metaId3.album || displayTitle;
               id3AlbumInput.dataset.auto = '1';
             }
           }
-          if (autoFillId3 || (fillEmptyId3 && id3Genre && !id3Genre.value.trim())) {
+          if (smartAutoMetaOn && (autoFillId3 || (fillEmptyId3 && id3Genre && !id3Genre.value.trim()))) {
             if (id3Genre && metaId3.genre) {
               id3Genre.value = metaId3.genre;
               id3Genre.dataset.auto = '1';
+            }
+          }
+          const coverCandidate = info.cover || info.thumbnail || '';
+          if (id3CoverPreview) {
+            if (coverCandidate) {
+              id3CoverPreview.src = coverCandidate;
+              id3CoverPreview.hidden = false;
+              if (id3CoverText) id3CoverText.textContent = 'Cover HD siap dipakai untuk metadata file.';
+            } else {
+              id3CoverPreview.hidden = true;
+              if (id3CoverText) id3CoverText.textContent = 'Cover belum ditemukan. Coba link lain / sumber lain.';
             }
           }
           if (fileNameInput && (autoFillId3 || !fileNameInput.value.trim() || fileNameInput.dataset.autoName === fileNameInput.value)) {
@@ -23246,6 +23482,22 @@
           return xp;
         };
 
+        function toFriendlyConvertError(message = '') {
+          const raw = String(message || '').toLowerCase();
+          if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) return 'Video ini diblokir atau butuh cookies. Coba video lain atau update cookies ya.';
+          if (raw.includes('429') || raw.includes('too many') || raw.includes('rate')) return 'Server lagi padat. Santai, coba lagi sebentar ya.';
+          if (raw.includes('invalid') && raw.includes('url')) return 'Link belum valid. Cek lagi lalu kirim ulang ya.';
+          if (raw.includes('captcha')) return 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
+          return `Hmm gagal nih, coba lagi yaa… (${message || 'unknown'})`;
+        }
+
+        function getSpeedServerLabel(mode = 'auto') {
+          if (mode === 'fast') return 'Server A / Fast Lane';
+          if (mode === 'stable') return 'Server B / Stable';
+          const pool = ['Server A', 'Server B', 'Server C'];
+          return `${pool[Math.floor(Math.random() * pool.length)]} / Auto`;
+        }
+
         async function doConvert(target, autoDownload = false) {
           // Request notification permission if default
           if ('Notification' in window && Notification.permission === 'default') {
@@ -23381,6 +23633,11 @@
             atmos: $('#atmos').checked,
             speedMode: $('#speedMode').value,
             preferredLang: currentLang,
+            serverMode: convertServerMode?.value || 'auto',
+            playbackPrefs: {
+              crossfade: Number(crossfadeSecondsSelect?.value || 0),
+              gapless: !!gaplessPlaybackToggle?.checked,
+            },
           };
 
           if (videoQualitySelect && !videoQualityWrap?.hidden) {
@@ -23438,6 +23695,7 @@
 
           $('#statusWrap').hidden = false;
           $('#resultWrap').hidden = true;
+          setToast(`⚡ Speed Boost: ${getSpeedServerLabel(body.serverMode)} aktif`);
 
           // Reset Rating UI
           const rBtns = document.getElementById('ratingButtons');
@@ -23628,7 +23886,7 @@
             };
             updateDriveUi();
             showAudioPreview(absolutePlayUrl, previewMeta);
-            setToast(translateMessage('Berhasil diproses'));
+            setToast('Done! Enjoy your music 🎧');
             updateAiStatus('Konversi selesai', 'success');
             registerConversionSuccess('direct', {
               vpnFriendly: convertData.vpnFriendly ?? body.vpnFriendly,
@@ -23659,9 +23917,10 @@
             $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
             resetAudioPreview();
             convertProgressAnimator.fail(translateMessage('Gagal'));
-            setToast(`${translateMessage('Terjadi error: ')}${err.message}`);
-            announceNarrator(`Konversi gagal: ${err.message}`);
-            updateAiStatus(err.message, 'danger');
+            const friendlyErr = toFriendlyConvertError(err?.message || '');
+            setToast(friendlyErr);
+            announceNarrator(`Konversi gagal: ${friendlyErr}`);
+            updateAiStatus(friendlyErr, 'danger');
           } finally {
             stopConvertProgressWatcher();
             convertProgressAnimator.hide();
@@ -24722,7 +24981,7 @@
 
           } catch (err) {
             if (loadingEl) loadingEl.hidden = true;
-            setToast('Gagal: ' + err.message);
+            setToast(toFriendlyConvertError(err?.message || ''));
             vibrate(200);
           } finally {
             if (btn) btn.disabled = false;
@@ -28730,11 +28989,60 @@
             forumDeleteAllBtn.addEventListener('click', deleteAllForumMessages);
           }
 
+          const FORUM_BADWORDS = ['anjing', 'bangsat', 'brengsek', 'goblok', 'tolol', 'kontol', 'memek', 'jancok', 'ngentot', 'bacot'];
+          const FORUM_VIOLATION_LIMIT = 5;
+          const forumViolationKey = () => `ytconv:forum:violations:${currentUser?.uid || 'guest'}`;
+
+          function getForumViolationCount() {
+            try { return Number(localStorage.getItem(forumViolationKey()) || '0') || 0; } catch { return 0; }
+          }
+
+          function setForumViolationCount(val) {
+            try { localStorage.setItem(forumViolationKey(), String(Math.max(0, Number(val) || 0))); } catch { }
+          }
+
+          async function reportForumModeration(text, violationCount) {
+            try {
+              await fetch('/api/forum/moderation-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: currentUser?.uid || '',
+                  name: currentUser?.displayName || 'Warga',
+                  email: currentUser?.email || '',
+                  text,
+                  violationCount,
+                  room: activeForumRoom || 'umum',
+                }),
+              });
+            } catch (err) {
+              console.warn('Gagal kirim laporan automod', err);
+            }
+          }
+
           async function sendForumMessage() {
             if (isLaporanRoom()) { setToast('Room Laporan tidak menerima chat. Gunakan tombol Laporkan ya.'); return; }
             const text = forumInput.value.trim();
             if (!text && selectedFiles.length === 0) return;
             if (!currentUser) { setToast('Anda belum login!', 'warning'); return; }
+
+            const normalized = text.toLowerCase();
+            const hasBadWord = FORUM_BADWORDS.some((w) => normalized.includes(w));
+            if (hasBadWord) {
+              const nextCount = getForumViolationCount() + 1;
+              setForumViolationCount(nextCount);
+              await reportForumModeration(text, nextCount);
+              if (nextCount >= FORUM_VIOLATION_LIMIT) {
+                setToast('🚫 Kamu diblokir sementara setelah 5x pelanggaran. Ajukan appeal lewat AI Navigator / tiket email. Estimasi review 2x24 jam.', 'danger');
+                forumInput.value = '';
+                updateSendButtonState();
+                return;
+              }
+              setToast(`⚠️ Pesan kasar otomatis dihapus (${nextCount}/5). Gunakan bahasa yang baik ya.`, 'warning');
+              forumInput.value = '';
+              updateSendButtonState();
+              return;
+            }
 
             const { db, collection, addDoc, serverTimestamp, auth, storage, ref, uploadBytes, getDownloadURL } = window.firebaseModules;
 
@@ -28797,6 +29105,12 @@
             }
             if (isLaporanRoom()) {
               forumSendBtn.disabled = true;
+              return;
+            }
+            if (getForumViolationCount() >= FORUM_VIOLATION_LIMIT) {
+              forumSendBtn.disabled = true;
+              forumInput.disabled = true;
+              forumInput.placeholder = 'Akun forum dibatasi karena 5x pelanggaran. Ajukan appeal via AI Navigator / tiket email (respon 2x24 jam).';
               return;
             }
             if (voiceState.isRecording) {
