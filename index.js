@@ -8420,6 +8420,46 @@ app.get("/api/admin/tickets", (req, res) => {
   return res.json({ ok: true, tickets: items });
 });
 
+app.get("/api/admin/stats", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const tickets = Array.from(supportTickets.values());
+  const byStatus = tickets.reduce((acc, t) => {
+    const key = String(t?.status || "received");
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const memory = process.memoryUsage?.() || {};
+  return res.json({
+    ok: true,
+    timestamp: Date.now(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    activeSocketClients: Number(io?.engine?.clientsCount || 0),
+    forumRooms: roomUsers.size,
+    tickets: {
+      total: tickets.length,
+      byStatus,
+      newest: tickets
+        .slice()
+        .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
+        .slice(0, 5)
+        .map((t) => ({
+          ticketId: t.ticketId,
+          status: t.status,
+          statusLabel: t.statusLabel,
+          submittedAt: t.submittedAt,
+          category: t.category,
+          email: t.email,
+        })),
+    },
+    runtime: {
+      rss: Number(memory.rss || 0),
+      heapUsed: Number(memory.heapUsed || 0),
+      heapTotal: Number(memory.heapTotal || 0),
+      external: Number(memory.external || 0),
+    },
+  });
+});
+
 app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
@@ -8471,6 +8511,10 @@ app.get("/ticket/:ticketId", (req, res) => {
 
 app.get("/admin/tickets", (req, res) => {
   res.sendFile(join(__dirname, "public-ui", "admin-tickets.html"));
+});
+
+app.get("/admin/dashboard", (req, res) => {
+  res.sendFile(join(__dirname, "public-ui", "admin-dashboard.html"));
 });
 
 const PORT = process.env.PORT || 3000;
