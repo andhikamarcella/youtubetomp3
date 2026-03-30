@@ -12972,8 +12972,24 @@
             emailjs.init(EMAILJS_PUBLIC_KEY);
           }
 
-          const generateTicketId = () => `TKT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
-...
+          const ensureTicketId = () => {
+            if (ticketIdInput && !ticketIdInput.value) ticketIdInput.value = generateTicketId();
+          };
+
+          document.getElementById('emailModal')?.addEventListener('show.bs.modal', ensureTicketId);
+          ensureTicketId();
+
+          if (proofInput && proofPreview) {
+            proofInput.addEventListener('change', () => {
+              const files = Array.from(proofInput.files || []).slice(0, 4);
+              if (!files.length) {
+                proofPreview.textContent = 'Belum ada file bukti dipilih.';
+                return;
+              }
+              proofPreview.textContent = files.map((f) => `${f.name} (${Math.ceil(f.size / 1024)} KB)`).join(' • ');
+            });
+          }
+
           form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -14833,7 +14849,7 @@
 
         document.addEventListener('pointerdown', () => ensureAudioContext(), { once: true });
 
-        const storage = {
+        const settingsStore = {
           get k() { return 'ytmp3.settings.v1'; },
           load() { try { return JSON.parse(localStorage.getItem(this.k)) || {}; } catch { return {}; } },
           save(v) { localStorage.setItem(this.k, JSON.stringify(v || {})); }
