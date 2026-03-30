@@ -8050,6 +8050,7 @@ try { mkdirSync(ADMIN_DATA_PATH, { recursive: true }); } catch {}
 const TICKETS_FILE = join(ADMIN_DATA_PATH, "tickets.json");
 const APPEALS_FILE = join(ADMIN_DATA_PATH, "appeals.json");
 const CONTROL_FILE = join(ADMIN_DATA_PATH, "control.json");
+const VIOLATIONS_FILE = join(ADMIN_DATA_PATH, "violations.json");
 
 const loadJsonFile = (path, def) => {
   try { return JSON.parse(readFileSync(path, "utf8")); } catch { return def; }
@@ -8069,6 +8070,11 @@ let controlStore = loadJsonFile(CONTROL_FILE, { convertEnabled: true });
 const saveTickets = () => saveJsonFile(TICKETS_FILE, ticketsStore);
 const saveAppeals = () => saveJsonFile(APPEALS_FILE, appealsStore);
 const saveControl = () => saveJsonFile(CONTROL_FILE, controlStore);
+const saveViolations = () => {
+  if (typeof userViolations !== 'undefined') {
+    saveJsonFile(VIOLATIONS_FILE, Array.from(userViolations.entries()));
+  }
+};
 
 // Middleware: require Bearer token for admin API
 const requireAdminToken = (req, res, next) => {
@@ -8292,17 +8298,25 @@ app.patch("/api/admin/appeals/:id", requireAdminToken, (req, res) => {
     appealsStore[idx] = appeal;
     saveAppeals();
     pushActivityLog("appeal_update", `Appeal ${id} diupdate: ${status}`);
-    // Notify user via socket if possible
+    // Move unban logic OUTSIDE socket check so it applies even if user is offline
+    if (status === "resolved" && appeal.userId) {
+      if (typeof userViolations !== 'undefined') {
+        const rec = userViolations.get(appeal.userId);
+        if (rec) {
+          rec.banned = false;
+          rec.count = 0;
+          userViolations.set(appeal.userId, rec);
+          if (typeof saveViolations === 'function') saveViolations();
+        }
+      }
+    }
+
+    // Notify user via socket if they are online
     if (io && appeal.socketId) {
       const statusMsg = status === "resolved"
         ? `✅ Appeal kamu (${id}) telah DITERIMA! Akses forum kamu sudah dipulihkan.`
         : `❌ Appeal kamu (${id}) DITOLAK. ${adminNote || "Silakan hubungi CS untuk info lebih lanjut."}`;
       io.to(appeal.socketId).emit("forum:appealResult", { appealId: id, status, message: statusMsg });
-      // Also unban user if accepted
-      if (status === "resolved" && appeal.userId) {
-        const rec = userViolations.get(appeal.userId);
-        if (rec) { rec.banned = false; rec.count = 0; userViolations.set(appeal.userId, rec); }
-      }
     }
     res.json({ ok: true, appeal: appealsStore[idx] });
   } catch (e) {
@@ -8462,7 +8476,8 @@ app.get("/internal/worker/cookies", async (req, res) => {
 });
 
 // ===== /api/contact: Ticket Submission Endpoint =====
-const userViolations = new Map(); // userId -> { count, banned, bannedAt }
+// Violations store with persistence
+const userViolations = new Map(loadJsonFile(VIOLATIONS_FILE, []));
 
 const INDONESIAN_BADWORDS = [
   'anjing','bangsat','brengsek','goblok','bodoh','tolol','idiot','bajingan',
@@ -8751,6 +8766,12 @@ io.on("connection", (socket) => {
     const room = String(payload?.room || "umum");
     const userId = String(payload?.userId || socket.id);
     const name = String(payload?.name || "Warga");
+
+    // Sync user status (banned/count) to frontend immediately on join
+    if (typeof userViolations !== 'undefined') {
+      const rec = userViolations.get(userId) || { count: 0, banned: false };
+      socket.emit("forum:statusSync", { userId, banned: rec.banned, count: rec.count });
+    }
     const prev = socketState.get(socket.id);
     if (prev?.room && prev.room !== room) {
       try {
