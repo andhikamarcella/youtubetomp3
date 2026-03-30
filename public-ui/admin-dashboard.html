@@ -3,319 +3,750 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Statistik • YTConv</title>
+  <title>Admin Dashboard • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation: fadeIn .25s ease both; }
+    @keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .pulse2 { animation: pulse2 1.5s infinite; }
+    ::-webkit-scrollbar { width:6px; height:6px; } ::-webkit-scrollbar-track { background:#0f172a; } ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+    .stat-card { background: linear-gradient(135deg,#1e293b,#0f172a); border:1px solid #334155; }
+    .badge-pending { background:#fef3c7; color:#92400e; }
+    .badge-resolved { background:#d1fae5; color:#065f46; }
+    .badge-rejected { background:#fee2e2; color:#991b1b; }
+    .tab-active { border-bottom:2px solid #6366f1; color:#818cf8; }
+    .tab-inactive { color:#94a3b8; }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 transition-colors" id="appBody">
+<body class="min-h-screen bg-slate-950 text-slate-100">
   <audio id="notifAudio" preload="auto"><source src="data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YTAAAAABAQICAgMDAwQEBAUFBQYGBgcHCAgJCQoKCwsMDQ0ODg8PEBAQERESExMUFBQVFRYWFxcYGBkZGhobGxwcHR0eHh8f" type="audio/wav" /></audio>
-  <div id="toastWrap" class="fixed top-4 right-4 z-50 space-y-2"></div>
+  <div id="toastWrap" class="fixed top-4 right-4 z-[999] space-y-2 w-80"></div>
 
-  <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
-    <header class="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800 p-5 flex flex-wrap items-center justify-between gap-3">
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">📊</span>
       <div>
-        <h1 class="text-2xl font-extrabold">📊 Dashboard Statistik Realtime</h1>
-        <p class="text-slate-300 text-sm">Realtime helpdesk + analytics + monitoring center.</p>
+        <h1 class="font-extrabold text-lg leading-tight">Dashboard Admin YTConv</h1>
+        <p class="text-xs text-slate-400">Helpdesk · Analytics · Monitoring</p>
       </div>
-      <div class="flex gap-2 items-center">
-        <span class="px-2 py-1 rounded-full bg-emerald-900 text-emerald-300 text-xs animate-pulse">🟢 LIVE</span>
-        <button id="themeBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">🌙/☀️ Theme</button>
-        <button id="exportPngBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Export PNG</button>
-        <button id="exportPdfBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Export PDF</button>
-        <a id="adminTicketsBtn" href="/admin/tickets" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold inline-flex items-center gap-2">Admin Tickets <span id="adminTicketBadge" class="hidden min-w-5 h-5 px-1 rounded-full bg-rose-500 text-[11px] leading-5 text-center">0</span></a>
-        <button id="refreshBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Refresh</button>
-      </div>
-    </header>
+      <span id="liveIndicator" class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-xs">●  Offline</span>
+    </div>
+    <div class="flex gap-2 flex-wrap items-center">
+      <span id="authState" class="px-3 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-300">Belum login</span>
+      <a href="/admin/tickets" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold flex items-center gap-1">
+        🎫 Tiket <span id="ticketBadge" class="hidden min-w-5 h-5 px-1 text-center rounded-full bg-rose-500 text-[11px] leading-5">0</span>
+      </a>
+      <button id="exportPngBtn" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs">PNG</button>
+      <button id="exportPdfBtn" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs">PDF</button>
+      <button id="refreshBtn" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs">🔄 Refresh</button>
+    </div>
+  </header>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <form id="loginForm" class="grid sm:grid-cols-4 gap-2">
-        <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" required>
-        <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" required>
-        <button class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold" type="submit">Login</button>
-        <div id="authState" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm">Belum login</div>
+  <main class="max-w-7xl mx-auto p-4 space-y-4">
+    <!-- LOGIN -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in">
+      <form id="loginForm" class="flex flex-wrap gap-2 items-center">
+        <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm w-36" placeholder="Username" required>
+        <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm w-36" placeholder="Password" required>
+        <button class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm" type="submit">Login Admin</button>
+        <button type="button" onclick="logout()" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Logout</button>
+        <span class="text-xs text-slate-400">Gunakan kredensial Railway admin kamu</span>
       </form>
     </section>
 
-    <section id="metricCards" class="grid md:grid-cols-4 gap-3"></section>
+    <!-- METRIC CARDS -->
+    <section id="metricCards" class="grid grid-cols-2 md:grid-cols-4 gap-3"></section>
 
-    <section class="grid lg:grid-cols-3 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-2">
-        <h2 class="font-bold mb-2">📊 Charts</h2>
-        <div class="grid md:grid-cols-2 gap-3">
-          <div><div class="text-sm text-slate-300 mb-1">Ticket per Hari (7 hari)</div><canvas id="lineChart" height="120"></canvas></div>
-          <div><div class="text-sm text-slate-300 mb-1">Status Pie</div><canvas id="pieChart" height="120"></canvas></div>
-        </div>
+    <!-- TABS -->
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
+      <div class="flex border-b border-slate-800">
+        <button class="tab-btn tab-active px-4 py-3 text-sm font-semibold" data-tab="overview">📈 Overview</button>
+        <button class="tab-btn tab-inactive px-4 py-3 text-sm font-semibold" data-tab="tickets">🎫 Tiket</button>
+        <button class="tab-btn tab-inactive px-4 py-3 text-sm font-semibold" data-tab="appeals">⚖️ Appeal
+          <span id="appealBadge" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[10px]">0</span>
+        </button>
+        <button class="tab-btn tab-inactive px-4 py-3 text-sm font-semibold" data-tab="control">🎛 Control</button>
+        <button class="tab-btn tab-inactive px-4 py-3 text-sm font-semibold" data-tab="logs">📋 Log</button>
       </div>
-      <aside class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">🚨 Realtime Alerts</h2>
-        <div id="alertHint" class="text-xs text-slate-400 mb-2">Event-based alert aktif.</div>
-        <ul id="alertHistory" class="space-y-2 text-xs max-h-60 overflow-auto"></ul>
-      </aside>
-    </section>
 
-    <section class="grid lg:grid-cols-4 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-2">
-        <h2 class="font-bold mb-2">🎯 Conversion Funnel</h2>
-        <div class="space-y-2 text-sm">
-          <div class="h-8 rounded bg-indigo-800/50 px-3 flex items-center justify-between"><span>Visited</span><b id="fVisited">0</b></div>
-          <div class="h-8 rounded bg-amber-800/50 px-3 flex items-center justify-between"><span>Start Convert</span><b id="fStarted">0</b></div>
-          <div class="h-8 rounded bg-emerald-800/50 px-3 flex items-center justify-between"><span>Success</span><b id="fSuccess">0</b></div>
-        </div>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">⏱️ Processing Time</h2>
-        <div class="text-sm space-y-1">
-          <div>Avg: <b id="pAvg">0</b> ms</div>
-          <div>Fastest: <b id="pMin">0</b> ms</div>
-          <div>Slowest: <b id="pMax">0</b> ms</div>
-        </div>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">🌡️ System Health</h2>
-        <div class="text-sm space-y-1">
-          <div>CPU Est: <b id="hCpu">0</b>%</div>
-          <div>API Resp: <b id="hResp">0</b> ms</div>
-          <div>Error Rate: <b id="hErr">0</b>%</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="grid lg:grid-cols-3 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">🧠 Smart Insight</h2>
-        <ul id="smartInsights" class="text-sm space-y-1"></ul>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">🧪 A/B Monitor</h2>
-        <div class="text-sm">A Started: <b id="abAStarted">0</b> • A Success: <b id="abASuccess">0</b></div>
-        <div class="text-sm mt-1">B Started: <b id="abBStarted">0</b> • B Success: <b id="abBSuccess">0</b></div>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">⏳ Retention + Predictive</h2>
-        <div class="text-sm">New: <b id="retNew">0</b> • Returning: <b id="retReturning">0</b></div>
-        <div class="text-sm mt-1">Prediksi 1 jam: <b id="predNextHour">0</b> user</div>
-        <div id="predPeak" class="text-xs text-slate-400 mt-1">-</div>
-      </div>
-</section>
-
-<section class="grid lg:grid-cols-2 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">🌍 Geo Tracking</h2>
-        <ul id="geoStats" class="text-sm space-y-1"></ul>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">📡 API Monitoring</h2>
-        <ul id="apiStats" class="text-xs space-y-1 max-h-36 overflow-auto"></ul>
-      </div>
-    </section>
-
-    <section class="grid lg:grid-cols-1 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">📦 Queue Monitor</h2>
-        <div class="text-sm space-y-1">
-          <div>Length: <b id="qLen">0</b></div>
-          <div>Processing: <b id="qProc">0</b></div>
-          <div>Waiting: <b id="qWait">0</b></div>
-        </div>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">❌ Error Tracking</h2>
-        <div class="text-sm mb-1">Total: <b id="eTotal">0</b></div>
-        <ul id="eReasons" class="text-xs space-y-1"></ul>
-      </div>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">🎛️ Control Panel</h2>
-        <div class="text-xs text-slate-400 mb-2">Control realtime sistem.</div>
-        <div class="space-y-2">
-          <button id="toggleConvertBtn" class="w-full px-3 py-2 rounded bg-amber-600 hover:bg-amber-500 text-sm">Toggle Convert</button>
-          <button id="clearQueueBtn" class="w-full px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm">Clear Queue</button>
-          <div class="flex gap-2">
-            <input id="kickSocketId" placeholder="Socket ID" class="flex-1 px-2 py-2 rounded bg-slate-950 border border-slate-700 text-xs" />
-            <button id="kickUserBtn" class="px-2 py-2 rounded bg-rose-600 hover:bg-rose-500 text-xs">Kick</button>
+      <!-- TAB: OVERVIEW -->
+      <div id="tab-overview" class="tab-pane p-4 space-y-4">
+        <div class="grid lg:grid-cols-3 gap-3">
+          <div class="lg:col-span-2 space-y-3">
+            <div class="grid md:grid-cols-2 gap-3">
+              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                <div class="text-xs text-slate-400 mb-1">Tiket per Hari (7 hari)</div>
+                <canvas id="lineChart" height="120"></canvas>
+              </div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                <div class="text-xs text-slate-400 mb-1">Status Pie</div>
+                <canvas id="pieChart" height="120"></canvas>
+              </div>
+            </div>
+            <div class="grid md:grid-cols-3 gap-3">
+              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                <div class="text-xs text-slate-400 mb-2 font-semibold">🎯 Funnel</div>
+                <div class="space-y-1 text-sm">
+                  <div class="h-7 rounded bg-indigo-800/50 px-2 flex items-center justify-between text-xs"><span>Visited</span><b id="fVisited">0</b></div>
+                  <div class="h-7 rounded bg-amber-800/50 px-2 flex items-center justify-between text-xs"><span>Started</span><b id="fStarted">0</b></div>
+                  <div class="h-7 rounded bg-emerald-800/50 px-2 flex items-center justify-between text-xs"><span>Success</span><b id="fSuccess">0</b></div>
+                </div>
+              </div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                <div class="text-xs text-slate-400 mb-1 font-semibold">🌡 Health</div>
+                <div class="text-xs space-y-1">
+                  <div>CPU Est: <b id="hCpu">0</b>%</div>
+                  <div>API Resp: <b id="hResp">0</b>ms</div>
+                  <div>Error Rate: <b id="hErr">0</b>%</div>
+                  <div>RSS: <b id="hRss">-</b></div>
+                  <div>Heap: <b id="hHeap">-</b></div>
+                </div>
+              </div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                <div class="text-xs text-slate-400 mb-1 font-semibold">📦 Queue</div>
+                <div class="text-xs space-y-1">
+                  <div>Length: <b id="qLen">0</b></div>
+                  <div>Processing: <b id="qProc">0</b></div>
+                  <div>Waiting: <b id="qWait">0</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+              <div class="text-xs text-slate-400 mb-2 font-semibold">🚨 Realtime Alerts</div>
+              <ul id="alertHistory" class="space-y-1 text-xs max-h-48 overflow-auto"></ul>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+              <div class="text-xs text-slate-400 mb-1 font-semibold">👥 Live</div>
+              <div class="text-xs space-y-1">
+                <div>Active: <b id="activeUsers">0</b></div>
+                <div>Converting: <b id="convertingUsers">0</b></div>
+                <div>Success: <b id="successUsers">0</b></div>
+              </div>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+              <div class="text-xs text-slate-400 mb-1 font-semibold">🧠 Smart Insights</div>
+              <ul id="smartInsights" class="text-xs space-y-1"></ul>
+            </div>
           </div>
         </div>
       </div>
-    </section>
 
-    <section class="grid lg:grid-cols-3 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-2">
-        <div class="flex flex-wrap gap-2 mb-3">
-          <input id="searchId" placeholder="Search by ID..." class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
-          <select id="filterStatus" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm">
-            <option value="">Semua Status</option><option value="received">Open / Diterima</option><option value="reviewing">Pending / Diproses</option><option value="resolved">Selesai</option><option value="rejected">Ditolak</option>
+      <!-- TAB: TIKET -->
+      <div id="tab-tickets" class="tab-pane hidden p-4 space-y-3">
+        <div class="flex flex-wrap gap-2">
+          <input id="searchId" placeholder="Cari ID/nama..." class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm w-48">
+          <select id="filterStatus" class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm">
+            <option value="">Semua Status</option>
+            <option value="received">Diterima</option>
+            <option value="reviewing">Diproses</option>
+            <option value="waiting_user">Menunggu User</option>
+            <option value="resolved">Selesai</option>
+            <option value="rejected">Ditolak</option>
           </select>
-          <input id="filterCategory" placeholder="Kategori" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
-          <input id="filterDate" type="date" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" />
-          <button id="exportBtn" type="button" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Export Excel</button>
+          <input id="filterDate" type="date" class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm">
+          <button id="exportTicketsBtn" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold">Export Excel</button>
         </div>
         <div class="overflow-auto rounded-xl border border-slate-800">
-          <table class="min-w-full text-sm"><thead class="text-slate-300 bg-slate-800/80"><tr><th class="text-left p-2">ID</th><th class="text-left p-2">Kategori</th><th class="text-left p-2">Status</th><th class="text-left p-2">Waktu</th><th class="text-left p-2">Aksi</th></tr></thead><tbody id="ticketRows"></tbody></table>
+          <table class="min-w-full text-sm">
+            <thead class="text-slate-300 bg-slate-800/80">
+              <tr>
+                <th class="text-left p-2">ID</th>
+                <th class="text-left p-2">Nama</th>
+                <th class="text-left p-2">Kategori</th>
+                <th class="text-left p-2">Status</th>
+                <th class="text-left p-2">Waktu</th>
+                <th class="text-left p-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="ticketRows"></tbody>
+          </table>
+        </div>
+        <!-- Ticket Detail Panel -->
+        <div id="detailPanel" class="hidden rounded-xl border border-indigo-800 bg-slate-900 p-4">
+          <div class="flex justify-between mb-3">
+            <h3 class="font-bold">🧾 Detail Tiket: <span id="dTicketId" class="text-indigo-300"></span></h3>
+            <button id="closeDetailBtn" class="px-2 py-1 rounded bg-slate-700 text-xs">✕ Tutup</button>
+          </div>
+          <div id="detailContent" class="grid lg:grid-cols-2 gap-4">
+            <div class="space-y-2 text-sm">
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="rounded bg-slate-950 p-2"><b>Nama</b><div id="dName" class="mt-1 text-slate-300">-</div></div>
+                <div class="rounded bg-slate-950 p-2"><b>Email</b><div id="dEmail" class="mt-1 text-slate-300">-</div></div>
+                <div class="rounded bg-slate-950 p-2"><b>Kategori</b><div id="dCategory" class="mt-1 text-slate-300">-</div></div>
+                <div class="rounded bg-slate-950 p-2"><b>Status</b><div id="dStatus" class="mt-1 text-slate-300">-</div></div>
+              </div>
+              <div>
+                <b class="text-xs">Pesan:</b>
+                <p id="dMessage" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 text-xs whitespace-pre-wrap max-h-40 overflow-auto"></p>
+              </div>
+              <div id="dProofsWrap">
+                <b class="text-xs">Foto/Bukti:</b>
+                <div id="dProofs" class="mt-1 grid grid-cols-3 gap-2"></div>
+              </div>
+              <div>
+                <b class="text-xs">Riwayat Status:</b>
+                <ul id="statusHistory" class="mt-1 text-xs space-y-1"></ul>
+              </div>
+            </div>
+            <div>
+              <h4 class="font-semibold text-sm mb-2">💬 Chat Admin (maks 3x)</h4>
+              <div id="chatHistory" class="h-40 overflow-auto bg-slate-950 border border-slate-800 rounded-lg p-2 space-y-2 text-xs"></div>
+              <form id="chatForm" class="mt-2 flex gap-2">
+                <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs" placeholder="Balas tiket...">
+                <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold" type="submit">Kirim</button>
+              </form>
+              <div id="chatLimitHint" class="text-xs text-slate-400 mt-1"></div>
+            </div>
+          </div>
         </div>
       </div>
-      <aside class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <h2 class="font-bold mb-2">👥 Live Activity</h2>
-        <div class="text-sm space-y-2">
-          <div class="rounded bg-slate-950 p-2 border border-slate-800">Active Users: <b id="activeUsers">0</b></div>
-          <div class="rounded bg-slate-950 p-2 border border-slate-800">Converting: <b id="convertingUsers">0</b> • Success: <b id="successUsers">0</b></div>
-          <div class="rounded bg-slate-950 p-2 border border-slate-800"><div class="font-semibold">Page</div><ul id="pageStats"></ul></div>
-          <div class="rounded bg-slate-950 p-2 border border-slate-800"><div class="font-semibold">Room</div><ul id="roomStats"></ul></div>
-        </div>
-      </aside>
-    </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <h2 class="font-bold mb-2">🧍 Live User Table + Journey</h2>
-      <div class="overflow-auto rounded-xl border border-slate-800">
-        <table class="min-w-full text-xs"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="text-left p-2">Socket</th><th class="text-left p-2">Page</th><th class="text-left p-2">Room</th><th class="text-left p-2">Status</th><th class="text-left p-2">Duration</th><th class="text-left p-2">Journey</th><th class="text-left p-2">Last Action</th></tr></thead><tbody id="liveUserRows"></tbody></table>
-      </div>
-      <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-2">
-        <div class="text-xs text-slate-400 mb-1">User Action Stream</div>
-        <ul id="userActionStream" class="max-h-32 overflow-auto text-xs space-y-1"></ul>
-      </div>
-      <div class="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-2">
-        <div class="text-xs text-slate-400 mb-1">🎥 Session Replay (event timeline)</div>
-        <div class="flex gap-2 mb-2">
-          <input id="replaySocketId" class="flex-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-xs" placeholder="Socket ID untuk replay" />
-          <button id="replayBtn" class="px-2 py-1 rounded bg-indigo-600 text-xs">Replay</button>
+      <!-- TAB: APPEAL -->
+      <div id="tab-appeals" class="tab-pane hidden p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-base">⚖️ Manajemen Appeal Forum</h2>
+            <p class="text-xs text-slate-400 mt-1">User yang kena ban forum bisa mengajukan appeal. Admin bisa Accept/Reject di sini.</p>
+          </div>
+          <button onclick="loadAppeals()" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-sm">🔄 Refresh</button>
         </div>
-        <ul id="replayTimeline" class="max-h-40 overflow-auto text-xs space-y-1"></ul>
+        <!-- Appeal Stats -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-center">
+            <div class="text-2xl font-bold text-amber-400" id="appealPending">0</div>
+            <div class="text-xs text-amber-300">Pending</div>
+          </div>
+          <div class="rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 text-center">
+            <div class="text-2xl font-bold text-emerald-400" id="appealResolved">0</div>
+            <div class="text-xs text-emerald-300">Diterima</div>
+          </div>
+          <div class="rounded-xl border border-rose-800 bg-rose-950/30 p-3 text-center">
+            <div class="text-2xl font-bold text-rose-400" id="appealRejected">0</div>
+            <div class="text-xs text-rose-300">Ditolak</div>
+          </div>
+        </div>
+        <!-- Appeal List -->
+        <div class="overflow-auto rounded-xl border border-slate-800">
+          <table class="min-w-full text-sm">
+            <thead class="text-slate-300 bg-slate-800/80">
+              <tr>
+                <th class="text-left p-2">Appeal ID</th>
+                <th class="text-left p-2">User</th>
+                <th class="text-left p-2">Room</th>
+                <th class="text-left p-2">Alasan</th>
+                <th class="text-left p-2">Status</th>
+                <th class="text-left p-2">Waktu</th>
+                <th class="text-left p-2">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="appealRows"></tbody>
+          </table>
+        </div>
+        <!-- Appeal Action Panel -->
+        <div id="appealActionPanel" class="hidden rounded-xl border border-amber-800 bg-amber-950/20 p-4">
+          <h4 class="font-bold mb-3">⚖️ Proses Appeal: <span id="aAppealId" class="text-amber-300"></span></h4>
+          <div class="grid md:grid-cols-2 gap-3">
+            <div class="text-sm space-y-2">
+              <div><b>User:</b> <span id="aUserName">-</span></div>
+              <div><b>Room:</b> <span id="aRoom">-</span></div>
+              <div><b>Alasan Appeal:</b></div>
+              <p id="aReason" class="p-2 rounded bg-slate-950 border border-slate-700 text-xs whitespace-pre-wrap"></p>
+            </div>
+            <div class="space-y-3">
+              <textarea id="appealNote" rows="3" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" placeholder="Catatan admin (opsional, akan dikirim ke user jika ditolak)..."></textarea>
+              <div class="flex gap-2">
+                <button id="acceptAppealBtn" class="flex-1 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-sm">
+                  ✅ TERIMA Appeal (Unban User)
+                </button>
+                <button id="rejectAppealBtn" class="flex-1 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 font-bold text-sm">
+                  ❌ TOLAK Appeal
+                </button>
+              </div>
+              <button onclick="document.getElementById('appealActionPanel').classList.add('hidden')" class="w-full px-3 py-1.5 rounded-lg bg-slate-700 text-xs">Batal</button>
+            </div>
+          </div>
+        </div>
       </div>
-    </section>
 
-    <section id="detailPanel" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <div class="flex justify-between gap-2"><h2 class="font-bold">🧾 Detail Ticket <span id="dTicketId" class="text-indigo-300"></span></h2><button id="closeDetailBtn" type="button" class="px-2 py-1 rounded bg-slate-700 text-xs">Tutup</button></div>
-      <div id="detailSkeleton" class="py-6 text-slate-400 animate-pulse">Loading detail...</div>
-      <div id="detailContent" class="hidden grid lg:grid-cols-2 gap-4 mt-2">
-        <div class="space-y-2 text-sm">
-          <div><b>Nama:</b> <span id="dName">-</span></div><div><b>Email:</b> <span id="dEmail">-</span></div><div><b>Kategori:</b> <span id="dCategory">-</span></div><div><b>Status:</b> <span id="dStatus">-</span></div>
-          <div><b>Pesan:</b> <p id="dMessage" class="mt-1 p-2 rounded bg-slate-950 border border-slate-800 whitespace-pre-wrap"></p></div>
-          <div><b>Foto/Bukti:</b><div id="dProofs" class="mt-2 grid grid-cols-2 gap-2"></div></div>
+      <!-- TAB: CONTROL -->
+      <div id="tab-control" class="tab-pane hidden p-4 space-y-4">
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <h3 class="font-bold text-sm">🔧 Server Control</h3>
+            <button id="toggleConvertBtn" class="w-full px-3 py-2 rounded bg-amber-600 hover:bg-amber-500 text-sm">Toggle Convert</button>
+            <button id="clearQueueBtn" class="w-full px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-sm">Clear Queue</button>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <h3 class="font-bold text-sm">👢 Kick User</h3>
+            <input id="kickSocketId" placeholder="Socket ID" class="w-full px-2 py-2 rounded bg-slate-900 border border-slate-700 text-xs">
+            <button id="kickUserBtn" class="w-full px-2 py-2 rounded bg-rose-600 hover:bg-rose-500 text-sm">Kick</button>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <h3 class="font-bold text-sm">📤 Export</h3>
+            <button id="exportTicketsBtn2" class="w-full px-3 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-sm">Export Tiket Excel</button>
+            <button id="exportAppealsBtn" class="w-full px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-sm">Export Appeal Excel</button>
+          </div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-950 p-4">
+          <h3 class="font-bold text-sm mb-2">🎥 Session Replay</h3>
+          <div class="flex gap-2 mb-2">
+            <input id="replaySocketId" class="flex-1 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-xs" placeholder="Socket ID">
+            <button id="replayBtn" class="px-3 py-1 rounded bg-indigo-600 text-xs">Replay</button>
+          </div>
+          <ul id="replayTimeline" class="max-h-40 overflow-auto text-xs space-y-1"></ul>
+        </div>
+      </div>
+
+      <!-- TAB: LOGS -->
+      <div id="tab-logs" class="tab-pane hidden p-4 space-y-3">
+        <div class="grid lg:grid-cols-2 gap-3">
+          <div>
+            <h3 class="font-bold text-sm mb-2">📋 Activity Log</h3>
+            <ul id="activityLogs" class="max-h-72 overflow-auto text-xs space-y-1"></ul>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm mb-2">🚨 Alert History</h3>
+            <ul id="alertHistoryFull" class="max-h-72 overflow-auto text-xs space-y-1"></ul>
+          </div>
         </div>
         <div>
-          <h3 class="font-semibold mb-2">💬 Chat Realtime (Admin max 3x)</h3>
-          <div id="chatHistory" class="h-52 overflow-auto bg-slate-950 border border-slate-800 rounded-lg p-2 space-y-2"></div>
-          <form id="chatForm" class="mt-2 flex gap-2"><input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" placeholder="Balas tiket..." /><button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm" type="submit">Kirim</button></form>
-          <div id="chatLimitHint" class="text-xs text-slate-400 mt-1"></div>
-          <h4 class="font-semibold mt-3 mb-1">Riwayat Status</h4><ul id="statusHistory" class="text-sm text-slate-300 space-y-1"></ul>
+          <h3 class="font-bold text-sm mb-2">📡 API Monitoring</h3>
+          <ul id="apiStats" class="text-xs space-y-1 max-h-36 overflow-auto"></ul>
         </div>
       </div>
-    </section>
-
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <h2 class="font-bold mb-2">🧾 Activity Log (Audit Trail)</h2>
-      <ul id="activityLogs" class="max-h-48 overflow-auto text-xs space-y-1"></ul>
     </section>
   </main>
 
 <script>
-const TOKEN_KEY='ytconv_admin_bearer';
-const fmt=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'});
-const el=(id)=>document.getElementById(id);
-const getToken=()=> (localStorage.getItem(TOKEN_KEY)||'').trim();
-const setToken=(v)=> localStorage.setItem(TOKEN_KEY,v||'');
-const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
-const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
-let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[]};
-let socket=null;
+const TOKEN_KEY = 'ytconv_admin_bearer';
+const fmt = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+const el = id => document.getElementById(id);
+const getToken = () => (localStorage.getItem(TOKEN_KEY) || '').trim();
+const setToken = v => localStorage.setItem(TOKEN_KEY, v || '');
+const formatBytes = n => `${(Number(n || 0) / (1024 * 1024)).toFixed(1)} MB`;
+const formatUptime = s => `${Math.floor(s/3600)}j ${Math.floor((s%3600)/60)}m`;
+const esc = v => String(v || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const toast=(m,type='info')=>{const n=document.createElement('div');n.className=`px-3 py-2 rounded-lg border text-sm shadow ${type==='error'?'bg-rose-950 border-rose-700':type==='warn'?'bg-amber-950 border-amber-700':'bg-slate-900 border-slate-700'}`;n.textContent=m;el('toastWrap').appendChild(n);setTimeout(()=>n.remove(),3800);};
-const playNotif=()=>{try{el('notifAudio').currentTime=0;el('notifAudio').play().catch(()=>{});}catch{}};
-const setBadge=(count)=>{state.unread=Math.max(0,Number(count||0));el('adminTicketBadge').textContent=String(state.unread);el('adminTicketBadge').classList.toggle('hidden',state.unread<=0);};
+let state = {
+  allTickets: [], filteredTickets: [], currentTicket: null,
+  allAppeals: [], currentAppeal: null,
+  unreadTickets: 0, unreadAppeals: 0,
+  lineChart: null, pieChart: null, alerts: [], latestUsers: []
+};
+let socket = null;
 
-function pushAlert(message,level='warn'){const at=new Date().toISOString();state.alerts.unshift({message,level,at});if(state.alerts.length>30)state.alerts.length=30;el('alertHistory').innerHTML=state.alerts.map((a)=>`<li class="rounded p-2 border ${a.level==='critical'?'bg-rose-950 border-rose-700':'bg-amber-950 border-amber-700'}">${a.message}<div class="text-[10px] text-slate-400">${fmt.format(new Date(a.at))}</div></li>`).join('');toast(message,a.level==='critical'?'error':'warn');playNotif();}
+// ── Toast ──
+const toast = (m, type='info') => {
+  const n = document.createElement('div');
+  n.className = `px-3 py-2 rounded-lg border text-sm shadow-lg transition-all fade-in ${type==='error'?'bg-rose-950 border-rose-700':type==='warn'?'bg-amber-950 border-amber-700':'bg-slate-900 border-slate-700'}`;
+  n.textContent = m;
+  el('toastWrap').appendChild(n);
+  setTimeout(() => n.remove(), 4000);
+};
+const playNotif = () => { try { el('notifAudio').currentTime = 0; el('notifAudio').play().catch(()=>{}); } catch {} };
 
-function evaluateAlerts(data){
-  const converting=data.live?.conversion?.converting||0;
-  if(converting>=5) pushAlert(`🚨 ${converting} user converting bersamaan`,'critical');
-  if((data.runtime?.heapUsed||0) > 200*1024*1024) pushAlert('⚠️ Memory usage naik drastis','warn');
-  const active=data.live?.activeUsers||0;
-  const prev=state.lastSnapshot?.activeUsers||0;
-  if(prev>0 && active>=prev*1.8) pushAlert(`📈 Traffic spike: ${prev} → ${active}`,'warn');
-  state.lastSnapshot={activeUsers:active};
+// ── Badge ──
+const setTicketBadge = n => { state.unreadTickets = Math.max(0, n); el('ticketBadge').textContent = n; el('ticketBadge').classList.toggle('hidden', n <= 0); };
+const setAppealBadge = n => { state.unreadAppeals = Math.max(0, n); el('appealBadge').textContent = n; el('appealBadge').classList.toggle('hidden', n <= 0); };
+
+// ── Live indicator ──
+const setLiveState = on => {
+  const ind = el('liveIndicator');
+  ind.textContent = on ? '● LIVE' : '● Offline';
+  ind.className = `px-2 py-0.5 rounded-full text-xs ${on ? 'bg-emerald-900 text-emerald-300 pulse2' : 'bg-slate-800 text-slate-400'}`;
+};
+
+// ── Tabs ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.replace('tab-active', 'tab-inactive'); });
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+    btn.classList.replace('tab-inactive', 'tab-active');
+    el('tab-' + btn.dataset.tab).classList.remove('hidden');
+    if (btn.dataset.tab === 'appeals') loadAppeals();
+    if (btn.dataset.tab === 'logs') loadStats();
+  });
+});
+
+// ── Alerts ──
+function pushAlert(message, level='warn') {
+  const at = new Date().toISOString();
+  state.alerts.unshift({ message, level, at });
+  if (state.alerts.length > 30) state.alerts.length = 30;
+  const html = state.alerts.map(a => `<li class="rounded p-1.5 border ${a.level==='critical'?'bg-rose-950 border-rose-700':'bg-amber-950 border-amber-700'}">
+    ${esc(a.message)}<div class="text-[10px] text-slate-400">${fmt.format(new Date(a.at))}</div></li>`).join('');
+  el('alertHistory').innerHTML = html;
+  el('alertHistoryFull').innerHTML = html;
+  toast(message, level==='critical'?'error':'warn');
+  playNotif();
 }
 
-function renderMetrics(data){
-  const cards=[['Total Ticket',data.tickets?.total||0],['Socket Active',data.activeSocketClients||0],['Forum Rooms',data.forumRooms||0],['Uptime',formatUptime(data.uptimeSeconds||0)],['Memory RSS',formatBytes(data.runtime?.rss)],['Heap Used',formatBytes(data.runtime?.heapUsed)],['Converting',data.live?.conversion?.converting||0],['Success',data.live?.conversion?.success||0]];
-  el('metricCards').innerHTML=cards.map(([k,v])=>`<div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-slate-400 text-xs">${k}</div><div class="text-xl font-bold transition-all">${v}</div></div>`).join('');
+// ── Render Metrics ──
+function renderMetrics(data) {
+  const cards = [
+    ['Total Tiket', data.tickets?.total || 0, '🎫'],
+    ['Appeal Pending', data.appeals?.pending || 0, '⚖️'],
+    ['Socket Active', data.activeSocketClients || 0, '🔌'],
+    ['Forum Rooms', data.forumRooms || 0, '💬'],
+    ['Uptime', formatUptime(data.uptimeSeconds || 0), '⏱️'],
+    ['Memory RSS', formatBytes(data.runtime?.rss), '💾'],
+    ['Heap Used', formatBytes(data.runtime?.heapUsed), '🧠'],
+    ['Convert', data.control?.convertEnabled ? 'ON ✅' : 'OFF ❌', '⚙️'],
+  ];
+  el('metricCards').innerHTML = cards.map(([k, v, icon]) => `
+    <div class="stat-card rounded-2xl p-4 fade-in">
+      <div class="text-slate-400 text-xs flex items-center gap-1">${icon} ${k}</div>
+      <div class="text-xl font-bold mt-1 transition-all">${v}</div>
+    </div>`).join('');
 }
 
-function updateCharts(data){
-  const perDay=data.tickets?.perDay||[];const statuses=data.tickets?.byStatus||{};
-  state.lineChart?.destroy();state.pieChart?.destroy();
-  state.lineChart=new Chart(el('lineChart'),{type:'line',data:{labels:perDay.map(d=>d.date.slice(5)),datasets:[{label:'Tickets',data:perDay.map(d=>d.total),borderColor:'#818cf8',backgroundColor:'rgba(99,102,241,.25)',fill:true,tension:.35}]},options:{plugins:{legend:{labels:{color:'#cbd5e1'}}},scales:{x:{ticks:{color:'#94a3b8'}},y:{ticks:{color:'#94a3b8'}}}}});
-  state.pieChart=new Chart(el('pieChart'),{type:'pie',data:{labels:['Open','Pending','Rejected'],datasets:[{data:[statuses.received||0,statuses.reviewing||0,statuses.rejected||0],backgroundColor:['#22c55e','#f59e0b','#ef4444']}]},options:{plugins:{legend:{labels:{color:'#cbd5e1'}}}}});
+// ── Charts ──
+function updateCharts(data) {
+  const perDay = data.tickets?.perDay || [];
+  const statuses = data.tickets?.byStatus || {};
+  if (state.lineChart) state.lineChart.destroy();
+  if (state.pieChart) state.pieChart.destroy();
+  const cOpts = { plugins: { legend: { labels: { color: '#cbd5e1', boxWidth: 12 } } }, scales: { x: { ticks: { color: '#64748b' } }, y: { ticks: { color: '#64748b' } } } };
+  state.lineChart = new Chart(el('lineChart'), { type: 'line', data: { labels: perDay.map(d => d.date.slice(5)), datasets: [{ label: 'Tiket', data: perDay.map(d => d.total), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.2)', fill: true, tension: .35 }] }, options: { ...cOpts, plugins: { legend: { display: false } } } });
+  const labels = Object.keys(statuses);
+  const colors = { received: '#3b82f6', reviewing: '#f59e0b', waiting_user: '#a855f7', resolved: '#22c55e', rejected: '#ef4444' };
+  state.pieChart = new Chart(el('pieChart'), { type: 'pie', data: { labels, datasets: [{ data: labels.map(l => statuses[l] || 0), backgroundColor: labels.map(l => colors[l] || '#64748b') }] }, options: { plugins: { legend: { labels: { color: '#cbd5e1', boxWidth: 10, font: { size: 10 } } } } } });
 }
 
-function applyFilters(){const q=el('searchId').value.trim().toLowerCase();const st=el('filterStatus').value;const cat=el('filterCategory').value.trim().toLowerCase();const date=el('filterDate').value;state.filteredTickets=state.allTickets.filter((t)=>{const idOk=!q||String(t.ticketId||'').toLowerCase().includes(q);const statusOk=!st||String(t.status||'')===st;const catOk=!cat||String(t.category||'').toLowerCase().includes(cat);const dateOk=!date||String(t.submittedAt||'').slice(0,10)===date;return idOk&&statusOk&&catOk&&dateOk;});renderTicketRows();}
-function renderTicketRows(){el('ticketRows').innerHTML=state.filteredTickets.map((t)=>`<tr class="border-t border-slate-800 hover:bg-slate-800/40"><td class="p-2 font-semibold">${t.ticketId}</td><td class="p-2">${t.category||'-'}</td><td class="p-2">${t.statusLabel||t.status||'-'}</td><td class="p-2">${t.submittedAt?fmt.format(new Date(t.submittedAt)):'-'}</td><td class="p-2"><button data-open="${t.ticketId}" class="px-2 py-1 rounded bg-indigo-600 text-xs">Detail</button></td></tr>`).join('')||'<tr><td class="p-3 text-slate-400" colspan="5">Belum ada tiket</td></tr>';}
-
-function renderLive(data){
-  el('activeUsers').textContent=data.live?.activeUsers ?? data.activeSocketClients ?? 0;
-  el('convertingUsers').textContent=data.live?.conversion?.converting||0;
-  el('successUsers').textContent=data.live?.conversion?.success||0;
-  el('pageStats').innerHTML=Object.entries(data.live?.pageStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
-  el('roomStats').innerHTML=Object.entries(data.live?.roomStats||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
-  const users=data.live?.users||[];
-  state.latestUsers = users;
-  el('liveUserRows').innerHTML=users.map((u)=>{const lastAction=Array.isArray(u.actions)&&u.actions.length?u.actions[u.actions.length-1]:null;return `<tr class="border-t border-slate-800"><td class="p-2">${u.socketId}</td><td class="p-2">${u.page||'-'}</td><td class="p-2">${u.room||'-'}</td><td class="p-2">${u.status||'-'}</td><td class="p-2">${u.durationSeconds||0}s</td><td class="p-2">${(u.journey||'-').replace(/</g,'&lt;')}</td><td class="p-2">${lastAction ? `${lastAction.action} (${new Date(lastAction.at).toLocaleTimeString()})` : '-'}</td></tr>`;}).join('')||'<tr><td class="p-2" colspan="7">Tidak ada user.</td></tr>';
-  const allActions=users.flatMap((u)=>Array.isArray(u.actions)?u.actions.map((a)=>({socketId:u.socketId,...a})):[]).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,40);
-  el('userActionStream').innerHTML=allActions.map((a)=>`<li class="border border-slate-800 rounded p-1">${a.socketId.slice(0,8)} • ${a.action}${a.detail?` — ${a.detail}`:''}<div class="text-[10px] text-slate-500">${fmt.format(new Date(a.at))}</div></li>`).join('')||'<li class="text-slate-500">Belum ada action.</li>';
+// ── Render Advanced ──
+function renderAdvanced(data) {
+  el('fVisited').textContent = data.conversionFunnel?.entered || 0;
+  el('fStarted').textContent = data.conversionFunnel?.started || 0;
+  el('fSuccess').textContent = data.conversionFunnel?.success || 0;
+  el('qLen').textContent = data.queue?.length || 0;
+  el('qProc').textContent = data.queue?.processing || 0;
+  el('qWait').textContent = data.queue?.waiting || 0;
+  el('hCpu').textContent = data.health?.cpuPercentEstimate || 0;
+  el('hResp').textContent = data.health?.avgResponseMs || 0;
+  el('hErr').textContent = data.health?.errorRate || 0;
+  el('hRss').textContent = formatBytes(data.runtime?.rss);
+  el('hHeap').textContent = formatBytes(data.runtime?.heapUsed);
+  el('smartInsights').innerHTML = (data.smartInsights || []).map(s => `<li class="text-slate-300">• ${esc(s)}</li>`).join('') || '<li class="text-slate-500">-</li>';
+  el('apiStats').innerHTML = (data.apiMonitoring || []).map(a => `<li class="border border-slate-800 rounded p-1">${esc(a.route)}<br>hits:${a.hits} • err:${a.errors} • avg:${a.avgMs}ms</li>`).join('') || '<li class="text-slate-500">-</li>';
+  el('activityLogs').innerHTML = (data.activityLogs || []).map(l => `<li class="rounded border border-slate-800 bg-slate-950 p-1.5">${esc(l.type)}: ${esc(l.message)}<div class="text-[10px] text-slate-500">${l.at ? fmt.format(new Date(l.at)) : ''}</div></li>`).join('') || '<li class="text-slate-500">Belum ada log.</li>';
+  el('activeUsers').textContent = data.live?.activeUsers || data.activeSocketClients || 0;
+  el('convertingUsers').textContent = data.live?.conversion?.converting || 0;
+  el('successUsers').textContent = data.live?.conversion?.success || 0;
+  el('toggleConvertBtn').textContent = data.control?.convertEnabled ? '🔴 Disable Convert' : '🟢 Enable Convert';
+  // Evaluate alerts
+  if ((data.live?.conversion?.converting || 0) >= 5) pushAlert(`🚨 ${data.live.conversion.converting} user converting bersamaan`, 'critical');
+  if ((data.runtime?.heapUsed || 0) > 200 * 1024 * 1024) pushAlert('⚠️ Memory usage naik drastis', 'warn');
 }
 
-function renderAdvanced(data){
-  el('fVisited').textContent=data.conversionFunnel?.entered||0;el('fStarted').textContent=data.conversionFunnel?.started||0;el('fSuccess').textContent=data.conversionFunnel?.success||0;
-  el('pAvg').textContent=data.processingTime?.avgMs||0;el('pMin').textContent=data.processingTime?.minMs||0;el('pMax').textContent=data.processingTime?.maxMs||0;
-  el('qLen').textContent=data.queue?.length||0;el('qProc').textContent=data.queue?.processing||0;el('qWait').textContent=data.queue?.waiting||0;
-  el('hCpu').textContent=data.health?.cpuPercentEstimate||0;el('hResp').textContent=data.health?.avgResponseMs||0;el('hErr').textContent=data.health?.errorRate||0;
-  el('eTotal').textContent=data.errors?.total||0;
-  el('eReasons').innerHTML=Object.entries(data.errors?.reasons||{}).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
-  el('smartInsights').innerHTML=(data.smartInsights||[]).map((s)=>`<li>• ${s}</li>`).join('')||'<li>-</li>';
-  el('abAStarted').textContent=data.abTesting?.A?.started||0;
-  el('abASuccess').textContent=data.abTesting?.A?.success||0;
-  el('abBStarted').textContent=data.abTesting?.B?.started||0;
-  el('abBSuccess').textContent=data.abTesting?.B?.success||0;
-  el('retNew').textContent=data.retention?.newUsers||0;
-  el('retReturning').textContent=data.retention?.returningUsers||0;
-  el('predNextHour').textContent=data.predictive?.nextHourUsers||0;
-  el('predPeak').textContent=data.predictive?.peakHourHint||'-';
-  const geoCounts={};
-  (data.live?.users||[]).forEach((u)=>{const key=`${u.geo?.country||'unknown'} / ${u.geo?.city||'unknown'}`;geoCounts[key]=(geoCounts[key]||0)+1;});
-  el('geoStats').innerHTML=Object.entries(geoCounts).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
-  el('apiStats').innerHTML=(data.apiMonitoring||[]).map((a)=>`<li class="border border-slate-800 rounded p-1">${a.route}<br>hits:${a.hits} • err:${a.errors} • avg:${a.avgMs}ms</li>`).join('')||'<li>-</li>';
-  el('activityLogs').innerHTML=(data.activityLogs||[]).map((l)=>`<li class="rounded border border-slate-800 bg-slate-950 p-2">${l.type}: ${l.message}<div class="text-[10px] text-slate-400">${fmt.format(new Date(l.at))}</div></li>`).join('')||'<li>-</li>';
-  el('toggleConvertBtn').textContent=(data.control?.convertEnabled ? 'Disable Convert Sementara' : 'Enable Convert Lagi');
-  evaluateAlerts(data);
+// ── Load Stats ──
+async function loadStats() {
+  const token = getToken();
+  if (!token) return;
+  try {
+    const res = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) { el('authState').textContent = 'Token invalid'; return; }
+    el('authState').textContent = `✅ Aktif • ${fmt.format(new Date(data.timestamp))}`;
+    setLiveState(true);
+    state.allTickets = data.tickets?.all || [];
+    renderMetrics(data);
+    updateCharts(data);
+    renderAdvanced(data);
+    applyFilters();
+    // Appeal badge
+    const pending = data.appeals?.pending || 0;
+    setAppealBadge(pending);
+  } catch (e) {
+    el('authState').textContent = 'Error: ' + e.message;
+    setLiveState(false);
+  }
 }
 
-async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);applyFilters();}
+// ── Ticket Filters ──
+function applyFilters() {
+  const q = el('searchId').value.trim().toLowerCase();
+  const st = el('filterStatus').value;
+  const date = el('filterDate').value;
+  state.filteredTickets = state.allTickets.filter(t => {
+    const ok1 = !q || String(t.ticketId || '').toLowerCase().includes(q) || String(t.name || '').toLowerCase().includes(q);
+    const ok2 = !st || t.status === st;
+    const ok3 = !date || String(t.submittedAt || '').slice(0, 10) === date;
+    return ok1 && ok2 && ok3;
+  });
+  renderTicketRows();
+}
 
-function renderChatHistory(items){el('chatHistory').innerHTML=items.map((c)=>`<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender||'system'} • ${c.at?fmt.format(new Date(c.at)):'-'}</div><div>${(c.message||'').replace(/</g,'&lt;')}</div></div>`).join('')||'<div class="text-slate-500 text-xs">Belum ada chat.</div>';const adminCount=items.filter((x)=>x?.sender==='admin').length;const remain=Math.max(0,3-adminCount);el('chatLimitHint').textContent=`Sisa chat admin: ${remain}`;el('chatInput').disabled=remain<=0;el('chatHistory').scrollTop=el('chatHistory').scrollHeight;}
+const statusBadge = s => {
+  const map = { received:'bg-blue-500/20 text-blue-300 border-blue-500/30', reviewing:'bg-amber-500/20 text-amber-300 border-amber-500/30', waiting_user:'bg-purple-500/20 text-purple-300 border-purple-500/30', resolved:'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', rejected:'bg-rose-500/20 text-rose-300 border-rose-500/30' };
+  const labels = { received:'Diterima', reviewing:'Diproses', waiting_user:'Menunggu User', resolved:'Selesai', rejected:'Ditolak' };
+  return `<span class="px-2 py-0.5 rounded-full border text-xs font-semibold ${map[s]||'bg-slate-700/50 text-slate-300 border-slate-600'}">${labels[s]||s}</span>`;
+};
 
-async function openDetail(ticketId){state.currentTicket=state.allTickets.find(t=>t.ticketId===ticketId)||null;el('detailPanel').classList.remove('hidden');el('dTicketId').textContent=ticketId;el('detailSkeleton').classList.remove('hidden');el('detailContent').classList.add('hidden');setTimeout(()=>{const t=state.currentTicket;if(!t)return;el('dName').textContent=t.name||'-';el('dEmail').textContent=t.email||'-';el('dCategory').textContent=t.category||'-';el('dStatus').textContent=t.statusLabel||t.status||'-';el('dMessage').textContent=t.message||'-';el('dProofs').innerHTML=(t.proofs||[]).map((p)=>`<a href="${p.url}" target="_blank" class="rounded-lg border border-slate-700 overflow-hidden bg-slate-900"><img src="${p.url}" class="w-full h-24 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'p-2 text-xs\\'>${p.name||'Attachment'}</div>'"></a>`).join('')||'<div class="text-slate-500 text-xs">Tidak ada attachment</div>';renderChatHistory(t.chatHistory||[]);el('statusHistory').innerHTML=(t.statusHistory||[]).map((s)=>`<li>• ${s.label||s.status} — ${s.at?fmt.format(new Date(s.at)):'-'}</li>`).join('')||'<li class="text-slate-500">Belum ada riwayat</li>';el('detailSkeleton').classList.add('hidden');el('detailContent').classList.remove('hidden');},350);}
+function renderTicketRows() {
+  el('ticketRows').innerHTML = state.filteredTickets.map(t => `
+    <tr class="border-t border-slate-800 hover:bg-slate-800/40 transition-colors">
+      <td class="p-2 font-mono text-xs font-semibold text-indigo-300">${esc(t.ticketId)}</td>
+      <td class="p-2"><div class="text-sm">${esc(t.name||'-')}</div><div class="text-xs text-slate-400">${esc(t.email||'-')}</div></td>
+      <td class="p-2"><span class="px-2 py-0.5 rounded bg-slate-800 text-xs">${esc(t.category||'-')}</span></td>
+      <td class="p-2">${statusBadge(t.status)}</td>
+      <td class="p-2 text-xs text-slate-400">${t.submittedAt ? fmt.format(new Date(t.submittedAt)) : '-'}</td>
+      <td class="p-2"><button data-open="${esc(t.ticketId)}" class="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">Detail</button></td>
+    </tr>`).join('') || '<tr><td class="p-4 text-slate-400 text-center" colspan="6">Belum ada tiket</td></tr>';
+}
 
-async function sendChat(evt){evt.preventDefault();if(!state.currentTicket)return;const token=getToken();const message=el('chatInput').value.trim();if(!message)return;const r=await fetch(`/api/admin/tickets/${encodeURIComponent(state.currentTicket.ticketId)}/chat`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({message})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Gagal kirim chat','error');el('chatInput').value='';toast('Balasan terkirim');loadStats().catch(()=>{});}
+// ── Chat History ──
+function renderChatHistory(items) {
+  el('chatHistory').innerHTML = items.map(c => `
+    <div class="text-xs rounded p-1.5 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}">
+      <div class="text-slate-400 mb-0.5">${esc(c.sender||'system')} • ${c.at?fmt.format(new Date(c.at)):'-'}</div>
+      <div>${esc(c.message||'')}</div>
+    </div>`).join('') || '<div class="text-slate-500">Belum ada chat.</div>';
+  const adminCnt = items.filter(x => x.sender === 'admin').length;
+  el('chatLimitHint').textContent = `Sisa chat admin: ${Math.max(0, 3-adminCnt)}`;
+  el('chatInput').disabled = adminCnt >= 3;
+  el('chatHistory').scrollTop = el('chatHistory').scrollHeight;
+}
 
-function exportExcel(){const rows=state.filteredTickets.map((t)=>({ID:t.ticketId,Nama:t.name,Email:t.email,Kategori:t.category,Status:t.statusLabel||t.status,SubmittedAt:t.submittedAt}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tickets');XLSX.writeFile(wb,`tickets-${Date.now()}.xlsx`);}
+// ── Open Detail ──
+async function openDetail(ticketId) {
+  const t = state.allTickets.find(x => x.ticketId === ticketId);
+  if (!t) return;
+  state.currentTicket = t;
+  el('dTicketId').textContent = ticketId;
+  el('dName').textContent = t.name || '-';
+  el('dEmail').textContent = t.email || '-';
+  el('dCategory').textContent = t.category || '-';
+  el('dStatus').innerHTML = statusBadge(t.status);
+  el('dMessage').textContent = t.message || '-';
+  el('dProofs').innerHTML = (t.proofs||[]).map(p => `<a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}" class="w-full h-20 object-cover rounded border border-slate-700" onerror="this.src=''"></a>`).join('') || '<span class="text-xs text-slate-500">Tidak ada</span>';
+  renderChatHistory(t.chatHistory || []);
+  el('statusHistory').innerHTML = (t.statusHistory||[]).map(s => `<li class="text-xs">• ${esc(s.label||s.status)} — ${s.at?fmt.format(new Date(s.at)):'-'}</li>`).join('') || '<li class="text-xs text-slate-500">-</li>';
+  el('detailPanel').classList.remove('hidden');
+  el('detailPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
-function initSocket(){if(socket)return;socket=io({transports:['websocket','polling']});socket.on('connect',()=>socket.emit('page_change',{page:'/admin/dashboard'}));socket.on('dashboard_stats',(payload)=>renderLive({live:{...payload,conversion:payload.conversion||{}}}));socket.on('admin:newTicket',(payload)=>{setBadge(state.unread+1);toast(`Ticket baru: ${payload.ticketId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:ticketUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:ticketChat',(payload)=>{if(state.currentTicket?.ticketId===payload.ticketId){state.currentTicket.chatHistory=[...(state.currentTicket.chatHistory||[]),payload.chat];renderChatHistory(state.currentTicket.chatHistory||[]);}toast(`Chat baru di ${payload.ticketId}`);playNotif();});socket.on('admin:controlUpdated',()=>loadStats().catch(()=>{}));}
+// ── Send Chat ──
+async function sendChat(evt) {
+  evt.preventDefault();
+  if (!state.currentTicket) return;
+  const message = el('chatInput').value.trim();
+  if (!message) return;
+  const token = getToken();
+  const r = await fetch(`/api/admin/tickets/${encodeURIComponent(state.currentTicket.ticketId)}/chat`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ message })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return toast(d.error || 'Gagal kirim chat', 'error');
+  el('chatInput').value = '';
+  toast('Balasan terkirim');
+  loadStats();
+}
 
-async function control(action,extra={}){const token=getToken();const r=await fetch('/api/admin/control',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action,...extra})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Control gagal','error');toast(`Action ${action} berhasil`);loadStats().catch(()=>{});}
+// ── Export Excel ──
+function exportExcel(rows, filename) {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  XLSX.writeFile(wb, filename);
+}
 
-async function login(evt){evt.preventDefault();const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:el('username').value,password:el('password').value})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok||!data.token)return toast('Login gagal','error');setToken(data.token);el('authState').textContent='Login aktif';toast('Login berhasil');await loadStats();initSocket();}
+// ── Load Appeals ──
+async function loadAppeals() {
+  const token = getToken();
+  if (!token) { el('appealRows').innerHTML = '<tr><td class="p-4 text-slate-400 text-center" colspan="7">Login admin dulu.</td></tr>'; return; }
+  try {
+    const res = await fetch('/api/admin/appeals', { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) { el('appealRows').innerHTML = `<tr><td class="p-4 text-rose-300 text-center" colspan="7">${esc(data.error||'Akses ditolak')}</td></tr>`; return; }
+    state.allAppeals = data.appeals || [];
+    renderAppeals();
+  } catch (e) {
+    el('appealRows').innerHTML = `<tr><td class="p-4 text-rose-300 text-center" colspan="7">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
 
-el('loginForm').addEventListener('submit',login);el('refreshBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('closeDetailBtn').addEventListener('click',()=>el('detailPanel').classList.add('hidden'));el('chatForm').addEventListener('submit',sendChat);el('exportBtn').addEventListener('click',exportExcel);['searchId','filterStatus','filterCategory','filterDate'].forEach((id)=>el(id).addEventListener('input',applyFilters));el('ticketRows').addEventListener('click',(evt)=>{const btn=evt.target.closest('button[data-open]');if(!btn)return;openDetail(btn.getAttribute('data-open'));});el('adminTicketsBtn').addEventListener('click',()=>setBadge(0));
-el('toggleConvertBtn').addEventListener('click',()=>control('toggle_convert'));el('clearQueueBtn').addEventListener('click',()=>control('clear_queue'));el('kickUserBtn').addEventListener('click',()=>control('kick_user',{socketId:el('kickSocketId').value.trim()}));
-el('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('bg-slate-950');document.body.classList.toggle('bg-slate-100');document.body.classList.toggle('text-slate-100');document.body.classList.toggle('text-slate-900');});
-el('replayBtn').addEventListener('click',()=>{const sid=el('replaySocketId').value.trim();const user=state.latestUsers.find((u)=>u.socketId===sid);const timeline=Array.isArray(user?.actions)?user.actions:[];el('replayTimeline').innerHTML=timeline.map((a)=>`<li class=\"border border-slate-800 rounded p-1\">${a.action}${a.detail?` — ${a.detail}`:''}<div class=\"text-[10px] text-slate-500\">${fmt.format(new Date(a.at))}</div></li>`).join('')||'<li class=\"text-slate-500\">Timeline kosong / socket tidak ditemukan.</li>';});
-el('exportPngBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`dashboard-${Date.now()}.png`;a.click();});
-el('exportPdfBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const img=canvas.toDataURL('image/png');const { jsPDF }=window.jspdf;const pdf=new jsPDF('p','pt','a4');const w=pdf.internal.pageSize.getWidth();const h=(canvas.height/canvas.width)*w;pdf.addImage(img,'PNG',0,0,w,h);pdf.save(`dashboard-${Date.now()}.pdf`);});
+function renderAppeals() {
+  const appeals = state.allAppeals;
+  const pending = appeals.filter(a => a.status === 'pending').length;
+  const resolved = appeals.filter(a => a.status === 'resolved').length;
+  const rejected = appeals.filter(a => a.status === 'rejected').length;
+  el('appealPending').textContent = pending;
+  el('appealResolved').textContent = resolved;
+  el('appealRejected').textContent = rejected;
+  setAppealBadge(pending);
 
-if(getToken()){el('authState').textContent='Token tersimpan';loadStats().catch(()=>{});initSocket();}
-setInterval(()=>{if(getToken()) loadStats().catch(()=>{});},8000);
+  const statusMap = { pending: 'bg-amber-500/20 text-amber-300 border-amber-500/30', resolved: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', rejected: 'bg-rose-500/20 text-rose-300 border-rose-500/30' };
+  el('appealRows').innerHTML = appeals.map(a => `
+    <tr class="border-t border-slate-800 hover:bg-slate-800/30 transition-colors">
+      <td class="p-2 font-mono text-xs text-amber-300">${esc(a.appealId)}</td>
+      <td class="p-2"><div class="text-sm">${esc(a.name||'-')}</div><div class="text-xs text-slate-400">${esc(a.userId||'-')}</div></td>
+      <td class="p-2 text-xs">${esc(a.room||'-')}</td>
+      <td class="p-2 max-w-xs"><div class="text-xs text-slate-300 line-clamp-2">${esc(a.reason||'-')}</div></td>
+      <td class="p-2"><span class="px-2 py-0.5 rounded-full border text-xs font-semibold ${statusMap[a.status]||'bg-slate-700/50 text-slate-300 border-slate-600'}">${esc(a.status||'-')}</span></td>
+      <td class="p-2 text-xs text-slate-400">${a.submittedAt ? fmt.format(new Date(a.submittedAt)) : '-'}</td>
+      <td class="p-2">
+        ${a.status === 'pending' ? `<button data-appeal="${esc(a.appealId)}" class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-xs font-semibold">Proses</button>` : `<span class="text-xs text-slate-500">${a.resolvedAt ? fmt.format(new Date(a.resolvedAt)) : 'Selesai'}</span>`}
+      </td>
+    </tr>`).join('') || '<tr><td class="p-4 text-slate-400 text-center" colspan="7">Belum ada appeal masuk.</td></tr>';
+}
+
+// ── Open Appeal Action ──
+function openAppealAction(appealId) {
+  const a = state.allAppeals.find(x => x.appealId === appealId);
+  if (!a) return;
+  state.currentAppeal = a;
+  el('aAppealId').textContent = appealId;
+  el('aUserName').textContent = a.name || '-';
+  el('aRoom').textContent = a.room || '-';
+  el('aReason').textContent = a.reason || '(tidak ada alasan)';
+  el('appealNote').value = '';
+  el('appealActionPanel').classList.remove('hidden');
+  el('appealActionPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Process Appeal ──
+async function processAppeal(status) {
+  if (!state.currentAppeal) return;
+  const token = getToken();
+  const adminNote = el('appealNote').value.trim();
+  const r = await fetch(`/api/admin/appeals/${encodeURIComponent(state.currentAppeal.appealId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status, adminNote })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return toast(d.error || 'Gagal proses appeal', 'error');
+  const msg = status === 'resolved' ? '✅ Appeal DITERIMA – user telah diunban!' : '❌ Appeal DITOLAK.';
+  toast(msg, status === 'resolved' ? 'info' : 'warn');
+  el('appealActionPanel').classList.add('hidden');
+  state.currentAppeal = null;
+  await loadAppeals();
+  loadStats();
+}
+
+// ── Socket ──
+function initSocket() {
+  if (socket) return;
+  socket = io({ transports: ['websocket', 'polling'] });
+  socket.on('connect', () => { setLiveState(true); socket.emit('page_change', { page: '/admin/dashboard' }); });
+  socket.on('disconnect', () => setLiveState(false));
+  socket.on('admin:newTicket', p => { setTicketBadge(state.unreadTickets + 1); toast(`🎫 Tiket baru: ${p.ticketId}`); playNotif(); loadStats(); });
+  socket.on('admin:newAppeal', p => { setAppealBadge(state.unreadAppeals + 1); toast(`⚖️ Appeal baru dari ${p.name}`); playNotif(); loadAppeals(); });
+  socket.on('admin:ticketUpdated', () => loadStats());
+  socket.on('admin:ticketChat', p => {
+    if (state.currentTicket?.ticketId === p.ticketId) {
+      state.currentTicket.chatHistory = [...(state.currentTicket.chatHistory || []), p.chat];
+      renderChatHistory(state.currentTicket.chatHistory);
+    }
+    toast(`💬 Chat baru di ${p.ticketId}`);
+    playNotif();
+  });
+  socket.on('admin:controlUpdated', () => loadStats());
+}
+
+// ── Admin Login ──
+async function login(evt) {
+  evt.preventDefault();
+  const res = await fetch('/admin/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: el('username').value, password: el('password').value })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok || !data.token) return toast('Login gagal: ' + (data.error || 'invalid credentials'), 'error');
+  setToken(data.token);
+  el('authState').textContent = '✅ Login aktif';
+  toast('Login berhasil!');
+  await loadStats();
+  loadAppeals();
+  initSocket();
+}
+
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  el('authState').textContent = 'Belum login';
+  setLiveState(false);
+  if (socket) { socket.disconnect(); socket = null; }
+  toast('Logout berhasil');
+}
+
+// ── Control ──
+async function control(action, extra = {}) {
+  const token = getToken();
+  const r = await fetch('/api/admin/control', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ action, ...extra })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return toast(d.error || 'Control gagal', 'error');
+  toast(`Action "${action}" berhasil`);
+  loadStats();
+}
+
+// ── Event Listeners ──
+el('loginForm').addEventListener('submit', login);
+el('refreshBtn').addEventListener('click', () => { loadStats(); loadAppeals(); });
+el('closeDetailBtn').addEventListener('click', () => el('detailPanel').classList.add('hidden'));
+el('chatForm').addEventListener('submit', sendChat);
+['searchId', 'filterStatus', 'filterDate'].forEach(id => el(id).addEventListener('input', applyFilters));
+el('ticketRows').addEventListener('click', evt => {
+  const btn = evt.target.closest('button[data-open]');
+  if (btn) openDetail(btn.getAttribute('data-open'));
+});
+el('appealRows').addEventListener('click', evt => {
+  const btn = evt.target.closest('button[data-appeal]');
+  if (btn) openAppealAction(btn.getAttribute('data-appeal'));
+});
+el('acceptAppealBtn').addEventListener('click', () => processAppeal('resolved'));
+el('rejectAppealBtn').addEventListener('click', () => processAppeal('rejected'));
+el('toggleConvertBtn').addEventListener('click', () => control('toggle_convert'));
+el('clearQueueBtn').addEventListener('click', () => control('clear_queue'));
+el('kickUserBtn').addEventListener('click', () => control('kick_user', { socketId: el('kickSocketId').value.trim() }));
+el('exportTicketsBtn').addEventListener('click', () => exportExcel(state.filteredTickets.map(t => ({
+  ID: t.ticketId, Nama: t.name, Email: t.email, Kategori: t.category,
+  Status: t.statusLabel || t.status, Pesan: t.message, Waktu: t.submittedAt
+})), `tickets-${Date.now()}.xlsx`));
+el('exportTicketsBtn2').addEventListener('click', () => el('exportTicketsBtn').click());
+el('exportAppealsBtn').addEventListener('click', () => exportExcel(state.allAppeals.map(a => ({
+  ID: a.appealId, User: a.name, UserID: a.userId, Room: a.room, Alasan: a.reason,
+  Status: a.status, CatatanAdmin: a.adminNote, Waktu: a.submittedAt
+})), `appeals-${Date.now()}.xlsx`));
+el('replayBtn').addEventListener('click', () => {
+  const sid = el('replaySocketId').value.trim();
+  const user = state.latestUsers.find(u => u.socketId === sid);
+  el('replayTimeline').innerHTML = (user?.actions || []).map(a => `<li class="border border-slate-800 rounded p-1">${esc(a.action)} — ${a.detail||''}<div class="text-[10px] text-slate-500">${fmt.format(new Date(a.at))}</div></li>`).join('') || '<li class="text-slate-500">Timeline kosong.</li>';
+});
+el('exportPngBtn').addEventListener('click', async () => {
+  const canvas = await html2canvas(document.querySelector('main'));
+  const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = `dashboard-${Date.now()}.png`; a.click();
+});
+el('exportPdfBtn').addEventListener('click', async () => {
+  const canvas = await html2canvas(document.querySelector('main'));
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'pt', 'a4');
+  const w = pdf.internal.pageSize.getWidth();
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, (canvas.height/canvas.width)*w);
+  pdf.save(`dashboard-${Date.now()}.pdf`);
+});
+
+// ── Init ──
+if (getToken()) {
+  el('authState').textContent = 'Token tersimpan, loading...';
+  loadStats().catch(() => {});
+  loadAppeals().catch(() => {});
+  initSocket();
+}
+setInterval(() => { if (getToken()) { loadStats().catch(() => {}); } }, 10000);
 </script>
 </body>
 </html>
