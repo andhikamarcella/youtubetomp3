@@ -18129,6 +18129,7 @@
         let __forumJoinReady = false;
         let __forumJoinResolve = null;
         let __forumJoinPromise = null;
+        let __forumLastBanned = false;
 
         const loadForumSocketIoClient = () => {
           if (typeof window.io === 'function') return Promise.resolve(true);
@@ -18152,10 +18153,9 @@
         const getForumJoinContext = async (timeoutMs = 8000) => {
           const started = Date.now();
           const tickDelay = 250;
-          // Wait until firebase auth is ready (forum-widget.js uses window.firebaseModules).
-          // If not available, we still resolve with empty uid so socket will fall back to socket.id.
-          // eslint-disable-next-line no-constant-condition
-          while (true) {
+          // Wait until firebase auth is ready so we can send the exact same `userId` key
+          // that backend uses for `userViolations`.
+          while (Date.now() - started < timeoutMs) {
             try {
               const u = window.firebaseModules?.auth?.currentUser;
               if (u) {
@@ -18165,11 +18165,10 @@
                 };
               }
             } catch { }
-            if (Date.now() - started > timeoutMs) break;
             // eslint-disable-next-line no-await-in-loop
             await new Promise((r) => window.setTimeout(r, tickDelay));
           }
-          return { userId: '', name: 'Warga' };
+          return null;
         };
 
         const setForumInputLocked = (locked, message = '') => {
@@ -18219,11 +18218,14 @@
             (async () => {
               try {
                 const ctx = await getForumJoinContext();
-                __forumSocket.emit('forum:join', {
-                  room: 'umum',
-                  userId: ctx.userId,
-                  name: ctx.name,
-                });
+                // Jangan join pakai userId kosong, karena backend akan mengabaikan appeal.
+                if (ctx?.userId) {
+                  __forumSocket.emit('forum:join', {
+                    room: 'umum',
+                    userId: ctx.userId,
+                    name: ctx.name,
+                  });
+                }
               } catch {
                 // If join payload fails, appeal will likely be ignored by backend.
               }
@@ -18236,6 +18238,7 @@
 
           __forumSocket.on('forum:statusSync', (payload) => {
             const banned = Boolean(payload?.banned);
+            __forumLastBanned = banned;
             __forumJoinReady = true;
             try { __forumJoinResolve?.(true); } catch { }
             setForumInputLocked(banned, banned ? 'Kamu diblokir dari forum. Ajukan appeal via AI Navigator.' : '');
@@ -18243,6 +18246,7 @@
 
           __forumSocket.on('forum:banned', (payload) => {
             const msg = String(payload?.message || payload?.msg || '');
+            __forumLastBanned = true;
             setForumInputLocked(true, msg || 'Kamu diblokir dari forum. Ajukan appeal via AI Navigator.');
           });
 
@@ -18257,6 +18261,7 @@
           __forumSocket.on('forum:appealResult', (payload) => {
             const status = String(payload?.status || '');
             const msg = String(payload?.message || '');
+            __forumLastBanned = status !== 'resolved';
             if (typeof setToast === 'function' && msg) {
               setToast(msg, status === 'resolved' ? 'info' : 'warn');
             }
@@ -18457,9 +18462,23 @@
             try {
               const sock = await waitForForumSocket();
               if (!sock) throw new Error('Socket forum belum siap. Coba buka forum dulu sebentar, lalu ulangi appeal.');
+              // Jika socket sempat connect sebelum auth siap (jadi join tidak terkirim),
+              // kita coba kirim ulang join saat user sudah ada.
+              if (!__forumJoinReady) {
+                try {
+                  const ctx = await getForumJoinContext(5000);
+                  if (ctx?.userId) {
+                    sock.emit('forum:join', { room: 'umum', userId: ctx.userId, name: ctx.name });
+                  }
+                } catch { }
+              }
               const joinedOk = await waitForForumJoinReady(8000);
               if (!joinedOk) {
                 throw new Error('Forum socket belum melakukan join dan sinkronisasi status. Buka forum widget dan pastikan login Google, lalu ulangi appeal.');
+              }
+              // backend hanya meng-create appeal jika `rec?.banned` = true untuk key `userId` yang tersimpan di socketState.
+              if (!__forumLastBanned) {
+                throw new Error('Status banned belum terdeteksi dari server. Pastikan kamu sudah login Google dan akses forum memang diblokir, lalu ulangi appeal.');
               }
 
               sock.emit?.('forum:appeal', { reason });
