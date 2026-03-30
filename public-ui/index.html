@@ -18122,6 +18122,168 @@
         // 2) AI asks reason, next message emits `forum:appeal`
         let pendingForumAppealReason = false;
 
+        // Forum socket.io integration (used only for appeal + banned/unbanned sync).
+        // Chat UI sendiri dipakai oleh `public-ui/forum-widget.js` (Firestore), tapi appeal/banned sync dikendalikan socket.io backend.
+        let __forumSocket = null;
+        let __forumIoLoadPromise = null;
+        let __forumJoinReady = false;
+        let __forumJoinResolve = null;
+        let __forumJoinPromise = null;
+
+        const loadForumSocketIoClient = () => {
+          if (typeof window.io === 'function') return Promise.resolve(true);
+          if (__forumIoLoadPromise) return __forumIoLoadPromise;
+          __forumIoLoadPromise = new Promise((resolve) => {
+            try {
+              const s = document.createElement('script');
+              // socket.io server is mounted in this app, so loading from same origin should work.
+              s.src = '/socket.io/socket.io.js';
+              s.async = true;
+              s.onload = () => resolve(true);
+              s.onerror = () => resolve(false);
+              (document.head || document.body || document.documentElement).appendChild(s);
+            } catch {
+              resolve(false);
+            }
+          });
+          return __forumIoLoadPromise;
+        };
+
+        const getForumJoinContext = async (timeoutMs = 8000) => {
+          const started = Date.now();
+          const tickDelay = 250;
+          // Wait until firebase auth is ready (forum-widget.js uses window.firebaseModules).
+          // If not available, we still resolve with empty uid so socket will fall back to socket.id.
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            try {
+              const u = window.firebaseModules?.auth?.currentUser;
+              if (u) {
+                return {
+                  userId: String(u.uid || ''),
+                  name: String(u.displayName || u.email || 'Warga'),
+                };
+              }
+            } catch { }
+            if (Date.now() - started > timeoutMs) break;
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => window.setTimeout(r, tickDelay));
+          }
+          return { userId: '', name: 'Warga' };
+        };
+
+        const setForumInputLocked = (locked, message = '') => {
+          // Support multiple possible forum UI variants.
+          const input =
+            document.getElementById('forumWidgetInput') ||
+            document.getElementById('forumInput');
+          const sendBtn =
+            document.getElementById('forumWidgetSend') ||
+            document.getElementById('forumSendBtn');
+
+          const firebaseHasAuth = Boolean(window.firebaseModules?.auth);
+          const loggedIn = Boolean(window.firebaseModules?.auth?.currentUser);
+
+          const shouldDisable = locked || (firebaseHasAuth ? !loggedIn : false);
+
+          if (input) {
+            // Keep default placeholder so we can restore after unlocked.
+            if (input.dataset.forumPlaceholderDefault === undefined) {
+              input.dataset.forumPlaceholderDefault = input.getAttribute('placeholder') || '';
+            }
+            input.disabled = shouldDisable;
+            if (locked) {
+              const msg = message || 'Kamu sedang diblokir dari forum. Ajukan appeal via AI Navigator.';
+              input.setAttribute('placeholder', msg);
+            } else {
+              input.setAttribute('placeholder', input.dataset.forumPlaceholderDefault || '');
+            }
+          }
+          if (sendBtn) sendBtn.disabled = shouldDisable;
+        };
+
+        const ensureForumSocket = () => {
+          if (__forumSocket) return __forumSocket;
+          // Load socket.io client if needed; return null so retry loop can continue.
+          if (typeof window.io !== 'function') {
+            loadForumSocketIoClient().catch(() => { });
+            return null;
+          }
+
+          __forumSocket = window.io({ transports: ['websocket', 'polling'] });
+
+          __forumSocket.on('connect', () => {
+            __forumJoinReady = false;
+            __forumJoinPromise = new Promise((resolve) => { __forumJoinResolve = resolve; });
+
+            (async () => {
+              try {
+                const ctx = await getForumJoinContext();
+                __forumSocket.emit('forum:join', {
+                  room: 'umum',
+                  userId: ctx.userId,
+                  name: ctx.name,
+                });
+              } catch {
+                // If join payload fails, appeal will likely be ignored by backend.
+              }
+            })();
+          });
+
+          __forumSocket.on('disconnect', () => {
+            __forumJoinReady = false;
+          });
+
+          __forumSocket.on('forum:statusSync', (payload) => {
+            const banned = Boolean(payload?.banned);
+            __forumJoinReady = true;
+            try { __forumJoinResolve?.(true); } catch { }
+            setForumInputLocked(banned, banned ? 'Kamu diblokir dari forum. Ajukan appeal via AI Navigator.' : '');
+          });
+
+          __forumSocket.on('forum:banned', (payload) => {
+            const msg = String(payload?.message || payload?.msg || '');
+            setForumInputLocked(true, msg || 'Kamu diblokir dari forum. Ajukan appeal via AI Navigator.');
+          });
+
+          __forumSocket.on('forum:appealSubmitted', (payload) => {
+            const msg = String(payload?.message || '');
+            if (msg) {
+              if (typeof setToast === 'function') setToast(msg, 'success');
+              else if (typeof window.setToast === 'function') window.setToast(msg, 'success');
+            }
+          });
+
+          __forumSocket.on('forum:appealResult', (payload) => {
+            const status = String(payload?.status || '');
+            const msg = String(payload?.message || '');
+            if (typeof setToast === 'function' && msg) {
+              setToast(msg, status === 'resolved' ? 'info' : 'warn');
+            }
+            if (status === 'resolved') setForumInputLocked(false, '');
+            else setForumInputLocked(true, msg || 'Appeal ditolak. Hubungi CS untuk info.');
+          });
+
+          return __forumSocket;
+        };
+
+        const waitForForumJoinReady = async (timeoutMs = 8000) => {
+          const started = Date.now();
+          while (Date.now() - started < timeoutMs) {
+            if (__forumJoinReady) return true;
+            if (__forumJoinPromise) {
+              const ok = await Promise.race([
+                __forumJoinPromise,
+                new Promise((r) => window.setTimeout(() => r(false), 2500)),
+              ]);
+              if (ok) return true;
+            }
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((r) => window.setTimeout(r, 200));
+          }
+          return false;
+        };
+
         const handleAssistantCommand = (command) => {
           const normalized = command.trim().toLowerCase();
           if (!normalized.startsWith('/')) return '';
@@ -18295,14 +18457,10 @@
             try {
               const sock = await waitForForumSocket();
               if (!sock) throw new Error('Socket forum belum siap. Coba buka forum dulu sebentar, lalu ulangi appeal.');
-
-              // Ensure socket server has our room presence before emitting appeal.
-              try {
-                const room =
-                  (typeof activeForumRoom !== 'undefined' && activeForumRoom) ? activeForumRoom : 'umum';
-                if (typeof joinForumPresence === 'function') joinForumPresence(room);
-              } catch { }
-              await new Promise((r) => window.setTimeout(r, 200));
+              const joinedOk = await waitForForumJoinReady(8000);
+              if (!joinedOk) {
+                throw new Error('Forum socket belum melakukan join dan sinkronisasi status. Buka forum widget dan pastikan login Google, lalu ulangi appeal.');
+              }
 
               sock.emit?.('forum:appeal', { reason });
             } catch (e) {
