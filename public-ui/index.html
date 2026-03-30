@@ -13817,52 +13817,54 @@
           const btn = e.target.closest('[data-section-target]');
           if (!btn) return;
 
-          // Prevent default to stop any other listeners (if any)
-          e.preventDefault();
-          e.stopImmediatePropagation();
-
           const target = btn.dataset.sectionTarget;
           if (!target) return;
 
-          console.log('[Nav] Manual navigation to:', target);
+          // Only prevent default navigation when it's an <a href="..."> link.
+          // Do NOT stop other handlers (e.g. Bootstrap dismiss/toggle), otherwise
+          // it can make buttons "feel dead".
+          try {
+            if (btn.matches('a') && btn.getAttribute('href')) e.preventDefault();
+          } catch { }
 
-          // 1. Update URL Hash
-          // We use pushState to update URL without reloading
-          history.pushState(null, '', `#${target}`);
+          try {
+            // 1. Update URL Hash
+            // We use pushState to update URL without reloading
+            history.pushState(null, '', `#${target}`);
 
-          // 2. Activate Section
-          const success = setActiveSection(target);
+            // 2. Activate Section
+            const success = setActiveSection(target);
+            if (!success) {
+              console.warn('[Nav] Invalid target:', target);
+              return;
+            }
 
-          if (!success) {
-            console.warn('[Nav] Invalid target:', target);
-            // Fallback: if section doesn't exist, maybe it's a link? 
-            // But for this app, we assume sections exist.
-            return;
-          }
-
-          // 3. Manually Close Offcanvas (if open)
-          const navDrawerEl = document.getElementById('offcanvasNav');
-          if (navDrawerEl && navDrawerEl.classList.contains('show')) {
-            // Try to get existing instance
-            const bsObj = window.bootstrap || window.bs;
-            if (bsObj && bsObj.Offcanvas) {
-              const drawer = bsObj.Offcanvas.getInstance(navDrawerEl) || bsObj.Offcanvas.getOrCreateInstance(navDrawerEl);
-              if (drawer) drawer.hide();
-            } else {
-              // Fallback: Click close button
-              const closeBtn = navDrawerEl.querySelector('.btn-close');
-              if (closeBtn) closeBtn.click();
-              else {
-                // Last resort: remove class
-                navDrawerEl.classList.remove('show');
-                navDrawerEl.setAttribute('aria-modal', 'false');
-                navDrawerEl.removeAttribute('role');
-                const backdrop = document.querySelector('.offcanvas-backdrop');
-                if (backdrop) backdrop.remove();
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
+            // 3. Manually Close Offcanvas (if open)
+            const navDrawerEl = document.getElementById('offcanvasNav');
+            if (navDrawerEl && navDrawerEl.classList.contains('show')) {
+              // Try to get existing instance
+              const bsObj = window.bootstrap || window.bs;
+              if (bsObj && bsObj.Offcanvas) {
+                const drawer = bsObj.Offcanvas.getInstance(navDrawerEl) || bsObj.Offcanvas.getOrCreateInstance(navDrawerEl);
+                if (drawer) drawer.hide();
+              } else {
+                // Fallback: Click close button
+                const closeBtn = navDrawerEl.querySelector('.btn-close');
+                if (closeBtn) closeBtn.click();
+                else {
+                  // Last resort: remove class
+                  navDrawerEl.classList.remove('show');
+                  navDrawerEl.setAttribute('aria-modal', 'false');
+                  navDrawerEl.removeAttribute('role');
+                  const backdrop = document.querySelector('.offcanvas-backdrop');
+                  if (backdrop) backdrop.remove();
+                  document.body.style.overflow = '';
+                  document.body.style.paddingRight = '';
+                }
               }
             }
+          } catch (err) {
+            console.error('[Nav] navigation failed:', err);
           }
         }, true); // Use Capture phase to ensure we catch it first
 
