@@ -18368,7 +18368,7 @@
         let customEndingIntentTimer = 0;
 
         const persistState = () => {
-          storage.save({
+          settingsStore.save({
             backendUrl: state.backendUrl,
             adminBearer: state.adminBearer,
             accessibility: state.accessibility,
@@ -21393,7 +21393,7 @@
 
         // ===== Settings (offcanvas) =====
         const loadSettings = () => {
-          const s = storage.load();
+          const s = settingsStore.load();
           state.backendUrl = s.backendUrl || '';
           state.adminBearer = s.adminBearer || '';
           state.assistantHistory = Array.isArray(s.assistantHistory) ? s.assistantHistory : [];
@@ -21494,7 +21494,7 @@
           setToast('Pengaturan disimpan');
         });
         $('#resetSettings').addEventListener('click', () => {
-          storage.save({}); loadSettings(); setToast('Pengaturan direset');
+          settingsStore.save({}); loadSettings(); setToast('Pengaturan direset');
         });
 
         const bindAccessibilityToggle = (key, el) => {
