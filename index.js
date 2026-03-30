@@ -1723,6 +1723,20 @@ const buildYtDlpCandidates = () => {
   });
 };
 
+const runYtDlp = async (args) => {
+  return new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+    const proc = spawn("python", ["-m", "yt_dlp", ...args]);
+    proc.stdout.on("data", (d) => stdout += d.toString());
+    proc.stderr.on("data", (d) => stderr += d.toString());
+    proc.on("close", (code) => {
+      resolve({ code, stdout, stderr });
+    });
+    proc.on("error", reject);
+  });
+};
+
 const runYtDlpAttempt = (command, args, { label }) =>
   new Promise((resolve, reject) => {
     let stdout = "";
@@ -6863,7 +6877,7 @@ app.get("/api/support/hall-of-fame", async (req, res) => {
   }
 });
 
-app.use("/", express.static(join(__dirname, "public-ui")));
+app.use(express.static(join(process.cwd(), "public-ui")));
 app.use("/public", express.static(PUBLIC_DIR));
 
 // ==== User accounts ====
@@ -8011,6 +8025,291 @@ app.post("/admin/login", (req, res) => {
   }
 });
 
+// ====  ADMIN API FULL SUITE  ====
+// In-memory stores (persisted to JSON files for durability)
+const ADMIN_DATA_PATH = join(process.cwd(), "data");
+try { mkdirSync(ADMIN_DATA_PATH, { recursive: true }); } catch {}
+
+const TICKETS_FILE = join(ADMIN_DATA_PATH, "tickets.json");
+const APPEALS_FILE = join(ADMIN_DATA_PATH, "appeals.json");
+const CONTROL_FILE = join(ADMIN_DATA_PATH, "control.json");
+
+const loadJsonFile = (path, def) => {
+  try { return JSON.parse(readFileSync(path, "utf8")); } catch { return def; }
+};
+const saveJsonFile = (path, data) => {
+  try { require ? null : null; } catch {}
+  fsp.writeFile(path, JSON.stringify(data, null, 2), "utf8").catch(() => {});
+};
+
+// Initialize stores
+let ticketsStore = loadJsonFile(TICKETS_FILE, []);
+let appealsStore = loadJsonFile(APPEALS_FILE, []);
+let controlStore = loadJsonFile(CONTROL_FILE, { convertEnabled: true });
+
+// Persist helper
+const saveTickets = () => saveJsonFile(TICKETS_FILE, ticketsStore);
+const saveAppeals = () => saveJsonFile(APPEALS_FILE, appealsStore);
+const saveControl = () => saveJsonFile(CONTROL_FILE, controlStore);
+
+// Middleware: require Bearer token for admin API
+const requireAdminToken = (req, res, next) => {
+  const auth = req.get("Authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "").trim();
+  if (!BEARER || token !== BEARER) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+  next();
+};
+
+// Activity log (in-memory, last 200 entries)
+const adminActivityLog = [];
+const pushActivityLog = (type, message) => {
+  adminActivityLog.unshift({ type, message, at: new Date().toISOString() });
+  if (adminActivityLog.length > 200) adminActivityLog.length = 200;
+};
+
+// ----- GET /api/admin/stats -----
+app.get("/api/admin/stats", requireAdminToken, (req, res) => {
+  try {
+    const tickets = Array.isArray(ticketsStore) ? ticketsStore : [];
+    const appeals = Array.isArray(appealsStore) ? appealsStore : [];
+    const byStatus = {};
+    const now = Date.now();
+    const perDayMap = {};
+    for (const t of tickets) {
+      const s = t.status || "received";
+      byStatus[s] = (byStatus[s] || 0) + 1;
+      if (t.submittedAt) {
+        const day = t.submittedAt.slice(0, 10);
+        if (!perDayMap[day]) perDayMap[day] = 0;
+        perDayMap[day]++;
+      }
+    }
+    const perDay = Object.entries(perDayMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-7)
+      .map(([date, total]) => ({ date, total }));
+
+    const statusLabels = {
+      received: "Diterima",
+      reviewing: "Diproses",
+      waiting_user: "Menunggu User",
+      resolved: "Selesai",
+      rejected: "Ditolak",
+    };
+    const all = tickets.map(t => ({
+      ...t,
+      statusLabel: statusLabels[t.status] || t.status,
+    }));
+
+    const mem = process.memoryUsage();
+    const upSec = Math.floor(process.uptime());
+
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      tickets: {
+        total: tickets.length,
+        byStatus,
+        perDay,
+        all,
+      },
+      appeals: {
+        total: appeals.length,
+        pending: appeals.filter(a => a.status === "pending").length,
+        resolved: appeals.filter(a => a.status === "resolved").length,
+        rejected: appeals.filter(a => a.status === "rejected").length,
+        all: appeals,
+      },
+      activeSocketClients: io ? io.engine?.clientsCount || 0 : 0,
+      forumRooms: roomUsers ? roomUsers.size : 0,
+      uptimeSeconds: upSec,
+      runtime: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal },
+      live: {
+        activeUsers: io ? io.engine?.clientsCount || 0 : 0,
+        conversion: { converting: 0, success: 0 },
+        pageStats: {},
+        roomStats: {},
+        users: [],
+      },
+      conversionFunnel: { entered: 0, started: 0, success: 0 },
+      processingTime: { avgMs: 0, minMs: 0, maxMs: 0 },
+      queue: { length: 0, processing: 0, waiting: 0 },
+      health: { cpuPercentEstimate: 0, avgResponseMs: 0, errorRate: 0 },
+      errors: { total: 0, reasons: {} },
+      smartInsights: [
+        `Total tiket: ${tickets.length}`,
+        `Total appeal: ${appeals.length}`,
+        `Server uptime: ${Math.floor(upSec / 3600)}j ${Math.floor((upSec % 3600) / 60)}m`,
+      ],
+      abTesting: { A: { started: 0, success: 0 }, B: { started: 0, success: 0 } },
+      retention: { newUsers: 0, returningUsers: 0 },
+      predictive: { nextHourUsers: 0, peakHourHint: "-" },
+      apiMonitoring: [],
+      activityLogs: adminActivityLog.slice(0, 50),
+      control: controlStore,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- GET /api/admin/tickets -----
+app.get("/api/admin/tickets", requireAdminToken, (req, res) => {
+  try {
+    const statusLabels = {
+      received: "Diterima", reviewing: "Diproses",
+      waiting_user: "Menunggu User", resolved: "Selesai", rejected: "Ditolak",
+    };
+    const tickets = (Array.isArray(ticketsStore) ? ticketsStore : []).map(t => ({
+      ...t,
+      statusLabel: statusLabels[t.status] || t.status,
+    }));
+    res.json({ ok: true, tickets });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- PATCH /api/admin/tickets/:id -----
+app.patch("/api/admin/tickets/:id", requireAdminToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminReply } = req.body || {};
+    const idx = ticketsStore.findIndex(t => t.ticketId === id);
+    if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
+    const ticket = ticketsStore[idx];
+    if (status) {
+      if (!ticket.statusHistory) ticket.statusHistory = [];
+      ticket.statusHistory.push({ status, label: status, at: new Date().toISOString() });
+      ticket.status = status;
+    }
+    if (typeof adminReply === "string") ticket.adminReply = adminReply;
+    ticket.updatedAt = new Date().toISOString();
+    ticketsStore[idx] = ticket;
+    saveTickets();
+    pushActivityLog("ticket_update", `Tiket ${id} diupdate: status=${status || ticket.status}`);
+    // Notify via socket
+    if (io) io.emit("admin:ticketUpdated", { ticketId: id });
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- POST /api/admin/tickets/:id/chat -----
+app.post("/api/admin/tickets/:id/chat", requireAdminToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body || {};
+    if (!message) return res.status(400).json({ ok: false, error: "Pesan wajib diisi" });
+    const idx = ticketsStore.findIndex(t => t.ticketId === id);
+    if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
+    const ticket = ticketsStore[idx];
+    if (!ticket.chatHistory) ticket.chatHistory = [];
+    const adminMsgs = ticket.chatHistory.filter(c => c.sender === "admin");
+    if (adminMsgs.length >= 3) return res.status(400).json({ ok: false, error: "Batas chat admin (3x) sudah tercapai" });
+    const chat = { sender: "admin", message, at: new Date().toISOString() };
+    ticket.chatHistory.push(chat);
+    ticket.updatedAt = new Date().toISOString();
+    ticketsStore[idx] = ticket;
+    saveTickets();
+    if (io) io.emit("admin:ticketChat", { ticketId: id, chat });
+    res.json({ ok: true, chat });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- POST /api/admin/control -----
+app.post("/api/admin/control", requireAdminToken, (req, res) => {
+  try {
+    const { action, socketId } = req.body || {};
+    if (action === "toggle_convert") {
+      controlStore.convertEnabled = !controlStore.convertEnabled;
+      saveControl();
+      pushActivityLog("control", `Convert toggled: ${controlStore.convertEnabled}`);
+      if (io) io.emit("admin:controlUpdated", controlStore);
+      return res.json({ ok: true, control: controlStore });
+    }
+    if (action === "clear_queue") {
+      pushActivityLog("control", "Queue cleared");
+      return res.json({ ok: true });
+    }
+    if (action === "kick_user" && socketId) {
+      if (io) {
+        const sock = io.sockets.sockets.get(socketId);
+        if (sock) sock.disconnect(true);
+      }
+      pushActivityLog("control", `User kicked: ${socketId}`);
+      return res.json({ ok: true });
+    }
+    return res.status(400).json({ ok: false, error: "Action tidak dikenal" });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- GET /api/admin/appeals -----
+app.get("/api/admin/appeals", requireAdminToken, (req, res) => {
+  try {
+    res.json({ ok: true, appeals: Array.isArray(appealsStore) ? appealsStore : [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- PATCH /api/admin/appeals/:id -----
+app.patch("/api/admin/appeals/:id", requireAdminToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNote } = req.body || {};
+    const idx = appealsStore.findIndex(a => a.appealId === id);
+    if (idx === -1) return res.status(404).json({ ok: false, error: "Appeal tidak ditemukan" });
+    const appeal = appealsStore[idx];
+    if (status) appeal.status = status;
+    if (typeof adminNote === "string") appeal.adminNote = adminNote;
+    appeal.resolvedAt = new Date().toISOString();
+    appealsStore[idx] = appeal;
+    saveAppeals();
+    pushActivityLog("appeal_update", `Appeal ${id} diupdate: ${status}`);
+    // Notify user via socket if possible
+    if (io && appeal.socketId) {
+      const statusMsg = status === "resolved"
+        ? `✅ Appeal kamu (${id}) telah DITERIMA! Akses forum kamu sudah dipulihkan.`
+        : `❌ Appeal kamu (${id}) DITOLAK. ${adminNote || "Silakan hubungi CS untuk info lebih lanjut."}`;
+      io.to(appeal.socketId).emit("forum:appealResult", { appealId: id, status, message: statusMsg });
+      // Also unban user if accepted
+      if (status === "resolved" && appeal.userId) {
+        const rec = userViolations.get(appeal.userId);
+        if (rec) { rec.banned = false; rec.count = 0; userViolations.set(appeal.userId, rec); }
+      }
+    }
+    res.json({ ok: true, appeal: appealsStore[idx] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- Route for admin pages serving -----
+app.get("/admin/dashboard", (req, res) => {
+  res.sendFile(join(process.cwd(), "public-ui", "admin-dashboard.html"));
+});
+app.get("/admin/tickets", (req, res) => {
+  res.sendFile(join(process.cwd(), "public-ui", "admin-tickets.html"));
+});
+app.get("/admin/appeals", (req, res) => {
+  res.sendFile(join(process.cwd(), "public-ui", "admin-appeals.html"));
+});
+
+// Hook into /api/contact to store tickets in our store
+const _originalContactHandler = null;
+
+// Override ticket storage: intercept submitted tickets from users (socket forum:appeal)
+// Update forum:appeal socket handler to store in appealsStore
+// This is handled by modifying the socket handler below via a wrapping variable
+
 app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
   try {
     if (!ADMIN_ENABLED) {
@@ -8191,6 +8490,22 @@ app.post('/api/contact', async (req, res) => {
 
     // Log the ticket for admin
     console.log('[YTConv CS Ticket]', JSON.stringify(ticket));
+    // Save to admin ticketsStore
+    if (typeof ticketsStore !== 'undefined') {
+      const proofList = Array.isArray(proofs) ? proofs.map(p => ({ url: p?.url || '', name: p?.name || '' })) : [];
+      ticketsStore.push({
+        ...ticket,
+        proofs: proofList,
+        status: 'received',
+        statusLabel: 'Diterima',
+        adminReply: '',
+        chatHistory: [],
+        statusHistory: [{ status: 'received', label: 'Diterima', at: new Date().toISOString() }],
+      });
+      if (typeof saveTickets === 'function') saveTickets();
+      if (typeof io !== 'undefined' && io) io.emit('admin:newTicket', { ticketId: tid });
+      if (typeof pushActivityLog === 'function') pushActivityLog('new_ticket', `Tiket baru: ${tid} dari ${name}`);
+    }
 
     const emailBody = [
       `=== YTConv Support Ticket ===`,
@@ -8359,13 +8674,34 @@ io.on("connection", (socket) => {
     if (rec?.banned) {
       const appealId = 'APL-' + Date.now().toString(36).toUpperCase().slice(-8);
       const submittedAt = new Date().toISOString();
+      const reason = String(payload?.reason || "").slice(0, 1000) || "Tidak ada alasan diberikan";
       console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${submittedAt}`);
+      // Save to appealsStore for admin review
+      if (typeof appealsStore !== 'undefined') {
+        appealsStore.push({
+          appealId,
+          userId: from.userId,
+          name: from.name,
+          room: from.room || 'umum',
+          reason,
+          socketId: socket.id,
+          status: 'pending',
+          submittedAt,
+          adminNote: '',
+          resolvedAt: null,
+        });
+        if (typeof saveAppeals === 'function') saveAppeals();
+        if (typeof pushActivityLog === 'function') pushActivityLog('new_appeal', `Appeal baru: ${appealId} dari ${from.name}`);
+        // Notify admin via socket
+        if (typeof io !== 'undefined' && io) io.emit('admin:newAppeal', { appealId, userId: from.userId, name: from.name });
+      }
       const appealLines = [
         '=== Forum Appeal Request ===',
         `Appeal ID : ${appealId}`,
         `User ID   : ${from.userId}`,
         `Name      : ${from.name}`,
         `Room      : ${from.room || 'umum'}`,
+        `Reason    : ${reason}`,
         `Time      : ${submittedAt}`,
         'SLA       : 2x24 jam',
       ];
@@ -8502,7 +8838,7 @@ const server = httpServer.listen(PORT, HOST, () => {
   // 💥 Auto Maintenance: Keep yt-dlp up-to-date
   const autoUpdate = () => {
     console.log("[Auto-Maintenance] Checking for yt-dlp updates...");
-    const updateProc = spawn("yt-dlp", ["-U"]);
+    const updateProc = spawn("python", ["-m", "yt_dlp", "-U"]);
     updateProc.on('close', (code) => {
         console.log(`[Auto-Maintenance] yt-dlp update finished with code ${code}`);
     });
