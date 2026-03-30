@@ -8186,10 +8186,26 @@ app.get("/api/admin/tickets", requireAdminToken, (req, res) => {
       received: "Diterima", reviewing: "Diproses",
       waiting_user: "Menunggu User", resolved: "Selesai", rejected: "Ditolak",
     };
-    const tickets = (Array.isArray(ticketsStore) ? ticketsStore : []).map(t => ({
-      ...t,
-      statusLabel: statusLabels[t.status] || t.status,
-    }));
+    const tickets = (Array.isArray(ticketsStore) ? ticketsStore : []).map(t => {
+      const statusHistoryRaw = Array.isArray(t.statusHistory) ? t.statusHistory : [];
+      const statusHistory = statusHistoryRaw.map(x => ({
+        ...x,
+        label: statusLabels[x.status] || x.label || x.status,
+      }));
+
+      const lastStatusItem = statusHistory.slice().sort((a, b) => {
+        const atA = new Date(a.at || 0).getTime();
+        const atB = new Date(b.at || 0).getTime();
+        return atB - atA;
+      })[0];
+
+      return {
+        ...t,
+        statusLabel: statusLabels[t.status] || t.status,
+        statusHistory,
+        statusUpdatedAt: t.updatedAt || t.statusUpdatedAt || lastStatusItem?.at || t.submittedAt || null,
+      };
+    });
     res.json({ ok: true, tickets });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -8201,16 +8217,30 @@ app.patch("/api/admin/tickets/:id", requireAdminToken, (req, res) => {
   try {
     const { id } = req.params;
     const { status, adminReply } = req.body || {};
+    const statusLabels = {
+      received: "Diterima",
+      reviewing: "Diproses",
+      waiting_user: "Menunggu User",
+      resolved: "Selesai",
+      rejected: "Ditolak",
+    };
     const idx = ticketsStore.findIndex(t => t.ticketId === id);
     if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
     const ticket = ticketsStore[idx];
+    const nowIso = new Date().toISOString();
     if (status) {
       if (!ticket.statusHistory) ticket.statusHistory = [];
-      ticket.statusHistory.push({ status, label: status, at: new Date().toISOString() });
+      ticket.statusHistory.push({
+        status,
+        label: statusLabels[status] || status,
+        at: nowIso
+      });
       ticket.status = status;
+      ticket.statusLabel = statusLabels[status] || ticket.statusLabel || status;
+      ticket.statusUpdatedAt = nowIso;
     }
     if (typeof adminReply === "string") ticket.adminReply = adminReply;
-    ticket.updatedAt = new Date().toISOString();
+    ticket.updatedAt = nowIso;
     ticketsStore[idx] = ticket;
     saveTickets();
     pushActivityLog("ticket_update", `Tiket ${id} diupdate: status=${status || ticket.status}`);
@@ -8240,6 +8270,92 @@ app.post("/api/admin/tickets/:id/chat", requireAdminToken, (req, res) => {
     ticketsStore[idx] = ticket;
     saveTickets();
     if (io) io.emit("admin:ticketChat", { ticketId: id, chat });
+    res.json({ ok: true, chat });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- GET /api/ticket/:id (user) -----
+app.get("/api/ticket/:id", (req, res) => {
+  try {
+    const statusLabels = {
+      received: "Diterima",
+      reviewing: "Diproses",
+      waiting_user: "Menunggu User",
+      resolved: "Selesai",
+      rejected: "Ditolak",
+    };
+
+    const rawId = String(req.params.id || "").trim();
+    const ticketIdNorm = rawId.toUpperCase();
+    const idx = Array.isArray(ticketsStore)
+      ? ticketsStore.findIndex(t => String(t.ticketId || "").toUpperCase() === ticketIdNorm)
+      : -1;
+    if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
+
+    const t = ticketsStore[idx] || {};
+    const chatHistory = Array.isArray(t.chatHistory) ? t.chatHistory : [];
+    const statusHistoryRaw = Array.isArray(t.statusHistory) ? t.statusHistory : [];
+
+    const statusHistory = statusHistoryRaw.map(x => ({
+      ...x,
+      label: statusLabels[x.status] || x.label || x.status
+    }));
+
+    const lastStatusItem = statusHistory.slice().sort((a, b) => {
+      const atA = new Date(a.at || 0).getTime();
+      const atB = new Date(b.at || 0).getTime();
+      return atB - atA;
+    })[0];
+
+    const statusUpdatedAt = t.updatedAt || t.statusUpdatedAt || lastStatusItem?.at || t.submittedAt || null;
+    const statusLabel = statusLabels[t.status] || t.statusLabel || t.status;
+
+    res.json({
+      ok: true,
+      ticket: {
+        ...t,
+        statusLabel,
+        statusUpdatedAt,
+        statusHistory,
+        chatHistory,
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ----- POST /api/ticket/:id/chat (user) -----
+app.post("/api/ticket/:id/chat", (req, res) => {
+  try {
+    const rawId = String(req.params.id || "").trim();
+    const ticketIdNorm = rawId.toUpperCase();
+    const idx = Array.isArray(ticketsStore)
+      ? ticketsStore.findIndex(t => String(t.ticketId || "").toUpperCase() === ticketIdNorm)
+      : -1;
+    if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
+
+    const { message } = req.body || {};
+    const msg = String(message || "").trim();
+    if (!msg) return res.status(400).json({ ok: false, error: "Pesan wajib diisi" });
+
+    const ticket = ticketsStore[idx] || {};
+    if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
+
+    const userMsgs = ticket.chatHistory.filter(c => c?.sender === "user");
+    if (userMsgs.length >= 3) return res.status(400).json({ ok: false, error: "user_chat_limit_reached" });
+
+    const chat = { sender: "user", message: msg, at: new Date().toISOString() };
+    ticket.chatHistory.push(chat);
+    ticket.updatedAt = new Date().toISOString();
+    ticketsStore[idx] = ticket;
+    saveTickets();
+
+    // biar admin langsung lihat chat baru (dashboard admin pakai socket)
+    if (io) io.emit("admin:ticketChat", { ticketId: ticket.ticketId, chat });
+
     res.json({ ok: true, chat });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -8510,6 +8626,7 @@ app.post('/api/contact', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Lengkapi data tiket' });
     }
     const tid = ticketId || ('TKT-' + Date.now().toString(36).toUpperCase().slice(-8));
+    const nowIso = new Date().toISOString();
     const ticket = {
       ticketId: tid,
       name: String(name).slice(0, 100),
@@ -8533,7 +8650,8 @@ app.post('/api/contact', async (req, res) => {
         statusLabel: 'Diterima',
         adminReply: '',
         chatHistory: [],
-        statusHistory: [{ status: 'received', label: 'Diterima', at: new Date().toISOString() }],
+        statusUpdatedAt: nowIso,
+        statusHistory: [{ status: 'received', label: 'Diterima', at: nowIso }],
       });
       if (typeof saveTickets === 'function') saveTickets();
       if (typeof io !== 'undefined' && io) io.emit('admin:newTicket', { ticketId: tid });
