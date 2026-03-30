@@ -8055,8 +8055,9 @@ const loadJsonFile = (path, def) => {
   try { return JSON.parse(readFileSync(path, "utf8")); } catch { return def; }
 };
 const saveJsonFile = (path, data) => {
-  try { require ? null : null; } catch {}
-  fsp.writeFile(path, JSON.stringify(data, null, 2), "utf8").catch(() => {});
+  fsp.writeFile(path, JSON.stringify(data, null, 2), "utf8")
+    .then(() => console.log(`[Persistence] Saved: ${path}`))
+    .catch((err) => console.error(`[Persistence ERROR] Failed to save ${path}:`, err.message));
 };
 
 // Initialize stores
@@ -8584,6 +8585,22 @@ app.post('/api/forum/moderation-report', async (req, res) => {
       `Message   : ${payload.text}`,
       `Time      : ${payload.submittedAt}`,
     ];
+
+    if (payload.room === 'appeal' && typeof appealsStore !== 'undefined') {
+      appealsStore.push({
+        appealId: payload.reportId,
+        userId: payload.userId,
+        name: payload.name,
+        room: payload.room,
+        reason: payload.text,
+        status: 'pending',
+        submittedAt: payload.submittedAt,
+        adminNote: '',
+        resolvedAt: null,
+      });
+      if (typeof saveAppeals === 'function') saveAppeals();
+      if (typeof pushActivityLog === 'function') pushActivityLog('new_appeal', `Appeal baru dari AI: ${payload.reportId} (${payload.name})`);
+    }
 
     const emailResult = await sendSupportEmail({
       subject: `[Forum AutoMod] ${payload.reportId} • ${payload.violationCount}/5`,
