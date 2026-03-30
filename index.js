@@ -1724,17 +1724,34 @@ const buildYtDlpCandidates = () => {
 };
 
 const runYtDlp = async (args) => {
-  return new Promise((resolve, reject) => {
-    let stdout = "";
-    let stderr = "";
-    const proc = spawn("python", ["-m", "yt_dlp", ...args]);
-    proc.stdout.on("data", (d) => stdout += d.toString());
-    proc.stderr.on("data", (d) => stderr += d.toString());
-    proc.on("close", (code) => {
-      resolve({ code, stdout, stderr });
-    });
-    proc.on("error", reject);
-  });
+  const candidates = ["yt-dlp", "python3", "python"];
+  for (const cmd of candidates) {
+    try {
+      const actualCmd = cmd === "yt-dlp" ? "yt-dlp" : cmd;
+      const actualArgs = cmd === "yt-dlp" ? args : ["-m", "yt_dlp", ...args];
+      return await new Promise((resolve, reject) => {
+        let stdout = "";
+        let stderr = "";
+        const proc = spawn(actualCmd, actualArgs);
+        proc.on("error", (err) => {
+          if (err.code === "ENOENT") {
+            return reject(err); // fail this candidate
+          }
+          reject(err);
+        });
+        proc.stdout.on("data", (d) => stdout += d.toString());
+        proc.stderr.on("data", (d) => stderr += d.toString());
+        proc.on("close", (code) => {
+          resolve({ code, stdout, stderr });
+        });
+      });
+    } catch (err) {
+      if (cmd === candidates[candidates.length - 1]) {
+        throw err;
+      }
+      // try next candidate
+    }
+  }
 };
 
 const runYtDlpAttempt = (command, args, { label }) =>
@@ -8836,17 +8853,58 @@ const server = httpServer.listen(PORT, HOST, () => {
   console.log(`Server jalan di ${HOST}:${PORT}`);
   
   // 💥 Auto Maintenance: Keep yt-dlp up-to-date
-  const autoUpdate = () => {
+  const autoUpdate = async () => {
     console.log("[Auto-Maintenance] Checking for yt-dlp updates...");
-    const updateProc = spawn("python", ["-m", "yt_dlp", "-U"]);
-    updateProc.on('close', (code) => {
-        console.log(`[Auto-Maintenance] yt-dlp update finished with code ${code}`);
-    });
+    const candidates = [
+       { cmd: "yt-dlp", args: ["-U"] },
+       { cmd: "python3", args: ["-m", "yt_dlp", "-U"] }
+    ];
+    // Add python only on windows or if everything else fails
+    if (process.platform === "win32") {
+       candidates.push({ cmd: "python", args: ["-m", "yt_dlp", "-U"] });
+    }
+
+    for (const { cmd, args } of candidates) {
+       try {
+         await new Promise((resolve, reject) => {
+           let finished = false;
+           const proc = spawn(cmd, args, { stdio: "ignore" });
+           
+           const onError = (err) => {
+              if (finished) return;
+              finished = true;
+              reject(err);
+           };
+           
+           const onClose = (code) => {
+              if (finished) return;
+              finished = true;
+              resolve(code);
+           };
+
+           proc.on("error", onError);
+           proc.on("close", onClose);
+         });
+         console.log(`[Auto-Maintenance] yt-dlp update started via ${cmd}`);
+         break; // Success (started), exit candidate loop
+       } catch (err) {
+         console.warn(`[Auto-Maintenance] ${cmd} failed to start: ${err.message}`);
+       }
+    }
   };
-  
-  // Run once immediately on startup, then every 24 hours
-  setTimeout(autoUpdate, 5000); 
+
+  // Run once on startup (delayed 15s), then every 24 hours
+  setTimeout(autoUpdate, 15000);
   setInterval(autoUpdate, 24 * 60 * 60 * 1000);
+});
+
+// Final safety net for uncaught exceptions (especially important on Railway/Linux)
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception thrown:", err);
+  // Do NOT exit process on minor errors (maintenance, etc)
 });
 
 export {
