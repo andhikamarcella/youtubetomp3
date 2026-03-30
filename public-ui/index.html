@@ -12967,26 +12967,13 @@
           const proofPreview = document.getElementById('emailProofPreview');
           if (!form || !submitBtn) return;
 
-          const generateTicketId = () => `TKT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
-
-          const ensureTicketId = () => {
-            if (ticketIdInput && !ticketIdInput.value) ticketIdInput.value = generateTicketId();
-          };
-
-          document.getElementById('emailModal')?.addEventListener('show.bs.modal', ensureTicketId);
-          ensureTicketId();
-
-          if (proofInput && proofPreview) {
-            proofInput.addEventListener('change', () => {
-              const files = Array.from(proofInput.files || []).slice(0, 4);
-              if (!files.length) {
-                proofPreview.textContent = 'Belum ada file bukti dipilih.';
-                return;
-              }
-              proofPreview.textContent = files.map((f) => `${f.name} (${Math.ceil(f.size / 1024)} KB)`).join(' • ');
-            });
+          // Initialize EmailJS
+          if (typeof emailjs !== 'undefined') {
+            emailjs.init(EMAILJS_PUBLIC_KEY);
           }
 
+          const generateTicketId = () => `TKT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+...
           form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -13018,14 +13005,38 @@
                 pageUrl: window.location.href,
               };
 
+              // First, send to our backend
               const resp = await fetch('/api/contact', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
               });
               const result = await resp.json().catch(() => ({}));
+              
               if (!resp.ok || !result?.ok) {
-                throw new Error(result?.error || 'Gagal mengirim tiket bantuan');
+                throw new Error(result?.error || 'Gagal mengirim tiket ke server');
+              }
+
+              // Second, send via EmailJS (if available)
+              if (typeof emailjs !== 'undefined') {
+                try {
+                  await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                    ticket_id: payload.ticketId,
+                    from_name: payload.name,
+                    from_email: payload.email,
+                    category: payload.category,
+                    message: payload.message,
+                    date: payload.date,
+                    page_url: payload.pageUrl,
+                    // Note: proof/attachments follow EmailJS limits (20KB for some tiers)
+                    // We only send metadata for proofs to avoid size issues
+                    proof_count: payload.proofs.length
+                  });
+                  console.log('[EmailJS] Berhasil dikirim');
+                } catch (ejsErr) {
+                  console.warn('[EmailJS Error]', ejsErr);
+                  // Don't throw here - backend already has the ticket
+                }
               }
 
               setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, 'success');
@@ -26967,11 +26978,51 @@
                 await callState.pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
               } catch (e) { console.error('Error adding ICE', e); }
             });
-            forumSocket.on('call:end', (payload) => {
-              if (!payload?.callId || payload.callId !== callState.callId) return;
-              cleanupPeer();
-              setToast('Panggilan berakhir');
+            forumSocket.on('forum:statusSync', (payload) => {
+              if (payload && payload.userId === (currentUser?.uid || 'guest')) {
+                const lsKey = `ytconv:forum:violations:${payload.userId}`;
+                const oldCount = Number(localStorage.getItem(lsKey) || '0');
+                localStorage.setItem(lsKey, String(payload.count || 0));
+                
+                // If user was banned but now is not, refresh UI
+                if (oldCount >= 5 && !payload.banned) {
+                  // We can just trigger the room join logic again or manually unlock
+                  if (typeof updateSendButtonState === 'function') {
+                    // Slight delay to ensure localStorage is ready
+                    setTimeout(() => {
+                      if (forumInput) {
+                         forumInput.disabled = false;
+                         forumInput.placeholder = 'Ketik pesan...';
+                         forumInput.value = '';
+                      }
+                      if (forumSendBtn) forumSendBtn.disabled = false;
+                      updateSendButtonState();
+                      // Force re-render of room to clear any restricted overlays if they exist
+                      if (typeof joinForumPresence === 'function') joinForumPresence(activeForumRoom);
+                    }, 100);
+                  }
+                }
+              }
             });
+
+            forumSocket.on('forum:appealResult', (payload) => {
+              if (payload && payload.status === 'resolved') {
+                const lsKey = `ytconv:forum:violations:${currentUser?.uid || 'guest'}`;
+                localStorage.setItem(lsKey, '0');
+                setToast(payload.message || '✅ Appeal diterima! Akses forum dipulihkan.', 'success');
+                // Unlock UI
+                setTimeout(() => {
+                  if (forumInput) {
+                    forumInput.disabled = false;
+                    forumInput.placeholder = 'Ketik pesan...';
+                  }
+                  if (typeof updateSendButtonState === 'function') updateSendButtonState();
+                }, 500);
+              } else if (payload && payload.status === 'rejected') {
+                setToast(payload.message || '❌ Appeal ditolak.', 'danger');
+              }
+            });
+
             return forumSocket;
           };
 
