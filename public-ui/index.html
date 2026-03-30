@@ -14973,11 +14973,11 @@
             }
           }
 
+          // If captcha is not strict, don't block UI flow. Backend will accept missing token.
+          if (!state?.captcha?.strict) return '';
+
           const msg = translateMessage('Mohon selesaikan Captcha terlebih dahulu');
           setToast(msg);
-          // In non-strict mode (default), allow convert to proceed without captcha
-          // instead of blocking all buttons until Turnstile is fully loaded.
-          if (!state?.captcha?.strict) return '';
           throw new Error(msg);
         }
 
@@ -24510,6 +24510,11 @@
         let activeTurnstileWidgetId = null;
 
         const requestTurnstileVerification = () => {
+          // Basic mode should never block all buttons when captcha isn't strict yet/anymore.
+          if (!state?.captcha?.strict) {
+            // Let flow continue; if backend later enforces strict, user will get error then retry.
+            return Promise.resolve('');
+          }
           return new Promise((resolve, reject) => {
             const modalEl = document.getElementById('turnstileModal');
             const widgetContainer = document.getElementById('turnstile-widget');
