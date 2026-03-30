@@ -8224,9 +8224,11 @@ app.patch("/api/admin/tickets/:id", requireAdminToken, (req, res) => {
       resolved: "Selesai",
       rejected: "Ditolak",
     };
-    const idx = ticketsStore.findIndex(t => t.ticketId === id);
+    const idNorm = String(id || "").toUpperCase();
+    const idx = ticketsStore.findIndex(t => String(t.ticketId || "").toUpperCase() === idNorm);
     if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
     const ticket = ticketsStore[idx];
+    const canonicalTicketId = ticket?.ticketId || id;
     const nowIso = new Date().toISOString();
     if (status) {
       if (!ticket.statusHistory) ticket.statusHistory = [];
@@ -8245,7 +8247,7 @@ app.patch("/api/admin/tickets/:id", requireAdminToken, (req, res) => {
     saveTickets();
     pushActivityLog("ticket_update", `Tiket ${id} diupdate: status=${status || ticket.status}`);
     // Notify via socket
-    if (io) io.emit("admin:ticketUpdated", { ticketId: id });
+    if (io) io.emit("admin:ticketUpdated", { ticketId: canonicalTicketId });
     res.json({ ok: true, ticket });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -8258,9 +8260,11 @@ app.post("/api/admin/tickets/:id/chat", requireAdminToken, (req, res) => {
     const { id } = req.params;
     const { message } = req.body || {};
     if (!message) return res.status(400).json({ ok: false, error: "Pesan wajib diisi" });
-    const idx = ticketsStore.findIndex(t => t.ticketId === id);
+    const idNorm = String(id || "").toUpperCase();
+    const idx = ticketsStore.findIndex(t => String(t.ticketId || "").toUpperCase() === idNorm);
     if (idx === -1) return res.status(404).json({ ok: false, error: "Tiket tidak ditemukan" });
     const ticket = ticketsStore[idx];
+    const canonicalTicketId = ticket?.ticketId || id;
     if (!ticket.chatHistory) ticket.chatHistory = [];
     const adminMsgs = ticket.chatHistory.filter(c => c.sender === "admin");
     if (adminMsgs.length >= 3) return res.status(400).json({ ok: false, error: "Batas chat admin (3x) sudah tercapai" });
@@ -8269,7 +8273,7 @@ app.post("/api/admin/tickets/:id/chat", requireAdminToken, (req, res) => {
     ticket.updatedAt = new Date().toISOString();
     ticketsStore[idx] = ticket;
     saveTickets();
-    if (io) io.emit("admin:ticketChat", { ticketId: id, chat });
+    if (io) io.emit("admin:ticketChat", { ticketId: canonicalTicketId, chat });
     res.json({ ok: true, chat });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
