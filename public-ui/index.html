@@ -14975,6 +14975,9 @@
 
           const msg = translateMessage('Mohon selesaikan Captcha terlebih dahulu');
           setToast(msg);
+          // In non-strict mode (default), allow convert to proceed without captcha
+          // instead of blocking all buttons until Turnstile is fully loaded.
+          if (!state?.captcha?.strict) return '';
           throw new Error(msg);
         }
 
