@@ -18167,9 +18167,21 @@
           if (!uid) {
             return { ok: false, error: 'Untuk kirim appeal, login Google dulu ya.' };
           }
+          const violationLimit = 5;
+          const getViolationCountSafe = () => {
+            try {
+              if (typeof window.getForumViolationCount === 'function') {
+                return Number(window.getForumViolationCount() || 0) || 0;
+              }
+              return 0;
+            } catch {
+              return 0;
+            }
+          };
+          const violationCount = getViolationCountSafe();
           const disabledFeatures = [
-            ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
-            ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+            ...(violationCount >= violationLimit ? ['forum_chat_input_disabled'] : []),
+            ...(document.getElementById('forumSendBtn')?.disabled ? ['forum_send_button_disabled'] : []),
           ];
           const appealResp = await fetch('/api/forum/appeal', {
             method: 'POST',
@@ -18179,9 +18191,9 @@
               name: currentUser?.displayName || 'Warga',
               email: currentUser?.email || '',
               room: activeForumRoom || 'umum',
-              socketId: ensureForumSocket?.()?.id || '',
+              socketId: '',
               reason: String(reasonText || '').trim() || 'Saya mau appeal forum',
-              violationCount: Number(getForumViolationCount?.() || 0),
+              violationCount,
               disabledFeatures,
               googleAccount: {
                 provider: 'google',
@@ -18203,6 +18215,19 @@
           let reply = '';
           try {
             const historyToSend = state.assistantHistory.slice(0, -1);
+            const violationLimit = 5;
+            const getViolationCountSafe = () => {
+              try {
+                if (typeof window.getForumViolationCount === 'function') {
+                  return Number(window.getForumViolationCount() || 0) || 0;
+                }
+                return 0;
+              } catch {
+                return 0;
+              }
+            };
+            const violationCount = getViolationCountSafe();
+            const forumSendDisabled = Boolean(document.getElementById('forumSendBtn')?.disabled);
             const payload = {
               prompt: text,
               messages: historyToSend,
@@ -18217,12 +18242,12 @@
                 },
                 forum: {
                   room: activeForumRoom || 'umum',
-                  socketId: ensureForumSocket?.()?.id || '',
-                  violationCount: Number(getForumViolationCount?.() || 0),
-                  forumDisabled: Boolean(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT),
+                  socketId: '',
+                  violationCount,
+                  forumDisabled: Boolean(violationCount >= violationLimit),
                   disabledFeatures: [
-                    ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
-                    ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                    ...(violationCount >= violationLimit ? ['forum_chat_input_disabled'] : []),
+                    ...(forumSendDisabled ? ['forum_send_button_disabled'] : []),
                   ],
                 },
               }
@@ -29515,6 +29540,9 @@
           function setForumViolationCount(val) {
             try { localStorage.setItem(forumViolationKey(), String(Math.max(0, Number(val) || 0))); } catch { }
           }
+          try {
+            window.getForumViolationCount = getForumViolationCount;
+          } catch { }
 
           async function reportForumModeration(text, violationCount) {
             try {
