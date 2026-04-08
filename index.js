@@ -94,9 +94,13 @@ const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_
 const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
-const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const GROQ_API_KEYS = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_FALLBACK,
+].map((x) => String(x || "").trim()).filter(Boolean);
+const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-const isGroqConfigured = Boolean(GROQ_API_KEY);
+const isGroqConfigured = GROQ_API_KEYS.length > 0;
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
@@ -689,39 +693,45 @@ Jika percakapan biasa/edukasi/diagnosa:
     { role: "user", content: prompt }
   ];
 
-  try {
-    const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + GROQ_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Groq API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-
+  let lastError = null;
+  for (let idx = 0; idx < GROQ_API_KEYS.length; idx += 1) {
+    const apiKey = GROQ_API_KEYS[idx];
     try {
-      return JSON.parse(content);
-    } catch (e) {
-      return { reply: content };
+      const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Groq API error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { reply: content };
+      }
+    } catch (error) {
+      lastError = error;
+      const usingFallback = idx > 0;
+      console.error(`[Groq API] Error${usingFallback ? " (fallback key)" : ""}:`, error?.message || error);
     }
-  } catch (error) {
-    console.error("[Groq API] Error:", error);
-    throw error;
   }
+  throw lastError || new Error("Groq API request failed");
 };
 
 let turnstileWarningLogged = false;
@@ -3700,6 +3710,16 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
     };
   }
 
+  if (/^\/?appeal(\s+.*)?$/i.test(raw)) {
+    const reason = raw.replace(/^\/?appeal\s*/i, "").trim() || "Saya mau appeal ban forum.";
+    return {
+      reply: "Sip, aku bantu kirim appeal kamu ke admin dashboard sekarang.",
+      suggestions: ["Cek status appeal", "Tambahkan alasan detail", "Buka tiket bantuan"],
+      action: "submit_forum_appeal",
+      params: { reason },
+    };
+  }
+
   if (
     /(appeal|banding|diban|di ban|keban|kena ban|forum diblokir|forum dikunci)/i.test(lowerRaw) ||
     /(saya mau appeal|mau appeal|ajukan appeal)/i.test(lowerRaw)
@@ -3717,6 +3737,13 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
       params: {
         reason: raw,
       },
+    };
+  }
+
+  if (clientState?.forum?.forumDisabled && /(forum|chat|tidak bisa chat|gabisa chat|ga bisa chat)/i.test(lowerRaw)) {
+    return {
+      reply: "Kayaknya akun kamu memang lagi keblokir buat chat forum. Coba ketik **/appeal alasan kamu** biar langsung aku kirim ke admin dashboard.",
+      suggestions: ["/appeal saya tidak sengaja", "Buka tiket bantuan", "Cek status forum"],
     };
   }
 
@@ -8613,13 +8640,7 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
     const disabledFeatures = Array.isArray(body.disabledFeatures) ? body.disabledFeatures : [];
     const blockedByClient = disabledFeatures.length > 0 || Number(body.violationCount || 0) >= 5;
 
-    if (!blockedByServer && !blockedByClient) {
-      return res.status(400).json({
-        ok: false,
-        error: "not_blocked",
-        message: "Status blocked belum terdeteksi dari server/client.",
-      });
-    }
+    const blockedSignalDetected = blockedByServer || blockedByClient;
 
     const appeal = await submitForumAppeal({
       source: "ai_navigator",
@@ -8635,6 +8656,7 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
         googleAccount: body.googleAccount || null,
         blockedByServer,
         blockedByClient,
+        blockedSignalDetected,
       },
     });
     return res.json({
@@ -8642,7 +8664,9 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
       appealId: appeal.appealId,
       status: appeal.status,
       submittedAt: appeal.submittedAt,
-      message: `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`,
+      message: blockedSignalDetected
+        ? `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`
+        : `✅ Appeal ${appeal.appealId} tetap dikirim ke admin dashboard (status block belum terverifikasi otomatis).`,
     });
   } catch (e) {
     console.error("[/api/forum/appeal error]", e);
@@ -8729,6 +8753,30 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req
     statusLabel: appeal.statusLabel,
   });
   return res.json({ ok: true, appeal });
+});
+
+app.get("/api/admin/session-replay/:socketId", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const socketId = String(req.params.socketId || "").trim();
+  if (!socketId) return res.status(400).json({ ok: false, error: "socket_id_required" });
+  const live = activeUsers.get(socketId);
+  if (live) upsertSessionReplay(socketId, live);
+  const replay = sessionReplayStore.get(socketId);
+  if (!replay) return res.status(404).json({ ok: false, error: "session_not_found" });
+  return res.json({
+    ok: true,
+    replay: {
+      socketId: replay.socketId,
+      connectedAt: replay.connectedAt || null,
+      disconnectedAt: replay.disconnectedAt || null,
+      page: replay.page || "unknown",
+      room: replay.room || null,
+      status: replay.status || "idle",
+      userAgent: replay.userAgent || "",
+      geo: replay.geo || { country: "unknown", city: "unknown" },
+      actions: Array.isArray(replay.actions) ? replay.actions : [],
+    },
+  });
 });
 
 app.get("/api/admin/stats", (req, res) => {
@@ -8880,6 +8928,7 @@ app.get("/api/admin/stats", (req, res) => {
     moderation: {
       blockedForumUsers,
       disabledFeatureUsage,
+      storedSessionReplay: sessionReplayStore.size,
     },
     abTesting: abMetrics,
     smartInsights,
@@ -9020,6 +9069,7 @@ app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
   }
   pushActivityLog("admin_control", `Control action: ${action}`, { action });
   io.emit("admin:controlUpdated", { ...controlState });
+  io.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   emitDashboardStats();
   return res.json({ ok: true, control: { ...controlState } });
 });
@@ -9052,6 +9102,8 @@ const io = new SocketIOServer(httpServer, {
 const roomUsers = new Map();
 const socketState = new Map();
 const activeUsers = new Map();
+const sessionReplayStore = new Map();
+const MAX_SESSION_REPLAY = 300;
 
 const getLiveBreakdown = (field) => {
   const result = {};
@@ -9081,12 +9133,41 @@ const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, use
   journey: Array.isArray(user.journey) ? user.journey.join(" → ") : "",
   actions: Array.isArray(user.actionTrail) ? user.actionTrail : [],
   clientId: user.clientId || "",
+  userId: user.userId || "",
+  userEmail: user.userEmail || "",
   abVariant: user.abVariant || "A",
   geo: user.geo || { country: "unknown", city: "unknown" },
   userAgent: user.userAgent || "",
   connectedAt: user.connectedAt || null,
   lastSeenAt: user.lastSeenAt || null,
 }));
+
+const upsertSessionReplay = (socketId, user = null, extras = {}) => {
+  if (!socketId) return;
+  const prev = sessionReplayStore.get(socketId) || {
+    socketId,
+    connectedAt: new Date().toISOString(),
+    disconnectedAt: null,
+    page: "unknown",
+    room: null,
+    status: "idle",
+    userAgent: "",
+    geo: { country: "unknown", city: "unknown" },
+    actions: [],
+  };
+  const next = {
+    ...prev,
+    ...(user || {}),
+    ...extras,
+    socketId,
+    actions: Array.isArray(user?.actionTrail) ? user.actionTrail.slice(-120) : (prev.actions || []),
+  };
+  sessionReplayStore.set(socketId, next);
+  if (sessionReplayStore.size > MAX_SESSION_REPLAY) {
+    const oldestKey = sessionReplayStore.keys().next().value;
+    if (oldestKey) sessionReplayStore.delete(oldestKey);
+  }
+};
 
 const emitDashboardStats = () => {
   io.emit("dashboard_stats", {
@@ -9113,6 +9194,7 @@ const broadcastRoomUsers = (room) => {
 };
 
 io.on("connection", (socket) => {
+  socket.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   activeUsers.set(socket.id, {
     page: "unknown",
     room: null,
@@ -9121,6 +9203,8 @@ io.on("connection", (socket) => {
     actionTrail: [],
     convertStartedAt: null,
     clientId: "",
+    userId: "",
+    userEmail: "",
     abVariant: "A",
     geo: {
       country: String(socket.handshake?.headers?.["cf-ipcountry"] || socket.handshake?.headers?.["x-vercel-ip-country"] || "unknown"),
@@ -9130,6 +9214,7 @@ io.on("connection", (socket) => {
     connectedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
   });
+  upsertSessionReplay(socket.id, activeUsers.get(socket.id));
   conversionMetrics.entered += 1;
   pushActivityLog("user_connected", `Socket ${socket.id} connected`, { socketId: socket.id });
   emitDashboardStats();
@@ -9139,8 +9224,12 @@ io.on("connection", (socket) => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
     const clientId = String(payload?.clientId || rec.clientId || "").slice(0, 120);
+    const userId = String(payload?.userId || rec.userId || "").slice(0, 180);
+    const userEmail = String(payload?.userEmail || rec.userEmail || "").slice(0, 240);
     const abVariant = String(payload?.abVariant || rec.abVariant || "A").toUpperCase() === "B" ? "B" : "A";
     rec.clientId = clientId;
+    rec.userId = userId;
+    rec.userEmail = userEmail;
     rec.abVariant = abVariant;
     if (clientId) {
       const retentionRec = retentionUsers.get(clientId) || { sessions: 0, lastSeenAt: null };
@@ -9156,6 +9245,7 @@ io.on("connection", (socket) => {
     if (rec.journey.length > 12) rec.journey = rec.journey.slice(-12);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9174,6 +9264,7 @@ io.on("connection", (socket) => {
     if (rec.actionTrail.length > 40) rec.actionTrail = rec.actionTrail.slice(-40);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     pushActivityLog("user_action", `${socket.id}: ${action}`, { socketId: socket.id, action, detail });
     emitDashboardStats();
   });
@@ -9198,6 +9289,7 @@ io.on("connection", (socket) => {
     controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9220,6 +9312,7 @@ io.on("connection", (socket) => {
     pushActivityLog("conversion_success", `Conversion success from ${socket.id}`, { socketId: socket.id });
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9229,6 +9322,7 @@ io.on("connection", (socket) => {
     rec.status = "idle";
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9246,6 +9340,7 @@ io.on("connection", (socket) => {
       rec.journey.push(`convert:error:${reason}`);
       rec.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, rec);
+      upsertSessionReplay(socket.id, rec);
     }
     pushActivityLog("conversion_error", `Conversion error ${reason}`, { socketId: socket.id, reason });
     emitDashboardStats();
@@ -9354,6 +9449,7 @@ io.on("connection", (socket) => {
       active.room = room;
       active.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, active);
+      upsertSessionReplay(socket.id, active);
     }
     const map = getOrCreateRoomMap(room);
     map.set(userId, { userId, name, socketId: socket.id });
@@ -9375,6 +9471,7 @@ io.on("connection", (socket) => {
       active.room = null;
       active.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, active);
+      upsertSessionReplay(socket.id, active);
     }
     broadcastRoomUsers(prev.room);
     emitDashboardStats();
@@ -9465,6 +9562,7 @@ io.on("connection", (socket) => {
       broadcastRoomUsers(prev.room);
     }
     activeUsers.delete(socket.id);
+    upsertSessionReplay(socket.id, null, { disconnectedAt: new Date().toISOString() });
     pushActivityLog("user_disconnected", `Socket ${socket.id} disconnected`, { socketId: socket.id });
     emitDashboardStats();
   });
