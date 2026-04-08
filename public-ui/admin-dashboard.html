@@ -209,6 +209,24 @@
       <h2 class="font-bold mb-2">🧾 Activity Log (Audit Trail)</h2>
       <ul id="activityLogs" class="max-h-48 overflow-auto text-xs space-y-1"></ul>
     </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <h2 class="font-bold">⚖️ Forum Appeal (Prioritas)</h2>
+        <button id="refreshAppealsBtn" class="px-2 py-1 rounded bg-indigo-600 text-xs">Refresh Appeal</button>
+      </div>
+      <div class="text-xs text-slate-400 mb-2">Appeal dari AI Navigator/forum akan masuk ke sini dan bisa di-accept/reject.</div>
+      <div id="appealSummary" class="text-sm mb-2">Pending: 0 • Diterima: 0 • Ditolak: 0</div>
+      <div class="overflow-auto rounded-xl border border-slate-800">
+        <table class="min-w-full text-xs">
+          <thead class="bg-slate-800/80 text-slate-300">
+            <tr><th class="text-left p-2">Appeal ID</th><th class="text-left p-2">User</th><th class="text-left p-2">Socket</th><th class="text-left p-2">Fitur Disabled</th><th class="text-left p-2">Reason</th><th class="text-left p-2">Status</th><th class="text-left p-2">Aksi</th></tr>
+          </thead>
+          <tbody id="appealRows"></tbody>
+        </table>
+      </div>
+      <div class="mt-2 text-xs text-slate-400" id="disabledFeatureStats">-</div>
+    </section>
   </main>
 
 <script>
@@ -219,7 +237,7 @@ const getToken=()=> (localStorage.getItem(TOKEN_KEY)||'').trim();
 const setToken=(v)=> localStorage.setItem(TOKEN_KEY,v||'');
 const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
 const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
-let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[]};
+let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[],appeals:[]};
 let socket=null;
 
 const toast=(m,type='info')=>{const n=document.createElement('div');n.className=`px-3 py-2 rounded-lg border text-sm shadow ${type==='error'?'bg-rose-950 border-rose-700':type==='warn'?'bg-amber-950 border-amber-700':'bg-slate-900 border-slate-700'}`;n.textContent=m;el('toastWrap').appendChild(n);setTimeout(()=>n.remove(),3800);};
@@ -287,11 +305,16 @@ function renderAdvanced(data){
   el('geoStats').innerHTML=Object.entries(geoCounts).map(([k,v])=>`<li>${k}: <b>${v}</b></li>`).join('')||'<li>-</li>';
   el('apiStats').innerHTML=(data.apiMonitoring||[]).map((a)=>`<li class="border border-slate-800 rounded p-1">${a.route}<br>hits:${a.hits} • err:${a.errors} • avg:${a.avgMs}ms</li>`).join('')||'<li>-</li>';
   el('activityLogs').innerHTML=(data.activityLogs||[]).map((l)=>`<li class="rounded border border-slate-800 bg-slate-950 p-2">${l.type}: ${l.message}<div class="text-[10px] text-slate-400">${fmt.format(new Date(l.at))}</div></li>`).join('')||'<li>-</li>';
+  const disabledStats=data.moderation?.disabledFeatureUsage||{};
+  const disabledText=Object.entries(disabledStats).map(([k,v])=>`${k}:${v}`).join(' • ');
+  el('disabledFeatureStats').textContent=`Blocked user: ${data.moderation?.blockedForumUsers||0} • Disabled feature usage: ${disabledText||'-'}`;
   el('toggleConvertBtn').textContent=(data.control?.convertEnabled ? 'Disable Convert Sementara' : 'Enable Convert Lagi');
   evaluateAlerts(data);
 }
 
-async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);applyFilters();}
+function renderAppeals(){const items=state.appeals||[];const by={pending:0,accepted:0,rejected:0};items.forEach((a)=>{if(by[a.status]!==undefined)by[a.status]+=1;});el('appealSummary').textContent=`Pending: ${by.pending||0} • Diterima: ${by.accepted||0} • Ditolak: ${by.rejected||0}`;el('appealRows').innerHTML=items.map((a)=>`<tr class="border-t border-slate-800"><td class="p-2 font-semibold">${a.appealId}</td><td class="p-2">${(a.name||'-').replace(/</g,'&lt;')}<div class="text-[10px] text-slate-400">${(a.userId||'-').replace(/</g,'&lt;')}</div></td><td class="p-2">${(a.socketId||'-').replace(/</g,'&lt;')}</td><td class="p-2">${(a.disabledFeatures||[]).join(', ')||'-'}</td><td class="p-2">${(a.reason||'-').replace(/</g,'&lt;')}</td><td class="p-2">${a.statusLabel||a.status||'-'}</td><td class="p-2"><div class="flex gap-1"><button data-appeal="${a.appealId}" data-status="accepted" class="px-2 py-1 rounded bg-emerald-600 text-[10px]">Accept</button><button data-appeal="${a.appealId}" data-status="rejected" class="px-2 py-1 rounded bg-rose-600 text-[10px]">Reject</button></div></td></tr>`).join('')||'<tr><td class="p-2 text-slate-400" colspan="7">Belum ada appeal masuk.</td></tr>';}
+
+async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderAppeals();applyFilters();}
 
 function renderChatHistory(items){el('chatHistory').innerHTML=items.map((c)=>`<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender||'system'} • ${c.at?fmt.format(new Date(c.at)):'-'}</div><div>${(c.message||'').replace(/</g,'&lt;')}</div></div>`).join('')||'<div class="text-slate-500 text-xs">Belum ada chat.</div>';const adminCount=items.filter((x)=>x?.sender==='admin').length;const remain=Math.max(0,3-adminCount);el('chatLimitHint').textContent=`Sisa chat admin: ${remain}`;el('chatInput').disabled=remain<=0;el('chatHistory').scrollTop=el('chatHistory').scrollHeight;}
 
@@ -301,14 +324,16 @@ async function sendChat(evt){evt.preventDefault();if(!state.currentTicket)return
 
 function exportExcel(){const rows=state.filteredTickets.map((t)=>({ID:t.ticketId,Nama:t.name,Email:t.email,Kategori:t.category,Status:t.statusLabel||t.status,SubmittedAt:t.submittedAt}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tickets');XLSX.writeFile(wb,`tickets-${Date.now()}.xlsx`);}
 
-function initSocket(){if(socket)return;socket=io({transports:['websocket','polling']});socket.on('connect',()=>socket.emit('page_change',{page:'/admin/dashboard'}));socket.on('dashboard_stats',(payload)=>renderLive({live:{...payload,conversion:payload.conversion||{}}}));socket.on('admin:newTicket',(payload)=>{setBadge(state.unread+1);toast(`Ticket baru: ${payload.ticketId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:ticketUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:ticketChat',(payload)=>{if(state.currentTicket?.ticketId===payload.ticketId){state.currentTicket.chatHistory=[...(state.currentTicket.chatHistory||[]),payload.chat];renderChatHistory(state.currentTicket.chatHistory||[]);}toast(`Chat baru di ${payload.ticketId}`);playNotif();});socket.on('admin:controlUpdated',()=>loadStats().catch(()=>{}));}
+function initSocket(){if(socket)return;socket=io({transports:['websocket','polling']});socket.on('connect',()=>socket.emit('page_change',{page:'/admin/dashboard'}));socket.on('dashboard_stats',(payload)=>renderLive({live:{...payload,conversion:payload.conversion||{}}}));socket.on('admin:newTicket',(payload)=>{setBadge(state.unread+1);toast(`Ticket baru: ${payload.ticketId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:ticketUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:ticketChat',(payload)=>{if(state.currentTicket?.ticketId===payload.ticketId){state.currentTicket.chatHistory=[...(state.currentTicket.chatHistory||[]),payload.chat];renderChatHistory(state.currentTicket.chatHistory||[]);}toast(`Chat baru di ${payload.ticketId}`);playNotif();});socket.on('admin:controlUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:appealCreated',(payload)=>{toast(`Appeal baru: ${payload.appealId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:appealUpdated',()=>loadStats().catch(()=>{}));}
 
 async function control(action,extra={}){const token=getToken();const r=await fetch('/api/admin/control',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action,...extra})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Control gagal','error');toast(`Action ${action} berhasil`);loadStats().catch(()=>{});}
+async function updateAppeal(appealId,status){const token=getToken();const r=await fetch(`/api/admin/appeals/${encodeURIComponent(appealId)}`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status,reviewedBy:'admin_dashboard'})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Update appeal gagal','error');toast(`Appeal ${appealId} -> ${status}`);loadStats().catch(()=>{});}
 
 async function login(evt){evt.preventDefault();const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:el('username').value,password:el('password').value})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok||!data.token)return toast('Login gagal','error');setToken(data.token);el('authState').textContent='Login aktif';toast('Login berhasil');await loadStats();initSocket();}
 
 el('loginForm').addEventListener('submit',login);el('refreshBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('closeDetailBtn').addEventListener('click',()=>el('detailPanel').classList.add('hidden'));el('chatForm').addEventListener('submit',sendChat);el('exportBtn').addEventListener('click',exportExcel);['searchId','filterStatus','filterCategory','filterDate'].forEach((id)=>el(id).addEventListener('input',applyFilters));el('ticketRows').addEventListener('click',(evt)=>{const btn=evt.target.closest('button[data-open]');if(!btn)return;openDetail(btn.getAttribute('data-open'));});el('adminTicketsBtn').addEventListener('click',()=>setBadge(0));
 el('toggleConvertBtn').addEventListener('click',()=>control('toggle_convert'));el('clearQueueBtn').addEventListener('click',()=>control('clear_queue'));el('kickUserBtn').addEventListener('click',()=>control('kick_user',{socketId:el('kickSocketId').value.trim()}));
+el('refreshAppealsBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('appealRows').addEventListener('click',(evt)=>{const btn=evt.target.closest('button[data-appeal]');if(!btn)return;updateAppeal(btn.getAttribute('data-appeal'),btn.getAttribute('data-status'));});
 el('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('bg-slate-950');document.body.classList.toggle('bg-slate-100');document.body.classList.toggle('text-slate-100');document.body.classList.toggle('text-slate-900');});
 el('replayBtn').addEventListener('click',()=>{const sid=el('replaySocketId').value.trim();const user=state.latestUsers.find((u)=>u.socketId===sid);const timeline=Array.isArray(user?.actions)?user.actions:[];el('replayTimeline').innerHTML=timeline.map((a)=>`<li class=\"border border-slate-800 rounded p-1\">${a.action}${a.detail?` — ${a.detail}`:''}<div class=\"text-[10px] text-slate-500\">${fmt.format(new Date(a.at))}</div></li>`).join('')||'<li class=\"text-slate-500\">Timeline kosong / socket tidak ditemukan.</li>';});
 el('exportPngBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`dashboard-${Date.now()}.png`;a.click();});

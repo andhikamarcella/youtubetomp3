@@ -3677,6 +3677,7 @@ const ASSISTANT_TOPICS = [
 
 const buildAssistantResponse = async (prompt, history = [], clientState = {}) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
+  const lowerRaw = raw.toLowerCase();
   if (!raw) {
     return {
       reply: "Hai! Mau bantuan convert video?",
@@ -3696,6 +3697,26 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
     return {
       reply: "**FAQ**: **M4A** tercepat, **MP3** universal, **FLAC** studio.",
       suggestions: ["Format", "Trim", "Cookies"],
+    };
+  }
+
+  if (
+    /(appeal|banding|diban|di ban|keban|kena ban|forum diblokir|forum dikunci)/i.test(lowerRaw) ||
+    /(saya mau appeal|mau appeal|ajukan appeal)/i.test(lowerRaw)
+  ) {
+    const forumState = clientState?.forum || {};
+    const violationCount = Number(forumState?.violationCount || 0);
+    const disabledFeatures = Array.isArray(forumState?.disabledFeatures) ? forumState.disabledFeatures : [];
+    const hasForumBlockSignal = violationCount >= 5 || disabledFeatures.length > 0 || Boolean(forumState?.forumDisabled);
+    return {
+      reply: hasForumBlockSignal
+        ? "Siap, aku proses appeal kamu sekarang dan kirim ke admin dashboard. Mohon tunggu, aku akan sertakan data akun, socket, dan fitur yang terblokir."
+        : "Siap, aku bantu kirim appeal. Kalau forum kamu memang diblokir, appeal akan langsung masuk ke admin dashboard untuk direview.",
+      suggestions: ["Tulis alasan singkat", "Cek status appeal", "Buat tiket tambahan"],
+      action: "submit_forum_appeal",
+      params: {
+        reason: raw,
+      },
     };
   }
 
@@ -3795,7 +3816,6 @@ Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, 
       "halo": "**Halo!** Ready to convert! **Kirim URLnya!**"
     };
 
-    const lowerRaw = raw.toLowerCase();
     let reply = "**Hai!** Mau convert video? **Kirim URLnya!**";
 
     for (const [key, value] of Object.entries(fallbackResponses)) {
@@ -8220,6 +8240,7 @@ const controlState = {
 };
 const retentionUsers = new Map();
 const apiRouteStats = new Map();
+const forumAppeals = new Map();
 const abMetrics = {
   A: { started: 0, success: 0 },
   B: { started: 0, success: 0 },
@@ -8250,6 +8271,76 @@ const INDONESIAN_BADWORDS = [
 
 
 const SUPPORT_CONTACT_EMAIL = process.env.SUPPORT_CONTACT_EMAIL || "forumwargaytmp3@gmail.com";
+
+const buildAppealId = () => `APL-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+
+const submitForumAppeal = async ({
+  source = "unknown",
+  userId = "",
+  name = "Warga",
+  email = "",
+  room = "umum",
+  reason = "",
+  socketId = "",
+  disabledFeatures = [],
+  metadata = {},
+} = {}) => {
+  const appealId = buildAppealId();
+  const submittedAt = new Date().toISOString();
+  const normalizedDisabled = Array.isArray(disabledFeatures)
+    ? disabledFeatures.map((x) => String(x || "").trim()).filter(Boolean).slice(0, 12)
+    : [];
+  const appeal = {
+    appealId,
+    source,
+    userId: String(userId || "").slice(0, 120),
+    name: String(name || "Warga").slice(0, 120),
+    email: String(email || "").slice(0, 240),
+    room: String(room || "umum").slice(0, 60),
+    reason: String(reason || "").slice(0, 2400),
+    socketId: String(socketId || "").slice(0, 120),
+    disabledFeatures: normalizedDisabled,
+    metadata: metadata && typeof metadata === "object" ? metadata : {},
+    status: "pending",
+    statusLabel: "Pending",
+    submittedAt,
+    updatedAt: submittedAt,
+    reviewedAt: null,
+    reviewedBy: "",
+    reviewNote: "",
+  };
+  forumAppeals.set(appealId, appeal);
+  pushActivityLog("forum_appeal_submitted", `Forum appeal ${appealId} dibuat`, {
+    appealId,
+    userId: appeal.userId,
+    source,
+  });
+  io.emit("admin:appealCreated", {
+    appealId,
+    submittedAt,
+    userId: appeal.userId,
+    name: appeal.name,
+    status: appeal.status,
+    source,
+  });
+
+  const appealLines = [
+    "=== Forum Appeal Request ===",
+    `Appeal ID : ${appeal.appealId}`,
+    `Source    : ${appeal.source}`,
+    `User ID   : ${appeal.userId || "-"}`,
+    `Name      : ${appeal.name || "-"}`,
+    `Email     : ${appeal.email || "-"}`,
+    `Room      : ${appeal.room || "-"}`,
+    `Socket ID : ${appeal.socketId || "-"}`,
+    `Disabled  : ${appeal.disabledFeatures.join(", ") || "-"}`,
+    `Reason    : ${appeal.reason || "-"}`,
+    `Time      : ${appeal.submittedAt}`,
+    "SLA       : 2x24 jam",
+  ];
+  await sendSupportEmail({ subject: `[Forum Appeal] ${appeal.appealId}`, lines: appealLines });
+  return appeal;
+};
 
 const sendSupportEmail = async ({ subject, lines = [], html = null, to = SUPPORT_CONTACT_EMAIL }) => {
   const transport = getMailTransport();
@@ -8509,6 +8600,56 @@ app.post('/api/forum/moderation-report', async (req, res) => {
   }
 });
 
+app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const userId = String(body.userId || "").trim();
+    const reason = String(body.reason || body.message || "").trim();
+    if (!userId) return res.status(400).json({ ok: false, error: "user_id_required" });
+    if (!reason) return res.status(400).json({ ok: false, error: "reason_required" });
+
+    const violationRec = userViolations.get(userId);
+    const blockedByServer = Boolean(violationRec?.banned);
+    const disabledFeatures = Array.isArray(body.disabledFeatures) ? body.disabledFeatures : [];
+    const blockedByClient = disabledFeatures.length > 0 || Number(body.violationCount || 0) >= 5;
+
+    if (!blockedByServer && !blockedByClient) {
+      return res.status(400).json({
+        ok: false,
+        error: "not_blocked",
+        message: "Status blocked belum terdeteksi dari server/client.",
+      });
+    }
+
+    const appeal = await submitForumAppeal({
+      source: "ai_navigator",
+      userId,
+      name: body.name || "Warga",
+      email: body.email || "",
+      room: body.room || "umum",
+      reason,
+      socketId: body.socketId || "",
+      disabledFeatures,
+      metadata: {
+        violationCount: Number(body.violationCount || 0),
+        googleAccount: body.googleAccount || null,
+        blockedByServer,
+        blockedByClient,
+      },
+    });
+    return res.json({
+      ok: true,
+      appealId: appeal.appealId,
+      status: appeal.status,
+      submittedAt: appeal.submittedAt,
+      message: `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`,
+    });
+  } catch (e) {
+    console.error("[/api/forum/appeal error]", e);
+    return res.status(500).json({ ok: false, error: e?.message || "appeal_failed" });
+  }
+});
+
 app.get("/api/ticket/:ticketId", (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_invalid" });
@@ -8554,6 +8695,42 @@ app.get("/api/admin/tickets", (req, res) => {
   return res.json({ ok: true, tickets: items });
 });
 
+app.get("/api/admin/appeals", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const appeals = Array.from(forumAppeals.values())
+    .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+  return res.json({ ok: true, appeals });
+});
+
+app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const appealId = String(req.params.appealId || "").trim().toUpperCase();
+  const appeal = forumAppeals.get(appealId);
+  if (!appeal) return res.status(404).json({ ok: false, error: "appeal_not_found" });
+  const status = String(req.body?.status || "").trim().toLowerCase();
+  if (!["accepted", "rejected", "pending"].includes(status)) {
+    return res.status(400).json({ ok: false, error: "invalid_status" });
+  }
+  const statusLabelMap = { accepted: "Diterima", rejected: "Ditolak", pending: "Pending" };
+  appeal.status = status;
+  appeal.statusLabel = statusLabelMap[status] || status;
+  appeal.reviewNote = String(req.body?.reviewNote || "").slice(0, 1200);
+  appeal.reviewedBy = String(req.body?.reviewedBy || "admin").slice(0, 120);
+  appeal.reviewedAt = status === "pending" ? null : new Date().toISOString();
+  appeal.updatedAt = new Date().toISOString();
+  forumAppeals.set(appealId, appeal);
+  pushActivityLog("forum_appeal_updated", `Appeal ${appealId} -> ${appeal.statusLabel}`, {
+    appealId,
+    status: appeal.status,
+  });
+  io.emit("admin:appealUpdated", {
+    appealId,
+    status: appeal.status,
+    statusLabel: appeal.statusLabel,
+  });
+  return res.json({ ok: true, appeal });
+});
+
 app.get("/api/admin/stats", (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const now = new Date();
@@ -8596,6 +8773,21 @@ app.get("/api/admin/stats", (req, res) => {
   })).sort((a, b) => b.hits - a.hits).slice(0, 20);
   const returningUsers = Array.from(retentionUsers.values()).filter((u) => Number(u.sessions || 0) > 1).length;
   const newUsers = Math.max(0, retentionUsers.size - returningUsers);
+  const appeals = Array.from(forumAppeals.values()).sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+  const appealsByStatus = appeals.reduce((acc, item) => {
+    const key = String(item?.status || "pending");
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const blockedForumUsers = Array.from(userViolations.values()).filter((x) => x?.banned).length;
+  const disabledFeatureUsage = {};
+  appeals.forEach((a) => {
+    (a.disabledFeatures || []).forEach((f) => {
+      const key = String(f || "").trim();
+      if (!key) return;
+      disabledFeatureUsage[key] = (disabledFeatureUsage[key] || 0) + 1;
+    });
+  });
   const successRate = conversionMetrics.started ? (conversionMetrics.success / conversionMetrics.started) * 100 : 0;
   const predictedNextHourUsers = Number(((conversionMetrics.entered / Math.max(1, process.uptime() / 3600))).toFixed(0));
   const smartInsights = [];
@@ -8679,6 +8871,15 @@ app.get("/api/admin/stats", (req, res) => {
       totalUsers: retentionUsers.size,
       newUsers,
       returningUsers,
+    },
+    appeals: {
+      total: appeals.length,
+      byStatus: appealsByStatus,
+      all: appeals.slice(0, 200),
+    },
+    moderation: {
+      blockedForumUsers,
+      disabledFeatureUsage,
     },
     abTesting: abMetrics,
     smartInsights,
@@ -9113,22 +9314,21 @@ io.on("connection", (socket) => {
     if (!from) return;
     const rec = userViolations.get(from.userId);
     if (rec?.banned) {
-      const appealId = 'APL-' + Date.now().toString(36).toUpperCase().slice(-8);
-      const submittedAt = new Date().toISOString();
-      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${submittedAt}`);
-      const appealLines = [
-        '=== Forum Appeal Request ===',
-        `Appeal ID : ${appealId}`,
-        `User ID   : ${from.userId}`,
-        `Name      : ${from.name}`,
-        `Room      : ${from.room || 'umum'}`,
-        `Time      : ${submittedAt}`,
-        'SLA       : 2x24 jam',
-      ];
-      await sendSupportEmail({ subject: `[Forum Appeal] ${appealId}`, lines: appealLines });
+      const appeal = await submitForumAppeal({
+        source: "forum_socket",
+        userId: from.userId,
+        name: from.name,
+        room: from.room || "umum",
+        reason: String(payload?.reason || "Appeal via forum socket"),
+        socketId: socket.id,
+        metadata: {
+          bannedByServer: true,
+          violationCount: Number(rec?.count || 0),
+        },
+      });
       socket.emit("forum:appealSubmitted", {
-        appealId,
-        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
+        appealId: appeal.appealId,
+        message: `✅ Appeal kamu (${appeal.appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
       });
     }
   });

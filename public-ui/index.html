@@ -18159,7 +18159,22 @@
                 clientState: {
                   preferences: state.preferences,
                   experience: state.experience,
-                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced'
+                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
+                  auth: {
+                    uid: currentUser?.uid || '',
+                    email: currentUser?.email || '',
+                    name: currentUser?.displayName || 'Warga',
+                  },
+                  forum: {
+                    room: activeForumRoom || 'umum',
+                    socketId: ensureForumSocket?.()?.id || '',
+                    violationCount: Number(getForumViolationCount?.() || 0),
+                    forumDisabled: Boolean(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT),
+                    disabledFeatures: [
+                      ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                      ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                    ],
+                  },
                 }
               }),
             });
@@ -18204,6 +18219,48 @@
                   window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
                 }
                 reply += '\n\nSaya sudah siapkan form tiket bantuan. Silakan cek data lalu kirim ya.';
+              }
+
+              if (data.action === 'submit_forum_appeal') {
+                const uid = currentUser?.uid || '';
+                if (!uid) {
+                  reply += '\n\nUntuk kirim appeal, login Google dulu ya.';
+                } else {
+                  const disabledFeatures = [
+                    ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                    ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                  ];
+                  try {
+                    const appealResp = await fetch('/api/forum/appeal', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        userId: uid,
+                        name: currentUser?.displayName || 'Warga',
+                        email: currentUser?.email || '',
+                        room: activeForumRoom || 'umum',
+                        socketId: ensureForumSocket?.()?.id || '',
+                        reason: data?.params?.reason || text,
+                        violationCount: Number(getForumViolationCount?.() || 0),
+                        disabledFeatures,
+                        googleAccount: {
+                          provider: 'google',
+                          uid: uid,
+                          email: currentUser?.email || '',
+                        },
+                      }),
+                    });
+                    const appealData = await appealResp.json().catch(() => ({}));
+                    if (appealResp.ok && appealData?.appealId) {
+                      reply += `\n\n${appealData.message || `✅ Appeal ${appealData.appealId} sudah masuk dashboard admin.`}`;
+                    } else {
+                      reply += `\n\n❌ Gagal kirim appeal: ${appealData?.message || appealData?.error || 'unknown_error'}`;
+                    }
+                  } catch (appealErr) {
+                    reply += '\n\n❌ Gagal kirim appeal ke admin dashboard.';
+                    console.error('Gagal submit appeal AI Navigator', appealErr);
+                  }
+                }
               }
             }
           } catch (err) {
