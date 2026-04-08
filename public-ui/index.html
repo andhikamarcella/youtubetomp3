@@ -18117,178 +18117,6 @@
           return 'Aku sudah catat pertanyaanmu. Coba buka FAQ, walkthrough, atau sebut fitur yang ingin kamu optimalkan.';
         };
 
-        // Two-step forum appeal flow driven by AI Navigator:
-        // 1) user says intent (e.g. "/appeal" or "saya mau appeal")
-        // 2) AI asks reason, next message emits `forum:appeal`
-        let pendingForumAppealReason = false;
-
-        // Forum socket.io integration (used only for appeal + banned/unbanned sync).
-        // Chat UI sendiri dipakai oleh `public-ui/forum-widget.js` (Firestore), tapi appeal/banned sync dikendalikan socket.io backend.
-        let __forumSocket = null;
-        let __forumIoLoadPromise = null;
-        let __forumJoinReady = false;
-        let __forumJoinResolve = null;
-        let __forumJoinPromise = null;
-        let __forumLastBanned = false;
-
-        const loadForumSocketIoClient = () => {
-          if (typeof window.io === 'function') return Promise.resolve(true);
-          if (__forumIoLoadPromise) return __forumIoLoadPromise;
-          __forumIoLoadPromise = new Promise((resolve) => {
-            try {
-              const s = document.createElement('script');
-              // socket.io server is mounted in this app, so loading from same origin should work.
-              s.src = '/socket.io/socket.io.js';
-              s.async = true;
-              s.onload = () => resolve(true);
-              s.onerror = () => resolve(false);
-              (document.head || document.body || document.documentElement).appendChild(s);
-            } catch {
-              resolve(false);
-            }
-          });
-          return __forumIoLoadPromise;
-        };
-
-        const getForumJoinContext = async (timeoutMs = 8000) => {
-          const started = Date.now();
-          const tickDelay = 250;
-          // Wait until firebase auth is ready so we can send the exact same `userId` key
-          // that backend uses for `userViolations`.
-          while (Date.now() - started < timeoutMs) {
-            try {
-              const u = window.firebaseModules?.auth?.currentUser;
-              if (u) {
-                return {
-                  userId: String(u.uid || ''),
-                  name: String(u.displayName || u.email || 'Warga'),
-                };
-              }
-            } catch { }
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((r) => window.setTimeout(r, tickDelay));
-          }
-          return null;
-        };
-
-        const setForumInputLocked = (locked, message = '') => {
-          // Support multiple possible forum UI variants.
-          const input =
-            document.getElementById('forumWidgetInput') ||
-            document.getElementById('forumInput');
-          const sendBtn =
-            document.getElementById('forumWidgetSend') ||
-            document.getElementById('forumSendBtn');
-
-          const firebaseHasAuth = Boolean(window.firebaseModules?.auth);
-          const loggedIn = Boolean(window.firebaseModules?.auth?.currentUser);
-
-          const shouldDisable = locked || (firebaseHasAuth ? !loggedIn : false);
-
-          if (input) {
-            // Keep default placeholder so we can restore after unlocked.
-            if (input.dataset.forumPlaceholderDefault === undefined) {
-              input.dataset.forumPlaceholderDefault = input.getAttribute('placeholder') || '';
-            }
-            input.disabled = shouldDisable;
-            if (locked) {
-              const msg = message || 'Kamu sedang diblokir dari forum. Ajukan appeal via AI Navigator.';
-              input.setAttribute('placeholder', msg);
-            } else {
-              input.setAttribute('placeholder', input.dataset.forumPlaceholderDefault || '');
-            }
-          }
-          if (sendBtn) sendBtn.disabled = shouldDisable;
-        };
-
-        const ensureForumSocket = () => {
-          if (__forumSocket) return __forumSocket;
-          // Load socket.io client if needed; return null so retry loop can continue.
-          if (typeof window.io !== 'function') {
-            loadForumSocketIoClient().catch(() => { });
-            return null;
-          }
-
-          __forumSocket = window.io({ transports: ['websocket', 'polling'] });
-
-          __forumSocket.on('connect', () => {
-            __forumJoinReady = false;
-            __forumJoinPromise = new Promise((resolve) => { __forumJoinResolve = resolve; });
-
-            (async () => {
-              try {
-                const ctx = await getForumJoinContext();
-                // Jangan join pakai userId kosong, karena backend akan mengabaikan appeal.
-                if (ctx?.userId) {
-                  __forumSocket.emit('forum:join', {
-                    room: 'umum',
-                    userId: ctx.userId,
-                    name: ctx.name,
-                  });
-                }
-              } catch {
-                // If join payload fails, appeal will likely be ignored by backend.
-              }
-            })();
-          });
-
-          __forumSocket.on('disconnect', () => {
-            __forumJoinReady = false;
-          });
-
-          __forumSocket.on('forum:statusSync', (payload) => {
-            const banned = Boolean(payload?.banned);
-            __forumLastBanned = banned;
-            __forumJoinReady = true;
-            try { __forumJoinResolve?.(true); } catch { }
-            setForumInputLocked(banned, banned ? 'Kamu diblokir dari forum. Ajukan appeal via AI Navigator.' : '');
-          });
-
-          __forumSocket.on('forum:banned', (payload) => {
-            const msg = String(payload?.message || payload?.msg || '');
-            __forumLastBanned = true;
-            setForumInputLocked(true, msg || 'Kamu diblokir dari forum. Ajukan appeal via AI Navigator.');
-          });
-
-          __forumSocket.on('forum:appealSubmitted', (payload) => {
-            const msg = String(payload?.message || '');
-            if (msg) {
-              if (typeof setToast === 'function') setToast(msg, 'success');
-              else if (typeof window.setToast === 'function') window.setToast(msg, 'success');
-            }
-          });
-
-          __forumSocket.on('forum:appealResult', (payload) => {
-            const status = String(payload?.status || '');
-            const msg = String(payload?.message || '');
-            __forumLastBanned = status !== 'resolved';
-            if (typeof setToast === 'function' && msg) {
-              setToast(msg, status === 'resolved' ? 'info' : 'warn');
-            }
-            if (status === 'resolved') setForumInputLocked(false, '');
-            else setForumInputLocked(true, msg || 'Appeal ditolak. Hubungi CS untuk info.');
-          });
-
-          return __forumSocket;
-        };
-
-        const waitForForumJoinReady = async (timeoutMs = 8000) => {
-          const started = Date.now();
-          while (Date.now() - started < timeoutMs) {
-            if (__forumJoinReady) return true;
-            if (__forumJoinPromise) {
-              const ok = await Promise.race([
-                __forumJoinPromise,
-                new Promise((r) => window.setTimeout(() => r(false), 2500)),
-              ]);
-              if (ok) return true;
-            }
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((r) => window.setTimeout(r, 200));
-          }
-          return false;
-        };
-
         const handleAssistantCommand = (command) => {
           const normalized = command.trim().toLowerCase();
           if (!normalized.startsWith('/')) return '';
@@ -18306,10 +18134,6 @@
             setActiveSection('saweria');
             closeAssistantPanel();
             return 'Membuka halaman donasi Saweria. Terima kasih atas dukunganmu!';
-          }
-          if (normalized.includes('/appeal') || normalized.includes('/banding')) {
-            pendingForumAppealReason = true;
-            return 'Siap. Ketik alasan appeal kamu (kenapa kamu merasa wajar / mau memperbaiki). Setelah itu kirim lagi di AI Navigator.';
           }
           if (normalized.includes('/ai')) {
             // Stay here
@@ -18335,7 +18159,22 @@
                 clientState: {
                   preferences: state.preferences,
                   experience: state.experience,
-                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced'
+                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
+                  auth: {
+                    uid: currentUser?.uid || '',
+                    email: currentUser?.email || '',
+                    name: currentUser?.displayName || 'Warga',
+                  },
+                  forum: {
+                    room: activeForumRoom || 'umum',
+                    socketId: ensureForumSocket?.()?.id || '',
+                    violationCount: Number(getForumViolationCount?.() || 0),
+                    forumDisabled: Boolean(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT),
+                    disabledFeatures: [
+                      ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                      ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                    ],
+                  },
                 }
               }),
             });
@@ -18381,6 +18220,48 @@
                 }
                 reply += '\n\nSaya sudah siapkan form tiket bantuan. Silakan cek data lalu kirim ya.';
               }
+
+              if (data.action === 'submit_forum_appeal') {
+                const uid = currentUser?.uid || '';
+                if (!uid) {
+                  reply += '\n\nUntuk kirim appeal, login Google dulu ya.';
+                } else {
+                  const disabledFeatures = [
+                    ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                    ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                  ];
+                  try {
+                    const appealResp = await fetch('/api/forum/appeal', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        userId: uid,
+                        name: currentUser?.displayName || 'Warga',
+                        email: currentUser?.email || '',
+                        room: activeForumRoom || 'umum',
+                        socketId: ensureForumSocket?.()?.id || '',
+                        reason: data?.params?.reason || text,
+                        violationCount: Number(getForumViolationCount?.() || 0),
+                        disabledFeatures,
+                        googleAccount: {
+                          provider: 'google',
+                          uid: uid,
+                          email: currentUser?.email || '',
+                        },
+                      }),
+                    });
+                    const appealData = await appealResp.json().catch(() => ({}));
+                    if (appealResp.ok && appealData?.appealId) {
+                      reply += `\n\n${appealData.message || `✅ Appeal ${appealData.appealId} sudah masuk dashboard admin.`}`;
+                    } else {
+                      reply += `\n\n❌ Gagal kirim appeal: ${appealData?.message || appealData?.error || 'unknown_error'}`;
+                    }
+                  } catch (appealErr) {
+                    reply += '\n\n❌ Gagal kirim appeal ke admin dashboard.';
+                    console.error('Gagal submit appeal AI Navigator', appealErr);
+                  }
+                }
+              }
             }
           } catch (err) {
             console.error('Gagal mengambil jawaban AI', err);
@@ -18394,103 +18275,13 @@
           updateMascotMood('ai');
         };
 
-        async function sendAssistantMessage() {
+        function sendAssistantMessage() {
           if (!assistantInput) return;
           const value = assistantInput.value.trim();
           if (!value) return;
           addAssistantMessage(value, 'user');
           state.assistantHistory.push({ role: 'user', text: value });
           assistantInput.value = '';
-
-          const lower = value.toLowerCase();
-          const compact = lower.replace(/\s+/g, '');
-          const isAppealIntent =
-            lower === '/appeal' ||
-            lower.startsWith('/appeal ') ||
-            lower.includes('ajukan banding') ||
-            lower.includes('ajukan appeal') ||
-            /mau\s*appeal/.test(lower) ||
-            compact.includes('mauappeal') ||
-            compact.includes('ajukanappeal') ||
-            lower.includes('banding');
-
-          // Step 1: detect appeal intent and ask for reason.
-          if (!pendingForumAppealReason && isAppealIntent) {
-            pendingForumAppealReason = true;
-            const botMsg = 'Siap. Ketik alasan appeal kamu (kenapa kamu merasa wajar / mau memperbaiki). Setelah itu kirim lagi di AI Navigator.';
-            addAssistantMessage(botMsg, 'bot', { animate: true });
-            state.assistantHistory.push({ role: 'bot', text: botMsg });
-            persistState();
-            return;
-          }
-
-          // Step 2: submit appeal reason to forum server.
-          if (pendingForumAppealReason) {
-            pendingForumAppealReason = false;
-            const reason = value;
-            const botMsg = 'Mengirim appeal kamu ke admin...';
-            addAssistantMessage(botMsg, 'bot', { animate: true });
-            state.assistantHistory.push({ role: 'bot', text: botMsg });
-            persistState();
-
-            const waitForForumSocket = async (timeoutMs = 8000) => {
-              const started = Date.now();
-              while (Date.now() - started < timeoutMs) {
-                try {
-                  const sock = (typeof ensureForumSocket === 'function') ? ensureForumSocket() : null;
-                  if (sock) {
-                    if (!sock.connected) {
-                      await new Promise((resolve) => {
-                        let done = false;
-                        const finish = () => {
-                          if (done) return;
-                          done = true;
-                          resolve();
-                        };
-                        try { sock.once?.('connect', finish); } catch { }
-                        window.setTimeout(finish, 1500);
-                      });
-                    }
-                    return sock;
-                  }
-                } catch { }
-                await new Promise((r) => window.setTimeout(r, 200));
-              }
-              return null;
-            };
-
-            try {
-              const sock = await waitForForumSocket();
-              if (!sock) throw new Error('Socket forum belum siap. Coba buka forum dulu sebentar, lalu ulangi appeal.');
-              // Jika socket sempat connect sebelum auth siap (jadi join tidak terkirim),
-              // kita coba kirim ulang join saat user sudah ada.
-              if (!__forumJoinReady) {
-                try {
-                  const ctx = await getForumJoinContext(5000);
-                  if (ctx?.userId) {
-                    sock.emit('forum:join', { room: 'umum', userId: ctx.userId, name: ctx.name });
-                  }
-                } catch { }
-              }
-              const joinedOk = await waitForForumJoinReady(8000);
-              if (!joinedOk) {
-                throw new Error('Forum socket belum melakukan join dan sinkronisasi status. Buka forum widget dan pastikan login Google, lalu ulangi appeal.');
-              }
-              // backend hanya meng-create appeal jika `rec?.banned` = true untuk key `userId` yang tersimpan di socketState.
-              if (!__forumLastBanned) {
-                throw new Error('Status banned belum terdeteksi dari server. Pastikan kamu sudah login Google dan akses forum memang diblokir, lalu ulangi appeal.');
-              }
-
-              sock.emit?.('forum:appeal', { reason });
-            } catch (e) {
-              const errMsg = String(e?.message || e || 'Gagal mengirim appeal.');
-              addAssistantMessage(errMsg, 'bot', { animate: true });
-              state.assistantHistory.push({ role: 'bot', text: errMsg });
-              persistState();
-            }
-            return;
-          }
-
           const commandReply = handleAssistantCommand(value);
           if (commandReply) {
             addAssistantMessage(commandReply, 'bot', { animate: true });
