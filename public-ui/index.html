@@ -18119,27 +18119,33 @@
 
         const handleAssistantCommand = (command) => {
           const normalized = command.trim().toLowerCase();
-          if (!normalized.startsWith('/')) return '';
+          if (!normalized.startsWith('/')) return { handled: false };
           if (normalized.includes('/faq')) {
             setActiveSection('faq');
             closeAssistantPanel();
-            return 'Membuka halaman Pertanyaan Umum (FAQ)...';
+            return { handled: true, reply: 'Membuka halaman Pertanyaan Umum (FAQ)...' };
           }
           if (normalized.includes('/walkthrough')) {
             closeAssistantPanel();
             narrateGuide(); // Assuming this triggers the guide
-            return 'Memulai panduan interaktif website...';
+            return { handled: true, reply: 'Memulai panduan interaktif website...' };
           }
           if (normalized.includes('/donasi')) {
             setActiveSection('saweria');
             closeAssistantPanel();
-            return 'Membuka halaman donasi Saweria. Terima kasih atas dukunganmu!';
+            return { handled: true, reply: 'Membuka halaman donasi Saweria. Terima kasih atas dukunganmu!' };
           }
           if (normalized.includes('/ai')) {
             // Stay here
-            return 'AI Navigator siap membantu! Tanyakan apa saja tentang fitur website ini.';
+            return { handled: true, reply: 'AI Navigator siap membantu! Tanyakan apa saja tentang fitur website ini.' };
           }
-          return 'Perintah tidak dikenal. Gunakan menu slash command (/) untuk melihat daftar perintah.';
+          if (normalized.includes('/appeal') || normalized.includes('/banding')) {
+            return { handled: false, forwardText: 'Saya mau appeal forum diblokir. Tolong bantu kirim appeal ke admin.' };
+          }
+          return {
+            handled: false,
+            forwardText: normalized.slice(1).trim() || command.trim(),
+          };
         };
 
         const respondWithAssistant = async (text) => {
@@ -18282,16 +18288,17 @@
           addAssistantMessage(value, 'user');
           state.assistantHistory.push({ role: 'user', text: value });
           assistantInput.value = '';
-          const commandReply = handleAssistantCommand(value);
-          if (commandReply) {
-            addAssistantMessage(commandReply, 'bot', { animate: true });
-            state.assistantHistory.push({ role: 'bot', text: commandReply });
+          const commandResult = handleAssistantCommand(value);
+          if (commandResult?.handled && commandResult.reply) {
+            addAssistantMessage(commandResult.reply, 'bot', { animate: true });
+            state.assistantHistory.push({ role: 'bot', text: commandResult.reply });
             persistState();
             incrementPoints(10, 'Perintah cepat AI', { badge: 'navigator' });
             updateMascotMood('ai');
             return;
           }
-          respondWithAssistant(value);
+          const textToSend = commandResult?.forwardText || value;
+          respondWithAssistant(textToSend);
         }
 
         const ensureAssistantWelcome = () => {

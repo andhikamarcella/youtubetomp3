@@ -94,7 +94,13 @@ const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_
 const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
-const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const GROQ_API_KEY = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_APIKEY,
+  process.env.GROQ_KEY,
+  process.env.GROK_API_KEY,
+  process.env.AI_GROQ_API_KEY,
+].map((value) => String(value || "").trim()).find(Boolean) || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const isGroqConfigured = Boolean(GROQ_API_KEY);
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
@@ -700,8 +706,7 @@ Jika percakapan biasa/edukasi/diagnosa:
         model: GROQ_MODEL,
         messages: messages,
         temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
+        max_tokens: 500
       }),
     });
 
