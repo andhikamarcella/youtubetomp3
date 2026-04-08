@@ -94,12 +94,49 @@ const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_
 const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
-const GROQ_API_KEYS = [
-  process.env.GROQ_API_KEY,
-  process.env.GROQ_API_KEY_FALLBACK,
-].map((x) => String(x || "").trim()).filter(Boolean);
+const collectGroqKeys = () => {
+  const rawValues = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_FALLBACK,
+    process.env.GROQ_API_KEYS,
+  ].filter((x) => x !== undefined && x !== null).map((x) => String(x));
+
+  const keys = [];
+  const seen = new Set();
+  const keyPattern = /gsk_[A-Za-z0-9]+/g;
+
+  rawValues.forEach((raw) => {
+    const direct = raw.trim();
+    if (/^gsk_[A-Za-z0-9]+$/.test(direct) && !seen.has(direct)) {
+      seen.add(direct);
+      keys.push(direct);
+    }
+
+    const matches = raw.match(keyPattern) || [];
+    matches.forEach((candidate) => {
+      const normalized = String(candidate || "").trim();
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      keys.push(normalized);
+    });
+
+    raw
+      .split(/[\n,;\s]+/)
+      .map((token) => token.trim())
+      .filter((token) => /^gsk_[A-Za-z0-9]+$/.test(token))
+      .forEach((token) => {
+        if (seen.has(token)) return;
+        seen.add(token);
+        keys.push(token);
+      });
+  });
+
+  return keys;
+};
+
+const GROQ_API_KEYS = collectGroqKeys();
 const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.3-70b-versatile").trim() || "llama-3.3-70b-versatile";
 const isGroqConfigured = GROQ_API_KEYS.length > 0;
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
@@ -8981,12 +9018,19 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
   pushActivityLog("ticket_updated", `Tiket ${ticketId} diubah ke ${statusLabel}`, { ticketId, status });
 
   const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
+  const uploadProofHint = `${statusLink}#upload-proof`;
+  const waitingUserTemplate = `Mohon upload bukti tambahan via link ini: ${uploadProofHint} atau buka halaman status tiket dan gunakan nomor tiket ${ticketId}.`;
+  if (status === "waiting_user") {
+    ticket.adminReply = adminReply || waitingUserTemplate;
+    supportTickets.set(ticketId, ticket);
+  }
+  const effectiveReply = ticket.adminReply || adminReply || "";
   const replyHtml = `
   <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
     <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
       <h3 style="margin-top:0;">Update Status Tiket ${ticketId}</h3>
       <p>Status terbaru: <b>${statusLabel}</b></p>
-      ${adminReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${adminReply.replace(/\n/g, "<br>")}</div>` : ""}
+      ${effectiveReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${effectiveReply.replace(/\n/g, "<br>")}</div>` : ""}
       <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
     </div>
   </div>`;
@@ -9007,8 +9051,6 @@ app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), 
   if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
-  const adminCount = Array.isArray(ticket.chatHistory) ? ticket.chatHistory.filter((x) => x?.sender === "admin").length : 0;
-  if (adminCount >= 3) return res.status(400).json({ ok: false, error: "admin_chat_limit_reached", limit: 3 });
   const nowIso = new Date().toISOString();
   const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
@@ -9030,8 +9072,6 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, r
   if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
-  const userCount = Array.isArray(ticket.chatHistory) ? ticket.chatHistory.filter((x) => x?.sender === "user").length : 0;
-  if (userCount >= 3) return res.status(400).json({ ok: false, error: "user_chat_limit_reached", limit: 3 });
   const nowIso = new Date().toISOString();
   const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
@@ -9048,7 +9088,73 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, r
   io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
   io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
   pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
-  return res.json({ ok: true, chat: chatEntry, ticketId, remaining: Math.max(0, 3 - (userCount + 1)) });
+  return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
+});
+
+app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async (req, res) => {
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const proofs = Array.isArray(req.body?.proofs) ? req.body.proofs : [];
+  if (!proofs.length) return res.status(400).json({ ok: false, error: "proof_required" });
+  const note = String(req.body?.note || "").trim().slice(0, 2000);
+  const uploaded = [];
+  for (const item of proofs.slice(0, 4)) {
+    const directUrl = typeof item?.url === "string" ? item.url.trim() : "";
+    if (/^https?:\/\//i.test(directUrl)) {
+      uploaded.push({
+        name: String(item?.name || "attachment"),
+        url: directUrl,
+        type: String(item?.type || ""),
+        size: Number(item?.size || 0) || 0,
+        from: "user_followup",
+        at: new Date().toISOString(),
+      });
+      continue;
+    }
+    const dataUrl = typeof item?.dataUrl === "string" ? item.dataUrl : "";
+    if (!dataUrl.startsWith("data:")) continue;
+    try {
+      const isVideo = /^data:video\//i.test(dataUrl);
+      const result = await cloudinary.uploader.upload(dataUrl, {
+        folder: "ytconv/support-tickets/followup",
+        resource_type: isVideo ? "video" : "image",
+        public_id: `${ticketId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        overwrite: false,
+      });
+      if (result?.secure_url) {
+        uploaded.push({
+          name: String(item?.name || result?.original_filename || "attachment"),
+          url: String(result.secure_url),
+          type: String(item?.type || ""),
+          size: Number(item?.size || 0) || 0,
+          from: "user_followup",
+          at: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.warn("[/api/ticket/:ticketId/proofs] upload error", err?.message || err);
+    }
+  }
+  if (!uploaded.length) return res.status(400).json({ ok: false, error: "proof_upload_failed" });
+  if (!Array.isArray(ticket.proofs)) ticket.proofs = [];
+  ticket.proofs.push(...uploaded);
+  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
+  const nowIso = new Date().toISOString();
+  ticket.chatHistory.push({
+    id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
+    sender: "user",
+    message: `Mengirim bukti tambahan (${uploaded.length} file).${note ? ` Catatan: ${note}` : ""}`,
+    at: nowIso,
+  });
+  ticket.status = ticket.status === "waiting_user" ? "reviewing" : ticket.status;
+  ticket.statusLabel = ticket.status === "reviewing" ? "Diproses" : ticket.statusLabel;
+  ticket.statusUpdatedAt = nowIso;
+  supportTickets.set(ticketId, ticket);
+  io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
+  io.emit("admin:ticketChat", { ticketId, chat: ticket.chatHistory[ticket.chatHistory.length - 1] });
+  pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
+  return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
 });
 
 app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
