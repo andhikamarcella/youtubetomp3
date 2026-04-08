@@ -18139,6 +18139,9 @@
             // Stay here
             return 'AI Navigator siap membantu! Tanyakan apa saja tentang fitur website ini.';
           }
+          if (normalized.startsWith('/appeal')) {
+            return '__APPEAL_COMMAND__';
+          }
           return 'Perintah tidak dikenal. Gunakan menu slash command (/) untuk melihat daftar perintah.';
         };
 
@@ -18283,6 +18286,12 @@
           state.assistantHistory.push({ role: 'user', text: value });
           assistantInput.value = '';
           const commandReply = handleAssistantCommand(value);
+          if (commandReply === '__APPEAL_COMMAND__') {
+            const reason = value.replace(/^\/appeal\s*/i, '').trim();
+            const prompt = reason ? `/appeal ${reason}` : '/appeal saya tidak sengaja dan ingin kembali chat di forum';
+            respondWithAssistant(prompt);
+            return;
+          }
           if (commandReply) {
             addAssistantMessage(commandReply, 'bot', { animate: true });
             state.assistantHistory.push({ role: 'bot', text: commandReply });
@@ -18298,6 +18307,11 @@
           if (!assistantMessages) return;
           if (!state.assistantHistory.length) {
             addAssistantMessage('Navigator YTConv siap bantu seperti customer service. Tanyakan apa saja dengan bahasa kamu, nanti aku kasih alur langkah yang jelas.', 'bot');
+            try {
+              if (typeof getForumViolationCount === 'function' && getForumViolationCount() >= FORUM_VIOLATION_LIMIT) {
+                addAssistantMessage('Aku deteksi akun kamu lagi dibatasi di forum. Ketik **/appeal alasan kamu** supaya langsung aku kirim ke admin dashboard.', 'bot');
+              }
+            } catch { }
           } else {
             state.assistantHistory.forEach((msg) => addAssistantMessage(msg.text, msg.role));
           }
@@ -23841,6 +23855,10 @@
         }
 
         async function doConvert(target, autoDownload = false) {
+          if (window.__adminConvertDisabled) {
+            setToast('Convert sedang dinonaktifkan admin. Coba lagi nanti ya.', 'warning');
+            return;
+          }
           // Request notification permission if default
           if ('Notification' in window && Notification.permission === 'default') {
             try { Notification.requestPermission(); } catch { }
@@ -25939,9 +25957,10 @@
           // Helper to set disabled state
           const set = (el, disabled) => {
             if (el) {
-              el.disabled = disabled;
+              const adminLocked = Boolean(window.__adminConvertDisabled) && (el.id === 'convertBtn' || el.id === 'basic-convert-btn' || el.id === 'gaptek-convert-btn');
+              el.disabled = disabled || adminLocked;
               // Add/remove visual hint for disabled state if needed, but 'disabled' attribute is usually enough for Bootstrap
-              if (disabled) {
+              if (disabled || adminLocked) {
                 el.classList.add('opacity-50');
               } else {
                 el.classList.remove('opacity-50');
@@ -25959,9 +25978,11 @@
 
               // Restore Convert Button Text
               if (convertBtn) {
-                convertBtn.innerHTML = '<i class="bi bi-magic"></i> <span data-i18n="buttonConvert">Convert</span>';
+                convertBtn.innerHTML = window.__adminConvertDisabled
+                  ? '<i class="bi bi-shield-lock"></i> <span>Convert Disabled Admin</span>'
+                  : '<i class="bi bi-magic"></i> <span data-i18n="buttonConvert">Convert</span>';
                 // Ensure it pulsates or highlights as the primary action
-                convertBtn.classList.add('pulse-animation');
+                convertBtn.classList.toggle('pulse-animation', !window.__adminConvertDisabled);
               }
               break;
 
@@ -27326,7 +27347,13 @@
             })();
             const reportPageChange = () => {
               try {
-                forumSocket?.emit('page_change', { page: window.location.pathname || '/', clientId: telemetryClientId, abVariant });
+                forumSocket?.emit('page_change', {
+                  page: window.location.pathname || '/',
+                  clientId: telemetryClientId,
+                  abVariant,
+                  userId: currentUser?.uid || '',
+                  userEmail: currentUser?.email || '',
+                });
               } catch { }
             };
             const reportUserAction = (action, detail = '') => {
@@ -27407,6 +27434,33 @@
             forumSocket.on('conversion_blocked', (payload) => {
               if (typeof setToast === 'function') setToast(payload?.message || 'Konversi dinonaktifkan sementara oleh admin.', 'warning');
               window.manageCTAState?.('idle');
+            });
+            forumSocket.on('control_state', (payload) => {
+              const disabled = payload?.convertEnabled === false;
+              window.__adminConvertDisabled = disabled;
+              const convertBtn = document.getElementById('convertBtn');
+              const basicBtn = document.getElementById('basic-convert-btn');
+              const gaptekBtn = document.getElementById('gaptek-convert-btn');
+              [convertBtn, basicBtn, gaptekBtn].forEach((btn) => {
+                if (!btn) return;
+                btn.disabled = disabled;
+                btn.classList.toggle('opacity-50', disabled);
+                btn.title = disabled ? 'Convert dinonaktifkan admin sementara' : '';
+              });
+              const badgeId = 'adminConvertStateBadge';
+              let badge = document.getElementById(badgeId);
+              if (!badge) {
+                badge = document.createElement('div');
+                badge.id = badgeId;
+                badge.className = 'small mt-2';
+                const target = document.getElementById('convertBtn')?.parentElement;
+                if (target) target.appendChild(badge);
+              }
+              if (badge) {
+                badge.textContent = disabled ? '🚫 Convert dinonaktifkan sementara oleh admin.' : '✅ Convert aktif normal.';
+                badge.classList.toggle('text-danger', disabled);
+                badge.classList.toggle('text-success', !disabled);
+              }
             });
             window.addEventListener('popstate', reportPageChange);
             window.addEventListener('hashchange', reportPageChange);
