@@ -18196,35 +18196,53 @@
           let reply = '';
           try {
             const historyToSend = state.assistantHistory.slice(0, -1);
-
-            const response = await fetch(api('/api/assistant-chat'), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                prompt: text,
-                messages: historyToSend,
-                clientState: {
-                  preferences: state.preferences,
-                  experience: state.experience,
-                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
-                  auth: {
-                    uid: currentUser?.uid || '',
-                    email: currentUser?.email || '',
-                    name: currentUser?.displayName || 'Warga',
-                  },
-                  forum: {
-                    room: activeForumRoom || 'umum',
-                    socketId: ensureForumSocket?.()?.id || '',
-                    violationCount: Number(getForumViolationCount?.() || 0),
-                    forumDisabled: Boolean(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT),
-                    disabledFeatures: [
-                      ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
-                      ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
-                    ],
-                  },
+            const payload = {
+              prompt: text,
+              messages: historyToSend,
+              clientState: {
+                preferences: state.preferences,
+                experience: state.experience,
+                mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
+                auth: {
+                  uid: currentUser?.uid || '',
+                  email: currentUser?.email || '',
+                  name: currentUser?.displayName || 'Warga',
+                },
+                forum: {
+                  room: activeForumRoom || 'umum',
+                  socketId: ensureForumSocket?.()?.id || '',
+                  violationCount: Number(getForumViolationCount?.() || 0),
+                  forumDisabled: Boolean(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT),
+                  disabledFeatures: [
+                    ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                    ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                  ],
+                },
+              }
+            };
+            const primaryUrl = api('/api/assistant-chat');
+            const sameOriginUrl = '/api/assistant-chat';
+            const targets = [primaryUrl];
+            if (primaryUrl !== sameOriginUrl) targets.push(sameOriginUrl);
+            let response = null;
+            let responseErr = null;
+            for (const target of targets) {
+              try {
+                const candidate = await fetch(target, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                });
+                if (candidate.ok) {
+                  response = candidate;
+                  break;
                 }
-              }),
-            });
+                responseErr = new Error(`assistant_api_${candidate.status}`);
+              } catch (networkErr) {
+                responseErr = networkErr;
+              }
+            }
+            if (!response) throw responseErr || new Error('assistant_api_unreachable');
             if (response.ok) {
               const data = await response.json();
               reply = data?.reply || '';

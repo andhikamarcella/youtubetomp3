@@ -103,11 +103,11 @@ const collectGroqKeys = () => {
 
   const keys = [];
   const seen = new Set();
-  const keyPattern = /gsk_[A-Za-z0-9]+/g;
+  const keyPattern = /gsk_[A-Za-z0-9_-]+/g;
 
   rawValues.forEach((raw) => {
     const direct = raw.trim();
-    if (/^gsk_[A-Za-z0-9]+$/.test(direct) && !seen.has(direct)) {
+    if (/^gsk_[A-Za-z0-9_-]+$/.test(direct) && !seen.has(direct)) {
       seen.add(direct);
       keys.push(direct);
     }
@@ -123,7 +123,7 @@ const collectGroqKeys = () => {
     raw
       .split(/[\n,;\s]+/)
       .map((token) => token.trim())
-      .filter((token) => /^gsk_[A-Za-z0-9]+$/.test(token))
+      .filter((token) => /^gsk_[A-Za-z0-9_-]+$/.test(token))
       .forEach((token) => {
         if (seen.has(token)) return;
         seen.add(token);
@@ -745,7 +745,6 @@ Jika percakapan biasa/edukasi/diagnosa:
           messages,
           temperature: 0.7,
           max_tokens: 500,
-          response_format: { type: "json_object" }
         }),
       });
 
