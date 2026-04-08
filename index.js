@@ -8712,7 +8712,7 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
     const blockedSignalDetected = moderationState.blockedSignalDetected;
 
     const appeal = await submitForumAppeal({
-      source: "ai_navigator",
+      source: String(body.source || "ai_navigator").slice(0, 60),
       userId,
       name: body.name || "Warga",
       email: body.email || "",
@@ -9583,24 +9583,25 @@ io.on("connection", (socket) => {
     if (!from) return;
     const rec = userViolations.get(from.userId);
     const blockState = isForumUserBlocked({ userId: from.userId, violationCount: Number(rec?.count || 0) });
-    if (blockState.blocked) {
-      const appeal = await submitForumAppeal({
-        source: "forum_socket",
-        userId: from.userId,
-        name: from.name,
-        room: from.room || "umum",
-        reason: String(payload?.reason || "Appeal via forum socket"),
-        socketId: socket.id,
-        metadata: {
-          bannedByServer: true,
-          violationCount: Number(rec?.count || 0),
-        },
-      });
-      socket.emit("forum:appealSubmitted", {
-        appealId: appeal.appealId,
-        message: `✅ Appeal kamu (${appeal.appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
-      });
-    }
+    const reason = String(payload?.reason || "").trim() || "Appeal via forum socket";
+    const appeal = await submitForumAppeal({
+      source: "forum_socket",
+      userId: from.userId,
+      name: from.name,
+      room: from.room || "umum",
+      reason,
+      socketId: socket.id,
+      metadata: {
+        blocked: blockState.blocked,
+        blockedByServer: blockState.blockedByServer,
+        blockedByClient: blockState.blockedByClient,
+        violationCount: Number(rec?.count || 0),
+      },
+    });
+    socket.emit("forum:appealSubmitted", {
+      appealId: appeal.appealId,
+      message: `✅ Appeal kamu (${appeal.appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
+    });
   });
 
   socket.on("forum:join", (payload) => {

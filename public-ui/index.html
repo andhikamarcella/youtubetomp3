@@ -29716,15 +29716,45 @@
             }
             forumAppealBtn?.setAttribute('disabled', '');
             try {
-              const result = await submitForumAppeal(cleanReason);
-              if (!result?.ok) {
-                setToast(`Gagal kirim appeal: ${result?.error || 'unknown_error'}`, 'danger');
-                return;
+              const socketId = (() => {
+                try { return ensureForumSocket?.()?.id || ''; } catch { return ''; }
+              })();
+              const violationCount = Number(getForumViolationCount() || 0) || 0;
+              const disabledFeatures = [
+                ...(violationCount >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+              ];
+              const resp = await fetch('/api/forum/appeal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  source: 'forum_button',
+                  userId: currentUser.uid,
+                  name: currentUser.displayName || 'Warga',
+                  email: currentUser.email || '',
+                  room: activeForumRoom || 'umum',
+                  socketId,
+                  reason: cleanReason,
+                  violationCount,
+                  disabledFeatures,
+                  googleAccount: {
+                    provider: 'google',
+                    uid: currentUser.uid,
+                    email: currentUser.email || '',
+                  },
+                }),
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok || !data?.appealId) {
+                try {
+                  ensureForumSocket?.()?.emit?.('forum:appeal', { reason: cleanReason });
+                } catch { }
+                throw new Error(data?.message || data?.error || 'appeal_submit_failed');
               }
-              setToast(result.message || 'Appeal berhasil dikirim ke admin dashboard.', 'success');
+              setToast(data?.message || `Appeal ${data.appealId} berhasil dikirim ke admin dashboard.`, 'success');
             } catch (err) {
               console.error('Gagal submit appeal dari tombol forum', err);
-              setToast('Gagal kirim appeal. Coba lagi sebentar.', 'danger');
+              setToast(`Gagal kirim appeal: ${err?.message || 'unknown_error'}`, 'danger');
             } finally {
               forumAppealBtn?.removeAttribute('disabled');
             }
