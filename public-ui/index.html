@@ -8794,6 +8794,9 @@
               <li><button class="dropdown-item small"
                   onclick="document.getElementById('assistantInput').value='/donasi ';document.getElementById('assistantInput').focus();"><i
                     class="bi bi-heart me-2"></i>Donasi</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/appeal ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-shield-exclamation me-2"></i>Appeal Forum</button></li>
               <li>
                 <hr class="dropdown-divider">
               </li>
@@ -18139,7 +18142,52 @@
             // Stay here
             return 'AI Navigator siap membantu! Tanyakan apa saja tentang fitur website ini.';
           }
+          if (normalized.startsWith('/appeal')) {
+            return '__APPEAL_COMMAND__';
+          }
           return 'Perintah tidak dikenal. Gunakan menu slash command (/) untuk melihat daftar perintah.';
+        };
+
+        const isAppealIntent = (value) => {
+          const raw = String(value || '').trim().toLowerCase();
+          if (!raw) return false;
+          return /^\/?appeal(\s+.*)?$/.test(raw)
+            || /(saya\s+mau\s+appeal|mau\s+appeal|ajukan\s+appeal|banding|kena\s+ban|forum\s+diblokir|forum\s+dike?unci)/.test(raw);
+        };
+
+        const submitForumAppeal = async (reasonText) => {
+          const uid = currentUser?.uid || '';
+          if (!uid) {
+            return { ok: false, error: 'Untuk kirim appeal, login Google dulu ya.' };
+          }
+          const disabledFeatures = [
+            ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+            ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+          ];
+          const appealResp = await fetch('/api/forum/appeal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: uid,
+              name: currentUser?.displayName || 'Warga',
+              email: currentUser?.email || '',
+              room: activeForumRoom || 'umum',
+              socketId: ensureForumSocket?.()?.id || '',
+              reason: String(reasonText || '').trim() || 'Saya mau appeal forum',
+              violationCount: Number(getForumViolationCount?.() || 0),
+              disabledFeatures,
+              googleAccount: {
+                provider: 'google',
+                uid,
+                email: currentUser?.email || '',
+              },
+            }),
+          });
+          const appealData = await appealResp.json().catch(() => ({}));
+          if (!appealResp.ok || !appealData?.appealId) {
+            return { ok: false, error: appealData?.message || appealData?.error || 'unknown_error' };
+          }
+          return { ok: true, message: appealData?.message || `✅ Appeal ${appealData.appealId} sudah masuk dashboard admin.` };
         };
 
         const respondWithAssistant = async (text) => {
@@ -18147,7 +18195,6 @@
           assistantTyping?.removeAttribute('hidden');
           let reply = '';
           try {
-            // Exclude the latest message (which is the current prompt) to avoid duplication
             const historyToSend = state.assistantHistory.slice(0, -1);
 
             const response = await fetch(api('/api/assistant-chat'), {
@@ -18159,7 +18206,22 @@
                 clientState: {
                   preferences: state.preferences,
                   experience: state.experience,
-                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced'
+                  mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
+                  auth: {
+                    uid: currentUser?.uid || '',
+                    email: currentUser?.email || '',
+                    name: currentUser?.displayName || 'Warga',
+                  },
+                  forum: {
+                    room: activeForumRoom || 'umum',
+                    socketId: ensureForumSocket?.()?.id || '',
+                    violationCount: Number(getForumViolationCount?.() || 0),
+                    forumDisabled: Boolean(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT),
+                    disabledFeatures: [
+                      ...(getForumViolationCount?.() >= FORUM_VIOLATION_LIMIT ? ['forum_chat_input_disabled'] : []),
+                      ...(forumSendBtn?.disabled ? ['forum_send_button_disabled'] : []),
+                    ],
+                  },
                 }
               }),
             });
@@ -18167,16 +18229,15 @@
               const data = await response.json();
               reply = data?.reply || '';
 
-              // Handle Actions
               if (data.action === 'convert' && data.url) {
                 const urlInput = document.getElementById('urlInput');
                 const basicUrl = document.getElementById('basic-url');
                 if (basicUrl && document.getElementById('basic-mode')?.hidden === false) {
                   basicUrl.value = data.url;
-                  reply += "\n\n(URL ditempel ke Basic Mode)";
+                  reply += '\n\n(URL ditempel ke Basic Mode)';
                 } else if (urlInput) {
                   urlInput.value = data.url;
-                  reply += "\n\n(URL ditempel ke Converter)";
+                  reply += '\n\n(URL ditempel ke Converter)';
                 }
               }
 
@@ -18205,9 +18266,29 @@
                 }
                 reply += '\n\nSaya sudah siapkan form tiket bantuan. Silakan cek data lalu kirim ya.';
               }
+
+              if (data.action === 'submit_forum_appeal') {
+                try {
+                  const result = await submitForumAppeal(data?.params?.reason || text);
+                  reply += result.ok ? `\n\n${result.message}` : `\n\n❌ Gagal kirim appeal: ${result.error}`;
+                } catch (appealErr) {
+                  reply += '\n\n❌ Gagal kirim appeal ke admin dashboard.';
+                  console.error('Gagal submit appeal AI Navigator', appealErr);
+                }
+              }
             }
           } catch (err) {
             console.error('Gagal mengambil jawaban AI', err);
+            if (isAppealIntent(text)) {
+              try {
+                const result = await submitForumAppeal(text);
+                reply = result.ok
+                  ? `Server AI sedang gangguan, tapi appeal tetap berhasil dikirim.\n\n${result.message}`
+                  : `Server AI sedang gangguan. ${result.error}`;
+              } catch (appealErr) {
+                console.error('Fallback submit appeal gagal', appealErr);
+              }
+            }
           }
           if (!reply) reply = buildFallbackReply(text);
           assistantTyping?.setAttribute('hidden', '');
@@ -18226,6 +18307,12 @@
           state.assistantHistory.push({ role: 'user', text: value });
           assistantInput.value = '';
           const commandReply = handleAssistantCommand(value);
+          if (commandReply === '__APPEAL_COMMAND__' || isAppealIntent(value)) {
+            const reason = value.replace(/^\/appeal\s*/i, '').trim();
+            const prompt = reason ? `/appeal ${reason}` : '/appeal saya tidak sengaja dan ingin kembali chat di forum';
+            respondWithAssistant(prompt);
+            return;
+          }
           if (commandReply) {
             addAssistantMessage(commandReply, 'bot', { animate: true });
             state.assistantHistory.push({ role: 'bot', text: commandReply });
@@ -18241,6 +18328,11 @@
           if (!assistantMessages) return;
           if (!state.assistantHistory.length) {
             addAssistantMessage('Navigator YTConv siap bantu seperti customer service. Tanyakan apa saja dengan bahasa kamu, nanti aku kasih alur langkah yang jelas.', 'bot');
+            try {
+              if (typeof getForumViolationCount === 'function' && getForumViolationCount() >= FORUM_VIOLATION_LIMIT) {
+                addAssistantMessage('Aku deteksi akun kamu lagi dibatasi di forum. Ketik **/appeal alasan kamu** supaya langsung aku kirim ke admin dashboard.', 'bot');
+              }
+            } catch { }
           } else {
             state.assistantHistory.forEach((msg) => addAssistantMessage(msg.text, msg.role));
           }
@@ -23784,6 +23876,10 @@
         }
 
         async function doConvert(target, autoDownload = false) {
+          if (window.__adminConvertDisabled) {
+            setToast('Convert sedang dinonaktifkan admin. Coba lagi nanti ya.', 'warning');
+            return;
+          }
           // Request notification permission if default
           if ('Notification' in window && Notification.permission === 'default') {
             try { Notification.requestPermission(); } catch { }
@@ -25882,9 +25978,10 @@
           // Helper to set disabled state
           const set = (el, disabled) => {
             if (el) {
-              el.disabled = disabled;
+              const adminLocked = Boolean(window.__adminConvertDisabled) && (el.id === 'convertBtn' || el.id === 'basic-convert-btn' || el.id === 'gaptek-convert-btn');
+              el.disabled = disabled || adminLocked;
               // Add/remove visual hint for disabled state if needed, but 'disabled' attribute is usually enough for Bootstrap
-              if (disabled) {
+              if (disabled || adminLocked) {
                 el.classList.add('opacity-50');
               } else {
                 el.classList.remove('opacity-50');
@@ -25902,9 +25999,11 @@
 
               // Restore Convert Button Text
               if (convertBtn) {
-                convertBtn.innerHTML = '<i class="bi bi-magic"></i> <span data-i18n="buttonConvert">Convert</span>';
+                convertBtn.innerHTML = window.__adminConvertDisabled
+                  ? '<i class="bi bi-shield-lock"></i> <span>Convert Disabled Admin</span>'
+                  : '<i class="bi bi-magic"></i> <span data-i18n="buttonConvert">Convert</span>';
                 // Ensure it pulsates or highlights as the primary action
-                convertBtn.classList.add('pulse-animation');
+                convertBtn.classList.toggle('pulse-animation', !window.__adminConvertDisabled);
               }
               break;
 
@@ -27269,7 +27368,13 @@
             })();
             const reportPageChange = () => {
               try {
-                forumSocket?.emit('page_change', { page: window.location.pathname || '/', clientId: telemetryClientId, abVariant });
+                forumSocket?.emit('page_change', {
+                  page: window.location.pathname || '/',
+                  clientId: telemetryClientId,
+                  abVariant,
+                  userId: currentUser?.uid || '',
+                  userEmail: currentUser?.email || '',
+                });
               } catch { }
             };
             const reportUserAction = (action, detail = '') => {
@@ -27350,6 +27455,33 @@
             forumSocket.on('conversion_blocked', (payload) => {
               if (typeof setToast === 'function') setToast(payload?.message || 'Konversi dinonaktifkan sementara oleh admin.', 'warning');
               window.manageCTAState?.('idle');
+            });
+            forumSocket.on('control_state', (payload) => {
+              const disabled = payload?.convertEnabled === false;
+              window.__adminConvertDisabled = disabled;
+              const convertBtn = document.getElementById('convertBtn');
+              const basicBtn = document.getElementById('basic-convert-btn');
+              const gaptekBtn = document.getElementById('gaptek-convert-btn');
+              [convertBtn, basicBtn, gaptekBtn].forEach((btn) => {
+                if (!btn) return;
+                btn.disabled = disabled;
+                btn.classList.toggle('opacity-50', disabled);
+                btn.title = disabled ? 'Convert dinonaktifkan admin sementara' : '';
+              });
+              const badgeId = 'adminConvertStateBadge';
+              let badge = document.getElementById(badgeId);
+              if (!badge) {
+                badge = document.createElement('div');
+                badge.id = badgeId;
+                badge.className = 'small mt-2';
+                const target = document.getElementById('convertBtn')?.parentElement;
+                if (target) target.appendChild(badge);
+              }
+              if (badge) {
+                badge.textContent = disabled ? '🚫 Convert dinonaktifkan sementara oleh admin.' : '✅ Convert aktif normal.';
+                badge.classList.toggle('text-danger', disabled);
+                badge.classList.toggle('text-success', !disabled);
+              }
             });
             window.addEventListener('popstate', reportPageChange);
             window.addEventListener('hashchange', reportPageChange);

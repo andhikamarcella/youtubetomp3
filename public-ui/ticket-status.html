@@ -26,11 +26,11 @@
     <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-4">
       <div>
         <div class="font-semibold mb-1">💬 Pesan User</div>
-        <div id="msg" class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-slate-300 whitespace-pre-wrap">-</div>
+        <div id="msg" class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-slate-300 whitespace-pre-wrap break-words">-</div>
       </div>
       <div>
         <div class="font-semibold mb-1">🧑‍💼 Balasan Admin</div>
-        <div id="reply" class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-slate-300 whitespace-pre-wrap">Belum ada balasan admin.</div>
+        <div id="reply" class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-slate-300 whitespace-pre-wrap break-words">Belum ada balasan admin.</div>
       </div>
       <div>
         <div class="font-semibold mb-2">🕒 Riwayat Status</div>
@@ -39,14 +39,25 @@
     </section>
 
     <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <div class="font-semibold mb-2">💬 Chat Tiket (maks 3 chat user + 3 chat admin)</div>
+      <div class="font-semibold mb-2">💬 Chat Tiket (tanpa batas)</div>
       <div id="chatHistory" class="h-64 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-2"></div>
-      <div class="mt-2 text-xs text-slate-400">Sisa chat user: <span id="remaining">3</span></div>
+      <div class="mt-2 text-xs text-slate-400">Kamu bisa kirim chat kapan saja selama tiket aktif.</div>
       <form id="chatForm" class="mt-3 flex gap-2">
         <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Tulis balasan ke admin...">
         <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500" type="submit">Kirim</button>
       </form>
       <div id="chatHint" class="mt-2 text-xs text-slate-400"></div>
+    </section>
+
+    <section id="proofSection" class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <div class="font-semibold mb-2">📎 Upload Bukti Tambahan</div>
+      <div id="proofHint" class="text-xs text-slate-400 mb-2">Upload aktif saat status tiket: Menunggu User.</div>
+      <input id="proofFiles" type="file" accept="image/*" multiple class="block w-full text-sm text-slate-300">
+      <div id="proofPreview" class="grid grid-cols-2 gap-2 mt-3"></div>
+      <div id="proofExisting" class="grid grid-cols-2 gap-2 mt-3"></div>
+      <textarea id="proofNote" class="w-full mt-3 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+      <button id="proofSubmitBtn" class="mt-3 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm" type="button">Kirim ke Admin</button>
+      <div class="text-xs text-slate-400 mt-2">Tip: Link halaman ini sudah auto-generate dari nomor tiket kamu.</div>
     </section>
   </main>
 <script>
@@ -68,11 +79,17 @@ const replyEl = document.getElementById('reply');
 const historyEl = document.getElementById('history');
 const hintEl = document.getElementById('hint');
 const chatHistoryEl = document.getElementById('chatHistory');
-const remainingEl = document.getElementById('remaining');
 const chatInputEl = document.getElementById('chatInput');
 const chatHintEl = document.getElementById('chatHint');
+const proofFilesEl = document.getElementById('proofFiles');
+const proofPreviewEl = document.getElementById('proofPreview');
+const proofExistingEl = document.getElementById('proofExisting');
+const proofSubmitBtn = document.getElementById('proofSubmitBtn');
+const proofNoteEl = document.getElementById('proofNote');
+const proofHintEl = document.getElementById('proofHint');
 
 let currentTicket = null;
+let selectedProofFiles = [];
 
 tidEl.textContent = ticketId || '-';
 if (!queryTicketId && routeTicketId) hintEl.textContent = `Mode kompatibilitas aktif dari route lama /ticket/${routeTicketId}`;
@@ -88,18 +105,19 @@ function asLocal(iso){
 function renderChat(chatHistory = []) {
   chatHistoryEl.innerHTML = chatHistory.map((c) => {
     const isAdmin = c.sender === 'admin';
-    return `<div class="rounded-lg p-2 text-sm ${isAdmin ? 'bg-indigo-900/40 border border-indigo-700' : 'bg-slate-900 border border-slate-700'}"><div class="text-[11px] text-slate-400 mb-1">${isAdmin ? 'admin' : 'user'} • ${asLocal(c.at)}</div><div>${String(c.message || '').replace(/</g, '&lt;')}</div></div>`;
+    return `<div class="rounded-lg p-2 text-sm ${isAdmin ? 'bg-indigo-900/40 border border-indigo-700' : 'bg-slate-900 border border-slate-700'}"><div class="text-[11px] text-slate-400 mb-1">${isAdmin ? 'admin' : 'user'} • ${asLocal(c.at)}</div><div class="whitespace-pre-wrap break-words">${String(c.message || '').replace(/</g, '&lt;')}</div></div>`;
   }).join('') || '<div class="text-slate-500 text-sm">Belum ada chat.</div>';
   chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-
-  const userCount = chatHistory.filter((x) => x?.sender === 'user').length;
-  const remaining = Math.max(0, 3 - userCount);
-  remainingEl.textContent = String(remaining);
-  const blocked = remaining <= 0;
-  chatInputEl.disabled = blocked;
-  if (blocked) chatHintEl.textContent = 'Batas chat user sudah habis (maksimal 3).';
-  else chatHintEl.textContent = 'Kamu masih bisa kirim chat ke admin.';
+  chatInputEl.disabled = false;
+  chatHintEl.textContent = 'Chat tiket aktif tanpa batas.';
 }
+
+const renderProofPreview = () => {
+  proofPreviewEl.innerHTML = selectedProofFiles.map((f, idx) => {
+    const url = URL.createObjectURL(f);
+    return `<div class="relative rounded-lg border border-slate-700 overflow-hidden"><img src="${url}" class="w-full h-28 object-cover"><button data-remove="${idx}" class="absolute top-1 right-1 bg-rose-600 text-white text-xs px-2 py-1 rounded">✕</button><div class="text-[11px] p-1 truncate">${f.name}</div></div>`;
+  }).join('');
+};
 
 async function refresh(){
   if (!ticketId) return;
@@ -121,6 +139,14 @@ async function refresh(){
       historyEl.appendChild(li);
     });
     renderChat(t.chatHistory || []);
+    proofExistingEl.innerHTML = (t.proofs || []).map((p) => `<a href="${p.url}" target="_blank" class="rounded-lg border border-slate-700 overflow-hidden bg-slate-950"><img src="${p.url}" class="w-full h-24 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'p-2 text-xs\\'>${String(p.name||'Attachment').replace(/</g,'&lt;')}</div>'"></a>`).join('') || '<div class="text-xs text-slate-500">Belum ada bukti terupload.</div>';
+    const waitingUser = String(t.status || '') === 'waiting_user';
+    proofSubmitBtn.disabled = !waitingUser;
+    proofFilesEl.disabled = !waitingUser;
+    proofNoteEl.disabled = !waitingUser;
+    proofHintEl.textContent = waitingUser
+      ? 'Admin meminta bukti tambahan. Upload foto lalu klik kirim ke admin.'
+      : 'Upload bukti aktif saat status tiket: Menunggu User.';
   } catch (e) {
     statusWrap.innerHTML = badge('Tiket tidak ditemukan', 'rejected');
     replyEl.textContent = e.message || 'unknown_error';
@@ -138,11 +164,62 @@ document.getElementById('chatForm').addEventListener('submit', async (evt) => {
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok || !d.ok) {
-    chatHintEl.textContent = d.error === 'user_chat_limit_reached' ? 'Limit chat user sudah 3x.' : (d.error || 'Gagal kirim chat');
+    chatHintEl.textContent = d.error || 'Gagal kirim chat';
     return;
   }
   chatInputEl.value = '';
   await refresh();
+});
+
+proofFilesEl.addEventListener('change', () => {
+  const incoming = Array.from(proofFilesEl.files || []);
+  selectedProofFiles = incoming.slice(0, 4);
+  renderProofPreview();
+});
+
+proofPreviewEl.addEventListener('click', (evt) => {
+  const btn = evt.target.closest('button[data-remove]');
+  if (!btn) return;
+  const idx = Number(btn.getAttribute('data-remove'));
+  selectedProofFiles = selectedProofFiles.filter((_, i) => i !== idx);
+  renderProofPreview();
+});
+
+proofSubmitBtn.addEventListener('click', async () => {
+  if (!ticketId || !selectedProofFiles.length) return;
+  proofSubmitBtn.disabled = true;
+  proofSubmitBtn.textContent = 'Mengirim...';
+  try {
+    const proofs = await Promise.all(selectedProofFiles.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: String(reader.result || ''),
+      });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    })));
+    const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}/proofs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proofs, note: proofNoteEl.value.trim() }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || 'upload_failed');
+    selectedProofFiles = [];
+    proofFilesEl.value = '';
+    proofNoteEl.value = '';
+    renderProofPreview();
+    proofHintEl.textContent = `Berhasil kirim ${d.count || 0} bukti ke admin.`;
+    await refresh();
+  } catch (err) {
+    proofHintEl.textContent = `Gagal upload bukti: ${err.message || 'unknown'}`;
+  } finally {
+    proofSubmitBtn.disabled = false;
+    proofSubmitBtn.textContent = 'Kirim ke Admin';
+  }
 });
 
 refresh();
