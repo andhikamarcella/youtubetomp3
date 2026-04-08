@@ -8304,6 +8304,7 @@ const controlState = {
 const retentionUsers = new Map();
 const apiRouteStats = new Map();
 const forumAppeals = new Map();
+const forumUnblockedUsers = new Map();
 const abMetrics = {
   A: { started: 0, success: 0 },
   B: { started: 0, success: 0 },
@@ -8336,6 +8337,35 @@ const INDONESIAN_BADWORDS = [
 const SUPPORT_CONTACT_EMAIL = process.env.SUPPORT_CONTACT_EMAIL || "forumwargaytmp3@gmail.com";
 
 const buildAppealId = () => `APL-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+
+const isForumUserBlocked = ({ userId = "", violationCount = 0, disabledFeatures = [] } = {}) => {
+  const normalizedUserId = String(userId || "").trim();
+  const override = normalizedUserId ? forumUnblockedUsers.get(normalizedUserId) : null;
+  if (override) {
+    return {
+      blocked: false,
+      blockedByServer: false,
+      blockedByClient: false,
+      blockedSignalDetected: false,
+      unblockedByAppeal: true,
+      override,
+      violationCount: 0,
+    };
+  }
+  const violationRec = normalizedUserId ? userViolations.get(normalizedUserId) : null;
+  const blockedByServer = Boolean(violationRec?.banned);
+  const normalizedDisabled = Array.isArray(disabledFeatures) ? disabledFeatures : [];
+  const blockedByClient = normalizedDisabled.length > 0 || Number(violationCount || 0) >= 5;
+  return {
+    blocked: blockedByServer || blockedByClient,
+    blockedByServer,
+    blockedByClient,
+    blockedSignalDetected: blockedByServer || blockedByClient,
+    unblockedByAppeal: false,
+    override: null,
+    violationCount: Number(violationRec?.count || violationCount || 0),
+  };
+};
 
 const submitForumAppeal = async ({
   source = "unknown",
@@ -8671,12 +8701,15 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
     if (!userId) return res.status(400).json({ ok: false, error: "user_id_required" });
     if (!reason) return res.status(400).json({ ok: false, error: "reason_required" });
 
-    const violationRec = userViolations.get(userId);
-    const blockedByServer = Boolean(violationRec?.banned);
     const disabledFeatures = Array.isArray(body.disabledFeatures) ? body.disabledFeatures : [];
-    const blockedByClient = disabledFeatures.length > 0 || Number(body.violationCount || 0) >= 5;
-
-    const blockedSignalDetected = blockedByServer || blockedByClient;
+    const moderationState = isForumUserBlocked({
+      userId,
+      violationCount: Number(body.violationCount || 0),
+      disabledFeatures,
+    });
+    const blockedByServer = moderationState.blockedByServer;
+    const blockedByClient = moderationState.blockedByClient;
+    const blockedSignalDetected = moderationState.blockedSignalDetected;
 
     const appeal = await submitForumAppeal({
       source: "ai_navigator",
@@ -8708,6 +8741,22 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
     console.error("[/api/forum/appeal error]", e);
     return res.status(500).json({ ok: false, error: e?.message || "appeal_failed" });
   }
+});
+
+app.get("/api/forum/status", (req, res) => {
+  const userId = String(req.query?.userId || "").trim();
+  if (!userId) return res.status(400).json({ ok: false, error: "user_id_required" });
+  const state = isForumUserBlocked({ userId });
+  return res.json({
+    ok: true,
+    userId,
+    blocked: state.blocked,
+    blockedByServer: state.blockedByServer,
+    blockedByClient: state.blockedByClient,
+    unblockedByAppeal: state.unblockedByAppeal,
+    violationCount: state.violationCount,
+    override: state.override || null,
+  });
 });
 
 app.get("/api/ticket/:ticketId", (req, res) => {
@@ -8778,6 +8827,24 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req
   appeal.reviewedBy = String(req.body?.reviewedBy || "admin").slice(0, 120);
   appeal.reviewedAt = status === "pending" ? null : new Date().toISOString();
   appeal.updatedAt = new Date().toISOString();
+  if (status === "accepted" && appeal.userId) {
+    forumUnblockedUsers.set(appeal.userId, {
+      appealId,
+      reviewedBy: appeal.reviewedBy,
+      reviewedAt: appeal.reviewedAt,
+    });
+    userViolations.set(appeal.userId, {
+      count: 0,
+      banned: false,
+      unbannedAt: Date.now(),
+      unbannedByAppeal: appealId,
+    });
+    io.emit("forum:userUnblocked", {
+      userId: appeal.userId,
+      appealId,
+      reviewedAt: appeal.reviewedAt,
+    });
+  }
   forumAppeals.set(appealId, appeal);
   pushActivityLog("forum_appeal_updated", `Appeal ${appealId} -> ${appeal.statusLabel}`, {
     appealId,
@@ -8787,6 +8854,7 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req
     appealId,
     status: appeal.status,
     statusLabel: appeal.statusLabel,
+    userId: appeal.userId || "",
   });
   return res.json({ ok: true, appeal });
 });
@@ -9466,7 +9534,8 @@ io.on("connection", (socket) => {
 
     // Check if user already banned
     const rec = userViolations.get(userId) || { count: 0, banned: false };
-    if (rec.banned) {
+    const blockState = isForumUserBlocked({ userId, violationCount: rec.count || 0 });
+    if (blockState.blocked) {
       socket.emit("forum:banned", {
         message: "Kamu telah diblokir dari forum karena 5 pelanggaran bahasa. Silakan ajukan appeal via AI Navigator / tiket bantuan.",
         appealUrl: "#"
@@ -9513,7 +9582,8 @@ io.on("connection", (socket) => {
     const from = socketState.get(socket.id);
     if (!from) return;
     const rec = userViolations.get(from.userId);
-    if (rec?.banned) {
+    const blockState = isForumUserBlocked({ userId: from.userId, violationCount: Number(rec?.count || 0) });
+    if (blockState.blocked) {
       const appeal = await submitForumAppeal({
         source: "forum_socket",
         userId: from.userId,
