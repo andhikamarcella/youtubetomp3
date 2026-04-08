@@ -94,15 +94,50 @@ const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_
 const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
-const GROQ_API_KEY = [
-  process.env.GROQ_API_KEY,
-  process.env.GROQ_APIKEY,
-  process.env.GROQ_KEY,
-  process.env.GROK_API_KEY,
-  process.env.AI_GROQ_API_KEY,
-].map((value) => String(value || "").trim()).find(Boolean) || "";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-const isGroqConfigured = Boolean(GROQ_API_KEY);
+const collectGroqKeys = () => {
+  const rawValues = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_FALLBACK,
+    process.env.GROQ_API_KEYS,
+  ].filter((x) => x !== undefined && x !== null).map((x) => String(x));
+
+  const keys = [];
+  const seen = new Set();
+  const keyPattern = /gsk_[A-Za-z0-9_-]+/g;
+
+  rawValues.forEach((raw) => {
+    const direct = raw.trim();
+    if (/^gsk_[A-Za-z0-9_-]+$/.test(direct) && !seen.has(direct)) {
+      seen.add(direct);
+      keys.push(direct);
+    }
+
+    const matches = raw.match(keyPattern) || [];
+    matches.forEach((candidate) => {
+      const normalized = String(candidate || "").trim();
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      keys.push(normalized);
+    });
+
+    raw
+      .split(/[\n,;\s]+/)
+      .map((token) => token.trim())
+      .filter((token) => /^gsk_[A-Za-z0-9_-]+$/.test(token))
+      .forEach((token) => {
+        if (seen.has(token)) return;
+        seen.add(token);
+        keys.push(token);
+      });
+  });
+
+  return keys;
+};
+
+const GROQ_API_KEYS = collectGroqKeys();
+const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
+const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.3-70b-versatile").trim() || "llama-3.3-70b-versatile";
+const isGroqConfigured = GROQ_API_KEYS.length > 0;
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
@@ -695,38 +730,44 @@ Jika percakapan biasa/edukasi/diagnosa:
     { role: "user", content: prompt }
   ];
 
-  try {
-    const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + GROQ_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Groq API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-
+  let lastError = null;
+  for (let idx = 0; idx < GROQ_API_KEYS.length; idx += 1) {
+    const apiKey = GROQ_API_KEYS[idx];
     try {
-      return JSON.parse(content);
-    } catch (e) {
-      return { reply: content };
+      const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Groq API error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { reply: content };
+      }
+    } catch (error) {
+      lastError = error;
+      const usingFallback = idx > 0;
+      console.error(`[Groq API] Error${usingFallback ? " (fallback key)" : ""}:`, error?.message || error);
     }
-  } catch (error) {
-    console.error("[Groq API] Error:", error);
-    throw error;
   }
+  throw lastError || new Error("Groq API request failed");
 };
 
 let turnstileWarningLogged = false;
@@ -3705,6 +3746,16 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
     };
   }
 
+  if (/^\/?appeal(\s+.*)?$/i.test(raw)) {
+    const reason = raw.replace(/^\/?appeal\s*/i, "").trim() || "Saya mau appeal ban forum.";
+    return {
+      reply: "Sip, aku bantu kirim appeal kamu ke admin dashboard sekarang.",
+      suggestions: ["Cek status appeal", "Tambahkan alasan detail", "Buka tiket bantuan"],
+      action: "submit_forum_appeal",
+      params: { reason },
+    };
+  }
+
   if (
     /(appeal|banding|diban|di ban|keban|kena ban|forum diblokir|forum dikunci)/i.test(lowerRaw) ||
     /(saya mau appeal|mau appeal|ajukan appeal)/i.test(lowerRaw)
@@ -3722,6 +3773,13 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
       params: {
         reason: raw,
       },
+    };
+  }
+
+  if (clientState?.forum?.forumDisabled && /(forum|chat|tidak bisa chat|gabisa chat|ga bisa chat)/i.test(lowerRaw)) {
+    return {
+      reply: "Kayaknya akun kamu memang lagi keblokir buat chat forum. Coba ketik **/appeal alasan kamu** biar langsung aku kirim ke admin dashboard.",
+      suggestions: ["/appeal saya tidak sengaja", "Buka tiket bantuan", "Cek status forum"],
     };
   }
 
@@ -8618,13 +8676,7 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
     const disabledFeatures = Array.isArray(body.disabledFeatures) ? body.disabledFeatures : [];
     const blockedByClient = disabledFeatures.length > 0 || Number(body.violationCount || 0) >= 5;
 
-    if (!blockedByServer && !blockedByClient) {
-      return res.status(400).json({
-        ok: false,
-        error: "not_blocked",
-        message: "Status blocked belum terdeteksi dari server/client.",
-      });
-    }
+    const blockedSignalDetected = blockedByServer || blockedByClient;
 
     const appeal = await submitForumAppeal({
       source: "ai_navigator",
@@ -8640,6 +8692,7 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
         googleAccount: body.googleAccount || null,
         blockedByServer,
         blockedByClient,
+        blockedSignalDetected,
       },
     });
     return res.json({
@@ -8647,7 +8700,9 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
       appealId: appeal.appealId,
       status: appeal.status,
       submittedAt: appeal.submittedAt,
-      message: `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`,
+      message: blockedSignalDetected
+        ? `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`
+        : `✅ Appeal ${appeal.appealId} tetap dikirim ke admin dashboard (status block belum terverifikasi otomatis).`,
     });
   } catch (e) {
     console.error("[/api/forum/appeal error]", e);
@@ -8734,6 +8789,30 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req
     statusLabel: appeal.statusLabel,
   });
   return res.json({ ok: true, appeal });
+});
+
+app.get("/api/admin/session-replay/:socketId", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const socketId = String(req.params.socketId || "").trim();
+  if (!socketId) return res.status(400).json({ ok: false, error: "socket_id_required" });
+  const live = activeUsers.get(socketId);
+  if (live) upsertSessionReplay(socketId, live);
+  const replay = sessionReplayStore.get(socketId);
+  if (!replay) return res.status(404).json({ ok: false, error: "session_not_found" });
+  return res.json({
+    ok: true,
+    replay: {
+      socketId: replay.socketId,
+      connectedAt: replay.connectedAt || null,
+      disconnectedAt: replay.disconnectedAt || null,
+      page: replay.page || "unknown",
+      room: replay.room || null,
+      status: replay.status || "idle",
+      userAgent: replay.userAgent || "",
+      geo: replay.geo || { country: "unknown", city: "unknown" },
+      actions: Array.isArray(replay.actions) ? replay.actions : [],
+    },
+  });
 });
 
 app.get("/api/admin/stats", (req, res) => {
@@ -8885,6 +8964,7 @@ app.get("/api/admin/stats", (req, res) => {
     moderation: {
       blockedForumUsers,
       disabledFeatureUsage,
+      storedSessionReplay: sessionReplayStore.size,
     },
     abTesting: abMetrics,
     smartInsights,
@@ -8937,12 +9017,19 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
   pushActivityLog("ticket_updated", `Tiket ${ticketId} diubah ke ${statusLabel}`, { ticketId, status });
 
   const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
+  const uploadProofHint = `${statusLink}#upload-proof`;
+  const waitingUserTemplate = `Mohon upload bukti tambahan via link ini: ${uploadProofHint} atau buka halaman status tiket dan gunakan nomor tiket ${ticketId}.`;
+  if (status === "waiting_user") {
+    ticket.adminReply = adminReply || waitingUserTemplate;
+    supportTickets.set(ticketId, ticket);
+  }
+  const effectiveReply = ticket.adminReply || adminReply || "";
   const replyHtml = `
   <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
     <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
       <h3 style="margin-top:0;">Update Status Tiket ${ticketId}</h3>
       <p>Status terbaru: <b>${statusLabel}</b></p>
-      ${adminReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${adminReply.replace(/\n/g, "<br>")}</div>` : ""}
+      ${effectiveReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${effectiveReply.replace(/\n/g, "<br>")}</div>` : ""}
       <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
     </div>
   </div>`;
@@ -8963,8 +9050,6 @@ app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), 
   if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
-  const adminCount = Array.isArray(ticket.chatHistory) ? ticket.chatHistory.filter((x) => x?.sender === "admin").length : 0;
-  if (adminCount >= 3) return res.status(400).json({ ok: false, error: "admin_chat_limit_reached", limit: 3 });
   const nowIso = new Date().toISOString();
   const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
@@ -8986,8 +9071,6 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, r
   if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
-  const userCount = Array.isArray(ticket.chatHistory) ? ticket.chatHistory.filter((x) => x?.sender === "user").length : 0;
-  if (userCount >= 3) return res.status(400).json({ ok: false, error: "user_chat_limit_reached", limit: 3 });
   const nowIso = new Date().toISOString();
   const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
@@ -9004,7 +9087,73 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, r
   io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
   io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
   pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
-  return res.json({ ok: true, chat: chatEntry, ticketId, remaining: Math.max(0, 3 - (userCount + 1)) });
+  return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
+});
+
+app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async (req, res) => {
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  const ticket = supportTickets.get(ticketId);
+  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const proofs = Array.isArray(req.body?.proofs) ? req.body.proofs : [];
+  if (!proofs.length) return res.status(400).json({ ok: false, error: "proof_required" });
+  const note = String(req.body?.note || "").trim().slice(0, 2000);
+  const uploaded = [];
+  for (const item of proofs.slice(0, 4)) {
+    const directUrl = typeof item?.url === "string" ? item.url.trim() : "";
+    if (/^https?:\/\//i.test(directUrl)) {
+      uploaded.push({
+        name: String(item?.name || "attachment"),
+        url: directUrl,
+        type: String(item?.type || ""),
+        size: Number(item?.size || 0) || 0,
+        from: "user_followup",
+        at: new Date().toISOString(),
+      });
+      continue;
+    }
+    const dataUrl = typeof item?.dataUrl === "string" ? item.dataUrl : "";
+    if (!dataUrl.startsWith("data:")) continue;
+    try {
+      const isVideo = /^data:video\//i.test(dataUrl);
+      const result = await cloudinary.uploader.upload(dataUrl, {
+        folder: "ytconv/support-tickets/followup",
+        resource_type: isVideo ? "video" : "image",
+        public_id: `${ticketId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        overwrite: false,
+      });
+      if (result?.secure_url) {
+        uploaded.push({
+          name: String(item?.name || result?.original_filename || "attachment"),
+          url: String(result.secure_url),
+          type: String(item?.type || ""),
+          size: Number(item?.size || 0) || 0,
+          from: "user_followup",
+          at: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.warn("[/api/ticket/:ticketId/proofs] upload error", err?.message || err);
+    }
+  }
+  if (!uploaded.length) return res.status(400).json({ ok: false, error: "proof_upload_failed" });
+  if (!Array.isArray(ticket.proofs)) ticket.proofs = [];
+  ticket.proofs.push(...uploaded);
+  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
+  const nowIso = new Date().toISOString();
+  ticket.chatHistory.push({
+    id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
+    sender: "user",
+    message: `Mengirim bukti tambahan (${uploaded.length} file).${note ? ` Catatan: ${note}` : ""}`,
+    at: nowIso,
+  });
+  ticket.status = ticket.status === "waiting_user" ? "reviewing" : ticket.status;
+  ticket.statusLabel = ticket.status === "reviewing" ? "Diproses" : ticket.statusLabel;
+  ticket.statusUpdatedAt = nowIso;
+  supportTickets.set(ticketId, ticket);
+  io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
+  io.emit("admin:ticketChat", { ticketId, chat: ticket.chatHistory[ticket.chatHistory.length - 1] });
+  pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
+  return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
 });
 
 app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
@@ -9025,6 +9174,7 @@ app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
   }
   pushActivityLog("admin_control", `Control action: ${action}`, { action });
   io.emit("admin:controlUpdated", { ...controlState });
+  io.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   emitDashboardStats();
   return res.json({ ok: true, control: { ...controlState } });
 });
@@ -9057,6 +9207,8 @@ const io = new SocketIOServer(httpServer, {
 const roomUsers = new Map();
 const socketState = new Map();
 const activeUsers = new Map();
+const sessionReplayStore = new Map();
+const MAX_SESSION_REPLAY = 300;
 
 const getLiveBreakdown = (field) => {
   const result = {};
@@ -9086,12 +9238,41 @@ const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, use
   journey: Array.isArray(user.journey) ? user.journey.join(" → ") : "",
   actions: Array.isArray(user.actionTrail) ? user.actionTrail : [],
   clientId: user.clientId || "",
+  userId: user.userId || "",
+  userEmail: user.userEmail || "",
   abVariant: user.abVariant || "A",
   geo: user.geo || { country: "unknown", city: "unknown" },
   userAgent: user.userAgent || "",
   connectedAt: user.connectedAt || null,
   lastSeenAt: user.lastSeenAt || null,
 }));
+
+const upsertSessionReplay = (socketId, user = null, extras = {}) => {
+  if (!socketId) return;
+  const prev = sessionReplayStore.get(socketId) || {
+    socketId,
+    connectedAt: new Date().toISOString(),
+    disconnectedAt: null,
+    page: "unknown",
+    room: null,
+    status: "idle",
+    userAgent: "",
+    geo: { country: "unknown", city: "unknown" },
+    actions: [],
+  };
+  const next = {
+    ...prev,
+    ...(user || {}),
+    ...extras,
+    socketId,
+    actions: Array.isArray(user?.actionTrail) ? user.actionTrail.slice(-120) : (prev.actions || []),
+  };
+  sessionReplayStore.set(socketId, next);
+  if (sessionReplayStore.size > MAX_SESSION_REPLAY) {
+    const oldestKey = sessionReplayStore.keys().next().value;
+    if (oldestKey) sessionReplayStore.delete(oldestKey);
+  }
+};
 
 const emitDashboardStats = () => {
   io.emit("dashboard_stats", {
@@ -9118,6 +9299,7 @@ const broadcastRoomUsers = (room) => {
 };
 
 io.on("connection", (socket) => {
+  socket.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   activeUsers.set(socket.id, {
     page: "unknown",
     room: null,
@@ -9126,6 +9308,8 @@ io.on("connection", (socket) => {
     actionTrail: [],
     convertStartedAt: null,
     clientId: "",
+    userId: "",
+    userEmail: "",
     abVariant: "A",
     geo: {
       country: String(socket.handshake?.headers?.["cf-ipcountry"] || socket.handshake?.headers?.["x-vercel-ip-country"] || "unknown"),
@@ -9135,6 +9319,7 @@ io.on("connection", (socket) => {
     connectedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
   });
+  upsertSessionReplay(socket.id, activeUsers.get(socket.id));
   conversionMetrics.entered += 1;
   pushActivityLog("user_connected", `Socket ${socket.id} connected`, { socketId: socket.id });
   emitDashboardStats();
@@ -9144,8 +9329,12 @@ io.on("connection", (socket) => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
     const clientId = String(payload?.clientId || rec.clientId || "").slice(0, 120);
+    const userId = String(payload?.userId || rec.userId || "").slice(0, 180);
+    const userEmail = String(payload?.userEmail || rec.userEmail || "").slice(0, 240);
     const abVariant = String(payload?.abVariant || rec.abVariant || "A").toUpperCase() === "B" ? "B" : "A";
     rec.clientId = clientId;
+    rec.userId = userId;
+    rec.userEmail = userEmail;
     rec.abVariant = abVariant;
     if (clientId) {
       const retentionRec = retentionUsers.get(clientId) || { sessions: 0, lastSeenAt: null };
@@ -9161,6 +9350,7 @@ io.on("connection", (socket) => {
     if (rec.journey.length > 12) rec.journey = rec.journey.slice(-12);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9179,6 +9369,7 @@ io.on("connection", (socket) => {
     if (rec.actionTrail.length > 40) rec.actionTrail = rec.actionTrail.slice(-40);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     pushActivityLog("user_action", `${socket.id}: ${action}`, { socketId: socket.id, action, detail });
     emitDashboardStats();
   });
@@ -9203,6 +9394,7 @@ io.on("connection", (socket) => {
     controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9225,6 +9417,7 @@ io.on("connection", (socket) => {
     pushActivityLog("conversion_success", `Conversion success from ${socket.id}`, { socketId: socket.id });
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9234,6 +9427,7 @@ io.on("connection", (socket) => {
     rec.status = "idle";
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9251,6 +9445,7 @@ io.on("connection", (socket) => {
       rec.journey.push(`convert:error:${reason}`);
       rec.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, rec);
+      upsertSessionReplay(socket.id, rec);
     }
     pushActivityLog("conversion_error", `Conversion error ${reason}`, { socketId: socket.id, reason });
     emitDashboardStats();
@@ -9359,6 +9554,7 @@ io.on("connection", (socket) => {
       active.room = room;
       active.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, active);
+      upsertSessionReplay(socket.id, active);
     }
     const map = getOrCreateRoomMap(room);
     map.set(userId, { userId, name, socketId: socket.id });
@@ -9380,6 +9576,7 @@ io.on("connection", (socket) => {
       active.room = null;
       active.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, active);
+      upsertSessionReplay(socket.id, active);
     }
     broadcastRoomUsers(prev.room);
     emitDashboardStats();
@@ -9470,6 +9667,7 @@ io.on("connection", (socket) => {
       broadcastRoomUsers(prev.room);
     }
     activeUsers.delete(socket.id);
+    upsertSessionReplay(socket.id, null, { disconnectedAt: new Date().toISOString() });
     pushActivityLog("user_disconnected", `Socket ${socket.id} disconnected`, { socketId: socket.id });
     emitDashboardStats();
   });
