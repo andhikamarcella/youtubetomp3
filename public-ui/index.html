@@ -8299,6 +8299,12 @@
                 style="width: 45px; height: 45px;" type="button" id="forumSendBtn" disabled>
                 <i class="bi bi-send-fill fs-5 ms-1"></i>
               </button>
+              <button
+                class="btn btn-outline-warning rounded-pill ms-2 d-none"
+                type="button"
+                id="forumAppealBtn">
+                <i class="bi bi-envelope-paper-heart me-1"></i> Appeal Forum
+              </button>
             </div>
           </div>
         </div>
@@ -16130,6 +16136,7 @@
           const forumOverlay = document.getElementById('forumLoginOverlay');
           const forumInput = document.getElementById('forumInput');
           const forumSendBtn = document.getElementById('forumSendBtn');
+          const forumAppealBtn = document.getElementById('forumAppealBtn');
 
           if (forumOverlay) forumOverlay.hidden = !!user;
           if (forumInput) forumInput.disabled = !user;
@@ -18297,6 +18304,7 @@
             }
           } catch (err) {
             console.error('Gagal mengambil jawaban AI', err);
+            reply = '⚠️ AI Groq sedang gangguan. Coba lagi 5-10 detik, atau cek konfigurasi GROQ_API_KEY/GROQ_MODEL di server.';
             if (isAppealIntent(text)) {
               try {
                 const result = await submitForumAppeal(text);
@@ -26452,6 +26460,7 @@
           let isNearBottomState = true;
           let replyContext = null;
           let reportFiles = [];
+          let forumUnblockedByAppeal = false;
           let voiceState = {
             isRecording: false,
             mediaRecorder: null,
@@ -27418,6 +27427,14 @@
               if (!payload || payload.room !== activeForumRoom) return;
               forumPresenceUsers = Array.isArray(payload.users) ? payload.users : [];
               renderCallUserList();
+            });
+            forumSocket.on('forum:userUnblocked', (payload) => {
+              const targetUserId = String(payload?.userId || '');
+              if (!targetUserId || targetUserId !== String(currentUser?.uid || '')) return;
+              forumUnblockedByAppeal = true;
+              setForumViolationCount(0);
+              setToast('✅ Appeal diterima admin. Forum chat kamu sudah diaktifkan lagi.', 'success');
+              updateSendButtonState();
             });
             forumSocket.on('call:offer', (payload) => {
               if (!payload?.callId || !payload?.offer) return;
@@ -29599,18 +29616,28 @@
             if (!forumSendBtn) return;
             if (!currentUser) {
               forumSendBtn.disabled = true;
+              if (forumAppealBtn) forumAppealBtn.classList.add('d-none');
               return;
             }
             if (isLaporanRoom()) {
               forumSendBtn.disabled = true;
+              if (forumAppealBtn) forumAppealBtn.classList.add('d-none');
               return;
             }
             if (getForumViolationCount() >= FORUM_VIOLATION_LIMIT) {
-              forumSendBtn.disabled = true;
-              forumInput.disabled = true;
-              forumInput.placeholder = 'Akun forum dibatasi karena 5x pelanggaran. Ajukan appeal via AI Navigator / tiket email (respon 2x24 jam).';
-              return;
+              if (forumUnblockedByAppeal) {
+                setForumViolationCount(0);
+              } else {
+                forumSendBtn.disabled = true;
+                forumInput.disabled = true;
+                forumInput.placeholder = 'Akun forum dibatasi karena 5x pelanggaran. Ajukan appeal via AI Navigator / tiket email (respon 2x24 jam).';
+                if (forumAppealBtn) forumAppealBtn.classList.remove('d-none');
+                return;
+              }
             }
+            if (forumAppealBtn) forumAppealBtn.classList.add('d-none');
+            forumInput.disabled = false;
+            forumInput.placeholder = 'Ketik pesan...';
             if (voiceState.isRecording) {
               forumSendBtn.disabled = false;
               forumSendBtn.classList.remove('btn-primary');
@@ -29628,6 +29655,67 @@
             } else {
               forumSendBtn.innerHTML = '<i class="bi bi-mic-fill fs-4"></i>';
             }
+          }
+
+          async function syncForumModerationStatus() {
+            const uid = currentUser?.uid || '';
+            if (!uid) return;
+            try {
+              const r = await fetch(`/api/forum/status?userId=${encodeURIComponent(uid)}`);
+              const d = await r.json().catch(() => ({}));
+              if (!r.ok || !d?.ok) return;
+              forumUnblockedByAppeal = Boolean(d.unblockedByAppeal);
+              if (forumUnblockedByAppeal) {
+                setForumViolationCount(0);
+              }
+              updateSendButtonState();
+            } catch (err) {
+              console.warn('Gagal sinkron status forum', err);
+            }
+          }
+
+          async function submitForumAppealFromButton() {
+            if (!currentUser?.uid) {
+              setToast('Login Google dulu untuk kirim appeal.', 'warning');
+              return;
+            }
+            const reason = window.prompt('Tulis alasan appeal forum kamu:', 'Saya minta unban forum, akan patuh aturan dan tidak toxic lagi.');
+            if (reason === null) return;
+            const cleanReason = String(reason || '').trim();
+            if (!cleanReason) {
+              setToast('Alasan appeal tidak boleh kosong.', 'warning');
+              return;
+            }
+            forumAppealBtn?.setAttribute('disabled', '');
+            try {
+              const result = await submitForumAppeal(cleanReason);
+              if (!result?.ok) {
+                setToast(`Gagal kirim appeal: ${result?.error || 'unknown_error'}`, 'danger');
+                return;
+              }
+              setToast(result.message || 'Appeal berhasil dikirim ke admin dashboard.', 'success');
+            } catch (err) {
+              console.error('Gagal submit appeal dari tombol forum', err);
+              setToast('Gagal kirim appeal. Coba lagi sebentar.', 'danger');
+            } finally {
+              forumAppealBtn?.removeAttribute('disabled');
+            }
+          }
+
+          if (forumAppealBtn) {
+            forumAppealBtn.addEventListener('click', submitForumAppealFromButton);
+          }
+
+          if (forumModal) {
+            forumModal.addEventListener('shown.bs.modal', () => {
+              syncForumModerationStatus().catch(() => { });
+            });
+          }
+
+          if (typeof window !== 'undefined') {
+            window.addEventListener('focus', () => {
+              syncForumModerationStatus().catch(() => { });
+            });
           }
 
           if (forumSendBtn) {
