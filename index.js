@@ -94,9 +94,13 @@ const TURNSTILE_STRICT = /^(1|true|yes|on)$/i.test(String(process.env.TURNSTILE_
 const isTurnstileConfigured = Boolean(TURNSTILE_SECRET_KEY && TURNSTILE_SITE_KEY);
 const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
-const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
+const GROQ_API_KEYS = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_FALLBACK,
+].map((x) => String(x || "").trim()).filter(Boolean);
+const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-const isGroqConfigured = Boolean(GROQ_API_KEY);
+const isGroqConfigured = GROQ_API_KEYS.length > 0;
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
@@ -689,39 +693,45 @@ Jika percakapan biasa/edukasi/diagnosa:
     { role: "user", content: prompt }
   ];
 
-  try {
-    const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + GROQ_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Groq API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-
+  let lastError = null;
+  for (let idx = 0; idx < GROQ_API_KEYS.length; idx += 1) {
+    const apiKey = GROQ_API_KEYS[idx];
     try {
-      return JSON.parse(content);
-    } catch (e) {
-      return { reply: content };
+      const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Groq API error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+
+      try {
+        return JSON.parse(content);
+      } catch {
+        return { reply: content };
+      }
+    } catch (error) {
+      lastError = error;
+      const usingFallback = idx > 0;
+      console.error(`[Groq API] Error${usingFallback ? " (fallback key)" : ""}:`, error?.message || error);
     }
-  } catch (error) {
-    console.error("[Groq API] Error:", error);
-    throw error;
   }
+  throw lastError || new Error("Groq API request failed");
 };
 
 let turnstileWarningLogged = false;
@@ -3677,6 +3687,7 @@ const ASSISTANT_TOPICS = [
 
 const buildAssistantResponse = async (prompt, history = [], clientState = {}) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
+  const lowerRaw = raw.toLowerCase();
   if (!raw) {
     return {
       reply: "Hai! Mau bantuan convert video?",
@@ -3696,6 +3707,43 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
     return {
       reply: "**FAQ**: **M4A** tercepat, **MP3** universal, **FLAC** studio.",
       suggestions: ["Format", "Trim", "Cookies"],
+    };
+  }
+
+  if (/^\/?appeal(\s+.*)?$/i.test(raw)) {
+    const reason = raw.replace(/^\/?appeal\s*/i, "").trim() || "Saya mau appeal ban forum.";
+    return {
+      reply: "Sip, aku bantu kirim appeal kamu ke admin dashboard sekarang.",
+      suggestions: ["Cek status appeal", "Tambahkan alasan detail", "Buka tiket bantuan"],
+      action: "submit_forum_appeal",
+      params: { reason },
+    };
+  }
+
+  if (
+    /(appeal|banding|diban|di ban|keban|kena ban|forum diblokir|forum dikunci)/i.test(lowerRaw) ||
+    /(saya mau appeal|mau appeal|ajukan appeal)/i.test(lowerRaw)
+  ) {
+    const forumState = clientState?.forum || {};
+    const violationCount = Number(forumState?.violationCount || 0);
+    const disabledFeatures = Array.isArray(forumState?.disabledFeatures) ? forumState.disabledFeatures : [];
+    const hasForumBlockSignal = violationCount >= 5 || disabledFeatures.length > 0 || Boolean(forumState?.forumDisabled);
+    return {
+      reply: hasForumBlockSignal
+        ? "Siap, aku proses appeal kamu sekarang dan kirim ke admin dashboard. Mohon tunggu, aku akan sertakan data akun, socket, dan fitur yang terblokir."
+        : "Siap, aku bantu kirim appeal. Kalau forum kamu memang diblokir, appeal akan langsung masuk ke admin dashboard untuk direview.",
+      suggestions: ["Tulis alasan singkat", "Cek status appeal", "Buat tiket tambahan"],
+      action: "submit_forum_appeal",
+      params: {
+        reason: raw,
+      },
+    };
+  }
+
+  if (clientState?.forum?.forumDisabled && /(forum|chat|tidak bisa chat|gabisa chat|ga bisa chat)/i.test(lowerRaw)) {
+    return {
+      reply: "Kayaknya akun kamu memang lagi keblokir buat chat forum. Coba ketik **/appeal alasan kamu** biar langsung aku kirim ke admin dashboard.",
+      suggestions: ["/appeal saya tidak sengaja", "Buka tiket bantuan", "Cek status forum"],
     };
   }
 
@@ -3795,7 +3843,6 @@ Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, 
       "halo": "**Halo!** Ready to convert! **Kirim URLnya!**"
     };
 
-    const lowerRaw = raw.toLowerCase();
     let reply = "**Hai!** Mau convert video? **Kirim URLnya!**";
 
     for (const [key, value] of Object.entries(fallbackResponses)) {
@@ -8220,6 +8267,7 @@ const controlState = {
 };
 const retentionUsers = new Map();
 const apiRouteStats = new Map();
+const forumAppeals = new Map();
 const abMetrics = {
   A: { started: 0, success: 0 },
   B: { started: 0, success: 0 },
@@ -8250,6 +8298,76 @@ const INDONESIAN_BADWORDS = [
 
 
 const SUPPORT_CONTACT_EMAIL = process.env.SUPPORT_CONTACT_EMAIL || "forumwargaytmp3@gmail.com";
+
+const buildAppealId = () => `APL-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+
+const submitForumAppeal = async ({
+  source = "unknown",
+  userId = "",
+  name = "Warga",
+  email = "",
+  room = "umum",
+  reason = "",
+  socketId = "",
+  disabledFeatures = [],
+  metadata = {},
+} = {}) => {
+  const appealId = buildAppealId();
+  const submittedAt = new Date().toISOString();
+  const normalizedDisabled = Array.isArray(disabledFeatures)
+    ? disabledFeatures.map((x) => String(x || "").trim()).filter(Boolean).slice(0, 12)
+    : [];
+  const appeal = {
+    appealId,
+    source,
+    userId: String(userId || "").slice(0, 120),
+    name: String(name || "Warga").slice(0, 120),
+    email: String(email || "").slice(0, 240),
+    room: String(room || "umum").slice(0, 60),
+    reason: String(reason || "").slice(0, 2400),
+    socketId: String(socketId || "").slice(0, 120),
+    disabledFeatures: normalizedDisabled,
+    metadata: metadata && typeof metadata === "object" ? metadata : {},
+    status: "pending",
+    statusLabel: "Pending",
+    submittedAt,
+    updatedAt: submittedAt,
+    reviewedAt: null,
+    reviewedBy: "",
+    reviewNote: "",
+  };
+  forumAppeals.set(appealId, appeal);
+  pushActivityLog("forum_appeal_submitted", `Forum appeal ${appealId} dibuat`, {
+    appealId,
+    userId: appeal.userId,
+    source,
+  });
+  io.emit("admin:appealCreated", {
+    appealId,
+    submittedAt,
+    userId: appeal.userId,
+    name: appeal.name,
+    status: appeal.status,
+    source,
+  });
+
+  const appealLines = [
+    "=== Forum Appeal Request ===",
+    `Appeal ID : ${appeal.appealId}`,
+    `Source    : ${appeal.source}`,
+    `User ID   : ${appeal.userId || "-"}`,
+    `Name      : ${appeal.name || "-"}`,
+    `Email     : ${appeal.email || "-"}`,
+    `Room      : ${appeal.room || "-"}`,
+    `Socket ID : ${appeal.socketId || "-"}`,
+    `Disabled  : ${appeal.disabledFeatures.join(", ") || "-"}`,
+    `Reason    : ${appeal.reason || "-"}`,
+    `Time      : ${appeal.submittedAt}`,
+    "SLA       : 2x24 jam",
+  ];
+  await sendSupportEmail({ subject: `[Forum Appeal] ${appeal.appealId}`, lines: appealLines });
+  return appeal;
+};
 
 const sendSupportEmail = async ({ subject, lines = [], html = null, to = SUPPORT_CONTACT_EMAIL }) => {
   const transport = getMailTransport();
@@ -8509,6 +8627,53 @@ app.post('/api/forum/moderation-report', async (req, res) => {
   }
 });
 
+app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const userId = String(body.userId || "").trim();
+    const reason = String(body.reason || body.message || "").trim();
+    if (!userId) return res.status(400).json({ ok: false, error: "user_id_required" });
+    if (!reason) return res.status(400).json({ ok: false, error: "reason_required" });
+
+    const violationRec = userViolations.get(userId);
+    const blockedByServer = Boolean(violationRec?.banned);
+    const disabledFeatures = Array.isArray(body.disabledFeatures) ? body.disabledFeatures : [];
+    const blockedByClient = disabledFeatures.length > 0 || Number(body.violationCount || 0) >= 5;
+
+    const blockedSignalDetected = blockedByServer || blockedByClient;
+
+    const appeal = await submitForumAppeal({
+      source: "ai_navigator",
+      userId,
+      name: body.name || "Warga",
+      email: body.email || "",
+      room: body.room || "umum",
+      reason,
+      socketId: body.socketId || "",
+      disabledFeatures,
+      metadata: {
+        violationCount: Number(body.violationCount || 0),
+        googleAccount: body.googleAccount || null,
+        blockedByServer,
+        blockedByClient,
+        blockedSignalDetected,
+      },
+    });
+    return res.json({
+      ok: true,
+      appealId: appeal.appealId,
+      status: appeal.status,
+      submittedAt: appeal.submittedAt,
+      message: blockedSignalDetected
+        ? `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`
+        : `✅ Appeal ${appeal.appealId} tetap dikirim ke admin dashboard (status block belum terverifikasi otomatis).`,
+    });
+  } catch (e) {
+    console.error("[/api/forum/appeal error]", e);
+    return res.status(500).json({ ok: false, error: e?.message || "appeal_failed" });
+  }
+});
+
 app.get("/api/ticket/:ticketId", (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_invalid" });
@@ -8554,6 +8719,66 @@ app.get("/api/admin/tickets", (req, res) => {
   return res.json({ ok: true, tickets: items });
 });
 
+app.get("/api/admin/appeals", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const appeals = Array.from(forumAppeals.values())
+    .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+  return res.json({ ok: true, appeals });
+});
+
+app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const appealId = String(req.params.appealId || "").trim().toUpperCase();
+  const appeal = forumAppeals.get(appealId);
+  if (!appeal) return res.status(404).json({ ok: false, error: "appeal_not_found" });
+  const status = String(req.body?.status || "").trim().toLowerCase();
+  if (!["accepted", "rejected", "pending"].includes(status)) {
+    return res.status(400).json({ ok: false, error: "invalid_status" });
+  }
+  const statusLabelMap = { accepted: "Diterima", rejected: "Ditolak", pending: "Pending" };
+  appeal.status = status;
+  appeal.statusLabel = statusLabelMap[status] || status;
+  appeal.reviewNote = String(req.body?.reviewNote || "").slice(0, 1200);
+  appeal.reviewedBy = String(req.body?.reviewedBy || "admin").slice(0, 120);
+  appeal.reviewedAt = status === "pending" ? null : new Date().toISOString();
+  appeal.updatedAt = new Date().toISOString();
+  forumAppeals.set(appealId, appeal);
+  pushActivityLog("forum_appeal_updated", `Appeal ${appealId} -> ${appeal.statusLabel}`, {
+    appealId,
+    status: appeal.status,
+  });
+  io.emit("admin:appealUpdated", {
+    appealId,
+    status: appeal.status,
+    statusLabel: appeal.statusLabel,
+  });
+  return res.json({ ok: true, appeal });
+});
+
+app.get("/api/admin/session-replay/:socketId", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const socketId = String(req.params.socketId || "").trim();
+  if (!socketId) return res.status(400).json({ ok: false, error: "socket_id_required" });
+  const live = activeUsers.get(socketId);
+  if (live) upsertSessionReplay(socketId, live);
+  const replay = sessionReplayStore.get(socketId);
+  if (!replay) return res.status(404).json({ ok: false, error: "session_not_found" });
+  return res.json({
+    ok: true,
+    replay: {
+      socketId: replay.socketId,
+      connectedAt: replay.connectedAt || null,
+      disconnectedAt: replay.disconnectedAt || null,
+      page: replay.page || "unknown",
+      room: replay.room || null,
+      status: replay.status || "idle",
+      userAgent: replay.userAgent || "",
+      geo: replay.geo || { country: "unknown", city: "unknown" },
+      actions: Array.isArray(replay.actions) ? replay.actions : [],
+    },
+  });
+});
+
 app.get("/api/admin/stats", (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const now = new Date();
@@ -8596,6 +8821,21 @@ app.get("/api/admin/stats", (req, res) => {
   })).sort((a, b) => b.hits - a.hits).slice(0, 20);
   const returningUsers = Array.from(retentionUsers.values()).filter((u) => Number(u.sessions || 0) > 1).length;
   const newUsers = Math.max(0, retentionUsers.size - returningUsers);
+  const appeals = Array.from(forumAppeals.values()).sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+  const appealsByStatus = appeals.reduce((acc, item) => {
+    const key = String(item?.status || "pending");
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const blockedForumUsers = Array.from(userViolations.values()).filter((x) => x?.banned).length;
+  const disabledFeatureUsage = {};
+  appeals.forEach((a) => {
+    (a.disabledFeatures || []).forEach((f) => {
+      const key = String(f || "").trim();
+      if (!key) return;
+      disabledFeatureUsage[key] = (disabledFeatureUsage[key] || 0) + 1;
+    });
+  });
   const successRate = conversionMetrics.started ? (conversionMetrics.success / conversionMetrics.started) * 100 : 0;
   const predictedNextHourUsers = Number(((conversionMetrics.entered / Math.max(1, process.uptime() / 3600))).toFixed(0));
   const smartInsights = [];
@@ -8679,6 +8919,16 @@ app.get("/api/admin/stats", (req, res) => {
       totalUsers: retentionUsers.size,
       newUsers,
       returningUsers,
+    },
+    appeals: {
+      total: appeals.length,
+      byStatus: appealsByStatus,
+      all: appeals.slice(0, 200),
+    },
+    moderation: {
+      blockedForumUsers,
+      disabledFeatureUsage,
+      storedSessionReplay: sessionReplayStore.size,
     },
     abTesting: abMetrics,
     smartInsights,
@@ -8819,6 +9069,7 @@ app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
   }
   pushActivityLog("admin_control", `Control action: ${action}`, { action });
   io.emit("admin:controlUpdated", { ...controlState });
+  io.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   emitDashboardStats();
   return res.json({ ok: true, control: { ...controlState } });
 });
@@ -8851,6 +9102,8 @@ const io = new SocketIOServer(httpServer, {
 const roomUsers = new Map();
 const socketState = new Map();
 const activeUsers = new Map();
+const sessionReplayStore = new Map();
+const MAX_SESSION_REPLAY = 300;
 
 const getLiveBreakdown = (field) => {
   const result = {};
@@ -8880,12 +9133,41 @@ const getLiveUsers = () => Array.from(activeUsers.entries()).map(([socketId, use
   journey: Array.isArray(user.journey) ? user.journey.join(" → ") : "",
   actions: Array.isArray(user.actionTrail) ? user.actionTrail : [],
   clientId: user.clientId || "",
+  userId: user.userId || "",
+  userEmail: user.userEmail || "",
   abVariant: user.abVariant || "A",
   geo: user.geo || { country: "unknown", city: "unknown" },
   userAgent: user.userAgent || "",
   connectedAt: user.connectedAt || null,
   lastSeenAt: user.lastSeenAt || null,
 }));
+
+const upsertSessionReplay = (socketId, user = null, extras = {}) => {
+  if (!socketId) return;
+  const prev = sessionReplayStore.get(socketId) || {
+    socketId,
+    connectedAt: new Date().toISOString(),
+    disconnectedAt: null,
+    page: "unknown",
+    room: null,
+    status: "idle",
+    userAgent: "",
+    geo: { country: "unknown", city: "unknown" },
+    actions: [],
+  };
+  const next = {
+    ...prev,
+    ...(user || {}),
+    ...extras,
+    socketId,
+    actions: Array.isArray(user?.actionTrail) ? user.actionTrail.slice(-120) : (prev.actions || []),
+  };
+  sessionReplayStore.set(socketId, next);
+  if (sessionReplayStore.size > MAX_SESSION_REPLAY) {
+    const oldestKey = sessionReplayStore.keys().next().value;
+    if (oldestKey) sessionReplayStore.delete(oldestKey);
+  }
+};
 
 const emitDashboardStats = () => {
   io.emit("dashboard_stats", {
@@ -8912,6 +9194,7 @@ const broadcastRoomUsers = (room) => {
 };
 
 io.on("connection", (socket) => {
+  socket.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   activeUsers.set(socket.id, {
     page: "unknown",
     room: null,
@@ -8920,6 +9203,8 @@ io.on("connection", (socket) => {
     actionTrail: [],
     convertStartedAt: null,
     clientId: "",
+    userId: "",
+    userEmail: "",
     abVariant: "A",
     geo: {
       country: String(socket.handshake?.headers?.["cf-ipcountry"] || socket.handshake?.headers?.["x-vercel-ip-country"] || "unknown"),
@@ -8929,6 +9214,7 @@ io.on("connection", (socket) => {
     connectedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
   });
+  upsertSessionReplay(socket.id, activeUsers.get(socket.id));
   conversionMetrics.entered += 1;
   pushActivityLog("user_connected", `Socket ${socket.id} connected`, { socketId: socket.id });
   emitDashboardStats();
@@ -8938,8 +9224,12 @@ io.on("connection", (socket) => {
     const rec = activeUsers.get(socket.id);
     if (!rec) return;
     const clientId = String(payload?.clientId || rec.clientId || "").slice(0, 120);
+    const userId = String(payload?.userId || rec.userId || "").slice(0, 180);
+    const userEmail = String(payload?.userEmail || rec.userEmail || "").slice(0, 240);
     const abVariant = String(payload?.abVariant || rec.abVariant || "A").toUpperCase() === "B" ? "B" : "A";
     rec.clientId = clientId;
+    rec.userId = userId;
+    rec.userEmail = userEmail;
     rec.abVariant = abVariant;
     if (clientId) {
       const retentionRec = retentionUsers.get(clientId) || { sessions: 0, lastSeenAt: null };
@@ -8955,6 +9245,7 @@ io.on("connection", (socket) => {
     if (rec.journey.length > 12) rec.journey = rec.journey.slice(-12);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -8973,6 +9264,7 @@ io.on("connection", (socket) => {
     if (rec.actionTrail.length > 40) rec.actionTrail = rec.actionTrail.slice(-40);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     pushActivityLog("user_action", `${socket.id}: ${action}`, { socketId: socket.id, action, detail });
     emitDashboardStats();
   });
@@ -8997,6 +9289,7 @@ io.on("connection", (socket) => {
     controlState.waiting = Math.max(0, controlState.queueLength - controlState.processing);
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9019,6 +9312,7 @@ io.on("connection", (socket) => {
     pushActivityLog("conversion_success", `Conversion success from ${socket.id}`, { socketId: socket.id });
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9028,6 +9322,7 @@ io.on("connection", (socket) => {
     rec.status = "idle";
     rec.lastSeenAt = new Date().toISOString();
     activeUsers.set(socket.id, rec);
+    upsertSessionReplay(socket.id, rec);
     emitDashboardStats();
   });
 
@@ -9045,6 +9340,7 @@ io.on("connection", (socket) => {
       rec.journey.push(`convert:error:${reason}`);
       rec.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, rec);
+      upsertSessionReplay(socket.id, rec);
     }
     pushActivityLog("conversion_error", `Conversion error ${reason}`, { socketId: socket.id, reason });
     emitDashboardStats();
@@ -9113,22 +9409,21 @@ io.on("connection", (socket) => {
     if (!from) return;
     const rec = userViolations.get(from.userId);
     if (rec?.banned) {
-      const appealId = 'APL-' + Date.now().toString(36).toUpperCase().slice(-8);
-      const submittedAt = new Date().toISOString();
-      console.warn(`[Forum Appeal] userId=${from.userId} name=${from.name} appealId=${appealId} submittedAt=${submittedAt}`);
-      const appealLines = [
-        '=== Forum Appeal Request ===',
-        `Appeal ID : ${appealId}`,
-        `User ID   : ${from.userId}`,
-        `Name      : ${from.name}`,
-        `Room      : ${from.room || 'umum'}`,
-        `Time      : ${submittedAt}`,
-        'SLA       : 2x24 jam',
-      ];
-      await sendSupportEmail({ subject: `[Forum Appeal] ${appealId}`, lines: appealLines });
+      const appeal = await submitForumAppeal({
+        source: "forum_socket",
+        userId: from.userId,
+        name: from.name,
+        room: from.room || "umum",
+        reason: String(payload?.reason || "Appeal via forum socket"),
+        socketId: socket.id,
+        metadata: {
+          bannedByServer: true,
+          violationCount: Number(rec?.count || 0),
+        },
+      });
       socket.emit("forum:appealSubmitted", {
-        appealId,
-        message: `✅ Appeal kamu (${appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
+        appealId: appeal.appealId,
+        message: `✅ Appeal kamu (${appeal.appealId}) telah diterima! Tim akan mereview dalam 2x24 jam. Notifikasi juga dikirim ke ${SUPPORT_CONTACT_EMAIL}.`
       });
     }
   });
@@ -9154,6 +9449,7 @@ io.on("connection", (socket) => {
       active.room = room;
       active.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, active);
+      upsertSessionReplay(socket.id, active);
     }
     const map = getOrCreateRoomMap(room);
     map.set(userId, { userId, name, socketId: socket.id });
@@ -9175,6 +9471,7 @@ io.on("connection", (socket) => {
       active.room = null;
       active.lastSeenAt = new Date().toISOString();
       activeUsers.set(socket.id, active);
+      upsertSessionReplay(socket.id, active);
     }
     broadcastRoomUsers(prev.room);
     emitDashboardStats();
@@ -9265,6 +9562,7 @@ io.on("connection", (socket) => {
       broadcastRoomUsers(prev.room);
     }
     activeUsers.delete(socket.id);
+    upsertSessionReplay(socket.id, null, { disconnectedAt: new Date().toISOString() });
     pushActivityLog("user_disconnected", `Socket ${socket.id} disconnected`, { socketId: socket.id });
     emitDashboardStats();
   });
