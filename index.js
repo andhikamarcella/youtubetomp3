@@ -3949,6 +3949,10 @@ Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, 
     };
   } catch (error) {
     console.error("[Assistant] Groq API error:", error);
+    const rawError = String(error?.message || error || "").trim();
+    const shortError = rawError
+      .replace(/^Groq API error:\s*/i, "")
+      .slice(0, 240);
 
     // Fallback to basic responses
     const fallbackResponses = {
@@ -3975,6 +3979,11 @@ Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, 
     return {
       reply,
       suggestions: ["Convert", "Format", "Trim", "Pengaturan"],
+      meta: {
+        degraded: true,
+        provider: "groq",
+        errorDetail: shortError || "Unknown Groq error",
+      },
     };
   }
 };
@@ -7438,10 +7447,18 @@ app.post("/api/assistant-chat", async (req, res) => {
     return res.json(responsePayload);
   } catch (e) {
     console.error("[assistant-chat] fatal:", e?.message || e);
+    const shortError = String(e?.message || e || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 240);
     return res.json({
       reply: "Maaf, server AI lagi gangguan sebentar. Coba lagi ya 5-10 detik.",
       suggestions: ["Cara convert", "Pilih format", "Trim audio", "Buat tiket bantuan"],
-      meta: { degraded: true },
+      meta: {
+        degraded: true,
+        provider: "assistant-server",
+        errorDetail: shortError || "Unknown assistant error",
+      },
     });
   }
 });
