@@ -18163,7 +18163,7 @@
         };
 
         const submitForumAppeal = async (reasonText) => {
-          const uid = currentUser?.uid || '';
+          const uid = state?.currentUser?.uid || '';
           if (!uid) {
             return { ok: false, error: 'Untuk kirim appeal, login Google dulu ya.' };
           }
@@ -18188,8 +18188,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId: uid,
-              name: currentUser?.displayName || 'Warga',
-              email: currentUser?.email || '',
+              name: state?.currentUser?.displayName || 'Warga',
+              email: state?.currentUser?.email || '',
               room: activeForumRoom || 'umum',
               socketId: '',
               reason: String(reasonText || '').trim() || 'Saya mau appeal forum',
@@ -18198,7 +18198,7 @@
               googleAccount: {
                 provider: 'google',
                 uid,
-                email: currentUser?.email || '',
+                email: state?.currentUser?.email || '',
               },
             }),
           });
@@ -18236,9 +18236,9 @@
                 experience: state.experience,
                 mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
                 auth: {
-                  uid: currentUser?.uid || '',
-                  email: currentUser?.email || '',
-                  name: currentUser?.displayName || 'Warga',
+                  uid: state?.currentUser?.uid || '',
+                  email: state?.currentUser?.email || '',
+                  name: state?.currentUser?.displayName || 'Warga',
                 },
                 forum: {
                   room: activeForumRoom || 'umum',
