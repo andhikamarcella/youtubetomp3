@@ -681,6 +681,44 @@ const safeFetch = async (...args) => {
   return fetchImpl(...args);
 };
 
+const readGroqStreamingContent = async (response) => {
+  if (!response?.body || !response.body.getReader) {
+    const fallbackPayload = await response.json().catch(() => null);
+    return fallbackPayload?.choices?.[0]?.message?.content || "";
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const dataPart = trimmed.slice(5).trim();
+      if (!dataPart || dataPart === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(dataPart);
+        const delta = parsed?.choices?.[0]?.delta?.content;
+        const msg = parsed?.choices?.[0]?.message?.content;
+        if (typeof delta === "string") content += delta;
+        else if (typeof msg === "string") content += msg;
+      } catch {
+        // Abaikan chunk non-JSON
+      }
+    }
+  }
+
+  return content.trim();
+};
+
 const callGroqAPI = async (prompt, context = {}) => {
   if (!isGroqConfigured) {
     throw new Error("Groq API tidak dikonfigurasi");
@@ -766,7 +804,7 @@ Jika percakapan biasa/edukasi/diagnosa:
               ? GROQ_MAX_COMPLETION_TOKENS
               : 1024,
             top_p: 1,
-            stream: false,
+            stream: true,
             stop: null,
           }),
         });
@@ -776,8 +814,10 @@ Jika percakapan biasa/edukasi/diagnosa:
           throw new Error(`Groq API error: ${response.status} - ${errorText}`);
         }
 
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "{}";
+        const content = await readGroqStreamingContent(response);
+        if (!content) {
+          throw new Error("Groq stream returned empty content");
+        }
 
         try {
           return JSON.parse(content);
