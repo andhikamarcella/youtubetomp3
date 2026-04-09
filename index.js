@@ -815,7 +815,9 @@ Jika percakapan biasa/edukasi/diagnosa:
           model: modelForKey,
           messages,
           temperature: 0.7,
-          max_tokens: 500,
+          max_completion_tokens: 500,
+          top_p: 1,
+          stream: false,
         }),
       });
 
@@ -7425,8 +7427,6 @@ app.post("/api/assistant-chat", async (req, res) => {
     }
 
     const responsePayload = await buildAssistantResponse(trimmed, messages, clientState);
-    const user = await resolveRequestUser(req);
-
     return res.json(responsePayload);
   } catch (e) {
     return res.status(500).json({ error: e?.message || "Gagal memproses percakapan" });
