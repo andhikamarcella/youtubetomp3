@@ -18190,7 +18190,7 @@
               userId: uid,
               name: state?.currentUser?.displayName || 'Warga',
               email: state?.currentUser?.email || '',
-              room: activeForumRoom || 'umum',
+              room: localStorage.getItem('forum_room') || 'umum',
               socketId: '',
               reason: String(reasonText || '').trim() || 'Saya mau appeal forum',
               violationCount,
@@ -18241,7 +18241,7 @@
                   name: state?.currentUser?.displayName || 'Warga',
                 },
                 forum: {
-                  room: activeForumRoom || 'umum',
+                  room: localStorage.getItem('forum_room') || 'umum',
                   socketId: '',
                   violationCount,
                   forumDisabled: Boolean(violationCount >= violationLimit),
