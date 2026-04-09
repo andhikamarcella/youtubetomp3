@@ -136,10 +136,13 @@ const collectGroqKeys = () => {
 
 const GROQ_API_KEYS = collectGroqKeys();
 const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
+const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.1-8b-instant").trim() || "llama-3.1-8b-instant";
+const GROQ_MAX_COMPLETION_TOKENS = Number(process.env.GROQ_MAX_COMPLETION_TOKENS || 1024);
+const isGroqConfigured = GROQ_API_KEYS.length > 0;
 const parseGroqModels = () => {
   const raw = String(process.env.GROQ_MODELS || "");
   const values = [
-    String(process.env.GROQ_MODEL || "").trim(),
+    GROQ_MODEL,
     ...raw.split(/[\n,;]+/).map((token) => token.trim()),
   ].filter(Boolean);
   const seen = new Set();
@@ -151,16 +154,6 @@ const parseGroqModels = () => {
   });
 };
 const GROQ_MODEL_CANDIDATES = parseGroqModels();
-const GROQ_MODEL = GROQ_MODEL_CANDIDATES[0] || "llama-3.3-70b-versatile";
-const isGroqConfigured = GROQ_API_KEYS.length > 0;
-const groqModelPreference = [
-  GROQ_MODEL,
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-  "llama3-8b-8192",
-  "mixtral-8x7b-32768",
-].filter(Boolean);
-const groqModelFallbackCache = new Map();
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
@@ -688,53 +681,6 @@ const safeFetch = async (...args) => {
   return fetchImpl(...args);
 };
 
-const pickGroqModelForKey = async (apiKey) => {
-  const cached = groqModelFallbackCache.get(apiKey);
-  if (cached) return cached;
-
-  const preferred = [];
-  const seen = new Set();
-  groqModelPreference.forEach((model) => {
-    const normalized = String(model || "").trim();
-    if (!normalized) return;
-    const lower = normalized.toLowerCase();
-    if (seen.has(lower)) return;
-    seen.add(lower);
-    preferred.push(normalized);
-  });
-
-  try {
-    const response = await safeFetch("https://api.groq.com/openai/v1/models", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (response.ok) {
-      const payload = await response.json().catch(() => null);
-      const available = Array.isArray(payload?.data)
-        ? payload.data
-          .map((item) => String(item?.id || "").trim())
-          .filter(Boolean)
-        : [];
-      if (available.length) {
-        const availableSet = new Set(available.map((model) => model.toLowerCase()));
-        const match = preferred.find((model) => availableSet.has(model.toLowerCase()));
-        const selected = match || available[0];
-        groqModelFallbackCache.set(apiKey, selected);
-        return selected;
-      }
-    }
-  } catch (error) {
-    console.warn("[Groq API] Failed to fetch model list:", error?.message || error);
-  }
-
-  const fallback = preferred[0] || "llama-3.3-70b-versatile";
-  groqModelFallbackCache.set(apiKey, fallback);
-  return fallback;
-};
-
 const callGroqAPI = async (prompt, context = {}) => {
   if (!isGroqConfigured) {
     throw new Error("Groq API tidak dikonfigurasi");
@@ -803,44 +749,50 @@ Jika percakapan biasa/edukasi/diagnosa:
   let lastError = null;
   for (let idx = 0; idx < GROQ_API_KEYS.length; idx += 1) {
     const apiKey = GROQ_API_KEYS[idx];
-    try {
-      const modelForKey = await pickGroqModelForKey(apiKey);
-      const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: modelForKey,
-          messages,
-          temperature: 0.7,
-          max_completion_tokens: 500,
-          top_p: 1,
-          stream: false,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        if (response.status === 400 && /model|decommissioned|not found|does not exist/i.test(error || "")) {
-          groqModelFallbackCache.delete(apiKey);
-        }
-        throw new Error(`Groq API error: ${response.status} - ${error}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "{}";
-
+    for (let midx = 0; midx < GROQ_MODEL_CANDIDATES.length; midx += 1) {
+      const model = GROQ_MODEL_CANDIDATES[midx];
       try {
-        return JSON.parse(content);
-      } catch {
-        return { reply: content };
+        const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messages,
+            model,
+            temperature: 1,
+            max_completion_tokens: Number.isFinite(GROQ_MAX_COMPLETION_TOKENS) && GROQ_MAX_COMPLETION_TOKENS > 0
+              ? GROQ_MAX_COMPLETION_TOKENS
+              : 1024,
+            top_p: 1,
+            stream: false,
+            stop: null,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "{}";
+
+        try {
+          return JSON.parse(content);
+        } catch {
+          return { reply: content };
+        }
+      } catch (error) {
+        lastError = error;
+        const usingFallbackKey = idx > 0;
+        const usingFallbackModel = midx > 0;
+        console.error(
+          `[Groq API] Error${usingFallbackKey ? " (fallback key)" : ""}${usingFallbackModel ? " (fallback model)" : ""}:`,
+          error?.message || error
+        );
       }
-    } catch (error) {
-      lastError = error;
-      const usingFallback = idx > 0;
-      console.error(`[Groq API] Error${usingFallback ? " (fallback key)" : ""}:`, error?.message || error);
     }
   }
   throw lastError || new Error("Groq API request failed");
@@ -7429,7 +7381,12 @@ app.post("/api/assistant-chat", async (req, res) => {
     const responsePayload = await buildAssistantResponse(trimmed, messages, clientState);
     return res.json(responsePayload);
   } catch (e) {
-    return res.status(500).json({ error: e?.message || "Gagal memproses percakapan" });
+    console.error("[assistant-chat] fatal:", e?.message || e);
+    return res.json({
+      reply: "Maaf, server AI lagi gangguan sebentar. Coba lagi ya 5-10 detik.",
+      suggestions: ["Cara convert", "Pilih format", "Trim audio", "Buat tiket bantuan"],
+      meta: { degraded: true },
+    });
   }
 });
 
