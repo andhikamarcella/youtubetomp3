@@ -136,8 +136,31 @@ const collectGroqKeys = () => {
 
 const GROQ_API_KEYS = collectGroqKeys();
 const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
-const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.3-70b-versatile").trim() || "llama-3.3-70b-versatile";
+const parseGroqModels = () => {
+  const raw = String(process.env.GROQ_MODELS || "");
+  const values = [
+    String(process.env.GROQ_MODEL || "").trim(),
+    ...raw.split(/[\n,;]+/).map((token) => token.trim()),
+  ].filter(Boolean);
+  const seen = new Set();
+  return values.filter((model) => {
+    const normalized = model.toLowerCase();
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+};
+const GROQ_MODEL_CANDIDATES = parseGroqModels();
+const GROQ_MODEL = GROQ_MODEL_CANDIDATES[0] || "llama-3.3-70b-versatile";
 const isGroqConfigured = GROQ_API_KEYS.length > 0;
+const groqModelPreference = [
+  GROQ_MODEL,
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "llama3-8b-8192",
+  "mixtral-8x7b-32768",
+].filter(Boolean);
+const groqModelFallbackCache = new Map();
 const COOKIES_PATH = join(process.cwd(), "cookies.txt");
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
@@ -665,6 +688,53 @@ const safeFetch = async (...args) => {
   return fetchImpl(...args);
 };
 
+const pickGroqModelForKey = async (apiKey) => {
+  const cached = groqModelFallbackCache.get(apiKey);
+  if (cached) return cached;
+
+  const preferred = [];
+  const seen = new Set();
+  groqModelPreference.forEach((model) => {
+    const normalized = String(model || "").trim();
+    if (!normalized) return;
+    const lower = normalized.toLowerCase();
+    if (seen.has(lower)) return;
+    seen.add(lower);
+    preferred.push(normalized);
+  });
+
+  try {
+    const response = await safeFetch("https://api.groq.com/openai/v1/models", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (response.ok) {
+      const payload = await response.json().catch(() => null);
+      const available = Array.isArray(payload?.data)
+        ? payload.data
+          .map((item) => String(item?.id || "").trim())
+          .filter(Boolean)
+        : [];
+      if (available.length) {
+        const availableSet = new Set(available.map((model) => model.toLowerCase()));
+        const match = preferred.find((model) => availableSet.has(model.toLowerCase()));
+        const selected = match || available[0];
+        groqModelFallbackCache.set(apiKey, selected);
+        return selected;
+      }
+    }
+  } catch (error) {
+    console.warn("[Groq API] Failed to fetch model list:", error?.message || error);
+  }
+
+  const fallback = preferred[0] || "llama-3.3-70b-versatile";
+  groqModelFallbackCache.set(apiKey, fallback);
+  return fallback;
+};
+
 const callGroqAPI = async (prompt, context = {}) => {
   if (!isGroqConfigured) {
     throw new Error("Groq API tidak dikonfigurasi");
@@ -734,6 +804,7 @@ Jika percakapan biasa/edukasi/diagnosa:
   for (let idx = 0; idx < GROQ_API_KEYS.length; idx += 1) {
     const apiKey = GROQ_API_KEYS[idx];
     try {
+      const modelForKey = await pickGroqModelForKey(apiKey);
       const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -741,7 +812,7 @@ Jika percakapan biasa/edukasi/diagnosa:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: GROQ_MODEL,
+          model: modelForKey,
           messages,
           temperature: 0.7,
           max_tokens: 500,
@@ -750,6 +821,9 @@ Jika percakapan biasa/edukasi/diagnosa:
 
       if (!response.ok) {
         const error = await response.text();
+        if (response.status === 400 && /model|decommissioned|not found|does not exist/i.test(error || "")) {
+          groqModelFallbackCache.delete(apiKey);
+        }
         throw new Error(`Groq API error: ${response.status} - ${error}`);
       }
 
