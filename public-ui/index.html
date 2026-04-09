@@ -18269,7 +18269,19 @@
                   response = candidate;
                   break;
                 }
-                responseErr = new Error(`assistant_api_${candidate.status}`);
+                let detail = '';
+                try {
+                  const errorJson = await candidate.clone().json();
+                  detail = String(errorJson?.error || errorJson?.meta?.errorDetail || '').trim();
+                } catch (_) {
+                  try {
+                    detail = (await candidate.text()).slice(0, 180).trim();
+                  } catch (_) {
+                    detail = '';
+                  }
+                }
+                const suffix = detail ? `: ${detail}` : '';
+                responseErr = new Error(`assistant_api_${candidate.status}${suffix}`);
               } catch (networkErr) {
                 responseErr = networkErr;
               }
@@ -18278,6 +18290,9 @@
             if (response.ok) {
               const data = await response.json();
               reply = data?.reply || '';
+              if (data?.meta?.degraded && data?.meta?.errorDetail) {
+                reply += `\n\n🧾 Detail teknis: \`${String(data.meta.errorDetail).slice(0, 220)}\``;
+              }
 
               if (data.action === 'convert' && data.url) {
                 const urlInput = document.getElementById('urlInput');
@@ -18329,7 +18344,8 @@
             }
           } catch (err) {
             console.error('Gagal mengambil jawaban AI', err);
-            reply = '⚠️ AI Groq sedang gangguan. Coba lagi 5-10 detik, atau cek konfigurasi GROQ_API_KEY/GROQ_MODEL di server.';
+            const detail = String(err?.message || '').replace(/^Error:\s*/,'').trim();
+            reply = `⚠️ AI Groq sedang gangguan. Coba lagi 5-10 detik, atau cek konfigurasi GROQ_API_KEY/GROQ_MODEL di server.${detail ? `\n\n🧾 Detail teknis: \`${detail.slice(0, 220)}\`` : ''}`;
             if (isAppealIntent(text)) {
               try {
                 const result = await submitForumAppeal(text);
