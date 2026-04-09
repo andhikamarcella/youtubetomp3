@@ -682,22 +682,10 @@ const safeFetch = async (...args) => {
 };
 
 const readGroqStreamingContent = async (response) => {
-  if (!response?.body || !response.body.getReader) {
-    const fallbackPayload = await response.json().catch(() => null);
-    return fallbackPayload?.choices?.[0]?.message?.content || "";
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let content = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() || "";
+  const parseSseChunk = (rawChunk = "", state = { buffer: "", content: "" }) => {
+    state.buffer += rawChunk;
+    const lines = state.buffer.split(/\r?\n/);
+    state.buffer = lines.pop() || "";
 
     for (const line of lines) {
       const trimmed = line.trim();
@@ -708,15 +696,43 @@ const readGroqStreamingContent = async (response) => {
         const parsed = JSON.parse(dataPart);
         const delta = parsed?.choices?.[0]?.delta?.content;
         const msg = parsed?.choices?.[0]?.message?.content;
-        if (typeof delta === "string") content += delta;
-        else if (typeof msg === "string") content += msg;
+        if (typeof delta === "string") state.content += delta;
+        else if (typeof msg === "string") state.content += msg;
       } catch {
         // Abaikan chunk non-JSON
       }
     }
+  };
+
+  if (!response?.body) {
+    const fallbackPayload = await response.json().catch(() => null);
+    return fallbackPayload?.choices?.[0]?.message?.content || "";
   }
 
-  return content.trim();
+  const decoder = new TextDecoder();
+  const state = { buffer: "", content: "" };
+
+  if (typeof response.body.getReader === "function") {
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parseSseChunk(decoder.decode(value, { stream: true }), state);
+    }
+    return state.content.trim();
+  }
+
+  if (typeof response.body[Symbol.asyncIterator] === "function") {
+    for await (const chunk of response.body) {
+      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+      parseSseChunk(text, state);
+    }
+    return state.content.trim();
+  }
+
+  const asText = await response.text().catch(() => "");
+  parseSseChunk(asText, state);
+  return state.content.trim();
 };
 
 const callGroqAPI = async (prompt, context = {}) => {
@@ -724,7 +740,7 @@ const callGroqAPI = async (prompt, context = {}) => {
     throw new Error("Groq API tidak dikonfigurasi");
   }
 
-  const history = Array.isArray(context.history) ? context.history : [];
+  const history = Array.isArray(context.history) ? context.history.slice(-8) : [];
 
   const systemPrompt = `Anda adalah **AI Audio Mentor & Coach + Customer Service Navigator** profesional di platform **YTConv** (YouTube to MP3).
 Tugas Anda adalah membimbing user, mendiagnosa masalah, dan menjelaskan konsep audio dengan adaptif.
