@@ -8944,6 +8944,16 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req
       reviewedAt: appeal.reviewedAt,
     });
   }
+  
+  io.emit("forum:appealReviewed", {
+    userId: appeal.userId,
+    appealId: appeal.appealId,
+    status: appeal.status,
+    reviewNote: appeal.reviewNote,
+    reviewedAt: appeal.reviewedAt,
+    statusLabel: appeal.statusLabel,
+  });
+
   forumAppeals.set(appealId, appeal);
   pushActivityLog("forum_appeal_updated", `Appeal ${appealId} -> ${appeal.statusLabel}`, {
     appealId,
