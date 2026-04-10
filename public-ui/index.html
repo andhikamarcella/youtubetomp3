@@ -27511,6 +27511,15 @@
               setToast('✅ Appeal diterima admin. Forum chat kamu sudah diaktifkan lagi.', 'success');
               updateSendButtonState();
             });
+            forumSocket.on('forum:appealReviewed', (payload) => {
+              const targetUserId = String(payload?.userId || '');
+              if (!targetUserId || targetUserId !== String(currentUser?.uid || '')) return;
+              if (payload.reviewNote) {
+                alert(`Pesan dari Admin Forum (Appeal ${payload.statusLabel}):\n\n"${payload.reviewNote}"`);
+              } else if (payload.status === 'rejected') {
+                alert(`Maaf, Appeal kamu (${payload.appealId}) telah ditolak admin. Kamu tetap tidak bisa mengirim pesan.`);
+              }
+            });
             forumSocket.on('call:offer', (payload) => {
               if (!payload?.callId || !payload?.offer) return;
               if (callState.status !== 'idle') {
