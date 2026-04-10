@@ -8834,7 +8834,7 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
       submittedAt: appeal.submittedAt,
       message: blockedSignalDetected
         ? `✅ Appeal ${appeal.appealId} berhasil dikirim ke admin dashboard.`
-        : `✅ Appeal ${appeal.appealId} tetap dikirim ke admin dashboard (status block belum terverifikasi otomatis).`,
+        : `✅ Appeal ${appeal.appealId} berhasil diajukan dan sedang diproses admin.`,
     });
   } catch (e) {
     console.error("[/api/forum/appeal error]", e);
@@ -9649,6 +9649,7 @@ io.on("connection", (socket) => {
         rec.banned = true;
         rec.bannedAt = Date.now();
         userViolations.set(userId, rec);
+        forumUnblockedUsers.delete(userId);
         // Auto-report to admin log
         console.warn(`[Forum AutoMod] USER BANNED: userId=${userId} name=${from.name} after 5 violations.`);
         socket.emit("forum:modAction", {
