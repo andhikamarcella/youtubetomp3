@@ -205,7 +205,7 @@ const statusBadge = (status = 'received') => {
 };
 
 const appealStatusBadge = s => {
-  const map = { pending: 'bg-amber-500/20 text-amber-300 border-amber-500/40', resolved: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', rejected: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+  const map = { pending: 'bg-amber-500/20 text-amber-300 border-amber-500/40', accepted: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', rejected: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
   return `<span class="px-2 py-0.5 rounded-full border text-xs font-semibold ${map[s] || 'bg-slate-700/50 text-slate-300 border-slate-600'}">${esc(s || '-')}</span>`;
 };
 
@@ -386,7 +386,7 @@ async function loadAppeals() {
 
 function renderAppeals() {
   const pending = allAppeals.filter(a => a.status === 'pending').length;
-  const resolved = allAppeals.filter(a => a.status === 'resolved').length;
+  const resolved = allAppeals.filter(a => a.status === 'accepted').length;
   const rejected = allAppeals.filter(a => a.status === 'rejected').length;
   el('aPending').textContent = pending;
   el('aResolved').textContent = resolved;
@@ -409,14 +409,14 @@ function renderAppeals() {
       <td class="py-3 px-2 text-xs">${esc(a.room || '-')}</td>
       <td class="py-3 px-2 max-w-xs">
         <div class="text-xs text-slate-300 line-clamp-2">${esc(a.reason || '-')}</div>
-        ${a.adminNote ? `<div class="text-xs text-amber-300 mt-1">Admin: ${esc(a.adminNote)}</div>` : ''}
+        ${a.reviewNote ? `<div class="text-xs text-amber-300 mt-1">Admin: ${esc(a.reviewNote)}</div>` : ''}
       </td>
       <td class="py-3 px-2">${appealStatusBadge(a.status)}</td>
       <td class="py-3 px-2 text-xs text-slate-400">${a.submittedAt ? fmt.format(new Date(a.submittedAt)) : '-'}</td>
       <td class="py-3 px-2">
         ${a.status === 'pending'
           ? `<button data-appeal="${esc(a.appealId)}" class="px-2 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold">⚖️ Proses</button>`
-          : `<span class="text-xs text-slate-500">${a.resolvedAt ? fmt.format(new Date(a.resolvedAt)) : 'Selesai'}</span>`
+          : `<span class="text-xs text-slate-500">${a.reviewedAt ? fmt.format(new Date(a.reviewedAt)) : 'Selesai'}</span>`
         }
       </td>
     </tr>`).join('');
@@ -447,17 +447,17 @@ async function processAppeal(status) {
   const r = await fetch(`/api/admin/appeals/${encodeURIComponent(currentAppeal.appealId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ status, adminNote })
+    body: JSON.stringify({ status, reviewNote: adminNote })
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok || !d.ok) return showToast('❌ Gagal: ' + (d.error || 'unknown'), 'error');
-  showToast(status === 'resolved' ? '✅ Appeal DITERIMA – User diunban!' : '❌ Appeal DITOLAK.', status === 'resolved' ? 'success' : 'error');
+  showToast(status === 'accepted' ? '✅ Appeal DITERIMA – User diunban!' : '❌ Appeal DITOLAK.', status === 'accepted' ? 'success' : 'error');
   el('appealPanel').classList.add('hidden');
   currentAppeal = null;
   await loadAppeals();
 }
 
-el('btnAccept').addEventListener('click', () => processAppeal('resolved'));
+el('btnAccept').addEventListener('click', () => processAppeal('accepted'));
 el('btnReject').addEventListener('click', () => processAppeal('rejected'));
 
 // ── Export ──
@@ -474,8 +474,8 @@ el('exportBtn').addEventListener('click', () => {
 el('exportAppealsBtn').addEventListener('click', () => {
   const rows = allAppeals.map(a => ({
     AppealID: a.appealId, User: a.name, UserID: a.userId, Room: a.room,
-    Alasan: a.reason, Status: a.status, CatatanAdmin: a.adminNote,
-    Waktu: a.submittedAt, ResolvedAt: a.resolvedAt
+    Alasan: a.reason, Status: a.status, CatatanAdmin: a.reviewNote,
+    Waktu: a.submittedAt, ReviewedAt: a.reviewedAt
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
