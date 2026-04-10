@@ -8915,14 +8915,15 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req
   const appealId = String(req.params.appealId || "").trim().toUpperCase();
   const appeal = forumAppeals.get(appealId);
   if (!appeal) return res.status(404).json({ ok: false, error: "appeal_not_found" });
-  const status = String(req.body?.status || "").trim().toLowerCase();
+  let status = String(req.body?.status || "").trim().toLowerCase();
+  if (status === "resolved") status = "accepted";
   if (!["accepted", "rejected", "pending"].includes(status)) {
     return res.status(400).json({ ok: false, error: "invalid_status" });
   }
   const statusLabelMap = { accepted: "Diterima", rejected: "Ditolak", pending: "Pending" };
   appeal.status = status;
   appeal.statusLabel = statusLabelMap[status] || status;
-  appeal.reviewNote = String(req.body?.reviewNote || "").slice(0, 1200);
+  appeal.reviewNote = String(req.body?.reviewNote || req.body?.adminNote || "").slice(0, 1200);
   appeal.reviewedBy = String(req.body?.reviewedBy || "admin").slice(0, 120);
   appeal.reviewedAt = status === "pending" ? null : new Date().toISOString();
   appeal.updatedAt = new Date().toISOString();
