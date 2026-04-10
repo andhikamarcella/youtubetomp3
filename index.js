@@ -96,6 +96,7 @@ const YOUTUBE_API_KEY = (process.env.YOUTUBE_API_KEY || "").trim();
 const isYoutubeApiConfigured = Boolean(YOUTUBE_API_KEY);
 const collectGroqKeys = () => {
   const rawValues = [
+    process.env.OAIBEST_API_KEY,
     process.env.GROQ_API_KEY,
     process.env.GROQ_API_KEY_FALLBACK,
     process.env.GROQ_API_KEYS,
@@ -139,6 +140,8 @@ const GROQ_API_KEY = GROQ_API_KEYS[0] || "";
 const GROQ_MODEL = (process.env.GROQ_MODEL || "llama-3.1-8b-instant").trim() || "llama-3.1-8b-instant";
 const GROQ_MAX_COMPLETION_TOKENS = Number(process.env.GROQ_MAX_COMPLETION_TOKENS || 1024);
 const isGroqConfigured = GROQ_API_KEYS.length > 0;
+const OAIBEST_API_KEY = (process.env.OAIBEST_API_KEY || "").trim();
+const isOAIBestConfigured = Boolean(OAIBEST_API_KEY);
 const parseGroqModels = () => {
   const raw = String(process.env.GROQ_MODELS || "");
   const values = [
@@ -735,55 +738,37 @@ const readGroqStreamingContent = async (response) => {
   return state.content.trim();
 };
 
-const callGroqAPI = async (prompt, context = {}) => {
-  if (!isGroqConfigured) {
-    throw new Error("Groq API tidak dikonfigurasi");
+const callAssistantAPI = async (prompt, context = {}) => {
+  if (!isOAIBestConfigured && !isGroqConfigured) {
+    throw new Error("Assistant API (OAIBest/Groq) tidak dikonfigurasi");
   }
 
   const history = Array.isArray(context.history) ? context.history.slice(-8) : [];
 
-  const systemPrompt = `Anda adalah **AI Audio Mentor & Coach + Customer Service Navigator** profesional di platform **YTConv** (YouTube to MP3).
-Tugas Anda adalah membimbing user, mendiagnosa masalah, dan menjelaskan konsep audio dengan adaptif.
+  let systemPrompt = `Kamu adalah **AI Navigator & Customer Service** profesional di platform **YTConv** (YouTube to MP3).
+Peran kamu sangat penting. Kamu pandai menganalisis masalah, logis, tidak bertele-tele, ramah, dan sangat proaktif membantu pengguna.
 
 **1. Level Penjelasan (Adaptive Communication):**
-Deteksi tingkat pemahaman user dan sesuaikan bahasa:
+Ubah kodemu sesuai siapa yang kamu balas.
 - **Awam**: Gunakan analogi sehari-hari. Contoh: "Bitrate 320kbps itu ibarat video 4K, jernih banget."
-- **Semi-Teknis**: Fokus pada fungsi dan efisiensi. Contoh: "FLAC lossless bagus untuk arsip, tapi MP3 320kbps lebih hemat size dengan kualitas mirip."
-- **Profesional**: Gunakan istilah teknis (frequency response, dynamic range, LUFS, spectrum). Contoh: "Normalisasi ke -14 LUFS standar streaming untuk headroom yang aman."
+- **Semi-Teknis**: Fokus pada fungsi dan efisiensi.
+- **Profesional**: Gunakan istilah teknis (frequency response, dynamic range, LUFS).
 
 **2. Diagnosa Error Multi-Layer:**
-Analisis keluhan user berdasarkan:
-- **Logs/Error Msg**: Jika user paste error, bedah penyebabnya (Network? Cookie? Parsing?).
-- **Metadata**: Cek jika ID3 tags menyebabkan korup.
-- **Settings**: Apakah user memaksa 320kbps di sumber low-quality? (Upscaling artifact).
-- *Kesimpulan*: Berikan solusi paling logis, bukan tebakan acak.
+- Analisis keluhan user: Network? Cookie? Parsing?
+- Berikan solusi step-by-step yang logis. JANGAN tebak-tebakan.
 
-**3. Fitur Sistem (Context Awareness):**
-Pahami fitur aktif saat ini:
-- **Core**: Convert (MP3/M4A/FLAC), Trim, Metadata Editor.
-- **Advanced**: Audio Insight (Waveform/LUFS/Peak), Duplicate Detector (Cache System), Volume Boost.
-- **System**: Cloudflare Turnstile (Security), Mobile Responsive UI.
+**3. Gaya Bicara (Conversational UI):**
+- Pahami fitur-fitur website: Convert (MP3/M4A/FLAC), Trim, Metadata Editor, Audio Insight, Duplicate Detector.
+- Sapa user, gunakan emoji yang relevan, fleksibel dalam bahasa Indonesia, Inggris, atau gaul sopan.
+- Ingat konteks! Jangan mengulang solusi yang sudah gagal.
 
-**4. Gaya Bicara (Conversational UI):**
-- **Nyambung**: Ingat konteks chat sebelumnya. Jangan lupa apa yang baru dibahas.
-- **Konsisten**: Jangan berubah pendapat dalam satu sesi kecuali ada data baru.
-- **Humanis**: Sapa user, gunakan emoji yang relevan, jangan kaku.
+**Format Output Utama (JSON Only jika Action ditekankan oleh prompt spesifik lainnya):**
+Kamu bisa berinteraksi secara biasa dengan membalas pesan, atau secara spesifik dengan mengembalikan JSON jika diperintahkan. Pastikan patuh pada instruksi.`;
 
-- Gunakan bahasa yang sama dengan user. Jika user memakai bahasa campuran/daerah, tetap tanggapi dengan sopan dan mudah dipahami.
-- Pahami pertanyaan dalam berbagai bahasa (Indonesia, Inggris, Melayu, Jawa informal, dll) lalu jawab dalam bahasa user.
-- Jika user terlihat bingung, tampilkan alur jelas dalam format langkah 1-2-3.
-
-**Format Output (JSON Only jika Action diperlukan):**
-Jika user ingin melakukan aksi (convert, setting), kembalikan JSON:
-{ "reply": "Siap, saya atur bitrate ke 320kbps...", "action": "convert", "params": { "quality": "320kbps" } }
-
-Jika percakapan biasa/edukasi/diagnosa:
-{ "reply": "**Jawaban Anda disini...** gunakan Markdown untuk formatting." }
-
-**Rules Tambahan:**
-- Jika ditanya "Apa yang baru?", jelaskan fitur **Duplicate Detector**, **Audio Insight**, dan **Mobile UI** terbaru.
-- Jika ada error 403/429, sarankan update Cookies atau tunggu sebentar.
-`;
+  if (context.instructions) {
+    systemPrompt += `\n\n**Instruksi Khusus Sesi Ini:**\n${context.instructions}`;
+  }
 
   // Build messages array
   const clientStateMsg = context.clientState
@@ -800,13 +785,22 @@ Jika percakapan biasa/edukasi/diagnosa:
     { role: "user", content: prompt }
   ];
 
+  const targetModel = context.model || GROQ_MODEL;
+  
+  // Choose Prioritas: OAIBEST jika OAIBEST_API_KEY ada, jika tidak Groq.
+  const useOAIBest = isOAIBestConfigured;
+  const endpoint = useOAIBest ? "https://api.oaibest.com/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions";
+  
+  const apiKeys = useOAIBest ? [OAIBEST_API_KEY] : GROQ_API_KEYS;
+  const models = context.model ? [context.model] : (useOAIBest ? [targetModel] : GROQ_MODEL_CANDIDATES);
+
   let lastError = null;
-  for (let idx = 0; idx < GROQ_API_KEYS.length; idx += 1) {
-    const apiKey = GROQ_API_KEYS[idx];
-    for (let midx = 0; midx < GROQ_MODEL_CANDIDATES.length; midx += 1) {
-      const model = GROQ_MODEL_CANDIDATES[midx];
+  for (let idx = 0; idx < apiKeys.length; idx += 1) {
+    const apiKey = apiKeys[idx];
+    for (let midx = 0; midx < models.length; midx += 1) {
+      const model = models[midx];
       try {
-        const response = await safeFetch("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await safeFetch(endpoint, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -816,23 +810,22 @@ Jika percakapan biasa/edukasi/diagnosa:
             messages,
             model,
             temperature: 1,
-            max_completion_tokens: Number.isFinite(GROQ_MAX_COMPLETION_TOKENS) && GROQ_MAX_COMPLETION_TOKENS > 0
+            max_tokens: Number.isFinite(GROQ_MAX_COMPLETION_TOKENS) && GROQ_MAX_COMPLETION_TOKENS > 0
               ? GROQ_MAX_COMPLETION_TOKENS
               : 1024,
             top_p: 1,
             stream: true,
-            stop: null,
           }),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+          throw new Error(`API error (${useOAIBest ? 'OAIBest' : 'Groq'}): ${response.status} - ${errorText}`);
         }
 
         const content = await readGroqStreamingContent(response);
         if (!content) {
-          throw new Error("Groq stream returned empty content");
+          throw new Error("Stream returned empty content");
         }
 
         try {
@@ -845,13 +838,14 @@ Jika percakapan biasa/edukasi/diagnosa:
         const usingFallbackKey = idx > 0;
         const usingFallbackModel = midx > 0;
         console.error(
-          `[Groq API] Error${usingFallbackKey ? " (fallback key)" : ""}${usingFallbackModel ? " (fallback model)" : ""}:`,
+          `[Assistant API] Error${usingFallbackKey ? " (fallback key)" : ""}${usingFallbackModel ? " (fallback model)" : ""}:`,
           error?.message || error
         );
       }
     }
   }
-  throw lastError || new Error("Groq API request failed");
+
+  throw lastError || new Error("Semua percobaan API Assistant gagal");
 };
 
 let turnstileWarningLogged = false;
@@ -3805,7 +3799,7 @@ const ASSISTANT_TOPICS = [
   },
 ];
 
-const buildAssistantResponse = async (prompt, history = [], clientState = {}) => {
+const buildAssistantResponse = async (prompt, history = [], clientState = {}, model = null) => {
   const raw = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
   const lowerRaw = raw.toLowerCase();
   if (!raw) {
@@ -3869,11 +3863,12 @@ const buildAssistantResponse = async (prompt, history = [], clientState = {}) =>
 
   try {
     // Use AI for intelligent CS responses
-    const aiResponse = await callGroqAPI(raw, {
+    const aiResponse = await callAssistantAPI(raw, {
       website: "YTConv",
       siteUrl: "https://ytconv.up.railway.app",
       siteName: "YTConv - YouTube to MP3/M4A Converter",
       role: "customer_service",
+      model: model,
       instructions: `Kamu adalah Customer Service AI dari YTConv (situs konverter YouTube terbaik di Indonesia). 
 Nama kamu: YTConv CS Bot.
 Sifat kamu: Ramah, profesional, super helpful, dan sangat paham platform YTConv.
@@ -3948,10 +3943,10 @@ Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, 
       params
     };
   } catch (error) {
-    console.error("[Assistant] Groq API error:", error);
+    console.error("[Assistant] API error:", error);
     const rawError = String(error?.message || error || "").trim();
     const shortError = rawError
-      .replace(/^Groq API error:\s*/i, "")
+      .replace(/^API error:\s*/i, "")
       .slice(0, 240);
 
     // Fallback to basic responses
@@ -3981,8 +3976,8 @@ Kontak darurat: forumwargaytmp3@gmail.com (atau tombol Email Bantuan di footer, 
       suggestions: ["Convert", "Format", "Trim", "Pengaturan"],
       meta: {
         degraded: true,
-        provider: "groq",
-        errorDetail: shortError || "Unknown Groq error",
+        provider: "assistant",
+        errorDetail: shortError || "Unknown API error",
       },
     };
   }
@@ -7437,13 +7432,13 @@ app.get("/api/referral-code", async (req, res) => {
 // ==== Assistant chat ====
 app.post("/api/assistant-chat", async (req, res) => {
   try {
-    const { prompt = "", messages = [], clientState = {} } = req.body || {};
+    const { prompt = "", messages = [], clientState = {}, model = null } = req.body || {};
     const trimmed = typeof prompt === "string" ? prompt.trim() : String(prompt ?? "").trim();
     if (!trimmed) {
       return res.status(400).json({ error: "Prompt wajib diisi" });
     }
 
-    const responsePayload = await buildAssistantResponse(trimmed, messages, clientState);
+    const responsePayload = await buildAssistantResponse(trimmed, messages, clientState, model);
     return res.json(responsePayload);
   } catch (e) {
     console.error("[assistant-chat] fatal:", e?.message || e);
