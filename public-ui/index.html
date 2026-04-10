@@ -18194,7 +18194,8 @@
         };
 
         const submitForumAppeal = async (reasonText) => {
-          const uid = state?.currentUser?.uid || '';
+          const user = state?.currentUser || window.currentUser || window.firebaseModules?.auth?.currentUser;
+          const uid = user?.uid || '';
           if (!uid) {
             return { ok: false, error: 'Untuk kirim appeal, login Google dulu ya.' };
           }
@@ -18259,6 +18260,7 @@
             };
             const violationCount = getViolationCountSafe();
             const forumSendDisabled = Boolean(document.getElementById('forumSendBtn')?.disabled);
+            const user = state?.currentUser || window.currentUser || window.firebaseModules?.auth?.currentUser;
             const payload = {
               prompt: text,
               messages: historyToSend,
@@ -18267,9 +18269,9 @@
                 experience: state.experience,
                 mode: localStorage.getItem('ytmp3_mode_pref') || 'advanced',
                 auth: {
-                  uid: state?.currentUser?.uid || '',
-                  email: state?.currentUser?.email || '',
-                  name: state?.currentUser?.displayName || 'Warga',
+                  uid: user?.uid || '',
+                  email: user?.email || '',
+                  name: user?.displayName || user?.name || 'Warga',
                 },
                 forum: {
                   room: localStorage.getItem('forum_room') || 'umum',
