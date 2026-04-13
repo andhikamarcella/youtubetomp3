@@ -102,7 +102,7 @@
       </div>
 </section>
 
-<section class="grid lg:grid-cols-2 gap-3">
+    <section class="grid lg:grid-cols-2 gap-3">
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
         <h2 class="font-bold mb-2">🌍 Geo Tracking</h2>
         <ul id="geoStats" class="text-sm space-y-1"></ul>
@@ -110,6 +110,20 @@
       <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
         <h2 class="font-bold mb-2">📡 API Monitoring</h2>
         <ul id="apiStats" class="text-xs space-y-1 max-h-36 overflow-auto"></ul>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 class="font-bold mb-2">🧪 Load Testing Monitor (k6)</h2>
+      <div class="text-xs text-slate-400 mb-2">Menampilkan laporan load test terbaru yang dikirim dari script k6/JMeter ke endpoint backend.</div>
+      <div id="loadTestSummary" class="text-sm mb-2">Belum ada laporan load test.</div>
+      <div class="overflow-auto rounded-xl border border-slate-800">
+        <table class="min-w-full text-xs">
+          <thead class="bg-slate-800/80 text-slate-300">
+            <tr><th class="text-left p-2">Run</th><th class="text-left p-2">Scenario</th><th class="text-left p-2">Req</th><th class="text-left p-2">Fail %</th><th class="text-left p-2">Latency p95</th><th class="text-left p-2">Waktu</th></tr>
+          </thead>
+          <tbody id="loadTestRows"></tbody>
+        </table>
       </div>
     </section>
 
@@ -312,9 +326,21 @@ function renderAdvanced(data){
   evaluateAlerts(data);
 }
 
+function renderLoadTesting(data){
+  const payload = data.loadTesting || {};
+  const reports = Array.isArray(payload.reports) ? payload.reports : [];
+  const latest = payload.latest || reports[0] || null;
+  if (latest) {
+    el('loadTestSummary').textContent = `Total report: ${payload.totalReports || reports.length} • Latest ${latest.runId} • Fail ${Number(latest.failureRate || 0).toFixed(2)}% • p95 ${Number(latest.p95Ms || 0).toFixed(2)} ms`;
+  } else {
+    el('loadTestSummary').textContent = 'Belum ada laporan load test.';
+  }
+  el('loadTestRows').innerHTML = reports.map((r) => `<tr class="border-t border-slate-800"><td class="p-2 font-mono">${r.runId}</td><td class="p-2">${r.scenario || '-'}</td><td class="p-2">${r.totalRequests || 0}</td><td class="p-2">${Number(r.failureRate || 0).toFixed(2)}%</td><td class="p-2">${Number(r.p95Ms || 0).toFixed(2)} ms</td><td class="p-2">${r.receivedAt ? fmt.format(new Date(r.receivedAt)) : '-'}</td></tr>`).join('') || '<tr><td class="p-2 text-slate-400" colspan="6">Belum ada data load testing.</td></tr>';
+}
+
 function renderAppeals(){const items=state.appeals||[];const by={pending:0,accepted:0,rejected:0};items.forEach((a)=>{if(by[a.status]!==undefined)by[a.status]+=1;});el('appealSummary').textContent=`Pending: ${by.pending||0} • Diterima: ${by.accepted||0} • Ditolak: ${by.rejected||0}`;el('appealRows').innerHTML=items.map((a)=>`<tr class="border-t border-slate-800"><td class="p-2 font-semibold">${a.appealId}</td><td class="p-2">${(a.name||'-').replace(/</g,'&lt;')}<div class="text-[10px] text-slate-400">${(a.userId||'-').replace(/</g,'&lt;')}</div></td><td class="p-2">${(a.socketId||'-').replace(/</g,'&lt;')}</td><td class="p-2">${(a.disabledFeatures||[]).join(', ')||'-'}</td><td class="p-2">${(a.reason||'-').replace(/</g,'&lt;')}</td><td class="p-2">${a.statusLabel||a.status||'-'}</td><td class="p-2"><div class="flex gap-1"><button data-appeal="${a.appealId}" data-status="accepted" class="px-2 py-1 rounded bg-emerald-600 text-[10px]">Accept</button><button data-appeal="${a.appealId}" data-status="rejected" class="px-2 py-1 rounded bg-rose-600 text-[10px]">Reject</button></div></td></tr>`).join('')||'<tr><td class="p-2 text-slate-400" colspan="7">Belum ada appeal masuk.</td></tr>';}
 
-async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderAppeals();applyFilters();}
+async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderLoadTesting(data);renderAppeals();applyFilters();}
 
 function renderChatHistory(items){el('chatHistory').innerHTML=items.map((c)=>`<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender||'system'} • ${c.at?fmt.format(new Date(c.at)):'-'}</div><div class="whitespace-pre-wrap break-words">${(c.message||'').replace(/</g,'&lt;')}</div></div>`).join('')||'<div class="text-slate-500 text-xs">Belum ada chat.</div>';el('chatLimitHint').textContent='Chat admin tanpa batas.';el('chatInput').disabled=false;el('chatHistory').scrollTop=el('chatHistory').scrollHeight;}
 
@@ -324,7 +350,7 @@ async function sendChat(evt){evt.preventDefault();if(!state.currentTicket)return
 
 function exportExcel(){const rows=state.filteredTickets.map((t)=>({ID:t.ticketId,Nama:t.name,Email:t.email,Kategori:t.category,Status:t.statusLabel||t.status,SubmittedAt:t.submittedAt}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Tickets');XLSX.writeFile(wb,`tickets-${Date.now()}.xlsx`);}
 
-function initSocket(){if(socket)return;socket=io({transports:['websocket','polling']});socket.on('connect',()=>socket.emit('page_change',{page:'/admin/dashboard'}));socket.on('dashboard_stats',(payload)=>renderLive({live:{...payload,conversion:payload.conversion||{}}}));socket.on('admin:newTicket',(payload)=>{setBadge(state.unread+1);toast(`Ticket baru: ${payload.ticketId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:ticketUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:ticketChat',(payload)=>{if(state.currentTicket?.ticketId===payload.ticketId){state.currentTicket.chatHistory=[...(state.currentTicket.chatHistory||[]),payload.chat];renderChatHistory(state.currentTicket.chatHistory||[]);}toast(`Chat baru di ${payload.ticketId}`);playNotif();});socket.on('admin:controlUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:appealCreated',(payload)=>{toast(`Appeal baru: ${payload.appealId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:appealUpdated',()=>loadStats().catch(()=>{}));}
+function initSocket(){if(socket)return;socket=io({transports:['websocket','polling']});socket.on('connect',()=>socket.emit('page_change',{page:'/admin/dashboard'}));socket.on('dashboard_stats',(payload)=>renderLive({live:{...payload,conversion:payload.conversion||{}}}));socket.on('admin:newTicket',(payload)=>{setBadge(state.unread+1);toast(`Ticket baru: ${payload.ticketId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:ticketUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:ticketChat',(payload)=>{if(state.currentTicket?.ticketId===payload.ticketId){state.currentTicket.chatHistory=[...(state.currentTicket.chatHistory||[]),payload.chat];renderChatHistory(state.currentTicket.chatHistory||[]);}toast(`Chat baru di ${payload.ticketId}`);playNotif();});socket.on('admin:controlUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:appealCreated',(payload)=>{toast(`Appeal baru: ${payload.appealId}`);playNotif();loadStats().catch(()=>{});});socket.on('admin:appealUpdated',()=>loadStats().catch(()=>{}));socket.on('admin:loadTestReport',(payload)=>{toast(`Load test baru: ${payload.runId}`);playNotif();loadStats().catch(()=>{});});}
 
 async function control(action,extra={}){const token=getToken();const r=await fetch('/api/admin/control',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({action,...extra})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Control gagal','error');toast(`Action ${action} berhasil`);loadStats().catch(()=>{});}
 async function updateAppeal(appealId,status){const token=getToken();const r=await fetch(`/api/admin/appeals/${encodeURIComponent(appealId)}`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status,reviewedBy:'admin_dashboard'})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Update appeal gagal','error');toast(`Appeal ${appealId} -> ${status}`);loadStats().catch(()=>{});}
