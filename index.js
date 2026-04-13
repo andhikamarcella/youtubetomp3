@@ -8413,6 +8413,51 @@ const healthMetrics = {
   errorCount: 0,
   totalResponseMs: 0,
 };
+const loadTestReports = [];
+const MAX_LOAD_TEST_REPORTS = 80;
+
+const addLoadTestReport = (report = {}) => {
+  if (!report || typeof report !== "object") return null;
+  const startedAtRaw = report.startedAt ? new Date(report.startedAt) : new Date();
+  const finishedAtRaw = report.finishedAt ? new Date(report.finishedAt) : new Date();
+  const startedAt = Number.isNaN(startedAtRaw.getTime()) ? new Date() : startedAtRaw;
+  const finishedAt = Number.isNaN(finishedAtRaw.getTime()) ? new Date() : finishedAtRaw;
+  const totalRequests = Number(report.totalRequests || 0);
+  const failedRequests = Number(report.failedRequests || 0);
+  const reportItem = {
+    runId: String(report.runId || `K6-${Date.now().toString(36).toUpperCase()}`).slice(0, 64),
+    scenario: String(report.scenario || report.testName || "k6_default").slice(0, 120),
+    environment: String(report.environment || process.env.NODE_ENV || "unknown").slice(0, 60),
+    baseUrl: String(report.baseUrl || "").slice(0, 320),
+    vus: Number(report.vus || 0) || 0,
+    iterations: Number(report.iterations || 0) || 0,
+    totalRequests,
+    failedRequests,
+    failureRate: Number(totalRequests > 0 ? (failedRequests / totalRequests) * 100 : 0),
+    avgMs: Number(report.avgMs || 0) || 0,
+    p90Ms: Number(report.p90Ms || 0) || 0,
+    p95Ms: Number(report.p95Ms || 0) || 0,
+    p99Ms: Number(report.p99Ms || 0) || 0,
+    maxMs: Number(report.maxMs || 0) || 0,
+    minMs: Number(report.minMs || 0) || 0,
+    checksPassRate: Number(report.checksPassRate || 0) || 0,
+    notes: String(report.notes || "").slice(0, 1200),
+    source: String(report.source || "k6").slice(0, 32),
+    receivedAt: new Date().toISOString(),
+    startedAt: startedAt.toISOString(),
+    finishedAt: finishedAt.toISOString(),
+  };
+  loadTestReports.unshift(reportItem);
+  if (loadTestReports.length > MAX_LOAD_TEST_REPORTS) {
+    loadTestReports.length = MAX_LOAD_TEST_REPORTS;
+  }
+  pushActivityLog("load_test_report", `Load test ${reportItem.runId} (${reportItem.scenario}) diterima`, {
+    runId: reportItem.runId,
+    failureRate: reportItem.failureRate,
+    p95Ms: reportItem.p95Ms,
+  });
+  return reportItem;
+};
 
 const pushActivityLog = (type, message, meta = {}) => {
   activityLogs.unshift({
@@ -8910,6 +8955,33 @@ app.get("/api/admin/appeals", (req, res) => {
   return res.json({ ok: true, appeals });
 });
 
+app.post("/api/load-test/report", express.json({ limit: "256kb" }), (req, res) => {
+  const expectedToken = String(process.env.LOAD_TEST_REPORT_TOKEN || "").trim();
+  const authHeader = String(req.headers.authorization || "");
+  const bearerToken = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
+  const headerToken = String(req.headers["x-loadtest-token"] || "").trim();
+  const providedToken = bearerToken || headerToken;
+  const hasValidToken = expectedToken && providedToken && providedToken === expectedToken;
+  if (!hasValidToken && !isAdminBearerValid(req)) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+  const saved = addLoadTestReport(req.body || {});
+  if (!saved) return res.status(400).json({ ok: false, error: "invalid_payload" });
+  io.emit("admin:loadTestReport", {
+    runId: saved.runId,
+    scenario: saved.scenario,
+    failureRate: saved.failureRate,
+    p95Ms: saved.p95Ms,
+    receivedAt: saved.receivedAt,
+  });
+  return res.json({ ok: true, report: saved });
+});
+
+app.get("/api/admin/load-tests", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  return res.json({ ok: true, reports: loadTestReports.slice(0, 40) });
+});
+
 app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const appealId = String(req.params.appealId || "").trim().toUpperCase();
@@ -9042,6 +9114,8 @@ app.get("/api/admin/stats", (req, res) => {
     return acc;
   }, {});
   const blockedForumUsers = Array.from(userViolations.values()).filter((x) => x?.banned).length;
+  const loadTestSummary = loadTestReports.slice(0, 20);
+  const latestLoadTest = loadTestSummary[0] || null;
   const disabledFeatureUsage = {};
   appeals.forEach((a) => {
     (a.disabledFeatures || []).forEach((f) => {
@@ -9143,6 +9217,11 @@ app.get("/api/admin/stats", (req, res) => {
       blockedForumUsers,
       disabledFeatureUsage,
       storedSessionReplay: sessionReplayStore.size,
+    },
+    loadTesting: {
+      totalReports: loadTestReports.length,
+      latest: latestLoadTest,
+      reports: loadTestSummary,
     },
     abTesting: abMetrics,
     smartInsights,

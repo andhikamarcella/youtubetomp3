@@ -40,6 +40,28 @@ Aplikasi web serbaguna untuk mengunduh audio atau video dari YouTube, Spotify, m
 - Kartu status tool yang memeriksa versi yt-dlp & ffmpeg terbaru sekaligus memberi badge peringatan bila sudah kedaluwarsa.
 - Auto metadata tagging & AI music tags untuk mengisi judul/artis/genre secara otomatis, lengkap dengan insight genre/mood di UI.
 
+## Load Testing (k6) + Monitoring Admin Dashboard
+
+Project ini sekarang punya script load test siap pakai di `load-tests/k6-admin-dashboard.js`. Setelah selesai jalan, script akan otomatis mengirim ringkasan hasil test ke backend (`/api/load-test/report`) agar muncul di **Admin Dashboard** bagian **Load Testing Monitor (k6)**.
+
+### Cara pakai cepat
+1. Set token pelaporan di server:
+   - `LOAD_TEST_REPORT_TOKEN=isi_token_aman`
+2. Jalankan server seperti biasa (`npm start`).
+3. Jalankan k6 dari terminal lain:
+
+```bash
+K6_BASE_URL=http://localhost:3000 \
+LOAD_TEST_REPORT_TOKEN=isi_token_aman \
+k6 run load-tests/k6-admin-dashboard.js
+```
+
+Variabel opsional:
+- `K6_VUS` (default `10`)
+- `K6_DURATION` (default `30s`)
+- `K6_SCENARIO` (default `baseline_mix`)
+- `K6_ENV` (contoh: `staging`, `production`)
+
 ## Antarmuka Next.js + Bootstrap
 Untuk antarmuka modern berbasis React, repositori ini menyertakan aplikasi [Next.js](./next-app) yang memanfaatkan komponen Bootstrap namun tetap memakai API backend yang sama. Antarmuka ini dapat dijalankan berdampingan dengan UI klasik tanpa memodifikasi fitur yang sudah ada.
 
