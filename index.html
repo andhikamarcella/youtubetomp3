@@ -18032,25 +18032,12 @@
                 const ticketMsg = document.getElementById('emailMsg');
                 const ticketIdEl = document.getElementById('emailTicketId');
                 const categoryEl = document.getElementById('emailCategory');
-                const nameEl = document.getElementById('emailName');
-                const emailEl = document.getElementById('emailAddr');
-                const googleName = state?.currentUser?.displayName || '';
-                const googleEmail = state?.currentUser?.email || '';
                 if (ticketIdEl && !ticketIdEl.value) {
                   const seed = Date.now().toString(36).toUpperCase().slice(-8);
                   ticketIdEl.value = `TKT-${seed}`;
                 }
-                if (nameEl && !nameEl.value && googleName) {
-                  nameEl.value = googleName;
-                }
-                if (emailEl && !emailEl.value && googleEmail) {
-                  emailEl.value = googleEmail;
-                }
                 if (ticketMsg && data?.params?.context) {
-                  const userHeader = (googleName || googleEmail)
-                    ? `User Google: ${googleName || '-'} <${googleEmail || '-'}>\n`
-                    : '';
-                  ticketMsg.value = `${userHeader}Ringkasan dari AI Navigator:\n${data.params.context}\n\nDetail tambahan:`;
+                  ticketMsg.value = `Ringkasan dari AI Navigator:\n${data.params.context}\n\nDetail tambahan:`;
                 }
                 if (categoryEl && /forum|kasar|moderasi/i.test(String(data?.params?.context || ''))) {
                   categoryEl.value = 'forum';
@@ -28964,15 +28951,6 @@
           const FORUM_BADWORDS = ['anjing', 'bangsat', 'brengsek', 'goblok', 'tolol', 'kontol', 'memek', 'jancok', 'ngentot', 'bacot'];
           const FORUM_VIOLATION_LIMIT = 5;
           const forumViolationKey = () => `ytconv:forum:violations:${currentUser?.uid || 'guest'}`;
-          const normalizeForumText = (value) => String(value || '')
-            .toLowerCase()
-            .replace(/[@4]/g, 'a')
-            .replace(/[3]/g, 'e')
-            .replace(/[1!|]/g, 'i')
-            .replace(/[0]/g, 'o')
-            .replace(/[5$]/g, 's')
-            .replace(/[7]/g, 't')
-            .replace(/[^a-z0-9\s]/g, '');
 
           function getForumViolationCount() {
             try { return Number(localStorage.getItem(forumViolationKey()) || '0') || 0; } catch { return 0; }
@@ -29006,26 +28984,8 @@
             const text = forumInput.value.trim();
             if (!text && selectedFiles.length === 0) return;
             if (!currentUser) { setToast('Anda belum login!', 'warning'); return; }
-            if (getForumViolationCount() >= FORUM_VIOLATION_LIMIT) {
-              forumInput.disabled = true;
-              setToast('🚫 Akun kamu sudah dibatasi karena 5x pelanggaran. Ketik "saya mau appeal" di AI Navigator.', 'danger');
-              return;
-            }
 
-            try {
-              const forumStatusResp = await fetch(`/api/forum/status?userId=${encodeURIComponent(currentUser.uid)}`);
-              const forumStatusData = await forumStatusResp.json().catch(() => ({}));
-              if (forumStatusResp.ok && forumStatusData?.ok && forumStatusData.blocked) {
-                setForumViolationCount(Math.max(FORUM_VIOLATION_LIMIT, Number(forumStatusData.violationCount || 0) || FORUM_VIOLATION_LIMIT));
-                forumInput.disabled = true;
-                forumInput.placeholder = 'Akun dibatasi (5x pelanggaran). Ketik "saya mau appeal" di AI Navigator.';
-                updateSendButtonState();
-                setToast('🚫 Status akun forum kamu sedang dibatasi oleh sistem moderasi.', 'danger');
-                return;
-              }
-            } catch { }
-
-            const normalized = normalizeForumText(text);
+            const normalized = text.toLowerCase();
             const hasBadWord = FORUM_BADWORDS.some((w) => normalized.includes(w));
             if (hasBadWord) {
               const nextCount = getForumViolationCount() + 1;
@@ -29033,8 +28993,6 @@
               await reportForumModeration(text, nextCount);
               if (nextCount >= FORUM_VIOLATION_LIMIT) {
                 setToast('🚫 Kamu diblokir sementara setelah 5x pelanggaran. Buka AI Navigator lalu ketik "saya mau appeal" untuk mengajukan pemulihan.', 'danger');
-                forumInput.disabled = true;
-                forumInput.placeholder = 'Akun dibatasi (5x pelanggaran). Ketik "saya mau appeal" di AI Navigator.';
                 forumInput.value = '';
                 updateSendButtonState();
                 return;
@@ -29114,7 +29072,6 @@
               forumInput.placeholder = 'Akun dibatasi (5x pelanggaran). Ketik "saya mau appeal" di AI Navigator.';
               return;
             }
-            forumInput.disabled = false;
             if (voiceState.isRecording) {
               forumSendBtn.disabled = false;
               forumSendBtn.classList.remove('btn-primary');
