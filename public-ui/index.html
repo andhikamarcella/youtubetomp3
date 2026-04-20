@@ -3168,8 +3168,33 @@
       padding: .6rem .75rem;
       border-radius: .85rem;
       max-width: 100%;
-      line-height: 1.4;
+      line-height: 1.45;
       font-size: .85rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      text-wrap: pretty;
+    }
+
+    .assistant-bubble p {
+      margin: 0 0 .45rem;
+    }
+
+    .assistant-bubble p:last-child {
+      margin-bottom: 0;
+    }
+
+    .assistant-bubble ul,
+    .assistant-bubble ol {
+      margin: 0 0 .45rem;
+      padding-left: 1.05rem;
+    }
+
+    .assistant-bubble code {
+      background: color-mix(in srgb, var(--bs-body-color) 10%, transparent);
+      border-radius: .35rem;
+      padding: .05rem .35rem;
+      font-size: .78rem;
     }
 
     .assistant-bubble.user {
@@ -8681,11 +8706,15 @@
           <div class="assistant-input">
             <input type="text" id="assistantInput" class="form-control"
               placeholder="Tanyakan apa saja seputar converter..." autocomplete="off" />
+            <input type="file" id="assistantFileInput" hidden accept="image/*,.txt,.md,.json,.csv,.log,.pdf,.doc,.docx">
+            <button type="button" class="btn btn-outline-secondary" id="assistantAttachBtn" title="Upload file/gambar"><i class="bi bi-paperclip"></i></button>
+            <button type="button" class="btn btn-outline-warning" id="assistantNewChatBtn" title="Chat baru"><i class="bi bi-plus-square"></i></button>
             <button type="button" class="btn btn-primary" id="assistantSendBtn"><i class="bi bi-send-fill"></i></button>
           </div>
+          <div id="assistantAttachmentPreview" class="small text-secondary" hidden></div>
         </div>
         <footer class="small text-secondary d-flex justify-content-between align-items-center">
-          <span>Tip: ketik '/' untuk perintah.</span>
+          <span><strong>Tip:</strong> ketik <code>/help</code> atau <code>/fitur</code> untuk daftar lengkap.</span>
           <div class="dropup">
             <button class="btn btn-link btn-sm p-0 text-decoration-none" type="button" data-bs-toggle="dropdown"
               aria-expanded="false">
@@ -8702,11 +8731,38 @@
                   onclick="document.getElementById('assistantInput').value='/donasi ';document.getElementById('assistantInput').focus();"><i
                     class="bi bi-heart me-2"></i>Donasi</button></li>
               <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/ticket ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-ticket-perforated me-2"></i>Buat Tiket</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/fitur ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-grid me-2"></i>Daftar Fitur</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/model ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-cpu me-2"></i>Info Model</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/status ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-activity me-2"></i>Status Sistem</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/memory status ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-memory me-2"></i>Status Memori</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/newchat ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-chat-square-dots me-2"></i>New Chat</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/vision ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-image me-2"></i>Bantuan Gambar</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/file ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-file-earmark-text me-2"></i>Bantuan File</button></li>
+              <li><button class="dropdown-item small"
                   onclick="document.getElementById('assistantInput').value='/appeal ';document.getElementById('assistantInput').focus();"><i
                     class="bi bi-shield-exclamation me-2"></i>Appeal Forum</button></li>
               <li>
                 <hr class="dropdown-divider">
               </li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/help ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-terminal me-2"></i>Help Command</button></li>
               <li><button class="dropdown-item small"
                   onclick="document.getElementById('assistantInput').value='/ai ';document.getElementById('assistantInput').focus();"><i
                     class="bi bi-robot me-2"></i>Reset AI</button></li>
@@ -14268,6 +14324,11 @@
         const assistantInput = $('#assistantInput');
         const assistantSendBtn = $('#assistantSendBtn');
         const assistantTyping = $('#assistantTyping');
+        const assistantFileInput = $('#assistantFileInput');
+        const assistantAttachBtn = $('#assistantAttachBtn');
+        const assistantNewChatBtn = $('#assistantNewChatBtn');
+        const assistantAttachmentPreview = $('#assistantAttachmentPreview');
+        let pendingAssistantAttachment = null;
         const assistantFab = $('#assistantFab');
         const assistantToggle = $('#assistantToggle');
         const assistantPanel = $('#assistantPanel');
@@ -15022,6 +15083,11 @@
           organizeBy: 'none'
         };
 
+        const defaultAssistantSettings = {
+          memoryEnabled: true,
+          maxMemoryMessages: 30
+        };
+
         const state = {
           backendUrl: '',
           adminBearer: 'dhika_sayang123!',
@@ -15030,6 +15096,7 @@
           preferences: { ...defaultPreferences },
           narratorEnabled: false,
           assistantHistory: [],
+          assistantSettings: { ...defaultAssistantSettings },
           avatarAura: '',
           backgroundEmail: '',
           cheats: { enabled: false, visible: false },
@@ -18042,25 +18109,84 @@
           assistantBridge.autoOpen();
         }
 
+        const escapeAssistantHtml = (raw = '') => String(raw)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+        const formatAssistantInline = (line = '') => {
+          let safe = escapeAssistantHtml(line);
+          safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+          safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+          return safe;
+        };
+
+        const renderAssistantRichText = (text = '') => {
+          const normalized = String(text || '').replace(/\r\n?/g, '\n').trim();
+          if (!normalized) return '';
+          const lines = normalized.split('\n');
+          const html = [];
+          let listType = '';
+
+          const closeList = () => {
+            if (listType) {
+              html.push(`</${listType}>`);
+              listType = '';
+            }
+          };
+
+          lines.forEach((rawLine) => {
+            const line = rawLine.trim();
+            if (!line) {
+              closeList();
+              return;
+            }
+            const headingMatch = line.match(/^#{1,3}\s+(.+)$/);
+            if (headingMatch) {
+              closeList();
+              html.push(`<p><strong>${formatAssistantInline(headingMatch[1])}</strong></p>`);
+              return;
+            }
+            if (/^[-•]\s+/.test(line)) {
+              if (listType !== 'ul') {
+                closeList();
+                listType = 'ul';
+                html.push('<ul>');
+              }
+              html.push(`<li>${formatAssistantInline(line.replace(/^[-•]\s+/, ''))}</li>`);
+              return;
+            }
+            if (/^\d+[\.)]\s+/.test(line)) {
+              if (listType !== 'ol') {
+                closeList();
+                listType = 'ol';
+                html.push('<ol>');
+              }
+              html.push(`<li>${formatAssistantInline(line.replace(/^\d+[\.)]\s+/, ''))}</li>`);
+              return;
+            }
+            closeList();
+            html.push(`<p>${formatAssistantInline(line)}</p>`);
+          });
+
+          closeList();
+          return html.join('');
+        };
+
         const addAssistantMessage = (text, role = 'bot', opts = {}) => {
           if (!assistantMessages) return null;
           const bubble = document.createElement('div');
           bubble.className = `assistant-bubble ${role}`;
           const content = String(text || '');
-          if (opts.animate && role === 'bot') {
-            bubble.textContent = '';
-            let index = 0;
-            const typeNext = () => {
-              if (index >= content.length) return;
-              bubble.textContent += content[index];
-              assistantMessages.scrollTop = assistantMessages.scrollHeight;
-              index += 1;
-              window.setTimeout(typeNext, 18 + Math.random() * 35);
-            };
-            typeNext();
+
+          if (role === 'bot') {
+            bubble.innerHTML = renderAssistantRichText(content);
           } else {
             bubble.textContent = content;
           }
+
           assistantMessages.appendChild(bubble);
           assistantMessages.scrollTop = assistantMessages.scrollHeight;
           if (role === 'bot' && assistantToggle && assistantPanel?.hasAttribute('hidden')) {
@@ -18087,7 +18213,72 @@
           const lower = text.toLowerCase();
           const match = assistantKnowledge.find((item) => item.keywords.some((k) => lower.includes(k)));
           if (match) return match.reply;
-          return 'Siap, aku bantu. Sebut fitur yang kamu cari (converter, subtitle, AI Navigator, ticket support, profil, FAQ), atau ketik /walkthrough untuk tur spotlight.';
+          return 'Siap bantu ✅\n\n**Coba perintah cepat:**\n- `/fitur` untuk daftar fitur lengkap\n- `/help` untuk semua command AI Navigator\n- `/ticket` untuk buka form bantuan\n- `/walkthrough` untuk tur spotlight fitur\n\nKamu juga bisa tanya natural, misalnya: **cara convert playlist**, **cara ambil subtitle**, atau **cara cek status tiket**.';
+        };
+
+
+        const AI_FEATURE_CATALOG = [
+          { id: 1, name: 'Convert cepat', command: '/convert', detail: 'Tempel URL terus gas convert tanpa ribet.' },
+          { id: 2, name: 'Download semua', command: '/downloadall', detail: 'Unduh batch hasil convert sekali klik.' },
+          { id: 3, name: 'ZIP playlist', command: '/zip', detail: 'Gabung file playlist jadi satu paket ZIP.' },
+          { id: 4, name: 'Preview media', command: '/preview', detail: 'Cek audio/video sebelum download final.' },
+          { id: 5, name: 'Share link', command: '/share', detail: 'Bagiin hasil ke temen pakai link cepat.' },
+          { id: 6, name: 'QR share', command: '/qr', detail: 'Scan QR buat transfer ke HP/device lain.' },
+          { id: 7, name: 'Subtitle auto', command: '/subtitle', detail: 'Ambil subtitle otomatis dari video.' },
+          { id: 8, name: 'Subtitle manual', command: '/subtitle manual', detail: 'Mode subtitle manual sesuai preferensi bahasa.' },
+          { id: 9, name: 'ID3 Tag', command: '/id3', detail: 'Atur judul/artis/album biar musik lebih rapi.' },
+          { id: 10, name: 'Trim audio', command: '/trim', detail: 'Potong bagian lagu sesuai durasi yang kamu mau.' },
+          { id: 11, name: 'Normalize volume', command: '/normalize', detail: 'Bikin volume lebih stabil antar track.' },
+          { id: 12, name: 'AI Denoise', command: '/denoise', detail: 'Reduksi noise buat hasil lebih clean.' },
+          { id: 13, name: 'Atmos mode', command: '/atmos', detail: 'Aktifin mode spatial/atmos kalau tersedia.' },
+          { id: 14, name: 'Ringtone mode', command: '/ringtone', detail: 'Bikin versi ringtone iPhone/Android cepat.' },
+          { id: 15, name: 'Equalizer', command: '/eq', detail: 'Atur bass/mid/treble sesuai selera.' },
+          { id: 16, name: 'Riwayat hasil', command: '/history', detail: 'Lihat hasil convert sebelumnya kapan aja.' },
+          { id: 17, name: 'Trending now', command: '/trending', detail: 'Liat tren lagu/video yang lagi rame.' },
+          { id: 18, name: 'FAQ', command: '/faq', detail: 'Pertanyaan umum + solusi cepet anti muter-muter.' },
+          { id: 19, name: 'Walkthrough', command: '/walkthrough', detail: 'Tour fitur step-by-step biar gak bingung.' },
+          { id: 20, name: 'Voice command', command: '/voice', detail: 'Kontrol pakai suara buat yang males ngetik.' },
+          { id: 21, name: 'Narrator', command: '/narrator', detail: 'AI bacain panduan dan instruksi buat kamu.' },
+          { id: 22, name: 'Tema & layout', command: '/theme', detail: 'Ubah vibe UI biar nyaman di mata.' },
+          { id: 23, name: 'Profil XP', command: '/profile', detail: 'Pantau level, poin, dan progres akun kamu.' },
+          { id: 24, name: 'Badge progress', command: '/badge', detail: 'Tracking badge biar makin semangat.' },
+          { id: 25, name: 'Forum assist', command: '/forum', detail: 'Bantuan masalah forum dan moderasi.' },
+          { id: 26, name: 'Appeal cepat', command: '/appeal', detail: 'Ajukan appeal langsung dari chat AI.' },
+          { id: 27, name: 'Ticket support', command: '/ticket', detail: 'Buka form tiket CS langsung dari command.' },
+          { id: 28, name: 'Status tiket', command: '/ticket status', detail: 'Pantau status tiket tanpa ribet.' },
+          { id: 29, name: 'AI draft tiket', command: '/ticket draft', detail: 'AI bantu ngerapiin isi laporan kamu.' },
+          { id: 30, name: 'New chat', command: '/newchat', detail: 'Reset chat biar mulai fresh dari nol.' },
+          { id: 31, name: 'Memory ON/OFF', command: '/memory on|off', detail: 'Atur AI inget chat atau enggak.' },
+          { id: 32, name: 'Memory clear', command: '/memory clear', detail: 'Hapus jejak obrolan lama sekali klik.' },
+          { id: 33, name: 'Status sistem', command: '/status', detail: 'Cek koneksi, mode, dan status memory.' },
+          { id: 34, name: 'Info model', command: '/model', detail: 'Tau model aktif + rekomendasi penggunaan.' },
+          { id: 35, name: 'Menu command', command: '/help', detail: 'Daftar command biar gak bingung.' },
+          { id: 36, name: 'Auto Music Tags', command: '/autotag', detail: 'Tag metadata otomatis buat musik kamu.' },
+          { id: 37, name: 'Save cloud', command: '/cloud', detail: 'Simpan hasil ke cloud storage.' },
+          { id: 38, name: 'Save Drive', command: '/drive', detail: 'Upload hasil ke Google Drive langsung.' },
+          { id: 39, name: 'Private share', command: '/private', detail: 'Share private room untuk link tertentu.' },
+          { id: 40, name: 'Playlist parser', command: '/playlist', detail: 'Parse playlist biar proses batch lebih enak.' },
+          { id: 41, name: 'Sample URL', command: '/sample', detail: 'Isi URL contoh buat uji cepat.' },
+          { id: 42, name: 'Clipboard helper', command: '/paste', detail: 'Paste otomatis dari clipboard ke input.' },
+          { id: 43, name: 'Queue manager', command: '/queue', detail: 'Atur urutan antrian convert.' },
+          { id: 44, name: 'Anti-error checklist', command: '/fix', detail: 'Checklist solusi kalau proses ngadat.' },
+          { id: 45, name: 'Attach file', command: '/file', detail: 'Upload file ke chat buat dianalisa AI.' },
+          { id: 46, name: 'Attach gambar', command: '/vision', detail: 'Upload gambar + baca metadata visual.' },
+          { id: 47, name: 'Deteksi metadata', command: '/meta', detail: 'Lihat info file: tipe, size, dimensi.' },
+          { id: 48, name: 'Ringkasan teks', command: '/summarize', detail: 'Ringkas isi file teks panjang jadi poin.' },
+          { id: 49, name: 'Prompt helper', command: '/prompt', detail: 'Contoh prompt biar jawaban AI lebih nancep.' },
+          { id: 50, name: 'Rekomendasi langkah', command: '/next', detail: 'AI kasih next step paling relevan dari masalahmu.' },
+        ];
+
+        const buildFeatureListText = () => {
+          const lines = AI_FEATURE_CATALOG.map((item) => `${item.id}. **${item.name}** - ${item.detail}`).join('\n');
+          return `**Yo, ini 50 fitur berguna AI Navigator (no kaleng-kaleng):**\n\n${lines}\n\nMau detail? ketik: **/fitur <nomor>** (contoh: \`/fitur 27\`).`;
+        };
+
+        const buildFeatureDetailText = (id) => {
+          const item = AI_FEATURE_CATALOG.find((f) => f.id === id);
+          if (!item) return 'Nomor fiturnya belum valid bro. Coba angka 1 sampai 50 ya.';
+          return `**Fitur #${item.id} - ${item.name}**\n\n- Kegunaan: ${item.detail}\n- Command cepat: \`${item.command}\`\n\nKalau mau, bilang aja: **"jalanin fitur ini"** biar aku kasih step-by-step versi gampangnya.`;
         };
 
         const handleAssistantCommand = (command) => {
@@ -18100,7 +18291,7 @@
           }
           if (normalized.includes('/walkthrough')) {
             closeAssistantPanel();
-            narrateGuide(); // Assuming this triggers the guide
+            narrateGuide();
             return 'Memulai panduan interaktif website...';
           }
           if (normalized.includes('/donasi')) {
@@ -18109,17 +18300,62 @@
             return 'Membuka halaman donasi Saweria. Terima kasih atas dukunganmu!';
           }
           if (normalized.includes('/ai')) {
-            return 'AI Navigator siap membantu! Tanyakan apa saja tentang fitur website ini.';
+            return '**AI Navigator aktif.**\n\nSaya siap bantu semua alur: converter, subtitle, history, tiket, FAQ, profile, dan experience.';
           }
           if (normalized.includes('/ticket')) {
             const modalEl = document.getElementById('emailModal');
             if (modalEl && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
-            return 'Form tiket dibuka. Kamu juga bisa klik tombol "Bantu isi dengan AI Navigator" untuk merapikan deskripsi.';
+            return '**Form tiket sudah dibuka.**\n\nSilakan isi detail masalah, lalu klik **Bantu isi dengan AI Navigator** agar deskripsi lebih rapi dan lengkap.';
+          }
+          if (normalized.includes('/fitur')) {
+            const featureId = Number((normalized.match(/\/fitur\s+(\d{1,2})/) || [])[1] || 0);
+            if (featureId > 0) return buildFeatureDetailText(featureId);
+            return buildFeatureListText();
+          }
+          if (normalized.includes('/model')) {
+            const selectedModel = document.getElementById('assistantModelSelect')?.value || '-';
+            return `**Model aktif:** \`${selectedModel}\`\n\nRekomendasi cepat:\n- **gpt-4o-mini**: respons cepat & stabil untuk tanya jawab harian.\n- **gpt-5.4-nano**: sangat ringan untuk prompt singkat / checklist.\n\nTips: pakai prompt spesifik + konteks (link, error, langkah yang sudah dicoba) agar jawaban lebih akurat.`;
+          }
+          if (normalized.includes('/status')) {
+            const online = navigator.onLine ? 'Online ✅' : 'Offline ⚠️';
+            const mode = localStorage.getItem('ytmp3_mode_pref') || 'advanced';
+            return `**Status singkat sistem**\n\n- Koneksi: **${online}**\n- Mode converter: **${mode}**\n- Panel AI: **siap digunakan**\n- Memory AI: **${state.assistantSettings.memoryEnabled ? 'ON ✅' : 'OFF ⚠️'}**\n\nKalau ada error, kirim dengan format: **apa yang ditekan → error apa → sudah coba apa**.`;
+          }
+          if (normalized.includes('/help')) {
+            return '**Command AI Navigator (versi santai):**\n\n- `/faq` buka FAQ\n- `/walkthrough` mulai tur spotlight\n- `/donasi` buka panel donasi\n- `/ticket` buka form tiket CS\n- `/fitur` lihat daftar fitur lengkap\n- `/model` info model aktif + rekomendasi\n- `/status` cek status sistem singkat\n- `/memory on|off|clear|status` pengaturan memori AI\n- `/newchat` hapus chat sebelumnya\n- `/vision` bantuan analisa gambar terlampir\n- `/file` bantuan analisa file terlampir\n- `/appeal` ajukan appeal forum\n- `/ai` reset sesi bantuan\n\nKalau males slash command, tinggal chat biasa aja. Gue tetep nangkep kok 😎';
+          }
+          if (normalized.startsWith('/memory')) {
+            if (/\boff\b/.test(normalized)) {
+              state.assistantSettings.memoryEnabled = false;
+              state.assistantHistory = state.assistantHistory.slice(-4);
+              persistState();
+              return '**Memory AI: OFF.**\n\nRiwayat tidak disimpan permanen. Sesi akan tetap berjalan singkat.';
+            }
+            if (/\bon\b/.test(normalized)) {
+              state.assistantSettings.memoryEnabled = true;
+              persistState();
+              return '**Memory AI: ON.**\n\nRiwayat chat akan disimpan untuk konteks percakapan berikutnya.';
+            }
+            if (/\bclear\b/.test(normalized)) {
+              resetAssistantConversation(false);
+              return '**Memory dibersihkan.**\n\nRiwayat chat telah dihapus dan sesi dimulai ulang.';
+            }
+            return `**Status memory:** ${state.assistantSettings.memoryEnabled ? 'ON ✅' : 'OFF ⚠️'}\n\nGunakan: \`/memory on\`, \`/memory off\`, atau \`/memory clear\`.`;
+          }
+          if (normalized.includes('/newchat')) {
+            resetAssistantConversation(false);
+            return '**New chat dibuat.**\n\nRiwayat lama dihapus, mulai percakapan baru sekarang.';
+          }
+          if (normalized.includes('/vision')) {
+            return '**Bantuan deteksi gambar aktif.**\n\nUpload gambar lewat ikon 📎 lalu kirim pertanyaan. Saya akan baca metadata gambar (nama, tipe, ukuran, dimensi) dan bantu analisa konteksnya.';
+          }
+          if (normalized.includes('/file')) {
+            return '**Bantuan file aktif.**\n\nUpload file lewat ikon 📎. Untuk file teks, saya akan kirim ringkasan potongan isi agar bisa langsung dianalisis.';
           }
           if (normalized.startsWith('/appeal')) {
             return '__APPEAL_COMMAND__';
           }
-          return 'Perintah tidak dikenal. Gunakan menu slash command (/) untuk melihat daftar perintah.';
+          return '**Waduh, command-nya belum kebaca nih.**\n\nKetik `/help` untuk daftar command, atau `/fitur` untuk peta fitur lengkap.';
         };
 
         const isAppealIntent = (value) => {
@@ -18182,7 +18418,7 @@
           assistantTyping?.removeAttribute('hidden');
           let reply = '';
           try {
-            const historyToSend = state.assistantHistory.slice(0, -1);
+            const historyToSend = state.assistantSettings.memoryEnabled ? state.assistantHistory.slice(0, -1) : [];
             const violationLimit = 5;
             const getViolationCountSafe = () => {
               try {
@@ -18344,34 +18580,135 @@
           assistantTyping?.setAttribute('hidden', '');
           addAssistantMessage(reply, 'bot', { animate: true });
           state.assistantHistory.push({ role: 'bot', text: reply });
+          if (state.assistantSettings.memoryEnabled) {
+            const limit = Math.max(10, Number(state.assistantSettings.maxMemoryMessages) || 30);
+            state.assistantHistory = state.assistantHistory.slice(-limit);
+          } else {
+            state.assistantHistory = state.assistantHistory.slice(-4);
+          }
           persistState();
           incrementPoints(15, 'Interaksi AI', { badge: 'ai' });
           updateMascotMood('ai');
         };
 
+        const resetAssistantConversation = (showToast = true) => {
+          if (assistantMessages) assistantMessages.innerHTML = '';
+          state.assistantHistory = [];
+          pendingAssistantAttachment = null;
+          if (assistantAttachmentPreview) {
+            assistantAttachmentPreview.hidden = true;
+            assistantAttachmentPreview.textContent = '';
+          }
+          persistState();
+          if (showToast) setToast('Chat AI berhasil direset. Mulai percakapan baru.', 'success');
+          addAssistantMessage('**New chat aktif.**\n\nRiwayat sebelumnya sudah dibersihkan. Kamu bisa lanjut tanya dari nol.', 'bot');
+        };
+
+        const summarizeAssistantFile = async (file) => {
+          const kb = Math.max(1, Math.round((file.size || 0) / 1024));
+          const base = `Nama: ${file.name} | Tipe: ${file.type || 'unknown'} | Ukuran: ${kb} KB`;
+          if ((file.type || '').startsWith('image/')) {
+            const imageInfo = await new Promise((resolve) => {
+              const img = new Image();
+              const url = URL.createObjectURL(file);
+              img.onload = () => {
+                resolve(`Gambar ${img.width}x${img.height}px`);
+                URL.revokeObjectURL(url);
+              };
+              img.onerror = () => {
+                resolve('Gambar (dimensi tidak terbaca)');
+                URL.revokeObjectURL(url);
+              };
+              img.src = url;
+            });
+            return { summary: `${base} | ${imageInfo}`, snippet: '[image_attachment]' };
+          }
+
+          const textLike = /text|json|csv|xml|javascript|typescript|markdown/.test(file.type || '') || /\.(txt|md|json|csv|log)$/i.test(file.name || '');
+          if (textLike) {
+            const text = await file.text().catch(() => '');
+            const snippet = String(text || '').slice(0, 1800);
+            return { summary: `${base} | File teks terdeteksi`, snippet };
+          }
+
+          return { summary: `${base} | File non-teks`, snippet: '[binary_attachment]' };
+        };
+
+        if (assistantAttachBtn && assistantFileInput) {
+          assistantAttachBtn.addEventListener('click', () => assistantFileInput.click());
+          assistantFileInput.addEventListener('change', async () => {
+            const file = (assistantFileInput.files && assistantFileInput.files[0]) || null;
+            if (!file) return;
+            const { summary, snippet } = await summarizeAssistantFile(file);
+            pendingAssistantAttachment = {
+              name: file.name,
+              type: file.type || 'unknown',
+              size: file.size || 0,
+              summary,
+              snippet,
+            };
+            if (assistantAttachmentPreview) {
+              assistantAttachmentPreview.hidden = false;
+              assistantAttachmentPreview.innerHTML = `<strong>File siap dikirim:</strong> ${escapeAssistantHtml(summary)}`;
+            }
+            setToast('File/gambar berhasil ditambahkan ke AI Navigator.', 'success');
+          });
+        }
+
+        if (assistantNewChatBtn) {
+          assistantNewChatBtn.addEventListener('click', () => resetAssistantConversation(true));
+        }
+
         function sendAssistantMessage() {
           if (!assistantInput) return;
           const value = assistantInput.value.trim();
           if (!value) return;
-          addAssistantMessage(value, 'user');
-          state.assistantHistory.push({ role: 'user', text: value });
+
+          const attachmentText = pendingAssistantAttachment
+            ? `\n\n[Attachment] ${pendingAssistantAttachment.summary}${pendingAssistantAttachment.snippet ? `\n\n[AttachmentSnippet]\n${pendingAssistantAttachment.snippet}` : ''}`
+            : '';
+          const composedValue = `${value}${attachmentText}`;
+
+          addAssistantMessage(value + (pendingAssistantAttachment ? `\n\n📎 ${pendingAssistantAttachment.summary}` : ''), 'user');
+          state.assistantHistory.push({ role: 'user', text: composedValue });
+          if (!state.assistantSettings.memoryEnabled) {
+            state.assistantHistory = state.assistantHistory.slice(-4);
+          }
+
           assistantInput.value = '';
           const commandReply = handleAssistantCommand(value);
+
+          const clearPendingAttachment = () => {
+            pendingAssistantAttachment = null;
+            if (assistantAttachmentPreview) {
+              assistantAttachmentPreview.hidden = true;
+              assistantAttachmentPreview.textContent = '';
+            }
+          };
+
           if (commandReply === '__APPEAL_COMMAND__' || isAppealIntent(value)) {
             const reason = value.replace(/^\/appeal\s*/i, '').trim();
             const prompt = reason ? `/appeal ${reason}` : '/appeal saya tidak sengaja dan ingin kembali chat di forum';
             respondWithAssistant(prompt);
+            clearPendingAttachment();
             return;
           }
+
           if (commandReply) {
             addAssistantMessage(commandReply, 'bot', { animate: true });
             state.assistantHistory.push({ role: 'bot', text: commandReply });
+            if (!state.assistantSettings.memoryEnabled) {
+              state.assistantHistory = state.assistantHistory.slice(-4);
+            }
             persistState();
             incrementPoints(10, 'Perintah cepat AI', { badge: 'navigator' });
             updateMascotMood('ai');
+            clearPendingAttachment();
             return;
           }
-          respondWithAssistant(value);
+
+          respondWithAssistant(composedValue);
+          clearPendingAttachment();
         }
 
         const ensureAssistantWelcome = () => {
@@ -18623,7 +18960,8 @@
             narratorEnabled: state.narratorEnabled,
             backgroundEmail: state.backgroundEmail,
             preferences: state.preferences,
-            assistantHistory: state.assistantHistory, // Save chat history
+            assistantHistory: state.assistantSettings.memoryEnabled ? state.assistantHistory : [], // Save chat history
+            assistantSettings: state.assistantSettings
           });
         };
 
@@ -21732,6 +22070,9 @@
           state.backendUrl = s.backendUrl || '';
           state.adminBearer = s.adminBearer || '';
           state.assistantHistory = Array.isArray(s.assistantHistory) ? s.assistantHistory : [];
+          state.assistantSettings = { ...defaultAssistantSettings, ...(s.assistantSettings || {}) };
+          state.assistantSettings.memoryEnabled = state.assistantSettings.memoryEnabled !== false;
+          state.assistantSettings.maxMemoryMessages = Math.max(10, Math.min(120, Number(state.assistantSettings.maxMemoryMessages) || 30));
           state.accessibility = { ...defaultAccessibility, ...(s.accessibility || {}) };
           state.experience = { ...defaultExperience, ...(s.experience || {}) };
           state.preferences = { ...defaultPreferences, ...(s.preferences || {}) };
