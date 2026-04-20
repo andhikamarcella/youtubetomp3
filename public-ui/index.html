@@ -18216,6 +18216,71 @@
           return 'Siap bantu ✅\n\n**Coba perintah cepat:**\n- `/fitur` untuk daftar fitur lengkap\n- `/help` untuk semua command AI Navigator\n- `/ticket` untuk buka form bantuan\n- `/walkthrough` untuk tur spotlight fitur\n\nKamu juga bisa tanya natural, misalnya: **cara convert playlist**, **cara ambil subtitle**, atau **cara cek status tiket**.';
         };
 
+
+        const AI_FEATURE_CATALOG = [
+          { id: 1, name: 'Convert cepat', command: '/convert', detail: 'Tempel URL terus gas convert tanpa ribet.' },
+          { id: 2, name: 'Download semua', command: '/downloadall', detail: 'Unduh batch hasil convert sekali klik.' },
+          { id: 3, name: 'ZIP playlist', command: '/zip', detail: 'Gabung file playlist jadi satu paket ZIP.' },
+          { id: 4, name: 'Preview media', command: '/preview', detail: 'Cek audio/video sebelum download final.' },
+          { id: 5, name: 'Share link', command: '/share', detail: 'Bagiin hasil ke temen pakai link cepat.' },
+          { id: 6, name: 'QR share', command: '/qr', detail: 'Scan QR buat transfer ke HP/device lain.' },
+          { id: 7, name: 'Subtitle auto', command: '/subtitle', detail: 'Ambil subtitle otomatis dari video.' },
+          { id: 8, name: 'Subtitle manual', command: '/subtitle manual', detail: 'Mode subtitle manual sesuai preferensi bahasa.' },
+          { id: 9, name: 'ID3 Tag', command: '/id3', detail: 'Atur judul/artis/album biar musik lebih rapi.' },
+          { id: 10, name: 'Trim audio', command: '/trim', detail: 'Potong bagian lagu sesuai durasi yang kamu mau.' },
+          { id: 11, name: 'Normalize volume', command: '/normalize', detail: 'Bikin volume lebih stabil antar track.' },
+          { id: 12, name: 'AI Denoise', command: '/denoise', detail: 'Reduksi noise buat hasil lebih clean.' },
+          { id: 13, name: 'Atmos mode', command: '/atmos', detail: 'Aktifin mode spatial/atmos kalau tersedia.' },
+          { id: 14, name: 'Ringtone mode', command: '/ringtone', detail: 'Bikin versi ringtone iPhone/Android cepat.' },
+          { id: 15, name: 'Equalizer', command: '/eq', detail: 'Atur bass/mid/treble sesuai selera.' },
+          { id: 16, name: 'Riwayat hasil', command: '/history', detail: 'Lihat hasil convert sebelumnya kapan aja.' },
+          { id: 17, name: 'Trending now', command: '/trending', detail: 'Liat tren lagu/video yang lagi rame.' },
+          { id: 18, name: 'FAQ', command: '/faq', detail: 'Pertanyaan umum + solusi cepet anti muter-muter.' },
+          { id: 19, name: 'Walkthrough', command: '/walkthrough', detail: 'Tour fitur step-by-step biar gak bingung.' },
+          { id: 20, name: 'Voice command', command: '/voice', detail: 'Kontrol pakai suara buat yang males ngetik.' },
+          { id: 21, name: 'Narrator', command: '/narrator', detail: 'AI bacain panduan dan instruksi buat kamu.' },
+          { id: 22, name: 'Tema & layout', command: '/theme', detail: 'Ubah vibe UI biar nyaman di mata.' },
+          { id: 23, name: 'Profil XP', command: '/profile', detail: 'Pantau level, poin, dan progres akun kamu.' },
+          { id: 24, name: 'Badge progress', command: '/badge', detail: 'Tracking badge biar makin semangat.' },
+          { id: 25, name: 'Forum assist', command: '/forum', detail: 'Bantuan masalah forum dan moderasi.' },
+          { id: 26, name: 'Appeal cepat', command: '/appeal', detail: 'Ajukan appeal langsung dari chat AI.' },
+          { id: 27, name: 'Ticket support', command: '/ticket', detail: 'Buka form tiket CS langsung dari command.' },
+          { id: 28, name: 'Status tiket', command: '/ticket status', detail: 'Pantau status tiket tanpa ribet.' },
+          { id: 29, name: 'AI draft tiket', command: '/ticket draft', detail: 'AI bantu ngerapiin isi laporan kamu.' },
+          { id: 30, name: 'New chat', command: '/newchat', detail: 'Reset chat biar mulai fresh dari nol.' },
+          { id: 31, name: 'Memory ON/OFF', command: '/memory on|off', detail: 'Atur AI inget chat atau enggak.' },
+          { id: 32, name: 'Memory clear', command: '/memory clear', detail: 'Hapus jejak obrolan lama sekali klik.' },
+          { id: 33, name: 'Status sistem', command: '/status', detail: 'Cek koneksi, mode, dan status memory.' },
+          { id: 34, name: 'Info model', command: '/model', detail: 'Tau model aktif + rekomendasi penggunaan.' },
+          { id: 35, name: 'Menu command', command: '/help', detail: 'Daftar command biar gak bingung.' },
+          { id: 36, name: 'Auto Music Tags', command: '/autotag', detail: 'Tag metadata otomatis buat musik kamu.' },
+          { id: 37, name: 'Save cloud', command: '/cloud', detail: 'Simpan hasil ke cloud storage.' },
+          { id: 38, name: 'Save Drive', command: '/drive', detail: 'Upload hasil ke Google Drive langsung.' },
+          { id: 39, name: 'Private share', command: '/private', detail: 'Share private room untuk link tertentu.' },
+          { id: 40, name: 'Playlist parser', command: '/playlist', detail: 'Parse playlist biar proses batch lebih enak.' },
+          { id: 41, name: 'Sample URL', command: '/sample', detail: 'Isi URL contoh buat uji cepat.' },
+          { id: 42, name: 'Clipboard helper', command: '/paste', detail: 'Paste otomatis dari clipboard ke input.' },
+          { id: 43, name: 'Queue manager', command: '/queue', detail: 'Atur urutan antrian convert.' },
+          { id: 44, name: 'Anti-error checklist', command: '/fix', detail: 'Checklist solusi kalau proses ngadat.' },
+          { id: 45, name: 'Attach file', command: '/file', detail: 'Upload file ke chat buat dianalisa AI.' },
+          { id: 46, name: 'Attach gambar', command: '/vision', detail: 'Upload gambar + baca metadata visual.' },
+          { id: 47, name: 'Deteksi metadata', command: '/meta', detail: 'Lihat info file: tipe, size, dimensi.' },
+          { id: 48, name: 'Ringkasan teks', command: '/summarize', detail: 'Ringkas isi file teks panjang jadi poin.' },
+          { id: 49, name: 'Prompt helper', command: '/prompt', detail: 'Contoh prompt biar jawaban AI lebih nancep.' },
+          { id: 50, name: 'Rekomendasi langkah', command: '/next', detail: 'AI kasih next step paling relevan dari masalahmu.' },
+        ];
+
+        const buildFeatureListText = () => {
+          const lines = AI_FEATURE_CATALOG.map((item) => `${item.id}. **${item.name}** - ${item.detail}`).join('\n');
+          return `**Yo, ini 50 fitur berguna AI Navigator (no kaleng-kaleng):**\n\n${lines}\n\nMau detail? ketik: **/fitur <nomor>** (contoh: \`/fitur 27\`).`;
+        };
+
+        const buildFeatureDetailText = (id) => {
+          const item = AI_FEATURE_CATALOG.find((f) => f.id === id);
+          if (!item) return 'Nomor fiturnya belum valid bro. Coba angka 1 sampai 50 ya.';
+          return `**Fitur #${item.id} - ${item.name}**\n\n- Kegunaan: ${item.detail}\n- Command cepat: \`${item.command}\`\n\nKalau mau, bilang aja: **"jalanin fitur ini"** biar aku kasih step-by-step versi gampangnya.`;
+        };
+
         const handleAssistantCommand = (command) => {
           const normalized = command.trim().toLowerCase();
           if (!normalized.startsWith('/')) return '';
@@ -18243,7 +18308,9 @@
             return '**Form tiket sudah dibuka.**\n\nSilakan isi detail masalah, lalu klik **Bantu isi dengan AI Navigator** agar deskripsi lebih rapi dan lengkap.';
           }
           if (normalized.includes('/fitur')) {
-            return '**50 fitur berguna AI Navigator + Website:**\n\n1. Converter cepat\n2. Download semua\n3. ZIP playlist\n4. Preview audio/video\n5. Copy link share\n6. QR share\n7. Subtitle auto\n8. Subtitle manual\n9. ID3 tags\n10. Trim audio\n11. Volume normalize\n12. Denoise\n13. Atmos\n14. Ringtone mode\n15. Equalizer\n16. History hasil\n17. Trending now\n18. FAQ cerdas\n19. Walkthrough spotlight\n20. Voice command\n21. Narrator\n22. Theme & layout\n23. Profil XP\n24. Badge progress\n25. Forum assist\n26. Appeal command\n27. Ticket support\n28. Ticket status link\n29. AI draft tiket\n30. New Chat reset\n31. Memory on/off\n32. Memory clear\n33. Status sistem\n34. Info model\n35. Multi command menu\n36. Auto Music Tags\n37. Download to cloud\n38. Drive save\n39. Private share\n40. Playlist parser\n41. Sample URL\n42. Clipboard paste\n43. Batch queue\n44. Anti-error tips\n45. File attachment ke AI\n46. Gambar attachment ke AI\n47. Deteksi metadata file\n48. Ringkasan file teks\n49. Prompt helper\n50. Rekomendasi langkah per masalah\n\nKetik fitur nomor atau nama fiturnya, nanti saya jelaskan detail step-by-step.';
+            const featureId = Number((normalized.match(/\/fitur\s+(\d{1,2})/) || [])[1] || 0);
+            if (featureId > 0) return buildFeatureDetailText(featureId);
+            return buildFeatureListText();
           }
           if (normalized.includes('/model')) {
             const selectedModel = document.getElementById('assistantModelSelect')?.value || '-';
@@ -18255,7 +18322,7 @@
             return `**Status singkat sistem**\n\n- Koneksi: **${online}**\n- Mode converter: **${mode}**\n- Panel AI: **siap digunakan**\n- Memory AI: **${state.assistantSettings.memoryEnabled ? 'ON ✅' : 'OFF ⚠️'}**\n\nKalau ada error, kirim dengan format: **apa yang ditekan → error apa → sudah coba apa**.`;
           }
           if (normalized.includes('/help')) {
-            return '**Command AI Navigator:**\n\n- `/faq` buka FAQ\n- `/walkthrough` mulai tur spotlight\n- `/donasi` buka panel donasi\n- `/ticket` buka form tiket CS\n- `/fitur` lihat daftar fitur lengkap\n- `/model` info model aktif + rekomendasi\n- `/status` cek status sistem singkat\n- `/memory on|off|clear|status` pengaturan memori AI\n- `/newchat` hapus chat sebelumnya\n- `/vision` bantuan analisa gambar terlampir\n- `/file` bantuan analisa file terlampir\n- `/appeal` ajukan appeal forum\n- `/ai` reset sesi bantuan\n\nKamu juga bisa chat biasa tanpa slash command.';
+            return '**Command AI Navigator (versi santai):**\n\n- `/faq` buka FAQ\n- `/walkthrough` mulai tur spotlight\n- `/donasi` buka panel donasi\n- `/ticket` buka form tiket CS\n- `/fitur` lihat daftar fitur lengkap\n- `/model` info model aktif + rekomendasi\n- `/status` cek status sistem singkat\n- `/memory on|off|clear|status` pengaturan memori AI\n- `/newchat` hapus chat sebelumnya\n- `/vision` bantuan analisa gambar terlampir\n- `/file` bantuan analisa file terlampir\n- `/appeal` ajukan appeal forum\n- `/ai` reset sesi bantuan\n\nKalau males slash command, tinggal chat biasa aja. Gue tetep nangkep kok 😎';
           }
           if (normalized.startsWith('/memory')) {
             if (/\boff\b/.test(normalized)) {
@@ -18288,7 +18355,7 @@
           if (normalized.startsWith('/appeal')) {
             return '__APPEAL_COMMAND__';
           }
-          return '**Perintah belum dikenali.**\n\nKetik `/help` untuk daftar command, atau `/fitur` untuk peta fitur lengkap.';
+          return '**Waduh, command-nya belum kebaca nih.**\n\nKetik `/help` untuk daftar command, atau `/fitur` untuk peta fitur lengkap.';
         };
 
         const isAppealIntent = (value) => {
