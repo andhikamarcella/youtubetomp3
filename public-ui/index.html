@@ -13065,6 +13065,12 @@
         const EMAILJS_SERVICE_ID = 'service_733722j';
         const EMAILJS_TEMPLATE_ID = 'template_rdmekih';
         const EMAILJS_AUTOREPLY_TEMPLATE_ID = 'template_58uztm9';
+        const TICKET_STATUS_BASE_URL = 'https://ytconv.up.railway.app';
+
+        const buildTicketStatusLink = (ticketId = '') => {
+          const base = TICKET_STATUS_BASE_URL.replace(/\/+$/, '');
+          return `${base}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId || '')}`;
+        };
 
         function showTicketSuccessCard({ ticketId = '', statusLink = '', autoReplySent = true } = {}) {
           const old = document.getElementById('ticketSuccessOverlay');
@@ -13221,7 +13227,7 @@
                 throw new Error(result?.error || 'Gagal membuat tiket ke server');
               }
               const firstLink = result?.fileLink || payload.file_link || '';
-              const statusLink = result?.statusLink || `${window.location.origin}/ticket-status.html?ticket_id=${encodeURIComponent(payload.ticketId || '')}`;
+              const statusLink = buildTicketStatusLink(payload.ticketId || '');
               const sharedParams = {
                 ticket_id: payload.ticketId,
                 name: payload.name,
