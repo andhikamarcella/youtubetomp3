@@ -5810,166 +5810,15 @@
                 <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
                   <div class="card-body">
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                      <strong class="me-auto">AI Studio</strong>
-                      <div class="form-check form-switch m-0">
-                        <input class="form-check-input" type="checkbox" id="backgroundMode">
-                        <label class="form-check-label small" for="backgroundMode">Background mode</label>
-                      </div>
+                      <strong class="me-auto">AI Tools</strong>
+                      <span class="badge text-bg-success">Sederhana</span>
                     </div>
-                    <p class="text-secondary small mb-3">Isi metadata otomatis, susun caption promosi, dan rancang
-                      konten pendukung hanya dengan sekali klik.</p>
-                    <div class="d-grid d-md-flex flex-wrap gap-2">
-                      <button class="btn btn-outline-primary flex-grow-1" id="autoTagBtn" type="button"><i
+                    <p class="text-secondary small mb-3">Kami sederhanakan AI Studio agar fokus ke fitur paling berguna: <strong>Auto Music Tags</strong>.</p>
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-outline-primary" id="autoTagBtn" type="button"><i
                           class="bi bi-stars"></i> Auto Music Tags</button>
-                      <button class="btn btn-outline-secondary flex-grow-1" id="aiCaptionBtn" type="button"><i
-                          class="bi bi-megaphone"></i> AI Caption Sosial</button>
-                      <button class="btn btn-outline-success flex-grow-1" id="aiPitchBtn" type="button"><i
-                          class="bi bi-broadcast"></i> AI Playlist Pitch</button>
-                    </div>
-                    <div class="d-grid d-md-flex flex-wrap gap-2 mt-2">
-                      <button class="btn btn-outline-warning flex-grow-1" id="aiAudiophileBtn" type="button"><i
-                          class="bi bi-soundwave"></i> Audiophile Guide</button>
-                      <button class="btn btn-outline-info flex-grow-1" id="aiHookBtn" type="button"><i
-                          class="bi bi-lightning-charge"></i> Promo Hook</button>
-                      <button class="btn btn-outline-primary flex-grow-1" id="aiVisualBtn" type="button"><i
-                          class="bi bi-brush"></i> Cover Prompt</button>
-                      <button class="btn btn-ai-release flex-grow-1" id="aiReleaseBtn" type="button"><i
-                          class="bi bi-calendar-week"></i> Release Planner</button>
-                    </div>
-                    <div class="d-grid d-md-flex flex-wrap gap-2 mt-2">
-                      <button class="btn btn-outline-danger flex-grow-1" id="aiPressBtn" type="button"><i
-                          class="bi bi-newspaper"></i> AI Press Kit</button>
-                      <button class="btn btn-outline-success flex-grow-1" id="aiOutreachBtn" type="button"><i
-                          class="bi bi-envelope-paper"></i> AI Outreach</button>
-                      <button class="btn btn-outline-secondary flex-grow-1" id="aiLyricBtn" type="button"><i
-                          class="bi bi-mic"></i> Lyric Teaser</button>
                     </div>
                     <div id="aiTagInsights" class="mt-3" hidden></div>
-
-                    <div class="ai-output mt-3" id="aiCaptionWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-megaphone"></i><span>Caption &amp; Hashtag</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiCaptionCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <textarea id="aiCaptionText" class="form-control" rows="3" readonly spellcheck="false"></textarea>
-                      <div class="small text-secondary mt-2" id="aiCaptionMeta"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiPitchWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-broadcast"></i><span>Playlist Pitch</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiPitchCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <textarea id="aiPitchText" class="form-control" rows="3" readonly spellcheck="false"></textarea>
-                      <div class="small text-secondary mt-2" id="aiPitchHook"></div>
-                      <div class="small text-secondary" id="aiPitchPlaylists"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiAudiophileWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-soundwave"></i><span>Panduan Audiophile</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiAudiophileCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <textarea id="aiAudiophileText" class="form-control" rows="6" readonly
-                        spellcheck="false"></textarea>
-                      <div class="small text-secondary mt-2" id="aiAudiophileMeta"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiHookWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-lightning"></i><span>Promo Hook</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiHookCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <ul class="ai-hook-list" id="aiHookList"></ul>
-                      <div class="ai-cta-pills" id="aiHookCtas"></div>
-                      <div class="small text-secondary" id="aiHookMeta"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiVisualWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-brush"></i><span>Cover Art Prompt</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiVisualCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <textarea id="aiVisualPrompt" class="form-control" rows="3" readonly
-                        spellcheck="false"></textarea>
-                      <div class="ai-color-palette" id="aiVisualPalette"></div>
-                      <div class="small text-secondary" id="aiVisualMeta"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiPlanWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-calendar-week"></i><span>Timeline Rilis</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiPlanCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <ul class="ai-plan-list" id="aiPlanList"></ul>
-                      <div class="small text-secondary" id="aiPlanSummary"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiPressWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-newspaper"></i><span>Press Kit Singkat</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiPressCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <h6 id="aiPressHeadline" class="fw-semibold"></h6>
-                      <p id="aiPressStory" class="mb-2"></p>
-                      <ul id="aiPressHighlights" class="mb-2"></ul>
-                      <blockquote class="blockquote" id="aiPressQuote"></blockquote>
-                      <div class="small text-secondary" id="aiPressSocial"></div>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiOutreachWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-envelope-paper"></i><span>Email Outreach</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiOutreachCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <div class="ai-outreach-grid">
-                        <div><span class="label">Subjek</span><span id="aiOutreachSubject"></span></div>
-                        <div><span class="label">Sapaan</span><span id="aiOutreachOpener"></span></div>
-                        <div><span class="label">Pembuka</span><span id="aiOutreachIntro"></span></div>
-                        <div><span class="label">Hook</span><span id="aiOutreachHook"></span></div>
-                        <div><span class="label">Alasan</span><span id="aiOutreachWhy"></span></div>
-                        <div><span class="label">CTA</span><span id="aiOutreachCta"></span></div>
-                      </div>
-                      <ul id="aiOutreachExtras" class="mt-2 mb-0"></ul>
-                    </div>
-
-                    <div class="ai-output mt-3" id="aiLyricWrap" hidden>
-                      <header>
-                        <div class="title"><i class="bi bi-mic"></i><span>Lyric Teaser</span></div>
-                        <div class="copy-actions">
-                          <button class="btn btn-sm btn-outline-secondary" id="aiLyricCopy" type="button"><i
-                              class="bi bi-clipboard"></i> Salin</button>
-                        </div>
-                      </header>
-                      <ul id="aiLyricLines" class="mb-2"></ul>
-                      <div id="aiLyricCallout" class="fw-semibold mb-2"></div>
-                      <div id="aiLyricHashtags" class="small text-secondary"></div>
-                    </div>
-
                     <div class="alert alert-info mt-3 small" id="aiStatus" hidden></div>
                   </div>
                 </div>
@@ -6346,23 +6195,6 @@
           </div>
 
           <div class="col-lg-5">
-            <div class="card shadow-sm mb-4" id="backgroundCard">
-              <div class="card-body p-4">
-                <div class="d-flex align-items-center mb-2">
-                  <i class="bi bi-cloud-check me-2"></i>
-                  <h5 class="mb-0">Background Jobs</h5>
-                </div>
-                <div class="mb-3" id="backgroundNotifyWrap">
-                  <label class="form-label small fw-semibold" for="backgroundEmail">Notifikasi email (opsional)</label>
-                  <input type="email" class="form-control form-control-sm" id="backgroundEmail"
-                    placeholder="nama@domain.com">
-                  <div class="form-text">Kami kirim tautan unduhan ketika job selesai.</div>
-                </div>
-                <div class="small text-secondary" id="backgroundEmpty">Belum ada job latar.</div>
-                <ul class="list-group list-group-flush" id="backgroundList"></ul>
-              </div>
-            </div>
-
             <div class="card shadow-sm mb-4">
               <div class="card-body p-4">
                 <div class="d-flex align-items-center mb-2">
@@ -7044,14 +6876,10 @@
                   </h2>
                   <div id="q-ai-1" class="accordion-collapse collapse" data-bs-parent="#accAi">
                     <div class="accordion-body text-secondary">
-                      AI Studio adalah asisten cerdas untuk konten kreator dan musisi:
+                      AI Tools kini disederhanakan agar fokus ke fitur utama:
                       <ul>
-                        <li><strong>Auto Tags</strong>: Mencari Cover Art, Artis, dan Album otomatis dari database musik
-                          global.</li>
-                        <li><strong>AI Caption</strong>: Membuat caption Instagram/TikTok yang menarik berdasarkan judul
-                          lagu.</li>
-                        <li><strong>Playlist Pitch</strong>: Membuat draf email profesional untuk mengajukan lagu ke
-                          kurator playlist Spotify.</li>
+                        <li><strong>Auto Music Tags</strong>: bantu identifikasi metadata seperti judul, artis, dan album.</li>
+                        <li><strong>AI Navigator</strong>: asisten chat untuk tanya fitur, membuka FAQ/walkthrough, dan bantu isi tiket.</li>
                       </ul>
                     </div>
                   </div>
@@ -7065,8 +6893,8 @@
                   </h2>
                   <div id="q-ai-2" class="accordion-collapse collapse" data-bs-parent="#accAi">
                     <div class="accordion-body text-secondary">
-                      Saat ini semua fitur AI gratis (beta). Kami menggunakan model bahasa ringan untuk memproses
-                      permintaan Anda secara cepat.
+                      Ya, fitur AI saat ini tetap gratis. Fokus utama AI adalah bantuan penggunaan web dan Auto Music Tags
+                      agar pengalaman tetap cepat dan ringan.
                     </div>
                   </div>
                 </div>
@@ -8695,57 +8523,82 @@
             <div class="walkthrough-header">
               <div>
                 <span class="badge text-bg-primary title-mono mb-2">WALKTHROUGH</span>
-                <h5 class="mb-1" id="tutorialModalLabel">Tur interaktif</h5>
-                <p>Kenalan dengan converter, Experience Hub, dan profil avatar dalam tiga langkah singkat.</p>
+                <h5 class="mb-1" id="tutorialModalLabel">Tur interaktif (Spotlight Fitur)</h5>
+                <p>Kenalan satu per satu dengan fitur utama: converter, hasil, AI Navigator, tiket bantuan, dan profil.</p>
               </div>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="walkthrough-progress">
               <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
                 aria-labelledby="walkthroughProgressLabel">
-                <div class="progress-bar" id="walkthroughProgressBar" role="progressbar" style="width: 33%;"
-                  aria-valuenow="33" aria-label="Walkthrough progress"></div>
+                <div class="progress-bar" id="walkthroughProgressBar" role="progressbar" style="width: 20%;"
+                  aria-valuenow="20" aria-label="Walkthrough progress"></div>
               </div>
-              <div class="walkthrough-progress-label" id="walkthroughProgressLabel">Langkah 1 dari 3</div>
+              <div class="walkthrough-progress-label" id="walkthroughProgressLabel">Langkah 1 dari 5</div>
             </div>
             <div class="walkthrough-steps" id="walkthroughSteps">
               <section class="walkthrough-step is-active" data-step="0">
-                <h6>1. Siapkan URL</h6>
-                <p>Tempel link YouTube atau tarik ke area converter. Pilih format favorit, aktifkan trim, normalisasi,
-                  atau ID3 sesuai kebutuhan.</p>
+                <h6>1. Input URL & pengaturan cepat</h6>
+                <p>Tempel link YouTube/Spotify/SoundCloud, lalu pilih format, bitrate, dan mode converter.</p>
                 <ul>
-                  <li>Gunakan tombol <strong>Contoh</strong> untuk mencoba cepat.</li>
-                  <li>Antrian memproses banyak URL tanpa perlu menunggu satu per satu.</li>
+                  <li>Gunakan tombol <strong>Sample</strong> untuk mencoba cepat.</li>
+                  <li>Fitur trim, ID3, dan enhancement bisa diaktifkan sesuai kebutuhan.</li>
                 </ul>
                 <div class="chip-group">
-                  <span class="chip">Queue</span>
-                  <span class="chip">Trim</span>
-                  <span class="chip">ID3</span>
+                  <span class="chip">Input URL</span>
+                  <span class="chip">Format</span>
+                  <span class="chip">Enhancement</span>
                 </div>
               </section>
               <section class="walkthrough-step" data-step="1">
-                <h6>2. Jelajahi Experience Hub</h6>
-                <p>Atur tema, musik adaptif, voice command, dan buka AI Navigator langsung dari Experience Hub.</p>
+                <h6>2. Convert, Preview, dan Download</h6>
+                <p>Setelah convert selesai, cek hasil di preview player lalu download file yang kamu butuhkan.</p>
                 <ul>
-                  <li>Aktifkan musik adaptif atau voice navigation untuk kontrol hands-free.</li>
-                  <li>Buka AI Navigator lewat tombol di Experience Hub untuk chat cepat dan pintasan walkthrough.</li>
+                  <li>Gunakan <strong>Download Semua</strong> untuk batch file.</li>
+                  <li>Simpan subtitle atau bagikan hasil lewat link share.</li>
                 </ul>
                 <div class="chip-group">
-                  <span class="chip">Voice</span>
-                  <span class="chip">Music</span>
-                  <span class="chip">Navigator</span>
+                  <span class="chip">Preview</span>
+                  <span class="chip">Download</span>
+                  <span class="chip">Subtitle</span>
                 </div>
               </section>
               <section class="walkthrough-step" data-step="2">
-                <h6>3. Profil & mode offline</h6>
-                <p>Level dan badge avatar muncul di tab Profil. Install sebagai PWA dan dukung server lewat donasi.</p>
+                <h6>3. AI Navigator (pusat bantuan pintar)</h6>
+                <p>Gunakan AI Navigator untuk tanya semua fitur: converter, FAQ, forum, profil, sampai tiket bantuan.</p>
                 <ul>
-                  <li>Pantau XP, badge, dan milestone avatar di tab <strong>Profil</strong>.</li>
-                  <li>Klik ikon install di browser lalu pilih nominal donasi favoritmu.</li>
+                  <li>Pakai slash command seperti <strong>/faq</strong>, <strong>/walkthrough</strong>, dan <strong>/ticket</strong>.</li>
+                  <li>AI bisa menyiapkan ringkasan masalah untuk form tiket secara otomatis.</li>
+                </ul>
+                <div class="chip-group">
+                  <span class="chip">AI Chat</span>
+                  <span class="chip">Slash Command</span>
+                  <span class="chip">Auto Ringkasan</span>
+                </div>
+              </section>
+              <section class="walkthrough-step" data-step="3">
+                <h6>4. Tiket bantuan & status tiket</h6>
+                <p>Jika ada kendala, kirim tiket lewat form CS. Link status tiket akan otomatis dibuat.</p>
+                <ul>
+                  <li>Gunakan tombol <strong>Bantu Isi dengan AI Navigator</strong> agar deskripsi lebih rapi.</li>
+                  <li>Cek progress lewat tombol <strong>Cek Status Tiket</strong> setelah submit.</li>
+                </ul>
+                <div class="chip-group">
+                  <span class="chip">Support Ticket</span>
+                  <span class="chip">Status Link</span>
+                  <span class="chip">Email Update</span>
+                </div>
+              </section>
+              <section class="walkthrough-step" data-step="4">
+                <h6>5. Experience, profil, dan personalisasi</h6>
+                <p>Atur tema, lihat XP avatar di profil, lalu install PWA supaya terasa seperti aplikasi.</p>
+                <ul>
+                  <li>Profil menyimpan progress badge dan level kamu.</li>
+                  <li>PWA memudahkan akses cepat dari desktop atau mobile.</li>
                 </ul>
                 <div class="chip-group">
                   <span class="chip">Profil</span>
-                  <span class="chip">Donasi</span>
+                  <span class="chip">Theme</span>
                   <span class="chip">PWA</span>
                 </div>
               </section>
@@ -9471,6 +9324,10 @@
                 <label for="emailMsg" class="form-label small fw-semibold text-secondary">Pesan</label>
                 <textarea class="form-control bg-body-tertiary" name="message" id="emailMsg" rows="4"
                   style="border-radius: 1rem;" placeholder="Ceritakan masalah atau saranmu..." required></textarea>
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary" id="emailAiDraftBtn"><i class="bi bi-robot me-1"></i>Bantu isi dengan AI Navigator</button>
+                  <span class="small text-secondary" id="emailAiDraftHint">AI akan merapikan deskripsi berdasarkan isi pesan, perangkat, dan konteks halaman.</span>
+                </div>
               </div>
               <div class="mb-3">
                 <label for="emailProof" class="form-label small fw-semibold text-secondary">Upload bukti (foto/video)</label>
@@ -13072,6 +12929,36 @@
           return `${base}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId || '')}`;
         };
 
+
+        const buildAiTicketDraft = ({ name = '', email = '', category = '', message = '' } = {}) => {
+          const now = new Date();
+          const device = `${navigator.platform || '-'} | ${navigator.userAgent || '-'}`;
+          const network = navigator.onLine ? 'online' : 'offline';
+          const page = window.location.href;
+          const cleanMessage = String(message || '').trim() || '(belum diisi)';
+          const title = cleanMessage.split('\n').find(Boolean)?.slice(0, 90) || 'Laporan pengguna';
+          return [
+            `Judul: ${title}`,
+            `Kategori: ${category || '-'}`,
+            `Pengguna: ${name || '-'} <${email || '-'}>`,
+            `Waktu laporan: ${now.toLocaleString('id-ID')}`,
+            `Status koneksi: ${network}`,
+            `Halaman: ${page}`,
+            `Perangkat: ${device}`,
+            '',
+            'Deskripsi masalah/saran:',
+            cleanMessage,
+            '',
+            'Langkah yang sudah dicoba:',
+            '1) Refresh halaman',
+            '2) Coba ulang di mode converter yang sama',
+            '3) Cek koneksi internet',
+            '',
+            'Dampak:',
+            '- Jelaskan dampaknya ke proses convert/download.'
+          ].join('\n');
+        };
+
         function showTicketSuccessCard({ ticketId = '', statusLink = '', autoReplySent = true } = {}) {
           const old = document.getElementById('ticketSuccessOverlay');
           if (old) old.remove();
@@ -13127,6 +13014,8 @@
           const ticketIdInput = document.getElementById('emailTicketId');
           const proofInput = document.getElementById('emailProof');
           const proofPreview = document.getElementById('emailProofPreview');
+          const aiDraftBtn = document.getElementById('emailAiDraftBtn');
+          const aiDraftHint = document.getElementById('emailAiDraftHint');
           if (!form || !submitBtn) return;
 
           const generateTicketId = () => `TKT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
@@ -13146,6 +13035,23 @@
                 return;
               }
               proofPreview.textContent = files.map((f) => `${f.name} (${Math.ceil(f.size / 1024)} KB)`).join(' • ');
+            });
+          }
+
+          if (aiDraftBtn) {
+            aiDraftBtn.addEventListener('click', () => {
+              const drafted = buildAiTicketDraft({
+                name: form.name?.value?.trim() || '',
+                email: form.email?.value?.trim() || '',
+                category: form.category?.value || '',
+                message: form.message?.value?.trim() || '',
+              });
+              if (form.message) {
+                form.message.value = drafted;
+                form.message.focus();
+              }
+              if (aiDraftHint) aiDraftHint.textContent = 'Draft AI berhasil dibuat. Tinggal cek ulang lalu kirim tiket.';
+              setToast('Draft deskripsi tiket berhasil dibuat oleh AI Navigator.', 'success');
             });
           }
 
@@ -18171,14 +18077,17 @@
           { keywords: ['offline', 'pwa'], reply: 'Klik tombol Pasang aplikasi di kanan atas supaya converter bisa dipakai offline seperti aplikasi HP.' },
           { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music. Pilih mood Energetic/Focus/Chill atau biarkan auto mengikuti waktu.' },
           { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk perintah seperti "buka donasi" atau "mainkan game".' },
-          { keywords: ['game', 'mini'], reply: 'Neo Runner ada di Experience Hub. Tekan mulai, gunakan Space atau tap layar untuk melompat, dan kejar skor terbaik.' }
+          { keywords: ['game', 'mini'], reply: 'Neo Runner ada di Experience Hub. Tekan mulai, gunakan Space atau tap layar untuk melompat, dan kejar skor terbaik.' },
+          { keywords: ['tiket', 'ticket', 'status tiket', 'lapor'], reply: 'Butuh bantuan? Buka form tiket CS, lalu gunakan tombol bantu AI untuk menyusun deskripsi otomatis. Setelah kirim, tekan Cek Status Tiket.' },
+          { keywords: ['fitur', 'feature', 'menu'], reply: 'Fitur utama: Converter, Preview/Download, Subtitle, AI Navigator, Ticket Support, Experience Hub, Profil, dan FAQ.' },
+          { keywords: ['auto tag', 'music tag', 'ai studio'], reply: 'AI Studio sudah disederhanakan. Sekarang fokus ke Auto Music Tags untuk rekomendasi tag musik otomatis.' }
         ];
 
         const buildFallbackReply = (text) => {
           const lower = text.toLowerCase();
           const match = assistantKnowledge.find((item) => item.keywords.some((k) => lower.includes(k)));
           if (match) return match.reply;
-          return 'Aku sudah catat pertanyaanmu. Coba buka FAQ, walkthrough, atau sebut fitur yang ingin kamu optimalkan.';
+          return 'Siap, aku bantu. Sebut fitur yang kamu cari (converter, subtitle, AI Navigator, ticket support, profil, FAQ), atau ketik /walkthrough untuk tur spotlight.';
         };
 
         const handleAssistantCommand = (command) => {
@@ -18200,8 +18109,12 @@
             return 'Membuka halaman donasi Saweria. Terima kasih atas dukunganmu!';
           }
           if (normalized.includes('/ai')) {
-            // Stay here
             return 'AI Navigator siap membantu! Tanyakan apa saja tentang fitur website ini.';
+          }
+          if (normalized.includes('/ticket')) {
+            const modalEl = document.getElementById('emailModal');
+            if (modalEl && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            return 'Form tiket dibuka. Kamu juga bisa klik tombol "Bantu isi dengan AI Navigator" untuk merapikan deskripsi.';
           }
           if (normalized.startsWith('/appeal')) {
             return '__APPEAL_COMMAND__';
