@@ -1836,6 +1836,21 @@
       box-shadow: 0 18px 38px rgba(13, 110, 253, .28);
     }
 
+    .primary-cta-btn {
+      font-weight: 800;
+      letter-spacing: .02em;
+      border: none;
+      background: linear-gradient(135deg, #0d6efd 0%, #3d8bff 100%);
+      box-shadow: 0 14px 28px rgba(13, 110, 253, .35);
+      transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+    }
+
+    .primary-cta-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(13, 110, 253, .4);
+      filter: saturate(1.05);
+    }
+
     .section-header {
       display: flex;
       align-items: center;
@@ -5106,6 +5121,10 @@
             <i class="bi bi-stars"></i>
             <span data-i18n="navExperience">Experience</span>
           </button>
+          <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#forumModal">
+            <i class="bi bi-chat-dots"></i>
+            <span>Komunitas</span>
+          </button>
           <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
             <i class="bi bi-question-circle"></i>
             <span>FAQ</span>
@@ -5283,10 +5302,13 @@
                   <option value="standard" selected>Standar</option>
                   <option value="low">Hemat Data</option>
                 </select>
+                <div class="form-text">Tip cepat: <strong>Standar</strong> paling seimbang, <strong>Terbaik</strong>
+                  untuk kualitas maksimal, <strong>Hemat Data</strong> untuk koneksi lambat.</div>
               </div>
             </div>
 
-            <button id="basic-convert-btn" class="btn btn-primary btn-lg w-100 rounded-pill shadow-sm" type="button">
+            <button id="basic-convert-btn" class="btn btn-primary btn-lg w-100 rounded-pill shadow-sm primary-cta-btn"
+              type="button">
               <i class="bi bi-cloud-download me-2"></i>Download Sekarang
             </button>
 
@@ -5822,7 +5844,8 @@
                   </div>
                 </div>
                 <div class="d-grid d-sm-flex gap-2 align-items-center">
-                  <button id="convertBtn" class="btn btn-primary btn-lg" type="button"><i class="bi bi-magic"></i> <span
+                  <button id="convertBtn" class="btn btn-primary btn-lg primary-cta-btn" type="button"><i
+                      class="bi bi-magic"></i> <span
                       data-i18n="buttonConvert">Convert</span></button>
                   <button id="downloadAllBtn" class="btn btn-outline-primary" type="button"><i
                       class="bi bi-download"></i> <span data-i18n="buttonDownloadAll">Download Semua</span></button>
@@ -6508,6 +6531,11 @@
               <p class="text-secondary mb-0 small">Panduan lengkap fitur, format, dan solusi masalah.</p>
             </div>
           </div>
+          <div class="input-group mb-3">
+            <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+            <input type="search" id="faqSearchInput" class="form-control"
+              placeholder="Cari di FAQ (contoh: kualitas, format, ticket, turnstile)...">
+          </div>
 
           <!-- FAQ Navigation Pills -->
           <ul class="nav nav-pills nav-fill gap-2 mb-4 p-1 bg-body-tertiary rounded-4" id="faqTab" role="tablist">
@@ -6524,7 +6552,7 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link rounded-4 py-2" id="faq-ai-tab" data-bs-toggle="pill" data-bs-target="#faq-ai"
                 type="button" role="tab" aria-controls="faq-ai" aria-selected="false"><i class="bi bi-stars me-1"></i>AI
-                Studio</button>
+                Tools</button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link rounded-4 py-2" id="faq-trouble-tab" data-bs-toggle="pill"
@@ -7722,6 +7750,13 @@
               data-section-label="Dukung Saweria">
               <div class="modern-nav-icon"><i class="bi bi-heart-fill"></i></div>
               <span class="modern-nav-label">Saweria</span>
+              <i class="bi bi-chevron-right modern-nav-arrow"></i>
+            </button>
+
+            <!-- Komunitas -->
+            <button type="button" class="modern-nav-item" data-bs-toggle="modal" data-bs-target="#forumModal">
+              <div class="modern-nav-icon"><i class="bi bi-chat-dots"></i></div>
+              <span class="modern-nav-label">Komunitas</span>
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
@@ -25135,6 +25170,19 @@
 
         // ===== Extras: FAQ Logic & Hall of Fame =====
         const initExtras = () => {
+          const faqSearchInput = document.getElementById('faqSearchInput');
+          if (faqSearchInput && !faqSearchInput.dataset.bound) {
+            faqSearchInput.dataset.bound = '1';
+            faqSearchInput.addEventListener('input', () => {
+              const keyword = String(faqSearchInput.value || '').trim().toLowerCase();
+              const faqItems = Array.from(document.querySelectorAll('#faqTabContent .accordion-item'));
+              faqItems.forEach((item) => {
+                const text = String(item.textContent || '').toLowerCase();
+                item.hidden = keyword ? !text.includes(keyword) : false;
+              });
+            });
+          }
+
           // 1. FAQ Trouble Links (Mobile vs Desktop)
           const linkContainer = document.getElementById('admin-contact-buttons');
           if (linkContainer) {
