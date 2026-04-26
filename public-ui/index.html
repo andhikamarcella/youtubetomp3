@@ -8755,6 +8755,12 @@
                   onclick="document.getElementById('assistantInput').value='/file ';document.getElementById('assistantInput').focus();"><i
                     class="bi bi-file-earmark-text me-2"></i>Bantuan File</button></li>
               <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/analisis ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-bar-chart-line me-2"></i>Analisis Fitur</button></li>
+              <li><button class="dropdown-item small"
+                  onclick="document.getElementById('assistantInput').value='/promptcodex ';document.getElementById('assistantInput').focus();"><i
+                    class="bi bi-code-slash me-2"></i>Prompt Codex</button></li>
+              <li><button class="dropdown-item small"
                   onclick="document.getElementById('assistantInput').value='/appeal ';document.getElementById('assistantInput').focus();"><i
                     class="bi bi-shield-exclamation me-2"></i>Appeal Forum</button></li>
               <li>
@@ -18206,7 +18212,9 @@
           { keywords: ['game', 'mini'], reply: 'Neo Runner ada di Experience Hub. Tekan mulai, gunakan Space atau tap layar untuk melompat, dan kejar skor terbaik.' },
           { keywords: ['tiket', 'ticket', 'status tiket', 'lapor'], reply: 'Butuh bantuan? Buka form tiket CS, lalu gunakan tombol bantu AI untuk menyusun deskripsi otomatis. Setelah kirim, tekan Cek Status Tiket.' },
           { keywords: ['fitur', 'feature', 'menu'], reply: 'Fitur utama: Converter, Preview/Download, Subtitle, AI Navigator, Ticket Support, Experience Hub, Profil, dan FAQ.' },
-          { keywords: ['auto tag', 'music tag', 'ai studio'], reply: 'AI Studio sudah disederhanakan. Sekarang fokus ke Auto Music Tags untuk rekomendasi tag musik otomatis.' }
+          { keywords: ['auto tag', 'music tag', 'ai studio'], reply: 'AI Studio sudah disederhanakan. Sekarang fokus ke Auto Music Tags untuk rekomendasi tag musik otomatis.' },
+          { keywords: ['analisis', 'rekomendasi fitur', 'roadmap'], reply: 'Kalau kamu mau roadmap upgrade YTConv, ketik /analisis. Aku bakal kasih prioritas fitur + impact bisnisnya.' },
+          { keywords: ['codex', 'prompt codex', 'implementasi'], reply: 'Butuh prompt implementasi buat tim dev? ketik /promptcodex, nanti aku siapin template prompt yang bisa langsung dieksekusi.' }
         ];
 
         const buildFallbackReply = (text) => {
@@ -18322,7 +18330,7 @@
             return `**Status singkat sistem**\n\n- Koneksi: **${online}**\n- Mode converter: **${mode}**\n- Panel AI: **siap digunakan**\n- Memory AI: **${state.assistantSettings.memoryEnabled ? 'ON ✅' : 'OFF ⚠️'}**\n\nKalau ada error, kirim dengan format: **apa yang ditekan → error apa → sudah coba apa**.`;
           }
           if (normalized.includes('/help')) {
-            return '**Command AI Navigator (versi santai):**\n\n- `/faq` buka FAQ\n- `/walkthrough` mulai tur spotlight\n- `/donasi` buka panel donasi\n- `/ticket` buka form tiket CS\n- `/fitur` lihat daftar fitur lengkap\n- `/model` info model aktif + rekomendasi\n- `/status` cek status sistem singkat\n- `/memory on|off|clear|status` pengaturan memori AI\n- `/newchat` hapus chat sebelumnya\n- `/vision` bantuan analisa gambar terlampir\n- `/file` bantuan analisa file terlampir\n- `/appeal` ajukan appeal forum\n- `/ai` reset sesi bantuan\n\nKalau males slash command, tinggal chat biasa aja. Gue tetep nangkep kok 😎';
+            return '**Command AI Navigator (versi santai):**\n\n- `/faq` buka FAQ\n- `/walkthrough` mulai tur spotlight\n- `/donasi` buka panel donasi\n- `/ticket` buka form tiket CS\n- `/fitur` lihat daftar fitur lengkap\n- `/model` info model aktif + rekomendasi\n- `/status` cek status sistem singkat\n- `/memory on|off|clear|status` pengaturan memori AI\n- `/newchat` hapus chat sebelumnya\n- `/vision` bantuan analisa gambar terlampir\n- `/file` bantuan analisa file terlampir\n- `/analisis` rekomendasi fitur + prioritas\n- `/promptcodex` template prompt implementasi\n- `/appeal` ajukan appeal forum\n- `/ai` reset sesi bantuan\n\nKalau males slash command, tinggal chat biasa aja. Gue tetep nangkep kok 😎';
           }
           if (normalized.startsWith('/memory')) {
             if (/\boff\b/.test(normalized)) {
@@ -18351,6 +18359,21 @@
           }
           if (normalized.includes('/file')) {
             return '**Bantuan file aktif.**\n\nUpload file lewat ikon 📎. Untuk file teks, saya akan kirim ringkasan potongan isi agar bisa langsung dianalisis.';
+          }
+          if (normalized.includes('/analisis') || normalized.includes('/roadmap')) {
+            return '**Analisis & rekomendasi upgrade YTConv (versi praktis):**\n\n**Prioritas P1 (impact tinggi, effort menengah):**\n1. Playlist/batch download\n2. Bitrate lengkap (64-320 kbps)\n3. Search video internal\n4. Multi-platform source (Vimeo/TikTok/SoundCloud)\n5. Metadata + cover auto\n\n**Prioritas P2 (value besar):**\n6. Waveform editor (fade in/out)\n7. Cloud save (Drive/Dropbox/OneDrive)\n8. Multibahasa penuh\n9. Endpoint API publik + docs\n10. Status page + rate limiting anti abuse\n\nKalau kamu mau, aku bisa pecah jadi sprint mingguan. Ketik: **/roadmap sprint**.';
+          }
+          if (normalized.includes('/roadmap sprint')) {
+            return '**Roadmap sprint 4 minggu (ringkas):**\n\n- **Minggu 1:** playlist + bitrate + QA basic\n- **Minggu 2:** search + metadata + cover\n- **Minggu 3:** multi-platform + waveform\n- **Minggu 4:** cloud save + i18n + API docs + hardening\n\nOutput akhir: produk lebih kompetitif tapi tetap ringan & aman.';
+          }
+          if (normalized.includes('/promptcodex node')) {
+            return '**Prompt Codex (Node.js):**\n\nGunakan Express + FFmpeg + yt-dlp wrapper. Implement endpoint `/api/convert`, `/api/search`, `/api/playlist`, tambahkan queue worker, rate limiter, Joi validation, dan test pakai Vitest/Supertest.';
+          }
+          if (normalized.includes('/promptcodex flask')) {
+            return '**Prompt Codex (Flask):**\n\nGunakan Flask + Celery worker + FFmpeg. Buat endpoint convert/search/playlist, validasi input pakai Pydantic, queue Redis, dan test pakai pytest + requests-mock.';
+          }
+          if (normalized.includes('/promptcodex')) {
+            return '**Template prompt Codex siap pakai:**\n\n`Build YTConv v2 with playlist batch download, multi-bitrate, search, metadata tagging, waveform trim, cloud save, i18n, and public REST APIs. Enforce input sanitization, rate limiting, and graceful error handling. Add tests for convert/search/playlist endpoints and document APIs with OpenAPI.`\n\nMau aku bikin versi detail per stack (Node atau Flask)? ketik: **/promptcodex node** atau **/promptcodex flask**.';
           }
           if (normalized.startsWith('/appeal')) {
             return '__APPEAL_COMMAND__';
