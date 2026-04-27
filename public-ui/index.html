@@ -2069,8 +2069,9 @@
     }
 
     body .modal-backdrop.show {
-      opacity: 0 !important;
-      backdrop-filter: none !important;
+      opacity: .72 !important;
+      backdrop-filter: blur(2px) !important;
+      background: #05070d !important;
     }
 
     #forumModal,
@@ -2090,6 +2091,12 @@
 
     body .offcanvas-backdrop {
       z-index: 19990 !important;
+    }
+
+    body .offcanvas-backdrop.show {
+      opacity: .62 !important;
+      background: #070a12 !important;
+      backdrop-filter: blur(1.5px) !important;
     }
 
     body.has-open-modal .assistant-fab,
@@ -5306,11 +5313,51 @@
                   untuk kualitas maksimal, <strong>Hemat Data</strong> untuk koneksi lambat.</div>
               </div>
             </div>
+            <div class="mb-3">
+              <div class="small fw-semibold mb-2">Preset Cepat (Sekali Klik)</div>
+              <div class="d-flex flex-wrap gap-2" id="basicQuickPresetWrap">
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-basic-preset="musik">
+                  <i class="bi bi-music-note-beamed me-1"></i>Musik Jernih
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-basic-preset="hemat">
+                  <i class="bi bi-wifi me-1"></i>Hemat Kuota
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-success rounded-pill" data-basic-preset="video">
+                  <i class="bi bi-film me-1"></i>Video Cepat
+                </button>
+              </div>
+            </div>
 
             <button id="basic-convert-btn" class="btn btn-primary btn-lg w-100 rounded-pill shadow-sm primary-cta-btn"
               type="button">
               <i class="bi bi-cloud-download me-2"></i>Download Sekarang
             </button>
+            <div class="small text-secondary mt-2 text-center">
+              Shortcut: <kbd>Ctrl</kbd> + <kbd>V</kbd> lalu tekan <kbd>Enter</kbd> untuk convert lebih cepat.
+            </div>
+            <div class="card border-0 bg-body-tertiary mt-3" id="basicFlowChecklist">
+              <div class="card-body py-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <strong class="small">Progress Langkah Cepat</strong>
+                  <span class="badge text-bg-primary-subtle text-primary" id="basicFlowScore">0 / 4</span>
+                </div>
+                <div class="d-flex flex-column gap-2 small">
+                  <div id="basicStepLink" class="text-secondary"><i class="bi bi-circle me-1"></i>Tempel link video</div>
+                  <div id="basicStepPreset" class="text-secondary"><i class="bi bi-circle me-1"></i>Pilih preset/format</div>
+                  <div id="basicStepConvert" class="text-secondary"><i class="bi bi-circle me-1"></i>Mulai convert</div>
+                  <div id="basicStepDone" class="text-secondary"><i class="bi bi-circle me-1"></i>Download hasil</div>
+                </div>
+              </div>
+            </div>
+            <div class="card border-0 bg-body-tertiary mt-3" id="basicSmartAssistCard">
+              <div class="card-body py-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <strong class="small"><i class="bi bi-lightning-charge text-warning me-1"></i>Smart Assist</strong>
+                  <span class="badge text-bg-light border" id="basicSourceBadge">Sumber: -</span>
+                </div>
+                <div class="small text-secondary" id="basicSmartHintText">Tempel link dulu, nanti AI bantu rekomendasi format terbaik buat kamu.</div>
+              </div>
+            </div>
 
             <!-- Trust Signals (Basic Mode) -->
             <div class="d-flex justify-content-center flex-wrap gap-3 mt-3 text-secondary" style="font-size: 0.85rem;">
@@ -5336,6 +5383,12 @@
             <div id="basic-result" class="mt-3 text-center" hidden>
               <a id="basic-download-link" role="button" class="btn btn-success w-100 rounded-pill mb-2"><i
                   class="bi bi-check-lg me-1"></i> Download File</a>
+              <div class="d-flex gap-2 justify-content-center mb-1">
+                <button class="btn btn-outline-primary btn-sm rounded-pill" id="basicCopyLinkBtn" type="button"><i
+                    class="bi bi-link-45deg me-1"></i>Copy Link</button>
+                <button class="btn btn-outline-secondary btn-sm rounded-pill" id="basicShareBtn" type="button"><i
+                    class="bi bi-share me-1"></i>Bagikan</button>
+              </div>
               <button class="btn btn-link text-secondary btn-sm" id="basic-reset-btn">Convert Lagi</button>
 
               <!-- Audio Insight Container for Basic Mode -->
@@ -6283,6 +6336,22 @@
           </div>
           <p class="small text-secondary mb-4">Atur avatar, tema, dan musik supaya sesi konversi terasa lebih personal.
           </p>
+          <div class="card border-0 bg-body-tertiary mb-4">
+            <div class="card-body p-3">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                  <div class="fw-semibold">Daily Mission (Interaktif)</div>
+                  <div class="small text-secondary">Selesaikan misi harian untuk XP bonus.</div>
+                </div>
+                <span class="badge rounded-pill text-bg-success" id="dailyMissionScore">0 / 3</span>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-mission-action="convert"><i class="bi bi-magic me-1"></i>1x Convert</button>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-mission-action="faq"><i class="bi bi-question-circle me-1"></i>Buka FAQ</button>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" data-mission-action="forum"><i class="bi bi-chat-dots me-1"></i>Join Forum</button>
+              </div>
+            </div>
+          </div>
           <div class="row g-3 align-items-stretch">
             <div class="col-lg-6">
               <section class="exp-section" aria-labelledby="avatarTitle">
@@ -6535,6 +6604,14 @@
             <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
             <input type="search" id="faqSearchInput" class="form-control"
               placeholder="Cari di FAQ (contoh: kualitas, format, ticket, turnstile)...">
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-3" id="faqQuickKeywords">
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-faq-keyword="format">Format</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-faq-keyword="kualitas">Kualitas</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-faq-keyword="turnstile">Turnstile</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-faq-keyword="ticket">Ticket</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-faq-keyword="subtitle">Subtitle</button>
+            <button type="button" class="btn btn-sm btn-light border rounded-pill" id="faqResetKeywordBtn"><i class="bi bi-x-circle me-1"></i>Reset</button>
           </div>
 
           <!-- FAQ Navigation Pills -->
@@ -6993,6 +7070,13 @@
 
             <!-- Tab 4: Troubleshooting -->
             <div class="tab-pane fade" id="faq-trouble" role="tabpanel" aria-labelledby="faq-trouble-tab" tabindex="0">
+              <div class="alert alert-primary border-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="small mb-0"><strong>Masih bingung?</strong> Pakai bantuan cepat biar masalah langsung diarahkan ke solusi.</div>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-primary rounded-pill" id="faqOpenTicketBtn"><i class="bi bi-ticket-perforated me-1"></i>Buat Tiket</button>
+                  <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="faqOpenAiHelpBtn"><i class="bi bi-robot me-1"></i>Tanya AI</button>
+                </div>
+              </div>
               <div class="accordion accordion-flush" id="accTrouble">
                 <div class="accordion-item">
                   <h2 class="accordion-header">
@@ -7230,6 +7314,77 @@
                     </div>
                   </div>
                 </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-13">
+                      <i class="bi bi-ticket-detailed me-2 text-success"></i>Sudah kirim tiket tapi belum dibalas. Harus gimana?
+                    </button>
+                  </h2>
+                  <div id="q-tr-13" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ol class="mb-0">
+                        <li>Buka halaman <strong>Status Tiket</strong> lalu cek status terbaru (open/on-progress/closed).</li>
+                        <li>Pastikan email yang dipakai saat kirim tiket benar.</li>
+                        <li>Tambahkan informasi penting (link, error, waktu kejadian, screenshot) agar admin cepat proses.</li>
+                        <li>Kalau lebih dari 24 jam belum ada update, balas tiket yang sama (jangan spam tiket baru).</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-14">
+                      <i class="bi bi-person-x me-2 text-danger"></i>Login Google gagal / logout sendiri?
+                    </button>
+                  </h2>
+                  <div id="q-tr-14" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ul class="mb-0">
+                        <li>Aktifkan cookie browser dan izinkan pop-up untuk domain ini.</li>
+                        <li>Matikan mode incognito/private jika sering logout otomatis.</li>
+                        <li>Clear cache situs lalu login ulang.</li>
+                        <li>Jika muncul error provider, coba akun Google lain untuk verifikasi masalah akun vs browser.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-15">
+                      <i class="bi bi-chat-dots me-2 text-info"></i>Forum/komunitas terkunci atau tidak bisa kirim chat?
+                    </button>
+                  </h2>
+                  <div id="q-tr-15" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ul class="mb-0">
+                        <li>Cek apakah akun sedang kena pembatasan moderasi sementara.</li>
+                        <li>Gunakan perintah <code>/appeal</code> di AI Navigator untuk ajukan banding.</li>
+                        <li>Pastikan kamu login dan koneksi websocket stabil (refresh 1x jika room tidak update).</li>
+                        <li>Hindari kirim pesan berulang terlalu cepat karena sistem anti-spam bisa menonaktifkan input sementara.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-16">
+                      <i class="bi bi-file-earmark-break me-2 text-warning"></i>Nama file aneh / metadata tidak sesuai?
+                    </button>
+                  </h2>
+                  <div id="q-tr-16" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ol class="mb-0">
+                        <li>Gunakan fitur <strong>Auto Music Tags</strong> untuk rapikan judul/artis otomatis.</li>
+                        <li>Jika masih meleset, edit metadata di mode Advanced (judul, artis, album, tahun).</li>
+                        <li>Untuk koleksi musik, pilih format M4A/FLAC agar metadata lebih konsisten di banyak player.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -7302,6 +7457,26 @@
             <i class="bi bi-shield-check"></i>
             <span>Transaksi aman via QRIS, GoPay, OVO, Dana, dll.</span>
           </div>
+        </div>
+      </div>
+
+      <div class="card border-0 bg-body-tertiary mt-4">
+        <div class="card-body p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+              <h6 class="mb-1 fw-bold"><i class="bi bi-bell-fill text-warning me-1"></i>Donasi Reminder & Benefit</h6>
+              <p class="small text-secondary mb-0">Aktifkan pengingat bulanan dan salin link donasi untuk dibagikan ke teman.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" id="copySaweriaLinkBtn"><i class="bi bi-link-45deg me-1"></i>Copy Link Donasi</button>
+              <button type="button" class="btn btn-sm btn-warning rounded-pill text-dark fw-semibold" id="shareSaweriaBtn"><i class="bi bi-share me-1"></i>Bagikan</button>
+            </div>
+          </div>
+          <div class="form-check form-switch mt-3">
+            <input class="form-check-input" type="checkbox" id="saweriaReminderToggle">
+            <label class="form-check-label" for="saweriaReminderToggle">Aktifkan pengingat donasi bulanan (local reminder)</label>
+          </div>
+          <div class="small text-secondary mt-2">Benefit supporter: badge komunitas, prioritas review tiket, dan akses info event lebih awal.</div>
         </div>
       </div>
 
@@ -7534,6 +7709,10 @@
                     class="bi bi-stars me-1"></i> Buka Experience</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-open-profile="true"><i
                     class="bi bi-arrow-clockwise me-1"></i> Refresh Profil</button>
+                <button type="button" class="btn btn-outline-success btn-sm" id="profileExportSummaryBtn"><i
+                    class="bi bi-download me-1"></i>Export Ringkasan</button>
+                <button type="button" class="btn btn-outline-info btn-sm" id="profileCopyStatsBtn"><i
+                    class="bi bi-clipboard-check me-1"></i>Copy Statistik</button>
               </div>
             </div>
           </div>
@@ -7930,6 +8109,14 @@
         </div>
 
         <hr class="my-4">
+        <h6 class="mb-2">Quick Diagnostics</h6>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <button class="btn btn-outline-secondary btn-sm" type="button" id="settingsCopyDiagnosticsBtn"><i class="bi bi-clipboard-data me-1"></i>Copy Diagnostics</button>
+          <button class="btn btn-outline-danger btn-sm" type="button" id="settingsResetPrefsBtn"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset Preferensi</button>
+        </div>
+        <div class="form-text">Gunakan Diagnostics saat lapor bug agar tim support lebih cepat bantu.</div>
+
+        <hr class="my-4">
         <h6 class="mb-2">Status cookies</h6>
         <div class="d-grid gap-2 mb-2">
           <button class="btn btn-outline-secondary" id="checkCookie" type="button"><i class="bi bi-shield-check"></i>
@@ -8079,6 +8266,12 @@
                 </select>
                 <button id="forumCopyRoomBtn" type="button"
                   class="btn btn-sm btn-outline-light rounded-pill d-none">Salin kode</button>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-2" id="forumQuickActions">
+                <button type="button" class="btn btn-outline-light btn-sm rounded-pill" data-forum-quick="halo"><i class="bi bi-hand-thumbs-up me-1"></i>Salam</button>
+                <button type="button" class="btn btn-outline-light btn-sm rounded-pill" data-forum-quick="bantuan"><i class="bi bi-life-preserver me-1"></i>Minta Bantuan</button>
+                <button type="button" class="btn btn-outline-light btn-sm rounded-pill" data-forum-quick="event"><i class="bi bi-calendar-event me-1"></i>Buat Event</button>
+                <button type="button" class="btn btn-outline-light btn-sm rounded-pill" data-forum-quick="rules"><i class="bi bi-shield-check me-1"></i>Rules</button>
               </div>
             </div>
             <!-- Wallpaper Background -->
@@ -8817,6 +9010,11 @@
         <span class="label">AI Navigator</span>
         <span class="pulse" id="assistantPulse" aria-hidden="true"></span>
       </button>
+      <button type="button" class="btn btn-primary rounded-circle shadow position-fixed"
+        style="right: 16px; bottom: 96px; width: 44px; height: 44px; z-index: 1045;" id="backToTopBtn" hidden
+        aria-label="Kembali ke atas">
+        <i class="bi bi-arrow-up"></i>
+      </button>
     </div>
     <div class="maint-music-widget" id="maintMusicWidget" aria-live="polite">
       <div class="maint-music-panel" id="maintMusicPanel" hidden>
@@ -8955,6 +9153,13 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="footerCopyCurrentUrlBtn"><i class="bi bi-link-45deg me-1"></i>Copy Halaman</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="footerOpenTicketBtn"><i class="bi bi-ticket-detailed me-1"></i>Buat Tiket</button>
+          <button type="button" class="btn btn-sm btn-outline-info rounded-pill" id="footerOpenChangelogBtn"><i class="bi bi-journal-text me-1"></i>Changelog Cepat</button>
+          <span class="badge text-bg-light border d-inline-flex align-items-center" id="footerStatusBadge"><i class="bi bi-activity me-1 text-success"></i>Status: Online</span>
         </div>
 
         <!-- Trust & Verification Badges (New) -->
@@ -25170,6 +25375,205 @@
 
         // ===== Extras: FAQ Logic & Hall of Fame =====
         const initExtras = () => {
+          const faqOpenTicketBtn = document.getElementById('faqOpenTicketBtn');
+          if (faqOpenTicketBtn && !faqOpenTicketBtn.dataset.bound) {
+            faqOpenTicketBtn.dataset.bound = '1';
+            faqOpenTicketBtn.addEventListener('click', () => {
+              const modalEl = document.getElementById('emailModal');
+              if (modalEl && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            });
+          }
+
+          const faqOpenAiHelpBtn = document.getElementById('faqOpenAiHelpBtn');
+          if (faqOpenAiHelpBtn && !faqOpenAiHelpBtn.dataset.bound) {
+            faqOpenAiHelpBtn.dataset.bound = '1';
+            faqOpenAiHelpBtn.addEventListener('click', () => {
+              const assistantToggleBtn = document.getElementById('assistantToggle');
+              const assistantPanelEl = document.getElementById('assistantPanel');
+              if (assistantPanelEl?.hidden && assistantToggleBtn) assistantToggleBtn.click();
+              const input = document.getElementById('assistantInput');
+              if (input) {
+                input.value = '/help';
+                input.focus();
+              }
+            });
+          }
+
+          const forumQuickButtons = Array.from(document.querySelectorAll('[data-forum-quick]'));
+          forumQuickButtons.forEach((btn) => {
+            if (btn.dataset.bound) return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+              const forumInput = document.getElementById('forumInput');
+              if (!forumInput) return;
+              const presetMap = {
+                halo: 'Halo semuanya 👋 semoga harimu lancar!',
+                bantuan: 'Teman-teman, boleh bantu cek kendala convert saya? (link + error sudah saya siapkan).',
+                event: 'Ada yang minat bikin event komunitas minggu ini? Share idenya di thread ini ya 🔥',
+                rules: 'Reminder bareng: jaga sopan santun, no spam, dan hormati sesama warga ya 🙌'
+              };
+              forumInput.value = presetMap[btn.dataset.forumQuick || 'halo'] || '';
+              forumInput.focus();
+            });
+          });
+
+          const copySaweriaLinkBtn = document.getElementById('copySaweriaLinkBtn');
+          if (copySaweriaLinkBtn && !copySaweriaLinkBtn.dataset.bound) {
+            copySaweriaLinkBtn.dataset.bound = '1';
+            copySaweriaLinkBtn.addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText('https://saweria.co/DhikaMarcella'); setToast('Link donasi tersalin'); } catch { setToast('Gagal menyalin link donasi'); }
+            });
+          }
+          const shareSaweriaBtn = document.getElementById('shareSaweriaBtn');
+          if (shareSaweriaBtn && !shareSaweriaBtn.dataset.bound) {
+            shareSaweriaBtn.dataset.bound = '1';
+            shareSaweriaBtn.addEventListener('click', async () => {
+              const shareUrl = 'https://saweria.co/DhikaMarcella';
+              if (navigator.share) {
+                try { await navigator.share({ title: 'Dukung YTConv', text: 'Yuk bantu support YTConv 🚀', url: shareUrl }); } catch { }
+              } else {
+                try { await navigator.clipboard.writeText(shareUrl); setToast('Link donasi siap dibagikan'); } catch { }
+              }
+            });
+          }
+          const saweriaReminderToggle = document.getElementById('saweriaReminderToggle');
+          if (saweriaReminderToggle && !saweriaReminderToggle.dataset.bound) {
+            saweriaReminderToggle.dataset.bound = '1';
+            try { saweriaReminderToggle.checked = localStorage.getItem('saweria_reminder') === '1'; } catch { }
+            saweriaReminderToggle.addEventListener('change', () => {
+              try { localStorage.setItem('saweria_reminder', saweriaReminderToggle.checked ? '1' : '0'); } catch { }
+              setToast(saweriaReminderToggle.checked ? 'Reminder donasi bulanan aktif' : 'Reminder donasi dimatikan');
+            });
+          }
+
+          const missionButtons = Array.from(document.querySelectorAll('[data-mission-action]'));
+          const missionScore = document.getElementById('dailyMissionScore');
+          if (missionButtons.length && missionScore) {
+            const missionKey = 'experience_daily_mission';
+            let missionState = {};
+            try { missionState = JSON.parse(localStorage.getItem(missionKey) || '{}') || {}; } catch { missionState = {}; }
+            const refreshMissionScore = () => {
+              const done = missionButtons.reduce((acc, btn) => acc + (missionState[btn.dataset.missionAction || ''] ? 1 : 0), 0);
+              missionScore.textContent = `${done} / ${missionButtons.length}`;
+            };
+            missionButtons.forEach((btn) => {
+              const key = btn.dataset.missionAction || '';
+              btn.classList.toggle('btn-success', !!missionState[key]);
+              btn.classList.toggle('btn-outline-primary', !missionState[key]);
+              if (btn.dataset.bound) return;
+              btn.dataset.bound = '1';
+              btn.addEventListener('click', () => {
+                missionState[key] = true;
+                try { localStorage.setItem(missionKey, JSON.stringify(missionState)); } catch { }
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+                refreshMissionScore();
+                if (key === 'faq' && typeof setActiveSection === 'function') setActiveSection('faq');
+                if (key === 'forum') {
+                  const fm = document.getElementById('forumModal');
+                  if (fm && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(fm).show();
+                }
+              });
+            });
+            refreshMissionScore();
+          }
+
+          const profileExportSummaryBtn = document.getElementById('profileExportSummaryBtn');
+          if (profileExportSummaryBtn && !profileExportSummaryBtn.dataset.bound) {
+            profileExportSummaryBtn.dataset.bound = '1';
+            profileExportSummaryBtn.addEventListener('click', () => {
+              const payload = {
+                level: document.getElementById('avatarLevelBadge')?.textContent?.trim() || 'Lv.1',
+                xp: document.getElementById('rewardPointsLabel')?.textContent?.trim() || '0 XP',
+                streak: document.getElementById('profileStreakLabel')?.textContent?.trim() || '0 hari',
+                mood: document.getElementById('avatarMood')?.textContent?.trim() || '-',
+                exportedAt: new Date().toISOString(),
+              };
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'ytconv-profile-summary.json';
+              a.click();
+              URL.revokeObjectURL(url);
+            });
+          }
+
+          const profileCopyStatsBtn = document.getElementById('profileCopyStatsBtn');
+          if (profileCopyStatsBtn && !profileCopyStatsBtn.dataset.bound) {
+            profileCopyStatsBtn.dataset.bound = '1';
+            profileCopyStatsBtn.addEventListener('click', async () => {
+              const text = `Level: ${document.getElementById('avatarLevelBadge')?.textContent?.trim() || '-'} | XP: ${document.getElementById('rewardPointsLabel')?.textContent?.trim() || '-'} | Streak: ${document.getElementById('profileStreakLabel')?.textContent?.trim() || '-'}`;
+              try { await navigator.clipboard.writeText(text); setToast('Statistik profil disalin'); } catch { setToast('Gagal menyalin statistik'); }
+            });
+          }
+
+          const settingsCopyDiagnosticsBtn = document.getElementById('settingsCopyDiagnosticsBtn');
+          if (settingsCopyDiagnosticsBtn && !settingsCopyDiagnosticsBtn.dataset.bound) {
+            settingsCopyDiagnosticsBtn.dataset.bound = '1';
+            settingsCopyDiagnosticsBtn.addEventListener('click', async () => {
+              const diagnostics = {
+                online: navigator.onLine,
+                theme: document.documentElement.getAttribute('data-bs-theme') || 'auto',
+                mode: localStorage.getItem('ytmp3_mode_pref') || 'basic',
+                language: document.getElementById('langSelect')?.value || 'en',
+                cdn: document.getElementById('cdnSelect')?.value || 'auto',
+                userAgent: navigator.userAgent,
+                time: new Date().toISOString(),
+              };
+              try { await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2)); setToast('Diagnostics disalin'); } catch { setToast('Gagal menyalin diagnostics'); }
+            });
+          }
+
+          const settingsResetPrefsBtn = document.getElementById('settingsResetPrefsBtn');
+          if (settingsResetPrefsBtn && !settingsResetPrefsBtn.dataset.bound) {
+            settingsResetPrefsBtn.dataset.bound = '1';
+            settingsResetPrefsBtn.addEventListener('click', () => {
+              try {
+                ['ytmp3_mode_pref', 'saweria_reminder', 'experience_daily_mission', 'assistant_settings', 'assistantHistory', 'themeMode'].forEach((k) => localStorage.removeItem(k));
+              } catch { }
+              setToast('Preferensi utama direset. Refresh halaman untuk menerapkan penuh.');
+            });
+          }
+
+          const footerCopyCurrentUrlBtn = document.getElementById('footerCopyCurrentUrlBtn');
+          if (footerCopyCurrentUrlBtn && !footerCopyCurrentUrlBtn.dataset.bound) {
+            footerCopyCurrentUrlBtn.dataset.bound = '1';
+            footerCopyCurrentUrlBtn.addEventListener('click', async () => {
+              try { await navigator.clipboard.writeText(location.href); setToast('URL halaman tersalin'); } catch { setToast('Gagal menyalin URL'); }
+            });
+          }
+
+          const footerOpenTicketBtn = document.getElementById('footerOpenTicketBtn');
+          if (footerOpenTicketBtn && !footerOpenTicketBtn.dataset.bound) {
+            footerOpenTicketBtn.dataset.bound = '1';
+            footerOpenTicketBtn.addEventListener('click', () => {
+              const modalEl = document.getElementById('emailModal');
+              if (modalEl && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            });
+          }
+
+          const footerOpenChangelogBtn = document.getElementById('footerOpenChangelogBtn');
+          if (footerOpenChangelogBtn && !footerOpenChangelogBtn.dataset.bound) {
+            footerOpenChangelogBtn.dataset.bound = '1';
+            footerOpenChangelogBtn.addEventListener('click', () => {
+              setToast('Update terbaru: FAQ diperluas, Smart Assist Basic, forum quick actions, dan diagnostics settings.');
+            });
+          }
+
+          const backToTopBtn = document.getElementById('backToTopBtn');
+          if (backToTopBtn && !backToTopBtn.dataset.bound) {
+            backToTopBtn.dataset.bound = '1';
+            const syncBackTop = () => {
+              backToTopBtn.hidden = (window.scrollY || 0) < 420;
+            };
+            window.addEventListener('scroll', syncBackTop, { passive: true });
+            backToTopBtn.addEventListener('click', () => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+            syncBackTop();
+          }
+
           const faqSearchInput = document.getElementById('faqSearchInput');
           if (faqSearchInput && !faqSearchInput.dataset.bound) {
             faqSearchInput.dataset.bound = '1';
@@ -25181,6 +25585,20 @@
                 item.hidden = keyword ? !text.includes(keyword) : false;
               });
             });
+            const quickKeywords = Array.from(document.querySelectorAll('[data-faq-keyword]'));
+            quickKeywords.forEach((chip) => {
+              chip.addEventListener('click', () => {
+                faqSearchInput.value = chip.dataset.faqKeyword || '';
+                faqSearchInput.dispatchEvent(new Event('input'));
+              });
+            });
+            const faqResetKeywordBtn = document.getElementById('faqResetKeywordBtn');
+            if (faqResetKeywordBtn) {
+              faqResetKeywordBtn.addEventListener('click', () => {
+                faqSearchInput.value = '';
+                faqSearchInput.dispatchEvent(new Event('input'));
+              });
+            }
           }
 
           // 1. FAQ Trouble Links (Mobile vs Desktop)
@@ -25548,9 +25966,64 @@
           await executeBasicConvert(url);
         };
 
+        const setBasicFlowStep = (stepId, done = false) => {
+          const el = document.getElementById(stepId);
+          if (!el) return;
+          el.classList.toggle('text-success', !!done);
+          el.classList.toggle('fw-semibold', !!done);
+          el.classList.toggle('text-secondary', !done);
+          const icon = el.querySelector('i');
+          if (icon) icon.className = done ? 'bi bi-check-circle-fill me-1' : 'bi bi-circle me-1';
+        };
+
+        const updateBasicFlowChecklist = () => {
+          const url = String(document.getElementById('basic-url')?.value || '').trim();
+          const isLinkDone = /^(https?:\/\/)/i.test(url);
+          const fmt = document.querySelector('input[name="basic-fmt"]:checked')?.value || '';
+          const quality = String(document.getElementById('basic-quality')?.value || '');
+          const hasPreset = Boolean(fmt) && (fmt === 'mp3' ? true : Boolean(quality));
+          const hasStarted = !document.getElementById('basic-progress-wrap')?.hidden;
+          const hasDone = !document.getElementById('basic-result')?.hidden;
+
+          setBasicFlowStep('basicStepLink', isLinkDone);
+          setBasicFlowStep('basicStepPreset', hasPreset);
+          setBasicFlowStep('basicStepConvert', hasStarted);
+          setBasicFlowStep('basicStepDone', hasDone);
+
+          const score = [isLinkDone, hasPreset, hasStarted, hasDone].filter(Boolean).length;
+          const scoreEl = document.getElementById('basicFlowScore');
+          if (scoreEl) scoreEl.textContent = `${score} / 4`;
+        };
+
+        const updateBasicSmartAssist = () => {
+          const url = String(document.getElementById('basic-url')?.value || '').trim();
+          const format = document.querySelector('input[name="basic-fmt"]:checked')?.value || 'mp3';
+          const quality = String(document.getElementById('basic-quality')?.value || 'standard');
+          const hint = document.getElementById('basicSmartHintText');
+          const badge = document.getElementById('basicSourceBadge');
+          if (!hint || !badge) return;
+
+          const source = /spotify\.com/i.test(url)
+            ? 'Spotify'
+            : (/soundcloud\.com/i.test(url) ? 'SoundCloud' : (/youtube\.com|youtu\.be/i.test(url) ? 'YouTube' : '-'));
+          badge.textContent = `Sumber: ${source}`;
+
+          if (!url) {
+            hint.textContent = 'Tempel link dulu, nanti AI bantu rekomendasi format terbaik buat kamu.';
+            return;
+          }
+          if (format === 'mp3') {
+            hint.innerHTML = `Rekomendasi: <strong>MP3</strong> cocok buat musik harian. Gunakan kualitas <strong>${quality === 'best' ? 'Terbaik' : (quality === 'low' ? 'Hemat Data' : 'Standar')}</strong>.`;
+          } else {
+            hint.innerHTML = 'Rekomendasi: <strong>MP4</strong> cocok kalau kamu butuh video visual. Kualitas Standar biasanya paling cepat.';
+          }
+        };
+
         const finishBasicConvert = (url, dup) => {
           const basicSuccess = document.getElementById('basic-result');
           const basicDownloadBtn = document.getElementById('basic-download-link');
+          const basicCopyLinkBtn = document.getElementById('basicCopyLinkBtn');
+          const basicShareBtn = document.getElementById('basicShareBtn');
 
           if (basicSuccess) basicSuccess.hidden = false;
           if (basicDownloadBtn) {
@@ -25559,7 +26032,24 @@
             basicDownloadBtn.classList.add('step-active');
             basicDownloadBtn.onclick = () => { if (navigator.vibrate) navigator.vibrate(20); };
           }
+          if (basicCopyLinkBtn) {
+            basicCopyLinkBtn.onclick = async () => {
+              try { await navigator.clipboard.writeText(String(dup.downloadUrl || '')); setToast('Link download disalin'); } catch { setToast('Gagal menyalin link'); }
+            };
+          }
+          if (basicShareBtn) {
+            basicShareBtn.onclick = async () => {
+              const shareUrl = String(dup.downloadUrl || '');
+              if (!shareUrl) return;
+              if (navigator.share) {
+                try { await navigator.share({ title: 'Hasil convert YTConv', url: shareUrl }); } catch { }
+              } else {
+                try { await navigator.clipboard.writeText(shareUrl); setToast('Link dibagikan lewat clipboard'); } catch { }
+              }
+            };
+          }
           setToast('Menggunakan file dari cache');
+          updateBasicFlowChecklist();
           vibrate([50, 50]);
           playUiFx('convert_done');
         };
@@ -25611,6 +26101,8 @@
           const basicSuccess = document.getElementById('basic-result');
           const basicConvertBtn = document.getElementById('basic-convert-btn');
           const basicDownloadBtn = document.getElementById('basic-download-link');
+          const basicCopyLinkBtn = document.getElementById('basicCopyLinkBtn');
+          const basicShareBtn = document.getElementById('basicShareBtn');
 
           if (basicLoading) basicLoading.hidden = false;
           if (basicSuccess) basicSuccess.hidden = true;
@@ -25660,6 +26152,22 @@
               basicDownloadBtn.download = result.fileName || 'download';
               basicDownloadBtn.classList.add('step-active');
             }
+            if (basicCopyLinkBtn && basicDownloadBtn) {
+              basicCopyLinkBtn.onclick = async () => {
+                try { await navigator.clipboard.writeText(String(basicDownloadBtn.href || '')); setToast('Link download disalin'); } catch { setToast('Gagal menyalin link'); }
+              };
+            }
+            if (basicShareBtn && basicDownloadBtn) {
+              basicShareBtn.onclick = async () => {
+                const shareUrl = String(basicDownloadBtn.href || '');
+                if (!shareUrl) return;
+                if (navigator.share) {
+                  try { await navigator.share({ title: 'Hasil convert YTConv', url: shareUrl }); } catch { }
+                } else {
+                  try { await navigator.clipboard.writeText(shareUrl); setToast('Link dibagikan lewat clipboard'); } catch { }
+                }
+              };
+            }
 
             // Render Audio Insight if available
             if (result.audioInsight && typeof renderAudioInsight === 'function') {
@@ -25695,12 +26203,14 @@
             if (typeof renderBasicHistory === 'function') renderBasicHistory();
 
             notifyUser('YouTube to MP3', `Selesai di convert: ${result.fileName || 'Audio File'}`);
+            updateBasicFlowChecklist();
 
           } catch (err) {
             if (basicLoading) basicLoading.hidden = true;
             setToast('Error: ' + err.message);
           } finally {
             if (basicConvertBtn) basicConvertBtn.disabled = false;
+            updateBasicFlowChecklist();
           }
         };
 
@@ -25913,6 +26423,9 @@
                   else if (isGaptek) icon.className = 'bi bi-emoji-smile';
                   else icon.className = 'bi bi-sliders';
                 }
+                btnToggle.title = isBasic
+                  ? 'Basic Mode: cepat dan simpel'
+                  : (isGaptek ? 'Gaptek Mode: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap');
                 // Update button style
                 btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success');
                 if (isBasic) btnToggle.classList.add('text-primary');
@@ -26021,10 +26534,17 @@
 
             // Basic Mode Listeners
             const basicConvertBtn = document.getElementById('basic-convert-btn');
-            if (basicConvertBtn) basicConvertBtn.addEventListener('click', handleBasicConvert);
+            if (basicConvertBtn) basicConvertBtn.addEventListener('click', () => {
+              updateBasicFlowChecklist();
+              updateBasicSmartAssist();
+              handleBasicConvert();
+            });
 
             const basicPasteBtn = document.getElementById('basicPasteBtn');
             const basicUrlInput = document.getElementById('basic-url');
+            const basicQuality = document.getElementById('basic-quality');
+            const basicFmtMp3 = document.getElementById('basic-fmt-mp3');
+            const basicFmtMp4 = document.getElementById('basic-fmt-mp4');
             if (basicUrlInput) validateLinkInput(basicUrlInput);
 
             if (basicPasteBtn && basicUrlInput) {
@@ -26035,8 +26555,37 @@
                   setToast('Link ditempel');
                   vibrate(50);
                 } catch { setToast('Gagal menempel link'); }
+                updateBasicFlowChecklist();
+                updateBasicSmartAssist();
               });
             }
+
+            const applyBasicPreset = (presetName) => {
+              if (!basicQuality || !basicFmtMp3 || !basicFmtMp4) return;
+              if (presetName === 'musik') {
+                basicFmtMp3.checked = true;
+                basicQuality.value = 'best';
+              } else if (presetName === 'hemat') {
+                basicFmtMp3.checked = true;
+                basicQuality.value = 'low';
+              } else if (presetName === 'video') {
+                basicFmtMp4.checked = true;
+                basicQuality.value = 'standard';
+              }
+              try { localStorage.setItem('ytmp3_basic_preset', presetName); } catch { }
+              if (typeof updateFormatUI === 'function') updateFormatUI();
+              setToast(`Preset aktif: ${presetName}`);
+              vibrate(25);
+            };
+
+            const presetButtons = Array.from(document.querySelectorAll('[data-basic-preset]'));
+            presetButtons.forEach((btn) => {
+              btn.addEventListener('click', () => {
+                applyBasicPreset(btn.dataset.basicPreset || 'musik');
+                updateBasicFlowChecklist();
+                updateBasicSmartAssist();
+              });
+            });
 
             const basicResetBtn = document.getElementById('basic-reset-btn');
             const basicSuccess = document.getElementById('basic-result');
@@ -26049,6 +26598,8 @@
                 const progWrap = document.getElementById('basic-progress-wrap');
                 if (progWrap) progWrap.hidden = true;
                 vibrate(50);
+                updateBasicFlowChecklist();
+                updateBasicSmartAssist();
               });
             }
 
@@ -26073,7 +26624,32 @@
 
             if (fmtMp3) fmtMp3.addEventListener('change', updateFormatUI);
             if (fmtMp4) fmtMp4.addEventListener('change', updateFormatUI);
+            if (fmtMp3) fmtMp3.addEventListener('change', updateBasicSmartAssist);
+            if (fmtMp4) fmtMp4.addEventListener('change', updateBasicSmartAssist);
             updateFormatUI(); // Init state
+            const storedPreset = localStorage.getItem('ytmp3_basic_preset');
+            if (storedPreset) applyBasicPreset(storedPreset);
+            if (basicUrlInput) {
+              basicUrlInput.addEventListener('input', updateBasicFlowChecklist);
+              basicUrlInput.addEventListener('change', updateBasicFlowChecklist);
+              basicUrlInput.addEventListener('input', updateBasicSmartAssist);
+              basicUrlInput.addEventListener('change', updateBasicSmartAssist);
+            }
+            if (qualitySelect) {
+              qualitySelect.addEventListener('change', updateBasicFlowChecklist);
+              qualitySelect.addEventListener('change', updateBasicSmartAssist);
+            }
+
+            if (basicUrlInput && basicConvertBtn) {
+              basicUrlInput.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter' && !ev.shiftKey) {
+                  ev.preventDefault();
+                  basicConvertBtn.click();
+                }
+              });
+            }
+            updateBasicFlowChecklist();
+            updateBasicSmartAssist();
 
             // Clear History Button
             const btnClearBasic = document.getElementById('clearBasicHistoryBtn');
