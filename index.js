@@ -10568,7 +10568,7 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), async (
     pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
     return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
   } catch (err) {
-    console.error(`[ticket-store] gagal menyimpan chat user ${ticketId}`, err);
+    console.error("[ticket-store] gagal menyimpan chat user %s", ticketId, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
