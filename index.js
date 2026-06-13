@@ -10664,7 +10664,7 @@ app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async 
     pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
     return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
   } catch (err) {
-    console.error(`[ticket-store] gagal menyimpan bukti ${ticketId}`, err);
+    console.error("[ticket-store] gagal menyimpan bukti %s", ticketId, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
