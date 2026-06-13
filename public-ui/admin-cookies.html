@@ -68,19 +68,36 @@ const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorag
 const clearToken = () => { sessionStorage.removeItem(tokenKey); localStorage.removeItem(legacyKey); };
 const toast = (id, msg, ok = true) => { const el = $(id); el.className = `text-sm ${ok ? 'text-emerald-300' : 'text-rose-300'}`; el.textContent = msg; };
 const setLoggedInUi = (inState) => { $('loginView').classList.toggle('hidden', inState); $('uploadView').classList.toggle('hidden', !inState); };
+let statusRequest = null;
+let statusRequestId = 0;
 
 async function refreshStatus(){
-  const res = await fetch('/admin/cookies-status?t=' + Date.now());
-  const data = await res.json().catch(() => ({}));
-  if (data.disabled) {
-    $('statusBox').innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
-    return;
+  const requestId = ++statusRequestId;
+  statusRequest?.abort();
+  statusRequest = new AbortController();
+  try {
+    const res = await fetch('/admin/cookies-status?t=' + Date.now(), {
+      cache: 'no-store',
+      signal: statusRequest.signal,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (requestId !== statusRequestId) return;
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (data.disabled) {
+      $('statusBox').innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
+      return;
+    }
+    if (!data.exists) {
+      $('statusBox').innerHTML = '<span class="text-amber-300">Belum ada cookies.txt di penyimpanan persisten.</span>';
+      return;
+    }
+    const uploadedAt = data.uploadedAt ? fmt.format(new Date(data.uploadedAt)) : 'waktu tidak tersedia';
+    const backend = data.backend === 'firestore' ? 'penyimpanan cloud' : 'penyimpanan server';
+    $('statusBox').innerHTML = `<span class="text-emerald-300">Tersimpan permanen</span> • ${Number(data.bytes || 0).toLocaleString()} bytes • ${uploadedAt} • ${backend}`;
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    toast('uploadToast', `Gagal memperbarui status: ${error.message || 'unknown error'}`, false);
   }
-  if (!data.exists) {
-    $('statusBox').innerHTML = `<span class="text-amber-300">Belum ada cookies.txt</span> • ${fmt.format(new Date())}`;
-    return;
-  }
-  $('statusBox').innerHTML = `<span class="text-emerald-300">Tersedia</span> • ${Number(data.bytes || 0).toLocaleString()} bytes • ${fmt.format(new Date())}`;
 }
 
 $('loginBtn').addEventListener('click', async () => {
@@ -111,8 +128,8 @@ $('uploadBtn').addEventListener('click', async () => {
     const res = await fetch('/admin/upload-cookies', { method:'POST', headers:{ 'Content-Type':'text/plain; charset=utf-8', Authorization:'Bearer ' + token }, body });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    toast('uploadToast', `Upload sukses (${Number(data.bytes || 0).toLocaleString()} bytes).`);
-    refreshStatus();
+    toast('uploadToast', `Upload tersimpan permanen (${Number(data.bytes || 0).toLocaleString()} bytes).`);
+    await refreshStatus();
   } catch (e) { toast('uploadToast', e.message || 'Upload gagal', false); }
 });
 
