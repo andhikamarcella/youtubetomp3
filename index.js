@@ -9766,11 +9766,12 @@ app.use((req, res, next) => {
 
 app.post('/api/contact', async (req, res) => {
   try {
-    const { ticketId, name, email, category, message, proofs } = req.body || {};
+    const { name, email, category, message, proofs } = req.body || {};
     if (!name || !email || !message) {
       return res.status(400).json({ ok: false, error: 'Lengkapi data tiket' });
     }
-    const tid = String(ticketId || ('TKT-' + Date.now().toString(36).toUpperCase().slice(-8))).trim().toUpperCase();
+    // ID dari server adalah sumber kebenaran agar tidak bentrok atau dapat ditebak.
+    const tid = `TKT-${nanoid(12).toUpperCase()}`;
     const ticket = {
       ticketId: tid,
       name: String(name).slice(0, 100),
@@ -9816,6 +9817,22 @@ app.post('/api/contact', async (req, res) => {
           }
         } catch (uploadErr) {
           console.warn("[/api/contact] gagal upload proof ke Cloudinary", uploadErr?.message || uploadErr);
+          const match = dataUrl.match(/^data:((?:image|video)\/[a-z0-9.+-]+);base64,([a-z0-9+/=]+)$/i);
+          const inlineBytes = match ? Buffer.byteLength(match[2], "base64") : 0;
+          const currentInlineBytes = uploadedProofs
+            .filter((item) => item.storage === "firestore-inline")
+            .reduce((sum, item) => sum + Number(item.size || 0), 0);
+          // Firestore documents are limited to 1 MiB. Keep the whole ticket below
+          // that limit while still preserving small screenshots when Cloudinary fails.
+          if (match && inlineBytes <= 250 * 1024 && currentInlineBytes + inlineBytes <= 650 * 1024) {
+            uploadedProofs.push({
+              name: String(proof?.name || "attachment"),
+              url: dataUrl,
+              type: String(proof?.type || match[1]),
+              size: inlineBytes,
+              storage: "firestore-inline",
+            });
+          }
         }
       }
     }
@@ -10091,7 +10108,7 @@ app.get("/api/ticket/:ticketId", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(`[ticket-store] gagal membaca ${ticketId}`, err);
+    console.error("[ticket-store] gagal membaca %s", ticketId, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
@@ -10485,7 +10502,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
 
     return res.json({ ok: true, ticket });
   } catch (err) {
-    console.error(`[ticket-store] gagal update ${ticketId}`, err);
+    console.error("[ticket-store] gagal update %s", ticketId, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
@@ -10599,6 +10616,22 @@ app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async 
       }
     } catch (err) {
       console.warn("[/api/ticket/:ticketId/proofs] upload error", err?.message || err);
+      const match = dataUrl.match(/^data:((?:image|video)\/[a-z0-9.+-]+);base64,([a-z0-9+/=]+)$/i);
+      const inlineBytes = match ? Buffer.byteLength(match[2], "base64") : 0;
+      const currentInlineBytes = uploaded
+        .filter((proof) => proof.storage === "firestore-inline")
+        .reduce((sum, proof) => sum + Number(proof.size || 0), 0);
+      if (match && inlineBytes <= 250 * 1024 && currentInlineBytes + inlineBytes <= 650 * 1024) {
+        uploaded.push({
+          name: String(item?.name || "attachment"),
+          url: dataUrl,
+          type: String(item?.type || match[1]),
+          size: inlineBytes,
+          storage: "firestore-inline",
+          from: "user_followup",
+          at: new Date().toISOString(),
+        });
+      }
     }
   }
   if (!uploaded.length) return res.status(400).json({ ok: false, error: "proof_upload_failed" });
