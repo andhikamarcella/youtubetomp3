@@ -2,7 +2,7 @@ import express from "express";
 import compression from "compression";
 import cors from "cors";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { promises as fsp } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -60,6 +60,21 @@ import {
   listRecentSupports,
 } from "./support_store.js";
 import { CacheStore } from "./lib/cache_store.js";
+import {
+  getCookiesPath,
+  getCookiesStatus,
+  initializeCookiesStore,
+  readCookies,
+  saveCookies,
+  startCookiesSync,
+  syncCookiesToLocal,
+} from "./cookie_store.js";
+import {
+  createTicket,
+  getTicket,
+  listTickets,
+  updateTicket,
+} from "./ticket_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
 try {
@@ -157,7 +172,18 @@ const parseGroqModels = () => {
   });
 };
 const GROQ_MODEL_CANDIDATES = parseGroqModels();
-const COOKIES_PATH = join(process.cwd(), "cookies.txt");
+const COOKIES_PATH = getCookiesPath();
+try {
+  const cookieStatus = await initializeCookiesStore();
+  console.log(cookieStatus
+    ? `[cookie-store] hydrated ${cookieStatus.bytes} bytes into ${COOKIES_PATH}`
+    : "[cookie-store] no persisted cookies yet");
+} catch (err) {
+  console.error("[cookie-store] initial hydration failed", err);
+}
+startCookiesSync({
+  onError: (err) => console.error("[cookie-store] background sync failed", err),
+});
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
 const SPOTIFY_CLIENT_ID = (process.env.SPOTIFY_CLIENT_ID || "").trim();
@@ -9370,24 +9396,19 @@ app.post("/admin/login", (req, res) => {
   }
 });
 
-app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
+app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
   try {
-    if (!ADMIN_ENABLED) {
-      return res.status(503).json({ error: "admin_disabled" });
-    }
-    const auth = req.get("Authorization") || "";
-    if (auth !== `Bearer ${BEARER}`) {
-      return res.status(401).json({ error: "unauthorized" });
-    }
+    if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
+    if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
 
-    await fsp.writeFile(COOKIES_PATH, req.body, "utf8");
-    const stat = await fsp.stat(COOKIES_PATH);
+    const saved = await saveCookies(req.body);
     const workerBase = process.env.WORKER_API_BASE;
     const workerSecret = process.env.WORKER_SHARED_SECRET;
+    let workerSynced = false;
     if (workerBase && workerSecret) {
       const workerUrl = `${workerBase.replace(/\/$/, "")}/admin/upload-cookies`;
       try {
-        const resp = await fetch(workerUrl, {
+        const response = await fetch(workerUrl, {
           method: "POST",
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -9395,45 +9416,45 @@ app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), a
           },
           body: req.body,
         });
-        if (!resp.ok) {
-          console.warn("Worker upload-cookies responded with", resp.status);
-        }
+        workerSynced = response.ok;
+        if (!response.ok) console.warn("Worker upload-cookies responded with", response.status);
       } catch (err) {
         console.warn("Failed to forward cookies to worker", err);
       }
     }
-    return res.json({ ok: true, path: COOKIES_PATH, bytes: stat.size, mtime: stat.mtime });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    return res.json({ ok: true, path: COOKIES_PATH, ...saved, workerSynced });
+  } catch (err) {
+    const status = ["cookies_invalid_body", "cookies_empty", "cookies_too_large"].includes(err?.message) ? 400 : 500;
+    return res.status(status).json({ error: err?.message || "cookies_save_failed" });
   }
 });
 
-// Status cookies — ESM-friendly (tanpa require)
-app.get("/admin/cookies-status", (req, res) => {
+app.get("/admin/cookies-status", async (_req, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     if (!ADMIN_ENABLED) return res.json({ exists: false, disabled: true });
-    if (!existsSync(COOKIES_PATH)) return res.json({ exists: false });
-    const size = statSync(COOKIES_PATH).size;
-    return res.json({ exists: true, path: COOKIES_PATH, bytes: size });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    const status = await getCookiesStatus();
+    return res.json(status);
+  } catch (err) {
+    console.error("[cookie-store] status failed", err);
+    return res.status(503).json({ error: "cookies_store_unavailable" });
   }
 });
 
 app.get("/admin/download-cookies", async (req, res) => {
   try {
-    if (!ADMIN_ENABLED) {
-      return res.status(503).json({ error: "admin_disabled" });
-    }
-    const auth = req.get("Authorization") || "";
-    if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
-
-    const text = await fsp.readFile(COOKIES_PATH, "utf8");
+    if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
+    if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
+    const record = await readCookies();
+    if (!record) return res.status(404).json({ error: "not_found" });
+    await syncCookiesToLocal();
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    return res.send(text);
-  } catch (e) {
-    if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
-    return res.status(500).json({ error: e.message });
+    return res.send(record.content);
+  } catch (err) {
+    console.error("[cookie-store] download failed", err);
+    return res.status(503).json({ error: "cookies_store_unavailable" });
   }
 });
 
@@ -9494,18 +9515,29 @@ app.get("/internal/worker/cookies", async (req, res) => {
     if (auth !== `Bearer ${workerSecret}`) {
       return res.status(401).json({ error: "unauthorized" });
     }
-    const text = await fsp.readFile(COOKIES_PATH, "utf8");
+    const record = await readCookies();
+    if (!record) return res.status(404).json({ error: "not_found" });
+    await syncCookiesToLocal();
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    return res.send(text);
-  } catch (e) {
-    if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
-    return res.status(500).json({ error: e.message });
+    return res.send(record.content);
+  } catch (err) {
+    console.error("[cookie-store] worker sync read failed", err);
+    return res.status(503).json({ error: "cookies_store_unavailable" });
   }
 });
 
 // ===== /api/contact: Ticket Submission Endpoint =====
 const userViolations = new Map(); // userId -> { count, banned, bannedAt }
-const supportTickets = new Map(); // ticketId -> ticket payload
+const supportTickets = new Map(); // local cache for dashboard metrics only
+const ticketRoom = (ticketId) => `ticket:${String(ticketId || "").trim().toUpperCase()}`;
+try {
+  const persistedTickets = await listTickets();
+  persistedTickets.forEach((ticket) => supportTickets.set(ticket.ticketId, ticket));
+  console.log(`[ticket-store] loaded ${persistedTickets.length} persisted ticket(s)`);
+} catch (err) {
+  console.error("[ticket-store] gagal memuat ticket saat startup", err);
+}
 const activityLogs = [];
 const MAX_ACTIVITY_LOGS = 300;
 const conversionMetrics = {
@@ -9738,7 +9770,7 @@ app.post('/api/contact', async (req, res) => {
     if (!name || !email || !message) {
       return res.status(400).json({ ok: false, error: 'Lengkapi data tiket' });
     }
-    const tid = ticketId || ('TKT-' + Date.now().toString(36).toUpperCase().slice(-8));
+    const tid = String(ticketId || ('TKT-' + Date.now().toString(36).toUpperCase().slice(-8))).trim().toUpperCase();
     const ticket = {
       ticketId: tid,
       name: String(name).slice(0, 100),
@@ -9788,6 +9820,27 @@ app.post('/api/contact', async (req, res) => {
       }
     }
 
+    // Persist before any email/network side effect so a restart cannot lose the ticket.
+    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(tid)}`;
+    const initialTicket = await createTicket({
+      ...ticket,
+      proofs: uploadedProofs,
+      status: "received",
+      statusLabel: "Diterima",
+      statusUpdatedAt: ticket.submittedAt,
+      statusHistory: [{ status: "received", label: "Diterima", at: ticket.submittedAt, note: "Tiket dibuat oleh user" }],
+      adminReply: "",
+      chatHistory: [{
+        id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
+        sender: "user",
+        message: ticket.message,
+        at: ticket.submittedAt,
+      }],
+      statusLink,
+      autoReplyEmailStatus: "queued",
+    });
+    supportTickets.set(tid, initialTicket);
+
     // Log the ticket for admin
     console.log('[YTConv CS Ticket]', JSON.stringify(ticket));
 
@@ -9828,7 +9881,6 @@ app.post('/api/contact', async (req, res) => {
       console.warn(`[YTConv CS Ticket] email belum terkirim untuk ${tid}: ${emailResult.reason || 'unknown reason'}`);
     }
 
-    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(tid)}`;
     const autoReplyHtml = `
 <div style="font-family: Arial, sans-serif; background:#f4f6f9; padding:20px;">
   <div style="max-width:600px; margin:auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
@@ -9873,23 +9925,11 @@ app.post('/api/contact', async (req, res) => {
       html: autoReplyHtml,
     });
 
-    supportTickets.set(tid, {
-      ...ticket,
-      proofs: uploadedProofs,
-      status: "received",
-      statusLabel: "Diterima",
-      statusUpdatedAt: ticket.submittedAt,
-      statusHistory: [{ status: "received", label: "Diterima", at: ticket.submittedAt, note: "Tiket dibuat oleh user" }],
-      adminReply: "",
-      chatHistory: [{
-        id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
-        sender: "user",
-        message: ticket.message,
-        at: ticket.submittedAt,
-      }],
-      statusLink,
-      autoReplyEmailStatus: autoReplyResult.sent ? "sent" : "queued",
-    });
+    const persistedTicket = await updateTicket(tid, (current) => {
+      current.autoReplyEmailStatus = autoReplyResult.sent ? "sent" : "queued";
+      return current;
+    }) || initialTicket;
+    supportTickets.set(tid, persistedTicket);
     pushActivityLog("ticket_created", `Tiket ${tid} dibuat`, { ticketId: tid, category: ticket.category });
     io.emit("admin:newTicket", {
       ticketId: tid,
@@ -10025,49 +10065,62 @@ app.get("/api/forum/status", (req, res) => {
   });
 });
 
-app.get("/api/ticket/:ticketId", (req, res) => {
+app.get("/api/ticket/:ticketId", async (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_invalid" });
-  const ticket = supportTickets.get(ticketId);
-  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
-  return res.json({
-    ok: true,
-    ticket: {
-      ticketId: ticket.ticketId,
-      name: ticket.name,
-      email: ticket.email,
-      category: ticket.category,
-      message: ticket.message,
-      status: ticket.status,
-      statusLabel: ticket.statusLabel,
-      statusUpdatedAt: ticket.statusUpdatedAt,
-      statusHistory: ticket.statusHistory || [],
-      adminReply: ticket.adminReply || "",
-      chatHistory: ticket.chatHistory || [],
-      submittedAt: ticket.submittedAt,
-      proofs: (ticket.proofs || []).map((p) => ({ name: p.name, url: p.url, type: p.type, size: p.size })),
-    },
-  });
+  try {
+    const ticket = await getTicket(ticketId);
+    if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+    supportTickets.set(ticketId, ticket);
+    return res.json({
+      ok: true,
+      ticket: {
+        ticketId: ticket.ticketId,
+        name: ticket.name,
+        email: ticket.email,
+        category: ticket.category,
+        message: ticket.message,
+        status: ticket.status,
+        statusLabel: ticket.statusLabel,
+        statusUpdatedAt: ticket.statusUpdatedAt,
+        statusHistory: ticket.statusHistory || [],
+        adminReply: ticket.adminReply || "",
+        chatHistory: ticket.chatHistory || [],
+        submittedAt: ticket.submittedAt,
+        proofs: (ticket.proofs || []).map((p) => ({ name: p.name, url: p.url, type: p.type, size: p.size })),
+      },
+    });
+  } catch (err) {
+    console.error(`[ticket-store] gagal membaca ${ticketId}`, err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
 });
 
-app.get("/api/admin/tickets", (req, res) => {
+app.get("/api/admin/tickets", async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const items = Array.from(supportTickets.values())
-    .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
-    .map((ticket) => ({
-      ticketId: ticket.ticketId,
-      name: ticket.name,
-      email: ticket.email,
-      category: ticket.category,
-      message: ticket.message,
-      status: ticket.status,
-      statusLabel: ticket.statusLabel,
-      statusUpdatedAt: ticket.statusUpdatedAt,
-      submittedAt: ticket.submittedAt,
-      proofs: ticket.proofs || [],
-      adminReply: ticket.adminReply || "",
-    }));
-  return res.json({ ok: true, tickets: items });
+  try {
+    const persistedTickets = await listTickets();
+    persistedTickets.forEach((ticket) => supportTickets.set(ticket.ticketId, ticket));
+    const items = persistedTickets
+      .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")))
+      .map((ticket) => ({
+        ticketId: ticket.ticketId,
+        name: ticket.name,
+        email: ticket.email,
+        category: ticket.category,
+        message: ticket.message,
+        status: ticket.status,
+        statusLabel: ticket.statusLabel,
+        statusUpdatedAt: ticket.statusUpdatedAt,
+        submittedAt: ticket.submittedAt,
+        proofs: ticket.proofs || [],
+        adminReply: ticket.adminReply || "",
+      }));
+    return res.json({ ok: true, tickets: items });
+  } catch (err) {
+    console.error("[ticket-store] gagal memuat daftar ticket", err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
 });
 
 app.get("/api/admin/appeals", (req, res) => {
@@ -10367,87 +10420,108 @@ app.get("/api/admin/stats", (req, res) => {
 app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
-  const ticket = supportTickets.get(ticketId);
-  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
-  const status = String(req.body?.status || ticket.status || "received").trim().toLowerCase();
-  const statusLabel = String(req.body?.statusLabel || "").trim() || ({
+  const requestedStatus = String(req.body?.status || "").trim().toLowerCase();
+  const requestedLabel = String(req.body?.statusLabel || "").trim();
+  const adminReply = String(req.body?.adminReply || "").slice(0, 4000);
+  const nowIso = new Date().toISOString();
+  const statusLabels = {
     received: "Diterima",
     reviewing: "Diproses",
     waiting_user: "Menunggu User",
     resolved: "Selesai",
     rejected: "Ditolak",
-  }[status] || status);
-  const adminReply = String(req.body?.adminReply || "").slice(0, 4000);
-  const nowIso = new Date().toISOString();
-  ticket.status = status;
-  ticket.statusLabel = statusLabel;
-  ticket.statusUpdatedAt = nowIso;
-  if (adminReply) ticket.adminReply = adminReply;
-  if (!Array.isArray(ticket.statusHistory)) ticket.statusHistory = [];
-  ticket.statusHistory.push({ status, label: statusLabel, at: nowIso, note: adminReply || "Update status admin" });
-  supportTickets.set(ticketId, ticket);
-  io.emit("admin:ticketUpdated", {
-    ticketId,
-    status,
-    statusLabel,
-    adminReply,
-    statusUpdatedAt: nowIso,
-  });
-  pushActivityLog("ticket_updated", `Tiket ${ticketId} diubah ke ${statusLabel}`, { ticketId, status });
+  };
 
-  const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
-  const uploadProofHint = `${statusLink}#upload-proof`;
-  const waitingUserTemplate = `Mohon upload bukti tambahan via link ini: ${uploadProofHint} atau buka halaman status tiket dan gunakan nomor tiket ${ticketId}.`;
-  if (status === "waiting_user") {
-    ticket.adminReply = adminReply || waitingUserTemplate;
+  try {
+    const ticket = await updateTicket(ticketId, (current) => {
+      const status = requestedStatus || current.status || "received";
+      const statusLabel = requestedLabel || statusLabels[status] || status;
+      const statusLink = current.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
+      const waitingUserTemplate = `Mohon upload bukti tambahan via link ini: ${statusLink}#upload-proof atau buka halaman status tiket dan gunakan nomor tiket ${ticketId}.`;
+      current.status = status;
+      current.statusLabel = statusLabel;
+      current.statusUpdatedAt = nowIso;
+      if (adminReply || status === "waiting_user") current.adminReply = adminReply || waitingUserTemplate;
+      if (!Array.isArray(current.statusHistory)) current.statusHistory = [];
+      current.statusHistory.push({
+        status,
+        label: statusLabel,
+        at: nowIso,
+        note: current.adminReply || "Update status admin",
+      });
+      return current;
+    });
+    if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+
     supportTickets.set(ticketId, ticket);
-  }
-  const effectiveReply = ticket.adminReply || adminReply || "";
-  const replyHtml = `
-  <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
-    <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
-      <h3 style="margin-top:0;">Update Status Tiket ${ticketId}</h3>
-      <p>Status terbaru: <b>${statusLabel}</b></p>
-      ${effectiveReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${effectiveReply.replace(/\n/g, "<br>")}</div>` : ""}
-      <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
-    </div>
-  </div>`;
-  await sendSupportEmail({
-    to: ticket.email,
-    subject: `[TIKET ${ticketId}] Update status: ${statusLabel}`,
-    lines: [`Tiket ${ticketId} status terbaru: ${statusLabel}`, `Cek status: ${statusLink}`],
-    html: replyHtml,
-  });
+    const updatePayload = {
+      ticketId,
+      status: ticket.status,
+      statusLabel: ticket.statusLabel,
+      adminReply: ticket.adminReply || "",
+      statusUpdatedAt: nowIso,
+    };
+    io.emit("admin:ticketUpdated", updatePayload);
+    io.to(ticketRoom(ticketId)).emit("ticket:updated", updatePayload);
+    pushActivityLog("ticket_updated", `Tiket ${ticketId} diubah ke ${ticket.statusLabel}`, { ticketId, status: ticket.status });
 
-  return res.json({ ok: true, ticket });
+    const statusLink = ticket.statusLink || `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`;
+    const effectiveReply = ticket.adminReply || "";
+    const replyHtml = `
+    <div style="font-family:Arial,sans-serif;padding:18px;background:#f8fafc;">
+      <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;">
+        <h3 style="margin-top:0;">Update Status Tiket ${ticketId}</h3>
+        <p>Status terbaru: <b>${ticket.statusLabel}</b></p>
+        ${effectiveReply ? `<p>Pesan admin:</p><div style="background:#f3f4f6;padding:10px;border-radius:6px;">${effectiveReply.replace(/\n/g, "<br>")}</div>` : ""}
+        <p><a href="${statusLink}" target="_blank" rel="noopener noreferrer">Cek Status Tiket</a></p>
+      </div>
+    </div>`;
+    await sendSupportEmail({
+      to: ticket.email,
+      subject: `[TIKET ${ticketId}] Update status: ${ticket.statusLabel}`,
+      lines: [`Tiket ${ticketId} status terbaru: ${ticket.statusLabel}`, `Cek status: ${statusLink}`],
+      html: replyHtml,
+    });
+
+    return res.json({ ok: true, ticket });
+  } catch (err) {
+    console.error(`[ticket-store] gagal update ${ticketId}`, err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
 });
 
-app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), (req, res) => {
+app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
-  const ticket = supportTickets.get(ticketId);
-  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
-  const nowIso = new Date().toISOString();
   const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
     sender: "admin",
     message: text.slice(0, 2000),
-    at: nowIso,
+    at: new Date().toISOString(),
   };
-  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
-  ticket.chatHistory.push(chatEntry);
-  supportTickets.set(ticketId, ticket);
-  io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
-  pushActivityLog("admin_reply", `Admin membalas tiket ${ticketId}`, { ticketId });
-  return res.json({ ok: true, chat: chatEntry, ticketId });
+
+  try {
+    const ticket = await updateTicket(ticketId, (current) => {
+      if (!Array.isArray(current.chatHistory)) current.chatHistory = [];
+      current.chatHistory.push(chatEntry);
+      return current;
+    });
+    if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+    supportTickets.set(ticketId, ticket);
+    io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+    io.to(ticketRoom(ticketId)).emit("ticket:chat", { ticketId, chat: chatEntry });
+    pushActivityLog("admin_reply", `Admin membalas tiket ${ticketId}`, { ticketId });
+    return res.json({ ok: true, chat: chatEntry, ticketId });
+  } catch (err) {
+    console.error(`[ticket-store] gagal menyimpan chat admin ${ticketId}`, err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
 });
 
-app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, res) => {
+app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), async (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
-  const ticket = supportTickets.get(ticketId);
-  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
   const nowIso = new Date().toISOString();
@@ -10457,22 +10531,35 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), (req, r
     message: text.slice(0, 2000),
     at: nowIso,
   };
-  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
-  ticket.chatHistory.push(chatEntry);
-  ticket.status = ticket.status === "resolved" ? "reviewing" : ticket.status;
-  ticket.statusLabel = ticket.status === "reviewing" ? "Diproses" : ticket.statusLabel;
-  ticket.statusUpdatedAt = nowIso;
-  supportTickets.set(ticketId, ticket);
-  io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
-  io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
-  pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
-  return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
+
+  try {
+    const ticket = await updateTicket(ticketId, (current) => {
+      if (!Array.isArray(current.chatHistory)) current.chatHistory = [];
+      current.chatHistory.push(chatEntry);
+      current.status = current.status === "resolved" ? "reviewing" : current.status;
+      current.statusLabel = current.status === "reviewing" ? "Diproses" : current.statusLabel;
+      current.statusUpdatedAt = nowIso;
+      return current;
+    });
+    if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+    supportTickets.set(ticketId, ticket);
+    const payload = { ticketId, chat: chatEntry };
+    io.emit("admin:ticketChat", payload);
+    io.to(ticketRoom(ticketId)).emit("ticket:chat", payload);
+    io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
+    io.to(ticketRoom(ticketId)).emit("ticket:updated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
+    pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
+    return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
+  } catch (err) {
+    console.error(`[ticket-store] gagal menyimpan chat user ${ticketId}`, err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
 });
 
 app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
-  const ticket = supportTickets.get(ticketId);
-  if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+  const existingTicket = await getTicket(ticketId).catch(() => null);
+  if (!existingTicket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
   const proofs = Array.isArray(req.body?.proofs) ? req.body.proofs : [];
   if (!proofs.length) return res.status(400).json({ ok: false, error: "proof_required" });
   const note = String(req.body?.note || "").trim().slice(0, 2000);
@@ -10515,24 +10602,38 @@ app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async 
     }
   }
   if (!uploaded.length) return res.status(400).json({ ok: false, error: "proof_upload_failed" });
-  if (!Array.isArray(ticket.proofs)) ticket.proofs = [];
-  ticket.proofs.push(...uploaded);
-  if (!Array.isArray(ticket.chatHistory)) ticket.chatHistory = [];
+
   const nowIso = new Date().toISOString();
-  ticket.chatHistory.push({
+  const chatEntry = {
     id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`,
     sender: "user",
     message: `Mengirim bukti tambahan (${uploaded.length} file).${note ? ` Catatan: ${note}` : ""}`,
     at: nowIso,
-  });
-  ticket.status = ticket.status === "waiting_user" ? "reviewing" : ticket.status;
-  ticket.statusLabel = ticket.status === "reviewing" ? "Diproses" : ticket.statusLabel;
-  ticket.statusUpdatedAt = nowIso;
-  supportTickets.set(ticketId, ticket);
-  io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
-  io.emit("admin:ticketChat", { ticketId, chat: ticket.chatHistory[ticket.chatHistory.length - 1] });
-  pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
-  return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
+  };
+  try {
+    const ticket = await updateTicket(ticketId, (current) => {
+      if (!Array.isArray(current.proofs)) current.proofs = [];
+      current.proofs.push(...uploaded);
+      if (!Array.isArray(current.chatHistory)) current.chatHistory = [];
+      current.chatHistory.push(chatEntry);
+      current.status = current.status === "waiting_user" ? "reviewing" : current.status;
+      current.statusLabel = current.status === "reviewing" ? "Diproses" : current.statusLabel;
+      current.statusUpdatedAt = nowIso;
+      return current;
+    });
+    if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+    supportTickets.set(ticketId, ticket);
+    const updatePayload = { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso };
+    io.emit("admin:ticketUpdated", updatePayload);
+    io.to(ticketRoom(ticketId)).emit("ticket:updated", updatePayload);
+    io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+    io.to(ticketRoom(ticketId)).emit("ticket:chat", { ticketId, chat: chatEntry });
+    pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
+    return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
+  } catch (err) {
+    console.error(`[ticket-store] gagal menyimpan bukti ${ticketId}`, err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
 });
 
 app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
@@ -10702,6 +10803,26 @@ io.on("connection", (socket) => {
   conversionMetrics.entered += 1;
   pushActivityLog("user_connected", `Socket ${socket.id} connected`, { socketId: socket.id });
   emitDashboardStats();
+
+  socket.on("ticket:subscribe", async (payload, acknowledge) => {
+    const ticketId = String(payload?.ticketId || "").trim().toUpperCase();
+    if (!ticketId) {
+      if (typeof acknowledge === "function") acknowledge({ ok: false, error: "ticket_id_invalid" });
+      return;
+    }
+    try {
+      const ticket = await getTicket(ticketId);
+      if (!ticket) {
+        if (typeof acknowledge === "function") acknowledge({ ok: false, error: "ticket_not_found" });
+        return;
+      }
+      socket.join(ticketRoom(ticketId));
+      if (typeof acknowledge === "function") acknowledge({ ok: true, ticketId });
+    } catch (err) {
+      console.error(`[ticket-store] gagal subscribe ${ticketId}`, err);
+      if (typeof acknowledge === "function") acknowledge({ ok: false, error: "ticket_store_unavailable" });
+    }
+  });
 
   socket.on("page_change", (payload) => {
     const page = String(payload?.page || "unknown").slice(0, 128);
