@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Status Tiket • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <main class="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
@@ -67,6 +68,8 @@ const pathParts = location.pathname.split('/').filter(Boolean);
 const routeTicketId = pathParts[0] === 'ticket' && pathParts[1] ? String(pathParts[1]).trim().toUpperCase() : '';
 const ticketId = queryTicketId || routeTicketId;
 const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'full', timeStyle:'medium' });
+let refreshInFlight = null;
+let hasLoadedTicket = false;
 
 const statusColor = (st) => ({ received:'bg-blue-500/20 text-blue-300 border-blue-500/40', reviewing:'bg-amber-500/20 text-amber-300 border-amber-500/40', waiting_user:'bg-purple-500/20 text-purple-300 border-purple-500/40', resolved:'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', rejected:'bg-rose-500/20 text-rose-300 border-rose-500/40' }[st] || 'bg-slate-700 text-slate-100 border-slate-500');
 const badge = (label, st) => `<span class="inline-flex px-2.5 py-1 rounded-full border text-sm font-semibold ${statusColor(st)}">${label || '-'}</span>`;
@@ -121,12 +124,20 @@ const renderProofPreview = () => {
 
 async function refresh(){
   if (!ticketId) return;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
   try {
-    const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}`);
+    const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}`, { cache: 'no-store' });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) throw new Error(d.error || 'ticket_not_found');
+    if (!r.ok || !d.ok) {
+      const error = new Error(d.error || 'ticket_not_found');
+      error.status = r.status;
+      throw error;
+    }
     const t = d.ticket || {};
     currentTicket = t;
+    hasLoadedTicket = true;
+    hintEl.textContent = 'Status tersambung dan diperbarui otomatis secara realtime.';
     statusWrap.innerHTML = badge(t.statusLabel || t.status, t.status);
     updatedEl.textContent = asLocal(t.statusUpdatedAt);
     msgEl.textContent = t.message || '-';
@@ -148,9 +159,17 @@ async function refresh(){
       ? 'Admin meminta bukti tambahan. Upload foto lalu klik kirim ke admin.'
       : 'Upload bukti aktif saat status tiket: Menunggu User.';
   } catch (e) {
-    statusWrap.innerHTML = badge('Tiket tidak ditemukan', 'rejected');
-    replyEl.textContent = e.message || 'unknown_error';
+    if (!hasLoadedTicket && e.status === 404) {
+      statusWrap.innerHTML = badge('Tiket tidak ditemukan', 'rejected');
+      replyEl.textContent = 'Pastikan ID tiket sudah benar.';
+    } else {
+      hintEl.textContent = 'Koneksi sedang terganggu. Data ticket terakhir tetap ditampilkan dan sistem akan mencoba lagi otomatis.';
+    }
+  } finally {
+    refreshInFlight = null;
   }
+  })();
+  return refreshInFlight;
 }
 
 document.getElementById('chatForm').addEventListener('submit', async (evt) => {
@@ -223,7 +242,32 @@ proofSubmitBtn.addEventListener('click', async () => {
 });
 
 refresh();
+
+if (ticketId && typeof io === 'function') {
+  const socket = io({ transports: ['websocket', 'polling'] });
+  socket.on('connect', () => {
+    socket.emit('ticket:subscribe', { ticketId }, (result) => {
+      if (result?.ok) {
+        hintEl.textContent = 'Status tersambung dan diperbarui otomatis secara realtime.';
+      }
+    });
+  });
+  socket.on('ticket:updated', (payload) => {
+    if (String(payload?.ticketId || '').toUpperCase() === ticketId) refresh();
+  });
+  socket.on('ticket:chat', (payload) => {
+    if (String(payload?.ticketId || '').toUpperCase() === ticketId) refresh();
+  });
+  socket.on('disconnect', () => {
+    if (hasLoadedTicket) hintEl.textContent = 'Realtime terputus sementara; sinkronisasi berkala masih aktif.';
+  });
+}
+
 setInterval(refresh, 5000);
+window.addEventListener('focus', refresh);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refresh();
+});
 </script>
 </body>
 </html>
