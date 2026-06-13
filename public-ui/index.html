@@ -13460,6 +13460,13 @@
               }
 
               const allSent = autoReplySent && adminEmailSent;
+              try {
+                const recentKey = 'ytconv_recent_tickets_v1';
+                const previous = JSON.parse(localStorage.getItem(recentKey) || '[]');
+                const recent = Array.isArray(previous) ? previous.filter((item) => item?.ticketId !== payload.ticketId) : [];
+                recent.unshift({ ticketId: payload.ticketId, status: 'received', updatedAt: new Date().toISOString() });
+                localStorage.setItem(recentKey, JSON.stringify(recent.slice(0, 5)));
+              } catch {}
               setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, allSent ? 'success' : 'warning');
               showTicketSuccessCard({
                 ticketId: payload.ticketId,
