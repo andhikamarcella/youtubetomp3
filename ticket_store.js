@@ -5,7 +5,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(__dirname, "data");
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || join(__dirname, "data");
 const TICKETS_PATH = process.env.TICKET_STORE_PATH || join(DATA_DIR, "tickets.json");
 const COLLECTION = "support-tickets";
 
@@ -67,7 +67,7 @@ const readFileStore = async () => {
 };
 
 const writeFileStore = async (data) => {
-  await fsp.mkdir(DATA_DIR, { recursive: true });
+  await fsp.mkdir(dirname(TICKETS_PATH), { recursive: true });
   const tmpPath = `${TICKETS_PATH}.${process.pid}.${Date.now()}.tmp`;
   await fsp.writeFile(tmpPath, JSON.stringify(data, null, 2), "utf8");
   await fsp.rename(tmpPath, TICKETS_PATH);

@@ -38,6 +38,11 @@ test("ticket disimpan persisten dan ID dinormalisasi", async () => {
   assert.equal(disk.tickets["TKT-PERSIST-1"].status, "received");
 });
 
+test("file fallback ditulis ke direktori dari TICKET_STORE_PATH", async () => {
+  const disk = JSON.parse(await readFile(storePath, "utf8"));
+  assert.ok(disk.tickets["TKT-PERSIST-1"]);
+});
+
 test("update concurrent tidak menghilangkan chat", async () => {
   await Promise.all([
     updateTicket("TKT-PERSIST-1", async (ticket) => {

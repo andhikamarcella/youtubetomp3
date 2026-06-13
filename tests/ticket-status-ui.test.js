@@ -25,6 +25,21 @@ test("ticket terbaru disimpan dan dapat dibuka kembali", () => {
   assert.match(home, /localStorage\.setItem\(recentKey/);
 });
 
+test("homepage menyediakan cek status tiket publik di sebelah Email Bantuan", () => {
+  assert.match(home, /Email Bantuan[\s\S]{0,500}Cek Status Tiket/);
+  for (const id of ["ticketLookupModal", "publicTicketLookupForm", "publicTicketLookupInput", "publicRecentTicketList"]) {
+    assert.match(home, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(home, /initPublicTicketLookup\(\)/);
+  assert.match(home, /window\.location\.assign\(buildTicketStatusLink\(ticketId\)\)/);
+});
+
+test("homepage memakai ID tiket kanonik dari respons server", () => {
+  assert.match(home, /canonicalTicketId\s*=\s*String\(result\?\.ticketId/);
+  assert.match(home, /ticketId:\s*canonicalTicketId/);
+  assert.match(home, /crypto\.getRandomValues/);
+});
+
 test("data ticket dirender dengan textContent dan node DOM, bukan template HTML mentah", () => {
   assert.match(html, /message\.textContent = item\.message/);
   assert.match(html, /note\.textContent = item\.note/);
