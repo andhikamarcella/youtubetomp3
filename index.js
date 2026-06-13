@@ -10502,7 +10502,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
 
     return res.json({ ok: true, ticket });
   } catch (err) {
-    console.error(`[ticket-store] gagal update ${ticketId}`, err);
+    console.error("[ticket-store] gagal update %s", ticketId, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
