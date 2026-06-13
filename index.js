@@ -10108,7 +10108,7 @@ app.get("/api/ticket/:ticketId", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(`[ticket-store] gagal membaca ${ticketId}`, err);
+    console.error("[ticket-store] gagal membaca %s", ticketId, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
