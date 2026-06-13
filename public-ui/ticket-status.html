@@ -3,227 +3,180 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Status Tiket • YTConv</title>
+  <meta name="theme-color" content="#020617">
+  <title>Cek Status Tiket • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { background: radial-gradient(circle at top, #172554 0, #020617 38rem); }
+    .glass { background: rgba(15, 23, 42, .82); backdrop-filter: blur(18px); }
+    .pulse-dot { animation: pulseDot 1.8s ease-in-out infinite; }
+    @keyframes pulseDot { 0%,100%{opacity:.45;transform:scale(.85)} 50%{opacity:1;transform:scale(1.12)} }
+    @media (prefers-reduced-motion: reduce) { .pulse-dot { animation:none; } }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100">
-  <main class="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-extrabold">🔎 Tracking Status Tiket</h1>
-          <p id="hint" class="text-sm text-slate-400 mt-1"></p>
+<body class="min-h-screen text-slate-100 antialiased">
+  <main class="mx-auto max-w-5xl space-y-5 p-4 pb-12 md:p-7">
+    <header class="glass overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-blue-950/40">
+      <div class="bg-gradient-to-r from-indigo-600/25 via-cyan-500/10 to-transparent p-5 md:p-7">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="mb-2 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+              <span class="pulse-dot h-2 w-2 rounded-full bg-cyan-300"></span> YTConv Support Center
+            </div>
+            <h1 class="text-2xl font-black tracking-tight md:text-4xl">Cek status tiket kamu</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">Masukkan nomor tiket untuk melihat status, balasan admin, riwayat penanganan, dan chat secara realtime.</p>
+          </div>
+          <a href="/" class="rounded-xl border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-700">← Kembali</a>
         </div>
-        <a href="/" class="text-sm px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700">Kembali</a>
+
+        <form id="lookupForm" class="mt-6 flex flex-col gap-2 sm:flex-row" novalidate>
+          <label for="lookupInput" class="sr-only">Nomor tiket</label>
+          <div class="relative flex-1">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500">#</span>
+            <input id="lookupInput" autocomplete="off" spellcheck="false" maxlength="80" class="w-full rounded-xl border border-slate-700 bg-slate-950/90 py-3 pl-9 pr-4 font-mono text-sm uppercase outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/10" placeholder="TKT-XXXXXXXX" />
+          </div>
+          <button id="lookupBtn" type="submit" class="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-3 text-sm font-bold shadow-lg shadow-indigo-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">Cari Tiket</button>
+        </form>
+        <div id="lookupError" class="mt-2 hidden text-sm text-rose-300" role="alert"></div>
+        <div id="recentWrap" class="mt-3 hidden items-center gap-2 text-xs text-slate-400">
+          <span>Tiket terakhir:</span><div id="recentTickets" class="flex flex-wrap gap-2"></div>
+        </div>
       </div>
-      <div class="grid sm:grid-cols-2 gap-3 mt-4">
-        <div class="rounded-xl border border-slate-700 bg-slate-950 p-3"><div class="text-xs text-slate-400">ID Tiket</div><div id="tid" class="font-bold text-lg">-</div></div>
-        <div class="rounded-xl border border-slate-700 bg-slate-950 p-3"><div class="text-xs text-slate-400">Status</div><div id="statusWrap" class="mt-1"></div></div>
-      </div>
-      <div class="mt-3 text-sm text-slate-400">Terakhir update: <span id="updated">-</span></div>
+    </header>
+
+    <section id="emptyState" class="glass rounded-3xl border border-white/10 p-8 text-center shadow-xl">
+      <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/15 text-3xl">🎫</div>
+      <h2 class="mt-4 text-xl font-bold">Siapkan nomor tiketmu</h2>
+      <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-400">Nomor tiket tersedia setelah laporan berhasil dikirim dan biasanya diawali dengan <span class="font-mono text-slate-200">TKT-</span>.</p>
     </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-4">
-      <div>
-        <div class="font-semibold mb-1">💬 Pesan User</div>
-        <div id="msg" class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-slate-300 whitespace-pre-wrap break-words">-</div>
-      </div>
-      <div>
-        <div class="font-semibold mb-1">🧑‍💼 Balasan Admin</div>
-        <div id="reply" class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-slate-300 whitespace-pre-wrap break-words">Belum ada balasan admin.</div>
-      </div>
-      <div>
-        <div class="font-semibold mb-2">🕒 Riwayat Status</div>
-        <ul id="history" class="space-y-2"></ul>
+    <section id="loadingState" class="glass hidden rounded-3xl border border-white/10 p-6 shadow-xl" aria-live="polite">
+      <div class="animate-pulse space-y-4">
+        <div class="h-5 w-40 rounded bg-slate-700"></div>
+        <div class="grid gap-3 sm:grid-cols-3"><div class="h-24 rounded-2xl bg-slate-800"></div><div class="h-24 rounded-2xl bg-slate-800"></div><div class="h-24 rounded-2xl bg-slate-800"></div></div>
+        <div class="h-40 rounded-2xl bg-slate-800"></div>
       </div>
     </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <div class="font-semibold mb-2">💬 Chat Tiket (tanpa batas)</div>
-      <div id="chatHistory" class="h-64 overflow-auto rounded-xl border border-slate-700 bg-slate-950 p-3 space-y-2"></div>
-      <div class="mt-2 text-xs text-slate-400">Kamu bisa kirim chat kapan saja selama tiket aktif.</div>
-      <form id="chatForm" class="mt-3 flex gap-2">
-        <input id="chatInput" class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Tulis balasan ke admin...">
-        <button class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500" type="submit">Kirim</button>
-      </form>
-      <div id="chatHint" class="mt-2 text-xs text-slate-400"></div>
+    <section id="notFoundState" class="glass hidden rounded-3xl border border-rose-500/20 p-7 text-center shadow-xl" role="alert">
+      <div class="text-4xl">🔍</div>
+      <h2 class="mt-3 text-xl font-bold">Tiket tidak ditemukan</h2>
+      <p class="mt-2 text-sm text-slate-400">Periksa kembali nomor tiket. Pastikan tidak ada spasi atau karakter yang tertinggal.</p>
+      <button id="retryBtn" class="mt-5 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold hover:bg-slate-700">Coba Lagi</button>
     </section>
 
-    <section id="proofSection" class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <div class="font-semibold mb-2">📎 Upload Bukti Tambahan</div>
-      <div id="proofHint" class="text-xs text-slate-400 mb-2">Upload aktif saat status tiket: Menunggu User.</div>
-      <input id="proofFiles" type="file" accept="image/*" multiple class="block w-full text-sm text-slate-300">
-      <div id="proofPreview" class="grid grid-cols-2 gap-2 mt-3"></div>
-      <div id="proofExisting" class="grid grid-cols-2 gap-2 mt-3"></div>
-      <textarea id="proofNote" class="w-full mt-3 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
-      <button id="proofSubmitBtn" class="mt-3 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm" type="button">Kirim ke Admin</button>
-      <div class="text-xs text-slate-400 mt-2">Tip: Link halaman ini sudah auto-generate dari nomor tiket kamu.</div>
-    </section>
+    <div id="ticketContent" class="hidden space-y-5">
+      <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-[.2em] text-slate-500">Nomor tiket</div>
+            <div class="mt-1 flex flex-wrap items-center gap-2"><span id="tid" class="font-mono text-xl font-black text-white md:text-2xl">-</span><button id="copyIdBtn" class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-300 hover:bg-slate-800">Salin</button></div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2"><div id="connectionBadge" class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300"><span class="h-2 w-2 rounded-full bg-slate-500"></span><span>Menghubungkan</span></div><button id="shareBtn" class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold hover:bg-slate-700">Bagikan</button><button id="manualRefreshBtn" class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold hover:bg-slate-700">↻ Refresh</button></div>
+        </div>
+        <div id="statusNotice" class="mt-4 hidden rounded-xl border px-3 py-2 text-sm"></div>
+        <div class="mt-5 grid gap-3 sm:grid-cols-3">
+          <div class="rounded-2xl border border-white/10 bg-slate-950/70 p-4"><div class="text-xs text-slate-500">Status saat ini</div><div id="statusWrap" class="mt-2"></div></div>
+          <div class="rounded-2xl border border-white/10 bg-slate-950/70 p-4"><div class="text-xs text-slate-500">Kategori</div><div id="category" class="mt-2 font-semibold text-slate-200">-</div></div>
+          <div class="rounded-2xl border border-white/10 bg-slate-950/70 p-4"><div class="text-xs text-slate-500">Terakhir diperbarui</div><div id="updated" class="mt-2 text-sm font-semibold text-slate-200">-</div></div>
+        </div>
+      </section>
+
+      <div class="grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
+        <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+          <h2 class="text-lg font-bold">Ringkasan laporan</h2>
+          <div class="mt-4 space-y-4">
+            <div><div class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Pesan kamu</div><div id="msg" class="min-h-20 whitespace-pre-wrap break-words rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm leading-6 text-slate-300">-</div></div>
+            <div><div class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Balasan admin</div><div id="reply" class="min-h-20 whitespace-pre-wrap break-words rounded-2xl border border-indigo-500/20 bg-indigo-950/25 p-4 text-sm leading-6 text-slate-200">Belum ada balasan admin.</div></div>
+            <div><div class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Lampiran</div><div id="proofExisting" class="grid grid-cols-2 gap-2"></div></div>
+          </div>
+        </section>
+
+        <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+          <h2 class="text-lg font-bold">Timeline penanganan</h2>
+          <ol id="history" class="mt-5 space-y-0"></ol>
+        </section>
+      </div>
+
+      <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+        <div class="flex items-center justify-between gap-3"><div><h2 class="text-lg font-bold">Chat dengan admin</h2><p class="mt-1 text-xs text-slate-500">Pesan baru akan muncul otomatis tanpa reload halaman.</p></div><span id="chatCount" class="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-400">0 pesan</span></div>
+        <div id="chatHistory" class="mt-4 h-80 space-y-3 overflow-auto rounded-2xl border border-slate-800 bg-slate-950/70 p-4"></div>
+        <form id="chatForm" class="mt-3 flex flex-col gap-2 sm:flex-row">
+          <label for="chatInput" class="sr-only">Pesan untuk admin</label><input id="chatInput" maxlength="2000" class="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/10" placeholder="Tulis balasan ke admin..."><button id="chatSubmitBtn" class="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold hover:bg-indigo-500 disabled:opacity-50" type="submit">Kirim</button>
+        </form>
+        <div id="chatHint" class="mt-2 text-xs text-slate-400" aria-live="polite"></div>
+      </section>
+
+      <section id="proofSection" class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-3"><div><h2 class="text-lg font-bold">Upload bukti tambahan</h2><p id="proofHint" class="mt-1 text-xs text-slate-400">Aktif jika admin meminta bukti tambahan.</p></div><span class="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-400">Maks. 4 gambar</span></div>
+        <input id="proofFiles" type="file" accept="image/*" multiple class="mt-4 block w-full text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-2 file:text-slate-100">
+        <div id="proofPreview" class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4"></div>
+        <textarea id="proofNote" maxlength="2000" class="mt-3 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-emerald-400" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+        <button id="proofSubmitBtn" class="mt-3 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40" type="button">Kirim Bukti</button>
+      </section>
+    </div>
+
+    <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm shadow-2xl" role="status"></div>
   </main>
 <script>
+const RECENT_KEY = 'ytconv_recent_tickets_v1';
 const query = new URLSearchParams(location.search);
-const queryTicketId = (query.get('ticket_id') || query.get('id') || '').trim().toUpperCase();
 const pathParts = location.pathname.split('/').filter(Boolean);
-const routeTicketId = pathParts[0] === 'ticket' && pathParts[1] ? String(pathParts[1]).trim().toUpperCase() : '';
-const ticketId = queryTicketId || routeTicketId;
-const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'full', timeStyle:'medium' });
-
-const statusColor = (st) => ({ received:'bg-blue-500/20 text-blue-300 border-blue-500/40', reviewing:'bg-amber-500/20 text-amber-300 border-amber-500/40', waiting_user:'bg-purple-500/20 text-purple-300 border-purple-500/40', resolved:'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', rejected:'bg-rose-500/20 text-rose-300 border-rose-500/40' }[st] || 'bg-slate-700 text-slate-100 border-slate-500');
-const badge = (label, st) => `<span class="inline-flex px-2.5 py-1 rounded-full border text-sm font-semibold ${statusColor(st)}">${label || '-'}</span>`;
-
-const tidEl = document.getElementById('tid');
-const statusWrap = document.getElementById('statusWrap');
-const updatedEl = document.getElementById('updated');
-const msgEl = document.getElementById('msg');
-const replyEl = document.getElementById('reply');
-const historyEl = document.getElementById('history');
-const hintEl = document.getElementById('hint');
-const chatHistoryEl = document.getElementById('chatHistory');
-const chatInputEl = document.getElementById('chatInput');
-const chatHintEl = document.getElementById('chatHint');
-const proofFilesEl = document.getElementById('proofFiles');
-const proofPreviewEl = document.getElementById('proofPreview');
-const proofExistingEl = document.getElementById('proofExisting');
-const proofSubmitBtn = document.getElementById('proofSubmitBtn');
-const proofNoteEl = document.getElementById('proofNote');
-const proofHintEl = document.getElementById('proofHint');
-
+const normalizeTicketId = (value) => String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+let ticketId = normalizeTicketId(query.get('ticket_id') || query.get('id') || (pathParts[0] === 'ticket' ? pathParts[1] : ''));
+const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
+const $ = (id) => document.getElementById(id);
+const statusStyles = { received:'border-blue-400/30 bg-blue-400/10 text-blue-200', reviewing:'border-amber-400/30 bg-amber-400/10 text-amber-200', waiting_user:'border-purple-400/30 bg-purple-400/10 text-purple-200', resolved:'border-emerald-400/30 bg-emerald-400/10 text-emerald-200', rejected:'border-rose-400/30 bg-rose-400/10 text-rose-200' };
 let currentTicket = null;
 let selectedProofFiles = [];
+let previewUrls = [];
+let refreshPromise = null;
+let hasLoadedTicket = false;
+let socket = null;
+let refreshTimer = null;
 
-tidEl.textContent = ticketId || '-';
-if (!queryTicketId && routeTicketId) hintEl.textContent = `Mode kompatibilitas aktif dari route lama /ticket/${routeTicketId}`;
-else if (!ticketId) hintEl.textContent = 'Tambahkan ?ticket_id=TKT-XXXX di URL untuk cek status tiket kamu.';
+const asLocal = (iso) => { const date = new Date(iso || ''); return Number.isNaN(date.getTime()) ? (iso || '-') : fmt.format(date); };
+const setVisible = (id, visible) => $(id).classList.toggle('hidden', !visible);
+const showToast = (message, tone = 'normal') => { const el = $('toast'); el.textContent = message; el.className = `pointer-events-none fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl border px-4 py-3 text-sm shadow-2xl ${tone === 'error' ? 'border-rose-500/30 bg-rose-950 text-rose-200' : 'border-white/10 bg-slate-900 text-slate-100'}`; clearTimeout(showToast.timer); showToast.timer = setTimeout(() => el.classList.add('hidden'), 2600); };
+const makeBadge = (label, status) => { const span = document.createElement('span'); span.className = `inline-flex rounded-full border px-3 py-1 text-sm font-bold ${statusStyles[status] || 'border-slate-600 bg-slate-700/50 text-slate-200'}`; span.textContent = label || status || '-'; return span; };
 
-function asLocal(iso){
-  if (!iso) return '-';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return fmt.format(d);
-}
+function readRecentTickets() { try { const value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(value) ? value.filter((x) => x?.ticketId).slice(0, 5) : []; } catch { return []; } }
+function rememberTicket(ticket) { try { const list = readRecentTickets().filter((x) => x.ticketId !== ticket.ticketId); list.unshift({ ticketId: ticket.ticketId, status: ticket.status || '', updatedAt: ticket.statusUpdatedAt || new Date().toISOString() }); localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5))); } catch {} renderRecentTickets(); }
+function renderRecentTickets() { const list = readRecentTickets(); $('recentTickets').replaceChildren(...list.map((item) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 font-mono text-slate-300 hover:border-cyan-500'; button.textContent = item.ticketId; button.addEventListener('click', () => openTicket(item.ticketId)); return button; })); $('recentWrap').classList.toggle('hidden', !list.length); $('recentWrap').classList.toggle('flex', Boolean(list.length)); }
+function openTicket(value) { const normalized = normalizeTicketId(value); if (!/^TKT-[A-Z0-9_-]{3,}$/i.test(normalized)) { $('lookupError').textContent = 'Format nomor tiket belum benar. Contoh: TKT-ABC12345'; setVisible('lookupError', true); $('lookupInput').focus(); return; } const url = new URL(location.href); url.pathname = '/ticket-status.html'; url.search = `?ticket_id=${encodeURIComponent(normalized)}`; location.assign(url); }
+function resetLookup() { ticketId = ''; currentTicket = null; hasLoadedTicket = false; socket?.disconnect(); if (refreshTimer) clearInterval(refreshTimer); refreshTimer = null; history.replaceState({}, '', '/ticket-status.html'); $('lookupInput').value = ''; setPageState('empty'); setConnection('connecting', 'Menunggu tiket'); $('lookupInput').focus(); }
 
-function renderChat(chatHistory = []) {
-  chatHistoryEl.innerHTML = chatHistory.map((c) => {
-    const isAdmin = c.sender === 'admin';
-    return `<div class="rounded-lg p-2 text-sm ${isAdmin ? 'bg-indigo-900/40 border border-indigo-700' : 'bg-slate-900 border border-slate-700'}"><div class="text-[11px] text-slate-400 mb-1">${isAdmin ? 'admin' : 'user'} • ${asLocal(c.at)}</div><div class="whitespace-pre-wrap break-words">${String(c.message || '').replace(/</g, '&lt;')}</div></div>`;
-  }).join('') || '<div class="text-slate-500 text-sm">Belum ada chat.</div>';
-  chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-  chatInputEl.disabled = false;
-  chatHintEl.textContent = 'Chat tiket aktif tanpa batas.';
-}
+function setConnection(state, text) { const colors = { online:'bg-emerald-400', connecting:'bg-amber-400', offline:'bg-rose-400' }; const badge = $('connectionBadge'); badge.firstElementChild.className = `h-2 w-2 rounded-full ${colors[state] || 'bg-slate-500'} ${state === 'connecting' ? 'pulse-dot' : ''}`; badge.lastElementChild.textContent = text; }
+function showNotice(message, tone = 'info') { const el = $('statusNotice'); if (!message) return setVisible('statusNotice', false); el.textContent = message; el.className = `mt-4 rounded-xl border px-3 py-2 text-sm ${tone === 'error' ? 'border-rose-500/30 bg-rose-500/10 text-rose-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-100'}`; setVisible('statusNotice', true); }
+function setPageState(state) { setVisible('emptyState', state === 'empty'); setVisible('loadingState', state === 'loading'); setVisible('notFoundState', state === 'not-found'); setVisible('ticketContent', state === 'ready'); }
 
-const renderProofPreview = () => {
-  proofPreviewEl.innerHTML = selectedProofFiles.map((f, idx) => {
-    const url = URL.createObjectURL(f);
-    return `<div class="relative rounded-lg border border-slate-700 overflow-hidden"><img src="${url}" class="w-full h-28 object-cover"><button data-remove="${idx}" class="absolute top-1 right-1 bg-rose-600 text-white text-xs px-2 py-1 rounded">✕</button><div class="text-[11px] p-1 truncate">${f.name}</div></div>`;
-  }).join('');
-};
+function renderHistory(items = []) { const history = $('history'); history.replaceChildren(); const ordered = items.slice().reverse(); if (!ordered.length) { const empty = document.createElement('li'); empty.className = 'text-sm text-slate-500'; empty.textContent = 'Belum ada riwayat status.'; history.append(empty); return; } ordered.forEach((item, index) => { const li = document.createElement('li'); li.className = 'relative pl-7 pb-6 last:pb-0'; const line = document.createElement('span'); line.className = `absolute left-[7px] top-4 h-full w-px ${index === ordered.length - 1 ? 'hidden' : 'bg-slate-700'}`; const dot = document.createElement('span'); dot.className = `absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full border-2 border-slate-950 ${index === 0 ? 'bg-cyan-400' : 'bg-slate-600'}`; const row = document.createElement('div'); row.className = 'flex flex-wrap items-center justify-between gap-2'; row.append(makeBadge(item.label, item.status)); const time = document.createElement('span'); time.className = 'text-xs text-slate-500'; time.textContent = asLocal(item.at); row.append(time); li.append(line, dot, row); if (item.note) { const note = document.createElement('p'); note.className = 'mt-2 whitespace-pre-wrap break-words text-sm leading-5 text-slate-400'; note.textContent = item.note; li.append(note); } history.append(li); }); }
+function renderChat(items = []) { const box = $('chatHistory'); box.replaceChildren(); $('chatCount').textContent = `${items.length} pesan`; if (!items.length) { const empty = document.createElement('div'); empty.className = 'grid h-full place-items-center text-sm text-slate-500'; empty.textContent = 'Belum ada percakapan.'; box.append(empty); return; } items.forEach((item) => { const admin = item.sender === 'admin'; const wrap = document.createElement('div'); wrap.className = `flex ${admin ? 'justify-start' : 'justify-end'}`; const bubble = document.createElement('div'); bubble.className = `max-w-[88%] rounded-2xl px-4 py-3 text-sm ${admin ? 'rounded-tl-sm border border-indigo-500/20 bg-indigo-950/50' : 'rounded-tr-sm bg-slate-800'}`; const meta = document.createElement('div'); meta.className = 'mb-1 text-[11px] font-semibold text-slate-500'; meta.textContent = `${admin ? 'Admin YTConv' : 'Kamu'} • ${asLocal(item.at)}`; const message = document.createElement('div'); message.className = 'whitespace-pre-wrap break-words leading-5 text-slate-200'; message.textContent = item.message || ''; bubble.append(meta, message); wrap.append(bubble); box.append(wrap); }); box.scrollTop = box.scrollHeight; }
+function renderProofs(items = []) { const box = $('proofExisting'); box.replaceChildren(); if (!items.length) { const empty = document.createElement('div'); empty.className = 'col-span-2 text-sm text-slate-500'; empty.textContent = 'Belum ada lampiran.'; box.append(empty); return; } items.forEach((item) => { const link = document.createElement('a'); link.href = /^https?:\/\//i.test(item.url || '') ? item.url : '#'; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.className = 'overflow-hidden rounded-xl border border-slate-800 bg-slate-950'; const image = document.createElement('img'); image.src = link.href; image.alt = item.name || 'Lampiran tiket'; image.className = 'h-24 w-full object-cover'; image.addEventListener('error', () => { image.remove(); const label = document.createElement('div'); label.className = 'p-3 text-xs text-slate-300'; label.textContent = item.name || 'Buka lampiran'; link.append(label); }); link.append(image); box.append(link); }); }
+function renderTicket(ticket) { currentTicket = ticket; hasLoadedTicket = true; $('lookupInput').value = ticket.ticketId || ticketId; $('tid').textContent = ticket.ticketId || ticketId; $('category').textContent = ticket.category || 'Lainnya'; $('updated').textContent = asLocal(ticket.statusUpdatedAt || ticket.submittedAt); $('msg').textContent = ticket.message || '-'; $('reply').textContent = ticket.adminReply || 'Belum ada balasan admin.'; $('statusWrap').replaceChildren(makeBadge(ticket.statusLabel, ticket.status)); renderHistory(ticket.statusHistory || []); renderChat(ticket.chatHistory || []); renderProofs(ticket.proofs || []); const waiting = ticket.status === 'waiting_user'; $('proofFiles').disabled = !waiting; $('proofNote').disabled = !waiting; $('proofSubmitBtn').disabled = !waiting; $('proofHint').textContent = waiting ? 'Admin menunggu bukti tambahan dari kamu.' : 'Upload akan aktif ketika status tiket “Menunggu User”.'; $('chatInput').disabled = false; $('chatSubmitBtn').disabled = false; rememberTicket(ticket); setPageState('ready'); showNotice(''); }
 
-async function refresh(){
-  if (!ticketId) return;
-  try {
-    const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}`);
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) throw new Error(d.error || 'ticket_not_found');
-    const t = d.ticket || {};
-    currentTicket = t;
-    statusWrap.innerHTML = badge(t.statusLabel || t.status, t.status);
-    updatedEl.textContent = asLocal(t.statusUpdatedAt);
-    msgEl.textContent = t.message || '-';
-    replyEl.textContent = t.adminReply || 'Belum ada balasan admin.';
-    historyEl.innerHTML = '';
-    (t.statusHistory || []).slice().reverse().forEach((x) => {
-      const li = document.createElement('li');
-      li.className = 'rounded-xl border border-slate-700 bg-slate-950 p-3';
-      li.innerHTML = `<div class="flex items-center justify-between gap-2"><div>${badge(x.label || x.status, x.status)}</div><div class="text-xs text-slate-500">${asLocal(x.at)}</div></div>${x.note ? `<div class="text-sm text-slate-300 mt-1">${x.note}</div>` : ''}`;
-      historyEl.appendChild(li);
-    });
-    renderChat(t.chatHistory || []);
-    proofExistingEl.innerHTML = (t.proofs || []).map((p) => `<a href="${p.url}" target="_blank" class="rounded-lg border border-slate-700 overflow-hidden bg-slate-950"><img src="${p.url}" class="w-full h-24 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'p-2 text-xs\\'>${String(p.name||'Attachment').replace(/</g,'&lt;')}</div>'"></a>`).join('') || '<div class="text-xs text-slate-500">Belum ada bukti terupload.</div>';
-    const waitingUser = String(t.status || '') === 'waiting_user';
-    proofSubmitBtn.disabled = !waitingUser;
-    proofFilesEl.disabled = !waitingUser;
-    proofNoteEl.disabled = !waitingUser;
-    proofHintEl.textContent = waitingUser
-      ? 'Admin meminta bukti tambahan. Upload foto lalu klik kirim ke admin.'
-      : 'Upload bukti aktif saat status tiket: Menunggu User.';
-  } catch (e) {
-    statusWrap.innerHTML = badge('Tiket tidak ditemukan', 'rejected');
-    replyEl.textContent = e.message || 'unknown_error';
-  }
-}
+async function refreshTicket({ silent = false } = {}) { if (!ticketId) return; if (refreshPromise) return refreshPromise; if (!silent && !hasLoadedTicket) setPageState('loading'); refreshPromise = (async () => { try { const response = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}`, { cache:'no-store', headers:{ Accept:'application/json' } }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.ok) { const error = new Error(data.error || 'ticket_load_failed'); error.status = response.status; throw error; } renderTicket(data.ticket || {}); setConnection(socket?.connected ? 'online' : 'connecting', socket?.connected ? 'Realtime aktif' : 'Sinkron berkala'); } catch (error) { if (error.status === 404 && !hasLoadedTicket) { setPageState('not-found'); setConnection('offline', 'Tidak ditemukan'); } else if (hasLoadedTicket) { showNotice('Koneksi sedang terganggu. Data terakhir tetap aman dan akan disinkronkan kembali.', 'error'); setConnection('offline', 'Mencoba kembali'); } else { setPageState('not-found'); $('notFoundState').querySelector('p').textContent = 'Server belum dapat dihubungi. Silakan coba kembali sebentar lagi.'; } } finally { refreshPromise = null; } })(); return refreshPromise; }
+function connectRealtime() { if (!ticketId || typeof io !== 'function') return; socket?.disconnect(); setConnection('connecting', 'Menghubungkan'); socket = io({ transports:['websocket','polling'], reconnection:true }); socket.on('connect', () => socket.emit('ticket:subscribe', { ticketId }, (result) => { if (result?.ok) { setConnection('online', 'Realtime aktif'); refreshTicket({ silent:true }); } else setConnection('offline', 'Sinkron berkala'); })); socket.on('ticket:updated', (payload) => { if (normalizeTicketId(payload?.ticketId) === ticketId) refreshTicket({ silent:true }); }); socket.on('ticket:chat', (payload) => { if (normalizeTicketId(payload?.ticketId) === ticketId) refreshTicket({ silent:true }); }); socket.on('disconnect', () => setConnection('offline', 'Sinkron berkala')); socket.on('connect_error', () => setConnection('offline', 'Sinkron berkala')); }
 
-document.getElementById('chatForm').addEventListener('submit', async (evt) => {
-  evt.preventDefault();
-  const message = chatInputEl.value.trim();
-  if (!message || !ticketId) return;
-  const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
-  });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) {
-    chatHintEl.textContent = d.error || 'Gagal kirim chat';
-    return;
-  }
-  chatInputEl.value = '';
-  await refresh();
-});
+$('lookupForm').addEventListener('submit', (event) => { event.preventDefault(); setVisible('lookupError', false); openTicket($('lookupInput').value); });
+$('lookupInput').addEventListener('input', () => { $('lookupInput').value = normalizeTicketId($('lookupInput').value); setVisible('lookupError', false); });
+$('retryBtn').addEventListener('click', resetLookup);
+$('manualRefreshBtn').addEventListener('click', async () => { $('manualRefreshBtn').disabled = true; await refreshTicket({ silent:true }); $('manualRefreshBtn').disabled = false; showToast('Status sudah diperbarui.'); });
+$('copyIdBtn').addEventListener('click', async () => { try { await navigator.clipboard.writeText(ticketId); showToast('Nomor tiket disalin.'); } catch { showToast('Gagal menyalin nomor tiket.', 'error'); } });
+$('shareBtn').addEventListener('click', async () => { const data = { title:`Tiket ${ticketId}`, text:`Cek status tiket YTConv ${ticketId}`, url:location.href }; try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(location.href); showToast('Link tiket disalin.'); } } catch (error) { if (error.name !== 'AbortError') showToast('Gagal membagikan tiket.', 'error'); } });
+$('chatForm').addEventListener('submit', async (event) => { event.preventDefault(); const message = $('chatInput').value.trim(); if (!message || !ticketId) return; $('chatSubmitBtn').disabled = true; $('chatHint').textContent = 'Mengirim pesan...'; try { const response = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}/chat`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ message }) }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.ok) throw new Error(data.error || 'Gagal mengirim chat'); $('chatInput').value = ''; $('chatHint').textContent = 'Pesan berhasil dikirim.'; await refreshTicket({ silent:true }); } catch (error) { $('chatHint').textContent = error.message || 'Gagal mengirim chat.'; } finally { $('chatSubmitBtn').disabled = false; } });
+function clearPreviewUrls() { previewUrls.forEach((url) => URL.revokeObjectURL(url)); previewUrls = []; }
+function renderProofPreview() { clearPreviewUrls(); $('proofPreview').replaceChildren(...selectedProofFiles.map((file, index) => { const card = document.createElement('div'); card.className = 'relative overflow-hidden rounded-xl border border-slate-700 bg-slate-950'; const url = URL.createObjectURL(file); previewUrls.push(url); const image = document.createElement('img'); image.src = url; image.alt = file.name; image.className = 'h-24 w-full object-cover'; const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'absolute right-1 top-1 rounded-lg bg-rose-600 px-2 py-1 text-xs'; remove.textContent = '✕'; remove.addEventListener('click', () => { selectedProofFiles.splice(index, 1); renderProofPreview(); }); const name = document.createElement('div'); name.className = 'truncate p-2 text-[11px]'; name.textContent = file.name; card.append(image, remove, name); return card; })); }
+$('proofFiles').addEventListener('change', () => { selectedProofFiles = Array.from($('proofFiles').files || []).filter((file) => file.type.startsWith('image/')).slice(0, 4); renderProofPreview(); });
+$('proofSubmitBtn').addEventListener('click', async () => { if (!ticketId || !selectedProofFiles.length) return showToast('Pilih minimal satu gambar.', 'error'); const button = $('proofSubmitBtn'); button.disabled = true; button.textContent = 'Mengirim...'; try { const proofs = await Promise.all(selectedProofFiles.map((file) => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve({ name:file.name, type:file.type, size:file.size, dataUrl:String(reader.result || '') }); reader.onerror = reject; reader.readAsDataURL(file); }))); const response = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}/proofs`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ proofs, note:$('proofNote').value.trim() }) }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.ok) throw new Error(data.error || 'Gagal upload bukti'); selectedProofFiles = []; clearPreviewUrls(); $('proofPreview').replaceChildren(); $('proofFiles').value = ''; $('proofNote').value = ''; showToast(`${data.count || 0} bukti berhasil dikirim.`); await refreshTicket({ silent:true }); } catch (error) { showToast(error.message || 'Gagal upload bukti.', 'error'); } finally { button.textContent = 'Kirim Bukti'; button.disabled = currentTicket?.status !== 'waiting_user'; } });
 
-proofFilesEl.addEventListener('change', () => {
-  const incoming = Array.from(proofFilesEl.files || []);
-  selectedProofFiles = incoming.slice(0, 4);
-  renderProofPreview();
-});
-
-proofPreviewEl.addEventListener('click', (evt) => {
-  const btn = evt.target.closest('button[data-remove]');
-  if (!btn) return;
-  const idx = Number(btn.getAttribute('data-remove'));
-  selectedProofFiles = selectedProofFiles.filter((_, i) => i !== idx);
-  renderProofPreview();
-});
-
-proofSubmitBtn.addEventListener('click', async () => {
-  if (!ticketId || !selectedProofFiles.length) return;
-  proofSubmitBtn.disabled = true;
-  proofSubmitBtn.textContent = 'Mengirim...';
-  try {
-    const proofs = await Promise.all(selectedProofFiles.map((file) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve({
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        dataUrl: String(reader.result || ''),
-      });
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    })));
-    const r = await fetch(`/api/ticket/${encodeURIComponent(ticketId)}/proofs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proofs, note: proofNoteEl.value.trim() }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) throw new Error(d.error || 'upload_failed');
-    selectedProofFiles = [];
-    proofFilesEl.value = '';
-    proofNoteEl.value = '';
-    renderProofPreview();
-    proofHintEl.textContent = `Berhasil kirim ${d.count || 0} bukti ke admin.`;
-    await refresh();
-  } catch (err) {
-    proofHintEl.textContent = `Gagal upload bukti: ${err.message || 'unknown'}`;
-  } finally {
-    proofSubmitBtn.disabled = false;
-    proofSubmitBtn.textContent = 'Kirim ke Admin';
-  }
-});
-
-refresh();
-setInterval(refresh, 5000);
+renderRecentTickets();
+$('lookupInput').value = ticketId;
+if (ticketId) { setPageState('loading'); refreshTicket(); connectRealtime(); refreshTimer = setInterval(() => refreshTicket({ silent:true }), 15000); } else { setPageState('empty'); $('lookupInput').focus(); }
+window.addEventListener('focus', () => ticketId && refreshTicket({ silent:true }));
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && ticketId && refreshTicket({ silent:true }));
+window.addEventListener('beforeunload', () => { clearPreviewUrls(); if (refreshTimer) clearInterval(refreshTimer); socket?.disconnect(); });
 </script>
 </body>
 </html>
