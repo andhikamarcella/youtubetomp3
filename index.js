@@ -2,7 +2,7 @@ import express from "express";
 import compression from "compression";
 import cors from "cors";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { promises as fsp } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -60,6 +60,15 @@ import {
   listRecentSupports,
 } from "./support_store.js";
 import { CacheStore } from "./lib/cache_store.js";
+import {
+  getCookiesPath,
+  getCookiesStatus,
+  initializeCookiesStore,
+  readCookies,
+  saveCookies,
+  startCookiesSync,
+  syncCookiesToLocal,
+} from "./cookie_store.js";
 import {
   createTicket,
   getTicket,
@@ -163,7 +172,18 @@ const parseGroqModels = () => {
   });
 };
 const GROQ_MODEL_CANDIDATES = parseGroqModels();
-const COOKIES_PATH = join(process.cwd(), "cookies.txt");
+const COOKIES_PATH = getCookiesPath();
+try {
+  const cookieStatus = await initializeCookiesStore();
+  console.log(cookieStatus
+    ? `[cookie-store] hydrated ${cookieStatus.bytes} bytes into ${COOKIES_PATH}`
+    : "[cookie-store] no persisted cookies yet");
+} catch (err) {
+  console.error("[cookie-store] initial hydration failed", err);
+}
+startCookiesSync({
+  onError: (err) => console.error("[cookie-store] background sync failed", err),
+});
 const SAWERIA_STREAM_KEY = (process.env.SAWERIA_STREAM_KEY || "").trim();
 
 const SPOTIFY_CLIENT_ID = (process.env.SPOTIFY_CLIENT_ID || "").trim();
@@ -9376,24 +9396,19 @@ app.post("/admin/login", (req, res) => {
   }
 });
 
-app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), async (req, res) => {
+app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
   try {
-    if (!ADMIN_ENABLED) {
-      return res.status(503).json({ error: "admin_disabled" });
-    }
-    const auth = req.get("Authorization") || "";
-    if (auth !== `Bearer ${BEARER}`) {
-      return res.status(401).json({ error: "unauthorized" });
-    }
+    if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
+    if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
 
-    await fsp.writeFile(COOKIES_PATH, req.body, "utf8");
-    const stat = await fsp.stat(COOKIES_PATH);
+    const saved = await saveCookies(req.body);
     const workerBase = process.env.WORKER_API_BASE;
     const workerSecret = process.env.WORKER_SHARED_SECRET;
+    let workerSynced = false;
     if (workerBase && workerSecret) {
       const workerUrl = `${workerBase.replace(/\/$/, "")}/admin/upload-cookies`;
       try {
-        const resp = await fetch(workerUrl, {
+        const response = await fetch(workerUrl, {
           method: "POST",
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
@@ -9401,45 +9416,45 @@ app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "2mb" }), a
           },
           body: req.body,
         });
-        if (!resp.ok) {
-          console.warn("Worker upload-cookies responded with", resp.status);
-        }
+        workerSynced = response.ok;
+        if (!response.ok) console.warn("Worker upload-cookies responded with", response.status);
       } catch (err) {
         console.warn("Failed to forward cookies to worker", err);
       }
     }
-    return res.json({ ok: true, path: COOKIES_PATH, bytes: stat.size, mtime: stat.mtime });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    return res.json({ ok: true, path: COOKIES_PATH, ...saved, workerSynced });
+  } catch (err) {
+    const status = ["cookies_invalid_body", "cookies_empty", "cookies_too_large"].includes(err?.message) ? 400 : 500;
+    return res.status(status).json({ error: err?.message || "cookies_save_failed" });
   }
 });
 
-// Status cookies — ESM-friendly (tanpa require)
-app.get("/admin/cookies-status", (req, res) => {
+app.get("/admin/cookies-status", async (_req, res) => {
   try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     if (!ADMIN_ENABLED) return res.json({ exists: false, disabled: true });
-    if (!existsSync(COOKIES_PATH)) return res.json({ exists: false });
-    const size = statSync(COOKIES_PATH).size;
-    return res.json({ exists: true, path: COOKIES_PATH, bytes: size });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    const status = await getCookiesStatus();
+    return res.json(status);
+  } catch (err) {
+    console.error("[cookie-store] status failed", err);
+    return res.status(503).json({ error: "cookies_store_unavailable" });
   }
 });
 
 app.get("/admin/download-cookies", async (req, res) => {
   try {
-    if (!ADMIN_ENABLED) {
-      return res.status(503).json({ error: "admin_disabled" });
-    }
-    const auth = req.get("Authorization") || "";
-    if (auth !== `Bearer ${BEARER}`) return res.status(401).json({ error: "unauthorized" });
-
-    const text = await fsp.readFile(COOKIES_PATH, "utf8");
+    if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
+    if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
+    const record = await readCookies();
+    if (!record) return res.status(404).json({ error: "not_found" });
+    await syncCookiesToLocal();
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    return res.send(text);
-  } catch (e) {
-    if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
-    return res.status(500).json({ error: e.message });
+    return res.send(record.content);
+  } catch (err) {
+    console.error("[cookie-store] download failed", err);
+    return res.status(503).json({ error: "cookies_store_unavailable" });
   }
 });
 
@@ -9500,12 +9515,15 @@ app.get("/internal/worker/cookies", async (req, res) => {
     if (auth !== `Bearer ${workerSecret}`) {
       return res.status(401).json({ error: "unauthorized" });
     }
-    const text = await fsp.readFile(COOKIES_PATH, "utf8");
+    const record = await readCookies();
+    if (!record) return res.status(404).json({ error: "not_found" });
+    await syncCookiesToLocal();
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    return res.send(text);
-  } catch (e) {
-    if (e?.code === "ENOENT") return res.status(404).json({ error: "not_found" });
-    return res.status(500).json({ error: e.message });
+    return res.send(record.content);
+  } catch (err) {
+    console.error("[cookie-store] worker sync read failed", err);
+    return res.status(503).json({ error: "cookies_store_unavailable" });
   }
 });
 
