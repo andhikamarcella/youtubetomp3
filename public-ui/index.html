@@ -38,6 +38,26 @@
   <link rel="mask-icon" href="./icons/icon-maskable.svg" color="#0d6efd">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      corePlugins: { preflight: false },
+      theme: {
+        extend: {
+          colors: {
+            ytblue: '#0d6efd',
+            ytcyan: '#06b6d4',
+            ytnight: '#17233f'
+          },
+          boxShadow: {
+            glow: '0 24px 80px rgba(13, 110, 253, .22)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./tailwind-ui-bridge.js" defer></script>
 
 
 
@@ -1692,6 +1712,44 @@
     html[data-bs-theme='dark'] body {
       background-color: var(--night-base);
       background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99, 102, 241, .42), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(32, 201, 151, .3), transparent), linear-gradient(180deg, rgba(23, 35, 63, .92) 0%, rgba(23, 35, 63, 0) 55%);
+    }
+
+    /* Premium polish layer: purely visual, keeps every existing feature and selector intact. */
+    .ytconv-premium-surface,
+    .tool-card,
+    .settings-card,
+    .history-card,
+    .queue-panel,
+    .modal-content,
+    .dropdown-menu,
+    .offcanvas,
+    .card {
+      border-color: color-mix(in srgb, var(--bs-border-color) 72%, rgba(129, 140, 248, .45)) !important;
+      box-shadow: 0 22px 60px rgba(2, 6, 23, .20);
+      backdrop-filter: blur(14px);
+    }
+
+    .app-nav-btn,
+    .btn,
+    .form-control,
+    .form-select,
+    .input-group-text {
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease;
+    }
+
+    .btn:hover,
+    .app-nav-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(13, 110, 253, .18);
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--skin-primary) 20%, transparent), 0 16px 32px rgba(2, 6, 23, .16);
+    }
+
+    .tw-enhanced .tw-pressed {
+      transform: translateY(1px) scale(.99) !important;
     }
 
     body.skin-valentine {
@@ -9151,6 +9209,10 @@
                 data-bs-target="#emailModal">
                 <i class="bi bi-envelope"></i> Email Bantuan
               </button>
+              <button type="button" class="btn btn-sm btn-outline-primary rounded-pill mt-2 mt-sm-0"
+                data-bs-toggle="modal" data-bs-target="#ticketLookupModal">
+                <i class="bi bi-search"></i> Cek Status Tiket
+              </button>
             </div>
           </div>
         </div>
@@ -9587,6 +9649,39 @@
 
 
 
+
+    <!-- Public Ticket Lookup Modal -->
+    <div class="modal fade" id="ticketLookupModal" tabindex="-1" aria-labelledby="ticketLookupTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg overflow-hidden">
+          <div class="modal-header border-0 pb-0">
+            <div>
+              <span class="badge text-bg-primary rounded-pill mb-2"><i class="bi bi-broadcast me-1"></i>Realtime</span>
+              <h5 class="modal-title fw-bold" id="ticketLookupTitle">Cek Status Tiket</h5>
+              <p class="small text-secondary mb-0">Masukkan nomor tiket. Nomor terakhir akan tersimpan di perangkat ini.</p>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form id="publicTicketLookupForm">
+              <label for="publicTicketLookupInput" class="form-label small fw-semibold">Nomor tiket</label>
+              <div class="input-group">
+                <span class="input-group-text bg-body-tertiary"><i class="bi bi-ticket-detailed"></i></span>
+                <input id="publicTicketLookupInput" class="form-control bg-body-tertiary text-uppercase"
+                  type="text" autocomplete="off" spellcheck="false" maxlength="80"
+                  placeholder="Contoh: TKT-AB12CD34EF56" required>
+                <button class="btn btn-primary px-4" type="submit">Buka</button>
+              </div>
+              <div class="form-text">Status, balasan admin, chat, dan bukti akan diperbarui otomatis.</div>
+              <div id="publicRecentTicketWrap" class="mt-3" hidden>
+                <div class="small fw-semibold text-secondary mb-2">Tiket terakhir</div>
+                <div id="publicRecentTicketList" class="d-flex flex-wrap gap-2"></div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Email Contact Modal -->
     <div class="modal fade" id="emailModal" tabindex="-1" aria-hidden="true">
@@ -13231,6 +13326,62 @@
           return `${base}/ticket-status.html?ticket_id=${encodeURIComponent(ticketId || '')}`;
         };
 
+        function initPublicTicketLookup() {
+          const form = document.getElementById('publicTicketLookupForm');
+          const input = document.getElementById('publicTicketLookupInput');
+          const wrap = document.getElementById('publicRecentTicketWrap');
+          const list = document.getElementById('publicRecentTicketList');
+          if (!form || !input) return;
+          const recentKey = 'ytconv_recent_tickets_v1';
+          const normalize = (value) => String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+          const readRecent = () => {
+            try {
+              const value = JSON.parse(localStorage.getItem(recentKey) || '[]');
+              return Array.isArray(value) ? value.filter((item) => item?.ticketId).slice(0, 5) : [];
+            } catch {
+              return [];
+            }
+          };
+          const remember = (ticketId) => {
+            const recent = readRecent().filter((item) => normalize(item.ticketId) !== ticketId);
+            recent.unshift({ ticketId, status: 'unknown', updatedAt: new Date().toISOString() });
+            localStorage.setItem(recentKey, JSON.stringify(recent.slice(0, 5)));
+          };
+          const openTicket = (rawId) => {
+            const ticketId = normalize(rawId);
+            if (!/^TKT-[A-Z0-9_-]{4,76}$/.test(ticketId)) {
+              input.setCustomValidity('Masukkan nomor tiket yang valid, misalnya TKT-AB12CD34EF56.');
+              input.reportValidity();
+              return;
+            }
+            input.setCustomValidity('');
+            remember(ticketId);
+            window.location.assign(buildTicketStatusLink(ticketId));
+          };
+          const renderRecent = () => {
+            const recent = readRecent();
+            if (!list || !wrap) return;
+            list.replaceChildren();
+            wrap.hidden = recent.length === 0;
+            recent.forEach((item) => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'btn btn-sm btn-outline-secondary rounded-pill';
+              button.textContent = normalize(item.ticketId);
+              button.addEventListener('click', () => openTicket(item.ticketId));
+              list.appendChild(button);
+            });
+            if (!input.value && recent[0]) input.value = normalize(recent[0].ticketId);
+          };
+          form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            openTicket(input.value);
+          });
+          input.addEventListener('input', () => input.setCustomValidity(''));
+          document.getElementById('ticketLookupModal')?.addEventListener('show.bs.modal', renderRecent);
+          renderRecent();
+        }
+
 
         const buildAiTicketDraft = ({ name = '', email = '', category = '', message = '' } = {}) => {
           const now = new Date();
@@ -13320,7 +13471,11 @@
           const aiDraftHint = document.getElementById('emailAiDraftHint');
           if (!form || !submitBtn) return;
 
-          const generateTicketId = () => `TKT-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+          const generateTicketId = () => {
+            const bytes = new Uint8Array(9);
+            crypto.getRandomValues(bytes);
+            return `TKT-${Array.from(bytes, (value) => value.toString(36).padStart(2, '0')).join('').slice(0, 12).toUpperCase()}`;
+          };
 
           const ensureTicketId = () => {
             if (ticketIdInput && !ticketIdInput.value) ticketIdInput.value = generateTicketId();
@@ -13434,10 +13589,11 @@
               if (!resp.ok || !result?.ok) {
                 throw new Error(result?.error || 'Gagal membuat tiket ke server');
               }
+              const canonicalTicketId = String(result?.ticketId || payload.ticketId || '').trim().toUpperCase();
               const firstLink = result?.fileLink || payload.file_link || '';
-              const statusLink = buildTicketStatusLink(payload.ticketId || '');
+              const statusLink = buildTicketStatusLink(canonicalTicketId);
               const sharedParams = {
-                ticket_id: payload.ticketId,
+                ticket_id: canonicalTicketId,
                 name: payload.name,
                 email: payload.email,
                 category: payload.category,
@@ -13460,9 +13616,16 @@
               }
 
               const allSent = autoReplySent && adminEmailSent;
-              setToast(`Tiket ${payload.ticketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, allSent ? 'success' : 'warning');
+              try {
+                const recentKey = 'ytconv_recent_tickets_v1';
+                const previous = JSON.parse(localStorage.getItem(recentKey) || '[]');
+                const recent = Array.isArray(previous) ? previous.filter((item) => item?.ticketId !== canonicalTicketId) : [];
+                recent.unshift({ ticketId: canonicalTicketId, status: 'received', updatedAt: new Date().toISOString() });
+                localStorage.setItem(recentKey, JSON.stringify(recent.slice(0, 5)));
+              } catch {}
+              setToast(`Tiket ${canonicalTicketId} berhasil dikirim. Tunggu respon maksimal 2x24 jam.`, allSent ? 'success' : 'warning');
               showTicketSuccessCard({
-                ticketId: payload.ticketId,
+                ticketId: canonicalTicketId,
                 statusLink,
                 autoReplySent: allSent
               });
@@ -25723,6 +25886,7 @@
           }
         };
 
+        initPublicTicketLookup();
         initEmailContact();
 
         // ===== Basic Mode Logic =====
