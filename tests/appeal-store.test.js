@@ -12,6 +12,7 @@ delete process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
 const {
   createAppeal,
+  deleteAppeal,
   getAppeal,
   getAppealStoreBackend,
   listAppeals,
@@ -65,4 +66,10 @@ test("appeal duplikat ditolak dan appeal tidak ada tetap null", async () => {
   );
   assert.equal(await getAppeal("APL-NOT-FOUND"), null);
   assert.equal(await updateAppeal("APL-NOT-FOUND", (appeal) => appeal), null);
+});
+
+test("appeal bisa dihapus dari store persisten", async () => {
+  assert.equal(await deleteAppeal("APL-PERSIST-1"), true);
+  assert.equal(await getAppeal("APL-PERSIST-1"), null);
+  assert.equal(await deleteAppeal("APL-PERSIST-1"), false);
 });
