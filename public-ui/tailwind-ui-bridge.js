@@ -89,9 +89,29 @@
         box-shadow: 0 24px 70px rgba(2, 6, 23, .34);
       }
       .tw-enhanced {
+        position: relative;
+        isolation: isolate;
+        font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         background-image:
           radial-gradient(circle at 12% 8%, rgba(59, 130, 246, .10), transparent 24rem),
           radial-gradient(circle at 88% 14%, rgba(20, 184, 166, .10), transparent 26rem);
+      }
+      .tw-enhanced::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(32rem circle at var(--tw-glow-x, 50%) var(--tw-glow-y, 18%), rgba(99, 102, 241, .20), transparent 42%),
+          radial-gradient(24rem circle at calc(var(--tw-glow-x, 50%) + 8%) calc(var(--tw-glow-y, 18%) + 10%), rgba(6, 182, 212, .16), transparent 48%),
+          linear-gradient(120deg, rgba(255,255,255,.035), transparent 32%, rgba(255,255,255,.025));
+        opacity: .82;
+        transition: background-position .22s ease, opacity .22s ease;
+      }
+      .tw-enhanced > * {
+        position: relative;
+        z-index: 1;
       }
       .tw-enhanced header,
       .tw-enhanced main > section,
@@ -105,6 +125,20 @@
         border-color: rgba(148, 163, 184, .20);
         box-shadow: 0 18px 50px rgba(2, 6, 23, .18);
         backdrop-filter: blur(14px);
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease, filter .18s ease;
+      }
+      .tw-enhanced header:hover,
+      .tw-enhanced main > section:hover,
+      .tw-enhanced aside:hover,
+      .tw-enhanced .card:hover,
+      .tw-enhanced .modal-content:hover,
+      .tw-enhanced .dropdown-menu:hover,
+      .tw-enhanced .offcanvas:hover,
+      .tw-enhanced .list-group-item:hover,
+      .tw-enhanced .toast:hover {
+        border-color: rgba(125, 211, 252, .38);
+        box-shadow: 0 28px 80px rgba(37, 99, 235, .20), 0 0 40px rgba(6, 182, 212, .10);
+        filter: saturate(1.05);
       }
       .tw-enhanced h1,
       .tw-enhanced h2,
@@ -196,6 +230,11 @@
         target.style.setProperty('--tw-press-x', `${Math.round(event.clientX - rect.left)}px`);
         target.style.setProperty('--tw-press-y', `${Math.round(event.clientY - rect.top)}px`);
       }
+    }, { passive: true });
+
+    document.addEventListener('pointermove', (event) => {
+      body.style.setProperty('--tw-glow-x', `${Math.round((event.clientX / window.innerWidth) * 100)}%`);
+      body.style.setProperty('--tw-glow-y', `${Math.round((event.clientY / window.innerHeight) * 100)}%`);
     }, { passive: true });
 
     ['pointerup', 'pointercancel', 'mouseleave', 'blur'].forEach((name) => {
