@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/tailwind-ui-bridge.js" defer></script>
   <style>
     body {
       background:
@@ -17,6 +18,14 @@
         radial-gradient(circle at top right, rgba(14,165,233,.14), transparent 28rem),
         #020617;
     }
+    .premium-panel {
+      background: rgba(15, 23, 42, .86);
+      border-color: rgba(148, 163, 184, .16);
+      box-shadow: 0 20px 55px rgba(2, 6, 23, .32);
+      backdrop-filter: blur(16px);
+    }
+    .premium-panel:hover { border-color: rgba(129, 140, 248, .36); }
+    .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
   </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 transition-colors" id="appBody">
@@ -51,14 +60,14 @@
     <section id="metricCards" class="grid md:grid-cols-4 gap-3"></section>
 
     <section class="grid lg:grid-cols-3 gap-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:col-span-2">
+      <div class="premium-panel rounded-2xl border p-4 lg:col-span-2">
         <h2 class="font-bold mb-2">📊 Charts</h2>
         <div class="grid md:grid-cols-2 gap-3">
           <div><div class="text-sm text-slate-300 mb-1">Ticket per Hari (7 hari)</div><canvas id="lineChart" height="120"></canvas></div>
           <div><div class="text-sm text-slate-300 mb-1">Status Pie</div><canvas id="pieChart" height="120"></canvas></div>
         </div>
       </div>
-      <aside class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <aside class="premium-panel rounded-2xl border p-4">
         <h2 class="font-bold mb-2">🚨 Realtime Alerts</h2>
         <div id="alertHint" class="text-xs text-slate-400 mb-2">Event-based alert aktif.</div>
         <ul id="alertHistory" class="space-y-2 text-xs max-h-60 overflow-auto"></ul>
@@ -121,7 +130,7 @@
       </div>
     </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+    <section class="premium-panel rounded-3xl border p-4">
       <h2 class="font-bold mb-2">🧪 Load Testing Monitor (k6)</h2>
       <div class="text-xs text-slate-400 mb-2">Menampilkan laporan load test terbaru yang dikirim dari script k6/JMeter ke endpoint backend.</div>
       <div id="loadTestSummary" class="text-sm mb-2">Belum ada laporan load test.</div>
@@ -189,7 +198,7 @@
       </aside>
     </section>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+    <section class="premium-panel rounded-3xl border p-4">
       <h2 class="font-bold mb-2">🧍 Live User Table + Journey</h2>
       <div class="overflow-auto rounded-xl border border-slate-800">
         <table class="min-w-full text-xs"><thead class="bg-slate-800/80 text-slate-300"><tr><th class="text-left p-2">Socket</th><th class="text-left p-2">User</th><th class="text-left p-2">Page</th><th class="text-left p-2">Room</th><th class="text-left p-2">Status</th><th class="text-left p-2">Duration</th><th class="text-left p-2">Journey</th><th class="text-left p-2">Last Action</th></tr></thead><tbody id="liveUserRows"></tbody></table>

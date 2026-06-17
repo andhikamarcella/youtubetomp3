@@ -6,6 +6,7 @@
   <title>Admin Tickets • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="/tailwind-ui-bridge.js" defer></script>
   <style>
     body {
       font-family: 'Inter', system-ui, sans-serif;
@@ -16,6 +17,14 @@
     }
     @keyframes fadeInUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
     .fade-in { animation: fadeInUp .25s ease both; }
+    .premium-panel {
+      background: rgba(15, 23, 42, .88);
+      border-color: rgba(148, 163, 184, .16);
+      box-shadow: 0 20px 55px rgba(2, 6, 23, .32);
+      backdrop-filter: blur(16px);
+    }
+    .premium-panel:hover { border-color: rgba(129, 140, 248, .34); }
+    .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
     ::-webkit-scrollbar { width:6px; height:6px; } ::-webkit-scrollbar-track { background:#0f172a; } ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
   </style>
 </head>
@@ -41,7 +50,7 @@
 
     <!-- AUTH -->
     <section class="grid md:grid-cols-3 gap-3 fade-in">
-      <form id="loginForm" class="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+      <form id="loginForm" class="premium-panel md:col-span-2 rounded-2xl border p-4 space-y-3">
         <div class="font-bold text-sm">🔐 Login Admin</div>
         <div class="grid sm:grid-cols-4 gap-2">
           <input id="username" placeholder="Username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" required>
@@ -51,7 +60,7 @@
         </div>
         <p class="text-xs text-slate-500">Gunakan kredensial Railway admin kamu</p>
       </form>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-1 fade-in">
+      <div class="premium-panel rounded-2xl border p-4 space-y-1 fade-in">
         <div class="text-sm text-slate-400 font-semibold">Status</div>
         <div id="authState" class="font-semibold text-sm">Belum login</div>
         <div id="lastSync" class="text-xs text-slate-500"></div>
@@ -65,7 +74,7 @@
     </div>
 
     <!-- TAB: TICKETS -->
-    <section id="tab-tickets" class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in">
+    <section id="tab-tickets" class="premium-panel rounded-3xl border p-4 fade-in">
       <div class="flex flex-wrap gap-2 mb-4">
         <input id="searchTkt" placeholder="Cari ID/nama/email..." class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm w-52">
         <select id="filterStatusTkt" class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm">

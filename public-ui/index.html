@@ -38,6 +38,26 @@
   <link rel="mask-icon" href="./icons/icon-maskable.svg" color="#0d6efd">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      corePlugins: { preflight: false },
+      theme: {
+        extend: {
+          colors: {
+            ytblue: '#0d6efd',
+            ytcyan: '#06b6d4',
+            ytnight: '#17233f'
+          },
+          boxShadow: {
+            glow: '0 24px 80px rgba(13, 110, 253, .22)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./tailwind-ui-bridge.js" defer></script>
 
 
 
@@ -1692,6 +1712,44 @@
     html[data-bs-theme='dark'] body {
       background-color: var(--night-base);
       background-image: radial-gradient(50rem 40rem at 100% 0%, rgba(99, 102, 241, .42), transparent), radial-gradient(50rem 40rem at 0% 100%, rgba(32, 201, 151, .3), transparent), linear-gradient(180deg, rgba(23, 35, 63, .92) 0%, rgba(23, 35, 63, 0) 55%);
+    }
+
+    /* Premium polish layer: purely visual, keeps every existing feature and selector intact. */
+    .ytconv-premium-surface,
+    .tool-card,
+    .settings-card,
+    .history-card,
+    .queue-panel,
+    .modal-content,
+    .dropdown-menu,
+    .offcanvas,
+    .card {
+      border-color: color-mix(in srgb, var(--bs-border-color) 72%, rgba(129, 140, 248, .45)) !important;
+      box-shadow: 0 22px 60px rgba(2, 6, 23, .20);
+      backdrop-filter: blur(14px);
+    }
+
+    .app-nav-btn,
+    .btn,
+    .form-control,
+    .form-select,
+    .input-group-text {
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease;
+    }
+
+    .btn:hover,
+    .app-nav-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(13, 110, 253, .18);
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--skin-primary) 20%, transparent), 0 16px 32px rgba(2, 6, 23, .16);
+    }
+
+    .tw-enhanced .tw-pressed {
+      transform: translateY(1px) scale(.99) !important;
     }
 
     body.skin-valentine {
