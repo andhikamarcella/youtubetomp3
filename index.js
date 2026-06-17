@@ -71,12 +71,14 @@ import {
 } from "./cookie_store.js";
 import {
   createTicket,
+  deleteTicket,
   getTicket,
   listTickets,
   updateTicket,
 } from "./ticket_store.js";
 import {
   createAppeal,
+  deleteAppeal,
   listAppeals,
   updateAppeal as updateStoredAppeal,
 } from "./appeal_store.js";
@@ -793,6 +795,12 @@ Kamu berperan sebagai:
 5. Quality Analyst yang mampu membuat laporan singkat dari masalah pengguna.
 6. Edukator yang menjelaskan istilah teknis dengan bahasa yang sesuai level pengguna.
 7. Asisten yang proaktif, bukan pasif.
+
+Update fitur terbaru yang wajib kamu pahami:
+- Ticket support sekarang persistent, punya status realtime, chat, upload bukti/screenshot, dan halaman Cek Status Tiket.
+- Jika downloader helper gagal, arahkan user untuk membuat tiket cepat: isi nama, email, link/video, pesan error, dan upload screenshot.
+- Appeal forum masuk ke admin dashboard via persistent store (Firestore/file fallback) dan bisa direview admin.
+- Admin dashboard/tickets punya pagination dan delete untuk membersihkan ticket/appeal lama, jadi jangan bilang data hanya sementara.
 
 Tujuan utama kamu:
 - Membantu pengguna menyelesaikan masalah secepat mungkin.
@@ -5045,12 +5053,17 @@ Features di YTConv:
 - Voice Command
 - Format: Spotify-like (M4A), Ringtone (MP3 trimmed), DJ Loop
 - Smart Cache (download sama tidak perlu proses ulang)
+- Ticket Support realtime + upload screenshot/bukti
+- Cek Status Tiket dengan polling + socket realtime
+- Forum Appeal persistent ke admin dashboard
+- Admin dashboard/tickets dengan pagination dan delete data lama
 
 Kendala umum:
 - Error 'age-restricted': perlu upload cookies.txt valid
 - Video tidak bisa: coba URL berbeda atau hubungi CS
 - Format tidak bisa dimainkan di iPhone: gunakan M4A
 - Lambat: pilih format M4A, centang 'Abaikan playlist'
+- Downloader helper gagal: buat tiket cepat, minta user isi nama + email + screenshot error + link/video yang dicoba
 
 Jika user sangat butuh bantuan lanjut atau masalah teknis kompleks:
 - Respons dengan menyarankan buat tiket
@@ -10160,6 +10173,24 @@ app.get("/api/admin/tickets", async (req, res) => {
   }
 });
 
+app.delete("/api/admin/tickets/:ticketId", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
+  if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_required" });
+  try {
+    const deleted = await deleteTicket(ticketId);
+    if (!deleted) return res.status(404).json({ ok: false, error: "ticket_not_found" });
+    supportTickets.delete(ticketId);
+    io.emit("admin:ticketDeleted", { ticketId });
+    io.to(ticketRoom(ticketId)).emit("ticket:deleted", { ticketId });
+    pushActivityLog("ticket_deleted", `Tiket ${ticketId} dihapus admin`, { ticketId });
+    return res.json({ ok: true, ticketId });
+  } catch (err) {
+    console.error(`[ticket-store] gagal hapus ${ticketId}`, err);
+    return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
+  }
+});
+
 app.get("/api/admin/appeals", async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   try {
@@ -10169,6 +10200,23 @@ app.get("/api/admin/appeals", async (req, res) => {
     return res.json({ ok: true, appeals });
   } catch (err) {
     console.error("[appeal-store] gagal memuat daftar appeal", err);
+    return res.status(503).json({ ok: false, error: "appeal_store_unavailable" });
+  }
+});
+
+app.delete("/api/admin/appeals/:appealId", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const appealId = String(req.params.appealId || "").trim().toUpperCase();
+  if (!appealId) return res.status(400).json({ ok: false, error: "appeal_id_required" });
+  try {
+    const deleted = await deleteAppeal(appealId);
+    if (!deleted) return res.status(404).json({ ok: false, error: "appeal_not_found" });
+    forumAppeals.delete(appealId);
+    io.emit("admin:appealDeleted", { appealId });
+    pushActivityLog("appeal_deleted", `Appeal ${appealId} dihapus admin`, { appealId });
+    return res.json({ ok: true, appealId });
+  } catch (err) {
+    console.error(`[appeal-store] gagal hapus ${appealId}`, err);
     return res.status(503).json({ ok: false, error: "appeal_store_unavailable" });
   }
 });
@@ -10293,6 +10341,16 @@ app.get("/api/admin/session-replay/:socketId", (req, res) => {
 
 app.get("/api/admin/stats", async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  let persistedTickets = [];
+  let ticketsFromStore = false;
+  try {
+    persistedTickets = await listTickets();
+    ticketsFromStore = true;
+    persistedTickets.forEach((ticket) => supportTickets.set(ticket.ticketId, ticket));
+  } catch (err) {
+    console.warn("[ticket-store] stats memakai cache karena store gagal", err?.message || err);
+    persistedTickets = Array.from(supportTickets.values());
+  }
   let persistedAppeals = [];
   try {
     persistedAppeals = await listAppeals();
@@ -10303,7 +10361,7 @@ app.get("/api/admin/stats", async (req, res) => {
   }
   const now = new Date();
   const dayBuckets = new Map();
-  const tickets = Array.from(supportTickets.values());
+  const tickets = ticketsFromStore ? persistedTickets : Array.from(supportTickets.values());
   tickets.forEach((ticket) => {
     const submittedAt = ticket?.submittedAt ? new Date(ticket.submittedAt) : null;
     if (!submittedAt || Number.isNaN(submittedAt.getTime())) return;
