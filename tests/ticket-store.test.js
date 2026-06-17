@@ -12,6 +12,7 @@ delete process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
 const {
   createTicket,
+  deleteTicket,
   getTicket,
   getTicketStoreBackend,
   listTickets,
@@ -68,4 +69,10 @@ test("ticket duplikat ditolak dan ticket yang tidak ada tetap null", async () =>
   );
   assert.equal(await getTicket("TKT-NOT-FOUND"), null);
   assert.equal(await updateTicket("TKT-NOT-FOUND", (ticket) => ticket), null);
+});
+
+test("ticket bisa dihapus dari store persisten", async () => {
+  assert.equal(await deleteTicket("TKT-PERSIST-1"), true);
+  assert.equal(await getTicket("TKT-PERSIST-1"), null);
+  assert.equal(await deleteTicket("TKT-PERSIST-1"), false);
 });
