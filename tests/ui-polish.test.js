@@ -14,6 +14,9 @@ const pages = {
 test("homepage mendapat premium polish layer tanpa menghapus fitur utama", () => {
   assert.match(pages.home, /cdn\.tailwindcss\.com/);
   assert.match(pages.home, /preflight:\s*false/);
+  assert.match(pages.home, /family=Inter:wght@400;500;600;700;800;900/);
+  assert.match(pages.home, /font-family:\s*"Inter", "Segoe UI"/);
+  assert.match(pages.home, /Homepage tidy pass/);
   assert.match(pages.home, /tailwind-ui-bridge\.js/);
   assert.match(pages.home, /Premium polish layer/);
   assert.match(pages.home, /ytconv-premium-surface|tool-card|history-card/);
@@ -52,4 +55,20 @@ test("tailwind bridge terhubung ke JavaScript interaktif", () => {
   assert.match(pages.bridge, /dataset\.tailwindConnected\s*=\s*'true'/);
   assert.match(pages.bridge, /tw-pressed/);
   assert.match(pages.bridge, /DOMContentLoaded/);
+});
+
+test("tailwind bridge mempercantik tombol dan panel tanpa mengganti fitur", () => {
+  assert.match(pages.bridge, /tw-premium-button-polish/);
+  assert.match(pages.bridge, /a\[class\*="bg-"\]/);
+  assert.match(pages.bridge, /radial-gradient\(circle at var\(--tw-press-x/);
+  assert.match(pages.bridge, /focus-visible/);
+  assert.match(pages.bridge, /premium-panel/);
+});
+
+test("tailwind bridge memberi polish menyeluruh ke elemen umum", () => {
+  assert.match(pages.bridge, /main > section/);
+  assert.match(pages.bridge, /tbody tr:hover/);
+  assert.match(pages.bridge, /::file-selector-button/);
+  assert.match(pages.bridge, /::-webkit-scrollbar-thumb/);
+  assert.match(pages.bridge, /text-wrap:\s*balance/);
 });
