@@ -103,6 +103,13 @@
           <tbody id="ticketRows"></tbody>
         </table>
       </div>
+      <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
+        <div id="ticketPagerInfo">Menampilkan 0 tiket</div>
+        <div class="flex gap-2">
+          <button id="ticketPrevBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">← Prev</button>
+          <button id="ticketNextBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">Next →</button>
+        </div>
+      </div>
     </section>
 
     <!-- TAB: APPEALS -->
@@ -181,6 +188,13 @@
           <tbody id="appealRows"></tbody>
         </table>
       </div>
+      <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
+        <div id="appealPagerInfo">Menampilkan 0 appeal</div>
+        <div class="flex gap-2">
+          <button id="appealPrevBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">← Prev</button>
+          <button id="appealNextBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">Next →</button>
+        </div>
+      </div>
     </section>
   </div>
 
@@ -213,6 +227,9 @@ let allAppeals = [];
 let currentAppeal = null;
 let ticketLoadPromise = null;
 let appealLoadPromise = null;
+const PAGE_SIZE = 10;
+let ticketPage = 1;
+let appealPage = 1;
 
 // ── Status Badge ──
 const statusBadge = (status = 'received') => {
@@ -314,12 +331,24 @@ function getFilteredTickets() {
   });
 }
 
+function pageSlice(items, page) {
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  return { totalPages, safePage, start, items: items.slice(start, start + PAGE_SIZE) };
+}
+
 function renderTickets() {
   const tickets = getFilteredTickets();
   const tb = el('ticketRows');
+  const page = pageSlice(tickets, ticketPage);
+  ticketPage = page.safePage;
+  el('ticketPagerInfo').textContent = tickets.length ? `Menampilkan ${page.start + 1}-${Math.min(page.start + PAGE_SIZE, tickets.length)} dari ${tickets.length} tiket • Halaman ${page.safePage}/${page.totalPages}` : 'Menampilkan 0 tiket';
+  el('ticketPrevBtn').disabled = page.safePage <= 1;
+  el('ticketNextBtn').disabled = page.safePage >= page.totalPages;
   if (!tickets.length) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Belum ada tiket.</td></tr>`; return; }
   tb.innerHTML = '';
-  tickets.forEach(t => {
+  page.items.forEach(t => {
     const row = document.createElement('tr');
     row.className = 'border-b border-slate-800 align-top hover:bg-slate-800/20 transition-colors';
     const submitted = t.submittedAt ? fmt.format(new Date(t.submittedAt)) : '-';
@@ -354,6 +383,7 @@ function renderTickets() {
         <div class="flex flex-col gap-1.5">
           <button onclick="updateTicket('${esc(t.ticketId)}')" class="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">💾 Simpan</button>
           <a href="/ticket-status.html?ticket_id=${encodeURIComponent(t.ticketId)}" target="_blank" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-center">👁 Lihat</a>
+          <button type="button" onclick="deleteTicketRow('${esc(t.ticketId)}')" class="px-2 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-xs font-semibold">🗑 Hapus</button>
         </div>
       </td>`;
     tb.appendChild(row);
@@ -392,6 +422,21 @@ async function updateTicket(id) {
   const d = await r.json().catch(() => ({}));
   if (d.ok) { clearDraft(id); showToast('✅ Update berhasil!', 'success'); loadTickets(); }
   else showToast('❌ Gagal: ' + (d.error || 'unknown'), 'error');
+}
+
+async function deleteTicketRow(id) {
+  if (!confirm(`Hapus ticket ${id}? Data lama yang dihapus tidak bisa dikembalikan.`)) return;
+  const token = getToken();
+  const r = await fetch(`/api/admin/tickets/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return showToast('❌ Gagal hapus: ' + (d.error || 'unknown'), 'error');
+  clearDraft(id);
+  allTickets = allTickets.filter(t => t.ticketId !== id);
+  showToast(`🗑 Ticket ${id} dihapus.`, 'success');
+  renderTickets();
 }
 
 // ── Toast ──
@@ -448,10 +493,18 @@ function renderAppeals() {
   el('appealCountBadge').classList.toggle('hidden', pending <= 0);
 
   if (!allAppeals.length) {
+    el('appealPagerInfo').textContent = 'Menampilkan 0 appeal';
+    el('appealPrevBtn').disabled = true;
+    el('appealNextBtn').disabled = true;
     el('appealRows').innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Belum ada appeal masuk dari user.</td></tr>`;
     return;
   }
-  el('appealRows').innerHTML = allAppeals.map(a => `
+  const page = pageSlice(allAppeals, appealPage);
+  appealPage = page.safePage;
+  el('appealPagerInfo').textContent = `Menampilkan ${page.start + 1}-${Math.min(page.start + PAGE_SIZE, allAppeals.length)} dari ${allAppeals.length} appeal • Halaman ${page.safePage}/${page.totalPages}`;
+  el('appealPrevBtn').disabled = page.safePage <= 1;
+  el('appealNextBtn').disabled = page.safePage >= page.totalPages;
+  el('appealRows').innerHTML = page.items.map(a => `
     <tr class="border-b border-slate-800 align-top hover:bg-slate-800/20 transition-colors">
       <td class="py-3 px-2 font-mono text-xs text-amber-300">${esc(a.appealId)}</td>
       <td class="py-3 px-2">
@@ -470,12 +523,15 @@ function renderAppeals() {
           ? `<button data-appeal="${esc(a.appealId)}" class="px-2 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold">⚖️ Proses</button>`
           : `<span class="text-xs text-slate-500">${a.reviewedAt ? fmt.format(new Date(a.reviewedAt)) : 'Selesai'}</span>`
         }
+        <button data-delete-appeal="${esc(a.appealId)}" class="mt-1 px-2 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-xs font-bold">🗑 Hapus</button>
       </td>
     </tr>`).join('');
 }
 
 // ── Appeal Actions ──
 el('appealRows').addEventListener('click', evt => {
+  const deleteBtn = evt.target.closest('button[data-delete-appeal]');
+  if (deleteBtn) return deleteAppealRow(deleteBtn.getAttribute('data-delete-appeal'));
   const btn = evt.target.closest('button[data-appeal]');
   if (!btn) return;
   const appealId = btn.getAttribute('data-appeal');
@@ -491,6 +547,24 @@ el('appealRows').addEventListener('click', evt => {
   el('appealPanel').classList.remove('hidden');
   el('appealPanel').scrollIntoView({ behavior: 'smooth' });
 });
+
+async function deleteAppealRow(id) {
+  if (!confirm(`Hapus appeal ${id}? Data lama yang dihapus tidak bisa dikembalikan.`)) return;
+  const token = getToken();
+  const r = await fetch(`/api/admin/appeals/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return showToast('❌ Gagal hapus appeal: ' + (d.error || 'unknown'), 'error');
+  allAppeals = allAppeals.filter(a => a.appealId !== id);
+  if (currentAppeal?.appealId === id) {
+    currentAppeal = null;
+    el('appealPanel').classList.add('hidden');
+  }
+  showToast(`🗑 Appeal ${id} dihapus.`, 'success');
+  renderAppeals();
+}
 
 async function processAppeal(status) {
   if (!currentAppeal) return;
@@ -537,7 +611,11 @@ el('exportAppealsBtn').addEventListener('click', () => {
 });
 
 // ── Filter listeners ──
-['searchTkt', 'filterStatusTkt', 'filterDateTkt'].forEach(id => el(id).addEventListener('input', renderTickets));
+['searchTkt', 'filterStatusTkt', 'filterDateTkt'].forEach(id => el(id).addEventListener('input', () => { ticketPage = 1; renderTickets(); }));
+el('ticketPrevBtn').addEventListener('click', () => { ticketPage = Math.max(1, ticketPage - 1); renderTickets(); });
+el('ticketNextBtn').addEventListener('click', () => { ticketPage += 1; renderTickets(); });
+el('appealPrevBtn').addEventListener('click', () => { appealPage = Math.max(1, appealPage - 1); renderAppeals(); });
+el('appealNextBtn').addEventListener('click', () => { appealPage += 1; renderAppeals(); });
 
 // ── Forms ──
 el('loginForm').addEventListener('submit', loginAdmin);
