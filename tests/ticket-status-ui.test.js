@@ -41,6 +41,13 @@ test("homepage menyediakan tiket cepat saat downloader helper gagal", () => {
   assert.match(home, /Silakan upload screenshot error downloader helper/);
 });
 
+test("FAQ dan AI Navigator tahu update downloader helper serta tiket realtime", () => {
+  assert.match(home, /Downloader helper gagal, apa yang harus saya kirim/);
+  assert.match(home, /Cek Status Tiket/);
+  assert.match(home, /Ticket Support realtime/);
+  assert.match(home, /pagination,? dan hapus ticket\/appeal lama/);
+});
+
 test("homepage memakai ID tiket kanonik dari respons server", () => {
   assert.match(home, /canonicalTicketId\s*=\s*String\(result\?\.ticketId/);
   assert.match(home, /ticketId:\s*canonicalTicketId/);

@@ -82,8 +82,10 @@ test("tailwind bridge memberi polish menyeluruh ke elemen umum", () => {
 
 test("tailwind bridge memakai sans font dan glow interaktif", () => {
   assert.match(pages.bridge, /font-family:\s*Inter, "Segoe UI", system-ui/);
+  assert.match(pages.bridge, /tw-glow-orb/);
+  assert.match(pages.bridge, /ensureGlowOrb/);
   assert.match(pages.bridge, /--tw-glow-x/);
   assert.match(pages.bridge, /pointermove/);
-  assert.match(pages.bridge, /rgba\(99, 102, 241, \.20\)/);
+  assert.match(pages.bridge, /rgba\(99, 102, 241, \.24\)/);
   assert.match(pages.bridge, /box-shadow: 0 28px 80px/);
 });

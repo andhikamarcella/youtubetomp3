@@ -33,3 +33,9 @@ test("server appeal memakai persistent store Firestore\/file", () => {
   assert.match(index, /app\.delete\("\/api\/admin\/tickets\/:ticketId"/);
   assert.match(index, /APL-\$\{nanoid\(12\)\.toUpperCase\(\)\}/);
 });
+
+test("server AI prompt mengetahui update tiket dan admin terbaru", () => {
+  assert.match(index, /Ticket support sekarang persistent/);
+  assert.match(index, /Downloader helper gagal/);
+  assert.match(index, /pagination dan delete/);
+});

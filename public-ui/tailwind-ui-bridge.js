@@ -96,20 +96,26 @@
           radial-gradient(circle at 12% 8%, rgba(59, 130, 246, .10), transparent 24rem),
           radial-gradient(circle at 88% 14%, rgba(20, 184, 166, .10), transparent 26rem);
       }
-      .tw-enhanced::before {
-        content: "";
+      .tw-glow-orb {
         position: fixed;
-        inset: 0;
+        left: var(--tw-glow-x, 50%);
+        top: var(--tw-glow-y, 18%);
+        width: min(58rem, 115vw);
+        height: min(58rem, 115vw);
         z-index: 0;
         pointer-events: none;
+        border-radius: 9999px;
         background:
-          radial-gradient(32rem circle at var(--tw-glow-x, 50%) var(--tw-glow-y, 18%), rgba(99, 102, 241, .20), transparent 42%),
-          radial-gradient(24rem circle at calc(var(--tw-glow-x, 50%) + 8%) calc(var(--tw-glow-y, 18%) + 10%), rgba(6, 182, 212, .16), transparent 48%),
-          linear-gradient(120deg, rgba(255,255,255,.035), transparent 32%, rgba(255,255,255,.025));
-        opacity: .82;
-        transition: background-position .22s ease, opacity .22s ease;
+          radial-gradient(circle at 45% 45%, rgba(99, 102, 241, .24), transparent 0 34%),
+          radial-gradient(circle at 62% 56%, rgba(6, 182, 212, .18), transparent 0 42%),
+          radial-gradient(circle at 34% 65%, rgba(59, 130, 246, .12), transparent 0 48%);
+        filter: blur(22px) saturate(1.18);
+        opacity: .78;
+        transform: translate3d(-50%, -50%, 0) scale(1);
+        transition: opacity .25s ease, filter .25s ease;
+        mix-blend-mode: screen;
       }
-      .tw-enhanced > * {
+      .tw-enhanced > :not(.tw-glow-orb) {
         position: relative;
         z-index: 1;
       }
@@ -208,6 +214,18 @@
     document.head.appendChild(style);
   };
 
+  const ensureGlowOrb = (body) => {
+    let orb = document.getElementById('tw-glow-orb');
+    if (!orb) {
+      orb = document.createElement('div');
+      orb.id = 'tw-glow-orb';
+      orb.className = 'tw-glow-orb';
+      orb.setAttribute('aria-hidden', 'true');
+      body.prepend(orb);
+    }
+    return orb;
+  };
+
   const markReady = () => {
     const root = document.documentElement;
     const body = document.body;
@@ -215,6 +233,7 @@
     root.dataset.tailwindUi = 'ready';
     body.classList.add('tw-enhanced');
     injectPolish();
+    const glowOrb = ensureGlowOrb(body);
 
     const interactiveSelector = 'button, a.btn, .btn, a[class*="bg-"], [role="button"], input, select, textarea';
     document.querySelectorAll(interactiveSelector).forEach((el) => {
@@ -232,9 +251,18 @@
       }
     }, { passive: true });
 
+    let glowFrame = 0;
     document.addEventListener('pointermove', (event) => {
-      body.style.setProperty('--tw-glow-x', `${Math.round((event.clientX / window.innerWidth) * 100)}%`);
-      body.style.setProperty('--tw-glow-y', `${Math.round((event.clientY / window.innerHeight) * 100)}%`);
+      if (glowFrame) cancelAnimationFrame(glowFrame);
+      glowFrame = requestAnimationFrame(() => {
+        const x = `${Math.round((event.clientX / Math.max(1, window.innerWidth)) * 100)}%`;
+        const y = `${Math.round((event.clientY / Math.max(1, window.innerHeight)) * 100)}%`;
+        body.style.setProperty('--tw-glow-x', x);
+        body.style.setProperty('--tw-glow-y', y);
+        glowOrb.style.setProperty('--tw-glow-x', x);
+        glowOrb.style.setProperty('--tw-glow-y', y);
+        glowFrame = 0;
+      });
     }, { passive: true });
 
     ['pointerup', 'pointercancel', 'mouseleave', 'blur'].forEach((name) => {

@@ -7495,6 +7495,24 @@
                     </div>
                   </div>
                 </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-17">
+                      <i class="bi bi-life-preserver me-2 text-info"></i>Downloader helper gagal, apa yang harus saya kirim?
+                    </button>
+                  </h2>
+                  <div id="q-tr-17" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ol class="mb-0">
+                        <li>Klik tombol <strong>Downloader Helper Gagal?</strong> di footer atau buka <strong>Email Bantuan</strong>.</li>
+                        <li>Isi <strong>nama</strong> dan <strong>email</strong> agar admin bisa follow up.</li>
+                        <li>Upload <strong>screenshot error</strong> dan tempel link/video yang dicoba.</li>
+                        <li>Setelah terkirim, simpan nomor tiket lalu pantau lewat <strong>Cek Status Tiket</strong>.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -18713,8 +18731,10 @@
           { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music. Pilih mood Energetic/Focus/Chill atau biarkan auto mengikuti waktu.' },
           { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk perintah seperti "buka donasi" atau "mainkan game".' },
           { keywords: ['game', 'mini'], reply: 'Neo Runner ada di Experience Hub. Tekan mulai, gunakan Space atau tap layar untuk melompat, dan kejar skor terbaik.' },
-          { keywords: ['tiket', 'ticket', 'status tiket', 'lapor'], reply: 'Butuh bantuan? Buka form tiket CS, lalu gunakan tombol bantu AI untuk menyusun deskripsi otomatis. Setelah kirim, tekan Cek Status Tiket.' },
-          { keywords: ['fitur', 'feature', 'menu'], reply: 'Fitur utama: Converter, Preview/Download, Subtitle, AI Navigator, Ticket Support, Experience Hub, Profil, dan FAQ.' },
+          { keywords: ['tiket', 'ticket', 'status tiket', 'lapor'], reply: 'Butuh bantuan? Buka form tiket CS, lalu gunakan tombol bantu AI untuk menyusun deskripsi otomatis. Setelah kirim, tekan Cek Status Tiket untuk realtime status, chat, dan upload bukti tambahan.' },
+          { keywords: ['downloader helper', 'helper gagal', 'download gagal', 'screenshot error'], reply: 'Kalau downloader helper gagal, klik tombol **Downloader Helper Gagal?** di footer. Isi nama + email, upload screenshot error, lalu tiket akan masuk admin dan bisa dicek realtime.' },
+          { keywords: ['admin dashboard', 'admin tiket', 'hapus ticket', 'hapus appeal'], reply: 'Admin dashboard/tickets sudah mendukung persistent refresh, pagination, dan hapus ticket/appeal lama dari store agar tabel tetap rapi.' },
+          { keywords: ['fitur', 'feature', 'menu'], reply: 'Fitur utama: Converter, Preview/Download, Subtitle, AI Navigator, Ticket Support realtime, Appeal Forum persistent, Experience Hub, Profil, dan FAQ.' },
           { keywords: ['auto tag', 'music tag', 'ai studio'], reply: 'AI Studio sudah disederhanakan. Sekarang fokus ke Auto Music Tags untuk rekomendasi tag musik otomatis.' },
           { keywords: ['analisis', 'rekomendasi fitur', 'roadmap'], reply: 'Kalau kamu mau roadmap upgrade YTConv, ketik /analisis. Aku bakal kasih prioritas fitur + impact bisnisnya.' },
           { keywords: ['codex', 'prompt codex', 'implementasi'], reply: 'Butuh prompt implementasi buat tim dev? ketik /promptcodex, nanti aku siapin template prompt yang bisa langsung dieksekusi.' }
@@ -18724,7 +18744,7 @@
           const lower = text.toLowerCase();
           const match = assistantKnowledge.find((item) => item.keywords.some((k) => lower.includes(k)));
           if (match) return match.reply;
-          return 'Siap bantu ✅\n\n**Coba perintah cepat:**\n- `/fitur` untuk daftar fitur lengkap\n- `/help` untuk semua command AI Navigator\n- `/ticket` untuk buka form bantuan\n- `/walkthrough` untuk tur spotlight fitur\n\nKamu juga bisa tanya natural, misalnya: **cara convert playlist**, **cara ambil subtitle**, atau **cara cek status tiket**.';
+          return 'Siap bantu ✅\n\n**Coba perintah cepat:**\n- `/fitur` untuk daftar fitur lengkap\n- `/help` untuk semua command AI Navigator\n- `/ticket` untuk buka form bantuan\n- `/appeal alasan kamu` untuk appeal forum\n- `/walkthrough` untuk tur spotlight fitur\n\nKamu juga bisa tanya natural, misalnya: **downloader helper gagal**, **cara convert playlist**, **cara ambil subtitle**, atau **cara cek status tiket**.';
         };
 
 
@@ -18755,7 +18775,7 @@
           { id: 24, name: 'Badge progress', command: '/badge', detail: 'Tracking badge biar makin semangat.' },
           { id: 25, name: 'Forum assist', command: '/forum', detail: 'Bantuan masalah forum dan moderasi.' },
           { id: 26, name: 'Appeal cepat', command: '/appeal', detail: 'Ajukan appeal langsung dari chat AI.' },
-          { id: 27, name: 'Ticket support', command: '/ticket', detail: 'Buka form tiket CS langsung dari command.' },
+          { id: 27, name: 'Ticket support', command: '/ticket', detail: 'Buka form tiket CS langsung dari command, termasuk upload screenshot dan status realtime.' },
           { id: 28, name: 'Status tiket', command: '/ticket status', detail: 'Pantau status tiket tanpa ribet.' },
           { id: 29, name: 'AI draft tiket', command: '/ticket draft', detail: 'AI bantu ngerapiin isi laporan kamu.' },
           { id: 30, name: 'New chat', command: '/newchat', detail: 'Reset chat biar mulai fresh dari nol.' },
@@ -18772,7 +18792,7 @@
           { id: 41, name: 'Sample URL', command: '/sample', detail: 'Isi URL contoh buat uji cepat.' },
           { id: 42, name: 'Clipboard helper', command: '/paste', detail: 'Paste otomatis dari clipboard ke input.' },
           { id: 43, name: 'Queue manager', command: '/queue', detail: 'Atur urutan antrian convert.' },
-          { id: 44, name: 'Anti-error checklist', command: '/fix', detail: 'Checklist solusi kalau proses ngadat.' },
+          { id: 44, name: 'Anti-error checklist', command: '/fix', detail: 'Checklist solusi kalau proses ngadat + arahkan ke tiket jika helper gagal.' },
           { id: 45, name: 'Attach file', command: '/file', detail: 'Upload file ke chat buat dianalisa AI.' },
           { id: 46, name: 'Attach gambar', command: '/vision', detail: 'Upload gambar + baca metadata visual.' },
           { id: 47, name: 'Deteksi metadata', command: '/meta', detail: 'Lihat info file: tipe, size, dimensi.' },
