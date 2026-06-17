@@ -7,7 +7,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.22), transparent 34rem),
+        radial-gradient(circle at top right, rgba(245,158,11,.14), transparent 28rem),
+        #020617;
+    }
     @keyframes fadeInUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
     .fade-in { animation: fadeInUp .25s ease both; }
     ::-webkit-scrollbar { width:6px; height:6px; } ::-webkit-scrollbar-track { background:#0f172a; } ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
@@ -16,7 +22,9 @@
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
     <!-- HEADER -->
-    <header class="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur p-4 md:p-5 fade-in">
+    <header class="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 p-4 shadow-2xl shadow-indigo-950/30 backdrop-blur md:p-5 fade-in">
+      <div class="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-24 left-1/3 h-44 w-44 rounded-full bg-amber-500/10 blur-3xl"></div>
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">🎫 Admin Ticket Dashboard</h1>
@@ -89,13 +97,17 @@
     </section>
 
     <!-- TAB: APPEALS -->
-    <section id="tab-appeals" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in space-y-4">
+    <section id="tab-appeals" class="hidden rounded-3xl border border-amber-500/20 bg-slate-900/90 p-4 shadow-xl shadow-amber-950/10 fade-in space-y-4">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 class="font-bold">⚖️ Manajemen Appeal Forum</h2>
           <p class="text-xs text-slate-400 mt-0.5">User yang kena ban karena pelanggaran bahasa dapat mengajukan appeal di sini.</p>
+          <p id="appealSyncStatus" class="text-[11px] text-emerald-300 mt-1">Appeal cache aman. Auto-refresh tidak akan menghapus data saat koneksi error.</p>
         </div>
-        <button id="exportAppealsBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Export Appeal Excel</button>
+        <div class="flex flex-wrap gap-2">
+          <button id="refreshAppealsBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">🔄 Refresh Appeal</button>
+          <button id="exportAppealsBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Export Appeal Excel</button>
+        </div>
       </div>
 
       <!-- Appeal Stats -->
@@ -115,7 +127,7 @@
       </div>
 
       <!-- Appeal Action Panel -->
-      <div id="appealPanel" class="hidden rounded-xl border border-amber-700 bg-amber-950/20 p-4 space-y-3">
+      <div id="appealPanel" class="hidden rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-950/40 to-slate-950 p-4 shadow-lg shadow-amber-950/20 space-y-3">
         <div class="flex items-center justify-between">
           <h3 class="font-bold">Proses Appeal: <span id="aPanelId" class="text-amber-300"></span></h3>
           <button onclick="document.getElementById('appealPanel').classList.add('hidden')" class="px-2 py-1 rounded bg-slate-700 text-xs">✕ Tutup</button>
@@ -190,6 +202,8 @@ const saveToken = t => localStorage.setItem(TOKEN_KEY, t || '');
 let allTickets = [];
 let allAppeals = [];
 let currentAppeal = null;
+let ticketLoadPromise = null;
+let appealLoadPromise = null;
 
 // ── Status Badge ──
 const statusBadge = (status = 'received') => {
@@ -247,25 +261,36 @@ function logout() { localStorage.removeItem(TOKEN_KEY); el('authState').textCont
 
 function setLastSync() { el('lastSync').textContent = 'Sync: ' + fmt.format(new Date()); }
 
-async function loadAll() { await loadTickets(); await loadAppeals(); }
+async function loadAll() { await Promise.allSettled([loadTickets(), loadAppeals()]); }
 
 // ── Load Tickets ──
 async function loadTickets() {
+  if (ticketLoadPromise) return ticketLoadPromise;
   const token = getToken();
   const tb = el('ticketRows');
   if (!token) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`; return; }
-  const r = await fetch('/api/admin/tickets', { headers: { Authorization: `Bearer ${token}` } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) {
-    tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(d.error || 'unauthorized')}</td></tr>`;
-    el('authState').textContent = '❌ Token invalid/expired';
-    return;
-  }
-  allTickets = d.tickets || [];
-  el('ticketCount').textContent = `(${allTickets.length})`;
-  renderTickets();
-  el('authState').textContent = '✅ Login aktif';
-  setLastSync();
+  ticketLoadPromise = (async () => {
+    try {
+      const r = await fetch('/api/admin/tickets', { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'unauthorized');
+      allTickets = d.tickets || [];
+      el('ticketCount').textContent = `(${allTickets.length})`;
+      renderTickets();
+      el('authState').textContent = '✅ Login aktif';
+      setLastSync();
+    } catch (err) {
+      if (allTickets.length) {
+        showToast('⚠️ Tiket gagal refresh sebentar, data terakhir tetap ditampilkan.', 'error');
+      } else {
+        tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(err.message || 'Error')}</td></tr>`;
+        el('authState').textContent = '❌ Token invalid/expired';
+      }
+    } finally {
+      ticketLoadPromise = null;
+    }
+  })();
+  return ticketLoadPromise;
 }
 
 function getFilteredTickets() {
@@ -374,14 +399,32 @@ function showToast(msg, type = 'info') {
 
 // ── Load Appeals ──
 async function loadAppeals() {
+  if (appealLoadPromise) return appealLoadPromise;
   const token = getToken();
   const tb = el('appealRows');
   if (!token) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`; return; }
-  const r = await fetch('/api/admin/appeals', { headers: { Authorization: `Bearer ${token}` } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(d.error || 'Error')}</td></tr>`; return; }
-  allAppeals = d.appeals || [];
-  renderAppeals();
+  appealLoadPromise = (async () => {
+    try {
+      const r = await fetch('/api/admin/appeals', { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'appeal_load_failed');
+      allAppeals = d.appeals || [];
+      el('appealSyncStatus').textContent = `Realtime aman • ${fmt.format(new Date())}`;
+      el('appealSyncStatus').className = 'text-[11px] text-emerald-300 mt-1';
+      renderAppeals();
+    } catch (err) {
+      el('appealSyncStatus').textContent = `Koneksi appeal terganggu: ${err.message || 'unknown'} • data terakhir tetap aman`;
+      el('appealSyncStatus').className = 'text-[11px] text-amber-300 mt-1';
+      if (allAppeals.length) {
+        showToast('⚠️ Appeal gagal refresh sebentar, data terakhir tetap ditampilkan.', 'error');
+      } else {
+        tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(err.message || 'Error')}</td></tr>`;
+      }
+    } finally {
+      appealLoadPromise = null;
+    }
+  })();
+  return appealLoadPromise;
 }
 
 function renderAppeals() {
@@ -459,6 +502,7 @@ async function processAppeal(status) {
 
 el('btnAccept').addEventListener('click', () => processAppeal('accepted'));
 el('btnReject').addEventListener('click', () => processAppeal('rejected'));
+el('refreshAppealsBtn').addEventListener('click', () => loadAppeals());
 
 // ── Export ──
 el('exportBtn').addEventListener('click', () => {

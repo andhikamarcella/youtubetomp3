@@ -10,13 +10,21 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.22), transparent 34rem),
+        radial-gradient(circle at top right, rgba(14,165,233,.14), transparent 28rem),
+        #020617;
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 transition-colors" id="appBody">
   <audio id="notifAudio" preload="auto"><source src="data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAgD4AAIA+AAABAAgAZGF0YTAAAAABAQICAgMDAwQEBAUFBQYGBgcHCAgJCQoKCwsMDQ0ODg8PEBAQERESExMUFBQVFRYWFxcYGBkZGhobGxwcHR0eHh8f" type="audio/wav" /></audio>
   <div id="toastWrap" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
   <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
-    <header class="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800 p-5 flex flex-wrap items-center justify-between gap-3">
+    <header class="rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 p-5 shadow-2xl shadow-indigo-950/30 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-extrabold">📊 Dashboard Statistik Realtime</h1>
         <p class="text-slate-300 text-sm">Realtime helpdesk + analytics + monitoring center.</p>
@@ -31,7 +39,7 @@
       </div>
     </header>
 
-    <section class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+    <section class="rounded-3xl border border-amber-500/20 bg-slate-900/90 p-4 shadow-xl shadow-amber-950/10">
       <form id="loginForm" class="grid sm:grid-cols-4 gap-2">
         <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" required>
         <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" required>
@@ -229,7 +237,7 @@
         <h2 class="font-bold">⚖️ Forum Appeal (Prioritas)</h2>
         <button id="refreshAppealsBtn" class="px-2 py-1 rounded bg-indigo-600 text-xs">Refresh Appeal</button>
       </div>
-      <div class="text-xs text-slate-400 mb-2">Appeal dari AI Navigator/forum akan masuk ke sini dan bisa di-accept/reject.</div>
+      <div class="text-xs text-slate-400 mb-2">Appeal dari AI Navigator/forum tersimpan persisten dan auto-refresh tidak menghapus data saat koneksi error.</div>
       <div id="appealSummary" class="text-sm mb-2">Pending: 0 • Diterima: 0 • Ditolak: 0</div>
       <div class="overflow-auto rounded-xl border border-slate-800">
         <table class="min-w-full text-xs">
@@ -253,6 +261,7 @@ const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
 const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
 let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[],appeals:[]};
 let socket=null;
+let loadStatsPromise=null;
 
 const toast=(m,type='info')=>{const n=document.createElement('div');n.className=`px-3 py-2 rounded-lg border text-sm shadow ${type==='error'?'bg-rose-950 border-rose-700':type==='warn'?'bg-amber-950 border-amber-700':'bg-slate-900 border-slate-700'}`;n.textContent=m;el('toastWrap').appendChild(n);setTimeout(()=>n.remove(),3800);};
 const playNotif=()=>{try{el('notifAudio').currentTime=0;el('notifAudio').play().catch(()=>{});}catch{}};
@@ -340,7 +349,7 @@ function renderLoadTesting(data){
 
 function renderAppeals(){const items=state.appeals||[];const by={pending:0,accepted:0,rejected:0};items.forEach((a)=>{if(by[a.status]!==undefined)by[a.status]+=1;});el('appealSummary').textContent=`Pending: ${by.pending||0} • Diterima: ${by.accepted||0} • Ditolak: ${by.rejected||0}`;el('appealRows').innerHTML=items.map((a)=>`<tr class="border-t border-slate-800"><td class="p-2 font-semibold">${a.appealId}</td><td class="p-2">${(a.name||'-').replace(/</g,'&lt;')}<div class="text-[10px] text-slate-400">${(a.userId||'-').replace(/</g,'&lt;')}</div></td><td class="p-2">${(a.socketId||'-').replace(/</g,'&lt;')}</td><td class="p-2">${(a.disabledFeatures||[]).join(', ')||'-'}</td><td class="p-2">${(a.reason||'-').replace(/</g,'&lt;')}</td><td class="p-2">${a.statusLabel||a.status||'-'}</td><td class="p-2"><div class="flex gap-1"><button data-appeal="${a.appealId}" data-status="accepted" class="px-2 py-1 rounded bg-emerald-600 text-[10px]">Accept</button><button data-appeal="${a.appealId}" data-status="rejected" class="px-2 py-1 rounded bg-rose-600 text-[10px]">Reject</button></div></td></tr>`).join('')||'<tr><td class="p-2 text-slate-400" colspan="7">Belum ada appeal masuk.</td></tr>';}
 
-async function loadStats(){const token=getToken();if(!token)return;const res=await fetch('/api/admin/stats',{headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){el('authState').textContent='Token invalid';return;}el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderLoadTesting(data);renderAppeals();applyFilters();}
+async function loadStats(){if(loadStatsPromise)return loadStatsPromise;const token=getToken();if(!token)return;loadStatsPromise=(async()=>{try{const res=await fetch('/api/admin/stats',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'stats_load_failed');el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderLoadTesting(data);renderAppeals();applyFilters();}catch(err){el('authState').textContent=state.allTickets.length||state.appeals.length?`Refresh gagal • cache tetap tampil (${err.message||'error'})`:'Token invalid / server error';if(state.allTickets.length||state.appeals.length)toast('Auto-refresh dashboard gagal sebentar, data terakhir tetap ditampilkan.','warn');}finally{loadStatsPromise=null;}})();return loadStatsPromise;}
 
 function renderChatHistory(items){el('chatHistory').innerHTML=items.map((c)=>`<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender||'system'} • ${c.at?fmt.format(new Date(c.at)):'-'}</div><div class="whitespace-pre-wrap break-words">${(c.message||'').replace(/</g,'&lt;')}</div></div>`).join('')||'<div class="text-slate-500 text-xs">Belum ada chat.</div>';el('chatLimitHint').textContent='Chat admin tanpa batas.';el('chatInput').disabled=false;el('chatHistory').scrollTop=el('chatHistory').scrollHeight;}
 
