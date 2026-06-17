@@ -1788,6 +1788,16 @@
       letter-spacing: .01em;
     }
 
+    .helper-ticket-card {
+      background:
+        radial-gradient(28rem 16rem at 12% 8%, rgba(13, 110, 253, .18), transparent 62%),
+        radial-gradient(24rem 16rem at 90% 20%, rgba(6, 182, 212, .16), transparent 62%),
+        color-mix(in srgb, var(--bs-body-bg) 88%, rgba(99, 102, 241, .12));
+      border-color: color-mix(in srgb, var(--bs-primary) 28%, var(--bs-border-color)) !important;
+      box-shadow: 0 22px 60px rgba(13, 110, 253, .12);
+      backdrop-filter: blur(16px);
+    }
+
     .tw-enhanced .tw-pressed {
       transform: translateY(1px) scale(.99) !important;
     }
@@ -7485,6 +7495,24 @@
                     </div>
                   </div>
                 </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-17">
+                      <i class="bi bi-life-preserver me-2 text-info"></i>Downloader helper gagal, apa yang harus saya kirim?
+                    </button>
+                  </h2>
+                  <div id="q-tr-17" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      <ol class="mb-0">
+                        <li>Klik tombol <strong>Downloader Helper Gagal?</strong> di footer atau buka <strong>Email Bantuan</strong>.</li>
+                        <li>Isi <strong>nama</strong> dan <strong>email</strong> agar admin bisa follow up.</li>
+                        <li>Upload <strong>screenshot error</strong> dan tempel link/video yang dicoba.</li>
+                        <li>Setelah terkirim, simpan nomor tiket lalu pantau lewat <strong>Cek Status Tiket</strong>.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -9262,8 +9290,26 @@
         <div class="d-flex flex-wrap gap-2 mt-3">
           <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="footerCopyCurrentUrlBtn"><i class="bi bi-link-45deg me-1"></i>Copy Halaman</button>
           <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="footerOpenTicketBtn"><i class="bi bi-ticket-detailed me-1"></i>Buat Tiket</button>
+          <button type="button" class="btn btn-sm btn-info rounded-pill text-white" id="downloaderHelperTicketBtn"
+            data-ticket-preset="downloader-helper" data-bs-toggle="modal" data-bs-target="#emailModal">
+            <i class="bi bi-life-preserver me-1"></i>Downloader Helper Gagal?
+          </button>
           <button type="button" class="btn btn-sm btn-outline-info rounded-pill" id="footerOpenChangelogBtn"><i class="bi bi-journal-text me-1"></i>Changelog Cepat</button>
           <span class="badge text-bg-light border d-inline-flex align-items-center" id="footerStatusBadge"><i class="bi bi-activity me-1 text-success"></i>Status: Online</span>
+        </div>
+
+        <div class="mt-3 p-3 p-md-4 rounded-4 border helper-ticket-card">
+          <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
+            <div>
+              <div class="badge rounded-pill text-bg-info mb-2"><i class="bi bi-stars me-1"></i>Support Cepat</div>
+              <h6 class="fw-black mb-1">Downloader helper error? Buat tiket dalam 30 detik.</h6>
+              <p class="small text-secondary mb-0">Cukup isi nama, email, dan upload screenshot error. Sistem akan buat nomor tiket realtime untuk dipantau.</p>
+            </div>
+            <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" data-ticket-preset="downloader-helper"
+              data-bs-toggle="modal" data-bs-target="#emailModal">
+              <i class="bi bi-camera-fill me-1"></i>Buat Tiket + Screenshot
+            </button>
+          </div>
         </div>
 
         <!-- Trust & Verification Badges (New) -->
@@ -9736,6 +9782,10 @@
           </div>
           <div class="modal-body p-4">
             <form id="emailForm">
+              <div class="alert alert-primary small border-0 rounded-4 mb-3">
+                <div class="fw-bold mb-1"><i class="bi bi-life-preserver me-1"></i>Mode bantuan downloader helper</div>
+                Jika downloader helper gagal, kamu cukup isi <strong>nama</strong>, <strong>email</strong>, lalu upload <strong>screenshot error</strong>. Deskripsi bisa dibuat otomatis.
+              </div>
               <div class="mb-3">
                 <label for="emailName" class="form-label small fw-semibold text-secondary">Nama</label>
                 <input type="text" class="form-control rounded-pill bg-body-tertiary" name="name" id="emailName"
@@ -13525,6 +13575,32 @@
 
           document.getElementById('emailModal')?.addEventListener('show.bs.modal', ensureTicketId);
           ensureTicketId();
+
+          const applyDownloaderHelperPreset = () => {
+            ensureTicketId();
+            if (form.category) form.category.value = 'teknis';
+            if (form.message && !form.message.value.trim()) {
+              form.message.value = [
+                'Downloader helper gagal / tidak bisa download.',
+                '',
+                'Saya sudah upload screenshot error pada lampiran.',
+                'Nama dan email sudah saya isi agar admin bisa follow up.',
+                '',
+                'Detail tambahan:',
+                '- Link/video yang dicoba:',
+                '- Format yang dipilih:',
+                '- Pesan error yang muncul:'
+              ].join('\n');
+            }
+            if (proofPreview) proofPreview.textContent = 'Silakan upload screenshot error downloader helper di sini.';
+            if (aiDraftHint) aiDraftHint.textContent = 'Preset downloader helper aktif. Isi nama, email, screenshot, lalu kirim tiket.';
+            setToast('Mode tiket downloader helper aktif. Isi nama, email, dan screenshot error.', 'info');
+            setTimeout(() => (form.name || form.email || form.message)?.focus?.(), 120);
+          };
+
+          document.querySelectorAll('[data-ticket-preset="downloader-helper"]').forEach((button) => {
+            button.addEventListener('click', () => setTimeout(applyDownloaderHelperPreset, 120));
+          });
 
           if (proofInput && proofPreview) {
             proofInput.addEventListener('change', () => {
@@ -18655,8 +18731,10 @@
           { keywords: ['musik', 'background'], reply: 'Aktifkan Adaptive Background Music. Pilih mood Energetic/Focus/Chill atau biarkan auto mengikuti waktu.' },
           { keywords: ['voice', 'suara'], reply: 'Aktifkan Voice & Narrator lalu tekan tombol mic untuk perintah seperti "buka donasi" atau "mainkan game".' },
           { keywords: ['game', 'mini'], reply: 'Neo Runner ada di Experience Hub. Tekan mulai, gunakan Space atau tap layar untuk melompat, dan kejar skor terbaik.' },
-          { keywords: ['tiket', 'ticket', 'status tiket', 'lapor'], reply: 'Butuh bantuan? Buka form tiket CS, lalu gunakan tombol bantu AI untuk menyusun deskripsi otomatis. Setelah kirim, tekan Cek Status Tiket.' },
-          { keywords: ['fitur', 'feature', 'menu'], reply: 'Fitur utama: Converter, Preview/Download, Subtitle, AI Navigator, Ticket Support, Experience Hub, Profil, dan FAQ.' },
+          { keywords: ['tiket', 'ticket', 'status tiket', 'lapor'], reply: 'Butuh bantuan? Buka form tiket CS, lalu gunakan tombol bantu AI untuk menyusun deskripsi otomatis. Setelah kirim, tekan Cek Status Tiket untuk realtime status, chat, dan upload bukti tambahan.' },
+          { keywords: ['downloader helper', 'helper gagal', 'download gagal', 'screenshot error'], reply: 'Kalau downloader helper gagal, klik tombol **Downloader Helper Gagal?** di footer. Isi nama + email, upload screenshot error, lalu tiket akan masuk admin dan bisa dicek realtime.' },
+          { keywords: ['admin dashboard', 'admin tiket', 'hapus ticket', 'hapus appeal'], reply: 'Admin dashboard/tickets sudah mendukung persistent refresh, pagination, dan hapus ticket/appeal lama dari store agar tabel tetap rapi.' },
+          { keywords: ['fitur', 'feature', 'menu'], reply: 'Fitur utama: Converter, Preview/Download, Subtitle, AI Navigator, Ticket Support realtime, Appeal Forum persistent, Experience Hub, Profil, dan FAQ.' },
           { keywords: ['auto tag', 'music tag', 'ai studio'], reply: 'AI Studio sudah disederhanakan. Sekarang fokus ke Auto Music Tags untuk rekomendasi tag musik otomatis.' },
           { keywords: ['analisis', 'rekomendasi fitur', 'roadmap'], reply: 'Kalau kamu mau roadmap upgrade YTConv, ketik /analisis. Aku bakal kasih prioritas fitur + impact bisnisnya.' },
           { keywords: ['codex', 'prompt codex', 'implementasi'], reply: 'Butuh prompt implementasi buat tim dev? ketik /promptcodex, nanti aku siapin template prompt yang bisa langsung dieksekusi.' }
@@ -18666,7 +18744,7 @@
           const lower = text.toLowerCase();
           const match = assistantKnowledge.find((item) => item.keywords.some((k) => lower.includes(k)));
           if (match) return match.reply;
-          return 'Siap bantu ✅\n\n**Coba perintah cepat:**\n- `/fitur` untuk daftar fitur lengkap\n- `/help` untuk semua command AI Navigator\n- `/ticket` untuk buka form bantuan\n- `/walkthrough` untuk tur spotlight fitur\n\nKamu juga bisa tanya natural, misalnya: **cara convert playlist**, **cara ambil subtitle**, atau **cara cek status tiket**.';
+          return 'Siap bantu ✅\n\n**Coba perintah cepat:**\n- `/fitur` untuk daftar fitur lengkap\n- `/help` untuk semua command AI Navigator\n- `/ticket` untuk buka form bantuan\n- `/appeal alasan kamu` untuk appeal forum\n- `/walkthrough` untuk tur spotlight fitur\n\nKamu juga bisa tanya natural, misalnya: **downloader helper gagal**, **cara convert playlist**, **cara ambil subtitle**, atau **cara cek status tiket**.';
         };
 
 
@@ -18697,7 +18775,7 @@
           { id: 24, name: 'Badge progress', command: '/badge', detail: 'Tracking badge biar makin semangat.' },
           { id: 25, name: 'Forum assist', command: '/forum', detail: 'Bantuan masalah forum dan moderasi.' },
           { id: 26, name: 'Appeal cepat', command: '/appeal', detail: 'Ajukan appeal langsung dari chat AI.' },
-          { id: 27, name: 'Ticket support', command: '/ticket', detail: 'Buka form tiket CS langsung dari command.' },
+          { id: 27, name: 'Ticket support', command: '/ticket', detail: 'Buka form tiket CS langsung dari command, termasuk upload screenshot dan status realtime.' },
           { id: 28, name: 'Status tiket', command: '/ticket status', detail: 'Pantau status tiket tanpa ribet.' },
           { id: 29, name: 'AI draft tiket', command: '/ticket draft', detail: 'AI bantu ngerapiin isi laporan kamu.' },
           { id: 30, name: 'New chat', command: '/newchat', detail: 'Reset chat biar mulai fresh dari nol.' },
@@ -18714,7 +18792,7 @@
           { id: 41, name: 'Sample URL', command: '/sample', detail: 'Isi URL contoh buat uji cepat.' },
           { id: 42, name: 'Clipboard helper', command: '/paste', detail: 'Paste otomatis dari clipboard ke input.' },
           { id: 43, name: 'Queue manager', command: '/queue', detail: 'Atur urutan antrian convert.' },
-          { id: 44, name: 'Anti-error checklist', command: '/fix', detail: 'Checklist solusi kalau proses ngadat.' },
+          { id: 44, name: 'Anti-error checklist', command: '/fix', detail: 'Checklist solusi kalau proses ngadat + arahkan ke tiket jika helper gagal.' },
           { id: 45, name: 'Attach file', command: '/file', detail: 'Upload file ke chat buat dianalisa AI.' },
           { id: 46, name: 'Attach gambar', command: '/vision', detail: 'Upload gambar + baca metadata visual.' },
           { id: 47, name: 'Deteksi metadata', command: '/meta', detail: 'Lihat info file: tipe, size, dimensi.' },
