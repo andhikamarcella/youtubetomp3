@@ -75,6 +75,11 @@ import {
   listTickets,
   updateTicket,
 } from "./ticket_store.js";
+import {
+  createAppeal,
+  listAppeals,
+  updateAppeal as updateStoredAppeal,
+} from "./appeal_store.js";
 // Tambahan untuk ffmpeg portable (opsional)
 let ffmpegPath = null;
 try {
@@ -9634,7 +9639,7 @@ const INDONESIAN_BADWORDS = [
 
 const SUPPORT_CONTACT_EMAIL = process.env.SUPPORT_CONTACT_EMAIL || "forumwargaytmp3@gmail.com";
 
-const buildAppealId = () => `APL-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+const buildAppealId = () => `APL-${nanoid(12).toUpperCase()}`;
 
 const isForumUserBlocked = ({ userId = "", violationCount = 0, disabledFeatures = [] } = {}) => {
   const normalizedUserId = String(userId || "").trim();
@@ -9700,7 +9705,8 @@ const submitForumAppeal = async ({
     reviewedBy: "",
     reviewNote: "",
   };
-  forumAppeals.set(appealId, appeal);
+  const persistedAppeal = await createAppeal(appeal);
+  forumAppeals.set(appealId, persistedAppeal);
   pushActivityLog("forum_appeal_submitted", `Forum appeal ${appealId} dibuat`, {
     appealId,
     userId: appeal.userId,
@@ -9709,28 +9715,28 @@ const submitForumAppeal = async ({
   io.emit("admin:appealCreated", {
     appealId,
     submittedAt,
-    userId: appeal.userId,
-    name: appeal.name,
-    status: appeal.status,
+    userId: persistedAppeal.userId,
+    name: persistedAppeal.name,
+    status: persistedAppeal.status,
     source,
   });
 
   const appealLines = [
     "=== Forum Appeal Request ===",
-    `Appeal ID : ${appeal.appealId}`,
-    `Source    : ${appeal.source}`,
-    `User ID   : ${appeal.userId || "-"}`,
-    `Name      : ${appeal.name || "-"}`,
-    `Email     : ${appeal.email || "-"}`,
-    `Room      : ${appeal.room || "-"}`,
-    `Socket ID : ${appeal.socketId || "-"}`,
-    `Disabled  : ${appeal.disabledFeatures.join(", ") || "-"}`,
-    `Reason    : ${appeal.reason || "-"}`,
-    `Time      : ${appeal.submittedAt}`,
+    `Appeal ID : ${persistedAppeal.appealId}`,
+    `Source    : ${persistedAppeal.source}`,
+    `User ID   : ${persistedAppeal.userId || "-"}`,
+    `Name      : ${persistedAppeal.name || "-"}`,
+    `Email     : ${persistedAppeal.email || "-"}`,
+    `Room      : ${persistedAppeal.room || "-"}`,
+    `Socket ID : ${persistedAppeal.socketId || "-"}`,
+    `Disabled  : ${persistedAppeal.disabledFeatures.join(", ") || "-"}`,
+    `Reason    : ${persistedAppeal.reason || "-"}`,
+    `Time      : ${persistedAppeal.submittedAt}`,
     "SLA       : 2x24 jam",
   ];
-  await sendSupportEmail({ subject: `[Forum Appeal] ${appeal.appealId}`, lines: appealLines });
-  return appeal;
+  await sendSupportEmail({ subject: `[Forum Appeal] ${persistedAppeal.appealId}`, lines: appealLines });
+  return persistedAppeal;
 };
 
 const sendSupportEmail = async ({ subject, lines = [], html = null, to = SUPPORT_CONTACT_EMAIL }) => {
@@ -10066,9 +10072,23 @@ app.post("/api/forum/appeal", express.json({ limit: "512kb" }), async (req, res)
   }
 });
 
-app.get("/api/forum/status", (req, res) => {
+app.get("/api/forum/status", async (req, res) => {
   const userId = String(req.query?.userId || "").trim();
   if (!userId) return res.status(400).json({ ok: false, error: "user_id_required" });
+  if (!forumUnblockedUsers.has(userId)) {
+    try {
+      const accepted = (await listAppeals()).find((appeal) => appeal.userId === userId && appeal.status === "accepted");
+      if (accepted) {
+        forumUnblockedUsers.set(userId, {
+          appealId: accepted.appealId,
+          reviewedBy: accepted.reviewedBy || "admin",
+          reviewedAt: accepted.reviewedAt || accepted.updatedAt || null,
+        });
+      }
+    } catch (err) {
+      console.warn("[appeal-store] status memakai cache karena store gagal", err?.message || err);
+    }
+  }
   const state = isForumUserBlocked({ userId });
   return res.json({
     ok: true,
@@ -10108,7 +10128,7 @@ app.get("/api/ticket/:ticketId", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("[ticket-store] gagal membaca %s", ticketId, err);
+    console.error(`[ticket-store] gagal membaca ${ticketId}`, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
@@ -10140,11 +10160,17 @@ app.get("/api/admin/tickets", async (req, res) => {
   }
 });
 
-app.get("/api/admin/appeals", (req, res) => {
+app.get("/api/admin/appeals", async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const appeals = Array.from(forumAppeals.values())
-    .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
-  return res.json({ ok: true, appeals });
+  try {
+    const appeals = (await listAppeals())
+      .sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+    appeals.forEach((appeal) => forumAppeals.set(appeal.appealId, appeal));
+    return res.json({ ok: true, appeals });
+  } catch (err) {
+    console.error("[appeal-store] gagal memuat daftar appeal", err);
+    return res.status(503).json({ ok: false, error: "appeal_store_unavailable" });
+  }
 });
 
 app.post("/api/load-test/report", express.json({ limit: "256kb" }), (req, res) => {
@@ -10174,23 +10200,31 @@ app.get("/api/admin/load-tests", (req, res) => {
   return res.json({ ok: true, reports: loadTestReports.slice(0, 40) });
 });
 
-app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), (req, res) => {
+app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   const appealId = String(req.params.appealId || "").trim().toUpperCase();
-  const appeal = forumAppeals.get(appealId);
-  if (!appeal) return res.status(404).json({ ok: false, error: "appeal_not_found" });
   let status = String(req.body?.status || "").trim().toLowerCase();
   if (status === "resolved") status = "accepted";
   if (!["accepted", "rejected", "pending"].includes(status)) {
     return res.status(400).json({ ok: false, error: "invalid_status" });
   }
   const statusLabelMap = { accepted: "Diterima", rejected: "Ditolak", pending: "Pending" };
-  appeal.status = status;
-  appeal.statusLabel = statusLabelMap[status] || status;
-  appeal.reviewNote = String(req.body?.reviewNote || req.body?.adminNote || "").slice(0, 1200);
-  appeal.reviewedBy = String(req.body?.reviewedBy || "admin").slice(0, 120);
-  appeal.reviewedAt = status === "pending" ? null : new Date().toISOString();
-  appeal.updatedAt = new Date().toISOString();
+  let appeal;
+  try {
+    appeal = await updateStoredAppeal(appealId, (current) => {
+      current.status = status;
+      current.statusLabel = statusLabelMap[status] || status;
+      current.reviewNote = String(req.body?.reviewNote || req.body?.adminNote || "").slice(0, 1200);
+      current.reviewedBy = String(req.body?.reviewedBy || "admin").slice(0, 120);
+      current.reviewedAt = status === "pending" ? null : new Date().toISOString();
+      current.updatedAt = new Date().toISOString();
+      return current;
+    });
+  } catch (err) {
+    console.error(`[appeal-store] gagal update ${appealId}`, err);
+    return res.status(503).json({ ok: false, error: "appeal_store_unavailable" });
+  }
+  if (!appeal) return res.status(404).json({ ok: false, error: "appeal_not_found" });
   if (status === "accepted" && appeal.userId) {
     forumUnblockedUsers.set(appeal.userId, {
       appealId,
@@ -10257,8 +10291,16 @@ app.get("/api/admin/session-replay/:socketId", (req, res) => {
   });
 });
 
-app.get("/api/admin/stats", (req, res) => {
+app.get("/api/admin/stats", async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  let persistedAppeals = [];
+  try {
+    persistedAppeals = await listAppeals();
+    persistedAppeals.forEach((appeal) => forumAppeals.set(appeal.appealId, appeal));
+  } catch (err) {
+    console.warn("[appeal-store] stats memakai cache karena store gagal", err?.message || err);
+    persistedAppeals = Array.from(forumAppeals.values());
+  }
   const now = new Date();
   const dayBuckets = new Map();
   const tickets = Array.from(supportTickets.values());
@@ -10299,7 +10341,7 @@ app.get("/api/admin/stats", (req, res) => {
   })).sort((a, b) => b.hits - a.hits).slice(0, 20);
   const returningUsers = Array.from(retentionUsers.values()).filter((u) => Number(u.sessions || 0) > 1).length;
   const newUsers = Math.max(0, retentionUsers.size - returningUsers);
-  const appeals = Array.from(forumAppeals.values()).sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+  const appeals = persistedAppeals.sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
   const appealsByStatus = appeals.reduce((acc, item) => {
     const key = String(item?.status || "pending");
     acc[key] = (acc[key] || 0) + 1;
@@ -10502,7 +10544,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
 
     return res.json({ ok: true, ticket });
   } catch (err) {
-    console.error("[ticket-store] gagal update %s", ticketId, err);
+    console.error(`[ticket-store] gagal update ${ticketId}`, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
@@ -10568,7 +10610,7 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), async (
     pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
     return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
   } catch (err) {
-    console.error("[ticket-store] gagal menyimpan chat user %s", ticketId, err);
+    console.error(`[ticket-store] gagal menyimpan chat user ${ticketId}`, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
@@ -10664,7 +10706,7 @@ app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async 
     pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
     return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
   } catch (err) {
-    console.error("[ticket-store] gagal menyimpan bukti %s", ticketId, err);
+    console.error(`[ticket-store] gagal menyimpan bukti ${ticketId}`, err);
     return res.status(503).json({ ok: false, error: "ticket_store_unavailable" });
   }
 });
