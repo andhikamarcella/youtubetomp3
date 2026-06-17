@@ -17,6 +17,10 @@ test("admin dashboard auto-refresh tidak menghapus appeal saat error", () => {
   assert.match(dashboard, /loadStatsPromise/);
   assert.match(dashboard, /cache tetap tampil/);
   assert.match(dashboard, /auto-refresh tidak menghapus data/);
+  assert.match(index, /persistedTickets = await listTickets\(\)/);
+  assert.match(index, /stats memakai cache karena store gagal/);
+  assert.match(dashboard, /deleteTicketFromDashboard/);
+  assert.match(dashboard, /deleteAppealFromDashboard/);
 });
 
 test("server appeal memakai persistent store Firestore\/file", () => {
@@ -24,5 +28,14 @@ test("server appeal memakai persistent store Firestore\/file", () => {
   assert.match(index, /await createAppeal\(appeal\)/);
   assert.match(index, /await listAppeals\(\)/);
   assert.match(index, /await updateStoredAppeal/);
+  assert.match(index, /deleteAppeal/);
+  assert.match(index, /app\.delete\("\/api\/admin\/appeals\/:appealId"/);
+  assert.match(index, /app\.delete\("\/api\/admin\/tickets\/:ticketId"/);
   assert.match(index, /APL-\$\{nanoid\(12\)\.toUpperCase\(\)\}/);
+});
+
+test("server AI prompt mengetahui update tiket dan admin terbaru", () => {
+  assert.match(index, /Ticket support sekarang persistent/);
+  assert.match(index, /Downloader helper gagal/);
+  assert.match(index, /pagination dan delete/);
 });
