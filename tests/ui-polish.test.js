@@ -38,9 +38,16 @@ test("admin pages memakai premium panels dan tetap punya kontrol utama", () => {
   for (const id of ["loginForm", "ticketRows", "appealRows", "refreshAppealsBtn"]) {
     assert.match(pages.tickets, new RegExp(`id=["']${id}["']`));
   }
+  for (const id of ["ticketPrevBtn", "ticketNextBtn", "appealPrevBtn", "appealNextBtn"]) {
+    assert.match(pages.tickets, new RegExp(`id=["']${id}["']`));
+  }
+  assert.match(pages.tickets, /deleteTicketRow/);
+  assert.match(pages.tickets, /deleteAppealRow/);
   for (const id of ["loginView", "uploadView", "statusBox", "uploadBtn", "refreshStatusBtn"]) {
     assert.match(pages.cookies, new RegExp(`id=["']${id}["']`));
   }
+  assert.match(pages.dashboard, /grid grid-cols-2 gap-2 w-full sm:flex/);
+  assert.match(pages.dashboard, /grid sm:grid-cols-2 xl:grid-cols-5 gap-2/);
 });
 
 test("ticket status tetap realtime dan mendapat visual hover polish", () => {
@@ -75,8 +82,10 @@ test("tailwind bridge memberi polish menyeluruh ke elemen umum", () => {
 
 test("tailwind bridge memakai sans font dan glow interaktif", () => {
   assert.match(pages.bridge, /font-family:\s*Inter, "Segoe UI", system-ui/);
+  assert.match(pages.bridge, /tw-glow-orb/);
+  assert.match(pages.bridge, /ensureGlowOrb/);
   assert.match(pages.bridge, /--tw-glow-x/);
   assert.match(pages.bridge, /pointermove/);
-  assert.match(pages.bridge, /rgba\(99, 102, 241, \.20\)/);
+  assert.match(pages.bridge, /rgba\(99, 102, 241, \.24\)/);
   assert.match(pages.bridge, /box-shadow: 0 28px 80px/);
 });
