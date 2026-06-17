@@ -173,3 +173,29 @@ export const updateTicket = async (ticketIdValue, updater) => {
     return clone(record);
   });
 };
+
+export const deleteTicket = async (ticketIdValue) => {
+  const ticketId = normalizeTicketId(ticketIdValue);
+  if (!ticketId) return false;
+  const db = getTicketFirestore();
+
+  if (db) {
+    logBackend("firestore");
+    const ref = db.collection(COLLECTION).doc(ticketId);
+    return db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) return false;
+      transaction.delete(ref);
+      return true;
+    });
+  }
+
+  logBackend("file");
+  return withFileWrite(async () => {
+    const data = await readFileStore();
+    if (!data.tickets[ticketId]) return false;
+    delete data.tickets[ticketId];
+    await writeFileStore(data);
+    return true;
+  });
+};
