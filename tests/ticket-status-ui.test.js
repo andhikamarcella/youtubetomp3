@@ -34,6 +34,20 @@ test("homepage menyediakan cek status tiket publik di sebelah Email Bantuan", ()
   assert.match(home, /window\.location\.assign\(buildTicketStatusLink\(ticketId\)\)/);
 });
 
+test("homepage menyediakan tiket cepat saat downloader helper gagal", () => {
+  assert.match(home, /id=["']downloaderHelperTicketBtn["']/);
+  assert.match(home, /data-ticket-preset=["']downloader-helper["']/);
+  assert.match(home, /applyDownloaderHelperPreset/);
+  assert.match(home, /Silakan upload screenshot error downloader helper/);
+});
+
+test("FAQ dan AI Navigator tahu update downloader helper serta tiket realtime", () => {
+  assert.match(home, /Downloader helper gagal, apa yang harus saya kirim/);
+  assert.match(home, /Cek Status Tiket/);
+  assert.match(home, /Ticket Support realtime/);
+  assert.match(home, /pagination,? dan hapus ticket\/appeal lama/);
+});
+
 test("homepage memakai ID tiket kanonik dari respons server", () => {
   assert.match(home, /canonicalTicketId\s*=\s*String\(result\?\.ticketId/);
   assert.match(home, /ticketId:\s*canonicalTicketId/);
