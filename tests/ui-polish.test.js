@@ -4,6 +4,7 @@ import test from "node:test";
 
 const pages = {
   home: await readFile(new URL("../public-ui/index.html", import.meta.url), "utf8"),
+  appMain: await readFile(new URL("../public-ui/app-main.js", import.meta.url), "utf8"),
   dashboard: await readFile(new URL("../public-ui/admin-dashboard.html", import.meta.url), "utf8"),
   tickets: await readFile(new URL("../public-ui/admin-tickets.html", import.meta.url), "utf8"),
   cookies: await readFile(new URL("../public-ui/admin-cookies.html", import.meta.url), "utf8"),
@@ -12,8 +13,8 @@ const pages = {
 };
 
 test("homepage mendapat premium polish layer tanpa menghapus fitur utama", () => {
-  assert.match(pages.home, /cdn\.tailwindcss\.com/);
-  assert.match(pages.home, /preflight:\s*false/);
+  assert.doesNotMatch(pages.home, /cdn\.tailwindcss\.com/);
+  assert.match(pages.home, /tailwind-lite\.css/);
   assert.match(pages.home, /family=Inter:wght@400;500;600;700;800;900/);
   assert.match(pages.home, /font-family:\s*"Inter", "Segoe UI"/);
   assert.match(pages.home, /Homepage tidy pass/);
@@ -92,7 +93,9 @@ test("tailwind bridge memakai sans font dan glow interaktif", () => {
 
 
 test("homepage mengurangi render blocking untuk skor performance", () => {
-  assert.match(pages.home, /cdn\.tailwindcss\.com" defer/);
+  assert.doesNotMatch(pages.home, /cdn\.tailwindcss\.com/);
+  assert.match(pages.home, /href="\.\/tailwind-lite\.css"/);
+  assert.match(pages.home, /<script src="\.\/app-main\.js" defer><\/script>/);
   assert.match(pages.home, /rel="apple-touch-icon" href="\.\/icons\/icon\.svg"/);
   assert.doesNotMatch(pages.home, /rel="apple-touch-icon"[\s\S]{0,120}data:image\/png/);
   assert.match(pages.home, /rel="preload" as="style"[\s\S]{0,220}bootstrap@5\.3\.3/);
@@ -103,9 +106,29 @@ test("homepage menunda script berat dan menguatkan SEO", () => {
   assert.match(pages.home, /rel="canonical" href="https:\/\/ytconv\.up\.railway\.app\/"/);
   assert.match(pages.home, /name="robots" content="index,follow/);
   assert.match(pages.home, /__ytconvDeferredScripts/);
+  assert.match(pages.home, /content-visibility: auto/);
+  assert.match(pages.home, /modal-backdrop[\s\S]{0,220}background: rgba\(3, 7, 18, \.82\)/);
+  assert.match(pages.home, /font-family: "Inter", "Segoe UI", system-ui/);
   assert.match(pages.home, /requestIdleCallback\(run, \{ timeout: 1800 \}\)/);
   assert.doesNotMatch(pages.home, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/howler\/2\.2\.4\/howler\.min\.js"/);
   assert.doesNotMatch(pages.home, /<script src="https:\/\/accounts\.google\.com\/gsi\/client"/);
   assert.match(pages.home, /aria-label="Cari pertanyaan FAQ"/);
   assert.match(pages.home, /aria-label="Pilih model AI Navigator"/);
+});
+
+
+test("homepage memindahkan JavaScript utama ke asset cacheable", () => {
+  assert.match(pages.home, /<script src="\.\/app-main\.js" defer><\/script>/);
+  assert.match(pages.appMain, /canonicalTicketId\s*=\s*String\(result\?\.ticketId/);
+  assert.match(pages.appMain, /faqTabContent && !faqTabContent\.dataset\.collapseFallbackBound/);
+  assert.match(pages.home, /href="\.\/tailwind-lite\.css"/);
+});
+
+
+test("AI Navigator dan backdrop modal tetap rapi", () => {
+  assert.match(pages.home, /\.assistant-quick-suggestions \{[\s\S]{0,180}grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(pages.home, /text-overflow: ellipsis/);
+  assert.match(pages.home, /\.assistant-panel \.assistant-messages \{[\s\S]{0,180}max-height: clamp\(12rem, 40vh, 22rem\)/);
+  assert.match(pages.home, /body \.modal-backdrop \{[\s\S]{0,180}pointer-events: auto !important/);
+  assert.match(pages.home, /body \.modal-backdrop\.show \{[\s\S]{0,180}backdrop-filter: blur\(5px\)/);
 });
