@@ -6,17 +6,34 @@
   <title>Admin Tickets • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="/tailwind-ui-bridge.js" defer></script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.22), transparent 34rem),
+        radial-gradient(circle at top right, rgba(245,158,11,.14), transparent 28rem),
+        #020617;
+    }
     @keyframes fadeInUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
     .fade-in { animation: fadeInUp .25s ease both; }
+    .premium-panel {
+      background: rgba(15, 23, 42, .88);
+      border-color: rgba(148, 163, 184, .16);
+      box-shadow: 0 20px 55px rgba(2, 6, 23, .32);
+      backdrop-filter: blur(16px);
+    }
+    .premium-panel:hover { border-color: rgba(129, 140, 248, .34); }
+    .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
     ::-webkit-scrollbar { width:6px; height:6px; } ::-webkit-scrollbar-track { background:#0f172a; } ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
   </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
     <!-- HEADER -->
-    <header class="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur p-4 md:p-5 fade-in">
+    <header class="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 p-4 shadow-2xl shadow-indigo-950/30 backdrop-blur md:p-5 fade-in">
+      <div class="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-24 left-1/3 h-44 w-44 rounded-full bg-amber-500/10 blur-3xl"></div>
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">🎫 Admin Ticket Dashboard</h1>
@@ -33,7 +50,7 @@
 
     <!-- AUTH -->
     <section class="grid md:grid-cols-3 gap-3 fade-in">
-      <form id="loginForm" class="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+      <form id="loginForm" class="premium-panel md:col-span-2 rounded-2xl border p-4 space-y-3">
         <div class="font-bold text-sm">🔐 Login Admin</div>
         <div class="grid sm:grid-cols-4 gap-2">
           <input id="username" placeholder="Username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" required>
@@ -43,7 +60,7 @@
         </div>
         <p class="text-xs text-slate-500">Gunakan kredensial Railway admin kamu</p>
       </form>
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4 space-y-1 fade-in">
+      <div class="premium-panel rounded-2xl border p-4 space-y-1 fade-in">
         <div class="text-sm text-slate-400 font-semibold">Status</div>
         <div id="authState" class="font-semibold text-sm">Belum login</div>
         <div id="lastSync" class="text-xs text-slate-500"></div>
@@ -57,7 +74,7 @@
     </div>
 
     <!-- TAB: TICKETS -->
-    <section id="tab-tickets" class="rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in">
+    <section id="tab-tickets" class="premium-panel rounded-3xl border p-4 fade-in">
       <div class="flex flex-wrap gap-2 mb-4">
         <input id="searchTkt" placeholder="Cari ID/nama/email..." class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm w-52">
         <select id="filterStatusTkt" class="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-sm">
@@ -86,16 +103,27 @@
           <tbody id="ticketRows"></tbody>
         </table>
       </div>
+      <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
+        <div id="ticketPagerInfo">Menampilkan 0 tiket</div>
+        <div class="flex gap-2">
+          <button id="ticketPrevBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">← Prev</button>
+          <button id="ticketNextBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">Next →</button>
+        </div>
+      </div>
     </section>
 
     <!-- TAB: APPEALS -->
-    <section id="tab-appeals" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 fade-in space-y-4">
+    <section id="tab-appeals" class="hidden rounded-3xl border border-amber-500/20 bg-slate-900/90 p-4 shadow-xl shadow-amber-950/10 fade-in space-y-4">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 class="font-bold">⚖️ Manajemen Appeal Forum</h2>
           <p class="text-xs text-slate-400 mt-0.5">User yang kena ban karena pelanggaran bahasa dapat mengajukan appeal di sini.</p>
+          <p id="appealSyncStatus" class="text-[11px] text-emerald-300 mt-1">Appeal cache aman. Auto-refresh tidak akan menghapus data saat koneksi error.</p>
         </div>
-        <button id="exportAppealsBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Export Appeal Excel</button>
+        <div class="flex flex-wrap gap-2">
+          <button id="refreshAppealsBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-semibold">🔄 Refresh Appeal</button>
+          <button id="exportAppealsBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold">Export Appeal Excel</button>
+        </div>
       </div>
 
       <!-- Appeal Stats -->
@@ -115,7 +143,7 @@
       </div>
 
       <!-- Appeal Action Panel -->
-      <div id="appealPanel" class="hidden rounded-xl border border-amber-700 bg-amber-950/20 p-4 space-y-3">
+      <div id="appealPanel" class="hidden rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-950/40 to-slate-950 p-4 shadow-lg shadow-amber-950/20 space-y-3">
         <div class="flex items-center justify-between">
           <h3 class="font-bold">Proses Appeal: <span id="aPanelId" class="text-amber-300"></span></h3>
           <button onclick="document.getElementById('appealPanel').classList.add('hidden')" class="px-2 py-1 rounded bg-slate-700 text-xs">✕ Tutup</button>
@@ -160,6 +188,13 @@
           <tbody id="appealRows"></tbody>
         </table>
       </div>
+      <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
+        <div id="appealPagerInfo">Menampilkan 0 appeal</div>
+        <div class="flex gap-2">
+          <button id="appealPrevBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">← Prev</button>
+          <button id="appealNextBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40" type="button">Next →</button>
+        </div>
+      </div>
     </section>
   </div>
 
@@ -190,6 +225,11 @@ const saveToken = t => localStorage.setItem(TOKEN_KEY, t || '');
 let allTickets = [];
 let allAppeals = [];
 let currentAppeal = null;
+let ticketLoadPromise = null;
+let appealLoadPromise = null;
+const PAGE_SIZE = 10;
+let ticketPage = 1;
+let appealPage = 1;
 
 // ── Status Badge ──
 const statusBadge = (status = 'received') => {
@@ -247,25 +287,36 @@ function logout() { localStorage.removeItem(TOKEN_KEY); el('authState').textCont
 
 function setLastSync() { el('lastSync').textContent = 'Sync: ' + fmt.format(new Date()); }
 
-async function loadAll() { await loadTickets(); await loadAppeals(); }
+async function loadAll() { await Promise.allSettled([loadTickets(), loadAppeals()]); }
 
 // ── Load Tickets ──
 async function loadTickets() {
+  if (ticketLoadPromise) return ticketLoadPromise;
   const token = getToken();
   const tb = el('ticketRows');
   if (!token) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`; return; }
-  const r = await fetch('/api/admin/tickets', { headers: { Authorization: `Bearer ${token}` } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) {
-    tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(d.error || 'unauthorized')}</td></tr>`;
-    el('authState').textContent = '❌ Token invalid/expired';
-    return;
-  }
-  allTickets = d.tickets || [];
-  el('ticketCount').textContent = `(${allTickets.length})`;
-  renderTickets();
-  el('authState').textContent = '✅ Login aktif';
-  setLastSync();
+  ticketLoadPromise = (async () => {
+    try {
+      const r = await fetch('/api/admin/tickets', { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'unauthorized');
+      allTickets = d.tickets || [];
+      el('ticketCount').textContent = `(${allTickets.length})`;
+      renderTickets();
+      el('authState').textContent = '✅ Login aktif';
+      setLastSync();
+    } catch (err) {
+      if (allTickets.length) {
+        showToast('⚠️ Tiket gagal refresh sebentar, data terakhir tetap ditampilkan.', 'error');
+      } else {
+        tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(err.message || 'Error')}</td></tr>`;
+        el('authState').textContent = '❌ Token invalid/expired';
+      }
+    } finally {
+      ticketLoadPromise = null;
+    }
+  })();
+  return ticketLoadPromise;
 }
 
 function getFilteredTickets() {
@@ -280,12 +331,24 @@ function getFilteredTickets() {
   });
 }
 
+function pageSlice(items, page) {
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * PAGE_SIZE;
+  return { totalPages, safePage, start, items: items.slice(start, start + PAGE_SIZE) };
+}
+
 function renderTickets() {
   const tickets = getFilteredTickets();
   const tb = el('ticketRows');
+  const page = pageSlice(tickets, ticketPage);
+  ticketPage = page.safePage;
+  el('ticketPagerInfo').textContent = tickets.length ? `Menampilkan ${page.start + 1}-${Math.min(page.start + PAGE_SIZE, tickets.length)} dari ${tickets.length} tiket • Halaman ${page.safePage}/${page.totalPages}` : 'Menampilkan 0 tiket';
+  el('ticketPrevBtn').disabled = page.safePage <= 1;
+  el('ticketNextBtn').disabled = page.safePage >= page.totalPages;
   if (!tickets.length) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Belum ada tiket.</td></tr>`; return; }
   tb.innerHTML = '';
-  tickets.forEach(t => {
+  page.items.forEach(t => {
     const row = document.createElement('tr');
     row.className = 'border-b border-slate-800 align-top hover:bg-slate-800/20 transition-colors';
     const submitted = t.submittedAt ? fmt.format(new Date(t.submittedAt)) : '-';
@@ -320,6 +383,7 @@ function renderTickets() {
         <div class="flex flex-col gap-1.5">
           <button onclick="updateTicket('${esc(t.ticketId)}')" class="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold">💾 Simpan</button>
           <a href="/ticket-status.html?ticket_id=${encodeURIComponent(t.ticketId)}" target="_blank" class="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-center">👁 Lihat</a>
+          <button type="button" onclick="deleteTicketRow('${esc(t.ticketId)}')" class="px-2 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-xs font-semibold">🗑 Hapus</button>
         </div>
       </td>`;
     tb.appendChild(row);
@@ -360,6 +424,21 @@ async function updateTicket(id) {
   else showToast('❌ Gagal: ' + (d.error || 'unknown'), 'error');
 }
 
+async function deleteTicketRow(id) {
+  if (!confirm(`Hapus ticket ${id}? Data lama yang dihapus tidak bisa dikembalikan.`)) return;
+  const token = getToken();
+  const r = await fetch(`/api/admin/tickets/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return showToast('❌ Gagal hapus: ' + (d.error || 'unknown'), 'error');
+  clearDraft(id);
+  allTickets = allTickets.filter(t => t.ticketId !== id);
+  showToast(`🗑 Ticket ${id} dihapus.`, 'success');
+  renderTickets();
+}
+
 // ── Toast ──
 function showToast(msg, type = 'info') {
   const div = document.createElement('div');
@@ -374,14 +453,32 @@ function showToast(msg, type = 'info') {
 
 // ── Load Appeals ──
 async function loadAppeals() {
+  if (appealLoadPromise) return appealLoadPromise;
   const token = getToken();
   const tb = el('appealRows');
   if (!token) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`; return; }
-  const r = await fetch('/api/admin/appeals', { headers: { Authorization: `Bearer ${token}` } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) { tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(d.error || 'Error')}</td></tr>`; return; }
-  allAppeals = d.appeals || [];
-  renderAppeals();
+  appealLoadPromise = (async () => {
+    try {
+      const r = await fetch('/api/admin/appeals', { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'appeal_load_failed');
+      allAppeals = d.appeals || [];
+      el('appealSyncStatus').textContent = `Realtime aman • ${fmt.format(new Date())}`;
+      el('appealSyncStatus').className = 'text-[11px] text-emerald-300 mt-1';
+      renderAppeals();
+    } catch (err) {
+      el('appealSyncStatus').textContent = `Koneksi appeal terganggu: ${err.message || 'unknown'} • data terakhir tetap aman`;
+      el('appealSyncStatus').className = 'text-[11px] text-amber-300 mt-1';
+      if (allAppeals.length) {
+        showToast('⚠️ Appeal gagal refresh sebentar, data terakhir tetap ditampilkan.', 'error');
+      } else {
+        tb.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-rose-300">${esc(err.message || 'Error')}</td></tr>`;
+      }
+    } finally {
+      appealLoadPromise = null;
+    }
+  })();
+  return appealLoadPromise;
 }
 
 function renderAppeals() {
@@ -396,10 +493,18 @@ function renderAppeals() {
   el('appealCountBadge').classList.toggle('hidden', pending <= 0);
 
   if (!allAppeals.length) {
+    el('appealPagerInfo').textContent = 'Menampilkan 0 appeal';
+    el('appealPrevBtn').disabled = true;
+    el('appealNextBtn').disabled = true;
     el('appealRows').innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Belum ada appeal masuk dari user.</td></tr>`;
     return;
   }
-  el('appealRows').innerHTML = allAppeals.map(a => `
+  const page = pageSlice(allAppeals, appealPage);
+  appealPage = page.safePage;
+  el('appealPagerInfo').textContent = `Menampilkan ${page.start + 1}-${Math.min(page.start + PAGE_SIZE, allAppeals.length)} dari ${allAppeals.length} appeal • Halaman ${page.safePage}/${page.totalPages}`;
+  el('appealPrevBtn').disabled = page.safePage <= 1;
+  el('appealNextBtn').disabled = page.safePage >= page.totalPages;
+  el('appealRows').innerHTML = page.items.map(a => `
     <tr class="border-b border-slate-800 align-top hover:bg-slate-800/20 transition-colors">
       <td class="py-3 px-2 font-mono text-xs text-amber-300">${esc(a.appealId)}</td>
       <td class="py-3 px-2">
@@ -418,12 +523,15 @@ function renderAppeals() {
           ? `<button data-appeal="${esc(a.appealId)}" class="px-2 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-bold">⚖️ Proses</button>`
           : `<span class="text-xs text-slate-500">${a.reviewedAt ? fmt.format(new Date(a.reviewedAt)) : 'Selesai'}</span>`
         }
+        <button data-delete-appeal="${esc(a.appealId)}" class="mt-1 px-2 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-xs font-bold">🗑 Hapus</button>
       </td>
     </tr>`).join('');
 }
 
 // ── Appeal Actions ──
 el('appealRows').addEventListener('click', evt => {
+  const deleteBtn = evt.target.closest('button[data-delete-appeal]');
+  if (deleteBtn) return deleteAppealRow(deleteBtn.getAttribute('data-delete-appeal'));
   const btn = evt.target.closest('button[data-appeal]');
   if (!btn) return;
   const appealId = btn.getAttribute('data-appeal');
@@ -439,6 +547,24 @@ el('appealRows').addEventListener('click', evt => {
   el('appealPanel').classList.remove('hidden');
   el('appealPanel').scrollIntoView({ behavior: 'smooth' });
 });
+
+async function deleteAppealRow(id) {
+  if (!confirm(`Hapus appeal ${id}? Data lama yang dihapus tidak bisa dikembalikan.`)) return;
+  const token = getToken();
+  const r = await fetch(`/api/admin/appeals/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) return showToast('❌ Gagal hapus appeal: ' + (d.error || 'unknown'), 'error');
+  allAppeals = allAppeals.filter(a => a.appealId !== id);
+  if (currentAppeal?.appealId === id) {
+    currentAppeal = null;
+    el('appealPanel').classList.add('hidden');
+  }
+  showToast(`🗑 Appeal ${id} dihapus.`, 'success');
+  renderAppeals();
+}
 
 async function processAppeal(status) {
   if (!currentAppeal) return;
@@ -459,6 +585,7 @@ async function processAppeal(status) {
 
 el('btnAccept').addEventListener('click', () => processAppeal('accepted'));
 el('btnReject').addEventListener('click', () => processAppeal('rejected'));
+el('refreshAppealsBtn').addEventListener('click', () => loadAppeals());
 
 // ── Export ──
 el('exportBtn').addEventListener('click', () => {
@@ -484,7 +611,11 @@ el('exportAppealsBtn').addEventListener('click', () => {
 });
 
 // ── Filter listeners ──
-['searchTkt', 'filterStatusTkt', 'filterDateTkt'].forEach(id => el(id).addEventListener('input', renderTickets));
+['searchTkt', 'filterStatusTkt', 'filterDateTkt'].forEach(id => el(id).addEventListener('input', () => { ticketPage = 1; renderTickets(); }));
+el('ticketPrevBtn').addEventListener('click', () => { ticketPage = Math.max(1, ticketPage - 1); renderTickets(); });
+el('ticketNextBtn').addEventListener('click', () => { ticketPage += 1; renderTickets(); });
+el('appealPrevBtn').addEventListener('click', () => { appealPage = Math.max(1, appealPage - 1); renderAppeals(); });
+el('appealNextBtn').addEventListener('click', () => { appealPage += 1; renderAppeals(); });
 
 // ── Forms ──
 el('loginForm').addEventListener('submit', loginAdmin);

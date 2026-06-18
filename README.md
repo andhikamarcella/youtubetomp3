@@ -125,6 +125,27 @@ renderFaq(faq.entries);
 
 Skema SQL untuk tabel `users`, `user_tokens`, `xp_events`, `cheat_claims`, dan `conversions` tersedia di `sql/schema.sql` agar XP, token OAuth, serta riwayat job benar-benar persisten di database.
 
+## Penyimpanan cookies.txt
+
+Upload dari halaman `/admin-cookies.html` disimpan ke Firestore ketika
+`FIREBASE_SERVICE_ACCOUNT_JSON` atau `FIREBASE_SERVICE_ACCOUNT_BASE64`
+tersedia. Semua instance aplikasi membaca record yang sama dan membuat ulang
+salinan lokal `cookies.txt` yang dipakai `yt-dlp`, sehingga refresh halaman,
+restart container, atau perpindahan request antar-instance tidak menghilangkan
+status cookies.
+
+Jika Firestore tidak dikonfigurasi, aplikasi memakai file store atomik. Untuk
+Railway, pasang Volume; aplikasi otomatis memakai
+`RAILWAY_VOLUME_MOUNT_PATH`. Lokasi dapat dioverride dengan:
+
+- `COOKIES_PATH`: salinan runtime yang dibaca `yt-dlp`.
+- `COOKIE_STORE_PATH`: record persisten fallback.
+- `COOKIES_SYNC_INTERVAL_MS`: interval sinkronisasi antar-store dan file lokal
+  (minimum 5000 ms, default 15000 ms).
+
+Jangan menaruh isi cookies di repository atau environment variable publik.
+Endpoint download dan sinkronisasi worker tetap memerlukan token admin/worker.
+
 ## Worker Service Railway
 
 Repositori ini kini menyertakan layanan worker mandiri pada folder [`worker-service/`](./worker-service) untuk menangani proses berat seperti unduhan `yt-dlp`, konversi `ffmpeg`, dan penyajian berkas hasil. Service ini dirancang berjalan sebagai deployment terpisah (misalnya Railway) dan hanya menerima permintaan yang membawa header `Authorization: Bearer <WORKER_SHARED_SECRET>` dari aplikasi utama.
