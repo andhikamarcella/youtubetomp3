@@ -5,14 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Cookies • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/tailwind-ui-bridge.js" defer></script>
   <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.24), transparent 32rem),
+        radial-gradient(circle at top right, rgba(14,165,233,.16), transparent 28rem),
+        radial-gradient(circle at bottom, rgba(16,185,129,.10), transparent 34rem),
+        #020617;
+    }
     @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
     .fade-in { animation: fadeIn .35s ease both; }
+    .premium-card {
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, .38);
+    }
+    .premium-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(255,255,255,.10), transparent 38%, rgba(99,102,241,.08));
+    }
+    .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
   </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <main class="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
-    <header class="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3 fade-in">
+    <header class="premium-card rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 p-5 flex flex-wrap items-center justify-between gap-3 fade-in">
       <div>
         <h1 class="text-xl md:text-2xl font-extrabold">🍪 Admin Cookies Manager</h1>
         <p class="text-slate-400 text-sm">Upload dan monitor cookies.txt dengan UI yang lebih rapi.</p>
@@ -23,7 +44,7 @@
       </div>
     </header>
 
-    <section id="loginView" class="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3 fade-in">
+    <section id="loginView" class="premium-card rounded-3xl border border-slate-800/80 bg-slate-900/90 p-5 space-y-3 fade-in">
       <div class="font-bold">Login Admin</div>
       <div class="grid sm:grid-cols-2 gap-2">
         <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" autocomplete="username">
@@ -35,7 +56,7 @@
       <div id="loginToast" class="text-sm"></div>
     </section>
 
-    <section id="uploadView" class="hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3 fade-in">
+    <section id="uploadView" class="hidden premium-card rounded-3xl border border-emerald-500/20 bg-slate-900/90 p-5 space-y-4 fade-in">
       <div class="flex items-center justify-between gap-2">
         <div>
           <div class="font-bold">Upload cookies.txt</div>
@@ -44,12 +65,12 @@
         <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Logout</button>
       </div>
 
-      <div class="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm">
+      <div class="rounded-2xl border border-slate-700/80 bg-slate-950/80 p-4 text-sm shadow-inner">
         <div class="text-slate-400">Status Cookies</div>
         <div id="statusBox" class="font-medium mt-1">Memuat...</div>
       </div>
 
-      <input id="file" type="file" accept=".txt,text/plain" class="block w-full text-sm file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-700 file:text-slate-100 hover:file:bg-slate-600" />
+      <input id="file" type="file" accept=".txt,text/plain" class="block w-full rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 p-3 text-sm file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-slate-100 hover:file:bg-indigo-500" />
       <div class="flex gap-2 flex-wrap">
         <button id="uploadBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold">Upload</button>
         <button id="refreshStatusBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600">Refresh</button>
@@ -68,19 +89,36 @@ const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorag
 const clearToken = () => { sessionStorage.removeItem(tokenKey); localStorage.removeItem(legacyKey); };
 const toast = (id, msg, ok = true) => { const el = $(id); el.className = `text-sm ${ok ? 'text-emerald-300' : 'text-rose-300'}`; el.textContent = msg; };
 const setLoggedInUi = (inState) => { $('loginView').classList.toggle('hidden', inState); $('uploadView').classList.toggle('hidden', !inState); };
+let statusRequest = null;
+let statusRequestId = 0;
 
 async function refreshStatus(){
-  const res = await fetch('/admin/cookies-status?t=' + Date.now());
-  const data = await res.json().catch(() => ({}));
-  if (data.disabled) {
-    $('statusBox').innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
-    return;
+  const requestId = ++statusRequestId;
+  statusRequest?.abort();
+  statusRequest = new AbortController();
+  try {
+    const res = await fetch('/admin/cookies-status?t=' + Date.now(), {
+      cache: 'no-store',
+      signal: statusRequest.signal,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (requestId !== statusRequestId) return;
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (data.disabled) {
+      $('statusBox').innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
+      return;
+    }
+    if (!data.exists) {
+      $('statusBox').innerHTML = '<span class="text-amber-300">Belum ada cookies.txt di penyimpanan persisten.</span>';
+      return;
+    }
+    const uploadedAt = data.uploadedAt ? fmt.format(new Date(data.uploadedAt)) : 'waktu tidak tersedia';
+    const backend = data.backend === 'firestore' ? 'penyimpanan cloud' : 'penyimpanan server';
+    $('statusBox').innerHTML = `<span class="text-emerald-300">Tersimpan permanen</span> • ${Number(data.bytes || 0).toLocaleString()} bytes • ${uploadedAt} • ${backend}`;
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    toast('uploadToast', `Gagal memperbarui status: ${error.message || 'unknown error'}`, false);
   }
-  if (!data.exists) {
-    $('statusBox').innerHTML = `<span class="text-amber-300">Belum ada cookies.txt</span> • ${fmt.format(new Date())}`;
-    return;
-  }
-  $('statusBox').innerHTML = `<span class="text-emerald-300">Tersedia</span> • ${Number(data.bytes || 0).toLocaleString()} bytes • ${fmt.format(new Date())}`;
 }
 
 $('loginBtn').addEventListener('click', async () => {
@@ -111,8 +149,8 @@ $('uploadBtn').addEventListener('click', async () => {
     const res = await fetch('/admin/upload-cookies', { method:'POST', headers:{ 'Content-Type':'text/plain; charset=utf-8', Authorization:'Bearer ' + token }, body });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    toast('uploadToast', `Upload sukses (${Number(data.bytes || 0).toLocaleString()} bytes).`);
-    refreshStatus();
+    toast('uploadToast', `Upload tersimpan permanen (${Number(data.bytes || 0).toLocaleString()} bytes).`);
+    await refreshStatus();
   } catch (e) { toast('uploadToast', e.message || 'Upload gagal', false); }
 });
 
