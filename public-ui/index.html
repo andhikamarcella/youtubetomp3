@@ -68,11 +68,23 @@
         document.head.appendChild(script);
       });
     };
-    window.addEventListener('load', function () {
+    (function () {
       var run = window.__ytconvLoadDeferredScripts;
-      if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 1800 });
-      else setTimeout(run, 900);
-    }, { once: true });
+      var trigger = function () { run(); cleanup(); };
+      var cleanup = function () {
+        ['pointerdown', 'keydown', 'touchstart'].forEach(function (eventName) {
+          window.removeEventListener(eventName, trigger, { passive: true });
+        });
+      };
+      ['pointerdown', 'keydown', 'touchstart'].forEach(function (eventName) {
+        window.addEventListener(eventName, trigger, { once: true, passive: true });
+      });
+      window.addEventListener('load', function () {
+        if (document.body && document.body.classList.contains('lite-mode')) return;
+        if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 6500 });
+        else setTimeout(run, 4500);
+      }, { once: true });
+    })();
   </script>
   <script>
     window.tailwind = window.tailwind || {};
@@ -3429,14 +3441,22 @@
     }
 
     .assistant-quick-suggestions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: .45rem;
-      margin-top: .35rem;
-      max-height: 6.2rem;
-      overflow-y: auto;
-      padding: .15rem .15rem .3rem;
-      overscroll-behavior: contain;
+      display: flex;
+      gap: .5rem;
+      margin-top: .45rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: .2rem .15rem .55rem;
+      overscroll-behavior-inline: contain;
+      scroll-snap-type: inline mandatory;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .assistant-quick-suggestions::before,
+    .assistant-quick-suggestions::after {
+      content: "";
+      flex: 0 0 .05rem;
     }
 
     .assistant-suggestion-chip {
@@ -3450,8 +3470,9 @@
       line-height: 1.15;
       text-align: center;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      min-width: max-content;
+      flex: 0 0 auto;
+      scroll-snap-align: start;
       box-shadow: 0 8px 20px rgba(13, 110, 253, .12);
       transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
     }
@@ -4126,14 +4147,52 @@
       }
 
       .assistant-quick-suggestions {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        max-height: 5.3rem;
+        gap: .4rem;
+        padding-bottom: .45rem;
       }
 
       .assistant-suggestion-chip {
         font-size: .7rem;
-        padding-inline: .48rem;
+        padding-inline: .55rem;
       }
+    }
+
+
+    /* Lite mode keeps the same converter logic, but trims visual effects for old/low-end phones. */
+    body.lite-mode {
+      --lite-shadow: 0 8px 20px rgba(15, 23, 42, .18);
+    }
+
+    body.lite-mode *,
+    body.lite-mode *::before,
+    body.lite-mode *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: .001ms !important;
+    }
+
+    body.lite-mode .seasonal-bg,
+    body.lite-mode .background-orb,
+    body.lite-mode .aurora-orb,
+    body.lite-mode .legendary-stage,
+    body.lite-mode .music-widget,
+    body.lite-mode #forumWidget {
+      display: none !important;
+    }
+
+    body.lite-mode .card,
+    body.lite-mode .glass-card,
+    body.lite-mode .assistant-panel {
+      box-shadow: var(--lite-shadow) !important;
+      backdrop-filter: none !important;
+    }
+
+    body.lite-mode #basic-mode .card,
+    body.lite-mode #gaptek-mode .card {
+      border: 1px solid rgba(13, 110, 253, .28) !important;
+      border-radius: 1.25rem !important;
+      background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(17,24,39,.98)) !important;
     }
 
     .ai-output {
@@ -5471,7 +5530,7 @@
       <!-- Gaptek Mode Container (Task 2) -->
       <div id="gaptek-mode" class="animate__animated animate__fadeIn" hidden>
         <div class="text-center mb-5 mt-4">
-          <h1 class="display-4 fw-bold text-primary mb-3">DOWNLOAD LAGU</h1>
+          <h2 class="display-4 fw-bold text-primary mb-3">DOWNLOAD LAGU</h2>
           <p class="lead fs-4 text-secondary">Cara paling gampang ambil lagu dari YouTube</p>
         </div>
 
@@ -9225,7 +9284,7 @@
         </header>
         <div class="assistant-body">
           <div class="assistant-messages" id="assistantMessages" aria-live="polite" tabindex="0"></div>
-          <div class="assistant-quick-suggestions" id="assistantQuickSuggestions" aria-label="Saran cepat AI Navigator"></div>
+          <div class="assistant-quick-suggestions" id="assistantQuickSuggestions" aria-label="Saran cepat AI Navigator" role="list" tabindex="0"></div>
           <div class="assistant-typing" id="assistantTyping" hidden>AI Navigator mengetik...</div>
           <div class="assistant-input">
             <input type="text" id="assistantInput" class="form-control"
@@ -9632,7 +9691,7 @@
 
             <div class="row g-4 justify-content-center">
               <!-- Gaptek Mode Card -->
-              <div class="col-lg-4 col-md-6">
+              <div class="col-lg-3 col-md-6">
                 <div class="card h-100 border-success border-2 shadow-sm hover-scale cursor-pointer"
                   id="selectGaptekMode" role="button">
                   <div class="card-body p-4">
@@ -9649,7 +9708,7 @@
               </div>
 
               <!-- Basic Mode Card -->
-              <div class="col-lg-4 col-md-6">
+              <div class="col-lg-3 col-md-6">
                 <div class="card h-100 border-primary border-2 shadow-sm hover-scale cursor-pointer"
                   id="selectBasicMode" role="button">
                   <div class="card-body p-4">
@@ -9665,8 +9724,25 @@
                 </div>
               </div>
 
+              <!-- Lite Mode Card -->
+              <div class="col-lg-3 col-md-6">
+                <div class="card h-100 border-info border-2 shadow-sm hover-scale cursor-pointer"
+                  id="selectLiteMode" role="button" tabindex="0" aria-label="Pilih Lite Mode untuk hape jadul">
+                  <div class="card-body p-4">
+                    <div class="display-4 text-info mb-3"><i class="bi bi-phone"></i></div>
+                    <h3 class="fw-bold text-info fs-4">Lite Mode</h3>
+                    <p class="text-muted small">Versi ringan buat hape kentang/jadul. Fitur converter tetap jalan.</p>
+                    <ul class="list-unstyled text-start small text-secondary mx-auto" style="max-width: 200px;">
+                      <li><i class="bi bi-check-circle-fill text-success me-2"></i>Animasi minimal</li>
+                      <li><i class="bi bi-check-circle-fill text-success me-2"></i>UI lebih ringkas</li>
+                      <li><i class="bi bi-check-circle-fill text-success me-2"></i>Hemat memori</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               <!-- Advanced Mode Card -->
-              <div class="col-lg-4 col-md-6">
+              <div class="col-lg-3 col-md-6">
                 <div class="card h-100 border-secondary border-opacity-50 shadow-sm hover-scale cursor-pointer"
                   id="selectAdvancedMode" role="button">
                   <div class="card-body p-4">
