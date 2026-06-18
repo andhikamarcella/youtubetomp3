@@ -48,6 +48,21 @@ test("FAQ dan AI Navigator tahu update downloader helper serta tiket realtime", 
   assert.match(home, /pagination,? dan hapus ticket\/appeal lama/);
 });
 
+test("AI Navigator selalu menampilkan chip saran cepat", () => {
+  assert.match(home, /id=["']assistantQuickSuggestions["']/);
+  assert.match(home, /DEFAULT_ASSISTANT_SUGGESTIONS/);
+  assert.match(home, /setAssistantSuggestions\(responseSuggestions\)/);
+  assert.match(home, /assistant-suggestion-chip/);
+  assert.match(home, /Downloader helper gagal/);
+});
+
+test("FAQ punya fallback collapse agar jawaban tidak hilang", () => {
+  assert.match(home, /faqTabContent && !faqTabContent\.dataset\.collapseFallbackBound/);
+  assert.match(home, /accordion-button\[data-bs-toggle="collapse"\]/);
+  assert.match(home, /target\.classList\.toggle\('show'\)/);
+  assert.match(home, /#faqTabContent \.accordion-body/);
+});
+
 test("homepage memakai ID tiket kanonik dari respons server", () => {
   assert.match(home, /canonicalTicketId\s*=\s*String\(result\?\.ticketId/);
   assert.match(home, /ticketId:\s*canonicalTicketId/);

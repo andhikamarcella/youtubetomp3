@@ -89,3 +89,11 @@ test("tailwind bridge memakai sans font dan glow interaktif", () => {
   assert.match(pages.bridge, /rgba\(99, 102, 241, \.24\)/);
   assert.match(pages.bridge, /box-shadow: 0 28px 80px/);
 });
+
+
+test("homepage mengurangi render blocking untuk skor performance", () => {
+  assert.match(pages.home, /cdn\.tailwindcss\.com" defer/);
+  assert.match(pages.home, /rel="apple-touch-icon" href="\.\/icons\/icon\.svg"/);
+  assert.doesNotMatch(pages.home, /rel="apple-touch-icon"[\s\S]{0,120}data:image\/png/);
+  assert.match(pages.home, /rel="preload" as="style"[\s\S]{0,220}bootstrap@5\.3\.3/);
+});
