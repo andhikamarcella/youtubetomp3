@@ -109,7 +109,7 @@ test("homepage menunda script berat dan menguatkan SEO", () => {
   assert.match(pages.home, /content-visibility: auto/);
   assert.match(pages.home, /modal-backdrop[\s\S]{0,220}background: rgba\(3, 7, 18, \.82\)/);
   assert.match(pages.home, /font-family: "Inter", "Segoe UI", system-ui/);
-  assert.match(pages.home, /requestIdleCallback\(run, \{ timeout: 1800 \}\)/);
+  assert.match(pages.home, /requestIdleCallback\(run, \{ timeout: 6500 \}\)/);
   assert.doesNotMatch(pages.home, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/howler\/2\.2\.4\/howler\.min\.js"/);
   assert.doesNotMatch(pages.home, /<script src="https:\/\/accounts\.google\.com\/gsi\/client"/);
   assert.match(pages.home, /aria-label="Cari pertanyaan FAQ"/);
@@ -126,8 +126,8 @@ test("homepage memindahkan JavaScript utama ke asset cacheable", () => {
 
 
 test("AI Navigator dan backdrop modal tetap rapi", () => {
-  assert.match(pages.home, /\.assistant-quick-suggestions \{[\s\S]{0,180}grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(pages.home, /text-overflow: ellipsis/);
+  assert.match(pages.home, /\.assistant-quick-suggestions \{[\s\S]{0,220}scroll-snap-type: inline mandatory/);
+  assert.match(pages.home, /\.assistant-suggestion-chip \{[\s\S]{0,700}scroll-snap-align: start/);
   assert.match(pages.home, /\.assistant-panel \.assistant-messages \{[\s\S]{0,180}max-height: clamp\(12rem, 40vh, 22rem\)/);
   assert.match(pages.home, /body \.modal-backdrop \{[\s\S]{0,180}pointer-events: auto !important/);
   assert.match(pages.home, /body \.modal-backdrop\.show \{[\s\S]{0,180}backdrop-filter: blur\(5px\)/);
