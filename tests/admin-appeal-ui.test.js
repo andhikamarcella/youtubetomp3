@@ -39,3 +39,10 @@ test("server AI prompt mengetahui update tiket dan admin terbaru", () => {
   assert.match(index, /Downloader helper gagal/);
   assert.match(index, /pagination dan delete/);
 });
+
+
+test("static assets punya cache header panjang", () => {
+  assert.match(index, /STATIC_CACHEABLE_RE/);
+  assert.match(index, /max-age=\$\{ONE_YEAR_SECONDS\}, immutable/);
+  assert.match(index, /express\.static\(join\(__dirname, "public-ui"\), staticOptions\)/);
+});

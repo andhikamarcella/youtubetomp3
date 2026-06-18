@@ -97,3 +97,15 @@ test("homepage mengurangi render blocking untuk skor performance", () => {
   assert.doesNotMatch(pages.home, /rel="apple-touch-icon"[\s\S]{0,120}data:image\/png/);
   assert.match(pages.home, /rel="preload" as="style"[\s\S]{0,220}bootstrap@5\.3\.3/);
 });
+
+
+test("homepage menunda script berat dan menguatkan SEO", () => {
+  assert.match(pages.home, /rel="canonical" href="https:\/\/ytconv\.up\.railway\.app\/"/);
+  assert.match(pages.home, /name="robots" content="index,follow/);
+  assert.match(pages.home, /__ytconvDeferredScripts/);
+  assert.match(pages.home, /requestIdleCallback\(run, \{ timeout: 1800 \}\)/);
+  assert.doesNotMatch(pages.home, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/howler\/2\.2\.4\/howler\.min\.js"/);
+  assert.doesNotMatch(pages.home, /<script src="https:\/\/accounts\.google\.com\/gsi\/client"/);
+  assert.match(pages.home, /aria-label="Cari pertanyaan FAQ"/);
+  assert.match(pages.home, /aria-label="Pilih model AI Navigator"/);
+});

@@ -2335,6 +2335,28 @@ app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(cors());
 
+const ONE_YEAR_SECONDS = 31536000;
+const STATIC_CACHEABLE_RE = /\.(?:css|js|mjs|svg|png|jpg|jpeg|webp|avif|gif|ico|woff2?|ttf|map)$/i;
+const staticOptions = {
+  etag: true,
+  lastModified: true,
+  maxAge: "1y",
+  immutable: true,
+  setHeaders(res, filePath) {
+    if (STATIC_CACHEABLE_RE.test(filePath)) {
+      res.setHeader("Cache-Control", `public, max-age=${ONE_YEAR_SECONDS}, immutable`);
+      return;
+    }
+    if (/\.webmanifest$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+      return;
+    }
+    if (/\.html?$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    }
+  },
+};
+
 if (process.env.CLOUDINARY_URL) {
   cloudinary.config({ secure: true });
 } else {
@@ -8210,8 +8232,8 @@ app.get("/api/support/hall-of-fame", async (req, res) => {
   }
 });
 
-app.use("/", express.static(join(__dirname, "public-ui")));
-app.use("/public", express.static(PUBLIC_DIR));
+app.use("/", express.static(join(__dirname, "public-ui"), staticOptions));
+app.use("/public", express.static(PUBLIC_DIR, staticOptions));
 
 // ==== User accounts ====
 app.post("/api/auth/google", async (req, res) => {

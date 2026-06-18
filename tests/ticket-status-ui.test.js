@@ -4,6 +4,7 @@ import test from "node:test";
 
 const html = await readFile(new URL("../public-ui/ticket-status.html", import.meta.url), "utf8");
 const home = await readFile(new URL("../public-ui/index.html", import.meta.url), "utf8");
+const manifest = await readFile(new URL("../public-ui/manifest.webmanifest", import.meta.url), "utf8");
 
 test("halaman menyediakan pencarian tiket dan state utama", () => {
   for (const id of ["lookupForm", "lookupInput", "emptyState", "loadingState", "notFoundState", "ticketContent"]) {
@@ -81,4 +82,11 @@ test("fitur tambahan tersedia", () => {
   for (const id of ["copyIdBtn", "shareBtn", "manualRefreshBtn", "chatForm", "proofSubmitBtn", "connectionBadge"]) {
     assert.match(html, new RegExp(`id=["']${id}["']`));
   }
+});
+
+
+test("manifest tidak memakai data uri besar", () => {
+  assert.doesNotMatch(manifest, /data:image\/png/);
+  assert.match(manifest, /"src": "\.\/icons\/icon\.svg"/);
+  assert.match(manifest, /"purpose": "any maskable"/);
 });
