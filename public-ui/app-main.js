@@ -8368,6 +8368,8 @@
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'assistant-suggestion-chip';
+            chip.setAttribute('role', 'listitem');
+            chip.setAttribute('aria-label', `Pakai saran cepat: ${label}`);
             chip.textContent = label;
             chip.addEventListener('click', () => {
               if (assistantInput) {
@@ -16392,35 +16394,54 @@
             const selectBasic = document.getElementById('selectBasicMode');
             const selectAdvanced = document.getElementById('selectAdvancedMode');
             const selectGaptek = document.getElementById('selectGaptekMode');
+            const settingsModeButtons = Array.from(document.querySelectorAll('[data-settings-mode]'));
+            const settingsModeBadge = document.getElementById('settingsModeBadge');
             const modeKey = 'ytmp3_mode_pref';
 
             const setMode = (mode) => {
-              const isBasic = mode === 'basic';
+              const isLite = mode === 'lite';
+              const isBasic = mode === 'basic' || isLite;
               const isGaptek = mode === 'gaptek';
               const isAdvanced = !isBasic && !isGaptek;
+
+              document.body.classList.toggle('lite-mode', isLite);
+              settingsModeButtons.forEach((button) => {
+                const active = button.dataset.settingsMode === mode;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-pressed', active ? 'true' : 'false');
+              });
+              if (settingsModeBadge) {
+                settingsModeBadge.textContent = isLite ? 'Lite' : (isBasic ? 'Basic' : (isGaptek ? 'Gaptek' : 'Advanced'));
+                settingsModeBadge.className = `badge ${isLite ? 'text-bg-info' : (isGaptek ? 'text-bg-success' : (isAdvanced ? 'text-bg-secondary' : 'text-bg-primary'))}`;
+              }
 
               if (containerBasic) containerBasic.hidden = !isBasic;
               if (containerAdvanced) containerAdvanced.hidden = !isAdvanced;
               if (containerGaptek) containerGaptek.hidden = !isGaptek;
 
               if (labelToggle) {
-                if (isBasic) labelToggle.textContent = 'Mode: Basic';
+                if (isLite) labelToggle.textContent = 'Mode: Lite';
+                else if (isBasic) labelToggle.textContent = 'Mode: Basic';
                 else if (isGaptek) labelToggle.textContent = 'Mode: Gaptek';
                 else labelToggle.textContent = 'Mode: Advanced';
               }
               if (btnToggle) {
                 const icon = btnToggle.querySelector('i');
                 if (icon) {
-                  if (isBasic) icon.className = 'bi bi-magic';
+                  if (isLite) icon.className = 'bi bi-phone';
+                  else if (isBasic) icon.className = 'bi bi-magic';
                   else if (isGaptek) icon.className = 'bi bi-emoji-smile';
                   else icon.className = 'bi bi-sliders';
                 }
-                btnToggle.title = isBasic
-                  ? 'Basic Mode: cepat dan simpel'
-                  : (isGaptek ? 'Gaptek Mode: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap');
+                btnToggle.title = isLite
+                  ? 'Lite Mode: ringan untuk hape jadul'
+                  : (isBasic
+                    ? 'Basic Mode: cepat dan simpel'
+                    : (isGaptek ? 'Gaptek Mode: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap'));
                 // Update button style
-                btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success');
-                if (isBasic) btnToggle.classList.add('text-primary');
+                btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success', 'text-info');
+                if (isLite) btnToggle.classList.add('text-info');
+                else if (isBasic) btnToggle.classList.add('text-primary');
                 else if (isGaptek) btnToggle.classList.add('text-success');
                 else btnToggle.classList.add('text-secondary');
               }
@@ -16433,19 +16454,28 @@
             if (btnToggle) {
               btnToggle.addEventListener('click', () => {
                 const now = localStorage.getItem(modeKey) || 'basic';
-                // Cycle: Basic -> Advanced -> Gaptek -> Basic
+                // Cycle: Basic -> Advanced -> Gaptek -> Basic. Lite is intentionally enabled from Settings only.
                 let next = 'basic';
-                if (now === 'basic') next = 'advanced';
+                if (now === 'basic' || now === 'lite') next = 'advanced';
                 else if (now === 'advanced') next = 'gaptek';
                 else next = 'basic';
 
                 setMode(next);
                 let msg = 'Basic Mode aktif';
+                if (next === 'lite') msg = 'Lite Mode aktif';
                 if (next === 'advanced') msg = 'Advanced Mode aktif';
                 if (next === 'gaptek') msg = 'Gaptek Mode aktif';
                 setToast(msg);
               });
             }
+
+            settingsModeButtons.forEach((button) => {
+              button.addEventListener('click', () => {
+                const next = button.dataset.settingsMode || 'basic';
+                setMode(next);
+                setToast(next === 'lite' ? 'Lite UI aktif' : `Mode ${next} aktif`);
+              });
+            });
 
             // Admin Login Form - Prevent Auto Submit/Refresh
             const adminForm = document.getElementById('adminLoginForm');
@@ -16462,27 +16492,8 @@
             if (btnResetMode) {
               btnResetMode.addEventListener('click', () => {
                 localStorage.removeItem(modeKey);
-
-                if (welcomeModalEl && bootstrapGlobal?.Modal) {
-                  // Close settings offcanvas if open
-                  const settingsOffcanvas = document.getElementById('offcanvasSettings');
-                  if (settingsOffcanvas && bootstrapGlobal?.Offcanvas) {
-                    const offcanvasInstance = bootstrapGlobal.Offcanvas.getInstance(settingsOffcanvas);
-                    if (offcanvasInstance) offcanvasInstance.hide();
-                  }
-
-                  // Show welcome modal
-                  if (welcomeModalInstance) {
-                    welcomeModalInstance.show();
-                  } else {
-                    // Fallback if instance lost (shouldn't happen)
-                    const modal = new bootstrapGlobal.Modal(welcomeModalEl);
-                    modal.show();
-                  }
-                } else {
-                  setMode('basic');
-                  setToast('Mode direset ke Basic');
-                }
+                setMode('basic');
+                setToast('Mode direset ke Basic');
               });
             }
 
@@ -16513,6 +16524,14 @@
               if (selectBasic) selectBasic.onclick = () => handleSelection('basic');
               if (selectAdvanced) selectAdvanced.onclick = () => handleSelection('advanced');
               if (selectGaptek) selectGaptek.onclick = () => handleSelection('gaptek');
+              [selectBasic, selectAdvanced, selectGaptek].filter(Boolean).forEach((card) => {
+                card.addEventListener('keydown', (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    card.click();
+                  }
+                });
+              });
 
               // Show if no mode selected
               if (!currentMode) {
