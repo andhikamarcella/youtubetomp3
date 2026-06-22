@@ -5690,6 +5690,48 @@
         padding: .85rem;
       }
     }
+
+
+    /* Reliability fixes: keep Bootstrap offcanvas anchored to real sidebars. */
+    body.ytc-classic-pro .offcanvas {
+      position: fixed !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      z-index: 1045 !important;
+      max-width: min(92vw, 420px);
+      overflow-y: auto;
+    }
+
+    body.ytc-classic-pro .offcanvas.offcanvas-start {
+      left: 0 !important;
+      right: auto !important;
+      border-radius: 0 22px 22px 0 !important;
+    }
+
+    body.ytc-classic-pro .offcanvas.offcanvas-end {
+      right: 0 !important;
+      left: auto !important;
+      border-radius: 22px 0 0 22px !important;
+    }
+
+    body.ytc-classic-pro #mainContent {
+      padding-bottom: 1.25rem !important;
+    }
+
+    body.ytc-classic-pro .app-footer {
+      margin-top: 1.25rem !important;
+    }
+
+    body.ytc-classic-pro #section-converter {
+      margin-bottom: 0 !important;
+    }
+
+    /* Experience font is intentionally locked to clean sans; no per-experience font skins. */
+    body.ytc-classic-pro.font-typewriter,
+    body.ytc-classic-pro.font-retro,
+    body.ytc-classic-pro.font-mono {
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
   </style>
   <!-- Cropper.js -->
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
@@ -6976,8 +7018,7 @@
                   <h6 id="dashboardTitle" class="title-mono text-secondary mb-0">Customizable Dashboard</h6>
                   <span class="badge rounded-pill text-bg-info">Live</span>
                 </div>
-                <p class="small text-secondary mb-0">Pilih tema, font, dan layout favoritmu. Preferensi tersimpan
-                  otomatis di perangkat ini.</p>
+                <p class="small text-secondary mb-0">Pilih tema dan layout favoritmu. Font dibuat sans seragam agar tampilan rapi.</p>
                 <div class="dashboard-controls mt-3">
                   <div>
                     <label for="themeSelect" class="form-label small text-uppercase">Tema</label>
@@ -6986,14 +7027,6 @@
                       <option value="neo">Neo</option>
                       <option value="aurora">Aurora</option>
                       <option value="midnight">Midnight</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label for="fontSelect" class="form-label small text-uppercase">Font</label>
-                    <select id="fontSelect" class="form-select form-select-sm">
-                      <option value="typewriter">Typewriter</option>
-                      <option value="retro">Retro Rounded</option>
-                      <option value="mono">Monospasi</option>
                     </select>
                   </div>
                   <div>
@@ -8629,11 +8662,14 @@
         <div class="mb-3">
           <label class="form-label" for="langSelect">Pilih bahasa</label>
           <select id="langSelect" class="form-select form-select-sm" style="max-width: 180px;">
+            <option value="auto">Auto (Bahasa HP)</option>
+            <option value="id">Indonesia</option>
             <option value="en">English</option>
             <option value="ko">한국어</option>
             <option value="ja">日本語</option>
+            <option value="es">Español</option>
           </select>
-          <div class="form-text">Seluruh teks UI akan mengikuti bahasa pilihan.</div>
+          <div class="form-text">Default Auto mengikuti bahasa perangkat/browser saat halaman dibuka.</div>
         </div>
 
         <div class="mb-3 d-lg-none">

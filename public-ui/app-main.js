@@ -2742,13 +2742,15 @@
           { capture: true },
         );
 
-        const SUPPORTED_LANGS = ['en', 'ko', 'ja'];
+        const SUPPORTED_LANGS = ['id', 'en', 'ko', 'ja', 'es'];
         const LANGUAGE_VARIANTS = {
+          id: ['id', 'id-id', 'in', 'in-id', 'ind', 'idn'],
           en: ['en', 'en-us', 'en-gb', 'en-au', 'en-ca', 'en-in', 'eng'],
           ko: ['ko', 'ko-kr'],
           ja: ['ja', 'ja-jp'],
+          es: ['es', 'es-es', 'es-mx', 'es-419'],
         };
-        const FALLBACK_LANG = 'en';
+        const FALLBACK_LANG = 'id';
         const I18N_STRINGS = {
           id: {
             navConverter: 'Converter',
@@ -3727,6 +3729,10 @@
           }
         };
 
+        const clearPreferredLang = () => {
+          try { localStorage.removeItem('app:preferredLang'); } catch { }
+        };
+
         const preserveSpacing = (original, replacement) => {
           const leading = original.match(/^\s*/)?.[0] ?? '';
           const trailing = original.match(/\s*$/)?.[0] ?? '';
@@ -3737,7 +3743,6 @@
         if (!SUPPORTED_LANGS.includes(currentLang)) {
           currentLang = FALLBACK_LANG;
         }
-        persistPreferredLang(currentLang);
 
         const translate = (key, fallback) => {
           if (!key) return fallback ?? '';
@@ -4073,15 +4078,22 @@
         if (langSelect) {
           try {
             const stored = localStorage.getItem('app:preferredLang');
-            const initial = stored && SUPPORTED_LANGS.includes(stored) ? stored : detectLanguage();
-            currentLang = SUPPORTED_LANGS.includes(initial) ? initial : FALLBACK_LANG;
-            persistPreferredLang(currentLang);
-            langSelect.value = currentLang;
+            const manual = stored && SUPPORTED_LANGS.includes(stored) ? stored : '';
+            currentLang = manual || detectLanguage();
+            if (!SUPPORTED_LANGS.includes(currentLang)) currentLang = FALLBACK_LANG;
+            langSelect.value = manual || 'auto';
+            applyTranslations();
           } catch { }
           langSelect.addEventListener('change', () => {
             const val = langSelect.value;
-            currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
-            persistPreferredLang(currentLang);
+            if (val === 'auto') {
+              clearPreferredLang();
+              currentLang = detectLanguage();
+              if (!SUPPORTED_LANGS.includes(currentLang)) currentLang = FALLBACK_LANG;
+            } else {
+              currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
+              persistPreferredLang(currentLang);
+            }
             applyTranslations();
           });
         }
@@ -5047,15 +5059,8 @@
         }
 
         if (fontSelect) {
-          fontSelect.addEventListener('change', () => {
-            const value = fontSelect.value || 'typewriter';
-            if (state.experience.font !== value) {
-              state.experience.font = value;
-              applyFont();
-              persistState();
-              incrementPoints(10, 'Ganti font', { badge: 'stylist' });
-            }
-          });
+          fontSelect.disabled = true;
+          fontSelect.value = 'sans';
         }
 
         if (layoutSelect) {
@@ -5216,7 +5221,7 @@
         const defaultAccessibility = { highContrast: false, largeText: false, reduceMotion: false };
         const defaultExperience = {
           theme: 'auto',
-          font: 'typewriter',
+          font: 'sans',
           layout: 'cozy',
           mood: 'auto',
           previewEmbed: true,
@@ -7452,9 +7457,8 @@
 
         const applyFont = () => {
           if (!document.body) return;
-          const font = state.experience.font || 'typewriter';
+          state.experience.font = 'sans';
           document.body.classList.remove('font-typewriter', 'font-retro', 'font-mono');
-          document.body.classList.add(`font-${font}`);
         };
 
         const applyLayout = () => {
@@ -7470,7 +7474,7 @@
           applyFont();
           applyLayout();
           if (themeSelect) themeSelect.value = state.experience.theme || 'auto';
-          if (fontSelect) fontSelect.value = state.experience.font || 'typewriter';
+          if (fontSelect) fontSelect.value = 'sans';
           if (layoutSelect) layoutSelect.value = state.experience.layout || 'cozy';
           if (moodSelect) moodSelect.value = state.experience.mood || 'auto';
           if (narratorToggle) narratorToggle.checked = !!state.experience.narratorAuto;

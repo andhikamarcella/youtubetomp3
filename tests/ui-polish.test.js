@@ -154,3 +154,22 @@ test("Lite mode hanya dipilih dari settings dan tetap memakai Basic flow", () =>
   assert.match(pages.appMain, /settingsModeButtons\.forEach/);
   assert.match(pages.appMain, /aria-pressed/);
 });
+
+test("offcanvas tetap sidebar kiri-kanan dan spacing utama rapat", () => {
+  assert.match(pages.home, /offcanvas-start[\s\S]{0,120}id="offcanvasNav"/);
+  assert.match(pages.home, /id="offcanvasSettings"/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.offcanvas \{[\s\S]{0,160}position: fixed !important/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.offcanvas\.offcanvas-start \{[\s\S]{0,120}left: 0 !important/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.offcanvas\.offcanvas-end \{[\s\S]{0,120}right: 0 !important/);
+  assert.match(pages.home, /body\.ytc-classic-pro #mainContent \{[\s\S]{0,80}padding-bottom: 1\.25rem !important/);
+});
+
+test("bahasa default auto mengikuti perangkat dan Experience tidak punya font picker", () => {
+  assert.match(pages.home, /<option value="auto">Auto \(Bahasa HP\)<\/option>/);
+  assert.match(pages.appMain, /const SUPPORTED_LANGS = \['id', 'en', 'ko', 'ja', 'es'\]/);
+  assert.match(pages.appMain, /clearPreferredLang/);
+  assert.match(pages.appMain, /langSelect\.value = manual \|\| 'auto'/);
+  assert.doesNotMatch(pages.home, /id="fontSelect"/);
+  assert.match(pages.appMain, /state\.experience\.font = 'sans'/);
+  assert.match(pages.home, /Experience font is intentionally locked to clean sans/);
+});
