@@ -132,3 +132,25 @@ test("AI Navigator dan backdrop modal tetap rapi", () => {
   assert.match(pages.home, /body \.modal-backdrop \{[\s\S]{0,180}pointer-events: auto !important/);
   assert.match(pages.home, /body \.modal-backdrop\.show \{[\s\S]{0,180}backdrop-filter: blur\(5px\)/);
 });
+
+
+test("homepage memakai classic professional Web3 UI pass", () => {
+  assert.match(pages.home, /<body class="ytc-classic-pro">/);
+  assert.match(pages.home, /Classic professional Web3 UI pass/);
+  assert.match(pages.home, /--ytc-classic-page: #eef1f6/);
+  assert.match(pages.home, /linear-gradient\(90deg, #020617, #ef4444, #f59e0b, #6366f1, #020617\)/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.app-section/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.assistant-suggestion-chip/);
+});
+
+
+test("Lite mode hanya dipilih dari settings dan tetap memakai Basic flow", () => {
+  assert.match(pages.home, /id="settingsLiteModeBtn"[^>]+data-settings-mode="lite"/);
+  assert.match(pages.home, /id="settingsModeBadge"/);
+  assert.match(pages.home, /class="lite-mode-preview/);
+  assert.doesNotMatch(pages.home, /id="selectLiteMode"/);
+  assert.match(pages.appMain, /Lite is intentionally enabled from Settings only/);
+  assert.match(pages.appMain, /const isBasic = mode === 'basic' \|\| isLite/);
+  assert.match(pages.appMain, /settingsModeButtons\.forEach/);
+  assert.match(pages.appMain, /aria-pressed/);
+});

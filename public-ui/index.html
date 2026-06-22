@@ -5431,6 +5431,265 @@
       gap: 6px;
       align-items: center;
     }
+
+
+    /* Classic professional Web3 UI pass: simple, tidy, and feature-safe. */
+    :root {
+      --ytc-classic-page: #eef1f6;
+      --ytc-classic-ink: #020617;
+      --ytc-classic-muted: #64748b;
+      --ytc-classic-line: #e5e7eb;
+      --ytc-classic-panel: #ffffff;
+      --ytc-classic-soft: #f8fafc;
+      --ytc-classic-accent: #2563eb;
+      --ytc-classic-danger: #dc2626;
+      --ytc-classic-radius-lg: 28px;
+      --ytc-classic-radius-md: 20px;
+      --ytc-classic-shadow: 0 28px 80px rgba(15, 23, 42, .16);
+    }
+
+    html[data-bs-theme='dark'] body.ytc-classic-pro {
+      --ytc-classic-page: #0f1f3d;
+      --ytc-classic-ink: #f8fafc;
+      --ytc-classic-muted: #a8b3c7;
+      --ytc-classic-line: rgba(148, 163, 184, .28);
+      --ytc-classic-panel: #17233f;
+      --ytc-classic-soft: #1f2f53;
+      --ytc-classic-shadow: 0 28px 80px rgba(2, 6, 23, .34);
+    }
+
+    body.ytc-classic-pro {
+      background:
+        radial-gradient(56rem 36rem at 50% -10%, rgba(37, 99, 235, .18), transparent 62%),
+        linear-gradient(180deg, var(--ytc-classic-page), color-mix(in srgb, var(--ytc-classic-page) 88%, #020617 12%));
+      color: var(--ytc-classic-ink);
+    }
+
+    body.ytc-classic-pro #mainContent {
+      max-width: 1180px;
+    }
+
+    body.ytc-classic-pro .navbar {
+      background: color-mix(in srgb, var(--ytc-classic-panel) 90%, transparent) !important;
+      border-bottom: 1px solid var(--ytc-classic-line);
+      box-shadow: 0 18px 48px rgba(15, 23, 42, .10);
+      backdrop-filter: blur(16px);
+    }
+
+    body.ytc-classic-pro .navbar-brand,
+    body.ytc-classic-pro .section-header h1,
+    body.ytc-classic-pro h1,
+    body.ytc-classic-pro h2,
+    body.ytc-classic-pro h3 {
+      color: var(--ytc-classic-ink);
+      letter-spacing: -.035em;
+    }
+
+    body.ytc-classic-pro .section-header {
+      position: relative;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding: 1.35rem;
+      background: var(--ytc-classic-soft);
+      border: 1px solid var(--ytc-classic-line);
+      border-radius: var(--ytc-classic-radius-lg);
+      box-shadow: var(--ytc-classic-shadow);
+      overflow: hidden;
+    }
+
+    body.ytc-classic-pro .section-header::before,
+    body.ytc-classic-pro .card::before,
+    body.ytc-classic-pro .modal-content::before,
+    body.ytc-classic-pro .offcanvas::before,
+    body.ytc-classic-pro .assistant-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 7px;
+      background: linear-gradient(90deg, #020617, #ef4444, #f59e0b, #6366f1, #020617);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    body.ytc-classic-pro .section-header p,
+    body.ytc-classic-pro .text-secondary,
+    body.ytc-classic-pro .text-muted,
+    body.ytc-classic-pro .form-text,
+    body.ytc-classic-pro .small {
+      color: var(--ytc-classic-muted) !important;
+    }
+
+    body.ytc-classic-pro .app-section,
+    body.ytc-classic-pro .card,
+    body.ytc-classic-pro .modal-content,
+    body.ytc-classic-pro .offcanvas,
+    body.ytc-classic-pro .dropdown-menu,
+    body.ytc-classic-pro .assistant-panel,
+    body.ytc-classic-pro .app-footer,
+    body.ytc-classic-pro .aero-footer {
+      position: relative;
+      background: var(--ytc-classic-panel) !important;
+      border: 1px solid var(--ytc-classic-line) !important;
+      border-radius: var(--ytc-classic-radius-lg) !important;
+      box-shadow: var(--ytc-classic-shadow) !important;
+      overflow: hidden;
+      backdrop-filter: none !important;
+    }
+
+    body.ytc-classic-pro .app-section {
+      padding: clamp(1rem, 2vw, 1.5rem);
+    }
+
+    body.ytc-classic-pro .card .card,
+    body.ytc-classic-pro .bg-body-tertiary,
+    body.ytc-classic-pro .list-group-item,
+    body.ytc-classic-pro .accordion-item,
+    body.ytc-classic-pro .ai-output,
+    body.ytc-classic-pro .assistant-messages,
+    body.ytc-classic-pro .history-card,
+    body.ytc-classic-pro .trust-card {
+      background: var(--ytc-classic-soft) !important;
+      border: 1px solid var(--ytc-classic-line) !important;
+      border-radius: var(--ytc-classic-radius-md) !important;
+      box-shadow: none !important;
+    }
+
+    body.ytc-classic-pro .btn,
+    body.ytc-classic-pro .app-nav-btn,
+    body.ytc-classic-pro .badge,
+    body.ytc-classic-pro .assistant-suggestion-chip {
+      border-radius: 999px !important;
+      font-weight: 900 !important;
+      letter-spacing: .02em;
+      box-shadow: none !important;
+    }
+
+    body.ytc-classic-pro .btn-primary,
+    body.ytc-classic-pro .primary-cta-btn {
+      background: #020617 !important;
+      border-color: #020617 !important;
+      color: #fff !important;
+    }
+
+    body.ytc-classic-pro .btn-outline-primary,
+    body.ytc-classic-pro .app-nav-btn,
+    body.ytc-classic-pro .assistant-suggestion-chip {
+      background: var(--ytc-classic-soft) !important;
+      border: 1px solid var(--ytc-classic-line) !important;
+      color: var(--ytc-classic-ink) !important;
+    }
+
+    body.ytc-classic-pro .btn:hover,
+    body.ytc-classic-pro .app-nav-btn:hover,
+    body.ytc-classic-pro .assistant-suggestion-chip:hover {
+      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--ytc-classic-accent) 42%, var(--ytc-classic-line)) !important;
+    }
+
+    body.ytc-classic-pro .form-control,
+    body.ytc-classic-pro .form-select,
+    body.ytc-classic-pro .input-group-text,
+    body.ytc-classic-pro textarea {
+      background: var(--ytc-classic-soft) !important;
+      border: 1px solid var(--ytc-classic-line) !important;
+      border-radius: 14px !important;
+      color: var(--ytc-classic-ink) !important;
+      box-shadow: none !important;
+    }
+
+    body.ytc-classic-pro .form-label,
+    body.ytc-classic-pro label,
+    body.ytc-classic-pro strong {
+      color: var(--ytc-classic-ink);
+      font-weight: 900;
+    }
+
+    body.ytc-classic-pro .form-text,
+    body.ytc-classic-pro .section-header p,
+    body.ytc-classic-pro #basic-mode > .text-center p,
+    body.ytc-classic-pro #gaptek-mode > .text-center p,
+    body.ytc-classic-pro .card p.small {
+      max-width: 62ch;
+      line-height: 1.55;
+      font-size: .82rem !important;
+    }
+
+    body.ytc-classic-pro #basic-mode > .text-center,
+    body.ytc-classic-pro #gaptek-mode > .text-center:first-child {
+      margin-bottom: 1rem !important;
+    }
+
+    body.ytc-classic-pro #basic-mode > .text-center h2,
+    body.ytc-classic-pro #gaptek-mode h2 {
+      font-size: clamp(1.65rem, 3vw, 2.4rem);
+      font-weight: 900;
+    }
+
+    body.ytc-classic-pro .assistant-quick-suggestions {
+      padding: .25rem .1rem .65rem;
+      border-bottom: 1px solid var(--ytc-classic-line);
+    }
+
+    body.ytc-classic-pro .assistant-suggestion-chip {
+      background: #020617 !important;
+      color: #fff !important;
+      border-color: #020617 !important;
+    }
+
+    body.ytc-classic-pro .footer-pill,
+    body.ytc-classic-pro .aero-tag,
+    body.ytc-classic-pro .trust-card .badge {
+      background: var(--ytc-classic-soft) !important;
+      border: 1px solid var(--ytc-classic-line) !important;
+      color: var(--ytc-classic-ink) !important;
+    }
+
+    body.ytc-classic-pro .modal-body .card[role="button"],
+    body.ytc-classic-pro #selectBasicMode,
+    body.ytc-classic-pro #selectGaptekMode,
+    body.ytc-classic-pro #selectAdvancedMode {
+      min-height: 100%;
+      border-radius: 22px !important;
+      background: var(--ytc-classic-soft) !important;
+    }
+
+    body.ytc-classic-pro.lite-mode .app-section,
+    body.ytc-classic-pro.lite-mode .card,
+    body.ytc-classic-pro.lite-mode .modal-content,
+    body.ytc-classic-pro.lite-mode .assistant-panel {
+      box-shadow: 0 12px 34px rgba(15, 23, 42, .14) !important;
+    }
+
+    body.ytc-classic-pro .lite-mode-preview {
+      background: color-mix(in srgb, #38bdf8 9%, var(--ytc-classic-soft));
+      border: 1px dashed color-mix(in srgb, #38bdf8 42%, var(--ytc-classic-line));
+      border-radius: 18px;
+      padding: .85rem;
+    }
+
+    body.ytc-classic-pro.lite-mode .lite-mode-preview {
+      background: color-mix(in srgb, #38bdf8 16%, var(--ytc-classic-soft));
+      border-style: solid;
+    }
+
+
+    @media (max-width: 768px) {
+      body.ytc-classic-pro .section-header,
+      body.ytc-classic-pro .app-section,
+      body.ytc-classic-pro .card,
+      body.ytc-classic-pro .modal-content,
+      body.ytc-classic-pro .offcanvas {
+        border-radius: 20px !important;
+      }
+
+      body.ytc-classic-pro .section-header {
+        gap: .75rem;
+      }
+
+      body.ytc-classic-pro .app-section {
+        padding: .85rem;
+      }
+    }
   </style>
   <!-- Cropper.js -->
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
@@ -5442,7 +5701,7 @@
 
 </head>
 
-<body>
+<body class="ytc-classic-pro">
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
     <div class="container d-flex align-items-center gap-3">
@@ -8440,9 +8699,45 @@
 
         <hr class="my-4">
         <h6 class="mb-2">Tampilan Mode</h6>
-        <div class="mb-3">
-          <p class="small text-secondary mb-2">Pilih mode tampilan default (Basic/Advanced).</p>
-          <button class="btn btn-outline-primary w-100" id="resetModePrefBtn">
+        <div class="settings-card p-3 mb-3" id="settingsModePanel">
+          <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+            <div>
+              <div class="fw-bold">Mode tampilan</div>
+              <div class="small text-secondary">Pilih layout tanpa mengubah fungsi converter.</div>
+            </div>
+            <span class="badge text-bg-primary" id="settingsModeBadge">Basic</span>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <button class="btn btn-outline-primary w-100" type="button" data-settings-mode="basic">
+                <i class="bi bi-magic me-1"></i> Basic
+              </button>
+            </div>
+            <div class="col-6">
+              <button class="btn btn-outline-info w-100" type="button" id="settingsLiteModeBtn" data-settings-mode="lite">
+                <i class="bi bi-phone me-1"></i> Lite
+              </button>
+            </div>
+            <div class="col-6">
+              <button class="btn btn-outline-secondary w-100" type="button" data-settings-mode="advanced">
+                <i class="bi bi-sliders me-1"></i> Advanced
+              </button>
+            </div>
+            <div class="col-6">
+              <button class="btn btn-outline-success w-100" type="button" data-settings-mode="gaptek">
+                <i class="bi bi-emoji-smile me-1"></i> Gaptek
+              </button>
+            </div>
+          </div>
+          <div class="lite-mode-preview mt-3" aria-live="polite">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-speedometer2 text-info"></i>
+              <strong>Lite UI</strong>
+              <span class="badge text-bg-info ms-auto">Ringan</span>
+            </div>
+            <div class="small text-secondary mt-1">Tampilan lebih simpel untuk hape jadul/kentang; tombol dan proses convert tetap sama.</div>
+          </div>
+          <button class="btn btn-outline-primary w-100 mt-3" id="resetModePrefBtn" type="button">
             <i class="bi bi-arrow-repeat me-1"></i> Reset Pilihan Mode
           </button>
         </div>
