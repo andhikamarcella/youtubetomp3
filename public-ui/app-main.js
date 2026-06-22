@@ -2742,13 +2742,15 @@
           { capture: true },
         );
 
-        const SUPPORTED_LANGS = ['en', 'ko', 'ja'];
+        const SUPPORTED_LANGS = ['id', 'en', 'ko', 'ja', 'es'];
         const LANGUAGE_VARIANTS = {
+          id: ['id', 'id-id', 'in', 'in-id', 'ind', 'idn'],
           en: ['en', 'en-us', 'en-gb', 'en-au', 'en-ca', 'en-in', 'eng'],
           ko: ['ko', 'ko-kr'],
           ja: ['ja', 'ja-jp'],
+          es: ['es', 'es-es', 'es-mx', 'es-419'],
         };
-        const FALLBACK_LANG = 'en';
+        const FALLBACK_LANG = 'id';
         const I18N_STRINGS = {
           id: {
             navConverter: 'Converter',
@@ -3727,6 +3729,10 @@
           }
         };
 
+        const clearPreferredLang = () => {
+          try { localStorage.removeItem('app:preferredLang'); } catch { }
+        };
+
         const preserveSpacing = (original, replacement) => {
           const leading = original.match(/^\s*/)?.[0] ?? '';
           const trailing = original.match(/\s*$/)?.[0] ?? '';
@@ -3737,7 +3743,6 @@
         if (!SUPPORTED_LANGS.includes(currentLang)) {
           currentLang = FALLBACK_LANG;
         }
-        persistPreferredLang(currentLang);
 
         const translate = (key, fallback) => {
           if (!key) return fallback ?? '';
@@ -4073,15 +4078,22 @@
         if (langSelect) {
           try {
             const stored = localStorage.getItem('app:preferredLang');
-            const initial = stored && SUPPORTED_LANGS.includes(stored) ? stored : detectLanguage();
-            currentLang = SUPPORTED_LANGS.includes(initial) ? initial : FALLBACK_LANG;
-            persistPreferredLang(currentLang);
-            langSelect.value = currentLang;
+            const manual = stored && SUPPORTED_LANGS.includes(stored) ? stored : '';
+            currentLang = manual || detectLanguage();
+            if (!SUPPORTED_LANGS.includes(currentLang)) currentLang = FALLBACK_LANG;
+            langSelect.value = manual || 'auto';
+            applyTranslations();
           } catch { }
           langSelect.addEventListener('change', () => {
             const val = langSelect.value;
-            currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
-            persistPreferredLang(currentLang);
+            if (val === 'auto') {
+              clearPreferredLang();
+              currentLang = detectLanguage();
+              if (!SUPPORTED_LANGS.includes(currentLang)) currentLang = FALLBACK_LANG;
+            } else {
+              currentLang = SUPPORTED_LANGS.includes(val) ? val : FALLBACK_LANG;
+              persistPreferredLang(currentLang);
+            }
             applyTranslations();
           });
         }
@@ -5047,15 +5059,8 @@
         }
 
         if (fontSelect) {
-          fontSelect.addEventListener('change', () => {
-            const value = fontSelect.value || 'typewriter';
-            if (state.experience.font !== value) {
-              state.experience.font = value;
-              applyFont();
-              persistState();
-              incrementPoints(10, 'Ganti font', { badge: 'stylist' });
-            }
-          });
+          fontSelect.disabled = true;
+          fontSelect.value = 'sans';
         }
 
         if (layoutSelect) {
@@ -5216,7 +5221,7 @@
         const defaultAccessibility = { highContrast: false, largeText: false, reduceMotion: false };
         const defaultExperience = {
           theme: 'auto',
-          font: 'typewriter',
+          font: 'sans',
           layout: 'cozy',
           mood: 'auto',
           previewEmbed: true,
@@ -7452,9 +7457,8 @@
 
         const applyFont = () => {
           if (!document.body) return;
-          const font = state.experience.font || 'typewriter';
+          state.experience.font = 'sans';
           document.body.classList.remove('font-typewriter', 'font-retro', 'font-mono');
-          document.body.classList.add(`font-${font}`);
         };
 
         const applyLayout = () => {
@@ -7470,7 +7474,7 @@
           applyFont();
           applyLayout();
           if (themeSelect) themeSelect.value = state.experience.theme || 'auto';
-          if (fontSelect) fontSelect.value = state.experience.font || 'typewriter';
+          if (fontSelect) fontSelect.value = 'sans';
           if (layoutSelect) layoutSelect.value = state.experience.layout || 'cozy';
           if (moodSelect) moodSelect.value = state.experience.mood || 'auto';
           if (narratorToggle) narratorToggle.checked = !!state.experience.narratorAuto;
@@ -8368,6 +8372,8 @@
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'assistant-suggestion-chip';
+            chip.setAttribute('role', 'listitem');
+            chip.setAttribute('aria-label', `Pakai saran cepat: ${label}`);
             chip.textContent = label;
             chip.addEventListener('click', () => {
               if (assistantInput) {
@@ -16392,35 +16398,54 @@
             const selectBasic = document.getElementById('selectBasicMode');
             const selectAdvanced = document.getElementById('selectAdvancedMode');
             const selectGaptek = document.getElementById('selectGaptekMode');
+            const settingsModeButtons = Array.from(document.querySelectorAll('[data-settings-mode]'));
+            const settingsModeBadge = document.getElementById('settingsModeBadge');
             const modeKey = 'ytmp3_mode_pref';
 
             const setMode = (mode) => {
-              const isBasic = mode === 'basic';
+              const isLite = mode === 'lite';
+              const isBasic = mode === 'basic' || isLite;
               const isGaptek = mode === 'gaptek';
               const isAdvanced = !isBasic && !isGaptek;
+
+              document.body.classList.toggle('lite-mode', isLite);
+              settingsModeButtons.forEach((button) => {
+                const active = button.dataset.settingsMode === mode;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-pressed', active ? 'true' : 'false');
+              });
+              if (settingsModeBadge) {
+                settingsModeBadge.textContent = isLite ? 'Lite' : (isBasic ? 'Basic' : (isGaptek ? 'Gaptek' : 'Advanced'));
+                settingsModeBadge.className = `badge ${isLite ? 'text-bg-info' : (isGaptek ? 'text-bg-success' : (isAdvanced ? 'text-bg-secondary' : 'text-bg-primary'))}`;
+              }
 
               if (containerBasic) containerBasic.hidden = !isBasic;
               if (containerAdvanced) containerAdvanced.hidden = !isAdvanced;
               if (containerGaptek) containerGaptek.hidden = !isGaptek;
 
               if (labelToggle) {
-                if (isBasic) labelToggle.textContent = 'Mode: Basic';
+                if (isLite) labelToggle.textContent = 'Mode: Lite';
+                else if (isBasic) labelToggle.textContent = 'Mode: Basic';
                 else if (isGaptek) labelToggle.textContent = 'Mode: Gaptek';
                 else labelToggle.textContent = 'Mode: Advanced';
               }
               if (btnToggle) {
                 const icon = btnToggle.querySelector('i');
                 if (icon) {
-                  if (isBasic) icon.className = 'bi bi-magic';
+                  if (isLite) icon.className = 'bi bi-phone';
+                  else if (isBasic) icon.className = 'bi bi-magic';
                   else if (isGaptek) icon.className = 'bi bi-emoji-smile';
                   else icon.className = 'bi bi-sliders';
                 }
-                btnToggle.title = isBasic
-                  ? 'Basic Mode: cepat dan simpel'
-                  : (isGaptek ? 'Gaptek Mode: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap');
+                btnToggle.title = isLite
+                  ? 'Lite Mode: ringan untuk hape jadul'
+                  : (isBasic
+                    ? 'Basic Mode: cepat dan simpel'
+                    : (isGaptek ? 'Gaptek Mode: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap'));
                 // Update button style
-                btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success');
-                if (isBasic) btnToggle.classList.add('text-primary');
+                btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success', 'text-info');
+                if (isLite) btnToggle.classList.add('text-info');
+                else if (isBasic) btnToggle.classList.add('text-primary');
                 else if (isGaptek) btnToggle.classList.add('text-success');
                 else btnToggle.classList.add('text-secondary');
               }
@@ -16433,19 +16458,28 @@
             if (btnToggle) {
               btnToggle.addEventListener('click', () => {
                 const now = localStorage.getItem(modeKey) || 'basic';
-                // Cycle: Basic -> Advanced -> Gaptek -> Basic
+                // Cycle: Basic -> Advanced -> Gaptek -> Basic. Lite is intentionally enabled from Settings only.
                 let next = 'basic';
-                if (now === 'basic') next = 'advanced';
+                if (now === 'basic' || now === 'lite') next = 'advanced';
                 else if (now === 'advanced') next = 'gaptek';
                 else next = 'basic';
 
                 setMode(next);
                 let msg = 'Basic Mode aktif';
+                if (next === 'lite') msg = 'Lite Mode aktif';
                 if (next === 'advanced') msg = 'Advanced Mode aktif';
                 if (next === 'gaptek') msg = 'Gaptek Mode aktif';
                 setToast(msg);
               });
             }
+
+            settingsModeButtons.forEach((button) => {
+              button.addEventListener('click', () => {
+                const next = button.dataset.settingsMode || 'basic';
+                setMode(next);
+                setToast(next === 'lite' ? 'Lite UI aktif' : `Mode ${next} aktif`);
+              });
+            });
 
             // Admin Login Form - Prevent Auto Submit/Refresh
             const adminForm = document.getElementById('adminLoginForm');
@@ -16462,27 +16496,8 @@
             if (btnResetMode) {
               btnResetMode.addEventListener('click', () => {
                 localStorage.removeItem(modeKey);
-
-                if (welcomeModalEl && bootstrapGlobal?.Modal) {
-                  // Close settings offcanvas if open
-                  const settingsOffcanvas = document.getElementById('offcanvasSettings');
-                  if (settingsOffcanvas && bootstrapGlobal?.Offcanvas) {
-                    const offcanvasInstance = bootstrapGlobal.Offcanvas.getInstance(settingsOffcanvas);
-                    if (offcanvasInstance) offcanvasInstance.hide();
-                  }
-
-                  // Show welcome modal
-                  if (welcomeModalInstance) {
-                    welcomeModalInstance.show();
-                  } else {
-                    // Fallback if instance lost (shouldn't happen)
-                    const modal = new bootstrapGlobal.Modal(welcomeModalEl);
-                    modal.show();
-                  }
-                } else {
-                  setMode('basic');
-                  setToast('Mode direset ke Basic');
-                }
+                setMode('basic');
+                setToast('Mode direset ke Basic');
               });
             }
 
@@ -16513,6 +16528,14 @@
               if (selectBasic) selectBasic.onclick = () => handleSelection('basic');
               if (selectAdvanced) selectAdvanced.onclick = () => handleSelection('advanced');
               if (selectGaptek) selectGaptek.onclick = () => handleSelection('gaptek');
+              [selectBasic, selectAdvanced, selectGaptek].filter(Boolean).forEach((card) => {
+                card.addEventListener('keydown', (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    card.click();
+                  }
+                });
+              });
 
               // Show if no mode selected
               if (!currentMode) {

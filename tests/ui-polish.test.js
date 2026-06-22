@@ -109,7 +109,7 @@ test("homepage menunda script berat dan menguatkan SEO", () => {
   assert.match(pages.home, /content-visibility: auto/);
   assert.match(pages.home, /modal-backdrop[\s\S]{0,220}background: rgba\(3, 7, 18, \.82\)/);
   assert.match(pages.home, /font-family: "Inter", "Segoe UI", system-ui/);
-  assert.match(pages.home, /requestIdleCallback\(run, \{ timeout: 1800 \}\)/);
+  assert.match(pages.home, /requestIdleCallback\(run, \{ timeout: 6500 \}\)/);
   assert.doesNotMatch(pages.home, /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/howler\/2\.2\.4\/howler\.min\.js"/);
   assert.doesNotMatch(pages.home, /<script src="https:\/\/accounts\.google\.com\/gsi\/client"/);
   assert.match(pages.home, /aria-label="Cari pertanyaan FAQ"/);
@@ -126,9 +126,50 @@ test("homepage memindahkan JavaScript utama ke asset cacheable", () => {
 
 
 test("AI Navigator dan backdrop modal tetap rapi", () => {
-  assert.match(pages.home, /\.assistant-quick-suggestions \{[\s\S]{0,180}grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(pages.home, /text-overflow: ellipsis/);
+  assert.match(pages.home, /\.assistant-quick-suggestions \{[\s\S]{0,220}scroll-snap-type: inline mandatory/);
+  assert.match(pages.home, /\.assistant-suggestion-chip \{[\s\S]{0,700}scroll-snap-align: start/);
   assert.match(pages.home, /\.assistant-panel \.assistant-messages \{[\s\S]{0,180}max-height: clamp\(12rem, 40vh, 22rem\)/);
   assert.match(pages.home, /body \.modal-backdrop \{[\s\S]{0,180}pointer-events: auto !important/);
   assert.match(pages.home, /body \.modal-backdrop\.show \{[\s\S]{0,180}backdrop-filter: blur\(5px\)/);
+});
+
+
+test("homepage memakai classic professional Web3 UI pass", () => {
+  assert.match(pages.home, /<body class="ytc-classic-pro">/);
+  assert.match(pages.home, /Classic professional Web3 UI pass/);
+  assert.match(pages.home, /--ytc-classic-page: #eef1f6/);
+  assert.match(pages.home, /linear-gradient\(90deg, #020617, #ef4444, #f59e0b, #6366f1, #020617\)/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.app-section/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.assistant-suggestion-chip/);
+});
+
+
+test("Lite mode hanya dipilih dari settings dan tetap memakai Basic flow", () => {
+  assert.match(pages.home, /id="settingsLiteModeBtn"[^>]+data-settings-mode="lite"/);
+  assert.match(pages.home, /id="settingsModeBadge"/);
+  assert.match(pages.home, /class="lite-mode-preview/);
+  assert.doesNotMatch(pages.home, /id="selectLiteMode"/);
+  assert.match(pages.appMain, /Lite is intentionally enabled from Settings only/);
+  assert.match(pages.appMain, /const isBasic = mode === 'basic' \|\| isLite/);
+  assert.match(pages.appMain, /settingsModeButtons\.forEach/);
+  assert.match(pages.appMain, /aria-pressed/);
+});
+
+test("offcanvas tetap sidebar kiri-kanan dan spacing utama rapat", () => {
+  assert.match(pages.home, /offcanvas-start[\s\S]{0,120}id="offcanvasNav"/);
+  assert.match(pages.home, /id="offcanvasSettings"/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.offcanvas \{[\s\S]{0,160}position: fixed !important/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.offcanvas\.offcanvas-start \{[\s\S]{0,120}left: 0 !important/);
+  assert.match(pages.home, /body\.ytc-classic-pro \.offcanvas\.offcanvas-end \{[\s\S]{0,120}right: 0 !important/);
+  assert.match(pages.home, /body\.ytc-classic-pro #mainContent \{[\s\S]{0,80}padding-bottom: 1\.25rem !important/);
+});
+
+test("bahasa default auto mengikuti perangkat dan Experience tidak punya font picker", () => {
+  assert.match(pages.home, /<option value="auto">Auto \(Bahasa HP\)<\/option>/);
+  assert.match(pages.appMain, /const SUPPORTED_LANGS = \['id', 'en', 'ko', 'ja', 'es'\]/);
+  assert.match(pages.appMain, /clearPreferredLang/);
+  assert.match(pages.appMain, /langSelect\.value = manual \|\| 'auto'/);
+  assert.doesNotMatch(pages.home, /id="fontSelect"/);
+  assert.match(pages.appMain, /state\.experience\.font = 'sans'/);
+  assert.match(pages.home, /Experience font is intentionally locked to clean sans/);
 });
