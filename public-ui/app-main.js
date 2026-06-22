@@ -16522,6 +16522,7 @@
               };
 
               if (selectBasic) selectBasic.onclick = () => handleSelection('basic');
+              if (selectLite) selectLite.onclick = () => handleSelection('lite');
               if (selectAdvanced) selectAdvanced.onclick = () => handleSelection('advanced');
               if (selectGaptek) selectGaptek.onclick = () => handleSelection('gaptek');
               [selectBasic, selectAdvanced, selectGaptek].filter(Boolean).forEach((card) => {
