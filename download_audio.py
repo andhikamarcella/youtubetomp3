@@ -4,6 +4,25 @@ import subprocess
 import sys
 from typing import Iterable, Optional
 
+def _pip_install(*packages: str) -> None:
+    """Install Python packages in hosted environments, including PEP 668 images."""
+
+    base_cmd = [sys.executable, "-m", "pip", "install", "--quiet"]
+    extra = os.environ.get("PIP_INSTALL_EXTRA_ARGS", "").split()
+    attempts = [
+        base_cmd + extra + list(packages),
+        base_cmd + ["--user"] + extra + list(packages),
+        base_cmd + ["--break-system-packages"] + extra + list(packages),
+    ]
+    last_exc = None
+    for cmd in attempts:
+        try:
+            subprocess.check_call(cmd)
+            return
+        except Exception as exc:
+            last_exc = exc
+    raise RuntimeError(f"pip install failed: {last_exc}")
+
 YoutubeDL = None
 YouTube = None
 
@@ -14,9 +33,7 @@ def upgrade_ytdlp() -> bool:
     if flag in {"0", "false", "no", "off"}:
         return False
     try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--quiet", "--upgrade", "yt-dlp"]
-        )
+        _pip_install("--upgrade", "yt-dlp")
         YoutubeDL = None
         return ensure_ytdlp()
     except Exception:
@@ -36,9 +53,7 @@ def ensure_ytdlp() -> bool:
         return True
     except ModuleNotFoundError:
         try:
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--quiet", "yt-dlp"]
-            )
+            _pip_install("yt-dlp")
             from yt_dlp import YoutubeDL as _YoutubeDL  # type: ignore
 
             YoutubeDL = _YoutubeDL
@@ -64,9 +79,7 @@ def ensure_pytube() -> bool:
         return True
     except ModuleNotFoundError:
         try:
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--quiet", "pytube"]
-            )
+            _pip_install("pytube")
             from pytube import YouTube as _YouTube  # type: ignore
 
             YouTube = _YouTube
@@ -124,14 +137,18 @@ def download_with_ytdlp(
 
     compat_opts = dict(base_opts)
     compat_opts["force_ipv4"] = True
-    compat_opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
+    compat_opts["extractor_args"] = {"youtube": {"player_client": ["default", "ios", "android"]}}
 
     relaxed_opts = dict(compat_opts)
-    relaxed_opts["format"] = "best"
+    relaxed_opts["format"] = "bestaudio*/best*"
+
+    generic_opts = dict(base_opts)
+    generic_opts["format"] = "best"
+    generic_opts.pop("extractor_args", None)
 
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, relaxed_opts]
+    attempts = [base_opts, compat_opts, relaxed_opts, generic_opts]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]

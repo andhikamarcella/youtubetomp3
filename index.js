@@ -7113,7 +7113,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
 
   const hasExtractorArgs = next.includes("--extractor-args");
   if (!hasExtractorArgs) {
-    next.push("--extractor-args", "youtube:player_client=android");
+    next.push("--extractor-args", "youtube:player_client=default,ios,android");
   }
 
   if (!next.includes("--force-ipv4")) {
@@ -7124,7 +7124,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
     if (next[i] === "-f" && typeof next[i + 1] === "string") {
       const selector = next[i + 1];
       if (selector.includes("bestaudio")) {
-        next[i + 1] = "bestaudio/best";
+        next[i + 1] = "bestaudio*/best*";
       }
       break;
     }
@@ -7521,7 +7521,7 @@ const convertSingle = async (payload = {}) => {
       } catch { }
     }
 
-    const args = ["--newline", "--no-progress"];
+    const args = ["--newline", "--progress"];
     if (ffmpegPath) {
       args.push("--ffmpeg-location", ffmpegPath);
     }

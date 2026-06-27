@@ -2181,6 +2181,40 @@
       color: var(--bs-secondary);
     }
 
+
+    /* Performance mode: keep the UI light on hosted/mobile devices. */
+    .app-footer::before,
+    .app-footer::after,
+    .aero-footer::before,
+    .aero-footer::after,
+    .aero-footer .footer-hero::before,
+    .aero-footer .footer-hero::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .app-footer .footer-hero,
+    .app-footer .trust-card,
+    .app-footer .footer-logo,
+    .aero-footer .footer-hero,
+    .aero-footer .trust-card,
+    .aero-footer .footer-logo,
+    .aero-footer .aero-tag,
+    .aero-footer .footer-pill {
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    .aero-footer .footer-hero,
+    html[data-bs-theme='dark'] .aero-footer .footer-hero,
+    .aero-footer .trust-card,
+    html[data-bs-theme='dark'] .aero-footer .trust-card,
+    .aero-footer .footer-logo,
+    html[data-bs-theme='dark'] .aero-footer .footer-logo {
+      background-image: none !important;
+    }
+
     @media (max-width: 991.98px) {
       .app-tabbar {
         display: none !important;
