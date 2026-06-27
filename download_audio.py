@@ -119,7 +119,7 @@ def download_with_ytdlp(
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
     base_opts = {
-        "format": "bestaudio/best",
+        "format": "bestaudio*/best*",
         "outtmpl": template,
         "restrictfilenames": False,
         "noplaylist": True,
@@ -137,7 +137,7 @@ def download_with_ytdlp(
 
     compat_opts = dict(base_opts)
     compat_opts["force_ipv4"] = True
-    compat_opts["extractor_args"] = {"youtube": {"player_client": ["default", "ios", "android"]}}
+    compat_opts["extractor_args"] = {"youtube": {"player_client": ["web", "web_safari", "ios", "android", "tv"]}}
 
     relaxed_opts = dict(compat_opts)
     relaxed_opts["format"] = "bestaudio*/best*"

@@ -2183,6 +2183,24 @@
 
 
     /* Performance mode: keep the UI light on hosted/mobile devices. */
+    *,
+    *::before,
+    *::after {
+      box-shadow: none !important;
+      text-shadow: none !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    .tw-glow-orb,
+    [id='tw-glow-orb'],
+    [class*='glow'],
+    [class*='orb'] {
+      display: none !important;
+      opacity: 0 !important;
+      background-image: none !important;
+    }
+
     .app-footer::before,
     .app-footer::after,
     .aero-footer::before,

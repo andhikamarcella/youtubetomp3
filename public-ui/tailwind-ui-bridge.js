@@ -17,7 +17,7 @@
         letter-spacing: .01em;
         transform: translateZ(0);
         transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, border-color .18s ease, background-color .18s ease;
-        box-shadow: 0 12px 28px rgba(2, 6, 23, .18);
+        box-shadow: none;
       }
       .tw-enhanced button::before,
       .tw-enhanced a.btn::before,
@@ -41,8 +41,8 @@
       .tw-enhanced [role="button"]:hover,
       .tw-enhanced a[class*="bg-"]:hover {
         transform: translateY(-2px);
-        filter: brightness(1.08) saturate(1.08);
-        box-shadow: 0 18px 38px rgba(2, 6, 23, .26), 0 0 0 1px rgba(255,255,255,.10) inset;
+        filter: none;
+        box-shadow: none;
       }
       .tw-enhanced button:hover::before,
       .tw-enhanced a.btn:hover::before,
@@ -80,21 +80,19 @@
       .tw-enhanced textarea:focus,
       .tw-enhanced .form-control:focus,
       .tw-enhanced .form-select:focus {
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, .18), 0 16px 32px rgba(2, 6, 23, .18);
+        box-shadow: none;
       }
       .tw-enhanced .premium-panel,
       .tw-enhanced .premium-card,
       .tw-enhanced .ytconv-premium-surface {
         border-color: rgba(129, 140, 248, .26);
-        box-shadow: 0 24px 70px rgba(2, 6, 23, .34);
+        box-shadow: none;
       }
       .tw-enhanced {
         position: relative;
         isolation: isolate;
         font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        background-image:
-          radial-gradient(circle at 12% 8%, rgba(59, 130, 246, .10), transparent 24rem),
-          radial-gradient(circle at 88% 14%, rgba(20, 184, 166, .10), transparent 26rem);
+        background-image: none;
       }
       .tw-glow-orb {
         position: fixed;
@@ -105,12 +103,10 @@
         z-index: 0;
         pointer-events: none;
         border-radius: 9999px;
-        background:
-          radial-gradient(circle at 45% 45%, rgba(99, 102, 241, .24), transparent 0 34%),
-          radial-gradient(circle at 62% 56%, rgba(6, 182, 212, .18), transparent 0 42%),
-          radial-gradient(circle at 34% 65%, rgba(59, 130, 246, .12), transparent 0 48%);
-        filter: blur(22px) saturate(1.18);
-        opacity: .78;
+        background: none;
+        filter: none;
+        opacity: 0;
+        display: none;
         transform: translate3d(-50%, -50%, 0) scale(1);
         transition: opacity .25s ease, filter .25s ease;
         mix-blend-mode: screen;
@@ -129,8 +125,8 @@
       .tw-enhanced .list-group-item,
       .tw-enhanced .toast {
         border-color: rgba(148, 163, 184, .20);
-        box-shadow: 0 18px 50px rgba(2, 6, 23, .18);
-        backdrop-filter: blur(14px);
+        box-shadow: none;
+        backdrop-filter: none;
         transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease, filter .18s ease;
       }
       .tw-enhanced header:hover,
@@ -143,8 +139,8 @@
       .tw-enhanced .list-group-item:hover,
       .tw-enhanced .toast:hover {
         border-color: rgba(125, 211, 252, .38);
-        box-shadow: 0 28px 80px rgba(37, 99, 235, .20), 0 0 40px rgba(6, 182, 212, .10);
-        filter: saturate(1.05);
+        box-shadow: none;
+        filter: none;
       }
       .tw-enhanced h1,
       .tw-enhanced h2,
@@ -171,13 +167,13 @@
       }
       .tw-enhanced tbody tr:hover {
         transform: translateY(-1px);
-        box-shadow: 0 12px 28px rgba(2, 6, 23, .18);
+        box-shadow: none;
       }
       .tw-enhanced .badge,
       .tw-enhanced [class*="rounded-full"],
       .tw-enhanced .chip,
       .tw-enhanced .status-pill {
-        box-shadow: 0 10px 22px rgba(2, 6, 23, .16);
+        box-shadow: none;
       }
       .tw-enhanced img,
       .tw-enhanced video,
@@ -188,7 +184,7 @@
         border: 0;
         border-radius: 999px;
         font-weight: 800;
-        box-shadow: 0 10px 24px rgba(2, 6, 23, .18);
+        box-shadow: none;
       }
       .tw-enhanced ::selection {
         color: #f8fafc;

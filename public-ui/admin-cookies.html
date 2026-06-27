@@ -8,26 +8,17 @@
   <script src="/tailwind-ui-bridge.js" defer></script>
   <style>
     body {
-      background:
-        radial-gradient(circle at top left, rgba(99,102,241,.24), transparent 32rem),
-        radial-gradient(circle at top right, rgba(14,165,233,.16), transparent 28rem),
-        radial-gradient(circle at bottom, rgba(16,185,129,.10), transparent 34rem),
-        #020617;
+      background: #020617;
     }
     @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
     .fade-in { animation: fadeIn .35s ease both; }
     .premium-card {
       position: relative;
       overflow: hidden;
-      box-shadow: 0 24px 70px rgba(15, 23, 42, .38);
+      box-shadow: none;
     }
-    .premium-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background: linear-gradient(135deg, rgba(255,255,255,.10), transparent 38%, rgba(99,102,241,.08));
-    }
+    .premium-card::before { content: none; display: none; }
+    .shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl, .shadow-inner { box-shadow: none !important; }
     .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
   </style>
 </head>

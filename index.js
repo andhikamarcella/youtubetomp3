@@ -2422,6 +2422,34 @@ const uploadAudioToCloudinary = async ({ filePath, publicId, folder, mimeType })
   };
 };
 
+
+const destroyAudioFromCloudinary = async (publicId) => {
+  const cfg = parseCloudinaryUrl(process.env.CLOUDINARY_AUDIO_URL || process.env.CLOUDINARY_URL);
+  if (!cfg) throw new Error("Cloudinary belum dikonfigurasi");
+  const timestamp = Math.floor(Date.now() / 1000);
+  const paramsToSign = {
+    invalidate: "true",
+    public_id: publicId,
+    timestamp,
+  };
+  const signature = signCloudinaryParams(paramsToSign, cfg.apiSecret);
+  const { FormData } = await import("undici");
+  const form = new FormData();
+  form.set("api_key", cfg.apiKey);
+  form.set("timestamp", String(timestamp));
+  form.set("signature", signature);
+  form.set("public_id", publicId);
+  form.set("invalidate", "true");
+  const endpoint = `https://api.cloudinary.com/v1_1/${cfg.cloudName}/video/destroy`;
+  const response = await fetch(endpoint, { method: "POST", body: form });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const msg = typeof data?.error?.message === "string" ? data.error.message : `Cloudinary destroy gagal (HTTP ${response.status})`;
+    throw new Error(msg);
+  }
+  return data;
+};
+
 const extractCloudinaryPublicIdFromUrl = (rawUrl) => {
   const value = String(rawUrl || "").trim();
   if (!value) return "";
@@ -7113,7 +7141,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
 
   const hasExtractorArgs = next.includes("--extractor-args");
   if (!hasExtractorArgs) {
-    next.push("--extractor-args", "youtube:player_client=default,ios,android");
+    next.push("--extractor-args", "youtube:player_client=web,web_safari,ios,android,tv");
   }
 
   if (!next.includes("--force-ipv4")) {
@@ -7200,8 +7228,11 @@ const runYtDlpDownload = ({ args, id, onProgress }) =>
     });
   });
 
-const runPythonDownload = ({ url, id, baseLogs = "" }) =>
-  new Promise((resolve, reject) => {
+const runPythonDownload = async ({ url, id, baseLogs = "" }) => {
+  await syncCookiesToLocal({ force: true }).catch((err) => {
+    console.warn("[cookie-store] unable to hydrate cookies before Python download", err?.message || err);
+  });
+  return new Promise((resolve, reject) => {
     let pyLogs = "";
     const scriptArgs = [
       join(__dirname, "download_audio.py"),
@@ -7264,6 +7295,7 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
       }
     });
   });
+};
 
 const convertSingle = async (payload = {}) => {
   const {
@@ -7521,6 +7553,11 @@ const convertSingle = async (payload = {}) => {
       } catch { }
     }
 
+    let logs = "";
+    await syncCookiesToLocal({ force: true }).catch((err) => {
+      logs += `\n[Warning] Gagal sync cookies lokal: ${err?.message || err}`;
+    });
+
     const args = ["--newline", "--progress"];
     if (ffmpegPath) {
       args.push("--ffmpeg-location", ffmpegPath);
@@ -7530,13 +7567,14 @@ const convertSingle = async (payload = {}) => {
     }
     args.push("--js-runtimes", "node");
     args.push("--remote-components", "ejs:github");
+    args.push("--extractor-args", "youtube:player_client=web,web_safari,ios,android,tv");
     if (noPlaylist) args.push("--no-playlist");
     args.push("-o", outTpl);
 
     emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
 
     const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
-    const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
+    const baseAudioSelector = atmos ? "bestaudio*[channels>2]/bestaudio*/best*" : "bestaudio*/best*";
 
     if (isVideoFormat) {
       const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
@@ -7615,7 +7653,6 @@ const convertSingle = async (payload = {}) => {
       });
     };
 
-    let logs = "";
     let downloadResult = null;
 
     // Untuk Spotify: metadata dari spotDL, download dari YouTube Music/YouTube via yt-dlp
@@ -8589,15 +8626,20 @@ app.post("/api/cloudinary/delete", async (req, res) => {
   }
 
   const allowedPrefix = `ytconv/user-library/${user.id}/`;
-  if (!publicId.startsWith(allowedPrefix)) {
+  let allowed = publicId.startsWith(allowedPrefix);
+  if (!allowed) {
+    const history = await listUserHistory(user.id, { limit: 500 }).catch(() => []);
+    allowed = history.some((entry) => {
+      const urls = [entry?.cloudUrl, entry?.downloadUrl].filter(Boolean).map(String);
+      return urls.some((url) => url === rawUrl || extractCloudinaryPublicIdFromUrl(url) === publicId);
+    });
+  }
+  if (!allowed) {
     return res.status(403).json({ ok: false, error: "Tidak diizinkan menghapus file ini" });
   }
 
   try {
-    const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: "video",
-      invalidate: true,
-    });
+    const result = await destroyAudioFromCloudinary(publicId);
     const status = String(result?.result || "").toLowerCase();
     if (!status || (status !== "ok" && status !== "not found")) {
       const msg = typeof result?.result === "string" ? result.result : "Gagal menghapus file Cloudinary";
