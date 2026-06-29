@@ -10,7 +10,7 @@ YouTube = None
 
 def upgrade_ytdlp() -> bool:
     global YoutubeDL
-    flag = str(os.environ.get("YTDLP_AUTO_UPGRADE", "1") or "").strip().lower()
+    flag = str(os.environ.get("YTDLP_AUTO_UPGRADE", "0") or "").strip().lower()
     if flag in {"0", "false", "no", "off"}:
         return False
     try:
@@ -24,7 +24,7 @@ def upgrade_ytdlp() -> bool:
 
 
 def ensure_ytdlp() -> bool:
-    """Lazily import yt_dlp, installing it when absent."""
+    """Lazily import yt_dlp without mutating externally-managed Python envs."""
 
     global YoutubeDL
     if YoutubeDL is not None:
@@ -35,9 +35,12 @@ def ensure_ytdlp() -> bool:
         YoutubeDL = _YoutubeDL
         return True
     except ModuleNotFoundError:
+        if str(os.environ.get("YTDLP_HELPER_PIP_INSTALL", "0") or "").strip().lower() not in {"1", "true", "yes", "on"}:
+            print("yt_dlp module is not installed; skipping pip install in managed Python", file=sys.stderr)
+            return False
         try:
             subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "--quiet", "yt-dlp"]
+                [sys.executable, "-m", "pip", "install", "--quiet", "--user", "yt-dlp"]
             )
             from yt_dlp import YoutubeDL as _YoutubeDL  # type: ignore
 
@@ -126,12 +129,18 @@ def download_with_ytdlp(
     compat_opts["force_ipv4"] = True
     compat_opts["extractor_args"] = {"youtube": {"player_client": ["android"]}}
 
+    tv_opts = dict(base_opts)
+    tv_opts["extractor_args"] = {"youtube": {"player_client": ["tv_embedded", "android"]}}
+
     relaxed_opts = dict(compat_opts)
     relaxed_opts["format"] = "best"
 
+    http_opts = dict(relaxed_opts)
+    http_opts["format"] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best"
+
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, relaxed_opts]
+    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]

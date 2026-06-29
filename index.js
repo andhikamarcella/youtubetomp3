@@ -7089,9 +7089,11 @@ const buildYtDlpFallbackArgs = (args = []) => {
   const isUrlLike = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("ytsearch:"));
   const urlArg = isUrlLike ? next.pop() : null;
 
-  const hasExtractorArgs = next.includes("--extractor-args");
-  if (!hasExtractorArgs) {
-    next.push("--extractor-args", "youtube:player_client=android");
+  const extractorIndex = next.indexOf("--extractor-args");
+  if (extractorIndex >= 0 && typeof next[extractorIndex + 1] === "string") {
+    next[extractorIndex + 1] = "youtube:player_client=tv_embedded,android";
+  } else {
+    next.push("--extractor-args", "youtube:player_client=tv_embedded,android");
   }
 
   if (!next.includes("--force-ipv4")) {
@@ -7102,7 +7104,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
     if (next[i] === "-f" && typeof next[i + 1] === "string") {
       const selector = next[i + 1];
       if (selector.includes("bestaudio")) {
-        next[i + 1] = "bestaudio/best";
+        next[i + 1] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best";
       }
       break;
     }

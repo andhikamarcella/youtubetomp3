@@ -882,7 +882,7 @@
         align-items: center;
         gap: 0.5rem;
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        font-family: 'Comfortaa', cursive;
+        font-family: Inter, 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
         letter-spacing: 0.5px;
         position: relative;
         overflow: hidden;
@@ -2164,6 +2164,61 @@
 
     body.has-open-modal .offcanvas {
       pointer-events: auto !important;
+    }
+
+
+
+    /* Lightweight UI overrides: header only, mobile friendly */
+    .app-header-lite {
+      box-shadow: none !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .cute-clock {
+      background: rgba(15, 23, 42, 0.08) !important;
+      color: #e5eefc !important;
+      border: 1px solid rgba(148, 163, 184, 0.24) !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
+    }
+
+    [data-bs-theme="dark"] .cute-clock {
+      background: rgba(15, 23, 42, 0.18) !important;
+      color: #f8fafc !important;
+    }
+
+    .cute-clock:hover {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .cute-clock i { animation: none !important; }
+
+    .cute-clock .seconds {
+      background: transparent !important;
+      color: #93c5fd !important;
+      padding: 0 !important;
+    }
+
+    .forum-google-login-btn {
+      max-width: min(100%, 420px);
+      min-height: 54px;
+      white-space: normal;
+      touch-action: manipulation;
+      box-shadow: none !important;
+    }
+
+    @media (max-width: 576px) {
+      .app-header-lite .container { gap: .5rem !important; }
+      .app-header-lite .btn,
+      .app-header-lite .app-nav-btn { box-shadow: none !important; transition: none !important; }
+      .cute-clock { padding: .35rem .65rem !important; letter-spacing: 0 !important; }
+      .forum-google-login-btn { width: calc(100vw - 2rem); padding-left: 1rem !important; padding-right: 1rem !important; }
+      .forum-google-login-btn img { flex: 0 0 auto; }
     }
 
     body .modal {
@@ -5218,7 +5273,7 @@
 
 <body>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
-  <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
+  <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary app-header-lite">
     <div class="container d-flex align-items-center gap-3">
       <div class="d-flex align-items-center gap-2 flex-grow-1">
         <button class="btn btn-outline-primary d-lg-none" type="button" data-bs-toggle="offcanvas"
@@ -8444,7 +8499,7 @@
                 warga lainnya.</p>
 
               <button id="forumGoogleLoginBtn"
-                class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+                class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center justify-content-center gap-3 forum-google-login-btn">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24"
                   alt="G">
                 <span>Masuk dengan Google</span>
@@ -25884,6 +25939,28 @@
             }
           }
 
+
+
+        // FAQ fallback: keep accordion text visible even if Bootstrap collapse misses a tap.
+        document.querySelectorAll('#faqTabContent [data-bs-toggle="collapse"]').forEach((btn) => {
+          if (btn.dataset.faqFallbackBound) return;
+          btn.dataset.faqFallbackBound = '1';
+          btn.addEventListener('click', () => {
+            const selector = btn.getAttribute('data-bs-target') || btn.getAttribute('href');
+            if (!selector) return;
+            const panel = document.querySelector(selector);
+            if (!panel) return;
+            setTimeout(() => {
+              const isOpen = panel.classList.contains('show');
+              if (!isOpen && document.activeElement === btn) {
+                panel.classList.add('show');
+                btn.classList.remove('collapsed');
+                btn.setAttribute('aria-expanded', 'true');
+              }
+            }, 180);
+          }, { passive: true });
+        });
+
           // 1. FAQ Trouble Links (Mobile vs Desktop)
           const linkContainer = document.getElementById('admin-contact-buttons');
           if (linkContainer) {
@@ -29889,7 +29966,7 @@
               <h3 class="fw-bold mb-2 text-white" style="letter-spacing: -0.5px;">Gabung Forum</h3>
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan warga lainnya.</p>
               
-              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center justify-content-center gap-3 forum-google-login-btn">
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G">
                   <span>Masuk dengan Google</span>
               </button>`;
@@ -30726,12 +30803,18 @@
             if (!btn) return;
             if (!window.firebaseModules || !window.firebaseModules.auth) return;
             const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Login...';
             btn.disabled = true;
             try {
               const provider = new GoogleAuthProvider();
               provider.setCustomParameters({ prompt: 'select_account' });
               try {
+                const preferRedirect = window.matchMedia('(max-width: 768px), (display-mode: standalone)').matches;
+                if (preferRedirect) {
+                  sessionStorage.setItem('forum_login_pending', 'true');
+                  await signInWithRedirect(auth, provider);
+                  return;
+                }
                 const result = await signInWithPopup(auth, provider);
                 if (result && result.user) {
                   setToast('Login berhasil!', 'success');
