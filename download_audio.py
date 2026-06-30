@@ -1,8 +1,10 @@
 # download_audio.py — helper for yt_dlp / PyTube audio download
 import os
+import re
+import shutil
 import subprocess
 import sys
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 YoutubeDL = None
 YouTube = None
@@ -21,6 +23,37 @@ def upgrade_ytdlp() -> bool:
         return ensure_ytdlp()
     except Exception:
         return False
+
+
+def _major_version(value: str) -> int:
+    match = re.search(r"v?(\d+)", value or "")
+    return int(match.group(1)) if match else 0
+
+
+def get_js_runtime_options() -> Dict[str, object]:
+    runtime = os.environ.get("YTDLP_JS_RUNTIME", "node").strip().lower()
+    if runtime in {"", "off", "none", "0"}:
+        return {}
+
+    if runtime == "node":
+        node_bin = shutil.which("node")
+        if not node_bin:
+            print("node runtime not found; yt_dlp JS runtime disabled", file=sys.stderr)
+            return {}
+        try:
+            version = subprocess.check_output([node_bin, "--version"], text=True, timeout=3).strip()
+        except Exception as exc:
+            print(f"failed to inspect node version; yt_dlp JS runtime disabled: {exc}", file=sys.stderr)
+            return {}
+        if _major_version(version) < 22:
+            print(f"node {version} is below yt-dlp 2026.06.09 minimum; yt_dlp JS runtime disabled", file=sys.stderr)
+            return {}
+
+    return {
+        "js_runtimes": {runtime: {}},
+        "remote_components": ["ejs:github"],
+        "extractor_retries": 3,
+    }
 
 
 def ensure_ytdlp() -> bool:
@@ -115,12 +148,12 @@ def download_with_ytdlp(
         "noplaylist": True,
         "quiet": False,
         "no_warnings": False,
-        "js_runtimes": {"node": {}},
-        "remote_components": ["ejs:github"],
         "nocheckcertificate": True,
         "cachedir": False,
         "ignoreerrors": False,
     }
+
+    base_opts.update(get_js_runtime_options())
 
     if cookies_path and os.path.isfile(cookies_path):
         base_opts["cookiefile"] = cookies_path
@@ -136,11 +169,14 @@ def download_with_ytdlp(
     relaxed_opts["format"] = "best"
 
     http_opts = dict(relaxed_opts)
-    http_opts["format"] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best"
+    http_opts["format"] = "ba[protocol^=http]/b[protocol^=http]/ba/best/worst"
+
+    universal_opts = dict(tv_opts)
+    universal_opts.pop("format", None)
 
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts]
+    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts, universal_opts]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]

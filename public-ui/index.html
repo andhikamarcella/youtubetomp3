@@ -1674,6 +1674,7 @@
       transform: scale(0.95) translateY(0);
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
+
   </style>
   <style>
     :root {
@@ -2174,6 +2175,7 @@
       filter: none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
+      filter: none !important;
       border-bottom: 1px solid rgba(148, 163, 184, 0.18);
     }
 
@@ -2216,6 +2218,7 @@
       .app-header-lite .container { gap: .5rem !important; }
       .app-header-lite .btn,
       .app-header-lite .app-nav-btn { box-shadow: none !important; transition: none !important; }
+
       .cute-clock { padding: .35rem .65rem !important; letter-spacing: 0 !important; }
       .forum-google-login-btn { width: calc(100vw - 2rem); padding-left: 1rem !important; padding-right: 1rem !important; }
       .forum-google-login-btn img { flex: 0 0 auto; }
@@ -5260,6 +5263,50 @@
       gap: 6px;
       align-items: center;
     }
+
+
+    /* No-glass UI pass: mobile + desktop use solid surfaces and no expensive shadows/blurs. */
+    body:not(.keep-rich-shadows),
+    body:not(.keep-rich-shadows) :where(*) {
+      --bs-box-shadow: none;
+      --bs-box-shadow-sm: none;
+      --bs-box-shadow-lg: none;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.glass, .card, .modal-content, .offcanvas, .dropdown-menu, .accordion-item, .list-group-item, .history-item, .modern-card, .feature-card, .status-card, .history-card) {
+      background: color-mix(in srgb, var(--bs-body-bg) 92%, var(--bs-tertiary-bg) 8%) !important;
+      border-color: color-mix(in srgb, var(--bs-border-color) 86%, transparent) !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.glass, .glass:hover, .card:hover, .btn:hover, .app-nav-btn:hover, .modern-nav-item:hover) {
+      transform: none !important;
+      filter: none !important;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      body:not(.keep-rich-shadows) #mainContent :where(*),
+      body:not(.keep-rich-shadows) footer :where(*) {
+        transition-duration: .08s !important;
+        animation-duration: .08s !important;
+      }
+    }
+
+    #section-faq .accordion-body,
+    #section-faq .accordion-body :where(p, li, div, span),
+    #section-faq .text-secondary {
+      color: color-mix(in srgb, var(--bs-body-color) 88%, #93c5fd 12%) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    #section-faq .accordion-collapse.show .accordion-body {
+      display: block !important;
+    }
   </style>
   <!-- Cropper.js -->
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
@@ -6810,12 +6857,12 @@
               <div class="accordion accordion-flush" id="accGeneral">
                 <div class="accordion-item">
                   <h2 class="accordion-header">
-                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#q-gen-1">
+                    <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-gen-1" aria-expanded="true">
                       <i class="bi bi-currency-dollar me-2 text-success"></i>Apakah layanan ini benar-benar gratis?
                     </button>
                   </h2>
-                  <div id="q-gen-1" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                  <div id="q-gen-1" class="accordion-collapse collapse show" data-bs-parent="#accGeneral">
                     <div class="accordion-body text-secondary">
                       Ya, 100% gratis. Kami tidak memungut biaya berlangganan. Jika Anda ingin mendukung operasional
                       server, Anda bisa berdonasi melalui tab <strong>Saweria</strong>.
@@ -7547,6 +7594,32 @@
                         <li>Jika masih meleset, edit metadata di mode Advanced (judul, artis, album, tahun).</li>
                         <li>Untuk koleksi musik, pilih format M4A/FLAC agar metadata lebih konsisten di banyak player.</li>
                       </ol>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-18">
+                      <i class="bi bi-music-note-list me-2 text-primary"></i>Kenapa muncul Requested format is not available?
+                    </button>
+                  </h2>
+                  <div id="q-tr-18" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Artinya format asli yang diminta YouTube sedang tidak tersedia untuk video itu. Sistem sekarang otomatis mencoba format audio kompatibel, mode HTTP, client alternatif, format universal, lalu helper Python sebelum menampilkan error final. Jika tetap gagal, biasanya video dibatasi umur, wilayah, login, atau membutuhkan cookies terbaru.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-19">
+                      <i class="bi bi-cookie me-2 text-warning"></i>Kapan perlu upload cookies baru?
+                    </button>
+                  </h2>
+                  <div id="q-tr-19" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Upload cookies baru jika error menyebut login, age-restricted, bot check, HTTP 400/403, atau video hanya bisa diputar dari akun tertentu. Gunakan Admin Cookies, lalu coba convert ulang dengan MP3/M4A terlebih dahulu.
                     </div>
                   </div>
                 </div>
@@ -25939,27 +26012,6 @@
             }
           }
 
-
-
-        // FAQ fallback: keep accordion text visible even if Bootstrap collapse misses a tap.
-        document.querySelectorAll('#faqTabContent [data-bs-toggle="collapse"]').forEach((btn) => {
-          if (btn.dataset.faqFallbackBound) return;
-          btn.dataset.faqFallbackBound = '1';
-          btn.addEventListener('click', () => {
-            const selector = btn.getAttribute('data-bs-target') || btn.getAttribute('href');
-            if (!selector) return;
-            const panel = document.querySelector(selector);
-            if (!panel) return;
-            setTimeout(() => {
-              const isOpen = panel.classList.contains('show');
-              if (!isOpen && document.activeElement === btn) {
-                panel.classList.add('show');
-                btn.classList.remove('collapsed');
-                btn.setAttribute('aria-expanded', 'true');
-              }
-            }, 180);
-          }, { passive: true });
-        });
 
           // 1. FAQ Trouble Links (Mobile vs Desktop)
           const linkContainer = document.getElementById('admin-contact-buttons');
