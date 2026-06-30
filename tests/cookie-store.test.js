@@ -26,27 +26,26 @@ test.after(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-test("upload disimpan ke store persisten dan salinan runtime", async () => {
-  assert.equal(store.getCookieStoreBackend(), "file");
+test("upload disimpan ke runtime path aman tanpa mengekspos isi di metadata", async () => {
+  assert.equal(store.getCookieStoreBackend(), "volume");
   const saved = await store.saveCookies(sampleCookies);
   assert.equal(saved.bytes, Buffer.byteLength(sampleCookies));
   assert.equal(await readFile(cookiesPath, "utf8"), sampleCookies);
 
   const persistent = JSON.parse(await readFile(storePath, "utf8"));
-  assert.equal(persistent.content, sampleCookies);
-  assert.equal(persistent.hash, saved.hash);
+  assert.equal(persistent.content, undefined);
+  assert.equal(typeof persistent.hash, "string");
+  assert.equal(persistent.sizeBytes, saved.sizeBytes);
   assert.equal((await stat(cookiesPath)).mode & 0o777, 0o600);
 });
 
-test("status selalu berasal dari store dan memulihkan file runtime yang hilang", async () => {
-  await rm(cookiesPath, { force: true });
-  await assert.rejects(access(cookiesPath));
-
+test("status tidak menampilkan path/hash/content cookies", async () => {
   const status = await store.getCookiesStatus();
   assert.equal(status.exists, true);
-  assert.equal(status.bytes, Buffer.byteLength(sampleCookies));
-  assert.equal(status.backend, "file");
-  assert.equal(await readFile(cookiesPath, "utf8"), sampleCookies);
+  assert.equal(status.sizeBytes, Buffer.byteLength(sampleCookies));
+  assert.equal(status.storage, "volume");
+  assert.equal(status.content, undefined);
+  assert.equal(status.hash, undefined);
 });
 
 test("instance baru membaca upload yang sama setelah refresh atau restart", async () => {
@@ -57,7 +56,7 @@ test("instance baru membaca upload yang sama setelah refresh atau restart", asyn
   restarted.stopCookiesSync();
 });
 
-test("file cookies lama dimigrasikan ke store saat belum ada record", async () => {
+test("file cookies lama dibaca sebagai sumber utama tanpa menyimpan raw content ke metadata", async () => {
   const legacyDir = await mkdtemp(join(tmpdir(), "ytconv-cookie-legacy-"));
   const legacyCookiesPath = join(legacyDir, "cookies.txt");
   const legacyStorePath = join(legacyDir, "data", "cookies-store.json");
@@ -68,12 +67,13 @@ test("file cookies lama dimigrasikan ke store saat belum ada record", async () =
   const legacyStore = await import(`../cookie_store.js?legacy=${Date.now()}`);
   const status = await legacyStore.initializeCookiesStore();
   assert.equal(status.exists, true);
-  assert.equal(JSON.parse(await readFile(legacyStorePath, "utf8")).content, sampleCookies);
+  await assert.rejects(readFile(legacyStorePath, "utf8"));
   legacyStore.stopCookiesSync();
   await rm(legacyDir, { recursive: true, force: true });
 });
 
-test("upload kosong ditolak tanpa menghapus cookies yang sudah tersimpan", async () => {
+test("upload kosong dan non-Netscape ditolak tanpa menghapus cookies", async () => {
   await assert.rejects(store.saveCookies("   \n"), /cookies_empty/);
+  await assert.rejects(store.saveCookies("not cookies"), /cookies_invalid_netscape_format/);
   assert.equal((await store.readCookies()).content, sampleCookies);
 });

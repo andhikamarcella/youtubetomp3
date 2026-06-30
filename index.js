@@ -68,6 +68,8 @@ import {
   saveCookies,
   startCookiesSync,
   syncCookiesToLocal,
+  updateCookiesHealth,
+  deleteCookies,
 } from "./cookie_store.js";
 import {
   createTicket,
@@ -180,6 +182,7 @@ const parseGroqModels = () => {
 };
 const GROQ_MODEL_CANDIDATES = parseGroqModels();
 const COOKIES_PATH = getCookiesPath();
+const shouldUseYtDlpCookies = () => !/^(0|false|off|no)$/i.test(String(process.env.ENABLE_SERVER_COOKIES || "true"));
 try {
   const cookieStatus = await initializeCookiesStore();
   console.log(cookieStatus
@@ -3028,6 +3031,7 @@ const runYtDlpAttempt = (command, args, { label }) =>
     let stderr = "";
     const proc = spawn(command.cmd, [...(command.prefix || []), ...args], {
       stdio: ["ignore", "pipe", "pipe"],
+      cwd: JOBS_DIR,
     });
     const displayArgs = [...(command.prefix || []), ...args].join(" ");
     const baseLog = `${label}: ${command.cmd} ${displayArgs}`.trim();
@@ -3061,6 +3065,51 @@ const runYtDlpAttempt = (command, args, { label }) =>
       }
     });
   });
+
+
+const categorizeYtDlpError = (value = "") => {
+  const raw = String(value || "");
+  if (/sign in to confirm|not a bot|bot check|use --cookies|cookies-from-browser|confirm you(?:\'|’)re not a bot/i.test(raw)) return "BOT_CHECK";
+  if (/login required|sign in|private video|members-only|account/i.test(raw)) return "LOGIN_REQUIRED";
+  if (/age[- ]?restricted|confirm your age|age restriction/i.test(raw)) return "AGE_RESTRICTED";
+  if (/not available in your country|geo|region/i.test(raw)) return "GEO_BLOCKED";
+  if (/private video/i.test(raw)) return "PRIVATE_VIDEO";
+  if (/requested format is not available|no video formats|only images are available|format/i.test(raw)) return "FORMAT_UNAVAILABLE";
+  if (/429|too many requests|rate.?limit/i.test(raw)) return "RATE_LIMITED";
+  if (/ffmpeg/i.test(raw)) return "FFMPEG_MISSING";
+  if (/yt-dlp tidak bisa dijalankan|yt-dlp.*not found|no such file/i.test(raw)) return "YTDLP_MISSING";
+  if (/network|timed?out|econn|enotfound|http error 5\d\d/i.test(raw)) return "NETWORK_ERROR";
+  return "UNKNOWN";
+};
+
+const isCookieRetryCategory = (category) => new Set(["BOT_CHECK", "LOGIN_REQUIRED", "AGE_RESTRICTED", "RATE_LIMITED"]).has(category);
+
+const appendServerCookiesArgs = async (args = []) => {
+  if (!shouldUseYtDlpCookies()) return { args: [...args], used: false, status: null };
+  const status = await syncCookiesToLocal({ force: true }).catch((err) => {
+    console.warn("[cookie-store] sync before yt-dlp retry failed", err?.message || err);
+    return null;
+  });
+  if (!status?.exists || !existsSync(COOKIES_PATH)) return { args: [...args], used: false, status };
+  const next = [...args];
+  if (!next.includes("--cookies")) next.push("--cookies", COOKIES_PATH);
+  return { args: next, used: true, status };
+};
+
+const publicDownloadError = (err) => {
+  const logs = err?.logs || err?.message || "";
+  const category = err?.errorCategory || categorizeYtDlpError(logs);
+  const needsAdminCookies = ["BOT_CHECK", "LOGIN_REQUIRED", "AGE_RESTRICTED"].includes(category);
+  const message = needsAdminCookies
+    ? "Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager."
+    : (err?.message || "Gagal memproses video");
+  const wrapped = new Error(message);
+  wrapped.errorCategory = category;
+  wrapped.adminActionRequired = needsAdminCookies;
+  wrapped.hint = needsAdminCookies ? "Admin: buka Admin Cookies Manager, upload cookies Netscape terbaru, lalu jalankan Test Cookies." : undefined;
+  wrapped.logs = logs;
+  return wrapped;
+};
 
 const runYtDlpJson = async (args, { label = "yt-dlp" } = {}) => {
   const errors = [];
@@ -3529,11 +3578,8 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   if (language) {
     args.push("--sub-lang", language);
   }
-  if (existsSync(COOKIES_PATH)) {
-    args.push("--cookies", COOKIES_PATH);
-  }
-  args.push("--js-runtimes", "node");
-  args.push("--remote-components", "ejs:github");
+  args.push(...getYtDlpJsRuntimeArgs());
+  pushYoutubeExtractorArgs(args);
   args.push(target);
 
   let entry;
@@ -3541,6 +3587,22 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
     const json = await runYtDlpJson(args, { label: keywordUsed ? "ytsearch" : "info" });
     entry = Array.isArray(json?.entries) && json.entries.length ? json.entries[0] : json;
   } catch (err) {
+    const category = categorizeYtDlpError(err?.logs || err?.message || "");
+    if (isCookieRetryCategory(category)) {
+      const cookieRetry = await appendServerCookiesArgs(args);
+      if (cookieRetry.used) {
+        try {
+          const retryJson = await runYtDlpJson(cookieRetry.args, { label: `${keywordUsed ? "ytsearch" : "info"}-cookies` });
+          entry = Array.isArray(retryJson?.entries) && retryJson.entries.length ? retryJson.entries[0] : retryJson;
+          await updateCookiesHealth({ health: "valid", lastErrorCategory: null }).catch(() => {});
+        } catch (cookieErr) {
+          await updateCookiesHealth({ health: "expired", lastErrorCategory: categorizeYtDlpError(cookieErr?.logs || cookieErr?.message || "") }).catch(() => {});
+        }
+      }
+    }
+    if (entry) {
+      // metadata recovered by admin-managed cookies
+    } else
     // Jika menggunakan ytmsearch dan gagal, coba fallback ke ytsearch biasa dengan query "judul artis audio"
     if (target && target.startsWith("ytmsearch") && originalSource?.type === "spotify") {
       // Update query untuk YouTube biasa: "judul artis audio"
@@ -3560,11 +3622,8 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       if (language) {
         fallbackArgs.push("--sub-lang", language);
       }
-      if (existsSync(COOKIES_PATH)) {
-        fallbackArgs.push("--cookies", COOKIES_PATH);
-      }
-      fallbackArgs.push("--js-runtimes", "node");
-      fallbackArgs.push("--remote-components", "ejs:github");
+      fallbackArgs.push(...getYtDlpJsRuntimeArgs());
+      pushYoutubeExtractorArgs(fallbackArgs);
       fallbackArgs.push(fallbackTarget);
 
       try {
@@ -3712,9 +3771,11 @@ const searchYoutubeVideos = async ({ query, limit = 6, preferLang } = {}) => {
   if (language) {
     args.push("--sub-lang", language);
   }
-  if (existsSync(COOKIES_PATH)) {
+  if (shouldUseYtDlpCookies() && existsSync(COOKIES_PATH)) {
     args.push("--cookies", COOKIES_PATH);
   }
+  args.push(...getYtDlpJsRuntimeArgs());
+  pushYoutubeExtractorArgs(args);
   args.push(target);
 
   try {
@@ -6139,7 +6200,9 @@ const fetchWithTimeout = async (url, { timeout = 15000, headers = {} } = {}) => 
 const fetchSubtitleViaYtDlp = async ({ url, langOpt, preferAuto }) => {
   const args = ["--dump-single-json", "--no-progress", "--skip-download", "--no-warnings"];
   if (ffmpegPath) args.push("--ffmpeg-location", ffmpegPath);
-  if (existsSync(COOKIES_PATH)) args.push("--cookies", COOKIES_PATH);
+  if (shouldUseYtDlpCookies() && existsSync(COOKIES_PATH)) args.push("--cookies", COOKIES_PATH);
+  args.push(...getYtDlpJsRuntimeArgs());
+  pushYoutubeExtractorArgs(args);
   args.push(url);
 
   let stdout = "";
@@ -7081,6 +7144,52 @@ const parseYtDlpProgressLine = (line = "") => {
   };
 };
 
+
+const parseMajorVersion = (value = "") => {
+  const match = String(value || "").match(/v?(\d+)/);
+  return match ? Number(match[1]) : 0;
+};
+
+const getYtDlpJsRuntimeArgs = () => {
+  const runtime = String(process.env.YTDLP_JS_RUNTIME || "node").trim().toLowerCase();
+  if (runtime === "off" || runtime === "none" || runtime === "0") return [];
+
+  const nodeMajor = parseMajorVersion(process.version);
+  const selected = runtime || "node";
+  if (selected === "node" && nodeMajor < 22) {
+    console.warn(`[yt-dlp] Node ${process.version} is below yt-dlp 2026.06.09 minimum for JS runtime; skipping --js-runtimes node`);
+    return [];
+  }
+
+  return ["--js-runtimes", selected, "--remote-components", "ejs:github", "--extractor-retries", "3"];
+};
+
+
+const getYoutubeExtractorArgsValue = () => {
+  const clients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "mweb,web_safari,tv_embedded,android,default")
+    .split(/[,+]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(",");
+  const parts = [];
+  if (clients) parts.push(`player_client=${clients}`);
+  const poToken = String(process.env.YTDLP_YOUTUBE_PO_TOKEN || "").trim();
+  if (poToken) parts.push(`po_token=${poToken}`);
+  return parts.length ? `youtube:${parts.join(";")}` : "";
+};
+
+const pushYoutubeExtractorArgs = (args = []) => {
+  const value = getYoutubeExtractorArgsValue();
+  if (!value) return args;
+  const index = args.indexOf("--extractor-args");
+  if (index >= 0 && typeof args[index + 1] === "string") {
+    args[index + 1] = value;
+  } else {
+    args.push("--extractor-args", value);
+  }
+  return args;
+};
+
 const buildYtDlpFallbackArgs = (args = []) => {
   const next = Array.isArray(args) ? [...args] : [];
   if (!next.length) return next;
@@ -7089,12 +7198,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
   const isUrlLike = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("ytsearch:"));
   const urlArg = isUrlLike ? next.pop() : null;
 
-  const extractorIndex = next.indexOf("--extractor-args");
-  if (extractorIndex >= 0 && typeof next[extractorIndex + 1] === "string") {
-    next[extractorIndex + 1] = "youtube:player_client=tv_embedded,android";
-  } else {
-    next.push("--extractor-args", "youtube:player_client=tv_embedded,android");
-  }
+  pushYoutubeExtractorArgs(next);
 
   if (!next.includes("--force-ipv4")) {
     next.push("--force-ipv4");
@@ -7103,9 +7207,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
   for (let i = 0; i < next.length - 1; i++) {
     if (next[i] === "-f" && typeof next[i + 1] === "string") {
       const selector = next[i + 1];
-      if (selector.includes("bestaudio")) {
-        next[i + 1] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best";
-      }
+      next[i + 1] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best/worst";
       break;
     }
   }
@@ -7119,7 +7221,7 @@ const runYtDlpDownload = ({ args, id, onProgress }) =>
     const isWin = process.platform === "win32";
     const cmd = isWin ? "python" : "yt-dlp";
     const spawnArgs = isWin ? ["-m", "yt_dlp", ...args] : args;
-    const proc = spawn(cmd, spawnArgs, { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(cmd, spawnArgs, { stdio: ["ignore", "pipe", "pipe"], cwd: JOBS_DIR });
     let logs = "";
     let stdoutBuffer = "";
     const handleLine = (line) => {
@@ -7189,12 +7291,12 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
       JOBS_DIR,
       id,
     ];
-    if (existsSync(COOKIES_PATH)) {
+    if (shouldUseYtDlpCookies() && existsSync(COOKIES_PATH)) {
       scriptArgs.push(COOKIES_PATH);
     }
 
     const pyCmd = process.platform === "win32" ? "python" : "python3";
-    const py = spawn(pyCmd, scriptArgs, { stdio: ["ignore", "pipe", "pipe"] });
+    const py = spawn(pyCmd, scriptArgs, { stdio: ["ignore", "pipe", "pipe"], cwd: JOBS_DIR });
 
     py.stdout.on("data", (d) => {
       const s = d.toString();
@@ -7505,18 +7607,19 @@ const convertSingle = async (payload = {}) => {
     if (ffmpegPath) {
       args.push("--ffmpeg-location", ffmpegPath);
     }
-    if (existsSync(COOKIES_PATH)) {
-      args.push("--cookies", COOKIES_PATH);
-    }
-    args.push("--js-runtimes", "node");
-    args.push("--remote-components", "ejs:github");
+    args.push(...getYtDlpJsRuntimeArgs());
+    pushYoutubeExtractorArgs(args);
     if (noPlaylist) args.push("--no-playlist");
     args.push("-o", outTpl);
 
     emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
 
     const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
-    const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
+    // Prefer audio-only, but keep broad fallbacks so YouTube videos with unusual/limited formats
+    // do not fail immediately with "Requested format is not available".
+    const baseAudioSelector = atmos
+      ? "bestaudio[channels>2]/bestaudio/best/worst"
+      : "bestaudio/best/worst";
 
     if (isVideoFormat) {
       const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
@@ -7529,7 +7632,7 @@ const convertSingle = async (payload = {}) => {
         args.push("--merge-output-format", "mkv");
       }
     } else if (fmt === "m4a") {
-      args.push("-f", "bestaudio[ext=m4a]/bestaudio/best");
+      args.push("-f", "bestaudio[ext=m4a]/bestaudio/best/worst");
     } else if (fmt === "alac") {
       args.push("-f", baseAudioSelector);
       args.push("-x", "--audio-format", "alac");
@@ -7607,14 +7710,23 @@ const convertSingle = async (payload = {}) => {
         logs = downloadResult.logs || "";
       } catch (err) {
         const baseLogs = err.logs || "";
-        if (isVideoFormat) {
-          if (coverPath) try { await fsp.unlink(coverPath); } catch { }
-          const videoError = new Error(err.message || "Gagal mengunduh");
-          videoError.logs = (baseLogs || "").slice(-8000);
-          throw videoError;
+        const errorCategory = categorizeYtDlpError(baseLogs || err?.message || "");
+        const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "") || isCookieRetryCategory(errorCategory);
+        if (isCookieRetryCategory(errorCategory)) {
+          const cookieRetry = await appendServerCookiesArgs(args);
+          if (cookieRetry.used) {
+            try {
+              emitProgress({ stage: "downloading", message: "Mencoba cookies server", percent: mapDownloadPercent(17) });
+              downloadResult = await runYtDlpDownload({ args: cookieRetry.args, id, onProgress: handleDownloadProgress });
+              logs = downloadResult.logs || baseLogs;
+              await updateCookiesHealth({ health: "valid", lastErrorCategory: null }).catch(() => {});
+            } catch (cookieErr) {
+              logs = cookieErr?.logs || logs || baseLogs;
+              await updateCookiesHealth({ health: "expired", lastErrorCategory: categorizeYtDlpError(logs) }).catch(() => {});
+            }
+          }
         }
-        const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "");
-        if (shouldRetryWithFallbackArgs) {
+        if (!downloadResult && shouldRetryWithFallbackArgs) {
           try {
             emitProgress({ stage: "downloading", message: "Mencoba mode kompatibilitas", percent: mapDownloadPercent(18) });
             const fallbackArgs = buildYtDlpFallbackArgs(args);
@@ -7624,7 +7736,29 @@ const convertSingle = async (payload = {}) => {
             logs = retryErr?.logs || logs || baseLogs;
           }
         }
+        if (!downloadResult && shouldRetryWithFallbackArgs) {
+          try {
+            emitProgress({ stage: "downloading", message: "Mencoba format universal", percent: mapDownloadPercent(19) });
+            const universalArgs = buildYtDlpFallbackArgs(args);
+            for (let i = 0; i < universalArgs.length - 1; i++) {
+              if (universalArgs[i] === "-f") {
+                universalArgs.splice(i, 2);
+                break;
+              }
+            }
+            downloadResult = await runYtDlpDownload({ args: universalArgs, id, onProgress: handleDownloadProgress });
+            logs = downloadResult.logs || logs || baseLogs;
+          } catch (retryErr) {
+            logs = retryErr?.logs || logs || baseLogs;
+          }
+        }
         if (!downloadResult) {
+          if (isVideoFormat) {
+            if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+            const videoError = new Error(err.message || "Gagal mengunduh video");
+            videoError.logs = [logs, baseLogs].filter(Boolean).join("\n").slice(-8000);
+            throw videoError;
+          }
           try {
             emitProgress({ stage: "downloading", message: "Downloader cadangan", percent: mapDownloadPercent(20) });
             downloadResult = await runPythonDownload({ url, id, baseLogs });
@@ -8635,10 +8769,150 @@ app.get("/api/turnstile-config", (req, res) => {
   });
 });
 
+
+const outputTtlMs = Math.max(5 * 60_000, Number(process.env.OUTPUT_TTL_MINUTES || 60) * 60_000);
+const converterJobs = new Map();
+const converterQueue = [];
+const converterCache = new Map();
+let converterActive = 0;
+const converterConcurrency = Math.max(1, Math.min(3, Number(process.env.CONVERTER_CONCURRENCY || 1)));
+
+const sanitizeJobPayloadForCache = (payload = {}) => ({
+  url: payload.url || payload.mediaUrl || payload.keyword || "",
+  format: payload.format || "mp3",
+  abr: payload.abr || payload.quality || "",
+  sampleRate: payload.sampleRate || payload.sr || "",
+  trim: payload.trim || null,
+  speedMode: payload.speedMode || "normal",
+  id3: payload.id3 || {},
+});
+
+const makeJobCacheKey = (payload = {}) => createHash("sha256").update(JSON.stringify(sanitizeJobPayloadForCache(payload))).digest("hex");
+const jobDownloadUrl = (jobId) => `/api/jobs/${encodeURIComponent(jobId)}/download`;
+
+const serializeConverterJob = (job = {}) => ({
+  ok: job.status !== "failed",
+  jobId: job.id,
+  status: job.status || "queued",
+  progress: job.progress || 0,
+  step: job.step || job.status || "queued",
+  message: job.message || "",
+  downloadUrl: job.downloadUrl || null,
+  filename: job.filename || null,
+  errorCategory: job.errorCategory || null,
+  error: job.error || null,
+  cached: Boolean(job.cached),
+});
+
+const pumpConverterQueue = () => {
+  while (converterActive < converterConcurrency && converterQueue.length) {
+    const jobId = converterQueue.shift();
+    const job = converterJobs.get(jobId);
+    if (!job || job.status !== "queued") continue;
+    converterActive += 1;
+    controlState.processing += 1;
+    controlState.waiting = converterQueue.length;
+    controlState.queueLength = converterQueue.length + converterActive;
+    job.status = "fetching";
+    job.step = "fetching";
+    job.progress = 5;
+    job.startedAt = Date.now();
+    job.logs.push("Job started");
+    Promise.resolve()
+      .then(async () => {
+        const result = await convertSingle({ ...job.payload, id: job.id }, (progress) => {
+          const percent = clampPercent(progress?.percent ?? job.progress);
+          job.progress = percent;
+          job.step = progress?.stage || job.step || "processing";
+          job.message = progress?.message || job.message || "Memproses";
+          job.logs.push(`[${new Date().toISOString()}] ${job.step}: ${job.message}`);
+        });
+        job.status = "completed";
+        job.step = "completed";
+        job.progress = 100;
+        job.message = "Selesai";
+        job.result = result;
+        job.filename = result?.fileName || result?.filename || null;
+        job.downloadUrl = jobDownloadUrl(job.id);
+        job.completedAt = Date.now();
+        converterCache.set(job.cacheKey, { jobId: job.id, fileName: job.filename, downloadUrl: job.downloadUrl, expiresAt: Date.now() + outputTtlMs });
+        conversionMetrics.success += 1;
+      })
+      .catch((err) => {
+        const wrapped = publicDownloadError(err);
+        job.status = "failed";
+        job.step = "failed";
+        job.progress = job.progress || 0;
+        job.errorCategory = wrapped.errorCategory || "UNKNOWN";
+        job.error = wrapped.message;
+        job.hint = wrapped.hint || null;
+        job.adminActionRequired = Boolean(wrapped.adminActionRequired);
+        job.logs.push((wrapped.logs || wrapped.stack || wrapped.message || "").slice(-8000));
+        conversionMetrics.errors += 1;
+        conversionMetrics.errorReasons[job.errorCategory] = (conversionMetrics.errorReasons[job.errorCategory] || 0) + 1;
+      })
+      .finally(() => {
+        converterActive = Math.max(0, converterActive - 1);
+        controlState.processing = Math.max(0, controlState.processing - 1);
+        controlState.waiting = converterQueue.length;
+        controlState.queueLength = converterQueue.length + converterActive;
+        pumpConverterQueue();
+      });
+  }
+};
+
+const enqueueConverterJob = (payload = {}) => {
+  const cacheKey = makeJobCacheKey(payload);
+  const cached = converterCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now() && cached.fileName && existsSync(join(JOBS_DIR, cached.fileName))) {
+    const job = {
+      id: cached.jobId || nanoid(10),
+      status: "completed",
+      progress: 100,
+      step: "completed",
+      message: "Mengambil dari cache",
+      filename: cached.fileName,
+      downloadUrl: cached.downloadUrl || jobDownloadUrl(cached.jobId),
+      cached: true,
+      logs: ["Cache hit"],
+      cacheKey,
+      createdAt: Date.now(),
+    };
+    converterJobs.set(job.id, job);
+    return job;
+  }
+  const id = nanoid(10);
+  const job = { id, payload, cacheKey, status: "queued", progress: 0, step: "queued", message: "Masuk antrean", logs: ["Queued"], createdAt: Date.now(), cached: false };
+  converterJobs.set(id, job);
+  converterQueue.push(id);
+  controlState.waiting = converterQueue.length;
+  controlState.queueLength = converterQueue.length + converterActive;
+  conversionMetrics.started += 1;
+  pumpConverterQueue();
+  return job;
+};
+
+setInterval(async () => {
+  const now = Date.now();
+  for (const [key, item] of converterCache) {
+    if (item.expiresAt <= now) converterCache.delete(key);
+  }
+  for (const [id, job] of converterJobs) {
+    if ((job.completedAt || job.createdAt || 0) && now - (job.completedAt || job.createdAt) > outputTtlMs) {
+      converterJobs.delete(id);
+    }
+  }
+}, 10 * 60_000).unref?.();
+
 app.post("/api/convert", async (req, res) => {
   const user = await resolveRequestUser(req);
   try {
     const payload = { ...(req.body || {}) };
+    if (payload.async === true || req.query?.mode === "job" || req.get("Prefer") === "respond-async") {
+      delete payload.async;
+      const job = enqueueConverterJob(payload);
+      return res.status(job.cached ? 200 : 202).json(serializeConverterJob(job));
+    }
     try {
       await verifyTurnstileToken(payload.captchaToken, req.ip);
     } catch (err) {
@@ -8691,6 +8965,72 @@ app.post("/api/convert", async (req, res) => {
     const status = /tidak valid|tidak dikenali/i.test(msg) ? 400 : 500;
     return res.status(status).json({ error: msg, logs: e?.logs });
   }
+});
+
+
+app.post("/api/fetch", async (req, res) => {
+  try {
+    const metadata = await fetchVideoInfo({ url: req.body?.url || req.body?.mediaUrl, keyword: req.body?.keyword, preferLang: req.body?.preferLang });
+    return res.json({ ok: true, metadata, status: "completed", progress: 100, step: "metadata" });
+  } catch (err) {
+    const wrapped = publicDownloadError(err);
+    return res.status(400).json({ ok: false, errorCategory: wrapped.errorCategory, message: wrapped.message, hint: wrapped.hint, adminActionRequired: wrapped.adminActionRequired });
+  }
+});
+
+app.get("/api/jobs/:id", (req, res) => {
+  const job = converterJobs.get(String(req.params.id || ""));
+  if (!job) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "Job tidak ditemukan" });
+  return res.json(serializeConverterJob(job));
+});
+
+app.get("/api/jobs/:id/logs", (req, res) => {
+  const job = converterJobs.get(String(req.params.id || ""));
+  if (!job) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "Job tidak ditemukan" });
+  return res.json({ ok: true, jobId: job.id, logs: (job.logs || []).slice(-200) });
+});
+
+app.get("/api/jobs/:id/download", (req, res) => {
+  const job = converterJobs.get(String(req.params.id || ""));
+  if (!job || job.status !== "completed" || !job.filename) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "File belum tersedia" });
+  const fullPath = pathResolve(JOBS_DIR, job.filename);
+  if (!fullPath.startsWith(pathResolve(JOBS_DIR)) || !existsSync(fullPath)) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "File tidak ditemukan" });
+  return res.download(fullPath, job.filename);
+});
+
+app.delete("/api/jobs/:id", (req, res) => {
+  const id = String(req.params.id || "");
+  const existed = converterJobs.delete(id);
+  return res.json({ ok: true, jobId: id, deleted: existed });
+});
+
+app.get("/api/admin/queue/status", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const jobs = Array.from(converterJobs.values());
+  const completed = jobs.filter((j) => j.status === "completed");
+  const failed = jobs.filter((j) => j.status === "failed");
+  const durations = completed.map((j) => (j.completedAt || Date.now()) - (j.startedAt || j.createdAt || Date.now())).filter(Number.isFinite);
+  return res.json({ ok: true, queued: converterQueue.length, processing: converterActive, success: completed.length, failed: failed.length, avgProcessingMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0, fastestMs: durations.length ? Math.min(...durations) : 0, slowestMs: durations.length ? Math.max(...durations) : 0, lastErrors: failed.slice(-10).map((j) => ({ jobId: j.id, errorCategory: j.errorCategory, error: j.error })) });
+});
+
+app.post("/api/admin/queue/clear", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  converterQueue.length = 0;
+  controlState.waiting = 0;
+  controlState.queueLength = converterActive;
+  return res.json({ ok: true, queue: { queued: 0, processing: converterActive } });
+});
+
+app.post("/api/admin/converter/disable", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  controlState.convertEnabled = false;
+  return res.json({ ok: true, convertEnabled: false });
+});
+
+app.post("/api/admin/converter/enable", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  controlState.convertEnabled = true;
+  return res.json({ ok: true, convertEnabled: true });
 });
 
 app.get("/api/progress/:id", (req, res) => {
@@ -9375,9 +9715,9 @@ app.post("/api/convert-playlist", async (req, res) => {
 });
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
-const BEARER = process.env.ADMIN_BEARER || "";
-const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || "";
-const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || "";
+const BEARER = process.env.ADMIN_BEARER || process.env.ADMIN_TOKEN || "";
+const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || (process.env.ADMIN_USERNAME ? createHash("sha256").update(String(process.env.ADMIN_USERNAME), "utf8").digest("hex") : "");
+const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || (process.env.ADMIN_PASSWORD ? createHash("sha256").update(String(process.env.ADMIN_PASSWORD), "utf8").digest("hex") : "");
 const ADMIN_ENABLED = Boolean(BEARER && ADMIN_USER_HASH && ADMIN_PASS_HASH);
 
 const hashText = (value) => createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
@@ -9416,6 +9756,72 @@ app.post("/admin/login", (req, res) => {
   }
 });
 
+
+const sanitizedCookiesStatus = async () => {
+  const status = await getCookiesStatus();
+  return {
+    exists: Boolean(status.exists),
+    sizeBytes: Number(status.sizeBytes || status.bytes || 0),
+    updatedAt: status.updatedAt || status.uploadedAt || null,
+    storage: status.storage || status.backend || "volume",
+    health: status.health || (status.exists ? "unknown" : "missing"),
+    lastTestAt: status.lastTestAt || null,
+    lastErrorCategory: status.lastErrorCategory || null,
+  };
+};
+
+const testAdminCookies = async () => {
+  const status = await getCookiesStatus();
+  if (!status.exists || !existsSync(COOKIES_PATH)) {
+    await updateCookiesHealth({ health: "missing", lastErrorCategory: "LOGIN_REQUIRED" });
+    return { ok: false, errorCategory: "LOGIN_REQUIRED", message: "Cookies belum tersedia" };
+  }
+  const testUrl = process.env.COOKIES_TEST_URL || "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+  const args = ["--dump-single-json", "--skip-download", "--no-playlist", "--cookies", COOKIES_PATH, ...getYtDlpJsRuntimeArgs()];
+  pushYoutubeExtractorArgs(args);
+  args.push(testUrl);
+  try {
+    await runYtDlpJson(args, { label: "cookies-test" });
+    const health = await updateCookiesHealth({ health: "valid", lastErrorCategory: null });
+    return { ok: true, ...(await sanitizedCookiesStatus()), ...health };
+  } catch (err) {
+    const errorCategory = categorizeYtDlpError(err?.logs || err?.message || "");
+    const health = await updateCookiesHealth({ health: ["BOT_CHECK", "LOGIN_REQUIRED", "AGE_RESTRICTED"].includes(errorCategory) ? "expired" : "error", lastErrorCategory: errorCategory });
+    return { ok: false, errorCategory, message: "Cookies test gagal", ...(await sanitizedCookiesStatus()), ...health };
+  }
+};
+
+app.post("/api/admin/cookies/upload", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
+  try {
+    if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+    const filename = req.get("x-file-name") || "cookies.txt";
+    const saved = await saveCookies(req.body, { filename });
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    return res.json({ ok: true, exists: true, sizeBytes: saved.sizeBytes || saved.bytes, updatedAt: saved.updatedAt || saved.uploadedAt, storage: saved.storage || "volume", health: saved.health || "unknown" });
+  } catch (err) {
+    const status = String(err?.message || "").startsWith("cookies_") ? 400 : 500;
+    return res.status(status).json({ ok: false, errorCategory: "UNKNOWN", message: err?.message || "cookies_save_failed" });
+  }
+});
+
+app.get("/api/admin/cookies/status", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  return res.json({ ok: true, ...(await sanitizedCookiesStatus()) });
+});
+
+app.post("/api/admin/cookies/test", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const result = await testAdminCookies();
+  return res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.delete("/api/admin/cookies", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  await deleteCookies();
+  return res.json({ ok: true, ...(await sanitizedCookiesStatus()) });
+});
+
 app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
   try {
     if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
@@ -9443,7 +9849,7 @@ app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), a
       }
     }
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-    return res.json({ ok: true, path: COOKIES_PATH, ...saved, workerSynced });
+    return res.json({ ok: true, exists: true, sizeBytes: saved.sizeBytes || saved.bytes, updatedAt: saved.updatedAt || saved.uploadedAt, storage: saved.storage || "volume", health: saved.health || "unknown", workerSynced });
   } catch (err) {
     const status = ["cookies_invalid_body", "cookies_empty", "cookies_too_large"].includes(err?.message) ? 400 : 500;
     return res.status(status).json({ error: err?.message || "cookies_save_failed" });
@@ -9454,7 +9860,7 @@ app.get("/admin/cookies-status", async (_req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     if (!ADMIN_ENABLED) return res.json({ exists: false, disabled: true });
-    const status = await getCookiesStatus();
+    const status = await sanitizedCookiesStatus();
     return res.json(status);
   } catch (err) {
     console.error("[cookie-store] status failed", err);
@@ -9463,19 +9869,9 @@ app.get("/admin/cookies-status", async (_req, res) => {
 });
 
 app.get("/admin/download-cookies", async (req, res) => {
-  try {
-    if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
-    if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
-    const record = await readCookies();
-    if (!record) return res.status(404).json({ error: "not_found" });
-    await syncCookiesToLocal();
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    return res.send(record.content);
-  } catch (err) {
-    console.error("[cookie-store] download failed", err);
-    return res.status(503).json({ error: "cookies_store_unavailable" });
-  }
+  if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
+  if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
+  return res.status(410).json({ ok: false, error: "cookies_download_disabled", message: "Cookie content is never exposed by the API. Use status/test endpoints instead." });
 });
 
 // User's explicitly requested dynamic TURN endpoint
@@ -10341,6 +10737,27 @@ app.get("/api/admin/session-replay/:socketId", (req, res) => {
   });
 });
 
+
+app.get("/api/admin/tools/status", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const [tools, cookies] = await Promise.all([
+    resolveToolVersions().catch((err) => ({ error: err?.message || "tools_unavailable" })),
+    sanitizedCookiesStatus().catch(() => ({ exists: false, health: "error" })),
+  ]);
+  let outputFiles = 0;
+  let outputBytes = 0;
+  try {
+    const entries = await fsp.readdir(JOBS_DIR, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      outputFiles += 1;
+      const stat = await fsp.stat(join(JOBS_DIR, entry.name)).catch(() => null);
+      outputBytes += stat?.size || 0;
+    }
+  } catch {}
+  return res.json({ ok: true, tools, cookies, system: { uptimeSeconds: Math.floor(process.uptime()), memory: process.memoryUsage?.() || {}, outputFiles, outputBytes, jobsDir: "runtime" } });
+});
+
 app.get("/api/admin/stats", async (req, res) => {
   if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
   let persistedTickets = [];
@@ -10420,6 +10837,7 @@ app.get("/api/admin/stats", async (req, res) => {
   });
   const successRate = conversionMetrics.started ? (conversionMetrics.success / conversionMetrics.started) * 100 : 0;
   const predictedNextHourUsers = Number(((conversionMetrics.entered / Math.max(1, process.uptime() / 3600))).toFixed(0));
+  const cookieHealth = await sanitizedCookiesStatus().catch(() => ({ exists: false, health: "error" }));
   const smartInsights = [];
   if (successRate < 40 && conversionMetrics.started >= 5) smartInsights.push("Conversion success rendah dibanding jumlah start.");
   if (conversionMetrics.errors >= 3) smartInsights.push("Error conversion meningkat, cek error tracking.");
@@ -10485,7 +10903,11 @@ app.get("/api/admin/stats", async (req, res) => {
       length: controlState.queueLength,
       processing: controlState.processing,
       waiting: controlState.waiting,
+      queued: converterQueue.length,
+      success: Array.from(converterJobs.values()).filter((j) => j.status === "completed").length,
+      failed: Array.from(converterJobs.values()).filter((j) => j.status === "failed").length,
     },
+    cookieHealth,
     health: {
       cpuPercentEstimate: cpuLoadEstimate,
       avgResponseMs: Number(avgResponseMs.toFixed(2)),
@@ -11317,16 +11739,20 @@ const server = httpServer.listen(PORT, HOST, () => {
   
   // 💥 Auto Maintenance: Keep yt-dlp up-to-date
   const autoUpdate = () => {
+    if (/^(0|false|off|no)$/i.test(String(process.env.YTDLP_AUTO_UPDATE || "true"))) return;
     console.log("[Auto-Maintenance] Checking for yt-dlp updates...");
-    const updateProc = spawn("yt-dlp", ["-U"]);
+    const updateProc = spawn("yt-dlp", ["-U"], { stdio: ["ignore", "ignore", "pipe"] });
+    updateProc.on("error", (err) => {
+      console.warn(`[Auto-Maintenance] yt-dlp update skipped: ${err?.code || err?.message || "unavailable"}`);
+    });
     updateProc.on('close', (code) => {
         console.log(`[Auto-Maintenance] yt-dlp update finished with code ${code}`);
     });
   };
   
-  // Run once immediately on startup, then every 24 hours
-  setTimeout(autoUpdate, 5000); 
-  setInterval(autoUpdate, 24 * 60 * 60 * 1000);
+  // Run once after startup, then every 24 hours. Missing yt-dlp must not crash Railway.
+  setTimeout(autoUpdate, 5000).unref?.();
+  setInterval(autoUpdate, 24 * 60 * 60 * 1000).unref?.();
 });
 
 export {
