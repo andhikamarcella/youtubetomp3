@@ -7103,9 +7103,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
   for (let i = 0; i < next.length - 1; i++) {
     if (next[i] === "-f" && typeof next[i + 1] === "string") {
       const selector = next[i + 1];
-      if (selector.includes("bestaudio")) {
-        next[i + 1] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best";
-      }
+      next[i + 1] = "ba[protocol^=http]/b[protocol^=http]/ba/best/worst";
       break;
     }
   }
@@ -7516,7 +7514,11 @@ const convertSingle = async (payload = {}) => {
     emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
 
     const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
-    const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
+    // Prefer audio-only, but keep broad fallbacks so YouTube videos with unusual/limited formats
+    // do not fail immediately with "Requested format is not available".
+    const baseAudioSelector = atmos
+      ? "ba[channels>2]/ba/best/worst"
+      : "ba/bestaudio/best/worst";
 
     if (isVideoFormat) {
       const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
@@ -7529,7 +7531,7 @@ const convertSingle = async (payload = {}) => {
         args.push("--merge-output-format", "mkv");
       }
     } else if (fmt === "m4a") {
-      args.push("-f", "bestaudio[ext=m4a]/bestaudio/best");
+      args.push("-f", "ba[ext=m4a]/ba/bestaudio/best/worst");
     } else if (fmt === "alac") {
       args.push("-f", baseAudioSelector);
       args.push("-x", "--audio-format", "alac");
@@ -7620,6 +7622,22 @@ const convertSingle = async (payload = {}) => {
             const fallbackArgs = buildYtDlpFallbackArgs(args);
             downloadResult = await runYtDlpDownload({ args: fallbackArgs, id, onProgress: handleDownloadProgress });
             logs = downloadResult.logs || baseLogs;
+          } catch (retryErr) {
+            logs = retryErr?.logs || logs || baseLogs;
+          }
+        }
+        if (!downloadResult && shouldRetryWithFallbackArgs) {
+          try {
+            emitProgress({ stage: "downloading", message: "Mencoba format universal", percent: mapDownloadPercent(19) });
+            const universalArgs = buildYtDlpFallbackArgs(args);
+            for (let i = 0; i < universalArgs.length - 1; i++) {
+              if (universalArgs[i] === "-f") {
+                universalArgs.splice(i, 2);
+                break;
+              }
+            }
+            downloadResult = await runYtDlpDownload({ args: universalArgs, id, onProgress: handleDownloadProgress });
+            logs = downloadResult.logs || logs || baseLogs;
           } catch (retryErr) {
             logs = retryErr?.logs || logs || baseLogs;
           }

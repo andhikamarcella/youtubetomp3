@@ -2216,6 +2216,41 @@
       .app-header-lite .container { gap: .5rem !important; }
       .app-header-lite .btn,
       .app-header-lite .app-nav-btn { box-shadow: none !important; transition: none !important; }
+
+
+      /* Lightweight UI pass: remove heavy glass/drop shadows outside the header. */
+      body:not(.keep-rich-shadows) main,
+      body:not(.keep-rich-shadows) footer,
+      body:not(.keep-rich-shadows) .app-section,
+      body:not(.keep-rich-shadows) .modal,
+      body:not(.keep-rich-shadows) .offcanvas {
+        --bs-box-shadow: none;
+        --bs-box-shadow-sm: none;
+        --bs-box-shadow-lg: none;
+      }
+
+      body:not(.keep-rich-shadows) main :where(.card, .glass, .btn, .badge, .dropdown-menu, .accordion-item, .accordion-button, .form-control, .form-select, .input-group-text, .toast, .alert, .list-group-item, .nav-link, .modern-card, .feature-card, .status-card, .history-card),
+      body:not(.keep-rich-shadows) footer :where(.card, .glass, .btn, .badge, .dropdown-menu, .accordion-item, .accordion-button, .form-control, .form-select, .input-group-text, .toast, .alert, .list-group-item, .nav-link),
+      body:not(.keep-rich-shadows) .modal :where(.modal-content, .card, .btn, .form-control, .form-select),
+      body:not(.keep-rich-shadows) .offcanvas :where(.offcanvas, .card, .btn, .form-control, .form-select) {
+        box-shadow: none !important;
+        filter: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      body:not(.keep-rich-shadows) main :where(.card, .glass, .accordion-item, .list-group-item, .modern-card, .feature-card, .status-card, .history-card),
+      body:not(.keep-rich-shadows) footer :where(.card, .glass, .accordion-item, .list-group-item) {
+        background-color: color-mix(in srgb, var(--bs-body-bg) 88%, var(--bs-tertiary-bg) 12%) !important;
+        border-color: color-mix(in srgb, var(--bs-border-color) 78%, transparent) !important;
+      }
+
+      body:not(.keep-rich-shadows) header,
+      body:not(.keep-rich-shadows) .app-header,
+      body:not(.keep-rich-shadows) .app-header-lite,
+      body:not(.keep-rich-shadows) .navbar {
+        /* Header keeps its depth as requested. */
+      }
       .cute-clock { padding: .35rem .65rem !important; letter-spacing: 0 !important; }
       .forum-google-login-btn { width: calc(100vw - 2rem); padding-left: 1rem !important; padding-right: 1rem !important; }
       .forum-google-login-btn img { flex: 0 0 auto; }
@@ -6810,12 +6845,12 @@
               <div class="accordion accordion-flush" id="accGeneral">
                 <div class="accordion-item">
                   <h2 class="accordion-header">
-                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#q-gen-1">
+                    <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-gen-1" aria-expanded="true">
                       <i class="bi bi-currency-dollar me-2 text-success"></i>Apakah layanan ini benar-benar gratis?
                     </button>
                   </h2>
-                  <div id="q-gen-1" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                  <div id="q-gen-1" class="accordion-collapse collapse show" data-bs-parent="#accGeneral">
                     <div class="accordion-body text-secondary">
                       Ya, 100% gratis. Kami tidak memungut biaya berlangganan. Jika Anda ingin mendukung operasional
                       server, Anda bisa berdonasi melalui tab <strong>Saweria</strong>.
@@ -7547,6 +7582,32 @@
                         <li>Jika masih meleset, edit metadata di mode Advanced (judul, artis, album, tahun).</li>
                         <li>Untuk koleksi musik, pilih format M4A/FLAC agar metadata lebih konsisten di banyak player.</li>
                       </ol>
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-18">
+                      <i class="bi bi-music-note-list me-2 text-primary"></i>Kenapa muncul Requested format is not available?
+                    </button>
+                  </h2>
+                  <div id="q-tr-18" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Artinya format asli yang diminta YouTube sedang tidak tersedia untuk video itu. Sistem sekarang otomatis mencoba format audio kompatibel, mode HTTP, client alternatif, format universal, lalu helper Python sebelum menampilkan error final. Jika tetap gagal, biasanya video dibatasi umur, wilayah, login, atau membutuhkan cookies terbaru.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-19">
+                      <i class="bi bi-cookie me-2 text-warning"></i>Kapan perlu upload cookies baru?
+                    </button>
+                  </h2>
+                  <div id="q-tr-19" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Upload cookies baru jika error menyebut login, age-restricted, bot check, HTTP 400/403, atau video hanya bisa diputar dari akun tertentu. Gunakan Admin Cookies, lalu coba convert ulang dengan MP3/M4A terlebih dahulu.
                     </div>
                   </div>
                 </div>

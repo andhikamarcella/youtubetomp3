@@ -10,7 +10,7 @@
   <script src="/tailwind-ui-bridge.js" defer></script>
   <style>
     body { background: radial-gradient(circle at top left, rgba(37,99,235,.36), transparent 34rem), radial-gradient(circle at top right, rgba(6,182,212,.18), transparent 30rem), #020617; }
-    .glass { background: rgba(15, 23, 42, .84); backdrop-filter: blur(20px); box-shadow: 0 24px 80px rgba(2, 6, 23, .35); }
+    .glass { background: rgba(15, 23, 42, .92); backdrop-filter: none; box-shadow: none; }
     .glass:hover { border-color: rgba(125, 211, 252, .26); }
     .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
     .pulse-dot { animation: pulseDot 1.8s ease-in-out infinite; }
@@ -20,7 +20,7 @@
 </head>
 <body class="min-h-screen text-slate-100 antialiased">
   <main class="mx-auto max-w-5xl space-y-5 p-4 pb-12 md:p-7">
-    <header class="glass overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-blue-950/40">
+    <header class="glass overflow-hidden rounded-3xl border border-white/10">
       <div class="bg-gradient-to-r from-indigo-600/25 via-cyan-500/10 to-transparent p-5 md:p-7">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -39,7 +39,7 @@
             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500">#</span>
             <input id="lookupInput" autocomplete="off" spellcheck="false" maxlength="80" class="w-full rounded-xl border border-slate-700 bg-slate-950/90 py-3 pl-9 pr-4 font-mono text-sm uppercase outline-none transition placeholder:text-slate-600 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/10" placeholder="TKT-XXXXXXXX" />
           </div>
-          <button id="lookupBtn" type="submit" class="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-3 text-sm font-bold shadow-lg shadow-indigo-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">Cari Tiket</button>
+          <button id="lookupBtn" type="submit" class="rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-3 text-sm font-bold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">Cari Tiket</button>
         </form>
         <div id="lookupError" class="mt-2 hidden text-sm text-rose-300" role="alert"></div>
         <div id="recentWrap" class="mt-3 hidden items-center gap-2 text-xs text-slate-400">
@@ -48,13 +48,13 @@
       </div>
     </header>
 
-    <section id="emptyState" class="glass rounded-3xl border border-white/10 p-8 text-center shadow-xl">
+    <section id="emptyState" class="glass rounded-3xl border border-white/10 p-8 text-center">
       <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/15 text-3xl">🎫</div>
       <h2 class="mt-4 text-xl font-bold">Siapkan nomor tiketmu</h2>
       <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-400">Nomor tiket tersedia setelah laporan berhasil dikirim dan biasanya diawali dengan <span class="font-mono text-slate-200">TKT-</span>.</p>
     </section>
 
-    <section id="loadingState" class="glass hidden rounded-3xl border border-white/10 p-6 shadow-xl" aria-live="polite">
+    <section id="loadingState" class="glass hidden rounded-3xl border border-white/10 p-6" aria-live="polite">
       <div class="animate-pulse space-y-4">
         <div class="h-5 w-40 rounded bg-slate-700"></div>
         <div class="grid gap-3 sm:grid-cols-3"><div class="h-24 rounded-2xl bg-slate-800"></div><div class="h-24 rounded-2xl bg-slate-800"></div><div class="h-24 rounded-2xl bg-slate-800"></div></div>
@@ -62,7 +62,7 @@
       </div>
     </section>
 
-    <section id="notFoundState" class="glass hidden rounded-3xl border border-rose-500/20 p-7 text-center shadow-xl" role="alert">
+    <section id="notFoundState" class="glass hidden rounded-3xl border border-rose-500/20 p-7 text-center" role="alert">
       <div class="text-4xl">🔍</div>
       <h2 class="mt-3 text-xl font-bold">Tiket tidak ditemukan</h2>
       <p class="mt-2 text-sm text-slate-400">Periksa kembali nomor tiket. Pastikan tidak ada spasi atau karakter yang tertinggal.</p>
@@ -70,7 +70,7 @@
     </section>
 
     <div id="ticketContent" class="hidden space-y-5">
-      <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+      <section class="glass rounded-3xl border border-white/10 p-5 md:p-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div class="text-xs font-semibold uppercase tracking-[.2em] text-slate-500">Nomor tiket</div>
@@ -87,7 +87,7 @@
       </section>
 
       <div class="grid gap-5 lg:grid-cols-[1.05fr_.95fr]">
-        <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+        <section class="glass rounded-3xl border border-white/10 p-5 md:p-6">
           <h2 class="text-lg font-bold">Ringkasan laporan</h2>
           <div class="mt-4 space-y-4">
             <div><div class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Pesan kamu</div><div id="msg" class="min-h-20 whitespace-pre-wrap break-words rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-sm leading-6 text-slate-300">-</div></div>
@@ -96,13 +96,13 @@
           </div>
         </section>
 
-        <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+        <section class="glass rounded-3xl border border-white/10 p-5 md:p-6">
           <h2 class="text-lg font-bold">Timeline penanganan</h2>
           <ol id="history" class="mt-5 space-y-0"></ol>
         </section>
       </div>
 
-      <section class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+      <section class="glass rounded-3xl border border-white/10 p-5 md:p-6">
         <div class="flex items-center justify-between gap-3"><div><h2 class="text-lg font-bold">Chat dengan admin</h2><p class="mt-1 text-xs text-slate-500">Pesan baru akan muncul otomatis tanpa reload halaman.</p></div><span id="chatCount" class="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-400">0 pesan</span></div>
         <div id="chatHistory" class="mt-4 h-80 space-y-3 overflow-auto rounded-2xl border border-slate-800 bg-slate-950/70 p-4"></div>
         <form id="chatForm" class="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -111,7 +111,7 @@
         <div id="chatHint" class="mt-2 text-xs text-slate-400" aria-live="polite"></div>
       </section>
 
-      <section id="proofSection" class="glass rounded-3xl border border-white/10 p-5 shadow-xl md:p-6">
+      <section id="proofSection" class="glass rounded-3xl border border-white/10 p-5 md:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3"><div><h2 class="text-lg font-bold">Upload bukti tambahan</h2><p id="proofHint" class="mt-1 text-xs text-slate-400">Aktif jika admin meminta bukti tambahan.</p></div><span class="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-400">Maks. 4 gambar</span></div>
         <input id="proofFiles" type="file" accept="image/*" multiple class="mt-4 block w-full text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-2 file:text-slate-100">
         <div id="proofPreview" class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4"></div>
@@ -120,7 +120,7 @@
       </section>
     </div>
 
-    <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm shadow-2xl" role="status"></div>
+    <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm" role="status"></div>
   </main>
 <script>
 const RECENT_KEY = 'ytconv_recent_tickets_v1';
@@ -141,7 +141,7 @@ let refreshTimer = null;
 
 const asLocal = (iso) => { const date = new Date(iso || ''); return Number.isNaN(date.getTime()) ? (iso || '-') : fmt.format(date); };
 const setVisible = (id, visible) => $(id).classList.toggle('hidden', !visible);
-const showToast = (message, tone = 'normal') => { const el = $('toast'); el.textContent = message; el.className = `pointer-events-none fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl border px-4 py-3 text-sm shadow-2xl ${tone === 'error' ? 'border-rose-500/30 bg-rose-950 text-rose-200' : 'border-white/10 bg-slate-900 text-slate-100'}`; clearTimeout(showToast.timer); showToast.timer = setTimeout(() => el.classList.add('hidden'), 2600); };
+const showToast = (message, tone = 'normal') => { const el = $('toast'); el.textContent = message; el.className = `pointer-events-none fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl border px-4 py-3 text-sm ${tone === 'error' ? 'border-rose-500/30 bg-rose-950 text-rose-200' : 'border-white/10 bg-slate-900 text-slate-100'}`; clearTimeout(showToast.timer); showToast.timer = setTimeout(() => el.classList.add('hidden'), 2600); };
 const makeBadge = (label, status) => { const span = document.createElement('span'); span.className = `inline-flex rounded-full border px-3 py-1 text-sm font-bold ${statusStyles[status] || 'border-slate-600 bg-slate-700/50 text-slate-200'}`; span.textContent = label || status || '-'; return span; };
 
 function readRecentTickets() { try { const value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(value) ? value.filter((x) => x?.ticketId).slice(0, 5) : []; } catch { return []; } }
