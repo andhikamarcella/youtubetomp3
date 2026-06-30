@@ -136,11 +136,14 @@ def download_with_ytdlp(
     relaxed_opts["format"] = "best"
 
     http_opts = dict(relaxed_opts)
-    http_opts["format"] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best"
+    http_opts["format"] = "ba[protocol^=http]/b[protocol^=http]/ba/best/worst"
+
+    universal_opts = dict(tv_opts)
+    universal_opts.pop("format", None)
 
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts]
+    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts, universal_opts]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]
