@@ -3028,6 +3028,7 @@ const runYtDlpAttempt = (command, args, { label }) =>
     let stderr = "";
     const proc = spawn(command.cmd, [...(command.prefix || []), ...args], {
       stdio: ["ignore", "pipe", "pipe"],
+      cwd: JOBS_DIR,
     });
     const displayArgs = [...(command.prefix || []), ...args].join(" ");
     const baseLog = `${label}: ${command.cmd} ${displayArgs}`.trim();
@@ -3529,11 +3530,12 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
   if (language) {
     args.push("--sub-lang", language);
   }
+  await syncCookiesToLocal({ force: true }).catch((err) => console.warn("[cookie-store] metadata sync failed", err));
   if (existsSync(COOKIES_PATH)) {
     args.push("--cookies", COOKIES_PATH);
   }
-  args.push("--js-runtimes", "node");
-  args.push("--remote-components", "ejs:github");
+  args.push(...getYtDlpJsRuntimeArgs());
+  pushYoutubeExtractorArgs(args);
   args.push(target);
 
   let entry;
@@ -3560,11 +3562,12 @@ const fetchVideoInfo = async ({ url, keyword, preferLang } = {}) => {
       if (language) {
         fallbackArgs.push("--sub-lang", language);
       }
+      await syncCookiesToLocal({ force: true }).catch((err) => console.warn("[cookie-store] metadata fallback sync failed", err));
       if (existsSync(COOKIES_PATH)) {
         fallbackArgs.push("--cookies", COOKIES_PATH);
       }
-      fallbackArgs.push("--js-runtimes", "node");
-      fallbackArgs.push("--remote-components", "ejs:github");
+      fallbackArgs.push(...getYtDlpJsRuntimeArgs());
+      pushYoutubeExtractorArgs(fallbackArgs);
       fallbackArgs.push(fallbackTarget);
 
       try {
@@ -7081,6 +7084,52 @@ const parseYtDlpProgressLine = (line = "") => {
   };
 };
 
+
+const parseMajorVersion = (value = "") => {
+  const match = String(value || "").match(/v?(\d+)/);
+  return match ? Number(match[1]) : 0;
+};
+
+const getYtDlpJsRuntimeArgs = () => {
+  const runtime = String(process.env.YTDLP_JS_RUNTIME || "node").trim().toLowerCase();
+  if (runtime === "off" || runtime === "none" || runtime === "0") return [];
+
+  const nodeMajor = parseMajorVersion(process.version);
+  const selected = runtime || "node";
+  if (selected === "node" && nodeMajor < 22) {
+    console.warn(`[yt-dlp] Node ${process.version} is below yt-dlp 2026.06.09 minimum for JS runtime; skipping --js-runtimes node`);
+    return [];
+  }
+
+  return ["--js-runtimes", selected, "--remote-components", "ejs:github", "--extractor-retries", "3"];
+};
+
+
+const getYoutubeExtractorArgsValue = () => {
+  const clients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "mweb,web_safari,tv_embedded,android,default")
+    .split(/[,+]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(",");
+  const parts = [];
+  if (clients) parts.push(`player_client=${clients}`);
+  const poToken = String(process.env.YTDLP_YOUTUBE_PO_TOKEN || "").trim();
+  if (poToken) parts.push(`po_token=${poToken}`);
+  return parts.length ? `youtube:${parts.join(";")}` : "";
+};
+
+const pushYoutubeExtractorArgs = (args = []) => {
+  const value = getYoutubeExtractorArgsValue();
+  if (!value) return args;
+  const index = args.indexOf("--extractor-args");
+  if (index >= 0 && typeof args[index + 1] === "string") {
+    args[index + 1] = value;
+  } else {
+    args.push("--extractor-args", value);
+  }
+  return args;
+};
+
 const buildYtDlpFallbackArgs = (args = []) => {
   const next = Array.isArray(args) ? [...args] : [];
   if (!next.length) return next;
@@ -7089,12 +7138,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
   const isUrlLike = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("ytsearch:"));
   const urlArg = isUrlLike ? next.pop() : null;
 
-  const extractorIndex = next.indexOf("--extractor-args");
-  if (extractorIndex >= 0 && typeof next[extractorIndex + 1] === "string") {
-    next[extractorIndex + 1] = "youtube:player_client=tv_embedded,android";
-  } else {
-    next.push("--extractor-args", "youtube:player_client=tv_embedded,android");
-  }
+  pushYoutubeExtractorArgs(next);
 
   if (!next.includes("--force-ipv4")) {
     next.push("--force-ipv4");
@@ -7103,9 +7147,7 @@ const buildYtDlpFallbackArgs = (args = []) => {
   for (let i = 0; i < next.length - 1; i++) {
     if (next[i] === "-f" && typeof next[i + 1] === "string") {
       const selector = next[i + 1];
-      if (selector.includes("bestaudio")) {
-        next[i + 1] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best";
-      }
+      next[i + 1] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best/worst";
       break;
     }
   }
@@ -7119,7 +7161,7 @@ const runYtDlpDownload = ({ args, id, onProgress }) =>
     const isWin = process.platform === "win32";
     const cmd = isWin ? "python" : "yt-dlp";
     const spawnArgs = isWin ? ["-m", "yt_dlp", ...args] : args;
-    const proc = spawn(cmd, spawnArgs, { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(cmd, spawnArgs, { stdio: ["ignore", "pipe", "pipe"], cwd: JOBS_DIR });
     let logs = "";
     let stdoutBuffer = "";
     const handleLine = (line) => {
@@ -7194,7 +7236,7 @@ const runPythonDownload = ({ url, id, baseLogs = "" }) =>
     }
 
     const pyCmd = process.platform === "win32" ? "python" : "python3";
-    const py = spawn(pyCmd, scriptArgs, { stdio: ["ignore", "pipe", "pipe"] });
+    const py = spawn(pyCmd, scriptArgs, { stdio: ["ignore", "pipe", "pipe"], cwd: JOBS_DIR });
 
     py.stdout.on("data", (d) => {
       const s = d.toString();
@@ -7501,6 +7543,8 @@ const convertSingle = async (payload = {}) => {
       } catch { }
     }
 
+    await syncCookiesToLocal({ force: true }).catch((err) => console.warn("[cookie-store] download sync failed", err));
+
     const args = ["--newline", "--no-progress"];
     if (ffmpegPath) {
       args.push("--ffmpeg-location", ffmpegPath);
@@ -7508,15 +7552,19 @@ const convertSingle = async (payload = {}) => {
     if (existsSync(COOKIES_PATH)) {
       args.push("--cookies", COOKIES_PATH);
     }
-    args.push("--js-runtimes", "node");
-    args.push("--remote-components", "ejs:github");
+    args.push(...getYtDlpJsRuntimeArgs());
+    pushYoutubeExtractorArgs(args);
     if (noPlaylist) args.push("--no-playlist");
     args.push("-o", outTpl);
 
     emitProgress({ stage: "downloading", message: "Menyiapkan unduhan", percent: 15 });
 
     const sanitizedAbrForDownload = isVideoFormat ? undefined : targetAbr || Number(abr) || undefined;
-    const baseAudioSelector = atmos ? "bestaudio[channels>2]/bestaudio/best" : "bestaudio/best";
+    // Prefer audio-only, but keep broad fallbacks so YouTube videos with unusual/limited formats
+    // do not fail immediately with "Requested format is not available".
+    const baseAudioSelector = atmos
+      ? "bestaudio[channels>2]/bestaudio/best/worst"
+      : "bestaudio/best/worst";
 
     if (isVideoFormat) {
       const selector = buildVideoFormatSelector(fmt, targetVideoQuality);
@@ -7529,7 +7577,7 @@ const convertSingle = async (payload = {}) => {
         args.push("--merge-output-format", "mkv");
       }
     } else if (fmt === "m4a") {
-      args.push("-f", "bestaudio[ext=m4a]/bestaudio/best");
+      args.push("-f", "bestaudio[ext=m4a]/bestaudio/best/worst");
     } else if (fmt === "alac") {
       args.push("-f", baseAudioSelector);
       args.push("-x", "--audio-format", "alac");
@@ -7607,12 +7655,6 @@ const convertSingle = async (payload = {}) => {
         logs = downloadResult.logs || "";
       } catch (err) {
         const baseLogs = err.logs || "";
-        if (isVideoFormat) {
-          if (coverPath) try { await fsp.unlink(coverPath); } catch { }
-          const videoError = new Error(err.message || "Gagal mengunduh");
-          videoError.logs = (baseLogs || "").slice(-8000);
-          throw videoError;
-        }
         const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "");
         if (shouldRetryWithFallbackArgs) {
           try {
@@ -7624,7 +7666,29 @@ const convertSingle = async (payload = {}) => {
             logs = retryErr?.logs || logs || baseLogs;
           }
         }
+        if (!downloadResult && shouldRetryWithFallbackArgs) {
+          try {
+            emitProgress({ stage: "downloading", message: "Mencoba format universal", percent: mapDownloadPercent(19) });
+            const universalArgs = buildYtDlpFallbackArgs(args);
+            for (let i = 0; i < universalArgs.length - 1; i++) {
+              if (universalArgs[i] === "-f") {
+                universalArgs.splice(i, 2);
+                break;
+              }
+            }
+            downloadResult = await runYtDlpDownload({ args: universalArgs, id, onProgress: handleDownloadProgress });
+            logs = downloadResult.logs || logs || baseLogs;
+          } catch (retryErr) {
+            logs = retryErr?.logs || logs || baseLogs;
+          }
+        }
         if (!downloadResult) {
+          if (isVideoFormat) {
+            if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+            const videoError = new Error(err.message || "Gagal mengunduh video");
+            videoError.logs = [logs, baseLogs].filter(Boolean).join("\n").slice(-8000);
+            throw videoError;
+          }
           try {
             emitProgress({ stage: "downloading", message: "Downloader cadangan", percent: mapDownloadPercent(20) });
             downloadResult = await runPythonDownload({ url, id, baseLogs });
