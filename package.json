@@ -4,7 +4,8 @@
   "scripts": {
     "start": "node index.js",
     "migrate:xp": "node scripts/migrate_xp_events.js",
-    "sync:stickers": "node scripts/sync_stickers_firestore.mjs"
+    "sync:stickers": "node scripts/sync_stickers_firestore.mjs",
+    "dev": "node --watch index.js"
   },
   "dependencies": {
     "axios": "^1.13.6",

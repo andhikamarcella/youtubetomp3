@@ -67,7 +67,7 @@ test("tailwind bridge terhubung ke JavaScript interaktif", () => {
 test("tailwind bridge mempercantik tombol dan panel tanpa mengganti fitur", () => {
   assert.match(pages.bridge, /tw-premium-button-polish/);
   assert.match(pages.bridge, /a\[class\*="bg-"\]/);
-  assert.match(pages.bridge, /radial-gradient\(circle at var\(--tw-press-x/);
+  assert.match(pages.bridge, /background-image: none !important/);
   assert.match(pages.bridge, /focus-visible/);
   assert.match(pages.bridge, /premium-panel/);
 });
@@ -80,12 +80,11 @@ test("tailwind bridge memberi polish menyeluruh ke elemen umum", () => {
   assert.match(pages.bridge, /text-wrap:\s*balance/);
 });
 
-test("tailwind bridge memakai sans font dan glow interaktif", () => {
-  assert.match(pages.bridge, /font-family:\s*Inter, "Segoe UI", system-ui/);
+test("tailwind bridge memakai Helvetica dan no-glass ringan", () => {
+  assert.match(pages.bridge, /font-family:\s*Helvetica, Arial, sans-serif/);
   assert.match(pages.bridge, /tw-glow-orb/);
-  assert.match(pages.bridge, /ensureGlowOrb/);
-  assert.match(pages.bridge, /--tw-glow-x/);
-  assert.match(pages.bridge, /pointermove/);
-  assert.match(pages.bridge, /rgba\(99, 102, 241, \.24\)/);
-  assert.match(pages.bridge, /box-shadow: 0 28px 80px/);
+  assert.match(pages.bridge, /display: none !important/);
+  assert.match(pages.bridge, /backdrop-filter: none !important/);
+  assert.match(pages.bridge, /box-shadow: none !important/);
+  assert.match(pages.bridge, /transition: background-color \.16s ease/);
 });

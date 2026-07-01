@@ -13,6 +13,8 @@ import {
   ensureReferralForUser,
   getHistoryEntry,
   updateHistoryEntry,
+  deleteHistoryEntry,
+  clearUserHistory,
   claimCheatForUser,
 } from "../user_store.js";
 
@@ -79,6 +81,39 @@ test("recordConversionForUser menambah riwayat dan xp", async () => {
   await updateHistoryEntry("user-456", history[0].id, { downloadUrl: "/public/jobs/new.mp3" });
   const updated = await getHistoryEntry("user-456", history[0].id);
   assert.equal(updated?.downloadUrl, "/public/jobs/new.mp3");
+
+  assert.equal(await deleteHistoryEntry("user-456", history[0].id), true);
+  assert.equal(await getHistoryEntry("user-456", history[0].id), null);
+  assert.equal(await deleteHistoryEntry("user-456", history[0].id), false);
+});
+
+test("clearUserHistory menghapus semua riwayat user login", async () => {
+  await resetStore();
+  await upsertGoogleUser({
+    googleId: "user-clear-history",
+    email: "clear@example.com",
+    name: "Clear History",
+  });
+  await recordConversionForUser("user-clear-history", {
+    id: "hist-a",
+    title: "A",
+    format: "mp3",
+    sourceUrl: "https://youtu.be/a",
+    downloadUrl: "/jobs/a.mp3",
+    xpGain: 1,
+  });
+  await recordConversionForUser("user-clear-history", {
+    id: "hist-b",
+    title: "B",
+    format: "m4a",
+    sourceUrl: "https://youtu.be/b",
+    downloadUrl: "/jobs/b.m4a",
+    xpGain: 1,
+  });
+
+  assert.equal((await listUserHistory("user-clear-history")).length, 2);
+  assert.equal(await clearUserHistory("user-clear-history"), 2);
+  assert.deepEqual(await listUserHistory("user-clear-history"), []);
 });
 
 test("recordConversionForUser idempoten terhadap xpEventId yang sama", async () => {

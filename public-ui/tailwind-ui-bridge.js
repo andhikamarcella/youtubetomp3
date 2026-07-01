@@ -10,110 +10,109 @@
       .tw-enhanced [role="button"],
       .tw-enhanced a[class*="bg-"] {
         position: relative;
-        isolation: isolate;
         overflow: hidden;
         border-radius: 999px;
         font-weight: 800;
         letter-spacing: .01em;
-        transform: translateZ(0);
-        transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, border-color .18s ease, background-color .18s ease;
-        box-shadow: 0 12px 28px rgba(2, 6, 23, .18);
+        transform: none !important;
+        transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        filter: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
       .tw-enhanced button::before,
       .tw-enhanced a.btn::before,
       .tw-enhanced .btn::before,
       .tw-enhanced [role="button"]::before,
       .tw-enhanced a[class*="bg-"]::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-        background:
-          radial-gradient(circle at var(--tw-press-x, 20%) var(--tw-press-y, 20%), rgba(255,255,255,.36), transparent 0 28%),
-          linear-gradient(135deg, rgba(255,255,255,.18), transparent 45%, rgba(255,255,255,.08));
-        opacity: .72;
-        transition: opacity .18s ease;
+        content: none !important;
+        display: none !important;
       }
       .tw-enhanced button:hover,
       .tw-enhanced a.btn:hover,
       .tw-enhanced .btn:hover,
       .tw-enhanced [role="button"]:hover,
       .tw-enhanced a[class*="bg-"]:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.08) saturate(1.08);
-        box-shadow: 0 18px 38px rgba(2, 6, 23, .26), 0 0 0 1px rgba(255,255,255,.10) inset;
+        transform: translateY(-1px) !important;
+        filter: none !important;
+        box-shadow: none !important;
       }
-      .tw-enhanced button:hover::before,
-      .tw-enhanced a.btn:hover::before,
-      .tw-enhanced .btn:hover::before,
-      .tw-enhanced [role="button"]:hover::before,
-      .tw-enhanced a[class*="bg-"]:hover::before {
-        opacity: 1;
+      .tw-enhanced button:active,
+      .tw-enhanced a.btn:active,
+      .tw-enhanced .btn:active,
+      .tw-enhanced [role="button"]:active,
+      .tw-enhanced a[class*="bg-"]:active {
+        transform: translateY(1px) !important;
+      }
+      .tw-enhanced :where(.btn, .app-nav-btn, .modern-nav-item, .footer-pill, .assistant-toggle, button, a.btn, [class*="bg-gradient"]) {
+        background-image: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        filter: none !important;
+      }
+      .tw-enhanced :where(.btn-primary, .assistant-toggle) {
+        background-color: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #fff !important;
+      }
+      .tw-enhanced :where(.btn-outline-primary, .app-nav-btn, .modern-nav-item, .footer-pill) {
+        background-color: #1f2937 !important;
+        border-color: rgba(148, 163, 184, .45) !important;
+        color: #e5e7eb !important;
       }
       .tw-enhanced button:focus-visible,
       .tw-enhanced a.btn:focus-visible,
       .tw-enhanced .btn:focus-visible,
       .tw-enhanced [role="button"]:focus-visible,
       .tw-enhanced a[class*="bg-"]:focus-visible {
-        outline: 3px solid rgba(125, 211, 252, .9);
-        outline-offset: 3px;
+        outline: 2px solid rgba(125, 211, 252, .9);
+        outline-offset: 2px;
       }
       .tw-enhanced button:disabled,
       .tw-enhanced .btn:disabled,
       .tw-enhanced [aria-disabled="true"] {
         cursor: not-allowed;
-        filter: grayscale(.25);
         opacity: .62;
-        transform: none;
-        box-shadow: none;
+        transform: none !important;
+        box-shadow: none !important;
+        filter: none !important;
       }
       .tw-enhanced input,
       .tw-enhanced select,
       .tw-enhanced textarea,
       .tw-enhanced .form-control,
       .tw-enhanced .form-select {
-        transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+        transition: border-color .18s ease, background-color .18s ease;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
       .tw-enhanced input:focus,
       .tw-enhanced select:focus,
       .tw-enhanced textarea:focus,
       .tw-enhanced .form-control:focus,
       .tw-enhanced .form-select:focus {
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, .18), 0 16px 32px rgba(2, 6, 23, .18);
+        box-shadow: none !important;
       }
       .tw-enhanced .premium-panel,
       .tw-enhanced .premium-card,
       .tw-enhanced .ytconv-premium-surface {
-        border-color: rgba(129, 140, 248, .26);
-        box-shadow: 0 24px 70px rgba(2, 6, 23, .34);
+        border-color: rgba(148, 163, 184, .24);
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
       .tw-enhanced {
         position: relative;
-        isolation: isolate;
-        font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        background-image:
-          radial-gradient(circle at 12% 8%, rgba(59, 130, 246, .10), transparent 24rem),
-          radial-gradient(circle at 88% 14%, rgba(20, 184, 166, .10), transparent 26rem);
+        isolation: auto;
+        font-family: Helvetica, Arial, sans-serif;
+        background-image: none !important;
       }
       .tw-glow-orb {
-        position: fixed;
-        left: var(--tw-glow-x, 50%);
-        top: var(--tw-glow-y, 18%);
-        width: min(58rem, 115vw);
-        height: min(58rem, 115vw);
-        z-index: 0;
-        pointer-events: none;
-        border-radius: 9999px;
-        background:
-          radial-gradient(circle at 45% 45%, rgba(99, 102, 241, .24), transparent 0 34%),
-          radial-gradient(circle at 62% 56%, rgba(6, 182, 212, .18), transparent 0 42%),
-          radial-gradient(circle at 34% 65%, rgba(59, 130, 246, .12), transparent 0 48%);
-        filter: blur(22px) saturate(1.18);
-        opacity: .78;
-        transform: translate3d(-50%, -50%, 0) scale(1);
-        transition: opacity .25s ease, filter .25s ease;
-        mix-blend-mode: screen;
+        display: none !important;
       }
       .tw-enhanced > :not(.tw-glow-orb) {
         position: relative;
@@ -128,10 +127,12 @@
       .tw-enhanced .offcanvas,
       .tw-enhanced .list-group-item,
       .tw-enhanced .toast {
-        border-color: rgba(148, 163, 184, .20);
-        box-shadow: 0 18px 50px rgba(2, 6, 23, .18);
-        backdrop-filter: blur(14px);
-        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease, filter .18s ease;
+        border-color: rgba(148, 163, 184, .22);
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        filter: none !important;
+        transition: border-color .18s ease, background-color .18s ease;
       }
       .tw-enhanced header:hover,
       .tw-enhanced main > section:hover,
@@ -142,9 +143,9 @@
       .tw-enhanced .offcanvas:hover,
       .tw-enhanced .list-group-item:hover,
       .tw-enhanced .toast:hover {
-        border-color: rgba(125, 211, 252, .38);
-        box-shadow: 0 28px 80px rgba(37, 99, 235, .20), 0 0 40px rgba(6, 182, 212, .10);
-        filter: saturate(1.05);
+        border-color: rgba(148, 163, 184, .34);
+        box-shadow: none !important;
+        filter: none !important;
       }
       .tw-enhanced h1,
       .tw-enhanced h2,
@@ -152,7 +153,7 @@
       .tw-enhanced h4,
       .tw-enhanced h5,
       .tw-enhanced h6 {
-        letter-spacing: -.025em;
+        letter-spacing: -.015em;
         text-wrap: balance;
       }
       .tw-enhanced p,
@@ -163,40 +164,38 @@
         line-height: 1.6;
       }
       .tw-enhanced table {
-        border-collapse: separate;
-        border-spacing: 0 .35rem;
+        border-collapse: collapse;
+        border-spacing: 0;
       }
-      .tw-enhanced tbody tr {
-        transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
-      }
+      .tw-enhanced tbody tr,
       .tw-enhanced tbody tr:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 12px 28px rgba(2, 6, 23, .18);
+        transform: none !important;
+        box-shadow: none !important;
+        transition: background-color .18s ease;
       }
       .tw-enhanced .badge,
       .tw-enhanced [class*="rounded-full"],
       .tw-enhanced .chip,
-      .tw-enhanced .status-pill {
-        box-shadow: 0 10px 22px rgba(2, 6, 23, .16);
+      .tw-enhanced .status-pill,
+      .tw-enhanced ::file-selector-button {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
       }
       .tw-enhanced img,
       .tw-enhanced video,
       .tw-enhanced canvas {
         border-radius: inherit;
-      }
-      .tw-enhanced ::file-selector-button {
-        border: 0;
-        border-radius: 999px;
-        font-weight: 800;
-        box-shadow: 0 10px 24px rgba(2, 6, 23, .18);
+        filter: none !important;
       }
       .tw-enhanced ::selection {
         color: #f8fafc;
-        background: rgba(99, 102, 241, .62);
+        background: rgba(37, 99, 235, .62);
       }
       .tw-enhanced * {
         scrollbar-width: thin;
-        scrollbar-color: rgba(99, 102, 241, .72) rgba(15, 23, 42, .72);
+        scrollbar-color: rgba(96, 165, 250, .7) rgba(15, 23, 42, .72);
       }
       .tw-enhanced ::-webkit-scrollbar {
         width: 9px;
@@ -207,7 +206,7 @@
         border-radius: 999px;
       }
       .tw-enhanced ::-webkit-scrollbar-thumb {
-        background: linear-gradient(180deg, rgba(99, 102, 241, .9), rgba(6, 182, 212, .75));
+        background: #3b82f6;
         border-radius: 999px;
       }
     `;
