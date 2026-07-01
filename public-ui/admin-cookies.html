@@ -5,24 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
   <title>Admin Cookies • YTConv</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-ui-bridge.js" defer></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-<script src="/assets/admin-turnstile.js"></script>
+  <script src="/assets/admin-turnstile.js" defer></script>
+
   <style>
     body {
       background: #020617;
     }
-    @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
-    .fade-in { animation: fadeIn .35s ease both; }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn .35s ease both;
+    }
+
     .premium-card {
       position: relative;
       overflow: hidden;
       box-shadow: none;
     }
-    .premium-card::before { content: none; display: none; }
-    .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
-    button, a, input::file-selector-button {
+
+    .premium-card::before {
+      content: none;
+      display: none;
+    }
+
+    .tw-enhanced .tw-pressed {
+      transform: translateY(1px) scale(.99);
+    }
+
+    button,
+    a,
+    input::file-selector-button {
       background-image: none !important;
       box-shadow: none !important;
       backdrop-filter: none !important;
@@ -30,8 +57,19 @@
       filter: none !important;
       transition: background-color .18s ease, border-color .18s ease, color .18s ease;
     }
+
+    .admin-turnstile-wrap {
+      margin-top: .25rem;
+    }
+
+    .admin-turnstile-error {
+      margin-top: .35rem;
+      color: #fda4af;
+      font-size: .8rem;
+    }
   </style>
 </head>
+
 <body class="min-h-screen bg-slate-950 text-slate-100">
   <main class="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
     <header class="premium-card rounded-3xl border border-indigo-500/20 bg-slate-900 p-5 flex flex-wrap items-center justify-between gap-3 fade-in">
@@ -39,6 +77,7 @@
         <h1 class="text-xl md:text-2xl font-extrabold">🍪 Admin Cookies Manager</h1>
         <p class="text-slate-400 text-sm">Upload dan monitor cookies.txt dengan UI yang lebih rapi.</p>
       </div>
+
       <div class="flex gap-2 flex-wrap">
         <a href="/admin/dashboard" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm">Dashboard</a>
         <a href="/admin/tickets" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm">Admin Tickets</a>
@@ -47,13 +86,38 @@
 
     <section id="loginView" class="premium-card rounded-3xl border border-slate-800/80 bg-slate-900 p-5 space-y-3 fade-in">
       <div class="font-bold">Login Admin</div>
+
       <div class="grid sm:grid-cols-2 gap-2">
-        <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" autocomplete="username">
-        <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" autocomplete="current-password">
+        <input
+          id="username"
+          class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700"
+          placeholder="Username"
+          autocomplete="username"
+        />
+
+        <input
+          id="password"
+          type="password"
+          class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700"
+          placeholder="Password"
+          autocomplete="current-password"
+        />
       </div>
+
+      <!-- TURNSTILE ADMIN -->
+      <div class="admin-turnstile-wrap">
+        <div id="admin-turnstile"></div>
+        <p id="admin-turnstile-error" class="admin-turnstile-error" hidden>
+          Verifikasi keamanan diperlukan.
+        </p>
+      </div>
+
       <div class="flex gap-2">
-        <button id="loginBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold">Login</button>
+        <button id="loginBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold">
+          Login
+        </button>
       </div>
+
       <div id="loginToast" class="text-sm"></div>
     </section>
 
@@ -63,119 +127,350 @@
           <div class="font-bold">Upload cookies.txt</div>
           <div class="text-sm text-slate-400">Status realtime akan refresh otomatis.</div>
         </div>
-        <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">Logout</button>
+
+        <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm">
+          Logout
+        </button>
       </div>
 
-      <div class="rounded-2xl border border-slate-700/80 bg-slate-950 p-4 text-sm ">
+      <div class="rounded-2xl border border-slate-700/80 bg-slate-950 p-4 text-sm">
         <div class="text-slate-400">Status Cookies</div>
         <div id="statusBox" class="font-medium mt-1">Memuat...</div>
       </div>
 
-      <input id="file" type="file" accept=".txt,text/plain" class="block w-full rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-3 text-sm file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-slate-100 hover:file:bg-indigo-500" />
+      <input
+        id="file"
+        type="file"
+        accept=".txt,text/plain"
+        class="block w-full rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-3 text-sm file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-slate-100 hover:file:bg-indigo-500"
+      />
+
       <div class="flex gap-2 flex-wrap">
-        <button id="uploadBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold">Upload</button>
-        <button id="refreshStatusBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600">Refresh</button>
+        <button id="uploadBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold">
+          Upload
+        </button>
+
+        <button id="refreshStatusBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600">
+          Refresh
+        </button>
       </div>
+
       <div id="uploadToast" class="text-sm"></div>
     </section>
   </main>
 
-<script>
-const $ = (id) => document.getElementById(id);
-const tokenKey = 'admin_session_active';
-const legacyKey = 'ytmp3_admin_bearer';
-const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
-const getToken = () => (sessionStorage.getItem(tokenKey) || '').trim();
-const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorage.removeItem(legacyKey); };
-const clearToken = () => { sessionStorage.removeItem(tokenKey); localStorage.removeItem(legacyKey); };
-const toast = (id, msg, ok = true) => { const el = $(id); el.className = `text-sm ${ok ? 'text-emerald-300' : 'text-rose-300'}`; el.textContent = msg; };
-const setLoggedInUi = (inState) => { $('loginView').classList.toggle('hidden', inState); $('uploadView').classList.toggle('hidden', !inState); };
-let statusRequest = null;
-let statusRequestId = 0;
-let lastKnownCookieStatus = null;
+  <script>
+    const $ = (id) => document.getElementById(id);
 
-function renderCookieStatus(data){
-  if (!data?.exists) {
-    const detail = data?.health === 'error' && data?.lastErrorCategory
-      ? `Status cookies error: ${data.lastErrorCategory}`
-      : 'Belum ada cookies.txt di penyimpanan persisten.';
-    $('statusBox').innerHTML = `<span class="text-amber-300">${detail}</span>`;
-    return;
-  }
-  lastKnownCookieStatus = data;
-  const uploadedAt = data.updatedAt ? fmt.format(new Date(data.updatedAt)) : 'waktu tidak tersedia';
-  const storage = data.storage || 'volume';
-  const bytes = Number(data.sizeBytes || data.bytes || 0).toLocaleString();
-  $('statusBox').innerHTML = `<span class="text-emerald-300">Tersimpan aman</span> • ${bytes} bytes • ${uploadedAt} • ${storage} • health: ${data.health || 'unknown'}`;
-}
+    const tokenKey = "admin_session_active";
+    const legacyKey = "ytmp3_admin_bearer";
 
-async function refreshStatus(){
-  const requestId = ++statusRequestId;
-  statusRequest?.abort();
-  statusRequest = new AbortController();
-  const token = getToken();
-  if (!token) {
-    $('statusBox').innerHTML = '<span class="text-amber-300">Login admin dulu untuk melihat status cookies server.</span>';
-    return;
-  }
-  try {
-    const res = await fetch('/api/admin/cookies/status?t=' + Date.now(), {
-      cache: 'no-store',
-      signal: statusRequest.signal,
-      headers: { Authorization: 'Bearer ' + token },
+    const fmt = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
     });
-    const data = await res.json().catch(() => ({}));
-    if (requestId !== statusRequestId) return;
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    if (data.disabled) {
-      $('statusBox').innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
-      return;
+
+    const getToken = () => (sessionStorage.getItem(tokenKey) || "").trim();
+
+    const setToken = (t) => {
+      sessionStorage.setItem(tokenKey, t || "");
+      localStorage.removeItem(legacyKey);
+    };
+
+    const clearToken = () => {
+      sessionStorage.removeItem(tokenKey);
+      localStorage.removeItem(legacyKey);
+    };
+
+    const toast = (id, msg, ok = true) => {
+      const el = $(id);
+      if (!el) return;
+
+      el.className = `text-sm ${ok ? "text-emerald-300" : "text-rose-300"}`;
+      el.textContent = msg;
+    };
+
+    const setLoggedInUi = (inState) => {
+      $("loginView")?.classList.toggle("hidden", inState);
+      $("uploadView")?.classList.toggle("hidden", !inState);
+
+      if (!inState) {
+        setTimeout(() => window.AdminTurnstile?.render?.(), 250);
+      }
+    };
+
+    let statusRequest = null;
+    let statusRequestId = 0;
+    let lastKnownCookieStatus = null;
+
+    function getFriendlyAdminError(data, fallback = "Login gagal") {
+      const code = data?.code || data?.error;
+
+      if (code === "turnstile_required") {
+        return "Selesaikan verifikasi keamanan dulu.";
+      }
+
+      if (code === "turnstile_failed") {
+        return "Verifikasi gagal. Coba ulangi.";
+      }
+
+      if (code === "turnstile_timeout") {
+        return "Verifikasi timeout. Coba lagi.";
+      }
+
+      if (code === "invalid_credentials") {
+        return "Login gagal. Periksa kredensial admin.";
+      }
+
+      if (code === "rate_limited") {
+        return "Terlalu banyak percobaan login. Tunggu sebentar.";
+      }
+
+      return data?.message || data?.error || fallback;
     }
-    renderCookieStatus(data);
-  } catch (error) {
-    if (error.name === 'AbortError') return;
-    if (lastKnownCookieStatus) renderCookieStatus(lastKnownCookieStatus);
-    toast('uploadToast', `Gagal memperbarui status: ${error.message || 'unknown error'}`, false);
-  }
-}
 
-$('loginBtn').addEventListener('click', async () => {
-  try {
-    const res = await fetch('/admin/login', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:$('username').value || '', password:$('password').value || '' })
+    function renderCookieStatus(data) {
+      if (!data?.exists) {
+        const detail = data?.health === "error" && data?.lastErrorCategory
+          ? `Status cookies error: ${data.lastErrorCategory}`
+          : "Belum ada cookies.txt di penyimpanan persisten.";
+
+        $("statusBox").innerHTML = `<span class="text-amber-300">${detail}</span>`;
+        return;
+      }
+
+      lastKnownCookieStatus = data;
+
+      const uploadedAt = data.updatedAt
+        ? fmt.format(new Date(data.updatedAt))
+        : "waktu tidak tersedia";
+
+      const storage = data.storage || "volume";
+      const bytes = Number(data.sizeBytes || data.bytes || 0).toLocaleString();
+
+      $("statusBox").innerHTML = `
+        <span class="text-emerald-300">Tersimpan aman</span>
+        • ${bytes} bytes
+        • ${uploadedAt}
+        • ${storage}
+        • health: ${data.health || "unknown"}
+      `;
+    }
+
+    async function refreshStatus() {
+      const requestId = ++statusRequestId;
+
+      statusRequest?.abort();
+      statusRequest = new AbortController();
+
+      const token = getToken();
+
+      if (!token) {
+        $("statusBox").innerHTML = '<span class="text-amber-300">Login admin dulu untuk melihat status cookies server.</span>';
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/admin/cookies/status?t=" + Date.now(), {
+          cache: "no-store",
+          credentials: "include",
+          signal: statusRequest.signal,
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (requestId !== statusRequestId) return;
+
+        if (res.status === 401 || res.status === 403) {
+          clearToken();
+          setLoggedInUi(false);
+          throw new Error(data.message || data.error || "Session admin habis. Silakan login ulang.");
+        }
+
+        if (!res.ok) {
+          throw new Error(data.error || data.message || `HTTP ${res.status}`);
+        }
+
+        if (data.disabled) {
+          $("statusBox").innerHTML = '<span class="text-rose-300">Admin disabled. Set ADMIN_BEARER / ADMIN_USER_HASH / ADMIN_PASS_HASH di Railway.</span>';
+          return;
+        }
+
+        renderCookieStatus(data);
+      } catch (error) {
+        if (error.name === "AbortError") return;
+
+        if (lastKnownCookieStatus) {
+          renderCookieStatus(lastKnownCookieStatus);
+        }
+
+        toast("uploadToast", `Gagal memperbarui status: ${error.message || "unknown error"}`, false);
+      }
+    }
+
+    async function loginAdmin() {
+      const username = $("username")?.value?.trim() || "";
+      const password = $("password")?.value || "";
+      const turnstileToken = window.AdminTurnstile?.getToken?.() || "";
+
+      try {
+        if (!username || !password) {
+          throw new Error("Username dan password wajib diisi.");
+        }
+
+        if (!turnstileToken) {
+          window.AdminTurnstile?.showError?.("Selesaikan verifikasi Turnstile dulu.");
+          throw new Error("Selesaikan verifikasi keamanan dulu.");
+        }
+
+        const res = await fetch("/admin/login", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+            password,
+            turnstileToken,
+            cfTurnstileResponse: turnstileToken,
+            "cf-turnstile-response": turnstileToken,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data?.ok) {
+          window.AdminTurnstile?.reset?.();
+
+          const message = getFriendlyAdminError(data, "Login gagal");
+          window.AdminTurnstile?.showError?.(message);
+
+          throw new Error(message);
+        }
+
+        setToken("cookie-session");
+
+        $("password").value = "";
+
+        toast("loginToast", "Login berhasil.");
+        setLoggedInUi(true);
+
+        await refreshStatus();
+      } catch (e) {
+        toast("loginToast", e.message || "Login gagal", false);
+      }
+    }
+
+    async function logoutAdmin() {
+      clearToken();
+
+      await fetch("/admin/logout", {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {});
+
+      setLoggedInUi(false);
+      window.AdminTurnstile?.reset?.();
+
+      toast("loginToast", "Logout berhasil.");
+    }
+
+    async function uploadCookies() {
+      try {
+        const token = getToken();
+
+        if (!token) {
+          throw new Error("Belum login");
+        }
+
+        const file = $("file").files?.[0];
+
+        if (!file) {
+          throw new Error("Pilih file cookies.txt dulu");
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+          throw new Error("File cookies terlalu besar. Maksimal 2 MB.");
+        }
+
+        const safeName = file.name || "cookies.txt";
+
+        if (!safeName.toLowerCase().endsWith(".txt")) {
+          throw new Error("File harus berformat .txt");
+        }
+
+        const body = await file.text();
+
+        const res = await fetch("/api/admin/cookies/upload", {
+          method: "POST",
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "x-file-name": safeName,
+            Authorization: "Bearer " + token,
+          },
+          body,
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.status === 401 || res.status === 403) {
+          clearToken();
+          setLoggedInUi(false);
+          throw new Error(data.message || data.error || "Session admin habis. Silakan login ulang.");
+        }
+
+        if (!res.ok) {
+          throw new Error(data.error || data.message || `HTTP ${res.status}`);
+        }
+
+        toast("uploadToast", `Upload tersimpan aman (${Number(data.sizeBytes || data.bytes || 0).toLocaleString()} bytes).`);
+
+        renderCookieStatus(data);
+        await refreshStatus();
+      } catch (e) {
+        toast("uploadToast", e.message || "Upload gagal", false);
+      }
+    }
+
+    $("loginBtn")?.addEventListener("click", loginAdmin);
+
+    $("password")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        loginAdmin();
+      }
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) throw new Error(data.error || 'Login gagal');
-    setToken('cookie-session');
-    $('password').value = '';
-    toast('loginToast', 'Login berhasil.');
-    setLoggedInUi(true);
-    refreshStatus();
-  } catch (e) { toast('loginToast', e.message || 'Login gagal', false); }
-});
 
-$('logoutBtn').addEventListener('click', async () => { clearToken(); await fetch('/admin/logout', { method:'POST' }).catch(() => {}); setLoggedInUi(false); toast('loginToast', 'Logout berhasil.'); });
-$('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
+    $("username")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        $("password")?.focus();
+      }
+    });
 
-$('uploadBtn').addEventListener('click', async () => {
-  try {
-    const token = getToken();
-    if (!token) throw new Error('Belum login');
-    const file = $('file').files?.[0];
-    if (!file) throw new Error('Pilih file cookies.txt dulu');
-    const body = await file.text();
-    const res = await fetch('/api/admin/cookies/upload', { method:'POST', cache:'no-store', headers:{ 'Content-Type':'text/plain; charset=utf-8', 'x-file-name': file.name || 'cookies.txt', Authorization:'Bearer ' + token }, body });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    toast('uploadToast', `Upload tersimpan aman (${Number(data.sizeBytes || data.bytes || 0).toLocaleString()} bytes).`);
-    renderCookieStatus(data);
-    await refreshStatus();
-  } catch (e) { toast('uploadToast', e.message || 'Upload gagal', false); }
-});
+    $("logoutBtn")?.addEventListener("click", logoutAdmin);
 
-setLoggedInUi(Boolean(getToken()));
-refreshStatus().catch(() => {});
-setInterval(() => { if (getToken()) refreshStatus().catch(() => {}); }, 10000);
-</script>
+    $("refreshStatusBtn")?.addEventListener("click", () => {
+      refreshStatus().catch((e) => toast("uploadToast", e.message, false));
+    });
+
+    $("uploadBtn")?.addEventListener("click", uploadCookies);
+
+    setLoggedInUi(Boolean(getToken()));
+
+    refreshStatus().catch(() => {});
+
+    setInterval(() => {
+      if (getToken()) {
+        refreshStatus().catch(() => {});
+      }
+    }, 10000);
+  </script>
 </body>
 </html>
