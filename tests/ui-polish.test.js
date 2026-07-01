@@ -67,7 +67,7 @@ test("tailwind bridge terhubung ke JavaScript interaktif", () => {
 test("tailwind bridge mempercantik tombol dan panel tanpa mengganti fitur", () => {
   assert.match(pages.bridge, /tw-premium-button-polish/);
   assert.match(pages.bridge, /a\[class\*="bg-"\]/);
-  assert.match(pages.bridge, /radial-gradient\(circle at var\(--tw-press-x/);
+  assert.match(pages.bridge, /background-image: none !important/);
   assert.match(pages.bridge, /focus-visible/);
   assert.match(pages.bridge, /premium-panel/);
 });
@@ -80,12 +80,26 @@ test("tailwind bridge memberi polish menyeluruh ke elemen umum", () => {
   assert.match(pages.bridge, /text-wrap:\s*balance/);
 });
 
-test("tailwind bridge memakai sans font dan glow interaktif", () => {
-  assert.match(pages.bridge, /font-family:\s*Inter, "Segoe UI", system-ui/);
+test("tailwind bridge memakai Helvetica dan no-glass ringan", () => {
+  assert.match(pages.bridge, /font-family:\s*Helvetica, Arial, sans-serif/);
   assert.match(pages.bridge, /tw-glow-orb/);
-  assert.match(pages.bridge, /ensureGlowOrb/);
-  assert.match(pages.bridge, /--tw-glow-x/);
-  assert.match(pages.bridge, /pointermove/);
-  assert.match(pages.bridge, /rgba\(99, 102, 241, \.24\)/);
-  assert.match(pages.bridge, /box-shadow: 0 28px 80px/);
+  assert.match(pages.bridge, /display: none !important/);
+  assert.match(pages.bridge, /backdrop-filter: none !important/);
+  assert.match(pages.bridge, /box-shadow: none !important/);
+  assert.match(pages.bridge, /transition: background-color \.16s ease/);
+});
+
+test("homepage memperbaiki light mode, AI navigator, Google Safari, dan default MP3", () => {
+  assert.match(pages.home, /body\.ui-overlay-open \.assistant-fab/);
+  assert.match(pages.home, /\.assistant-fab[\s\S]*touch-action: none/);
+  assert.match(pages.home, /\.assistant-toggle[\s\S]*overscroll-behavior: contain/);
+  assert.match(pages.home, /evt\.preventDefault\(\);[\s\S]*const deltaX = evt\.clientX - assistantFabDragSession\.startX/);
+  assert.match(pages.home, /\.btn-close::before/);
+  assert.match(pages.home, /#serverTimeBadge/);
+  assert.match(pages.home, /theme-switching/);
+  assert.match(pages.home, /itp_support:\s*true/);
+  assert.match(pages.home, /google-safari-fallback/);
+  assert.match(pages.home, /<option value="mp3" selected>MP3 \(re-encode, fleksibel\)<\/option>/);
+  assert.match(pages.home, /<option value="320" selected>320 kbps \(Lebih besar, beda tipis\)<\/option>/);
+  assert.match(pages.home, /<option value="44100" selected>44\.1 kHz<\/option>/);
 });
