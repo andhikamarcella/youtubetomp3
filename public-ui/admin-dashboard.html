@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>Admin Statistik • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -58,6 +59,31 @@
     </section>
 
     <section id="metricCards" class="grid md:grid-cols-4 gap-3"></section>
+
+    <section class="grid lg:grid-cols-3 gap-3" aria-label="Production observability">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🛰️ Production Metrics</h2>
+        <div class="text-sm space-y-1">
+          <div>Requests: <b id="obsRequests">0</b></div>
+          <div>Avg request: <b id="obsAvgRequest">0</b> ms</div>
+          <div>Rate limit hits: <b id="obsRateLimit">0</b></div>
+          <div>Recent errors: <b id="obsErrors">0</b></div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🚦 Queue Health</h2>
+        <div class="text-sm space-y-1">
+          <div>Driver: <b id="obsQueueDriver">-</b></div>
+          <div>Waiting: <b id="obsQueueWaiting">0</b></div>
+          <div>Active: <b id="obsQueueActive">0</b></div>
+          <div>Avg process: <b id="obsQueueProcess">0</b> ms</div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 class="font-bold mb-2">🧾 Recent Audit</h2>
+        <ul id="obsAudit" class="text-xs space-y-1 max-h-28 overflow-auto"><li class="text-slate-500">Login untuk melihat audit.</li></ul>
+      </div>
+    </section>
 
     <section class="grid lg:grid-cols-3 gap-3">
       <div class="premium-panel rounded-2xl border p-4 lg:col-span-2">
@@ -261,11 +287,11 @@
   </main>
 
 <script>
-const TOKEN_KEY='ytconv_admin_bearer';
+const TOKEN_KEY='admin_session_active';
 const fmt=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'});
 const el=(id)=>document.getElementById(id);
-const getToken=()=> (localStorage.getItem(TOKEN_KEY)||'').trim();
-const setToken=(v)=> localStorage.setItem(TOKEN_KEY,v||'');
+const getToken=()=> (sessionStorage.getItem(TOKEN_KEY)||'').trim();
+const setToken=(v)=> sessionStorage.setItem(TOKEN_KEY,v||'');
 const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
 const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
 let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[],appeals:[]};
@@ -358,7 +384,24 @@ function renderLoadTesting(data){
 
 function renderAppeals(){const items=state.appeals||[];const by={pending:0,accepted:0,rejected:0};items.forEach((a)=>{if(by[a.status]!==undefined)by[a.status]+=1;});el('appealSummary').textContent=`Pending: ${by.pending||0} • Diterima: ${by.accepted||0} • Ditolak: ${by.rejected||0}`;el('appealRows').innerHTML=items.map((a)=>`<tr class="border-t border-slate-800"><td class="p-2 font-semibold">${a.appealId}</td><td class="p-2">${(a.name||'-').replace(/</g,'&lt;')}<div class="text-[10px] text-slate-400">${(a.userId||'-').replace(/</g,'&lt;')}</div></td><td class="p-2">${(a.socketId||'-').replace(/</g,'&lt;')}</td><td class="p-2">${(a.disabledFeatures||[]).join(', ')||'-'}</td><td class="p-2">${(a.reason||'-').replace(/</g,'&lt;')}</td><td class="p-2">${a.statusLabel||a.status||'-'}</td><td class="p-2"><div class="flex flex-wrap gap-1"><button data-appeal="${a.appealId}" data-status="accepted" class="px-2 py-1 rounded bg-emerald-600 text-[10px]">Accept</button><button data-appeal="${a.appealId}" data-status="rejected" class="px-2 py-1 rounded bg-rose-600 text-[10px]">Reject</button><button data-delete-appeal="${a.appealId}" class="px-2 py-1 rounded bg-slate-700 text-[10px]">Hapus</button></div></td></tr>`).join('')||'<tr><td class="p-2 text-slate-400" colspan="7">Belum ada appeal masuk.</td></tr>';}
 
-async function loadStats(){if(loadStatsPromise)return loadStatsPromise;const token=getToken();if(!token)return;loadStatsPromise=(async()=>{try{const res=await fetch('/api/admin/stats',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'stats_load_failed');el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderLoadTesting(data);renderAppeals();applyFilters();}catch(err){el('authState').textContent=state.allTickets.length||state.appeals.length?`Refresh gagal • cache tetap tampil (${err.message||'error'})`:'Token invalid / server error';if(state.allTickets.length||state.appeals.length)toast('Auto-refresh dashboard gagal sebentar, data terakhir tetap ditampilkan.','warn');}finally{loadStatsPromise=null;}})();return loadStatsPromise;}
+async function loadStats(){if(loadStatsPromise)return loadStatsPromise;const token=getToken();if(!token)return;loadStatsPromise=(async()=>{try{await loadObservability().catch(()=>{});const res=await fetch('/api/admin/stats',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)throw new Error(data.error||'stats_load_failed');el('authState').textContent=`Aktif • ${fmt.format(new Date(data.timestamp))}`;state.allTickets=data.tickets?.all||[];state.appeals=data.appeals?.all||[];renderMetrics(data);updateCharts(data);renderLive(data);renderAdvanced(data);renderLoadTesting(data);renderAppeals();applyFilters();}catch(err){el('authState').textContent=state.allTickets.length||state.appeals.length?`Refresh gagal • cache tetap tampil (${err.message||'error'})`:'Token invalid / server error';if(state.allTickets.length||state.appeals.length)toast('Auto-refresh dashboard gagal sebentar, data terakhir tetap ditampilkan.','warn');}finally{loadStatsPromise=null;}})();return loadStatsPromise;}
+
+
+async function loadObservability(){
+  const token=getToken();if(!token)return;
+  const res=await fetch('/api/admin/metrics',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok||!data.ok)throw new Error(data.error||'metrics_load_failed');
+  el('obsRequests').textContent=data.metrics?.requests?.total||0;
+  el('obsAvgRequest').textContent=data.metrics?.avgRequestMs||0;
+  el('obsRateLimit').textContent=data.metrics?.rateLimits?.hits||0;
+  el('obsErrors').textContent=(data.metrics?.recentErrors||[]).length;
+  el('obsQueueDriver').textContent=data.queue?.driver||'-';
+  el('obsQueueWaiting').textContent=data.queue?.waiting||0;
+  el('obsQueueActive').textContent=data.queue?.active||0;
+  el('obsQueueProcess').textContent=data.queue?.averageProcessMs||0;
+  el('obsAudit').innerHTML=(data.audit||[]).map((a)=>`<li class="rounded border border-slate-800 p-1">${a.action} • ${a.result}<div class="text-slate-500">${a.timestamp?fmt.format(new Date(a.timestamp)):'-'}</div></li>`).join('')||'<li class="text-slate-500">Belum ada audit.</li>';
+}
 
 function renderChatHistory(items){el('chatHistory').innerHTML=items.map((c)=>`<div class="text-xs rounded p-2 ${c.sender==='admin'?'bg-indigo-900/50 border border-indigo-700':'bg-slate-900 border border-slate-700'}"><div class="text-slate-400 mb-1">${c.sender||'system'} • ${c.at?fmt.format(new Date(c.at)):'-'}</div><div class="whitespace-pre-wrap break-words">${(c.message||'').replace(/</g,'&lt;')}</div></div>`).join('')||'<div class="text-slate-500 text-xs">Belum ada chat.</div>';el('chatLimitHint').textContent='Chat admin tanpa batas.';el('chatInput').disabled=false;el('chatHistory').scrollTop=el('chatHistory').scrollHeight;}
 
@@ -376,7 +419,7 @@ async function updateAppeal(appealId,status){const token=getToken();const r=awai
 async function deleteTicketFromDashboard(ticketId){if(!confirm(`Hapus ticket ${ticketId}?`))return;const token=getToken();const r=await fetch(`/api/admin/tickets/${encodeURIComponent(ticketId)}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Hapus ticket gagal','error');state.allTickets=state.allTickets.filter((t)=>t.ticketId!==ticketId);applyFilters();toast(`Ticket ${ticketId} dihapus`);}
 async function deleteAppealFromDashboard(appealId){if(!confirm(`Hapus appeal ${appealId}?`))return;const token=getToken();const r=await fetch(`/api/admin/appeals/${encodeURIComponent(appealId)}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Hapus appeal gagal','error');state.appeals=state.appeals.filter((a)=>a.appealId!==appealId);renderAppeals();toast(`Appeal ${appealId} dihapus`);}
 
-async function login(evt){evt.preventDefault();const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:el('username').value,password:el('password').value})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok||!data.token)return toast('Login gagal','error');setToken(data.token);el('authState').textContent='Login aktif';toast('Login berhasil');await loadStats();initSocket();}
+async function login(evt){evt.preventDefault();const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:el('username').value,password:el('password').value})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)return toast('Login gagal','error');setToken('cookie-session');el('authState').textContent='Login aktif';toast('Login berhasil');await loadStats();initSocket();}
 
 el('loginForm').addEventListener('submit',login);el('refreshBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('closeDetailBtn').addEventListener('click',()=>el('detailPanel').classList.add('hidden'));el('chatForm').addEventListener('submit',sendChat);el('exportBtn').addEventListener('click',exportExcel);['searchId','filterStatus','filterCategory','filterDate'].forEach((id)=>el(id).addEventListener('input',applyFilters));el('ticketRows').addEventListener('click',(evt)=>{const del=evt.target.closest('button[data-delete-ticket]');if(del)return deleteTicketFromDashboard(del.getAttribute('data-delete-ticket'));const btn=evt.target.closest('button[data-open]');if(!btn)return;openDetail(btn.getAttribute('data-open'));});el('adminTicketsBtn').addEventListener('click',()=>setBadge(0));
 el('toggleConvertBtn').addEventListener('click',()=>control('toggle_convert'));el('clearQueueBtn').addEventListener('click',()=>control('clear_queue'));el('kickUserBtn').addEventListener('click',()=>control('kick_user',{socketId:el('kickSocketId').value.trim()}));

@@ -191,6 +191,8 @@ export const loadEnv = (rawEnv = process.env) => {
     TICKET_RATE_LIMIT_MAX: int(rawEnv.TICKET_RATE_LIMIT_MAX, 5, { min: 1, max: 10_000 }),
     AI_RATE_LIMIT_WINDOW_MS: int(rawEnv.AI_RATE_LIMIT_WINDOW_MS, 60_000, { min: 1_000, max: 60 * 60_000 }),
     AI_RATE_LIMIT_MAX: int(rawEnv.AI_RATE_LIMIT_MAX, 20, { min: 1, max: 10_000 }),
+    UPLOAD_RATE_LIMIT_WINDOW_MS: int(rawEnv.UPLOAD_RATE_LIMIT_WINDOW_MS, 60_000, { min: 1_000, max: 60 * 60_000 }),
+    UPLOAD_RATE_LIMIT_MAX: int(rawEnv.UPLOAD_RATE_LIMIT_MAX, 20, { min: 1, max: 10_000 }),
 
     BLOCK_PRIVATE_IP_URLS: bool(rawEnv.BLOCK_PRIVATE_IP_URLS, true),
     BLOCK_LOCALHOST_URLS: bool(rawEnv.BLOCK_LOCALHOST_URLS, true),
@@ -225,6 +227,25 @@ export const loadEnv = (rawEnv = process.env) => {
     FEATURE_PWA: bool(rawEnv.FEATURE_PWA, true),
     FEATURE_VOICE: bool(rawEnv.FEATURE_VOICE, true),
     FEATURE_MINIGAME: bool(rawEnv.FEATURE_MINIGAME, true),
+    MODERATION_ENABLED: bool(rawEnv.MODERATION_ENABLED, true),
+    CACHE_ENABLED: bool(rawEnv.CACHE_ENABLED, true),
+    ANALYTICS_ENABLED: bool(rawEnv.ANALYTICS_ENABLED, false),
+    ANALYTICS_PROVIDER: str(rawEnv.ANALYTICS_PROVIDER, "none"),
+    ANALYTICS_ENDPOINT: str(rawEnv.ANALYTICS_ENDPOINT),
+    METADATA_CACHE_TTL_SECONDS: int(rawEnv.METADATA_CACHE_TTL_SECONDS, 6 * 60 * 60, { min: 60, max: 7 * 24 * 60 * 60 }),
+    RESULT_CACHE_TTL_SECONDS: int(rawEnv.RESULT_CACHE_TTL_SECONDS, 60 * 60, { min: 60, max: 24 * 60 * 60 }),
+    MAX_LINKS_PER_MESSAGE: int(rawEnv.MAX_LINKS_PER_MESSAGE, 5, { min: 0, max: 100 }),
+    SPAM_DUPLICATE_WINDOW_MS: int(rawEnv.SPAM_DUPLICATE_WINDOW_MS, 60_000, { min: 1_000, max: 24 * 60 * 60_000 }),
+    SPAM_DUPLICATE_MAX: int(rawEnv.SPAM_DUPLICATE_MAX, 3, { min: 1, max: 100 }),
+    BANNED_DOMAINS: csv(rawEnv.BANNED_DOMAINS, []),
+    BANNED_KEYWORDS: csv(rawEnv.BANNED_KEYWORDS, []),
+    RETENTION_FAILED_JOBS_DAYS: int(rawEnv.RETENTION_FAILED_JOBS_DAYS, 7, { min: 1, max: 365 }),
+    RETENTION_COMPLETED_JOBS_DAYS: int(rawEnv.RETENTION_COMPLETED_JOBS_DAYS, 1, { min: 1, max: 365 }),
+    RETENTION_TICKETS_DAYS: int(rawEnv.RETENTION_TICKETS_DAYS, 90, { min: 1, max: 3650 }),
+    RETENTION_AUDIT_LOGS_DAYS: int(rawEnv.RETENTION_AUDIT_LOGS_DAYS, 180, { min: 1, max: 3650 }),
+    RETENTION_ANALYTICS_DAYS: int(rawEnv.RETENTION_ANALYTICS_DAYS, 90, { min: 1, max: 3650 }),
+    RETENTION_CACHE_HOURS: int(rawEnv.RETENTION_CACHE_HOURS, 24, { min: 1, max: 24 * 365 }),
+    RETENTION_CLOUDINARY_TEMP_HOURS: int(rawEnv.RETENTION_CLOUDINARY_TEMP_HOURS, 24, { min: 1, max: 24 * 365 }),
     XP_MULTIPLIER_PREMIUM: Number(rawEnv.XP_MULTIPLIER_PREMIUM || 1),
 
     SUPPORT_EMAIL: str(rawEnv.SUPPORT_EMAIL || rawEnv.SUPPORT_CONTACT_EMAIL, "support@example.com"),
@@ -244,6 +265,7 @@ export const loadEnv = (rawEnv = process.env) => {
     "ADMIN_USER_HASH",
     "ADMIN_PASS_HASH",
     "ADMIN_BEARER",
+    "ADMIN_JWT_SECRET",
     ...(env.SIGNED_DOWNLOADS ? ["DOWNLOAD_TOKEN_SECRET"] : []),
   ]);
 
@@ -278,6 +300,7 @@ export const publicEnvSummary = (env) => ({
   appEnv: env.APP_ENV,
   queueDriver: env.QUEUE_DRIVER,
   signedDownloads: env.SIGNED_DOWNLOADS,
+  features: { forum: env.FEATURE_FORUM, tickets: env.FEATURE_TICKETS, aiNavigator: env.FEATURE_AI_NAVIGATOR, pwa: env.FEATURE_PWA },
 });
 
 export const safeEnvDiagnostics = (env) => ({

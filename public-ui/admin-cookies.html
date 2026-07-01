@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>Admin Cookies • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-ui-bridge.js" defer></script>
@@ -79,11 +80,11 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const tokenKey = 'admin_bearer_token';
+const tokenKey = 'admin_session_active';
 const legacyKey = 'ytmp3_admin_bearer';
 const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
-const getToken = () => (sessionStorage.getItem(tokenKey) || localStorage.getItem(legacyKey) || '').trim();
-const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorage.setItem(legacyKey, t || ''); };
+const getToken = () => (sessionStorage.getItem(tokenKey) || '').trim();
+const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorage.removeItem(legacyKey); };
 const clearToken = () => { sessionStorage.removeItem(tokenKey); localStorage.removeItem(legacyKey); };
 const toast = (id, msg, ok = true) => { const el = $(id); el.className = `text-sm ${ok ? 'text-emerald-300' : 'text-rose-300'}`; el.textContent = msg; };
 const setLoggedInUi = (inState) => { $('loginView').classList.toggle('hidden', inState); $('uploadView').classList.toggle('hidden', !inState); };
@@ -142,8 +143,8 @@ $('loginBtn').addEventListener('click', async () => {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:$('username').value || '', password:$('password').value || '' })
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.token) throw new Error(data.error || 'Login gagal');
-    setToken(data.token);
+    if (!res.ok || !data?.ok) throw new Error(data.error || 'Login gagal');
+    setToken('cookie-session');
     $('password').value = '';
     toast('loginToast', 'Login berhasil.');
     setLoggedInUi(true);
@@ -151,7 +152,7 @@ $('loginBtn').addEventListener('click', async () => {
   } catch (e) { toast('loginToast', e.message || 'Login gagal', false); }
 });
 
-$('logoutBtn').addEventListener('click', () => { clearToken(); setLoggedInUi(false); toast('loginToast', 'Logout berhasil.'); });
+$('logoutBtn').addEventListener('click', async () => { clearToken(); await fetch('/admin/logout', { method:'POST' }).catch(() => {}); setLoggedInUi(false); toast('loginToast', 'Logout berhasil.'); });
 $('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
 
 $('uploadBtn').addEventListener('click', async () => {

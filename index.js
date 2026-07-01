@@ -17,6 +17,7 @@ import { verifyTurnstile } from "./src/lib/turnstile.js";
 import { parseMaintenance } from "./src/lib/maintenance.js";
 import { validatePublicMediaUrl } from "./src/lib/urlSafety.js";
 import { createSignedDownloadToken, verifySignedDownloadToken } from "./src/lib/signedDownload.js";
+import { createLogger, createRequestIdMiddleware, createRequestLoggerMiddleware, recordError, recordConversionMetric, getMetricsSnapshot, auditAdminAction, getAuditLog } from "./src/lib/observability.js";
 
 console.log("Initializing application...");
 console.log("Node version:", process.version);
@@ -45,8 +46,12 @@ try {
 }
 
 const runtimeConfig = loadEnv(process.env);
+if (runtimeConfig.missing?.length && process.env.NODE_ENV === "production") {
+  throw new Error(`Missing required production env: ${runtimeConfig.missing.join(", ")}`);
+}
 const runtimeEnv = runtimeConfig.env;
-if (runtimeConfig.missing?.length) console.warn("[env] Missing production env:", runtimeConfig.missing.join(", "));
+const logger = createLogger(runtimeEnv);
+if (runtimeConfig.missing?.length) logger.warn("env_missing_production_keys", { missing: runtimeConfig.missing });
 try { ensureRuntimeDirectories(runtimeEnv); } catch (err) { console.warn("[env] Runtime directory initialization warning:", err?.message || err); }
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
@@ -2289,6 +2294,8 @@ const __dirname = dirname(__filename);
 
 const app = express();
 app.set("trust proxy", runtimeEnv.TRUST_PROXY ? 1 : false);
+app.use(createRequestIdMiddleware());
+app.use(createRequestLoggerMiddleware({ env: runtimeEnv, logger }));
 app.use(createSecurityHeadersMiddleware(runtimeEnv));
 app.use(noStoreForSensitive);
 app.use(compression());
@@ -2300,6 +2307,7 @@ const convertRateLimiter = createRateLimiter({ name: "convert", enabled: runtime
 const authRateLimiter = createRateLimiter({ name: "auth", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.AUTH_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.AUTH_RATE_LIMIT_MAX });
 const ticketRateLimiter = createRateLimiter({ name: "ticket", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.TICKET_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.TICKET_RATE_LIMIT_MAX });
 const aiRateLimiter = createRateLimiter({ name: "ai", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.AI_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.AI_RATE_LIMIT_MAX });
+const uploadRateLimiter = createRateLimiter({ name: "upload", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.UPLOAD_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.UPLOAD_RATE_LIMIT_MAX });
 app.use("/api", globalApiLimiter);
 
 if (process.env.CLOUDINARY_URL) {
@@ -8244,15 +8252,28 @@ const downloadSubtitle = async (payload = {}) => {
 };
 
 // ==== Serve static UI & hasil unduhan ====
-app.get("/manifest.webmanifest", (req, res) => {
-  res.setHeader("Content-Type", "application/manifest+json");
-  res.sendFile(join(__dirname, "public-ui", "manifest.webmanifest"));
-});
+const sendPublicPage = (res, fileName, { cacheSeconds = 300, contentType } = {}) => {
+  res.setHeader("Cache-Control", `public, max-age=${cacheSeconds}, must-revalidate`);
+  if (contentType) res.setHeader("Content-Type", contentType);
+  return res.sendFile(join(__dirname, "public-ui", fileName));
+};
+
+app.get("/manifest.webmanifest", (req, res) => sendPublicPage(res, "manifest.webmanifest", { cacheSeconds: 3600, contentType: "application/manifest+json" }));
+app.get("/manifest.json", (req, res) => sendPublicPage(res, "manifest.json", { cacheSeconds: 3600, contentType: "application/manifest+json" }));
+app.get("/robots.txt", (req, res) => sendPublicPage(res, "robots.txt", { cacheSeconds: 3600, contentType: "text/plain; charset=utf-8" }));
+app.get("/sitemap.xml", (req, res) => sendPublicPage(res, "sitemap.xml", { cacheSeconds: 3600, contentType: "application/xml; charset=utf-8" }));
+app.get("/status", (req, res) => sendPublicPage(res, "status.html", { cacheSeconds: 60 }));
+app.get("/changelog", (req, res) => sendPublicPage(res, "changelog.html", { cacheSeconds: 300 }));
+app.get("/privacy", (req, res) => sendPublicPage(res, "privacy.html", { cacheSeconds: 3600 }));
+app.get("/terms", (req, res) => sendPublicPage(res, "terms.html", { cacheSeconds: 3600 }));
+app.get("/copyright", (req, res) => sendPublicPage(res, "copyright.html", { cacheSeconds: 3600 }));
+app.get("/contact", (req, res) => sendPublicPage(res, "contact.html", { cacheSeconds: 3600 }));
 
 // ==== Cloudinary Upload ====
 
-app.post("/api/cloudinary/signature", ticketRateLimiter, async (req, res) => {
+app.post("/api/cloudinary/signature", uploadRateLimiter, async (req, res) => {
   try {
+    try { await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip); } catch (err) { return res.status(err?.statusCode || 400).json({ ok: false, error: err?.code || "turnstile_failed", message: err?.message || "Verifikasi anti-bot gagal" }); }
     if (!process.env.CLOUDINARY_URL) return res.status(503).json({ ok: false, error: "cloudinary_not_configured" });
     const resourceType = ["image", "video", "raw", "auto"].includes(String(req.body?.resourceType || "")) ? String(req.body.resourceType) : "image";
     const folder = resourceType === "image" ? runtimeEnv.CLOUDINARY_IMAGE_FOLDER : resourceType === "video" ? runtimeEnv.CLOUDINARY_AUDIO_FOLDER : runtimeEnv.CLOUDINARY_TEMP_FOLDER;
@@ -8264,7 +8285,7 @@ app.post("/api/cloudinary/signature", ticketRateLimiter, async (req, res) => {
     return res.status(500).json({ ok: false, error: "cloudinary_signature_failed" });
   }
 });
-app.post("/api/upload-forum-image", ticketRateLimiter, async (req, res) => {
+app.post("/api/upload-forum-image", uploadRateLimiter, async (req, res) => {
   try {
     const { image } = req.body; // Expecting base64 string
     if (!image) {
@@ -8346,8 +8367,34 @@ app.get("/api/support/hall-of-fame", async (req, res) => {
   }
 });
 
-app.use("/", express.static(join(__dirname, "public-ui")));
-app.use("/public", express.static(PUBLIC_DIR));
+app.use("/public/jobs", (req, res, next) => {
+  if (!runtimeEnv.SIGNED_DOWNLOADS) return next();
+  const file = basename(req.path || "");
+  try {
+    const payload = verifySignedDownloadToken({ token: req.query?.token || req.get("x-download-token"), secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET });
+    if (payload.file !== file) throw new Error("download_token_file_mismatch");
+    res.setHeader("Cache-Control", "private, max-age=60");
+    return next();
+  } catch {
+    return res.status(403).json({ ok: false, errorCategory: "DOWNLOAD_EXPIRED", message: "Link download sudah kedaluwarsa atau tidak valid. Silakan convert ulang." });
+  }
+});
+const staticCacheOptions = {
+  setHeaders(res, filePath) {
+    if (/admin|ticket-status|private/i.test(filePath)) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      return;
+    }
+    if (/\.(?:js|css|svg|png|webp|woff2?)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return;
+    }
+    if (/\.html$/i.test(filePath)) res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+  },
+};
+app.use("/", express.static(join(__dirname, "public-ui"), staticCacheOptions));
+app.use("/public", express.static(PUBLIC_DIR, staticCacheOptions));
 
 // ==== User accounts ====
 app.post("/api/auth/google", async (req, res) => {
@@ -8398,16 +8445,117 @@ app.get("/api/server-time", (req, res) => {
 
 const startTime = Date.now();
 
+const commandAvailable = (commandPath) => new Promise((resolve) => {
+  const cmd = commandPath || "";
+  if (!cmd) return resolve(false);
+  const child = spawn(cmd, ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+  const timer = setTimeout(() => { child.kill("SIGKILL"); resolve(false); }, 2000);
+  child.on("error", () => { clearTimeout(timer); resolve(false); });
+  child.on("close", (code) => { clearTimeout(timer); resolve(code === 0 || code === 1); });
+});
+
+const safeDirHealth = async (dir) => {
+  const label = dir ? basename(dir) || "runtime" : "unset";
+  const result = { configured: Boolean(dir), label, exists: false, writable: false, bytes: 0, files: 0 };
+  if (!dir) return result;
+  try {
+    const st = await fsp.stat(dir);
+    result.exists = st.isDirectory();
+    if (!result.exists) return result;
+    await fsp.access(dir, 2);
+    result.writable = true;
+    const stack = [dir];
+    while (stack.length) {
+      const current = stack.pop();
+      const entries = await fsp.readdir(current, { withFileTypes: true }).catch(() => []);
+      for (const entry of entries) {
+        const full = join(current, entry.name);
+        if (entry.isDirectory()) stack.push(full);
+        else if (entry.isFile()) { const fs = await fsp.stat(full).catch(() => null); if (fs) { result.files += 1; result.bytes += fs.size; } }
+      }
+    }
+  } catch {}
+  return result;
+};
+
+const getQueueMetrics = () => {
+  const jobs = Array.from(converterJobs.values());
+  const completed = jobs.filter((j) => j.status === "completed");
+  const failed = jobs.filter((j) => j.status === "failed");
+  const active = jobs.filter((j) => !["completed", "failed", "expired"].includes(j.status) && j.startedAt);
+  const durations = completed.map((j) => Number(j.durationMs || ((j.completedAt || 0) - (j.startedAt || j.createdAt || 0)))).filter((n) => Number.isFinite(n) && n >= 0);
+  const waits = jobs.map((j) => Number((j.startedAt || Date.now()) - (j.createdAt || Date.now()))).filter((n) => Number.isFinite(n) && n >= 0);
+  return {
+    driver: runtimeEnv.QUEUE_DRIVER,
+    waiting: converterQueue.length,
+    active: converterActive,
+    queued: converterQueue.length,
+    processing: converterActive,
+    completed: completed.length,
+    failed: failed.length,
+    delayed: 0,
+    maxQueueSize: runtimeEnv.MAX_QUEUE_SIZE,
+    averageWaitMs: waits.length ? Math.round(waits.reduce((a, b) => a + b, 0) / waits.length) : 0,
+    averageProcessMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0,
+    lastFailure: failed.length ? { jobId: failed.at(-1).id, errorCategory: failed.at(-1).errorCategory || "UNKNOWN", message: String(failed.at(-1).error || "").slice(0, 200) } : null,
+    activeJobs: active.slice(-10).map((j) => ({ jobId: j.id, status: j.status, progress: j.progress, step: j.step, ageMs: Date.now() - (j.startedAt || j.createdAt || Date.now()) })),
+  };
+};
+
+const buildFullHealth = async () => {
+  const [cookiesStatus, output, temp, cache, ytDlpOk, ffmpegOk, ffprobeOk] = await Promise.all([
+    getCookiesStatus().catch(() => ({ exists: false })),
+    safeDirHealth(runtimeEnv.OUTPUT_DIR),
+    safeDirHealth(runtimeEnv.TEMP_DIR),
+    safeDirHealth(runtimeEnv.CACHE_DIR),
+    commandAvailable(runtimeEnv.YTDLP_PATH || "yt-dlp"),
+    commandAvailable(runtimeEnv.FFMPEG_PATH || ffmpegPath || "ffmpeg"),
+    commandAvailable(runtimeEnv.FFPROBE_PATH || ffprobePath || "ffprobe"),
+  ]);
+  return {
+    ok: true,
+    version: runtimeEnv.APP_VERSION,
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    environment: runtimeEnv.APP_ENV,
+    node: { version: process.version, platform: process.platform },
+    services: {
+      database: { configured: Boolean(runtimeEnv.DATABASE_URL), status: runtimeEnv.DATABASE_URL ? "configured" : "not_configured" },
+      redis: { configured: Boolean(runtimeEnv.REDIS_URL), status: runtimeEnv.REDIS_URL ? "configured" : "not_configured" },
+      cloudinary: { configured: Boolean(runtimeEnv.CLOUDINARY_URL) },
+      firebaseAdmin: { configured: Boolean(runtimeEnv.FIREBASE_SERVICE_ACCOUNT_BASE64) },
+      turnstile: { configured: Boolean(runtimeEnv.TURNSTILE_SECRET_KEY && runtimeEnv.TURNSTILE_SITE_KEY) },
+      sentry: { configured: Boolean(runtimeEnv.SENTRY_DSN) },
+    },
+    tools: { ytDlp: ytDlpOk, ffmpeg: ffmpegOk, ffprobe: ffprobeOk },
+    storage: { output, temp, cache },
+    cookies: { exists: Boolean(cookiesStatus.exists), metadataExists: Boolean(cookiesStatus.updatedAt || cookiesStatus.lastUpdatedAt), health: cookiesStatus.health || "unknown", sizeBytes: cookiesStatus.sizeBytes || 0, updatedAt: cookiesStatus.updatedAt || null },
+    queue: getQueueMetrics(),
+    metrics: getMetricsSnapshot(),
+    maintenance: parseMaintenance(process.env),
+    env: safeEnvDiagnostics(runtimeEnv),
+  };
+};
+
 app.get("/api/health", (req, res) => {
   const maintenance = parseMaintenance(process.env);
-  return res.json({ ok: true, status: "online", version: runtimeEnv.APP_VERSION, uptime: process.uptime(), timestamp: Date.now(), maintenance: maintenance.active, maintenanceInfo: maintenance.active ? maintenance : null });
+  return res.json({ ok: true, status: "online", version: runtimeEnv.APP_VERSION, uptime: process.uptime(), timestamp: Date.now(), environment: runtimeEnv.APP_ENV, maintenance: maintenance.active, maintenanceInfo: maintenance.active ? maintenance : null });
 });
 
 app.get("/api/health/full", async (req, res) => {
   const secret = req.get("x-healthcheck-secret") || req.query?.secret;
-  if (!isAdminBearerValid(req) && (!runtimeEnv.HEALTHCHECK_SECRET || secret !== runtimeEnv.HEALTHCHECK_SECRET)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const cookiesStatus = await getCookiesStatus().catch(() => ({ exists: false }));
-  return res.json({ ok: true, version: runtimeEnv.APP_VERSION, uptime: process.uptime(), timestamp: Date.now(), env: safeEnvDiagnostics(runtimeEnv), maintenance: parseMaintenance(process.env), cookies: { exists: Boolean(cookiesStatus.exists), health: cookiesStatus.health || "unknown", sizeBytes: cookiesStatus.sizeBytes || 0, updatedAt: cookiesStatus.updatedAt || null }, queue: { driver: runtimeEnv.QUEUE_DRIVER, queued: converterQueue.length, processing: converterActive, maxQueueSize: runtimeEnv.MAX_QUEUE_SIZE } });
+  if (!isAdminBearerValid(req) && (!runtimeEnv.HEALTHCHECK_SECRET || secret !== runtimeEnv.HEALTHCHECK_SECRET)) return res.status(401).json({ ok: false, error: "unauthorized", requestId: req.requestId });
+  try {
+    return res.json(await buildFullHealth());
+  } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/api/health/full" });
+    return res.status(500).json({ ok: false, error: "healthcheck_failed", requestId: req.requestId });
+  }
+});
+
+app.get("/api/admin/metrics", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized", requestId: req.requestId });
+  return res.json({ ok: true, timestamp: Date.now(), metrics: getMetricsSnapshot(), queue: getQueueMetrics(), audit: getAuditLog({ limit: 25 }) });
 });
 
 app.get("/api/cheats/config", (req, res) => {
@@ -8816,10 +8964,14 @@ const pumpConverterQueue = () => {
         job.filename = result?.fileName || result?.filename || null;
         job.downloadUrl = jobDownloadUrl(job.id, job.filename);
         job.completedAt = Date.now();
+        job.durationMs = job.completedAt - (job.startedAt || job.createdAt || job.completedAt);
         converterCache.set(job.cacheKey, { jobId: job.id, fileName: job.filename, downloadUrl: job.downloadUrl, expiresAt: Date.now() + outputTtlMs });
         conversionMetrics.success += 1;
+        recordConversionMetric("completed", { jobId: job.id, durationMs: job.durationMs });
+        logger.info("converter_job_completed", { jobId: job.id, durationMs: job.durationMs });
       })
       .catch((err) => {
+        recordError(err, { jobId: job.id, stage: "converter_job" });
         const wrapped = publicDownloadError(err);
         job.status = "failed";
         job.step = "failed";
@@ -8831,6 +8983,8 @@ const pumpConverterQueue = () => {
         job.logs.push((wrapped.logs || wrapped.stack || wrapped.message || "").slice(-8000));
         conversionMetrics.errors += 1;
         conversionMetrics.errorReasons[job.errorCategory] = (conversionMetrics.errorReasons[job.errorCategory] || 0) + 1;
+        recordConversionMetric("failed", { jobId: job.id });
+        logger.warn("converter_job_failed", { jobId: job.id, errorCategory: job.errorCategory, message: job.error });
       })
       .finally(() => {
         converterActive = Math.max(0, converterActive - 1);
@@ -8875,6 +9029,8 @@ const enqueueConverterJob = (payload = {}) => {
   controlState.waiting = converterQueue.length;
   controlState.queueLength = converterQueue.length + converterActive;
   conversionMetrics.started += 1;
+  recordConversionMetric("started", { jobId: id });
+  logger.info("converter_job_queued", { requestId: payload.requestId, jobId: id, sourceDomain: (() => { try { return new URL(payload.url || payload.mediaUrl || "").hostname; } catch { return null; } })() });
   pumpConverterQueue();
   return job;
 };
@@ -8900,6 +9056,7 @@ app.post("/api/convert", convertRateLimiter, async (req, res) => {
     if (payload.async === true || req.query?.mode === "job" || req.get("Prefer") === "respond-async") {
       delete payload.async;
       try {
+        payload.requestId = req.requestId;
         const job = enqueueConverterJob(payload);
         return res.status(job.cached ? 200 : 202).json(serializeConverterJob(job));
       } catch (queueErr) {
@@ -8954,6 +9111,7 @@ app.post("/api/convert", convertRateLimiter, async (req, res) => {
     }
     return res.json(result);
   } catch (e) {
+    recordError(e, { requestId: req.requestId, route: "/api/convert" });
     const msg = e?.message || "Gagal memproses";
     const status = /tidak valid|tidak dikenali/i.test(msg) ? 400 : 500;
     return res.status(status).json({ error: msg, logs: e?.logs });
@@ -8963,12 +9121,14 @@ app.post("/api/convert", convertRateLimiter, async (req, res) => {
 
 app.post("/api/fetch", convertRateLimiter, async (req, res) => {
   try {
+    await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip);
     const rawUrl = req.body?.url || req.body?.mediaUrl || "";
     const safeUrl = validatePublicMediaUrl(rawUrl, runtimeEnv);
     if (rawUrl && !safeUrl.ok) return res.status(400).json({ ok: false, errorCategory: "INVALID_URL", error: safeUrl.error, message: "URL tidak valid atau domain tidak didukung." });
     const metadata = await fetchVideoInfo({ url: rawUrl, keyword: req.body?.keyword, preferLang: req.body?.preferLang });
     return res.json({ ok: true, metadata, status: "completed", progress: 100, step: "metadata" });
   } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/api/fetch" });
     const wrapped = publicDownloadError(err);
     return res.status(400).json({ ok: false, errorCategory: wrapped.errorCategory, message: wrapped.message, hint: wrapped.hint, adminActionRequired: wrapped.adminActionRequired });
   }
@@ -8992,7 +9152,10 @@ app.get("/api/jobs/:id/download", (req, res) => {
   const fullPath = pathResolve(JOBS_DIR, job.filename);
   if (!fullPath.startsWith(pathResolve(JOBS_DIR)) || !existsSync(fullPath)) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "File tidak ditemukan" });
   if (runtimeEnv.SIGNED_DOWNLOADS) {
-    try { verifySignedDownloadToken({ token: req.query?.token || req.get("x-download-token"), secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET }); }
+    try {
+      const tokenPayload = verifySignedDownloadToken({ token: req.query?.token || req.get("x-download-token"), secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET });
+      if (tokenPayload.file !== job.filename) throw new Error("download_token_file_mismatch");
+    }
     catch { return res.status(403).json({ ok: false, errorCategory: "DOWNLOAD_EXPIRED", message: "Link download sudah kedaluwarsa atau tidak valid. Silakan convert ulang." }); }
   }
   return res.download(fullPath, job.filename);
@@ -9010,7 +9173,7 @@ app.get("/api/admin/queue/status", (req, res) => {
   const completed = jobs.filter((j) => j.status === "completed");
   const failed = jobs.filter((j) => j.status === "failed");
   const durations = completed.map((j) => (j.completedAt || Date.now()) - (j.startedAt || j.createdAt || Date.now())).filter(Number.isFinite);
-  return res.json({ ok: true, queued: converterQueue.length, processing: converterActive, success: completed.length, failed: failed.length, avgProcessingMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0, fastestMs: durations.length ? Math.min(...durations) : 0, slowestMs: durations.length ? Math.max(...durations) : 0, lastErrors: failed.slice(-10).map((j) => ({ jobId: j.id, errorCategory: j.errorCategory, error: j.error })) });
+  return res.json({ ok: true, ...getQueueMetrics(), success: completed.length, avgProcessingMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0, fastestMs: durations.length ? Math.min(...durations) : 0, slowestMs: durations.length ? Math.max(...durations) : 0, lastErrors: failed.slice(-10).map((j) => ({ jobId: j.id, errorCategory: j.errorCategory, error: j.error })) });
 });
 
 app.post("/api/admin/queue/clear", (req, res) => {
@@ -9018,6 +9181,7 @@ app.post("/api/admin/queue/clear", (req, res) => {
   converterQueue.length = 0;
   controlState.waiting = 0;
   controlState.queueLength = converterActive;
+  auditAdminAction({ req, action: "queue_clear", targetType: "queue", result: "success" });
   return res.json({ ok: true, queue: { queued: 0, processing: converterActive } });
 });
 
@@ -9715,10 +9879,12 @@ app.post("/api/convert-playlist", convertRateLimiter, async (req, res) => {
 });
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
-const BEARER = process.env.ADMIN_BEARER || process.env.ADMIN_TOKEN || "";
-const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || (process.env.ADMIN_USERNAME ? createHash("sha256").update(String(process.env.ADMIN_USERNAME), "utf8").digest("hex") : "");
-const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || (process.env.ADMIN_PASSWORD ? createHash("sha256").update(String(process.env.ADMIN_PASSWORD), "utf8").digest("hex") : "");
-const ADMIN_ENABLED = Boolean(BEARER && ADMIN_USER_HASH && ADMIN_PASS_HASH);
+const BEARER = runtimeEnv.ADMIN_BEARER || "";
+const ADMIN_USER_HASH = runtimeEnv.ADMIN_USER_HASH || (runtimeEnv.ADMIN_USERNAME ? createHash("sha256").update(String(runtimeEnv.ADMIN_USERNAME), "utf8").digest("hex") : "");
+const ADMIN_PASS_HASH = runtimeEnv.ADMIN_PASS_HASH || "";
+const ADMIN_SESSION_SECRET = runtimeEnv.ADMIN_JWT_SECRET || runtimeEnv.SESSION_SECRET || "";
+const ADMIN_SESSION_COOKIE = "ytconv_admin";
+const ADMIN_ENABLED = Boolean((BEARER || ADMIN_SESSION_SECRET) && ADMIN_USER_HASH && ADMIN_PASS_HASH);
 
 const hashText = (value) => createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
 
@@ -9733,29 +9899,91 @@ const safeCompare = (left, right) => {
   }
 };
 
+const parseCookiesHeader = (header = "") => Object.fromEntries(String(header || "").split(";").map((part) => {
+  const i = part.indexOf("=");
+  if (i < 0) return null;
+  return [part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim())];
+}).filter(Boolean));
+
+const signAdminSession = (payload) => {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const mac = createHmac("sha256", ADMIN_SESSION_SECRET).update(encoded).digest("base64url");
+  return `${encoded}.${mac}`;
+};
+
+const verifyAdminSession = (token) => {
+  if (!ADMIN_SESSION_SECRET || !token) return false;
+  const [encoded, mac] = String(token).split(".");
+  if (!encoded || !mac) return false;
+  const expected = createHmac("sha256", ADMIN_SESSION_SECRET).update(encoded).digest("base64url");
+  if (!safeCompare(mac, expected)) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    return payload?.role === "admin" && Number(payload.exp || 0) > Date.now();
+  } catch { return false; }
+};
+
+const setAdminSessionCookie = (res) => {
+  const ttlMs = runtimeEnv.ADMIN_SESSION_TTL_SECONDS * 1000;
+  const token = signAdminSession({ role: "admin", iat: Date.now(), exp: Date.now() + ttlMs });
+  const attrs = [`${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}`, "Path=/", "HttpOnly", `Max-Age=${runtimeEnv.ADMIN_SESSION_TTL_SECONDS}`, `SameSite=${runtimeEnv.COOKIE_SAME_SITE || "Lax"}`];
+  if (runtimeEnv.SECURE_COOKIES) attrs.push("Secure");
+  res.setHeader("Set-Cookie", attrs.join("; "));
+};
+
+const clearAdminSessionCookie = (res) => {
+  const attrs = [`${ADMIN_SESSION_COOKIE}=`, "Path=/", "HttpOnly", "Max-Age=0", `SameSite=${runtimeEnv.COOKIE_SAME_SITE || "Lax"}`];
+  if (runtimeEnv.SECURE_COOKIES) attrs.push("Secure");
+  res.setHeader("Set-Cookie", attrs.join("; "));
+};
+
+const isSameOriginAdminRequest = (req) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(String(req.method || "GET").toUpperCase())) return true;
+  const origin = req.get("origin") || "";
+  const referer = req.get("referer") || "";
+  const allowed = new Set([`${req.protocol}://${req.get("host")}`]);
+  try { allowed.add(new URL(runtimeEnv.PUBLIC_BASE_URL).origin); } catch { }
+  const candidate = origin || referer;
+  if (!candidate) return false;
+  try { return allowed.has(new URL(candidate).origin); } catch { return false; }
+};
+
 const isAdminBearerValid = (req) => {
   if (!ADMIN_ENABLED) return false;
   const auth = req.get("Authorization") || "";
-  return auth === `Bearer ${BEARER}`;
+  if (BEARER && auth === `Bearer ${BEARER}`) return true;
+  const cookies = parseCookiesHeader(req.get("cookie") || "");
+  return verifyAdminSession(cookies[ADMIN_SESSION_COOKIE]) && isSameOriginAdminRequest(req);
 };
 
-app.post("/admin/login", authRateLimiter, (req, res) => {
+app.post("/admin/login", authRateLimiter, async (req, res) => {
   try {
     if (!ADMIN_ENABLED) {
       return res.status(503).json({ error: "admin_disabled" });
     }
+    try { await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip); } catch (err) { return res.status(err?.statusCode || 400).json({ error: err?.code || "turnstile_failed", message: err?.message || "Verifikasi anti-bot gagal" }); }
     const { username = "", password = "" } = req.body || {};
     const validUser = safeCompare(hashText(username), ADMIN_USER_HASH);
     const validPass = safeCompare(hashText(password), ADMIN_PASS_HASH);
     if (!validUser || !validPass) {
-      return res.status(401).json({ error: "invalid credentials" });
+      auditAdminAction({ req, action: "admin_login", result: "failure", message: "invalid_credentials" });
+      return res.status(401).json({ error: "invalid_credentials", message: "Username atau password tidak valid", requestId: req.requestId });
     }
-    return res.json({ ok: true, token: BEARER });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    setAdminSessionCookie(res);
+    auditAdminAction({ req, action: "admin_login", result: "success" });
+    return res.json({ ok: true, requestId: req.requestId });
+  } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/admin/login" });
+    return res.status(500).json({ error: "admin_login_failed", requestId: req.requestId });
   }
 });
 
+
+app.post("/admin/logout", (req, res) => {
+  clearAdminSessionCookie(res);
+  auditAdminAction({ req, action: "admin_logout", result: "success" });
+  return res.json({ ok: true, requestId: req.requestId });
+});
 
 const sanitizedCookiesStatus = async () => {
   const status = await getCookiesStatus();
@@ -10612,6 +10840,7 @@ app.delete("/api/admin/appeals/:appealId", async (req, res) => {
     forumAppeals.delete(appealId);
     io.emit("admin:appealDeleted", { appealId });
     pushActivityLog("appeal_deleted", `Appeal ${appealId} dihapus admin`, { appealId });
+    auditAdminAction({ req, action: "appeal_delete", targetType: "appeal", targetId: appealId, result: "success" });
     return res.json({ ok: true, appealId });
   } catch (err) {
     console.error(`[appeal-store] gagal hapus ${appealId}`, err);
@@ -11054,6 +11283,7 @@ app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), 
     io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
     io.to(ticketRoom(ticketId)).emit("ticket:chat", { ticketId, chat: chatEntry });
     pushActivityLog("admin_reply", `Admin membalas tiket ${ticketId}`, { ticketId });
+    auditAdminAction({ req, action: "ticket_reply", targetType: "ticket", targetId: ticketId, result: "success" });
     return res.json({ ok: true, chat: chatEntry, ticketId });
   } catch (err) {
     console.error(`[ticket-store] gagal menyimpan chat admin ${ticketId}`, err);
@@ -11210,6 +11440,7 @@ app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
     return res.status(400).json({ ok: false, error: "unknown_action" });
   }
   pushActivityLog("admin_control", `Control action: ${action}`, { action });
+  auditAdminAction({ req, action: `admin_control:${action}`, targetType: "control", result: "success" });
   io.emit("admin:controlUpdated", { ...controlState });
   io.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   emitDashboardStats();
@@ -11220,6 +11451,10 @@ app.get("/ticket/:ticketId", (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   if (!ticketId) return res.sendFile(join(__dirname, "public-ui", "ticket-status.html"));
   return res.redirect(302, `/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`);
+});
+
+app.get("/admin", (req, res) => {
+  return res.redirect(302, "/admin/dashboard");
 });
 
 app.get("/admin/tickets", (req, res) => {
@@ -11735,7 +11970,16 @@ io.on("connection", (socket) => {
 });
 
 const server = httpServer.listen(PORT, HOST, () => {
-  console.log(`Server jalan di ${HOST}:${PORT}`);
+  logger.info("server_started", {
+    appVersion: runtimeEnv.APP_VERSION,
+    nodeVersion: process.version,
+    environment: runtimeEnv.APP_ENV,
+    port: PORT,
+    host: HOST,
+    queueDriver: runtimeEnv.QUEUE_DRIVER,
+    healthRoute: "/api/health",
+    runtimeDirs: ensureRuntimeDirectories(runtimeEnv).map((dir) => basename(dir || "runtime")),
+  });
   
   // 💥 Auto Maintenance: Keep yt-dlp up-to-date
   const autoUpdate = () => {

@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Status & Maintenance • YTConv</title>
+  <title>Status Layanan • YTConv</title>
+  <meta name="description" content="Status publik YTConv untuk healthcheck dasar, maintenance mode, uptime, dan pesan layanan aman.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://ytconv.up.railway.app/status">
+  <meta property="og:title" content="Status Layanan YTConv">
+  <meta property="og:description" content="Pantau status publik dan maintenance YTConv.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ytconv.up.railway.app/status">
+  <meta name="twitter:card" content="summary">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/analytics.js" defer></script>
   <style>
     @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
     .fade-in { animation: fadeIn .35s ease both; }
@@ -94,6 +103,7 @@ function formatDuration(sec){
   return `${d ? d + 'h ' : ''}${h}j ${m}m ${s}d`;
 }
 
+window.trackYtconvEvent?.('status_viewed');
 async function loadStatus(){
   countdown = 20;
   const res = await fetch('/api/health?t=' + Date.now());

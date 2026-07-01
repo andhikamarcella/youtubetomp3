@@ -4,38 +4,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>YouTube to MP3 Converter - Cepat, Aman & Gratis</title>
-  <meta name="description"
-    content="Konversi video YouTube ke MP3/M4A dengan kualitas terbaik. Tanpa iklan mengganggu, 100% gratis, dan aman. Dukung background process & dark mode." />
+  <title>YTConv - Konversi Media Cepat dan Mudah</title>
+  <meta name="description" content="YTConv membantu mengonversi media dengan tampilan sederhana, opsi kualitas, progress jelas, dan fitur tambahan seperti metadata, subtitle, serta mode lanjutan." />
+  <meta name="robots" content="index,follow" />
+  <meta name="application-name" content="YTConv" />
+  <meta name="apple-mobile-web-app-title" content="YTConv" />
+  <link rel="canonical" href="https://ytconv.up.railway.app/" />
 
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://ytconv.up.railway.app/" />
-  <meta property="og:title" content="YouTube to MP3 - Download Cepat & Aman ✨" />
-  <meta property="og:description"
-    content="Convert video YouTube, Spotify, SoundCloud ke MP3 gratis. Tanpa iklan, kualitas HD, support Dolby Audio." />
-  <meta property="og:image" content="https://ytconv.up.railway.app/icons/icon.png" />
-  <meta property="og:image:width" content="512" />
-  <meta property="og:image:height" content="512" />
-  <meta property="og:image:type" content="image/png" />
+  <meta property="og:site_name" content="YTConv" />
+  <meta property="og:title" content="YTConv - Konversi Media Cepat dan Mudah" />
+  <meta property="og:description" content="Konversi media cepat, ringan, dan mudah dengan opsi kualitas, progress jelas, metadata, subtitle, dan mode lanjutan." />
+  <meta property="og:image" content="https://ytconv.up.railway.app/icons/icon.svg" />
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://ytconv.up.railway.app/" />
-  <meta property="twitter:title" content="YouTube to MP3 - Download Cepat & Aman ✨" />
-  <meta property="twitter:description"
-    content="Convert video YouTube, Spotify, SoundCloud ke MP3 gratis. Tanpa iklan, kualitas HD, support Dolby Audio." />
-  <meta property="twitter:image" content="https://ytconv.up.railway.app/icons/icon.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="YTConv - Konversi Media Cepat dan Mudah" />
+  <meta name="twitter:description" content="Konversi media cepat, ringan, dan mudah dengan opsi kualitas, progress jelas, metadata, subtitle, dan mode lanjutan." />
+  <meta name="twitter:image" content="https://ytconv.up.railway.app/icons/icon.svg" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"YTConv","url":"https://ytconv.up.railway.app/","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","description":"Konversi media cepat, ringan, dan mudah."}</script>
 
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#17233f" media="(prefers-color-scheme: dark)" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
-  <link rel="icon" sizes="192x192" href="./icons/icon.svg">
-  <link rel="mask-icon" href="./icons/icon-maskable.svg" color="#0d6efd">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="alternate manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="icon" sizes="192x192" href="/icons/icon.svg">
+  <link rel="mask-icon" href="/icons/icon-maskable.svg" color="#0d6efd">
+  <script src="/analytics.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
@@ -9729,7 +9728,7 @@
             <h6 class="fw-bold mb-3">Legal & Info</h6>
             <ul class="list-unstyled small d-flex flex-column gap-2 align-items-md-end">
               <li><a href="#" class="text-decoration-none text-secondary hover-primary" data-bs-toggle="modal"
-                  data-bs-target="#privacyModal">Kebijakan Privasi</a></li>
+                  data-bs-target="#privacyModal">Kebijakan Privasi</a> · <a href="/privacy">Halaman lengkap</a></li>
               <li><a href="#" class="text-decoration-none text-secondary hover-primary" data-bs-toggle="modal"
                   data-bs-target="#tosModal">Syarat & Ketentuan</a></li>
               <li><a href="#" class="text-decoration-none text-secondary hover-primary"
@@ -9760,6 +9759,8 @@
             <i class="bi bi-life-preserver me-1"></i>Downloader Helper Gagal?
           </button>
           <button type="button" class="btn btn-sm btn-outline-info rounded-pill" id="footerOpenChangelogBtn"><i class="bi bi-journal-text me-1"></i>Changelog Cepat</button>
+          <a class="btn btn-sm btn-outline-secondary rounded-pill" href="/status"><i class="bi bi-activity me-1"></i>Status</a>
+          <a class="btn btn-sm btn-outline-secondary rounded-pill" href="/changelog"><i class="bi bi-journal-text me-1"></i>Changelog</a>
           <span class="badge text-bg-light border d-inline-flex align-items-center" id="footerStatusBadge"><i class="bi bi-activity me-1 text-success"></i>Status: Online</span>
         </div>
 
@@ -16095,7 +16096,7 @@
 
         const state = {
           backendUrl: '',
-          adminBearer: 'dhika_sayang123!',
+          adminBearer: '',
           accessibility: { ...defaultAccessibility },
           experience: { ...defaultExperience },
           preferences: { ...defaultPreferences },
@@ -25119,11 +25120,11 @@
                 fallbackMessage: translateMessage('Login gagal'),
                 logLabel: 'admin-login',
               });
-              if (!loginData?.token) throw new Error('Login gagal');
-              state.adminBearer = loginData.token;
+              if (!loginData?.ok) throw new Error('Login gagal');
+              state.adminBearer = 'cookie-session';
               persistState();
-              try { sessionStorage.setItem('admin_bearer_token', state.adminBearer); } catch { }
-              try { localStorage.setItem('ytmp3_admin_bearer', state.adminBearer); } catch { }
+              try { sessionStorage.setItem('admin_session_active', '1'); } catch { }
+              try { localStorage.removeItem('ytmp3_admin_bearer'); } catch { }
               if (adminPassInput) adminPassInput.value = '';
               setToast('Login admin berhasil');
               updateAdminUi();
@@ -25138,11 +25139,12 @@
         }
 
         if (adminLogoutBtn) {
-          adminLogoutBtn.addEventListener('click', () => {
+          adminLogoutBtn.addEventListener('click', async () => {
             state.adminBearer = '';
             persistState();
-            try { sessionStorage.removeItem('admin_bearer_token'); } catch { }
+            try { sessionStorage.removeItem('admin_session_active'); } catch { }
             try { localStorage.removeItem('ytmp3_admin_bearer'); } catch { }
+            await fetch(api('/admin/logout'), { method: 'POST' }).catch(() => {});
             updateAdminUi();
             setToast('Logout admin berhasil');
           });

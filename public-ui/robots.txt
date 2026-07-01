@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin-cookies.html
+Disallow: /admin-dashboard.html
+Disallow: /admin-tickets.html
+Disallow: /api/
+Disallow: /internal/
+Disallow: /public/jobs/
+Disallow: /ticket/
+Disallow: /ticket-status.html
+Disallow: /private.html
+Disallow: /_next/
+Sitemap: https://ytconv.up.railway.app/sitemap.xml
