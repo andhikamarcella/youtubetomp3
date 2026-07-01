@@ -13,7 +13,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/tailwind-ui-bridge.js" defer></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-<script src="/assets/admin-turnstile.js"></script>
+<script src="/assets/admin-turnstile.js" defer></script>
   <style>
     body {
       background:
@@ -28,7 +28,15 @@
       backdrop-filter: blur(16px);
     }
     .premium-panel:hover { border-color: rgba(129, 140, 248, .36); }
-    .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
+     .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
+    .admin-turnstile-wrap {
+      margin-top: .35rem;
+    }
+    .admin-turnstile-error {
+      margin-top: .35rem;
+      color: #fda4af;
+      font-size: .8rem;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 transition-colors" id="appBody">
@@ -52,11 +60,45 @@
     </header>
 
     <section class="rounded-3xl border border-amber-500/20 bg-slate-900/90 p-4 shadow-xl shadow-amber-950/10">
-      <form id="loginForm" class="grid sm:grid-cols-4 gap-2">
-        <input id="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Username" required>
-        <input id="password" type="password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700" placeholder="Password" required>
-        <button class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold" type="submit">Login</button>
-        <div id="authState" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm">Belum login</div>
+      <form id="loginForm" class="space-y-3">
+        <div class="grid sm:grid-cols-4 gap-2">
+          <input
+            id="username"
+            class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700"
+            placeholder="Username"
+            autocomplete="username"
+            required
+          >
+          <input
+            id="password"
+            type="password"
+            class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+          >
+          <button
+            id="loginBtn"
+            class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold"
+            type="submit"
+          >
+            Login
+          </button>
+          <div
+            id="authState"
+            class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm"
+          >
+            Belum login
+          </div>
+        </div>
+
+        <!-- TURNSTILE ADMIN -->
+        <div id="adminTurnstileArea" class="admin-turnstile-wrap">
+          <div id="admin-turnstile"></div>
+          <p id="admin-turnstile-error" class="admin-turnstile-error" hidden>
+            Verifikasi keamanan diperlukan.
+          </p>
+        </div>
       </form>
     </section>
 
@@ -294,6 +336,41 @@ const fmt=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short
 const el=(id)=>document.getElementById(id);
 const getToken=()=> (sessionStorage.getItem(TOKEN_KEY)||'').trim();
 const setToken=(v)=> sessionStorage.setItem(TOKEN_KEY,v||'');
+const clearToken=()=> sessionStorage.removeItem(TOKEN_KEY);
+
+function getFriendlyAdminError(data, fallback = 'Login gagal') {
+  const code = data?.code || data?.error;
+
+  if (code === 'turnstile_required') return 'Selesaikan verifikasi keamanan dulu.';
+  if (code === 'turnstile_failed') return 'Verifikasi gagal. Coba ulangi.';
+  if (code === 'turnstile_timeout') return 'Verifikasi timeout. Coba lagi.';
+  if (code === 'invalid_credentials') return 'Login gagal. Periksa kredensial admin.';
+  if (code === 'rate_limited') return 'Terlalu banyak percobaan login. Tunggu sebentar.';
+
+  return data?.message || data?.error || fallback;
+}
+
+function setAdminLoginUi(isLoggedIn) {
+  const area = el('adminTurnstileArea');
+  if (area) area.classList.toggle('hidden', Boolean(isLoggedIn));
+
+  if (!isLoggedIn) {
+    setTimeout(() => window.AdminTurnstile?.render?.(), 250);
+  }
+}
+
+function markAdminLoggedOut(message = 'Belum login') {
+  clearToken();
+  el('authState').textContent = message;
+  el('authState').className = 'px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm';
+  setAdminLoginUi(false);
+}
+
+function markAdminLoggedIn(message = 'Login aktif') {
+  el('authState').textContent = message;
+  el('authState').className = 'px-3 py-2 rounded-lg bg-emerald-950 border border-emerald-700 text-sm text-emerald-300';
+  setAdminLoginUi(true);
+}
 const formatBytes=(n)=>`${(Number(n||0)/(1024*1024)).toFixed(2)} MB`;
 const formatUptime=(sec=0)=>`${Math.floor(sec/3600)}j ${Math.floor((sec%3600)/60)}m ${Math.floor(sec%60)}d`;
 let state={allTickets:[],filteredTickets:[],currentTicket:null,unread:0,lineChart:null,pieChart:null,alerts:[],lastSnapshot:null,latestUsers:[],appeals:[]};
@@ -421,7 +498,60 @@ async function updateAppeal(appealId,status){const token=getToken();const r=awai
 async function deleteTicketFromDashboard(ticketId){if(!confirm(`Hapus ticket ${ticketId}?`))return;const token=getToken();const r=await fetch(`/api/admin/tickets/${encodeURIComponent(ticketId)}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Hapus ticket gagal','error');state.allTickets=state.allTickets.filter((t)=>t.ticketId!==ticketId);applyFilters();toast(`Ticket ${ticketId} dihapus`);}
 async function deleteAppealFromDashboard(appealId){if(!confirm(`Hapus appeal ${appealId}?`))return;const token=getToken();const r=await fetch(`/api/admin/appeals/${encodeURIComponent(appealId)}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});const d=await r.json().catch(()=>({}));if(!r.ok||!d.ok)return toast(d.error||'Hapus appeal gagal','error');state.appeals=state.appeals.filter((a)=>a.appealId!==appealId);renderAppeals();toast(`Appeal ${appealId} dihapus`);}
 
-async function login(evt){evt.preventDefault();const res=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:el('username').value,password:el('password').value})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok)return toast('Login gagal','error');setToken('cookie-session');el('authState').textContent='Login aktif';toast('Login berhasil');await loadStats();initSocket();}
+async function login(evt) {
+  evt?.preventDefault();
+
+  const username = el('username')?.value?.trim() || '';
+  const password = el('password')?.value || '';
+  const turnstileToken = window.AdminTurnstile?.getToken?.() || '';
+
+  try {
+    if (!username || !password) {
+      throw new Error('Username dan password wajib diisi.');
+    }
+
+    if (!turnstileToken) {
+      window.AdminTurnstile?.showError?.('Selesaikan verifikasi Turnstile dulu.');
+      throw new Error('Selesaikan verifikasi keamanan dulu.');
+    }
+
+    const res = await fetch('/admin/login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username,
+        password,
+        turnstileToken,
+        cfTurnstileResponse: turnstileToken,
+        'cf-turnstile-response': turnstileToken
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.ok) {
+      window.AdminTurnstile?.reset?.();
+      const message = getFriendlyAdminError(data, 'Login gagal');
+      window.AdminTurnstile?.showError?.(message);
+      throw new Error(message);
+    }
+
+    setToken('cookie-session');
+
+    if (el('password')) el('password').value = '';
+
+    markAdminLoggedIn('Login aktif');
+    toast('Login berhasil');
+
+    await loadStats();
+    initSocket();
+  } catch (err) {
+    el('authState').textContent = '❌ ' + (err.message || 'Login gagal');
+    el('authState').className = 'px-3 py-2 rounded-lg bg-rose-950 border border-rose-700 text-sm text-rose-300';
+    toast(err.message || 'Login gagal', 'error');
+  }
+}
 
 el('loginForm').addEventListener('submit',login);el('refreshBtn').addEventListener('click',()=>loadStats().catch(()=>{}));el('closeDetailBtn').addEventListener('click',()=>el('detailPanel').classList.add('hidden'));el('chatForm').addEventListener('submit',sendChat);el('exportBtn').addEventListener('click',exportExcel);['searchId','filterStatus','filterCategory','filterDate'].forEach((id)=>el(id).addEventListener('input',applyFilters));el('ticketRows').addEventListener('click',(evt)=>{const del=evt.target.closest('button[data-delete-ticket]');if(del)return deleteTicketFromDashboard(del.getAttribute('data-delete-ticket'));const btn=evt.target.closest('button[data-open]');if(!btn)return;openDetail(btn.getAttribute('data-open'));});el('adminTicketsBtn').addEventListener('click',()=>setBadge(0));
 el('toggleConvertBtn').addEventListener('click',()=>control('toggle_convert'));el('clearQueueBtn').addEventListener('click',()=>control('clear_queue'));el('kickUserBtn').addEventListener('click',()=>control('kick_user',{socketId:el('kickSocketId').value.trim()}));
@@ -431,8 +561,17 @@ el('replayBtn').addEventListener('click',async()=>{const sid=el('replaySocketId'
 el('exportPngBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download=`dashboard-${Date.now()}.png`;a.click();});
 el('exportPdfBtn').addEventListener('click',async()=>{const canvas=await html2canvas(document.querySelector('main'));const img=canvas.toDataURL('image/png');const { jsPDF }=window.jspdf;const pdf=new jsPDF('p','pt','a4');const w=pdf.internal.pageSize.getWidth();const h=(canvas.height/canvas.width)*w;pdf.addImage(img,'PNG',0,0,w,h);pdf.save(`dashboard-${Date.now()}.pdf`);});
 
-if(getToken()){el('authState').textContent='Token tersimpan';loadStats().catch(()=>{});initSocket();}
-setInterval(()=>{if(getToken()) loadStats().catch(()=>{});},8000);
+if (getToken()) {
+  markAdminLoggedIn('Token tersimpan');
+  loadStats().catch(() => {});
+  initSocket();
+} else {
+  markAdminLoggedOut('Belum login');
+}
+
+setInterval(() => {
+  if (getToken()) loadStats().catch(() => {});
+}, 8000);
 </script>
 </body>
 </html>
