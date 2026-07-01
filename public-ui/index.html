@@ -140,6 +140,27 @@
       font-display: swap;
     }
 
+
+    /* Global font simplification: Helvetica everywhere, while preserving icon fonts. */
+    :root {
+      --ytconv-font-sans: Helvetica, Arial, sans-serif;
+    }
+
+    html,
+    body,
+    :where(button, input, select, textarea, .btn, .form-control, .form-select, .dropdown-menu, .modal, .offcanvas, .toast, .accordion, .card) {
+      font-family: var(--ytconv-font-sans) !important;
+    }
+
+    :where(code, kbd, pre, samp, .font-monospace, .badge-mono) {
+      font-family: var(--ytconv-font-sans) !important;
+      letter-spacing: 0 !important;
+    }
+
+    :where(.bi, [class^="bi-"], [class*=" bi-"]) {
+      font-family: "bootstrap-icons" !important;
+    }
+
     .hover-scale {
       transition: transform .2s ease, box-shadow .2s ease;
     }
@@ -1674,6 +1695,7 @@
       transform: scale(0.95) translateY(0);
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
+
   </style>
   <style>
     :root {
@@ -2174,6 +2196,7 @@
       filter: none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
+      filter: none !important;
       border-bottom: 1px solid rgba(148, 163, 184, 0.18);
     }
 
@@ -2216,6 +2239,7 @@
       .app-header-lite .container { gap: .5rem !important; }
       .app-header-lite .btn,
       .app-header-lite .app-nav-btn { box-shadow: none !important; transition: none !important; }
+
       .cute-clock { padding: .35rem .65rem !important; letter-spacing: 0 !important; }
       .forum-google-login-btn { width: calc(100vw - 2rem); padding-left: 1rem !important; padding-right: 1rem !important; }
       .forum-google-login-btn img { flex: 0 0 auto; }
@@ -3538,8 +3562,9 @@
       flex-direction: column;
       align-items: flex-end;
       gap: .5rem;
-      transition: transform .2s ease;
+      transition: none;
       max-width: min(420px, 92vw);
+      contain: layout paint;
     }
 
     .share-app-buttons {
@@ -3632,14 +3657,18 @@
       border: 0;
       border-radius: 999px;
       padding: .55rem .9rem .55rem .6rem;
-      background: linear-gradient(135deg, color-mix(in srgb, var(--skin-primary) 92%, transparent), color-mix(in srgb, var(--skin-secondary) 90%, transparent));
+      background: #2563eb;
       color: #fff;
-      font-weight: 600;
-      letter-spacing: .06em;
+      font-weight: 700;
+      letter-spacing: .04em;
       text-transform: uppercase;
-      box-shadow: 0 18px 40px rgba(15, 23, 42, .35);
+      box-shadow: none;
       cursor: pointer;
-      touch-action: none;
+      touch-action: manipulation;
+      max-width: max-content;
+      overflow: hidden;
+      contain: layout paint;
+      transition: background-color .16s ease, border-color .16s ease, color .16s ease;
     }
 
     .assistant-toggle:focus-visible {
@@ -3654,8 +3683,8 @@
       width: 2.45rem;
       height: 2.45rem;
       border-radius: 50%;
-      background: rgba(255, 255, 255, .18);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22);
+      background: rgba(255, 255, 255, .14);
+      box-shadow: none;
       font-size: 1.2rem;
     }
 
@@ -3681,7 +3710,7 @@
     .assistant-toggle.has-update .pulse {
       opacity: 1;
       transform: scale(1);
-      animation: assistantPulse 1.4s ease-out infinite;
+      animation: none;
     }
 
     @keyframes assistantPulse {
@@ -3715,7 +3744,7 @@
       overflow: hidden;
       background: var(--bs-body-bg);
       border: 1px solid color-mix(in srgb, var(--bs-border-color) 70%, transparent);
-      box-shadow: 0 28px 56px rgba(15, 23, 42, .45);
+      box-shadow: none;
       display: flex;
       flex-direction: column;
       transform-origin: bottom right;
@@ -3728,7 +3757,7 @@
       align-items: center;
       justify-content: space-between;
       gap: .5rem;
-      background: linear-gradient(135deg, rgba(13, 110, 253, .16), rgba(111, 66, 193, .16));
+      background: color-mix(in srgb, var(--bs-primary) 12%, var(--bs-body-bg));
       border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 80%, transparent);
       cursor: grab;
       touch-action: none;
@@ -5260,6 +5289,289 @@
       gap: 6px;
       align-items: center;
     }
+
+
+    /* No-glass UI pass: mobile + desktop use solid surfaces and no expensive shadows/blurs. */
+    body:not(.keep-rich-shadows),
+    body:not(.keep-rich-shadows) :where(*) {
+      --bs-box-shadow: none;
+      --bs-box-shadow-sm: none;
+      --bs-box-shadow-lg: none;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.glass, .card, .modal-content, .offcanvas, .dropdown-menu, .accordion-item, .list-group-item, .history-item, .modern-card, .feature-card, .status-card, .history-card) {
+      background: color-mix(in srgb, var(--bs-body-bg) 92%, var(--bs-tertiary-bg) 8%) !important;
+      border-color: color-mix(in srgb, var(--bs-border-color) 86%, transparent) !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.glass, .card:hover) {
+      transform: none !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.btn, .app-nav-btn, .modern-nav-item, .footer-pill, .assistant-panel button) {
+      transition: background-color .16s ease, border-color .16s ease, color .16s ease !important;
+      will-change: auto !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.btn:hover, .app-nav-btn:hover, .modern-nav-item:hover, .footer-pill:hover, .assistant-panel button:hover) {
+      transform: translateY(-1px) !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.btn:active, .app-nav-btn:active, .modern-nav-item:active, .footer-pill:active, .assistant-panel button:active) {
+      transform: translateY(1px) !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.assistant-fab, .assistant-toggle, .assistant-fab button) {
+      transition: background-color .16s ease, border-color .16s ease, color .16s ease !important;
+      transform: none !important;
+      will-change: auto !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.assistant-toggle:hover, .assistant-fab button:hover, .assistant-toggle:active, .assistant-fab button:active) {
+      transform: none !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.btn, .app-nav-btn, .modern-nav-item, .footer-pill, .assistant-toggle, button, a.btn, [class*="bg-gradient"]) {
+      background-image: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.btn-primary, .assistant-toggle) {
+      background-color: #2563eb !important;
+      border-color: #2563eb !important;
+      color: #fff !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.btn-outline-primary, .app-nav-btn, .modern-nav-item, .footer-pill) {
+      background-color: #1f2937 !important;
+      border-color: rgba(148, 163, 184, .45) !important;
+      color: #e5e7eb !important;
+    }
+
+    body:not(.keep-rich-shadows) :where(.assistant-toggle .icon, .assistant-toggle .pulse, .aero-footer, .app-footer, .footer-hero-card, .support-card, .official-partners, .security-strip) {
+      background-image: none !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-toggle .icon {
+      background-color: rgba(255, 255, 255, .10) !important;
+      border: 1px solid rgba(255, 255, 255, .22) !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-toggle:hover {
+      background-color: #1d4ed8 !important;
+      border-color: #1d4ed8 !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-fab {
+      background: transparent !important;
+      border: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      pointer-events: none;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-fab :where(.assistant-toggle, .assistant-panel) {
+      pointer-events: auto;
+    }
+
+    body.ui-overlay-open .assistant-fab {
+      display: none !important;
+    }
+
+    .btn-close {
+      --ytconv-close-color: #0f172a;
+      opacity: 1 !important;
+      position: relative !important;
+      width: 1.9rem !important;
+      height: 1.9rem !important;
+      min-width: 1.9rem !important;
+      min-height: 1.9rem !important;
+      border-radius: 999px !important;
+      border: 0 !important;
+      background: transparent !important;
+      background-image: none !important;
+      box-shadow: none !important;
+      color: var(--ytconv-close-color) !important;
+      filter: none !important;
+    }
+
+    .btn-close::before,
+    .btn-close::after {
+      content: '' !important;
+      position: absolute !important;
+      left: 50% !important;
+      top: 50% !important;
+      width: 1rem !important;
+      height: 2px !important;
+      border-radius: 999px !important;
+      background: currentColor !important;
+      transform-origin: center !important;
+      pointer-events: none !important;
+    }
+
+    .btn-close::before { transform: translate(-50%, -50%) rotate(45deg) !important; }
+    .btn-close::after { transform: translate(-50%, -50%) rotate(-45deg) !important; }
+
+    .btn-close:hover,
+    .btn-close:focus-visible {
+      background: color-mix(in srgb, currentColor 10%, transparent) !important;
+      opacity: 1 !important;
+    }
+
+    html[data-bs-theme='dark'] .btn-close,
+    .btn-close-white {
+      --ytconv-close-color: #f8fafc;
+      filter: none !important;
+    }
+
+    html[data-bs-theme='light'] .btn-close {
+      --ytconv-close-color: #0f172a;
+      filter: none !important;
+    }
+
+    .cute-clock,
+    #serverTimeBadge {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+      filter: none !important;
+      transition: background-color .12s ease, color .12s ease, border-color .12s ease !important;
+    }
+
+    html[data-bs-theme='dark'] .cute-clock,
+    html[data-bs-theme='dark'] #serverTimeBadge {
+      background: #111827 !important;
+      color: #f8fafc !important;
+      border-color: #334155 !important;
+    }
+
+    .cute-clock .seconds,
+    #serverTimeBadge .seconds {
+      color: #2563eb !important;
+      background: transparent !important;
+    }
+
+    html[data-bs-theme='dark'] .cute-clock .seconds,
+    html[data-bs-theme='dark'] #serverTimeBadge .seconds {
+      color: #93c5fd !important;
+    }
+
+    html.theme-switching *,
+    html.theme-switching *::before,
+    html.theme-switching *::after {
+      transition: none !important;
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+    }
+
+    html[data-bs-theme='light'] body:not(.keep-rich-shadows) {
+      background: #f8fafc !important;
+      color: #0f172a !important;
+    }
+
+    html[data-bs-theme='light'] body:not(.keep-rich-shadows) :where(.card, .accordion-item, .modal-content, .offcanvas, .dropdown-menu, .list-group-item, .history-item, .modern-card, .feature-card, .status-card, .history-card) {
+      background: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+
+    html[data-bs-theme='light'] body:not(.keep-rich-shadows) :where(.btn-outline-primary, .app-nav-btn, .modern-nav-item, .footer-pill) {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+
+    html[data-bs-theme='light'] body:not(.keep-rich-shadows) :where(.form-control, .form-select, textarea, input, select) {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-fab {
+      align-items: flex-end !important;
+      gap: .65rem !important;
+      width: auto !important;
+      max-width: min(392px, calc(100vw - 1.5rem)) !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-panel {
+      width: min(380px, calc(100vw - 1.5rem)) !important;
+      max-height: min(560px, calc(100vh - 7.5rem)) !important;
+      border-radius: 18px !important;
+      background: var(--bs-body-bg) !important;
+      border: 1px solid var(--bs-border-color) !important;
+      overflow: hidden !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-panel header {
+      background: var(--bs-tertiary-bg) !important;
+      border-bottom: 1px solid var(--bs-border-color) !important;
+      cursor: grab;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-panel footer {
+      background: var(--bs-tertiary-bg) !important;
+      border-top: 1px solid var(--bs-border-color) !important;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-panel .assistant-body,
+    body:not(.keep-rich-shadows) .assistant-panel .assistant-messages {
+      background: var(--bs-body-bg) !important;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-panel .assistant-input {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
+      gap: .45rem !important;
+      align-items: center;
+    }
+
+    body:not(.keep-rich-shadows) .assistant-toggle {
+      align-self: flex-end !important;
+      width: auto !important;
+      min-width: 0 !important;
+      background-color: #2563eb !important;
+      border: 1px solid #3b82f6 !important;
+      border-radius: 999px !important;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      body:not(.keep-rich-shadows) #mainContent :where(*),
+      body:not(.keep-rich-shadows) footer :where(*) {
+        transition-duration: .22s !important;
+      }
+    }
+
+    #section-faq .accordion-body,
+    #section-faq .accordion-body :where(p, li, div, span),
+    #section-faq .text-secondary {
+      color: color-mix(in srgb, var(--bs-body-color) 88%, #93c5fd 12%) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    #section-faq .accordion-collapse.show .accordion-body {
+      display: block !important;
+    }
   </style>
   <!-- Cropper.js -->
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
@@ -5783,8 +6095,8 @@
                   <div class="col-md-3">
                     <label for="format" class="form-label">Format</label>
                     <select id="format" class="form-select">
-                      <option value="mp3">MP3 (re-encode, fleksibel)</option>
-                      <option value="m4a" selected>M4A (super cepat)</option>
+                      <option value="mp3" selected>MP3 (re-encode, fleksibel)</option>
+                      <option value="m4a">M4A (super cepat)</option>
                       <option value="aac">AAC (MPEG-4 audio)</option>
                       <option value="opus">OPUS (Web audio)</option>
                       <option value="flac">FLAC (Hi-Res lossless)</option>
@@ -5802,9 +6114,9 @@
                   <div class="col-md-3">
                     <label for="abr" class="form-label">Kualitas (MP3)</label>
                     <select id="abr" class="form-select">
-                      <option value="320">320 kbps (Lebih besar, beda tipis)</option>
+                      <option value="320" selected>320 kbps (Lebih besar, beda tipis)</option>
                       <option value="256">256 kbps</option>
-                      <option value="192" selected>192 kbps ★ (Disarankan)</option>
+                      <option value="192">192 kbps ★ (Disarankan)</option>
                       <option value="128">128 kbps</option>
                       <option value="64">64 kbps</option>
                     </select>
@@ -6048,11 +6360,9 @@
 
                 <div class="dropzone mb-3" id="dropzone">
                   <i class="bi bi-cloud-arrow-up fs-4 d-block mb-1"></i>
-                  <div id="dropzoneStatus" class="small text-secondary">Seret & lepas file <code>cookies.txt</code> ke
-                    sini (opsional) untuk bypass age-gate</div>
+                  <div id="dropzoneStatus" class="small text-secondary">Cookies dikelola oleh admin/server. Upload manual hanya untuk mode lokal/admin (opsional) untuk bypass age-gate</div>
                   <input type="file" id="cookieFile" accept=".txt" hidden>
-                  <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="pickCookie" type="button">Pilih
-                      cookies.txt</button></div>
+                  <div class="mt-2"><button class="btn btn-sm btn-outline-primary" id="pickCookie" type="button">Update Cookies</button></div>
                 </div>
 
                 <div class="d-grid d-sm-flex gap-2 align-items-center">
@@ -6810,12 +7120,12 @@
               <div class="accordion accordion-flush" id="accGeneral">
                 <div class="accordion-item">
                   <h2 class="accordion-header">
-                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#q-gen-1">
+                    <button class="accordion-button fw-semibold" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-gen-1" aria-expanded="true">
                       <i class="bi bi-currency-dollar me-2 text-success"></i>Apakah layanan ini benar-benar gratis?
                     </button>
                   </h2>
-                  <div id="q-gen-1" class="accordion-collapse collapse" data-bs-parent="#accGeneral">
+                  <div id="q-gen-1" class="accordion-collapse collapse show" data-bs-parent="#accGeneral">
                     <div class="accordion-body text-secondary">
                       Ya, 100% gratis. Kami tidak memungut biaya berlangganan. Jika Anda ingin mendukung operasional
                       server, Anda bisa berdonasi melalui tab <strong>Saweria</strong>.
@@ -7553,6 +7863,71 @@
                 <div class="accordion-item">
                   <h2 class="accordion-header">
                     <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-18">
+                      <i class="bi bi-music-note-list me-2 text-primary"></i>Kenapa muncul Requested format is not available?
+                    </button>
+                  </h2>
+                  <div id="q-tr-18" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Artinya format asli yang diminta YouTube sedang tidak tersedia untuk video itu. Sistem sekarang otomatis mencoba format audio kompatibel, mode HTTP, client alternatif, format universal, lalu helper Python sebelum menampilkan error final. Jika tetap gagal, biasanya video dibatasi umur, wilayah, login, atau membutuhkan cookies terbaru.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-19">
+                      <i class="bi bi-cookie me-2 text-warning"></i>Kapan perlu upload cookies baru?
+                    </button>
+                  </h2>
+                  <div id="q-tr-19" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Upload cookies baru jika error menyebut login, age-restricted, bot check, HTTP 400/403, atau video hanya bisa diputar dari akun tertentu. Gunakan Admin Cookies, lalu coba convert ulang dengan MP3/M4A terlebih dahulu.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-20">
+                      <i class="bi bi-clock-history me-2 text-danger"></i>Riwayat tidak bisa dihapus padahal sudah login?
+                    </button>
+                  </h2>
+                  <div id="q-tr-20" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Pastikan login Google sudah aktif, lalu refresh satu kali agar token akun tersinkron. Tombol hapus sekarang akan membersihkan riwayat perangkat terlebih dahulu dan mencoba menghapus catatan akun/server jika tersedia. Jika file cloud lama bukan milik akun login saat ini, riwayat tetap hilang dari daftar tanpa memblokir UI.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-21">
+                      <i class="bi bi-robot me-2 text-primary"></i>AI Navigator bikin lag saat diarahkan kursor?
+                    </button>
+                  </h2>
+                  <div id="q-tr-21" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      AI Navigator dibuat lebih ringan: hover tidak lagi memakai glow/scale besar, tombol tidak memakai glassmorphism, dan panel memakai surface solid. Kalau device masih berat, tutup panel AI saat convert panjang dan matikan tab/extension yang tidak perlu.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#q-tr-22">
+                      <i class="bi bi-sun me-2 text-warning"></i>Light mode terlalu pucat atau tombol sulit dibaca?
+                    </button>
+                  </h2>
+                  <div id="q-tr-22" class="accordion-collapse collapse" data-bs-parent="#accTrouble">
+                    <div class="accordion-body text-secondary">
+                      Light mode sekarang memakai kartu putih solid, border lebih jelas, tombol outline berwarna gelap, dan tombol tutup diberi background agar ikon X terlihat. Jika tampilan masih aneh, lakukan hard refresh (<kbd>Ctrl</kbd>+<kbd>F5</kbd>) supaya CSS lama tidak tersimpan di cache browser.
+                    </div>
+                  </div>
+                </div>
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button fw-semibold collapsed" type="button" data-bs-toggle="collapse"
                       data-bs-target="#q-tr-17">
                       <i class="bi bi-life-preserver me-2 text-info"></i>Downloader helper gagal, apa yang harus saya kirim?
                     </button>
@@ -8234,8 +8609,7 @@
                 class="bi bi-box-arrow-right"></i> Keluar</button>
             <span class="badge text-bg-secondary ms-auto" id="adminStatus">Belum login</span>
           </div>
-          <div class="form-text mt-2" id="adminLoginHelp">Login diperlukan untuk mengunggah cookies.txt melalui
-            dropzone.</div>
+          <div class="form-text mt-2" id="adminLoginHelp">Cookies YouTube dikelola admin/server. Login admin hanya diperlukan untuk update manual.</div>
         </form>
 
         <hr class="my-4">
@@ -13164,7 +13538,7 @@
             navConverter: 'Converter',
             navExperience: 'Experience',
             navProfile: 'Profil',
-            'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Login Google aktif. Cookies YouTube otomatis digunakan.',
+            'Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.': 'Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.',
             navAssistant: 'AI Navigator',
             sectionTitleConverter: 'Converter',
             sectionSubtitleConverter: 'Konversi video lebih cepat & stabil.',
@@ -13237,7 +13611,7 @@
             navConverter: 'Converter',
             navExperience: 'Experience',
             navProfile: 'Profile',
-            'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Google login active. YouTube cookies are handled automatically.',
+            'Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.': 'Google login is not used for YouTube cookies. Cookies are managed by admin/server.',
             navAssistant: 'AI Navigator',
             sectionTitleConverter: 'Converter',
             sectionSubtitleConverter: 'Convert videos faster & more reliably.',
@@ -13314,7 +13688,7 @@
             navConverter: 'コンバーター',
             navExperience: '実績・XP',
             navProfile: 'プロフィール',
-            'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Googleログイン有効。YouTube Cookieが自動的に使用されます。',
+            'Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.': 'GoogleログインはYouTube Cookieに使用されません。Cookieは管理者/サーバーで管理されます。',
             navAssistant: 'AIアシスタント',
             sectionTitleConverter: '動画変換',
             sectionSubtitleConverter: '高品質な音声変換ツール',
@@ -13383,7 +13757,7 @@
             navConverter: '변환기',
             navExperience: '경험',
             navProfile: '프로필',
-            'Login Google aktif. Cookies YouTube otomatis digunakan.': 'Google 로그인이 활성화되었습니다. YouTube 쿠키가 자동으로 사용됩니다.',
+            'Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.': 'Google 로그인은 YouTube 쿠키에 사용되지 않습니다. 쿠키는 관리자/서버에서 관리됩니다.',
             navAssistant: 'AI 어시스턴트',
             sectionTitleConverter: '비디오 변환',
             sectionSubtitleConverter: '고품질 오디오 변환 도구.',
@@ -13906,8 +14280,8 @@
           'Login Google belum dikonfigurasi. Tambahkan GOOGLE_CLIENT_ID di server.': {
             en: 'Google login is not configured yet. Add GOOGLE_CLIENT_ID on the server.',
           },
-          'Login Google aktif; cookies YouTube otomatis terhubung.': { en: 'Google login active; YouTube cookies are handled automatically.' },
-          'Login diperlukan untuk mengunggah cookies.txt melalui dropzone.': { en: 'Sign in is required to upload cookies.txt through the dropzone.' },
+          'Login Google aktif; cookies YouTube tetap dikelola server, bukan dari akun Google user.': { en: 'Google login active; YouTube cookies are handled automatically.' },
+          'Cookies YouTube dikelola admin/server. Login admin hanya diperlukan untuk update manual.': { en: 'Sign in is required to upload cookies.txt through the dropzone.' },
           'Script login Google diblokir. Izinkan accounts.google.com di browser Anda.': {
             en: 'The Google sign-in script was blocked. Allow accounts.google.com in your browser.',
           },
@@ -14339,6 +14713,15 @@
             method: 'POST',
             headers: buildAuthHeaders({ 'Content-Type': 'application/json', ...(options.headers || {}) }),
             body: JSON.stringify(body ?? {}),
+          });
+          return resolveJsonResponse(resp, options);
+        };
+
+
+        const deleteJson = async (path, options = {}) => {
+          const resp = await fetch(api(path), {
+            method: 'DELETE',
+            headers: buildAuthHeaders(options.headers || {}),
           });
           return resolveJsonResponse(resp, options);
         };
@@ -16774,9 +17157,9 @@
           }
           if (adminLoginHelp) {
             if (user) {
-              adminLoginHelp.textContent = translateMessage('Login Google aktif; cookies YouTube otomatis terhubung.');
+              adminLoginHelp.textContent = translateMessage('Login Google aktif; cookies YouTube tetap dikelola server, bukan dari akun Google user.');
             } else {
-              adminLoginHelp.textContent = translateMessage('Login diperlukan untuk mengunggah cookies.txt melalui dropzone.');
+              adminLoginHelp.textContent = translateMessage('Cookies YouTube dikelola admin/server. Login admin hanya diperlukan untuk update manual.');
             }
           }
           if (driveReadyStatus) {
@@ -17357,6 +17740,9 @@
               client_id: state.auth.googleClientId,
               callback: handleGoogleCredential,
               auto_select: false,
+              itp_support: true,
+              use_fedcm_for_prompt: true,
+              cancel_on_tap_outside: false,
             });
             googleClientInitialized = true;
           }
@@ -17395,6 +17781,32 @@
               width: '300'
             });
           }
+
+          const bindSafariPromptFallback = (root) => {
+            if (!root || root.dataset.promptFallbackBound === '1') return;
+            root.dataset.promptFallbackBound = '1';
+            const fallback = document.createElement('button');
+            fallback.type = 'button';
+            fallback.className = 'btn btn-outline-primary btn-sm rounded-pill mt-2 google-safari-fallback';
+            fallback.textContent = translateMessage('Jika tombol Google tidak merespon, ketuk di sini');
+            fallback.addEventListener('click', () => {
+              try {
+                window.google?.accounts?.id?.prompt?.((notification) => {
+                  const blocked = notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.();
+                  if (blocked) {
+                    setToast(translateMessage('Safari mungkin memblokir popup Google. Izinkan popup/cookie lalu coba lagi.'));
+                  }
+                });
+              } catch (err) {
+                setToast(err?.message || translateMessage('Login Google gagal'));
+              }
+            });
+            root.appendChild(fallback);
+          };
+
+          bindSafariPromptFallback(googleSignInButton);
+          bindSafariPromptFallback(googleSignInForum);
+          bindSafariPromptFallback(profileGoogleLoginBtn);
         }
 
         async function fetchAuthConfig() {
@@ -19965,7 +20377,7 @@
 
         const QUALITY_PRESETS = {
           mp3: {
-            high: { abr: 320, sampleRate: 48000 },
+            high: { abr: 320, sampleRate: 44100 },
             medium: { abr: 192, sampleRate: 44100 },
             low: { abr: 128, sampleRate: 44100 },
           },
@@ -20954,14 +21366,14 @@
             pickCookieBtn.classList.toggle('disabled', pickCookieBtn.disabled);
           }
           if (googleLinked) {
-            setDropzoneMessage('Login Google aktif. Cookies YouTube otomatis digunakan.', 'success');
+            setDropzoneMessage('Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.', 'success');
             return;
           }
           if (loggedIn) {
-            setDropzoneMessage('Login admin aktif. Siap mengunggah cookies.txt.', 'info');
+            setDropzoneMessage('Login admin aktif. Siap update cookies server.', 'info');
             return;
           }
-          setDropzoneMessage('Login admin diperlukan sebelum upload cookies.', 'info');
+          setDropzoneMessage('Cookies dikelola admin/server. Login admin diperlukan untuk update manual.', 'info');
         };
 
         const updateBackendBadge = () => {
@@ -21632,9 +22044,22 @@
 
         $('#clearQueueBtn')?.addEventListener('click', () => { if (navigator.vibrate) navigator.vibrate(20); queue.length = 0; renderQueue(); });
 
+        const refreshOverlayOpenState = () => {
+          const hasOpenOverlay = Boolean(document.querySelector('.modal.show, .offcanvas.show'));
+          document.body?.classList.toggle('ui-overlay-open', hasOpenOverlay);
+        };
+        ['shown.bs.modal', 'hidden.bs.modal', 'shown.bs.offcanvas', 'hidden.bs.offcanvas'].forEach((eventName) => {
+          document.addEventListener(eventName, () => window.setTimeout(refreshOverlayOpenState, 0), true);
+        });
+
         // ===== Theme Toggle =====
         const themeToggle = $('#themeToggle');
-        const applyBsTheme = (t) => document.documentElement.setAttribute('data-bs-theme', t);
+        const applyBsTheme = (t) => {
+          const root = document.documentElement;
+          root.classList.add('theme-switching');
+          root.setAttribute('data-bs-theme', t);
+          window.setTimeout(() => root.classList.remove('theme-switching'), 80);
+        };
         const themeKey = 'ytmp3.theme';
         const tutorialKey = 'ytmp3.tutorial.v1';
         const welcomeKey = 'ytmp3.welcome.v1';
@@ -22251,18 +22676,31 @@
           const item = list[idx];
           if (!item) return;
 
-          const confirmed = window.confirm('Hapus item riwayat ini? File cloud juga akan dihapus dari Cloudinary.');
+          const confirmed = window.confirm('Hapus item riwayat ini dari daftar? Jika file cloud milik akun ini masih ada, server juga akan mencoba menghapusnya.');
           if (!confirmed) return;
 
-          if (item.cloudUrl) {
+          const warnings = [];
+          const serverHistoryId = item.historyId || item.id || item.resultId || '';
+          if (serverHistoryId && state?.auth?.token) {
+            try {
+              await deleteJson(`/api/history/${encodeURIComponent(serverHistoryId)}`, {
+                fallbackMessage: 'Gagal menghapus riwayat akun',
+                logLabel: '/api/history/:id',
+              });
+            } catch (err) {
+              if (err?.status !== 404) warnings.push(err?.message || 'Riwayat akun belum terhapus di server');
+            }
+          }
+
+          if (item.cloudUrl && state?.auth?.token) {
             try {
               await postJson('/api/cloudinary/delete', { url: item.cloudUrl }, {
                 fallbackMessage: 'Gagal menghapus file di Cloudinary',
                 logLabel: '/api/cloudinary/delete',
               });
             } catch (err) {
-              setToast(err?.message || 'Gagal menghapus file di Cloudinary.', 'danger');
-              return;
+              // Jangan gagalkan hapus riwayat UI saat file lama bukan milik akun login saat ini / sudah tidak ada.
+              warnings.push(err?.message || 'File cloud mungkin sudah tidak tersedia atau bukan milik akun ini');
             }
           }
 
@@ -22270,7 +22708,7 @@
           localStorage.setItem(historyKey, JSON.stringify(list));
           renderHistory();
           if (typeof renderBasicHistory === 'function') renderBasicHistory();
-          setToast('Riwayat dan file cloud berhasil dihapus.', 'success');
+          setToast(warnings.length ? 'Riwayat dihapus dari perangkat. Catatan: file cloud/server mungkin sudah tidak tersedia.' : 'Riwayat berhasil dihapus.', warnings.length ? 'warning' : 'success');
         };
         const renderHistory = () => {
           const list = loadCloudHistoryOnly();
@@ -22659,10 +23097,21 @@
           try { console.warn('Trending fetch failed:', lastErr); } catch { }
         };
 
-        $('#clearHistory')?.addEventListener('click', () => {
+        $('#clearHistory')?.addEventListener('click', async () => {
+          if (!window.confirm('Bersihkan semua riwayat di perangkat ini? Riwayat akun di server juga akan dicoba dibersihkan jika kamu login.')) return;
+          let serverCleared = false;
+          if (state?.auth?.token) {
+            try {
+              await deleteJson('/api/history', { fallbackMessage: 'Gagal membersihkan riwayat akun', logLabel: '/api/history' });
+              serverCleared = true;
+            } catch (err) {
+              console.warn('Gagal membersihkan riwayat server', err);
+            }
+          }
           localStorage.removeItem(historyKey);
           renderHistory();
-          setToast('Riwayat dibersihkan');
+          if (typeof renderBasicHistory === 'function') renderBasicHistory();
+          setToast(serverCleared ? 'Riwayat akun dan perangkat dibersihkan' : 'Riwayat perangkat dibersihkan');
         });
 
         // ===== Settings (offcanvas) =====
@@ -24638,7 +25087,7 @@
               if (adminPassInput) adminPassInput.value = '';
               setToast('Login admin berhasil');
               updateAdminUi();
-              setDropzoneMessage('Login admin aktif. Siap mengunggah cookies.txt.', 'success');
+              setDropzoneMessage('Login admin aktif. Siap update cookies server.', 'success');
             } catch (err) {
               setDropzoneMessage(`Login gagal: ${err.message}`, 'error');
               setToast('Login gagal: ' + err.message);
@@ -24676,7 +25125,7 @@
         if (pickCookieBtn && cookieFile) {
           pickCookieBtn.addEventListener('click', () => {
             if (state.auth.user) {
-              const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+              const msg = translateMessage('Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.');
               setToast(msg);
               setDropzoneMessage(msg, 'success');
               return;
@@ -24706,7 +25155,7 @@
           }));
           dz.addEventListener('drop', (e) => {
             if (state.auth.user) {
-              const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+              const msg = translateMessage('Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.');
               setToast(msg);
               setDropzoneMessage(msg, 'success');
               return;
@@ -24731,7 +25180,7 @@
         async function handleCookieFile(file) {
           if (!file) return;
           if (state.auth.user) {
-            const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+            const msg = translateMessage('Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.');
             setToast(msg);
             setDropzoneMessage(msg, 'success');
             return;
@@ -24743,7 +25192,7 @@
 
         async function uploadCookies(text) {
           if (state.auth.user) {
-            const msg = translateMessage('Login Google aktif. Cookies YouTube otomatis digunakan.');
+            const msg = translateMessage('Login Google tidak dipakai untuk cookies YouTube. Cookies dikelola admin/server.');
             setToast(msg);
             setDropzoneMessage(msg, 'success');
             return;
@@ -24751,12 +25200,12 @@
           const bearer = (state.adminBearer || '').trim();
           if (!bearer) {
             setToast('Login admin terlebih dahulu untuk upload cookies');
-            setDropzoneMessage('Login admin diperlukan sebelum upload cookies.', 'info');
+            setDropzoneMessage('Cookies dikelola admin/server. Login admin diperlukan untuk update manual.', 'info');
             return;
           }
           try {
             setDropzoneMessage('Mengunggah cookies.txt...', 'info');
-            const resp = await fetch(api('/admin/upload-cookies'), {
+            const resp = await fetch(api('/api/admin/cookies/upload'), {
               method: 'POST', headers: { 'Authorization': `Bearer ${bearer}`, 'Content-Type': 'text/plain' }, body: text
             });
             const safe = await readJsonSafe(resp);
@@ -24764,7 +25213,7 @@
             if (!resp.ok) throw new Error(payload.error || (safe.rawText || '').trim() || 'Upload gagal');
             setToast('cookies.txt terunggah ?');
             setDropzoneMessage('cookies.txt terunggah ?', 'success');
-            $('#cookieStatus').textContent = `OK • ${payload.bytes || 0} bytes ? ${payload.path || '/tmp/cookies.txt'}`;
+            $('#cookieStatus').textContent = `OK • ${payload.sizeBytes || payload.bytes || 0} bytes • health: ${payload.health || 'unknown'}`;
           } catch (err) {
             setDropzoneMessage(`Gagal upload cookies: ${err.message}`, 'error');
             setToast('Gagal upload cookies: ' + err.message);
@@ -24773,11 +25222,13 @@
 
         $('#checkCookie').addEventListener('click', async () => {
           try {
-            const resp = await fetch(api('/admin/cookies-status'));
+            const bearer = (state.adminBearer || '').trim();
+            if (!bearer) throw new Error('Login admin diperlukan');
+            const resp = await fetch(api('/api/admin/cookies/status'), { headers: { Authorization: `Bearer ${bearer}` } });
             const safe = await readJsonSafe(resp);
             const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
             if (!resp.ok) throw new Error(payload.error || (safe.rawText || '').trim() || 'Gagal mengecek status');
-            if (payload.exists) { $('#cookieStatus').textContent = `Ada ' ${payload.bytes || 0} bytes ' ${payload.path}`; }
+            if (payload.exists) { $('#cookieStatus').textContent = `Ada • ${payload.sizeBytes || payload.bytes || 0} bytes • health: ${payload.health || 'unknown'}`; }
             else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
           } catch { $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
         });
@@ -24853,7 +25304,7 @@
 
         function toFriendlyConvertError(message = '') {
           const raw = String(message || '').toLowerCase();
-          if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) return 'Video ini diblokir atau butuh cookies. Coba video lain atau update cookies ya.';
+          if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) return 'Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager.';
           if (raw.includes('429') || raw.includes('too many') || raw.includes('rate')) return 'Server lagi padat. Santai, coba lagi sebentar ya.';
           if (raw.includes('invalid') && raw.includes('url')) return 'Link belum valid. Cek lagi lalu kirim ulang ya.';
           if (raw.includes('captcha')) return 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
@@ -25939,27 +26390,6 @@
             }
           }
 
-
-
-        // FAQ fallback: keep accordion text visible even if Bootstrap collapse misses a tap.
-        document.querySelectorAll('#faqTabContent [data-bs-toggle="collapse"]').forEach((btn) => {
-          if (btn.dataset.faqFallbackBound) return;
-          btn.dataset.faqFallbackBound = '1';
-          btn.addEventListener('click', () => {
-            const selector = btn.getAttribute('data-bs-target') || btn.getAttribute('href');
-            if (!selector) return;
-            const panel = document.querySelector(selector);
-            if (!panel) return;
-            setTimeout(() => {
-              const isOpen = panel.classList.contains('show');
-              if (!isOpen && document.activeElement === btn) {
-                panel.classList.add('show');
-                btn.classList.remove('collapsed');
-                btn.setAttribute('aria-expanded', 'true');
-              }
-            }, 180);
-          }, { passive: true });
-        });
 
           // 1. FAQ Trouble Links (Mobile vs Desktop)
           const linkContainer = document.getElementById('admin-contact-buttons');

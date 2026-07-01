@@ -493,6 +493,31 @@ export const updateHistoryEntry = async (userId, entryId, patch = {}) => {
   return entry;
 };
 
+export const deleteHistoryEntry = async (userId, entryId) => {
+  if (!userId || !entryId) return false;
+  const data = await readStore();
+  const user = data.users[userId];
+  if (!user || !Array.isArray(user.history)) return false;
+  const before = user.history.length;
+  user.history = user.history.filter((item) => item?.id !== entryId);
+  if (user.history.length === before) return false;
+  user.updatedAt = Date.now();
+  await writeStore(data);
+  return true;
+};
+
+export const clearUserHistory = async (userId) => {
+  if (!userId) return 0;
+  const data = await readStore();
+  const user = data.users[userId];
+  if (!user || !Array.isArray(user.history)) return 0;
+  const deleted = user.history.length;
+  user.history = [];
+  user.updatedAt = Date.now();
+  await writeStore(data);
+  return deleted;
+};
+
 export const claimCheatForUser = async (userId, rawCode) => {
   if (!userId) throw new Error("userId wajib diisi");
   const normalized = typeof rawCode === "string" ? rawCode.trim().toLowerCase() : "";
