@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="/tailwind-ui-bridge.js" defer></script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-<script src="/assets/admin-turnstile.js"></script>
+<script src="/assets/admin-turnstile.js" defer></script>
   <style>
     body {
       font-family: 'Inter', system-ui, sans-serif;
@@ -28,6 +28,14 @@
     }
     .premium-panel:hover { border-color: rgba(129, 140, 248, .34); }
     .tw-enhanced .tw-pressed { transform: translateY(1px) scale(.99); }
+    .admin-turnstile-wrap {
+      margin-top: .35rem;
+    }
+    .admin-turnstile-error {
+      margin-top: .35rem;
+      color: #fda4af;
+      font-size: .8rem;
+    }
     ::-webkit-scrollbar { width:6px; height:6px; } ::-webkit-scrollbar-track { background:#0f172a; } ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
   </style>
 </head>
@@ -56,11 +64,20 @@
       <form id="loginForm" class="premium-panel md:col-span-2 rounded-2xl border p-4 space-y-3">
         <div class="font-bold text-sm">🔐 Login Admin</div>
         <div class="grid sm:grid-cols-4 gap-2">
-          <input id="username" placeholder="Username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" required>
-          <input id="password" type="password" placeholder="Password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" required>
-          <button class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm" type="submit">Login</button>
+          <input id="username" placeholder="Username" autocomplete="username" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" required>
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm" required>
+          <button id="loginBtn" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-semibold text-sm" type="submit">Login</button>
           <button class="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm" type="button" onclick="logout()">Logout</button>
         </div>
+
+        <!-- TURNSTILE ADMIN -->
+        <div id="adminTurnstileArea" class="admin-turnstile-wrap">
+          <div id="admin-turnstile"></div>
+          <p id="admin-turnstile-error" class="admin-turnstile-error" hidden>
+            Verifikasi keamanan diperlukan.
+          </p>
+        </div>
+
         <p class="text-xs text-slate-500">Gunakan kredensial Railway admin kamu</p>
       </form>
       <div class="premium-panel rounded-2xl border p-4 space-y-1 fade-in">
@@ -224,6 +241,28 @@ const clearDraft = id => { delete draftStore[id]; saveDraftStore(); };
 const el = id => document.getElementById(id);
 const getToken = () => (sessionStorage.getItem(TOKEN_KEY) || '').trim();
 const saveToken = t => sessionStorage.setItem(TOKEN_KEY, t || '');
+const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
+
+function getFriendlyAdminError(data, fallback = 'Login gagal') {
+  const code = data?.code || data?.error;
+
+  if (code === 'turnstile_required') return 'Selesaikan verifikasi keamanan dulu.';
+  if (code === 'turnstile_failed') return 'Verifikasi gagal. Coba ulangi.';
+  if (code === 'turnstile_timeout') return 'Verifikasi timeout. Coba lagi.';
+  if (code === 'invalid_credentials') return 'Login gagal. Periksa kredensial admin.';
+  if (code === 'rate_limited') return 'Terlalu banyak percobaan login. Tunggu sebentar.';
+
+  return data?.message || data?.error || fallback;
+}
+
+function setAdminLoginUi(isLoggedIn) {
+  const area = el('adminTurnstileArea');
+  if (area) area.classList.toggle('hidden', Boolean(isLoggedIn));
+
+  if (!isLoggedIn) {
+    setTimeout(() => window.AdminTurnstile?.render?.(), 250);
+  }
+}
 
 let allTickets = [];
 let allAppeals = [];
@@ -271,22 +310,79 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ── Auth ──
 async function loginAdmin(evt) {
   evt?.preventDefault();
-  const username = el('username').value.trim();
-  const password = el('password').value;
+
+  const username = el('username')?.value?.trim() || '';
+  const password = el('password')?.value || '';
+  const turnstileToken = window.AdminTurnstile?.getToken?.() || '';
+
   try {
-    const r = await fetch('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    if (!username || !password) {
+      throw new Error('Username dan password wajib diisi.');
+    }
+
+    if (!turnstileToken) {
+      window.AdminTurnstile?.showError?.('Selesaikan verifikasi Turnstile dulu.');
+      throw new Error('Selesaikan verifikasi keamanan dulu.');
+    }
+
+    const r = await fetch('/admin/login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username,
+        password,
+        turnstileToken,
+        cfTurnstileResponse: turnstileToken,
+        'cf-turnstile-response': turnstileToken
+      })
+    });
+
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok) throw new Error(d.error || 'Login gagal');
+
+    if (!r.ok || !d.ok) {
+      window.AdminTurnstile?.reset?.();
+
+      const message = getFriendlyAdminError(d, 'Login gagal');
+      window.AdminTurnstile?.showError?.(message);
+
+      throw new Error(message);
+    }
+
     saveToken('cookie-session');
+
+    if (el('password')) el('password').value = '';
+
     el('authState').textContent = '✅ Login aktif';
+    el('authState').className = 'font-semibold text-sm text-emerald-300';
+
+    setAdminLoginUi(true);
+
+    showToast('✅ Login berhasil!', 'success');
     await loadAll();
   } catch (e) {
-    el('authState').textContent = '❌ ' + e.message;
+    el('authState').textContent = '❌ ' + (e.message || 'Login gagal');
     el('authState').className = 'font-semibold text-sm text-rose-300';
+    showToast(e.message || 'Login gagal', 'error');
   }
 }
 
-async function logout() { sessionStorage.removeItem(TOKEN_KEY); await fetch('/admin/logout', { method: 'POST' }).catch(() => {}); el('authState').textContent = 'Logout berhasil'; loadTickets(); }
+async function logout() {
+  clearToken();
+
+  await fetch('/admin/logout', {
+    method: 'POST',
+    credentials: 'include'
+  }).catch(() => {});
+
+  el('authState').textContent = 'Logout berhasil';
+  el('authState').className = 'font-semibold text-sm text-slate-300';
+
+  setAdminLoginUi(false);
+  window.AdminTurnstile?.reset?.();
+
+  loadTickets();
+}
 
 function setLastSync() { el('lastSync').textContent = 'Sync: ' + fmt.format(new Date()); }
 
@@ -624,8 +720,16 @@ el('appealNextBtn').addEventListener('click', () => { appealPage += 1; renderApp
 el('loginForm').addEventListener('submit', loginAdmin);
 
 // ── Init ──
-if (getToken()) loadAll();
-else el('ticketRows').innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`;
+if (getToken()) {
+  setAdminLoginUi(true);
+  el('authState').textContent = 'Token tersimpan';
+  el('authState').className = 'font-semibold text-sm text-emerald-300';
+  loadAll();
+} else {
+  setAdminLoginUi(false);
+  el('ticketRows').innerHTML = `<tr><td colspan="7" class="py-5 text-center text-slate-400">Login admin dulu.</td></tr>`;
+}
+
 setInterval(() => { if (getToken()) loadAll(); }, 15000);
 </script>
 </body>
