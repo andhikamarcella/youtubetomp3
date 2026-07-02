@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 
 const privateRanges = [
   /^10\./, /^127\./, /^0\./, /^169\.254\./, /^192\.168\./,
@@ -12,6 +13,8 @@ export const isPrivateHostname = (hostname = "") => {
   return false;
 };
 
+export const isSupportedMediaHostname = (hostname = "") => /(^|\.)(youtube\.com|youtu\.be|music\.youtube\.com|soundcloud\.com|spotify\.com)$/i.test(String(hostname || ""));
+
 export const validatePublicMediaUrl = (value, env = process.env) => {
   const raw = String(value || "").trim();
   const maxLen = Number(env.MAX_URL_LENGTH || 2048);
@@ -19,9 +22,35 @@ export const validatePublicMediaUrl = (value, env = process.env) => {
   let url;
   try { url = new URL(raw); } catch { return { ok: false, error: "invalid_url" }; }
   if (env.BLOCK_FILE_PROTOCOL !== "false" && url.protocol === "file:") return { ok: false, error: "file_protocol_blocked" };
-  if (!["http:", "https:"].includes(url.protocol)) return { ok: false, error: "protocol_blocked" };
+  if (url.protocol !== "https:") return { ok: false, error: "protocol_blocked" };
   if (env.BLOCK_LOCALHOST_URLS !== "false" && isPrivateHostname(url.hostname)) return { ok: false, error: "private_url_blocked" };
-  const supported = /(^|\.)(youtube\.com|youtu\.be|music\.youtube\.com|soundcloud\.com|spotify\.com)$/i.test(url.hostname);
-  if (!supported) return { ok: false, error: "unsupported_domain" };
+  if (!isSupportedMediaHostname(url.hostname)) return { ok: false, error: "unsupported_domain" };
   return { ok: true, url };
+};
+
+export const resolvePublicHostname = async (hostname, env = process.env) => {
+  const host = String(hostname || "").trim().toLowerCase();
+  if (!host) return { ok: false, error: "invalid_hostname" };
+  if (env.BLOCK_LOCALHOST_URLS !== "false" && isPrivateHostname(host)) return { ok: false, error: "private_url_blocked" };
+  if (isIP(host)) return { ok: true, addresses: [host] };
+  let records;
+  try {
+    records = await lookup(host, { all: true, verbatim: true });
+  } catch {
+    return { ok: false, error: "dns_lookup_failed" };
+  }
+  const addresses = records.map((record) => String(record.address || "")).filter(Boolean);
+  if (!addresses.length) return { ok: false, error: "dns_lookup_failed" };
+  if (env.BLOCK_PRIVATE_IP_URLS !== "false" && addresses.some((address) => isPrivateHostname(address))) {
+    return { ok: false, error: "private_url_blocked" };
+  }
+  return { ok: true, addresses };
+};
+
+export const validatePublicMediaUrlDeep = async (value, env = process.env) => {
+  const base = validatePublicMediaUrl(value, env);
+  if (!base.ok) return base;
+  const resolved = await resolvePublicHostname(base.url.hostname, env);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+  return { ...base, addresses: resolved.addresses };
 };

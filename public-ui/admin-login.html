@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Admin Login • YTConv</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+  <main class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+    <p class="text-xs uppercase tracking-[0.25em] text-indigo-300">YTConv Admin</p>
+    <h1 class="mt-2 text-2xl font-bold">Login admin</h1>
+    <p class="mt-2 text-sm text-slate-400">Masuk untuk mengelola dashboard, tiket, cookies, dan operasi internal. Halaman ini tidak menyimpan token admin di Web Storage.</p>
+    <form id="loginForm" class="mt-5 space-y-3">
+      <div>
+        <label for="username" class="block text-sm font-medium text-slate-200">Username</label>
+        <input id="username" name="username" autocomplete="username" required class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-slate-200">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+      </div>
+      <div id="turnstileWrap" class="min-h-0"></div>
+      <p id="message" class="min-h-5 text-sm text-slate-300" role="status" aria-live="polite"></p>
+      <button type="submit" class="w-full rounded-xl bg-indigo-600 px-4 py-2 font-semibold hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-300">Login</button>
+    </form>
+  </main>
+  <script>
+    const TOKEN_KEY = 'admin_session_active';
+    const form = document.getElementById('loginForm');
+    const message = document.getElementById('message');
+    const params = new URLSearchParams(location.search);
+    const nextPath = params.get('next') && params.get('next').startsWith('/') ? params.get('next') : '/admin/dashboard';
+    let turnstileWidget = null;
+    let turnstileToken = '';
+    async function setupTurnstile(){
+      try {
+        const cfg = await fetch('/api/turnstile-config', { cache: 'no-store' }).then(r => r.json());
+        if (!cfg?.siteKey || !window.turnstile) return;
+        turnstileWidget = window.turnstile.render('#turnstileWrap', {
+          sitekey: cfg.siteKey,
+          callback: token => { turnstileToken = token || ''; },
+          'expired-callback': () => { turnstileToken = ''; message.textContent = 'Verifikasi kedaluwarsa, silakan ulangi.'; },
+          'error-callback': () => { turnstileToken = ''; message.textContent = 'Verifikasi gagal dimuat.'; },
+        });
+      } catch {}
+    }
+    window.addEventListener('load', setupTurnstile, { once: true });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      message.textContent = 'Memproses login…';
+      const payload = { username: form.username.value, password: form.password.value, captchaToken: turnstileToken };
+      try {
+        const res = await fetch('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) throw new Error(data.message || data.error || 'Login gagal');
+        sessionStorage.setItem(TOKEN_KEY, 'cookie-session'); if (data.csrfToken) sessionStorage.setItem('admin_csrf_token', data.csrfToken);
+        location.assign(nextPath);
+      } catch (err) {
+        message.textContent = 'Login gagal. Periksa kredensial dan verifikasi keamanan.';
+        if (window.turnstile && turnstileWidget !== null) { window.turnstile.reset(turnstileWidget); turnstileToken = ''; }
+      }
+    });
+  </script>
+</body>
+</html>

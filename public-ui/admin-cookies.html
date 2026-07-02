@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>Admin Cookies • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-ui-bridge.js" defer></script>
@@ -79,11 +80,35 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const tokenKey = 'admin_bearer_token';
+const tokenKey = 'admin_session_active';
+
+let adminCsrfToken = sessionStorage.getItem('admin_csrf_token') || '';
+async function refreshAdminCsrf(){
+  if (adminCsrfToken) return adminCsrfToken;
+  const r = await nativeFetch('/api/admin/csrf', { cache: 'no-store', credentials: 'same-origin' });
+  const d = await r.json().catch(()=>({}));
+  if (r.ok && d.csrfToken) {
+    adminCsrfToken = d.csrfToken;
+    try { sessionStorage.setItem('admin_csrf_token', adminCsrfToken); } catch {}
+  }
+  return adminCsrfToken;
+}
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, init = {}) => {
+  const url = typeof input === 'string' ? input : String(input?.url || '');
+  const method = String(init?.method || 'GET').toUpperCase();
+  const isAdminWrite = !['GET','HEAD','OPTIONS'].includes(method) && /(^|\/)admin|\/api\/admin\//.test(url) && !/\/admin\/login/.test(url);
+  if (!isAdminWrite) return nativeFetch(input, init);
+  const token = await refreshAdminCsrf();
+  const headers = new Headers(init.headers || {});
+  if (token) headers.set('x-csrf-token', token);
+  return nativeFetch(input, { ...init, headers, credentials: init.credentials || 'same-origin' });
+};
+
 const legacyKey = 'ytmp3_admin_bearer';
 const fmt = new Intl.DateTimeFormat(undefined, { dateStyle:'medium', timeStyle:'short' });
-const getToken = () => (sessionStorage.getItem(tokenKey) || localStorage.getItem(legacyKey) || '').trim();
-const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorage.setItem(legacyKey, t || ''); };
+const getToken = () => (sessionStorage.getItem(tokenKey) || 'cookie-session').trim();
+const setToken = (t) => { sessionStorage.setItem(tokenKey, t || ''); localStorage.removeItem(legacyKey); };
 const clearToken = () => { sessionStorage.removeItem(tokenKey); localStorage.removeItem(legacyKey); };
 const toast = (id, msg, ok = true) => { const el = $(id); el.className = `text-sm ${ok ? 'text-emerald-300' : 'text-rose-300'}`; el.textContent = msg; };
 const setLoggedInUi = (inState) => { $('loginView').classList.toggle('hidden', inState); $('uploadView').classList.toggle('hidden', !inState); };
@@ -142,8 +167,9 @@ $('loginBtn').addEventListener('click', async () => {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:$('username').value || '', password:$('password').value || '' })
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.token) throw new Error(data.error || 'Login gagal');
-    setToken(data.token);
+    if (!res.ok || !data?.ok) throw new Error(data.error || 'Login gagal');
+    if(data.csrfToken){ adminCsrfToken=data.csrfToken; try{sessionStorage.setItem('admin_csrf_token',data.csrfToken)}catch{} }
+    setToken('cookie-session');
     $('password').value = '';
     toast('loginToast', 'Login berhasil.');
     setLoggedInUi(true);
@@ -151,7 +177,7 @@ $('loginBtn').addEventListener('click', async () => {
   } catch (e) { toast('loginToast', e.message || 'Login gagal', false); }
 });
 
-$('logoutBtn').addEventListener('click', () => { clearToken(); setLoggedInUi(false); toast('loginToast', 'Logout berhasil.'); });
+$('logoutBtn').addEventListener('click', async () => { clearToken(); await fetch('/admin/logout', { method:'POST' }).catch(() => {}); setLoggedInUi(false); toast('loginToast', 'Logout berhasil.'); });
 $('refreshStatusBtn').addEventListener('click', () => refreshStatus().catch((e) => toast('uploadToast', e.message, false)));
 
 $('uploadBtn').addEventListener('click', async () => {

@@ -180,3 +180,23 @@ test('POST /api/cheats/claim mengembalikan XP rahasia', async () => {
   assert.equal(dupPayload.alreadyClaimed, true);
   assert.equal(dupPayload.user?.id, 'cheat-api-user');
 });
+
+test('GET /admin/dashboard redirects unauthenticated users to admin login', async () => {
+  const response = await fetch(`${baseUrl}/admin/dashboard`, { redirect: 'manual' });
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get('location') || '', /^\/admin\/login\?next=/);
+  assert.equal(response.headers.get('x-request-id')?.length > 0, true);
+});
+
+test('GET /api/status returns safe public dependency health', async () => {
+  const response = await fetch(`${baseUrl}/api/status`);
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.ok(['operational', 'degraded', 'maintenance'].includes(payload.status));
+  assert.equal(typeof payload.version, 'string');
+  assert.ok(payload.services?.api);
+  assert.ok(payload.services?.converter);
+  const raw = JSON.stringify(payload);
+  assert.doesNotMatch(raw, /DATABASE_URL|REDIS_URL|COOKIE|SECRET|api_secret/i);
+});
+

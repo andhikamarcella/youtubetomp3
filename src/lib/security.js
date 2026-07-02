@@ -17,9 +17,12 @@ export const createSecurityHeadersMiddleware = (env) => (req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
   res.setHeader("Cross-Origin-Resource-Policy", "same-site");
   const connectSrc = ["'self'", "https:", "wss:", ...(env.CORS_ORIGINS || [])].join(" ");
+  const scriptSrc = env.NODE_ENV === "production"
+    ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://accounts.google.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:";
   res.setHeader("Content-Security-Policy", [
-    "default-src 'self' https: data: blob:",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+    "default-src 'self'",
+    scriptSrc,
     "style-src 'self' 'unsafe-inline' https:",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
