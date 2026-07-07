@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { promises as fsp } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const hasExplicitCookiesPath = Boolean(process.env.COOKIES_PATH || process.env.COOKIE_FILE_PATH);
 const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || "/data";
@@ -19,7 +19,42 @@ let fileQueue = Promise.resolve();
 let lastHealth = { health: "unknown", lastTestAt: null, lastErrorCategory: null };
 
 const hashContent = (content) => createHash("sha256").update(content, "utf8").digest("hex");
-const storageName = () => (String(COOKIES_PATH).startsWith("/data/") ? "volume" : "volume");
+const storageName = () => (String(COOKIES_PATH).startsWith("/data/") ? "volume" : "local");
+const uniqueStrings = (values = []) => [...new Set(values.filter(Boolean).map((value) => String(value)))];
+
+const cookiePathCandidates = (meta = {}) => uniqueStrings([
+  COOKIES_PATH,
+  meta.path,
+  join(DATA_DIR, "cookies.txt"),
+  join(FALLBACK_DIR, "cookies.txt"),
+]);
+
+const canReadFile = async (filePath) => {
+  try {
+    const stat = await fsp.stat(filePath);
+    if (!stat.isFile() || stat.size <= 0) return null;
+    return stat;
+  } catch {
+    return null;
+  }
+};
+
+const ensureCurrentCookiesFile = async (meta = {}) => {
+  const target = resolve(COOKIES_PATH);
+  for (const candidate of cookiePathCandidates(meta)) {
+    const stat = await canReadFile(candidate);
+    if (!stat) continue;
+    const source = resolve(candidate);
+    if (source !== target) {
+      await fsp.mkdir(dirname(COOKIES_PATH), { recursive: true });
+      await fsp.copyFile(source, COOKIES_PATH);
+      await fsp.chmod(COOKIES_PATH, 0o600).catch(() => {});
+      return await fsp.stat(COOKIES_PATH);
+    }
+    return stat;
+  }
+  return null;
+};
 
 const queueFile = (operation) => {
   const run = fileQueue.then(operation, operation);
@@ -51,9 +86,22 @@ const writeMeta = async (patch = {}) => {
 
 const statusFromFile = async (meta = {}) => {
   try {
+    const discoveredStat = await ensureCurrentCookiesFile(meta);
+    if (!discoveredStat) return null;
     const content = await fsp.readFile(COOKIES_PATH, "utf8");
-    const stat = await fsp.stat(COOKIES_PATH);
-    const normalized = validateCookiesText(content, { filename: "cookies.txt" });
+    const stat = await fsp.stat(COOKIES_PATH).catch(() => discoveredStat);
+    let normalized = null;
+    let health = meta.health && meta.health !== "missing" ? meta.health : "unknown";
+    let lastErrorCategory = meta.lastErrorCategory || lastHealth.lastErrorCategory || null;
+    try {
+      normalized = validateCookiesText(content, { filename: "cookies.txt" });
+      if (health === "error") health = "unknown";
+      if (/^cookies_/.test(String(lastErrorCategory || ""))) lastErrorCategory = null;
+    } catch (err) {
+      health = "error";
+      lastErrorCategory = err?.message || err?.code || "cookies_status_failed";
+      normalized = { hash: hashContent(content), cookieCount: 0 };
+    }
     return {
       exists: true,
       sizeBytes: stat.size,
@@ -65,9 +113,9 @@ const statusFromFile = async (meta = {}) => {
       version: meta.version || stat.mtimeMs,
       storage: storageName(),
       backend: storageName(),
-      health: meta.health && meta.health !== "missing" ? meta.health : "unknown",
+      health,
       lastTestAt: meta.lastTestAt || lastHealth.lastTestAt || null,
-      lastErrorCategory: meta.lastErrorCategory || lastHealth.lastErrorCategory || null,
+      lastErrorCategory,
     };
   } catch (err) {
     if (err?.code === "ENOENT") return null;
@@ -87,13 +135,12 @@ export const validateCookiesText = (value, { filename = "cookies.txt" } = {}) =>
   if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(content)) throw new Error("cookies_suspicious_content");
 
   const lines = content.split("\n").map((line) => line.trim()).filter(Boolean);
-  const hasHeader = lines.some((line) => /^#\s*Netscape HTTP Cookie File/i.test(line));
   const cookieRows = lines.filter((line) => !line.startsWith("#"));
   const validRows = cookieRows.filter((line) => {
     const parts = line.split("\t");
     return parts.length >= 7 && parts[0] && /^(TRUE|FALSE)$/i.test(parts[1]) && /^(TRUE|FALSE)$/i.test(parts[3]) && parts[5] && parts.slice(6).join("\t");
   });
-  if (!hasHeader || validRows.length < 1) throw new Error("cookies_invalid_netscape_format");
+  if (validRows.length < 1) throw new Error("cookies_invalid_netscape_format");
   if (!validRows.some((line) => /(^|\.)youtube\.com\t|(^|\.)google\.com\t|(^|\.)youtu\.be\t/i.test(line))) {
     throw new Error("cookies_missing_youtube_domain");
   }
@@ -128,9 +175,10 @@ export const saveCookies = async (value, options = {}) => queueFile(async () => 
 export const readCookies = async () => {
   await fileQueue;
   try {
+    const meta = await readMeta();
+    await ensureCurrentCookiesFile(meta);
     const content = await fsp.readFile(COOKIES_PATH, "utf8");
     const stat = await fsp.stat(COOKIES_PATH);
-    const meta = await readMeta();
     return {
       content,
       bytes: stat.size,
@@ -217,6 +265,27 @@ export const getCookiesStatus = async () => {
       lastErrorCategory: meta.lastErrorCategory || null,
     };
   } catch (err) {
+    const existingStat = await canReadFile(COOKIES_PATH);
+    if (existingStat) {
+      await writeMeta({
+        exists: true,
+        sizeBytes: existingStat.size,
+        bytes: existingStat.size,
+        health: "error",
+        lastErrorCategory: err?.code || err?.message || "cookies_status_failed",
+      });
+      return {
+        exists: true,
+        sizeBytes: existingStat.size,
+        bytes: existingStat.size,
+        updatedAt: meta.updatedAt || existingStat.mtime.toISOString(),
+        storage: storageName(),
+        backend: storageName(),
+        health: "error",
+        lastTestAt: meta.lastTestAt || null,
+        lastErrorCategory: err?.code || err?.message || "cookies_status_failed",
+      };
+    }
     await writeMeta({
       exists: false,
       sizeBytes: 0,

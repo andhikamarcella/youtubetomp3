@@ -4,38 +4,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>YouTube to MP3 Converter - Cepat, Aman & Gratis</title>
-  <meta name="description"
-    content="Konversi video YouTube ke MP3/M4A dengan kualitas terbaik. Tanpa iklan mengganggu, 100% gratis, dan aman. Dukung background process & dark mode." />
+  <title>YTConv - Konversi Media Cepat dan Mudah</title>
+  <meta name="description" content="YTConv membantu mengonversi media dengan tampilan sederhana, opsi kualitas, progress jelas, dan fitur tambahan seperti metadata, subtitle, serta mode lanjutan." />
+  <meta name="robots" content="index,follow" />
+  <meta name="application-name" content="YTConv" />
+  <meta name="apple-mobile-web-app-title" content="YTConv" />
+  <link rel="canonical" href="https://ytconv.up.railway.app/" />
 
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://ytconv.up.railway.app/" />
-  <meta property="og:title" content="YouTube to MP3 - Download Cepat & Aman ✨" />
-  <meta property="og:description"
-    content="Convert video YouTube, Spotify, SoundCloud ke MP3 gratis. Tanpa iklan, kualitas HD, support Dolby Audio." />
-  <meta property="og:image" content="https://ytconv.up.railway.app/icons/icon.png" />
-  <meta property="og:image:width" content="512" />
-  <meta property="og:image:height" content="512" />
-  <meta property="og:image:type" content="image/png" />
+  <meta property="og:site_name" content="YTConv" />
+  <meta property="og:title" content="YTConv - Konversi Media Cepat dan Mudah" />
+  <meta property="og:description" content="Konversi media cepat, ringan, dan mudah dengan opsi kualitas, progress jelas, metadata, subtitle, dan mode lanjutan." />
+  <meta property="og:image" content="https://ytconv.up.railway.app/icons/icon.svg" />
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://ytconv.up.railway.app/" />
-  <meta property="twitter:title" content="YouTube to MP3 - Download Cepat & Aman ✨" />
-  <meta property="twitter:description"
-    content="Convert video YouTube, Spotify, SoundCloud ke MP3 gratis. Tanpa iklan, kualitas HD, support Dolby Audio." />
-  <meta property="twitter:image" content="https://ytconv.up.railway.app/icons/icon.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="YTConv - Konversi Media Cepat dan Mudah" />
+  <meta name="twitter:description" content="Konversi media cepat, ringan, dan mudah dengan opsi kualitas, progress jelas, metadata, subtitle, dan mode lanjutan." />
+  <meta name="twitter:image" content="https://ytconv.up.railway.app/icons/icon.svg" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"YTConv","url":"https://ytconv.up.railway.app/","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","description":"Konversi media cepat, ringan, dan mudah."}</script>
 
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#17233f" media="(prefers-color-scheme: dark)" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
-  <link rel="icon" sizes="192x192" href="./icons/icon.svg">
-  <link rel="mask-icon" href="./icons/icon-maskable.svg" color="#0d6efd">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="alternate manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="icon" sizes="192x192" href="/icons/icon.svg">
+  <link rel="mask-icon" href="/icons/icon-maskable.svg" color="#0d6efd">
+  <script src="/analytics.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
@@ -5608,6 +5607,23 @@
     #section-faq .accordion-collapse.show .accordion-body {
       display: block !important;
     }
+
+    body.route-home .secondary-home-feature,
+    body.route-home #assistantFab,
+    body.route-home #forumWidget {
+      display: none !important;
+    }
+
+    body.route-home #section-converter {
+      max-width: 980px;
+      margin-inline: auto;
+    }
+
+    .route-hint-card {
+      border: 1px solid var(--bs-border-color);
+      border-radius: 1rem;
+      background: var(--bs-body-bg);
+    }
   </style>
   <!-- Cropper.js -->
   <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
@@ -5631,29 +5647,29 @@
         <a class="navbar-brand fw-semibold me-2" href="/"><i class="bi bi-music-note-beamed me-2"></i>YT &rarr;
           MP3/M4A</a>
         <div class="app-tabbar" id="sectionTabbar">
-          <button type="button" class="app-nav-btn active" data-section-target="converter"
+          <button type="button" class="app-nav-btn active" data-section-target="converter" data-route-path="/"
             data-section-label="Converter">
             <i class="bi bi-cpu"></i>
             <span data-i18n="navConverter">Converter</span>
           </button>
-          <button type="button" class="app-nav-btn" data-section-target="experience"
-            data-section-label="Experience Hub">
+          <button type="button" class="app-nav-btn" data-section-target="experience" data-route-path="/studio"
+            data-section-label="Studio">
             <i class="bi bi-stars"></i>
-            <span data-i18n="navExperience">Experience</span>
+            <span data-i18n="navExperience">Studio</span>
           </button>
-          <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#forumModal">
+          <button type="button" class="app-nav-btn" data-route-modal="community" data-bs-toggle="modal" data-bs-target="#forumModal">
             <i class="bi bi-chat-dots"></i>
             <span>Komunitas</span>
           </button>
-          <button type="button" class="app-nav-btn" data-section-target="faq" data-section-label="FAQ">
+          <button type="button" class="app-nav-btn" data-section-target="faq" data-route-path="/support" data-section-label="Bantuan">
             <i class="bi bi-question-circle"></i>
-            <span>FAQ</span>
+            <span>Bantuan</span>
           </button>
-          <button type="button" class="app-nav-btn" data-section-target="saweria" data-section-label="Dukung Saweria">
+          <button type="button" class="app-nav-btn" data-section-target="saweria" data-route-path="/rewards" data-section-label="Rewards">
             <i class="bi bi-heart-fill"></i>
-            <span>Saweria</span>
+            <span>Rewards</span>
           </button>
-          <button type="button" class="app-nav-btn" data-bs-toggle="modal" data-bs-target="#profileModal"
+          <button type="button" class="app-nav-btn" data-route-modal="account" data-bs-toggle="modal" data-bs-target="#profileModal"
             onclick="updateProfileModal()">
             <i class="bi bi-person-circle"></i>
             <span data-i18n="navProfile">Profil</span>
@@ -5704,7 +5720,7 @@
     <section class="app-section is-active" data-section="converter" id="section-converter">
       <!-- Mode Switcher (Moved to Header) -->
 
-      <!-- Gaptek Mode Container (Task 2) -->
+      <!-- Easy Mode Container (Task 2) -->
       <div id="gaptek-mode" class="animate__animated animate__fadeIn" hidden>
         <div class="text-center mb-5 mt-4">
           <h1 class="display-4 fw-bold text-primary mb-3">DOWNLOAD LAGU</h1>
@@ -5730,7 +5746,7 @@
               <i class="bi bi-download me-3"></i>AMBIL LAGU
             </button>
 
-            <!-- Trust Signals (Gaptek Mode) -->
+            <!-- Trust Signals (Easy Mode) -->
             <div class="d-flex justify-content-center flex-wrap gap-4 mt-4 text-muted fs-5">
               <div class="d-flex align-items-center">
                 <i class="bi bi-shield-fill-check text-success me-2"></i> <span>Bebas Virus</span>
@@ -5745,7 +5761,7 @@
               <span class="status-text">Sedang Memproses... Tunggu ya!</span>
             </div>
 
-            <!-- Progress Bar for Gaptek Mode -->
+            <!-- Progress Bar for Easy Mode -->
             <div id="gaptek-progress-wrap" class="mt-4 px-3" hidden>
               <div class="progress" style="height: 25px; border-radius: 1rem;">
                 <div id="gaptek-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success"
@@ -6419,7 +6435,7 @@
                     <span data-i18n="buttonClear">Bersihkan</span></button>
                 </div>
 
-                <div class="card border-0 bg-body-tertiary mt-4" id="aiStudioCard">
+                <div class="card border-0 bg-body-tertiary mt-4 secondary-home-feature" id="aiStudioCard">
                   <div class="card-body">
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                       <strong class="me-auto">AI Tools</strong>
@@ -6992,7 +7008,7 @@
         </div>
       </div>
 
-      <div class="card shadow-sm mt-4" id="aiAssistantCard">
+      <div class="card shadow-sm mt-4 secondary-home-feature" id="aiAssistantCard">
         <div class="card-body p-4">
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <div class="d-flex align-items-center gap-2">
@@ -8502,7 +8518,7 @@
         <div class="offcanvas-inner">
           <div class="modern-nav-grid">
             <!-- Converter -->
-            <button type="button" class="modern-nav-item" data-section-target="converter"
+            <button type="button" class="modern-nav-item" data-section-target="converter" data-route-path="/"
               data-section-label="Converter">
               <div class="modern-nav-icon"><i class="bi bi-cpu"></i></div>
               <span class="modern-nav-label" data-i18n="navConverter">Converter</span>
@@ -8510,32 +8526,32 @@
             </button>
 
             <!-- Experience -->
-            <button type="button" class="modern-nav-item" data-section-target="experience"
-              data-section-label="Experience Hub">
+            <button type="button" class="modern-nav-item" data-section-target="experience" data-route-path="/studio"
+              data-section-label="Studio">
               <div class="modern-nav-icon"><i class="bi bi-stars"></i></div>
-              <span class="modern-nav-label" data-i18n="navExperience">Experience Hub</span>
+              <span class="modern-nav-label" data-i18n="navExperience">Studio</span>
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
             <!-- Saweria -->
-            <button type="button" class="modern-nav-item" data-section-target="saweria"
-              data-section-label="Dukung Saweria">
+            <button type="button" class="modern-nav-item" data-section-target="saweria" data-route-path="/rewards"
+              data-section-label="Rewards">
               <div class="modern-nav-icon"><i class="bi bi-heart-fill"></i></div>
-              <span class="modern-nav-label">Saweria</span>
+              <span class="modern-nav-label">Rewards</span>
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
             <!-- Komunitas -->
-            <button type="button" class="modern-nav-item" data-bs-toggle="modal" data-bs-target="#forumModal">
+            <button type="button" class="modern-nav-item" data-route-modal="community" data-bs-toggle="modal" data-bs-target="#forumModal">
               <div class="modern-nav-icon"><i class="bi bi-chat-dots"></i></div>
               <span class="modern-nav-label">Komunitas</span>
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
             <!-- FAQ -->
-            <button type="button" class="modern-nav-item" data-section-target="faq" data-section-label="FAQ">
+            <button type="button" class="modern-nav-item" data-section-target="faq" data-route-path="/support" data-section-label="Bantuan">
               <div class="modern-nav-icon"><i class="bi bi-question-circle"></i></div>
-              <span class="modern-nav-label">FAQ</span>
+              <span class="modern-nav-label">Bantuan</span>
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
@@ -8543,7 +8559,7 @@
             <hr class="my-2 border-secondary-subtle opacity-25">
 
             <!-- Profile -->
-            <button type="button" class="modern-nav-item" data-bs-toggle="modal" data-bs-target="#profileModal"
+            <button type="button" class="modern-nav-item" data-route-modal="account" data-bs-toggle="modal" data-bs-target="#profileModal"
               onclick="updateProfileModal()">
               <div class="modern-nav-icon"><i class="bi bi-person-circle"></i></div>
               <span class="modern-nav-label" data-i18n="navProfile">Profil</span>
@@ -8628,26 +8644,6 @@
         </div>
 
         <hr class="my-4">
-        <h6 class="mb-3">Login Admin</h6>
-        <form id="adminLoginForm" autocomplete="off" novalidate>
-          <div class="mb-3">
-            <label class="form-label" for="adminUser">Username</label>
-            <input id="adminUser" type="text" class="form-control" autocomplete="username" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="adminPass">Password</label>
-            <input id="adminPass" type="password" class="form-control" autocomplete="current-password" required>
-          </div>
-          <div class="d-flex flex-wrap gap-2 align-items-center">
-            <button class="btn btn-primary" type="submit"><i class="bi bi-door-open"></i> Masuk</button>
-            <button class="btn btn-outline-secondary" type="button" id="adminLogoutBtn" hidden><i
-                class="bi bi-box-arrow-right"></i> Keluar</button>
-            <span class="badge text-bg-secondary ms-auto" id="adminStatus">Belum login</span>
-          </div>
-          <div class="form-text mt-2" id="adminLoginHelp">Cookies YouTube dikelola admin/server. Login admin hanya diperlukan untuk update manual.</div>
-        </form>
-
-        <hr class="my-4">
         <h6 class="mb-3">Manajemen Output</h6>
         <div class="mb-3">
           <label class="form-label" for="prefOutputDir">Folder Output (Server/Local)</label>
@@ -8707,16 +8703,6 @@
           <button class="btn btn-outline-danger btn-sm" type="button" id="settingsResetPrefsBtn"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset Preferensi</button>
         </div>
         <div class="form-text">Gunakan Diagnostics saat lapor bug agar tim support lebih cepat bantu.</div>
-
-        <hr class="my-4">
-        <h6 class="mb-2">Status cookies</h6>
-        <div class="d-grid gap-2 mb-2">
-          <button class="btn btn-outline-secondary" id="checkCookie" type="button"><i class="bi bi-shield-check"></i>
-            Cek status cookies</button>
-          <a class="btn btn-outline-primary" href="./admin-cookies.html" target="_blank" rel="noopener"><i
-              class="bi bi-cloud-upload"></i> Buka Admin Cookies</a>
-        </div>
-        <div id="cookieStatus" class="small text-secondary" role="status" aria-live="polite"></div>
 
         <hr class="my-4">
         <h6 class="mb-2">Versi Tool</h6>
@@ -9729,7 +9715,7 @@
             <h6 class="fw-bold mb-3">Legal & Info</h6>
             <ul class="list-unstyled small d-flex flex-column gap-2 align-items-md-end">
               <li><a href="#" class="text-decoration-none text-secondary hover-primary" data-bs-toggle="modal"
-                  data-bs-target="#privacyModal">Kebijakan Privasi</a></li>
+                  data-bs-target="#privacyModal">Kebijakan Privasi</a> · <a href="/privacy">Halaman lengkap</a></li>
               <li><a href="#" class="text-decoration-none text-secondary hover-primary" data-bs-toggle="modal"
                   data-bs-target="#tosModal">Syarat & Ketentuan</a></li>
               <li><a href="#" class="text-decoration-none text-secondary hover-primary"
@@ -9760,6 +9746,8 @@
             <i class="bi bi-life-preserver me-1"></i>Downloader Helper Gagal?
           </button>
           <button type="button" class="btn btn-sm btn-outline-info rounded-pill" id="footerOpenChangelogBtn"><i class="bi bi-journal-text me-1"></i>Changelog Cepat</button>
+          <a class="btn btn-sm btn-outline-secondary rounded-pill" href="/status"><i class="bi bi-activity me-1"></i>Status</a>
+          <a class="btn btn-sm btn-outline-secondary rounded-pill" href="/changelog"><i class="bi bi-journal-text me-1"></i>Changelog</a>
           <span class="badge text-bg-light border d-inline-flex align-items-center" id="footerStatusBadge"><i class="bi bi-activity me-1 text-success"></i>Status: Online</span>
         </div>
 
@@ -9928,13 +9916,13 @@
             <p class="lead mb-5 text-secondary">Pilih tampilan yang paling pas buat kamu:</p>
 
             <div class="row g-4 justify-content-center">
-              <!-- Gaptek Mode Card -->
+              <!-- Easy Mode Card -->
               <div class="col-lg-4 col-md-6">
                 <div class="card h-100 border-success border-2 shadow-sm hover-scale cursor-pointer"
                   id="selectGaptekMode" role="button">
                   <div class="card-body p-4">
                     <div class="display-4 text-success mb-3"><i class="bi bi-emoji-smile"></i></div>
-                    <h3 class="fw-bold text-success fs-4">Mode Saya Gaptek</h3>
+                    <h3 class="fw-bold text-success fs-4">Mode Mudah</h3>
                     <p class="text-muted small">Paling gampang! Khusus yang nggak mau ribet sama sekali.</p>
                     <ul class="list-unstyled text-start small text-secondary mx-auto" style="max-width: 200px;">
                       <li><i class="bi bi-check-circle-fill text-success me-2"></i>Cuma 1 Tombol</li>
@@ -14958,6 +14946,45 @@
           },
         };
 
+
+
+        const ROUTE_TO_SECTION = {
+          '/': 'converter',
+          '/studio': 'experience',
+          '/history': 'converter',
+          '/assistant': 'experience',
+          '/support': 'faq',
+          '/rewards': 'saweria',
+          '/account': 'profile',
+          '/community': 'converter',
+          '/cookies': 'faq',
+          '/data-request': 'faq',
+          '/community-guidelines': 'faq',
+        };
+
+        const applyRouteMode = () => {
+          document.body.classList.toggle('route-home', window.location.pathname === '/');
+        };
+
+        const openRouteAffordance = (path) => {
+          if (path === '/assistant') {
+            assistantAutoOpenQueued = true;
+            assistantBridge.autoOpen();
+          }
+          if (path === '/community') {
+            const modal = document.getElementById('forumModal');
+            if (modal && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+          }
+          if (path === '/account') {
+            try { updateProfileModal(); } catch {}
+            const modal = document.getElementById('profileModal');
+            if (modal && window.bootstrap?.Modal) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+          }
+          if (path === '/history') {
+            document.getElementById('historyList')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        };
+
         const setActiveSection = (target) => {
           let found = false;
           sectionPanels.forEach((panel) => {
@@ -15008,11 +15035,10 @@
           const target = btn.dataset.sectionTarget;
           if (!target) return;
 
-          console.log('[Nav] Manual navigation to:', target);
 
           // 1. Update URL Hash
           // We use pushState to update URL without reloading
-          history.pushState(null, '', `#${target}`);
+          history.pushState({ section: target }, '', btn.dataset.routePath || `#${target}`);
 
           // 2. Activate Section
           const success = setActiveSection(target);
@@ -15050,6 +15076,13 @@
           }
         }, true); // Use Capture phase to ensure we catch it first
 
+        document.addEventListener('click', (event) => {
+          const modalRoute = event.target.closest('[data-route-modal]');
+          if (!modalRoute) return;
+          const route = modalRoute.dataset.routeModal === 'community' ? '/community' : modalRoute.dataset.routeModal === 'account' ? '/account' : '';
+          if (route) history.pushState({ modal: modalRoute.dataset.routeModal }, '', route);
+        }, true);
+
         // REMOVED: Old individual event listeners to avoid conf                         navButtons.forEach((btn)                btn.addEventListener('click', (e) => { ..                          */
 
         openProfileButtons.forEach((btn) => {
@@ -15069,21 +15102,25 @@
 
         // INITIALIZATION: Priority Hash > LocalStorage > Default
         const getInitialSection = () => {
+          const routeSection = ROUTE_TO_SECTION[window.location.pathname];
+          if (routeSection) return routeSection;
           // 1. Check URL Hash
           const hash = window.location.hash.substring(1); // remove #
           if (hash && ['converter', 'experience', 'faq', 'saweria', 'profile'].includes(hash)) {
             return hash;
           }
-          // 2. Check LocalStorage
-          const saved = localStorage.getItem('app:activeSection');
+          // 2. Check LocalStorage only for the root SPA route
+          const saved = window.location.pathname === '/' ? localStorage.getItem('app:activeSection') : '';
           if (saved) return saved;
 
           // 3. Default
           return 'converter';
         };
 
+        applyRouteMode();
         const initialSection = getInitialSection();
         if (!setActiveSection(initialSection)) setActiveSection('converter');
+        setTimeout(() => openRouteAffordance(window.location.pathname), 250);
 
         // Listen for manual hash changes (Back/Forward button)
         window.addEventListener('hashchange', () => {
@@ -16095,7 +16132,7 @@
 
         const state = {
           backendUrl: '',
-          adminBearer: 'dhika_sayang123!',
+          adminBearer: '',
           accessibility: { ...defaultAccessibility },
           experience: { ...defaultExperience },
           preferences: { ...defaultPreferences },
@@ -25119,11 +25156,11 @@
                 fallbackMessage: translateMessage('Login gagal'),
                 logLabel: 'admin-login',
               });
-              if (!loginData?.token) throw new Error('Login gagal');
-              state.adminBearer = loginData.token;
+              if (!loginData?.ok) throw new Error('Login gagal');
+              state.adminBearer = 'cookie-session';
               persistState();
-              try { sessionStorage.setItem('admin_bearer_token', state.adminBearer); } catch { }
-              try { localStorage.setItem('ytmp3_admin_bearer', state.adminBearer); } catch { }
+              try { sessionStorage.setItem('admin_session_active', '1'); } catch { }
+              try { localStorage.removeItem('ytmp3_admin_bearer'); } catch { }
               if (adminPassInput) adminPassInput.value = '';
               setToast('Login admin berhasil');
               updateAdminUi();
@@ -25138,11 +25175,12 @@
         }
 
         if (adminLogoutBtn) {
-          adminLogoutBtn.addEventListener('click', () => {
+          adminLogoutBtn.addEventListener('click', async () => {
             state.adminBearer = '';
             persistState();
-            try { sessionStorage.removeItem('admin_bearer_token'); } catch { }
+            try { sessionStorage.removeItem('admin_session_active'); } catch { }
             try { localStorage.removeItem('ytmp3_admin_bearer'); } catch { }
+            const csrf = await fetch(api('/api/admin/csrf'), { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(d => d.csrfToken || '').catch(() => ''); await fetch(api('/admin/logout'), { method: 'POST', headers: csrf ? { 'x-csrf-token': csrf } : {} }).catch(() => {});
             updateAdminUi();
             setToast('Logout admin berhasil');
           });
@@ -25253,14 +25291,14 @@
             if (!resp.ok) throw new Error(payload.error || (safe.rawText || '').trim() || 'Upload gagal');
             setToast('cookies.txt terunggah ?');
             setDropzoneMessage('cookies.txt terunggah ?', 'success');
-            $('#cookieStatus').textContent = `OK • ${payload.sizeBytes || payload.bytes || 0} bytes • health: ${payload.health || 'unknown'}`;
+            if ($('#cookieStatus')) $('#cookieStatus').textContent = `OK • ${payload.sizeBytes || payload.bytes || 0} bytes • health: ${payload.health || 'unknown'}`;
           } catch (err) {
             setDropzoneMessage(`Gagal upload cookies: ${err.message}`, 'error');
             setToast('Gagal upload cookies: ' + err.message);
           }
         }
 
-        $('#checkCookie').addEventListener('click', async () => {
+        $('#checkCookie')?.addEventListener('click', async () => {
           try {
             const bearer = (state.adminBearer || '').trim();
             if (!bearer) throw new Error('Login admin diperlukan');
@@ -25268,9 +25306,11 @@
             const safe = await readJsonSafe(resp);
             const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
             if (!resp.ok) throw new Error(payload.error || (safe.rawText || '').trim() || 'Gagal mengecek status');
-            if (payload.exists) { $('#cookieStatus').textContent = `Ada • ${payload.sizeBytes || payload.bytes || 0} bytes • health: ${payload.health || 'unknown'}`; }
-            else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
-          } catch { $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
+            if ($('#cookieStatus')) {
+              if (payload.exists) { $('#cookieStatus').textContent = `Ada • ${payload.sizeBytes || payload.bytes || 0} bytes • health: ${payload.health || 'unknown'}`; }
+              else { $('#cookieStatus').textContent = 'Tidak ada cookies di server.'; }
+            }
+          } catch { if ($('#cookieStatus')) $('#cookieStatus').textContent = 'Tidak bisa cek status cookies.'; }
         });
 
         // ===== Convert handler =====
@@ -27244,7 +27284,7 @@
 
               if (labelToggle) {
                 if (isBasic) labelToggle.textContent = 'Mode: Basic';
-                else if (isGaptek) labelToggle.textContent = 'Mode: Gaptek';
+                else if (isGaptek) labelToggle.textContent = 'Mode: Mudah';
                 else labelToggle.textContent = 'Mode: Advanced';
               }
               if (btnToggle) {
@@ -27256,7 +27296,7 @@
                 }
                 btnToggle.title = isBasic
                   ? 'Basic Mode: cepat dan simpel'
-                  : (isGaptek ? 'Gaptek Mode: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap');
+                  : (isGaptek ? 'Mode Mudah: dipandu langkah demi langkah' : 'Advanced Mode: fitur paling lengkap');
                 // Update button style
                 btnToggle.classList.remove('text-primary', 'text-secondary', 'text-success');
                 if (isBasic) btnToggle.classList.add('text-primary');
@@ -27281,7 +27321,7 @@
                 setMode(next);
                 let msg = 'Basic Mode aktif';
                 if (next === 'advanced') msg = 'Advanced Mode aktif';
-                if (next === 'gaptek') msg = 'Gaptek Mode aktif';
+                if (next === 'gaptek') msg = 'Mode Mudah aktif';
                 setToast(msg);
               });
             }
@@ -28134,8 +28174,11 @@
               setActiveSection(e.state.section);
             } else {
               // Default if no state
+              applyRouteMode();
+              const routeSection = ROUTE_TO_SECTION[window.location.pathname];
               const hash = window.location.hash.substring(1);
-              if (hash) setActiveSection(hash);
+              if (routeSection) setActiveSection(routeSection);
+              else if (hash) setActiveSection(hash);
               else setActiveSection('converter');
             }
 

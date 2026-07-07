@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -27,7 +27,7 @@ test.after(async () => {
 });
 
 test("upload disimpan ke runtime path aman tanpa mengekspos isi di metadata", async () => {
-  assert.equal(store.getCookieStoreBackend(), "volume");
+  assert.equal(store.getCookieStoreBackend(), "local");
   const saved = await store.saveCookies(sampleCookies);
   assert.equal(saved.bytes, Buffer.byteLength(sampleCookies));
   assert.equal(await readFile(cookiesPath, "utf8"), sampleCookies);
@@ -43,7 +43,7 @@ test("status tidak menampilkan path/hash/content cookies", async () => {
   const status = await store.getCookiesStatus();
   assert.equal(status.exists, true);
   assert.equal(status.sizeBytes, Buffer.byteLength(sampleCookies));
-  assert.equal(status.storage, "volume");
+  assert.equal(status.storage, "local");
   assert.equal(status.content, undefined);
   assert.equal(status.hash, undefined);
 });
@@ -66,6 +66,33 @@ test("status refresh menandai missing jika metadata lama ada tapi file runtime h
   const missing = await store.getCookiesStatus();
   assert.equal(missing.exists, false);
   assert.equal(missing.health, "missing");
+  await store.saveCookies(sampleCookies);
+});
+
+test("status refresh memulihkan cookies dari path metadata lama", async () => {
+  const legacyPath = join(tempDir, "legacy-cookies.txt");
+  await writeFile(legacyPath, sampleCookies, "utf8");
+  await writeFile(storePath, JSON.stringify({ exists: true, path: legacyPath, sizeBytes: Buffer.byteLength(sampleCookies) }), "utf8");
+  await rm(cookiesPath, { force: true });
+  const recovered = await store.getCookiesStatus();
+  assert.equal(recovered.exists, true);
+  assert.equal(await readFile(cookiesPath, "utf8"), sampleCookies);
+});
+
+test("cookies Netscape tanpa header tetap diterima jika baris valid", async () => {
+  const headerless = ".youtube.com\tTRUE\t/\tTRUE\t2147483647\tSID\theaderless-secret\n";
+  const saved = await store.saveCookies(headerless, { filename: "cookies.txt" });
+  assert.equal(saved.sizeBytes, Buffer.byteLength(headerless));
+  const status = await store.getCookiesStatus();
+  assert.equal(status.exists, true);
+});
+
+test("file cookies invalid tidak menghapus status file yang sudah ada", async () => {
+  await writeFile(cookiesPath, "not cookies", "utf8");
+  const status = await store.getCookiesStatus();
+  assert.equal(status.exists, true);
+  assert.equal(status.health, "error");
+  assert.match(status.lastErrorCategory, /cookies_invalid_netscape_format|cookies_missing_youtube_domain/);
   await store.saveCookies(sampleCookies);
 });
 

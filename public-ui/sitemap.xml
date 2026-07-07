@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://ytconv.up.railway.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://ytconv.up.railway.app/status</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://ytconv.up.railway.app/changelog</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ytconv.up.railway.app/privacy</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ytconv.up.railway.app/terms</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ytconv.up.railway.app/copyright</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://ytconv.up.railway.app/contact</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://ytconv.up.railway.app/cookies</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://ytconv.up.railway.app/data-request</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://ytconv.up.railway.app/community-guidelines</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+</urlset>

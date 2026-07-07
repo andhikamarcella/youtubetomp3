@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Status & Maintenance • YTConv</title>
+  <title>Status Layanan • YTConv</title>
+  <meta name="description" content="Status publik YTConv untuk healthcheck dasar, maintenance mode, uptime, dan pesan layanan aman.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://ytconv.up.railway.app/status">
+  <meta property="og:title" content="Status Layanan YTConv">
+  <meta property="og:description" content="Pantau status publik dan maintenance YTConv.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ytconv.up.railway.app/status">
+  <meta name="twitter:card" content="summary">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/analytics.js" defer></script>
   <style>
     @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:none;} }
     .fade-in { animation: fadeIn .35s ease both; }
@@ -94,9 +103,10 @@ function formatDuration(sec){
   return `${d ? d + 'h ' : ''}${h}j ${m}m ${s}d`;
 }
 
+window.trackYtconvEvent?.('status_viewed');
 async function loadStatus(){
   countdown = 20;
-  const res = await fetch('/api/health?t=' + Date.now());
+  const res = await fetch('/api/status?t=' + Date.now(), { cache: 'no-store' });
   const data = await res.json().catch(() => ({}));
   const maint = Boolean(data?.maintenance);
   document.getElementById('healthChip').textContent = maint ? 'Maintenance Aktif' : 'Server Normal';
@@ -114,7 +124,7 @@ async function loadStatus(){
   document.getElementById('maintDetail').textContent = info?.detail || '-';
   document.getElementById('maintEta').textContent = info?.etaEndAt ? fmt.format(new Date(info.etaEndAt)) : (info?.etaSeconds ? `~ ${formatDuration(info.etaSeconds)}` : '-');
   renderSteps(info?.steps);
-  renderServices(info?.services);
+  renderServices(data?.services);
   renderVisualSummary(data);
   document.getElementById('raw').textContent = JSON.stringify(data, null, 2);
 }
@@ -141,13 +151,17 @@ function renderServices(services){
   const el = document.getElementById('servicesGrid');
   const entries = services && typeof services === 'object' ? Object.entries(services) : [];
   if (!entries.length) {
-    el.innerHTML = '<div class=\"text-slate-400\">Belum ada data service.</div>';
+    el.innerHTML = '<div class="text-slate-400">Belum ada data service.</div>';
     return;
   }
   el.innerHTML = entries.map(([name, value]) => {
-    const v = String(value || '').toLowerCase();
-    const cls = v.includes('maintenance') ? 'text-amber-300 border-amber-500/40 bg-amber-500/10' : v.includes('up') || v.includes('online') ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' : 'text-slate-300 border-slate-600 bg-slate-800/60';
-    return `<div class=\"rounded-lg border px-3 py-2 ${cls}\"><div class=\"font-semibold\">${name}</div><div class=\"text-xs mt-1\">${value}</div></div>`;
+    const status = typeof value === 'object' && value ? String(value.status || '') : String(value || '');
+    const label = typeof value === 'object' && value ? String(value.label || name) : name;
+    const configured = typeof value === 'object' && value ? value.configured !== false : true;
+    const v = status.toLowerCase();
+    const cls = v.includes('maintenance') || v.includes('degraded') ? 'text-amber-300 border-amber-500/40 bg-amber-500/10' : v.includes('operational') || v.includes('online') ? 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10' : 'text-slate-300 border-slate-600 bg-slate-800/60';
+    const note = configured ? status : 'not_configured (fitur opsional belum aktif)';
+    return `<div class="rounded-lg border px-3 py-2 ${cls}"><div class="font-semibold">${label}</div><div class="text-xs mt-1">${note}</div></div>`;
   }).join('');
 }
 
@@ -155,7 +169,7 @@ function renderVisualSummary(data){
   const info = data?.maintenanceInfo || {};
   const cards = [
     ['Status', data?.maintenance ? 'Maintenance' : 'Online'],
-    ['Healthcheck Path', data?.healthcheckPath || '-'],
+    ['Versi Aplikasi', data?.version || '-'],
     ['Maintenance ID', info?.id || '-'],
     ['Progress', Number.isFinite(Number(info?.progress)) ? `${Number(info.progress)}%` : '-'],
     ['Uptime', formatDuration(Number(data?.uptime || 0))],

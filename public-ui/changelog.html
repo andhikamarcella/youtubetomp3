@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Changelog • YTConv</title>
+  <meta name="description" content="Catatan perubahan YTConv untuk fitur publik, keamanan, status, dan peningkatan kualitas tanpa detail sensitif.">
+  <link rel="canonical" href="https://ytconv.up.railway.app/changelog">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/analytics.js" defer></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <main class="mx-auto max-w-4xl p-5 py-10 leading-7">
+    <a href="/" class="text-cyan-300">← Kembali ke Converter</a>
+    <h1 class="mt-5 text-3xl font-black">Changelog YTConv</h1>
+    <p class="mt-3 text-slate-300">Versi aktif: <strong id="appVersion">memuat...</strong></p>
+    <section class="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <h2 class="text-xl font-bold">Pembaruan terbaru</h2>
+      <ul class="mt-4 list-disc space-y-2 pl-6 text-slate-300">
+        <li>Converter difokuskan sebagai alur utama homepage dengan route terpisah untuk studio, komunitas, assistant, support, akun, dan rewards.</li>
+        <li>Status publik memakai data health API aktual, bukan status statis.</li>
+        <li>Halaman legal diperjelas untuk Firebase, Cloudinary, Google login, tiket, forum, analytics, retensi, dan permintaan data.</li>
+        <li>Admin, upload, URL safety, signed downloads, CSRF, observability, dan queue metrics diperkuat secara bertahap.</li>
+      </ul>
+    </section>
+    <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <h2 class="text-xl font-bold">Known issues yang dipantau</h2>
+      <p class="mt-3 text-slate-300">Ketersediaan provider eksternal seperti YouTube, Cloudinary, Firebase, Turnstile, dan AI bergantung pada konfigurasi production dan kredensial yang valid. Status publik akan menandai dependency opsional sebagai not_configured bila belum aktif.</p>
+    </section>
+  </main>
+<script>
+fetch('/api/status', { cache:'no-store' }).then((r) => r.json()).then((data) => {
+  document.getElementById('appVersion').textContent = data.version || '-';
+}).catch(() => { document.getElementById('appVersion').textContent = '-'; });
+</script>
+</body>
+</html>

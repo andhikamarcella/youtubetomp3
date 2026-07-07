@@ -15,8 +15,11 @@ import { createSecurityHeadersMiddleware, createCorsOptions, noStoreForSensitive
 import { createRateLimiter } from "./src/lib/rateLimit.js";
 import { verifyTurnstile } from "./src/lib/turnstile.js";
 import { parseMaintenance } from "./src/lib/maintenance.js";
-import { validatePublicMediaUrl } from "./src/lib/urlSafety.js";
+import { validatePublicMediaUrl, validatePublicMediaUrlDeep } from "./src/lib/urlSafety.js";
+import { inspectImageDataUri } from "./src/lib/uploadSecurity.js";
 import { createSignedDownloadToken, verifySignedDownloadToken } from "./src/lib/signedDownload.js";
+import { CONVERTER_ERROR_CODES, CONVERTER_STATES, buildConverterError, hydratePersistedJobs, publicJobSnapshot, serializeJobStore } from "./src/lib/converterState.js";
+import { createLogger, createRequestIdMiddleware, createRequestLoggerMiddleware, recordError, recordConversionMetric, getMetricsSnapshot, auditAdminAction, getAuditLog } from "./src/lib/observability.js";
 
 console.log("Initializing application...");
 console.log("Node version:", process.version);
@@ -45,11 +48,15 @@ try {
 }
 
 const runtimeConfig = loadEnv(process.env);
+if (runtimeConfig.missing?.length && process.env.NODE_ENV === "production") {
+  throw new Error(`Missing required production env: ${runtimeConfig.missing.join(", ")}`);
+}
 const runtimeEnv = runtimeConfig.env;
-if (runtimeConfig.missing?.length) console.warn("[env] Missing production env:", runtimeConfig.missing.join(", "));
+const logger = createLogger(runtimeEnv);
+if (runtimeConfig.missing?.length) logger.warn("env_missing_production_keys", { missing: runtimeConfig.missing });
 try { ensureRuntimeDirectories(runtimeEnv); } catch (err) { console.warn("[env] Runtime directory initialization warning:", err?.message || err); }
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
 import { nanoid } from "nanoid";
 import { Server as SocketIOServer } from "socket.io";
@@ -195,6 +202,39 @@ const parseGroqModels = () => {
   });
 };
 const GROQ_MODEL_CANDIDATES = parseGroqModels();
+const AI_PUBLIC_MODES = [
+  { id: "auto", label: "Auto", description: "Memilih provider aktif terbaik secara otomatis.", capability: "general" },
+  { id: "fast", label: "Cepat", description: "Jawaban singkat untuk bantuan converter dan status.", capability: "fast" },
+  { id: "smart", label: "Pintar", description: "Jawaban lebih menyeluruh untuk troubleshooting dan workflow.", capability: "reasoning" },
+];
+
+const getConfiguredAiProviders = () => {
+  const providers = [];
+  if (isOAIBestConfigured) providers.push({ id: "oaibest", configured: true, defaultModel: GROQ_MODEL });
+  if (isGroqConfigured) providers.push({ id: "groq", configured: true, defaultModel: GROQ_MODEL, models: GROQ_MODEL_CANDIDATES });
+  if (runtimeEnv.GEMINI_API_KEY) providers.push({ id: "gemini", configured: true, defaultModel: "auto" });
+  return providers;
+};
+
+const buildAiModelsResponse = ({ advanced = false } = {}) => {
+  const providers = getConfiguredAiProviders();
+  const available = providers.length > 0;
+  const modes = AI_PUBLIC_MODES.map((mode) => ({ ...mode, available }));
+  const response = { ok: true, available, modes, defaultMode: "auto", providers: providers.map((p) => ({ id: p.id, configured: p.configured })) };
+  if (advanced) {
+    response.advanced = {
+      models: providers.flatMap((provider) => (provider.models || [provider.defaultModel]).filter(Boolean).map((model) => ({ provider: provider.id, model }))),
+    };
+  }
+  return response;
+};
+
+const normalizeRequestedAiModel = (model) => {
+  const raw = String(model || "").trim();
+  if (!raw || ["auto", "fast", "smart"].includes(raw.toLowerCase())) return null;
+  const allowed = new Set(GROQ_MODEL_CANDIDATES.map((item) => item.toLowerCase()));
+  return allowed.has(raw.toLowerCase()) ? raw : "__invalid__";
+};
 const COOKIES_PATH = getCookiesPath();
 const shouldUseYtDlpCookies = () => !/^(0|false|off|no)$/i.test(String(process.env.ENABLE_SERVER_COOKIES || "true"));
 try {
@@ -2289,6 +2329,8 @@ const __dirname = dirname(__filename);
 
 const app = express();
 app.set("trust proxy", runtimeEnv.TRUST_PROXY ? 1 : false);
+app.use(createRequestIdMiddleware());
+app.use(createRequestLoggerMiddleware({ env: runtimeEnv, logger }));
 app.use(createSecurityHeadersMiddleware(runtimeEnv));
 app.use(noStoreForSensitive);
 app.use(compression());
@@ -2300,6 +2342,7 @@ const convertRateLimiter = createRateLimiter({ name: "convert", enabled: runtime
 const authRateLimiter = createRateLimiter({ name: "auth", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.AUTH_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.AUTH_RATE_LIMIT_MAX });
 const ticketRateLimiter = createRateLimiter({ name: "ticket", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.TICKET_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.TICKET_RATE_LIMIT_MAX });
 const aiRateLimiter = createRateLimiter({ name: "ai", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.AI_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.AI_RATE_LIMIT_MAX });
+const uploadRateLimiter = createRateLimiter({ name: "upload", enabled: runtimeEnv.RATE_LIMIT_ENABLED, windowMs: runtimeEnv.UPLOAD_RATE_LIMIT_WINDOW_MS, max: runtimeEnv.UPLOAD_RATE_LIMIT_MAX });
 app.use("/api", globalApiLimiter);
 
 if (process.env.CLOUDINARY_URL) {
@@ -2484,6 +2527,19 @@ const PRIVATE_SHARE_TTL_MS = Math.max(5 * 60 * 1000, Number(process.env.PRIVATE_
 const PRIVATE_SHARE_SECRET = process.env.PRIVATE_SHARE_SECRET
   || createHash("sha256").update(`${__dirname}|ytmp3-private-share`).digest("hex");
 let privateShareCleanupTimer = null;
+const privateShareUnlockAttempts = new Map();
+const allowPrivateShareUnlock = (shareId, req) => {
+  const key = `${shareId}:${req.ip || "unknown"}`;
+  const now = Date.now();
+  const current = privateShareUnlockAttempts.get(key) || { count: 0, resetAt: now + 10 * 60 * 1000 };
+  if (current.resetAt <= now) {
+    current.count = 0;
+    current.resetAt = now + 10 * 60 * 1000;
+  }
+  current.count += 1;
+  privateShareUnlockAttempts.set(key, current);
+  return current.count <= 8 ? { ok: true } : { ok: false, retryAfter: Math.ceil((current.resetAt - now) / 1000) };
+};
 
 const prunePrivateShares = () => {
   const now = Date.now();
@@ -7941,7 +7997,7 @@ const convertSingle = async (payload = {}) => {
       targetLufs: normalize ? '-14 LUFS' : 'Original',
     };
 
-    const downloadUrl = `/public/jobs/${filename}`;
+    const downloadUrl = signedPublicDownloadUrl(filename);
     const finalExt = ext;
     const downloadFileName = `${baseName}.${finalExt}`;
     const finalSampleRate = finalSamplePreference
@@ -8244,15 +8300,51 @@ const downloadSubtitle = async (payload = {}) => {
 };
 
 // ==== Serve static UI & hasil unduhan ====
-app.get("/manifest.webmanifest", (req, res) => {
-  res.setHeader("Content-Type", "application/manifest+json");
-  res.sendFile(join(__dirname, "public-ui", "manifest.webmanifest"));
+const sendPublicPage = (res, fileName, { cacheSeconds = 300, contentType } = {}) => {
+  res.setHeader("Cache-Control", `public, max-age=${cacheSeconds}, must-revalidate`);
+  if (contentType) res.setHeader("Content-Type", contentType);
+  return res.sendFile(join(__dirname, "public-ui", fileName));
+};
+
+app.get("/manifest.webmanifest", (req, res) => sendPublicPage(res, "manifest.webmanifest", { cacheSeconds: 3600, contentType: "application/manifest+json" }));
+app.get("/manifest.json", (req, res) => sendPublicPage(res, "manifest.json", { cacheSeconds: 3600, contentType: "application/manifest+json" }));
+app.get("/robots.txt", (req, res) => sendPublicPage(res, "robots.txt", { cacheSeconds: 3600, contentType: "text/plain; charset=utf-8" }));
+app.get("/sitemap.xml", (req, res) => sendPublicPage(res, "sitemap.xml", { cacheSeconds: 3600, contentType: "application/xml; charset=utf-8" }));
+app.get("/status", (req, res) => sendPublicPage(res, "status.html", { cacheSeconds: 60 }));
+app.get("/admin/login", (req, res) => {
+  if (isAdminBearerValid(req)) return res.redirect(302, "/admin/dashboard");
+  return sendPublicPage(res, "admin-login.html", { cacheSeconds: 0 });
 });
+const protectAdminHtml = (req, res, next) => {
+  if (!["GET", "HEAD"].includes(String(req.method || "GET").toUpperCase())) return next();
+  const adminHtml = new Set(["/admin-dashboard.html", "/admin-tickets.html", "/admin-cookies.html"]);
+  const adminRoute = req.path === "/admin" || req.path === "/admin/dashboard" || req.path === "/admin/tickets";
+  if (!adminHtml.has(req.path) && !adminRoute) return next();
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  if (isAdminBearerValid(req)) return next();
+  return res.redirect(302, `/admin/login?next=${encodeURIComponent(req.originalUrl || "/admin/dashboard")}`);
+};
+app.use(protectAdminHtml);
+app.get("/changelog", (req, res) => sendPublicPage(res, "changelog.html", { cacheSeconds: 300 }));
+app.get("/privacy", (req, res) => sendPublicPage(res, "privacy.html", { cacheSeconds: 3600 }));
+app.get("/terms", (req, res) => sendPublicPage(res, "terms.html", { cacheSeconds: 3600 }));
+app.get("/copyright", (req, res) => sendPublicPage(res, "copyright.html", { cacheSeconds: 3600 }));
+app.get("/contact", (req, res) => sendPublicPage(res, "contact.html", { cacheSeconds: 3600 }));
+app.get("/cookies", (req, res) => sendPublicPage(res, "cookies.html", { cacheSeconds: 3600 }));
+app.get("/data-request", (req, res) => sendPublicPage(res, "data-request.html", { cacheSeconds: 3600 }));
+app.get("/community-guidelines", (req, res) => sendPublicPage(res, "community-guidelines.html", { cacheSeconds: 3600 }));
+
+const publicAppRoutes = ["/studio", "/history", "/assistant", "/community", "/support", "/account", "/rewards"];
+for (const route of publicAppRoutes) {
+  app.get(route, (req, res) => sendPublicPage(res, "index.html", { cacheSeconds: 60 }));
+}
 
 // ==== Cloudinary Upload ====
 
-app.post("/api/cloudinary/signature", ticketRateLimiter, async (req, res) => {
+app.post("/api/cloudinary/signature", uploadRateLimiter, async (req, res) => {
   try {
+    try { await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip); } catch (err) { return res.status(err?.statusCode || 400).json({ ok: false, error: err?.code || "turnstile_failed", message: err?.message || "Verifikasi anti-bot gagal" }); }
     if (!process.env.CLOUDINARY_URL) return res.status(503).json({ ok: false, error: "cloudinary_not_configured" });
     const resourceType = ["image", "video", "raw", "auto"].includes(String(req.body?.resourceType || "")) ? String(req.body.resourceType) : "image";
     const folder = resourceType === "image" ? runtimeEnv.CLOUDINARY_IMAGE_FOLDER : resourceType === "video" ? runtimeEnv.CLOUDINARY_AUDIO_FOLDER : runtimeEnv.CLOUDINARY_TEMP_FOLDER;
@@ -8264,17 +8356,24 @@ app.post("/api/cloudinary/signature", ticketRateLimiter, async (req, res) => {
     return res.status(500).json({ ok: false, error: "cloudinary_signature_failed" });
   }
 });
-app.post("/api/upload-forum-image", ticketRateLimiter, async (req, res) => {
+app.post("/api/upload-forum-image", uploadRateLimiter, async (req, res) => {
   try {
-    const { image } = req.body; // Expecting base64 string
+    try { await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip); } catch (err) { return res.status(err?.statusCode || 400).json({ ok: false, error: err?.code || "turnstile_failed", message: err?.message || "Verifikasi anti-bot gagal" }); }
+    const { image } = req.body; // Expecting base64 data URI
     if (!image) {
-      return res.status(400).json({ error: "No image provided" });
+      return res.status(400).json({ ok: false, error: "image_required", message: "No image provided" });
+    }
+    const inspection = inspectImageDataUri(image, { maxBytes: runtimeEnv.CLOUDINARY_MAX_IMAGE_MB * 1024 * 1024 });
+    if (!inspection.ok) {
+      return res.status(415).json({ ok: false, error: inspection.error, message: "Format gambar tidak didukung atau tidak valid." });
     }
 
-    // Upload to Cloudinary
+    // Cloudinary re-encodes via fetch_format/quality transformation and strips metadata from delivery.
     const result = await cloudinary.uploader.upload(image, {
-      folder: "forum_uploads",
-      resource_type: "image"
+      folder: runtimeEnv.CLOUDINARY_IMAGE_FOLDER || "forum_uploads",
+      resource_type: "image",
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+      transformation: [{ quality: "auto:good", fetch_format: "auto" }]
     });
 
     return res.json({
@@ -8346,8 +8445,34 @@ app.get("/api/support/hall-of-fame", async (req, res) => {
   }
 });
 
-app.use("/", express.static(join(__dirname, "public-ui")));
-app.use("/public", express.static(PUBLIC_DIR));
+app.use("/public/jobs", (req, res, next) => {
+  if (!runtimeEnv.SIGNED_DOWNLOADS) return next();
+  const file = basename(decodeURIComponent(req.path || ""));
+  try {
+    const payload = verifySignedDownloadToken({ token: req.query?.token || req.get("x-download-token"), secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET });
+    if (payload.file !== file) throw new Error("download_token_file_mismatch");
+    res.setHeader("Cache-Control", "private, max-age=60");
+    return next();
+  } catch {
+    return res.status(403).json({ ok: false, errorCategory: "DOWNLOAD_EXPIRED", message: "Link download sudah kedaluwarsa atau tidak valid. Silakan convert ulang." });
+  }
+});
+const staticCacheOptions = {
+  setHeaders(res, filePath) {
+    if (/admin|ticket-status|private/i.test(filePath)) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      return;
+    }
+    if (/\.(?:js|css|svg|png|webp|woff2?)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return;
+    }
+    if (/\.html$/i.test(filePath)) res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+  },
+};
+app.use("/", express.static(join(__dirname, "public-ui"), staticCacheOptions));
+app.use("/public", express.static(PUBLIC_DIR, staticCacheOptions));
 
 // ==== User accounts ====
 app.post("/api/auth/google", async (req, res) => {
@@ -8398,16 +8523,178 @@ app.get("/api/server-time", (req, res) => {
 
 const startTime = Date.now();
 
+const commandAvailable = (commandPath) => new Promise((resolve) => {
+  const cmd = commandPath || "";
+  if (!cmd) return resolve(false);
+  const child = spawn(cmd, ["--version"], { stdio: ["ignore", "ignore", "ignore"] });
+  const timer = setTimeout(() => { child.kill("SIGKILL"); resolve(false); }, 2000);
+  child.on("error", () => { clearTimeout(timer); resolve(false); });
+  child.on("close", (code) => { clearTimeout(timer); resolve(code === 0 || code === 1); });
+});
+
+const safeDirHealth = async (dir) => {
+  const label = dir ? basename(dir) || "runtime" : "unset";
+  const result = { configured: Boolean(dir), label, exists: false, writable: false, bytes: 0, files: 0 };
+  if (!dir) return result;
+  try {
+    const st = await fsp.stat(dir);
+    result.exists = st.isDirectory();
+    if (!result.exists) return result;
+    await fsp.access(dir, 2);
+    result.writable = true;
+    const stack = [dir];
+    while (stack.length) {
+      const current = stack.pop();
+      const entries = await fsp.readdir(current, { withFileTypes: true }).catch(() => []);
+      for (const entry of entries) {
+        const full = join(current, entry.name);
+        if (entry.isDirectory()) stack.push(full);
+        else if (entry.isFile()) { const fs = await fsp.stat(full).catch(() => null); if (fs) { result.files += 1; result.bytes += fs.size; } }
+      }
+    }
+  } catch {}
+  return result;
+};
+
+const getQueueMetrics = () => {
+  const jobs = Array.from(converterJobs.values());
+  const completed = jobs.filter((j) => j.status === "completed");
+  const failed = jobs.filter((j) => j.status === "failed");
+  const active = jobs.filter((j) => !["completed", "failed", "expired"].includes(j.status) && j.startedAt);
+  const durations = completed.map((j) => Number(j.durationMs || ((j.completedAt || 0) - (j.startedAt || j.createdAt || 0)))).filter((n) => Number.isFinite(n) && n >= 0);
+  const waits = jobs.map((j) => Number((j.startedAt || Date.now()) - (j.createdAt || Date.now()))).filter((n) => Number.isFinite(n) && n >= 0);
+  return {
+    driver: runtimeEnv.QUEUE_DRIVER,
+    waiting: converterQueue.length,
+    active: converterActive,
+    queued: converterQueue.length,
+    processing: converterActive,
+    completed: completed.length,
+    failed: failed.length,
+    delayed: 0,
+    maxQueueSize: runtimeEnv.MAX_QUEUE_SIZE,
+    averageWaitMs: waits.length ? Math.round(waits.reduce((a, b) => a + b, 0) / waits.length) : 0,
+    averageProcessMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0,
+    lastFailure: failed.length ? { jobId: failed.at(-1).id, errorCategory: failed.at(-1).errorCategory || "UNKNOWN", message: String(failed.at(-1).error || "").slice(0, 200) } : null,
+    activeJobs: active.slice(-10).map((j) => ({ jobId: j.id, status: j.status, progress: j.progress, step: j.step, ageMs: Date.now() - (j.startedAt || j.createdAt || Date.now()) })),
+  };
+};
+
+const buildFullHealth = async () => {
+  const [cookiesStatus, output, temp, cache, ytDlpOk, ffmpegOk, ffprobeOk] = await Promise.all([
+    getCookiesStatus().catch(() => ({ exists: false })),
+    safeDirHealth(runtimeEnv.OUTPUT_DIR),
+    safeDirHealth(runtimeEnv.TEMP_DIR),
+    safeDirHealth(runtimeEnv.CACHE_DIR),
+    commandAvailable(runtimeEnv.YTDLP_PATH || "yt-dlp"),
+    commandAvailable(runtimeEnv.FFMPEG_PATH || ffmpegPath || "ffmpeg"),
+    commandAvailable(runtimeEnv.FFPROBE_PATH || ffprobePath || "ffprobe"),
+  ]);
+  return {
+    ok: true,
+    version: runtimeEnv.APP_VERSION,
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    environment: runtimeEnv.APP_ENV,
+    node: { version: process.version, platform: process.platform },
+    services: {
+      database: { configured: Boolean(runtimeEnv.DATABASE_URL), status: runtimeEnv.DATABASE_URL ? "configured" : "not_configured" },
+      redis: { configured: Boolean(runtimeEnv.REDIS_URL), status: runtimeEnv.REDIS_URL ? "configured" : "not_configured" },
+      cloudinary: { configured: Boolean(runtimeEnv.CLOUDINARY_URL) },
+      firebaseAdmin: { configured: Boolean(runtimeEnv.FIREBASE_SERVICE_ACCOUNT_BASE64) },
+      turnstile: { configured: Boolean(runtimeEnv.TURNSTILE_SECRET_KEY && runtimeEnv.TURNSTILE_SITE_KEY) },
+      sentry: { configured: Boolean(runtimeEnv.SENTRY_DSN) },
+    },
+    tools: { ytDlp: ytDlpOk, ffmpeg: ffmpegOk, ffprobe: ffprobeOk },
+    storage: { output, temp, cache },
+    cookies: { exists: Boolean(cookiesStatus.exists), metadataExists: Boolean(cookiesStatus.updatedAt || cookiesStatus.lastUpdatedAt), health: cookiesStatus.health || "unknown", sizeBytes: cookiesStatus.sizeBytes || 0, updatedAt: cookiesStatus.updatedAt || null },
+    queue: getQueueMetrics(),
+    metrics: getMetricsSnapshot(),
+    maintenance: parseMaintenance(process.env),
+    env: safeEnvDiagnostics(runtimeEnv),
+  };
+};
+
+const publicServiceStatus = (ok, { optional = false, configured = true, label } = {}) => {
+  if (!configured) return { label, status: "not_configured", ok: optional, configured: false };
+  return { label, status: ok ? "operational" : "degraded", ok: Boolean(ok), configured: true };
+};
+
+const buildPublicStatus = async () => {
+  const maintenance = parseMaintenance(process.env);
+  const queue = getQueueMetrics();
+  const [output, temp, cache, ytDlpOk, ffmpegOk] = await Promise.all([
+    safeDirHealth(runtimeEnv.OUTPUT_DIR),
+    safeDirHealth(runtimeEnv.TEMP_DIR),
+    safeDirHealth(runtimeEnv.CACHE_DIR),
+    commandAvailable(runtimeEnv.YTDLP_PATH || "yt-dlp"),
+    commandAvailable(runtimeEnv.FFMPEG_PATH || ffmpegPath || "ffmpeg"),
+  ]);
+  const storageOk = output.exists && output.writable && temp.exists && temp.writable && cache.exists && cache.writable;
+  const queueOk = queue.waiting < queue.maxQueueSize;
+  const converterOk = ytDlpOk && ffmpegOk && storageOk && queueOk;
+  const services = {
+    api: publicServiceStatus(true, { label: "API" }),
+    converter: publicServiceStatus(converterOk, { label: "Converter" }),
+    queue: publicServiceStatus(queueOk, { label: "Queue" }),
+    storage: publicServiceStatus(storageOk, { label: "Storage" }),
+    database: publicServiceStatus(Boolean(runtimeEnv.DATABASE_URL), { optional: true, configured: Boolean(runtimeEnv.DATABASE_URL), label: "Database" }),
+    firebase: publicServiceStatus(Boolean(runtimeEnv.FIREBASE_SERVICE_ACCOUNT_BASE64 || runtimeEnv.FIREBASE_PROJECT_ID), { optional: true, configured: Boolean(runtimeEnv.FIREBASE_SERVICE_ACCOUNT_BASE64 || runtimeEnv.FIREBASE_PROJECT_ID), label: "Firebase" }),
+    cloudinary: publicServiceStatus(Boolean(runtimeEnv.CLOUDINARY_URL), { optional: true, configured: Boolean(runtimeEnv.CLOUDINARY_URL), label: "Cloudinary" }),
+    turnstile: publicServiceStatus(Boolean(runtimeEnv.TURNSTILE_SECRET_KEY && runtimeEnv.TURNSTILE_SITE_KEY), { optional: true, configured: Boolean(runtimeEnv.TURNSTILE_SECRET_KEY && runtimeEnv.TURNSTILE_SITE_KEY), label: "Turnstile" }),
+    ai: publicServiceStatus(Boolean(runtimeEnv.GROQ_API_KEY || runtimeEnv.GROQ_API_KEY_FALLBACK || runtimeEnv.OAIBEST_API_KEY || runtimeEnv.GEMINI_API_KEY), { optional: true, configured: Boolean(runtimeEnv.GROQ_API_KEY || runtimeEnv.GROQ_API_KEY_FALLBACK || runtimeEnv.OAIBEST_API_KEY || runtimeEnv.GEMINI_API_KEY), label: "AI Navigator" }),
+    socket: publicServiceStatus(true, { label: "Realtime" }),
+  };
+  const requiredOk = services.api.ok && services.converter.ok && services.queue.ok && services.storage.ok;
+  return {
+    ok: requiredOk && !maintenance.active,
+    status: maintenance.active ? "maintenance" : requiredOk ? "operational" : "degraded",
+    version: runtimeEnv.APP_VERSION,
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+    environment: runtimeEnv.APP_ENV,
+    maintenance: maintenance.active,
+    maintenanceInfo: maintenance.active ? maintenance : null,
+    services,
+    queue: {
+      waiting: queue.waiting,
+      active: queue.active,
+      completed: queue.completed,
+      failed: queue.failed,
+      maxQueueSize: queue.maxQueueSize,
+    },
+    tools: { ytDlp: ytDlpOk, ffmpeg: ffmpegOk },
+  };
+};
+
+app.get("/api/status", async (req, res) => {
+  try {
+    return res.json(await buildPublicStatus());
+  } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/api/status" });
+    return res.status(503).json({ ok: false, status: "degraded", error: "status_unavailable", requestId: req.requestId, timestamp: Date.now(), version: runtimeEnv.APP_VERSION });
+  }
+});
+
 app.get("/api/health", (req, res) => {
   const maintenance = parseMaintenance(process.env);
-  return res.json({ ok: true, status: "online", version: runtimeEnv.APP_VERSION, uptime: process.uptime(), timestamp: Date.now(), maintenance: maintenance.active, maintenanceInfo: maintenance.active ? maintenance : null });
+  return res.json({ ok: true, status: "online", version: runtimeEnv.APP_VERSION, uptime: process.uptime(), timestamp: Date.now(), environment: runtimeEnv.APP_ENV, maintenance: maintenance.active, maintenanceInfo: maintenance.active ? maintenance : null });
 });
 
 app.get("/api/health/full", async (req, res) => {
   const secret = req.get("x-healthcheck-secret") || req.query?.secret;
-  if (!isAdminBearerValid(req) && (!runtimeEnv.HEALTHCHECK_SECRET || secret !== runtimeEnv.HEALTHCHECK_SECRET)) return res.status(401).json({ ok: false, error: "unauthorized" });
-  const cookiesStatus = await getCookiesStatus().catch(() => ({ exists: false }));
-  return res.json({ ok: true, version: runtimeEnv.APP_VERSION, uptime: process.uptime(), timestamp: Date.now(), env: safeEnvDiagnostics(runtimeEnv), maintenance: parseMaintenance(process.env), cookies: { exists: Boolean(cookiesStatus.exists), health: cookiesStatus.health || "unknown", sizeBytes: cookiesStatus.sizeBytes || 0, updatedAt: cookiesStatus.updatedAt || null }, queue: { driver: runtimeEnv.QUEUE_DRIVER, queued: converterQueue.length, processing: converterActive, maxQueueSize: runtimeEnv.MAX_QUEUE_SIZE } });
+  if (!isAdminBearerValid(req) && (!runtimeEnv.HEALTHCHECK_SECRET || secret !== runtimeEnv.HEALTHCHECK_SECRET)) return res.status(401).json({ ok: false, error: "unauthorized", requestId: req.requestId });
+  try {
+    return res.json(await buildFullHealth());
+  } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/api/health/full" });
+    return res.status(500).json({ ok: false, error: "healthcheck_failed", requestId: req.requestId });
+  }
+});
+
+app.get("/api/admin/metrics", async (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized", requestId: req.requestId });
+  return res.json({ ok: true, timestamp: Date.now(), metrics: getMetricsSnapshot(), queue: getQueueMetrics(), audit: getAuditLog({ limit: 25 }) });
 });
 
 app.get("/api/cheats/config", (req, res) => {
@@ -8704,6 +8991,11 @@ app.get("/api/referral-code", async (req, res) => {
 });
 
 // ==== Assistant chat ====
+app.get("/api/ai/models", aiRateLimiter, (req, res) => {
+  const advanced = String(req.query?.advanced || "").toLowerCase() === "true";
+  return res.json(buildAiModelsResponse({ advanced }));
+});
+
 app.post("/api/assistant-chat", aiRateLimiter, async (req, res) => {
   try {
     const { prompt = "", messages = [], clientState = {}, model = null } = req.body || {};
@@ -8712,7 +9004,11 @@ app.post("/api/assistant-chat", aiRateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Prompt wajib diisi" });
     }
 
-    const responsePayload = await buildAssistantResponse(trimmed, messages, clientState, model);
+    const normalizedModel = normalizeRequestedAiModel(model);
+    if (normalizedModel === "__invalid__") {
+      return res.status(400).json({ ok: false, error: "ai_model_unavailable", message: "Model AI yang diminta tidak tersedia untuk konfigurasi server saat ini.", models: buildAiModelsResponse({ advanced: false }).modes });
+    }
+    const responsePayload = await buildAssistantResponse(trimmed, messages, clientState, normalizedModel);
     return res.json(responsePayload);
   } catch (e) {
     console.error("[assistant-chat] fatal:", e?.message || e);
@@ -8743,11 +9039,78 @@ app.get("/api/turnstile-config", (req, res) => {
 
 
 const outputTtlMs = Math.max(5 * 60_000, Number(process.env.OUTPUT_TTL_MINUTES || 60) * 60_000);
+const jobTtlMs = Math.max(60_000, Number(runtimeEnv.JOB_TTL_SECONDS || 3600) * 1000);
 const converterJobs = new Map();
 const converterQueue = [];
 const converterCache = new Map();
+const converterJobStorePath = join(runtimeEnv.CACHE_DIR, "converter-jobs.json");
+let converterJobStoreSaveTimer = null;
 let converterActive = 0;
 const converterConcurrency = Math.max(1, Math.min(runtimeEnv.QUEUE_CONCURRENCY, Number(process.env.CONVERTER_CONCURRENCY || runtimeEnv.CONVERTER_CONCURRENCY || 1)));
+
+const persistConverterJobsNow = async () => {
+  try {
+    await fsp.mkdir(dirname(converterJobStorePath), { recursive: true });
+    const payload = serializeJobStore(converterJobs.values());
+    await fsp.writeFile(`${converterJobStorePath}.tmp`, JSON.stringify(payload, null, 2));
+    await fsp.rename(`${converterJobStorePath}.tmp`, converterJobStorePath);
+  } catch (err) {
+    logger.warn("converter_job_store_save_failed", { message: err?.message });
+  }
+};
+
+const scheduleConverterJobPersist = () => {
+  if (converterJobStoreSaveTimer) return;
+  converterJobStoreSaveTimer = setTimeout(() => {
+    converterJobStoreSaveTimer = null;
+    persistConverterJobsNow().catch(() => {});
+  }, 250);
+  converterJobStoreSaveTimer.unref?.();
+};
+
+const loadPersistedConverterJobs = async () => {
+  try {
+    const raw = await fsp.readFile(converterJobStorePath, "utf8");
+    const store = JSON.parse(raw);
+    const hydrated = hydratePersistedJobs(store, Date.now(), jobTtlMs);
+    for (const job of hydrated) {
+      converterJobs.set(job.id, job);
+      if (job.status === CONVERTER_STATES.QUEUED && job.payload) converterQueue.push(job.id);
+      if (job.status === CONVERTER_STATES.READY && job.filename) converterCache.set(job.cacheKey, { jobId: job.id, fileName: job.filename, downloadUrl: job.downloadUrl, expiresAt: Date.now() + outputTtlMs });
+    }
+    if (hydrated.length) logger.info("converter_job_store_loaded", { jobs: hydrated.length, requeued: converterQueue.length });
+  } catch (err) {
+    if (err?.code !== "ENOENT") logger.warn("converter_job_store_load_failed", { message: err?.message });
+  }
+};
+
+const removeQueuedJobId = (jobId) => {
+  const idx = converterQueue.indexOf(jobId);
+  if (idx >= 0) converterQueue.splice(idx, 1);
+  controlState.waiting = converterQueue.length;
+  controlState.queueLength = converterQueue.length + converterActive;
+  return idx >= 0;
+};
+
+const cleanupExpiredOutputFiles = async () => {
+  const now = Date.now();
+  let deleted = 0;
+  let scanned = 0;
+  const root = pathResolve(JOBS_DIR);
+  const entries = await fsp.readdir(JOBS_DIR, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const full = pathResolve(JOBS_DIR, entry.name);
+    if (!full.startsWith(root)) continue;
+    scanned += 1;
+    const st = await fsp.stat(full).catch(() => null);
+    if (st && now - st.mtimeMs > outputTtlMs) {
+      await fsp.unlink(full).then(() => { deleted += 1; }).catch(() => {});
+    }
+  }
+  if (deleted) logger.info("converter_output_cleanup", { scanned, deleted });
+  return { scanned, deleted };
+};
 
 const sanitizeJobPayloadForCache = (payload = {}) => ({
   url: payload.url || payload.mediaUrl || payload.keyword || "",
@@ -8760,6 +9123,19 @@ const sanitizeJobPayloadForCache = (payload = {}) => ({
 });
 
 const makeJobCacheKey = (payload = {}) => createHash("sha256").update(JSON.stringify(sanitizeJobPayloadForCache(payload))).digest("hex");
+const signedPublicDownloadUrl = (filename = "") => {
+  const safeFile = basename(String(filename || ""));
+  if (!safeFile) return "";
+  const base = `/public/jobs/${encodeURIComponent(safeFile)}`;
+  if (!runtimeEnv.SIGNED_DOWNLOADS) return base;
+  try {
+    const token = createSignedDownloadToken({ file: safeFile, secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET, ttlSeconds: runtimeEnv.DOWNLOAD_URL_TTL_SECONDS });
+    return `${base}?token=${encodeURIComponent(token)}`;
+  } catch {
+    return base;
+  }
+};
+
 const jobDownloadUrl = (jobId, filename = "") => {
   const base = `/api/jobs/${encodeURIComponent(jobId)}/download`;
   if (!runtimeEnv.SIGNED_DOWNLOADS || !filename) return base;
@@ -8771,58 +9147,89 @@ const jobDownloadUrl = (jobId, filename = "") => {
   }
 };
 
-const serializeConverterJob = (job = {}) => ({
-  ok: job.status !== "failed",
-  jobId: job.id,
-  status: job.status || "queued",
-  progress: job.progress || 0,
-  step: job.step || job.status || "queued",
-  message: job.message || "",
-  downloadUrl: job.downloadUrl || (job.filename ? jobDownloadUrl(job.id, job.filename) : null),
-  filename: job.filename || null,
-  errorCategory: job.errorCategory || null,
-  error: job.error || null,
-  cached: Boolean(job.cached),
-});
+const isJobDownloadReady = (job = {}) => Boolean(
+  job?.filename && [CONVERTER_STATES.READY, "completed", "done", "ready"].includes(job.status),
+);
+
+const serializeConverterJob = (job = {}) => {
+  const snapshot = publicJobSnapshot({ ...job, downloadUrl: job.downloadUrl || (job.filename ? jobDownloadUrl(job.id, job.filename) : null) });
+  return {
+    ok: ![CONVERTER_STATES.FAILED, CONVERTER_STATES.CANCELLED, CONVERTER_STATES.EXPIRED].includes(snapshot.status),
+    jobId: snapshot.id,
+    status: snapshot.status,
+    progress: snapshot.progress,
+    step: snapshot.step,
+    message: snapshot.message,
+    downloadUrl: snapshot.downloadUrl,
+    filename: snapshot.filename,
+    errorCategory: snapshot.errorCategory,
+    error: snapshot.error?.message || job.error || null,
+    errorDetail: snapshot.error,
+    cached: snapshot.cached,
+  };
+};
 
 const pumpConverterQueue = () => {
   while (converterActive < converterConcurrency && converterQueue.length) {
     const jobId = converterQueue.shift();
     const job = converterJobs.get(jobId);
-    if (!job || job.status !== "queued") continue;
+    if (!job || job.status !== CONVERTER_STATES.QUEUED) continue;
     converterActive += 1;
     controlState.processing += 1;
     controlState.waiting = converterQueue.length;
     controlState.queueLength = converterQueue.length + converterActive;
-    job.status = "fetching";
-    job.step = "fetching";
+    job.status = CONVERTER_STATES.FETCHING_METADATA;
+    job.step = CONVERTER_STATES.FETCHING_METADATA;
     job.progress = 5;
     job.startedAt = Date.now();
     job.logs.push("Job started");
     Promise.resolve()
       .then(async () => {
         const result = await convertSingle({ ...job.payload, id: job.id }, (progress) => {
+          if (job.cancelRequested) {
+            const cancelErr = new Error("Job dibatalkan");
+            cancelErr.errorCategory = CONVERTER_ERROR_CODES.CANCELLED;
+            throw cancelErr;
+          }
           const percent = clampPercent(progress?.percent ?? job.progress);
           job.progress = percent;
           job.step = progress?.stage || job.step || "processing";
           job.message = progress?.message || job.message || "Memproses";
           job.logs.push(`[${new Date().toISOString()}] ${job.step}: ${job.message}`);
         });
-        job.status = "completed";
-        job.step = "completed";
+        if (job.cancelRequested) {
+          job.status = CONVERTER_STATES.CANCELLED;
+          job.step = CONVERTER_STATES.CANCELLED;
+          job.progress = Math.min(job.progress || 0, 99);
+          job.message = "Job dibatalkan";
+          job.completedAt = Date.now();
+          job.errorCategory = CONVERTER_ERROR_CODES.CANCELLED;
+          job.error = buildConverterError({ code: CONVERTER_ERROR_CODES.CANCELLED, message: "Job dibatalkan oleh pengguna.", retryable: true });
+          scheduleConverterJobPersist();
+          return;
+        }
+        job.status = CONVERTER_STATES.READY;
+        job.step = CONVERTER_STATES.READY;
         job.progress = 100;
         job.message = "Selesai";
         job.result = result;
         job.filename = result?.fileName || result?.filename || null;
         job.downloadUrl = jobDownloadUrl(job.id, job.filename);
         job.completedAt = Date.now();
+        job.durationMs = job.completedAt - (job.startedAt || job.createdAt || job.completedAt);
         converterCache.set(job.cacheKey, { jobId: job.id, fileName: job.filename, downloadUrl: job.downloadUrl, expiresAt: Date.now() + outputTtlMs });
         conversionMetrics.success += 1;
+        recordConversionMetric("completed", { jobId: job.id, durationMs: job.durationMs });
+        logger.info("converter_job_completed", { jobId: job.id, durationMs: job.durationMs });
+        scheduleConverterJobPersist();
       })
       .catch((err) => {
-        const wrapped = publicDownloadError(err);
-        job.status = "failed";
-        job.step = "failed";
+        recordError(err, { jobId: job.id, stage: "converter_job" });
+        const wrapped = err?.errorCategory === CONVERTER_ERROR_CODES.CANCELLED
+          ? { errorCategory: CONVERTER_ERROR_CODES.CANCELLED, message: "Job dibatalkan", hint: null, adminActionRequired: false }
+          : publicDownloadError(err);
+        job.status = wrapped.errorCategory === CONVERTER_ERROR_CODES.CANCELLED ? CONVERTER_STATES.CANCELLED : CONVERTER_STATES.FAILED;
+        job.step = job.status;
         job.progress = job.progress || 0;
         job.errorCategory = wrapped.errorCategory || "UNKNOWN";
         job.error = wrapped.message;
@@ -8831,6 +9238,9 @@ const pumpConverterQueue = () => {
         job.logs.push((wrapped.logs || wrapped.stack || wrapped.message || "").slice(-8000));
         conversionMetrics.errors += 1;
         conversionMetrics.errorReasons[job.errorCategory] = (conversionMetrics.errorReasons[job.errorCategory] || 0) + 1;
+        recordConversionMetric("failed", { jobId: job.id });
+        logger.warn("converter_job_failed", { jobId: job.id, errorCategory: job.errorCategory, message: job.error });
+        scheduleConverterJobPersist();
       })
       .finally(() => {
         converterActive = Math.max(0, converterActive - 1);
@@ -8848,9 +9258,9 @@ const enqueueConverterJob = (payload = {}) => {
   if (cached && cached.expiresAt > Date.now() && cached.fileName && existsSync(join(JOBS_DIR, cached.fileName))) {
     const job = {
       id: cached.jobId || nanoid(10),
-      status: "completed",
+      status: CONVERTER_STATES.READY,
       progress: 100,
-      step: "completed",
+      step: CONVERTER_STATES.READY,
       message: "Mengambil dari cache",
       filename: cached.fileName,
       downloadUrl: cached.downloadUrl || jobDownloadUrl(cached.jobId, cached.fileName),
@@ -8862,6 +9272,12 @@ const enqueueConverterJob = (payload = {}) => {
     converterJobs.set(job.id, job);
     return job;
   }
+  for (const existing of converterJobs.values()) {
+    if (existing.cacheKey === cacheKey && ![CONVERTER_STATES.FAILED, CONVERTER_STATES.CANCELLED, CONVERTER_STATES.EXPIRED].includes(existing.status) && Date.now() - Number(existing.createdAt || 0) < jobTtlMs) {
+      existing.idempotentHit = true;
+      return existing;
+    }
+  }
   if (converterQueue.length + converterActive >= runtimeEnv.MAX_QUEUE_SIZE) {
     const error = new Error("Antrean converter sedang penuh. Coba lagi beberapa saat lagi.");
     error.statusCode = 429;
@@ -8869,12 +9285,15 @@ const enqueueConverterJob = (payload = {}) => {
     throw error;
   }
   const id = nanoid(10);
-  const job = { id, payload, cacheKey, status: "queued", progress: 0, step: "queued", message: "Masuk antrean", logs: ["Queued"], createdAt: Date.now(), cached: false };
+  const job = { id, payload, cacheKey, status: CONVERTER_STATES.QUEUED, progress: 0, step: CONVERTER_STATES.QUEUED, message: "Masuk antrean", logs: ["Queued"], createdAt: Date.now(), cached: false };
   converterJobs.set(id, job);
   converterQueue.push(id);
   controlState.waiting = converterQueue.length;
   controlState.queueLength = converterQueue.length + converterActive;
   conversionMetrics.started += 1;
+  recordConversionMetric("started", { jobId: id });
+  logger.info("converter_job_queued", { requestId: payload.requestId, jobId: id, sourceDomain: (() => { try { return new URL(payload.url || payload.mediaUrl || "").hostname; } catch { return null; } })() });
+  scheduleConverterJobPersist();
   pumpConverterQueue();
   return job;
 };
@@ -8884,26 +9303,35 @@ setInterval(async () => {
   for (const [key, item] of converterCache) {
     if (item.expiresAt <= now) converterCache.delete(key);
   }
+  let changed = false;
   for (const [id, job] of converterJobs) {
-    if ((job.completedAt || job.createdAt || 0) && now - (job.completedAt || job.createdAt) > outputTtlMs) {
+    if ((job.completedAt || job.createdAt || 0) && now - (job.completedAt || job.createdAt) > jobTtlMs) {
+      job.status = CONVERTER_STATES.EXPIRED;
       converterJobs.delete(id);
+      changed = true;
     }
   }
+  await cleanupExpiredOutputFiles().catch(() => {});
+  if (changed) scheduleConverterJobPersist();
 }, runtimeEnv.CLEANUP_INTERVAL_MS).unref?.();
+
+await loadPersistedConverterJobs();
+setTimeout(() => pumpConverterQueue(), 0).unref?.();
 
 app.post("/api/convert", convertRateLimiter, async (req, res) => {
   const user = await resolveRequestUser(req);
   try {
     const payload = { ...(req.body || {}) };
-    const safeUrl = validatePublicMediaUrl(payload.url || payload.mediaUrl || "", runtimeEnv);
+    const safeUrl = await validatePublicMediaUrlDeep(payload.url || payload.mediaUrl || "", runtimeEnv);
     if ((payload.url || payload.mediaUrl) && !safeUrl.ok) return res.status(400).json({ ok: false, errorCategory: "INVALID_URL", error: safeUrl.error, message: "URL tidak valid atau domain tidak didukung." });
     if (payload.async === true || req.query?.mode === "job" || req.get("Prefer") === "respond-async") {
       delete payload.async;
       try {
+        payload.requestId = req.requestId;
         const job = enqueueConverterJob(payload);
         return res.status(job.cached ? 200 : 202).json(serializeConverterJob(job));
       } catch (queueErr) {
-        return res.status(queueErr.statusCode || 500).json({ ok: false, errorCategory: queueErr.errorCategory || "QUEUE_ERROR", message: queueErr.message || "Gagal membuat job" });
+        return res.status(queueErr.statusCode || 500).json({ ok: false, success: false, errorCategory: queueErr.errorCategory || "QUEUE_ERROR", message: queueErr.message || "Gagal membuat job", error: buildConverterError({ code: queueErr.errorCategory || CONVERTER_ERROR_CODES.INTERNAL_ERROR, message: queueErr.message || "Gagal membuat job", correlationId: req.requestId }) });
       }
     }
     try {
@@ -8954,6 +9382,7 @@ app.post("/api/convert", convertRateLimiter, async (req, res) => {
     }
     return res.json(result);
   } catch (e) {
+    recordError(e, { requestId: req.requestId, route: "/api/convert" });
     const msg = e?.message || "Gagal memproses";
     const status = /tidak valid|tidak dikenali/i.test(msg) ? 400 : 500;
     return res.status(status).json({ error: msg, logs: e?.logs });
@@ -8963,12 +9392,14 @@ app.post("/api/convert", convertRateLimiter, async (req, res) => {
 
 app.post("/api/fetch", convertRateLimiter, async (req, res) => {
   try {
+    await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip);
     const rawUrl = req.body?.url || req.body?.mediaUrl || "";
-    const safeUrl = validatePublicMediaUrl(rawUrl, runtimeEnv);
+    const safeUrl = await validatePublicMediaUrlDeep(rawUrl, runtimeEnv);
     if (rawUrl && !safeUrl.ok) return res.status(400).json({ ok: false, errorCategory: "INVALID_URL", error: safeUrl.error, message: "URL tidak valid atau domain tidak didukung." });
     const metadata = await fetchVideoInfo({ url: rawUrl, keyword: req.body?.keyword, preferLang: req.body?.preferLang });
     return res.json({ ok: true, metadata, status: "completed", progress: 100, step: "metadata" });
   } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/api/fetch" });
     const wrapped = publicDownloadError(err);
     return res.status(400).json({ ok: false, errorCategory: wrapped.errorCategory, message: wrapped.message, hint: wrapped.hint, adminActionRequired: wrapped.adminActionRequired });
   }
@@ -8988,20 +9419,59 @@ app.get("/api/jobs/:id/logs", (req, res) => {
 
 app.get("/api/jobs/:id/download", (req, res) => {
   const job = converterJobs.get(String(req.params.id || ""));
-  if (!job || job.status !== "completed" || !job.filename) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "File belum tersedia" });
+  if (!isJobDownloadReady(job)) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "File belum tersedia" });
   const fullPath = pathResolve(JOBS_DIR, job.filename);
   if (!fullPath.startsWith(pathResolve(JOBS_DIR)) || !existsSync(fullPath)) return res.status(404).json({ ok: false, errorCategory: "UNKNOWN", message: "File tidak ditemukan" });
   if (runtimeEnv.SIGNED_DOWNLOADS) {
-    try { verifySignedDownloadToken({ token: req.query?.token || req.get("x-download-token"), secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET }); }
+    try {
+      const tokenPayload = verifySignedDownloadToken({ token: req.query?.token || req.get("x-download-token"), secret: runtimeEnv.DOWNLOAD_TOKEN_SECRET });
+      if (tokenPayload.file !== job.filename) throw new Error("download_token_file_mismatch");
+    }
     catch { return res.status(403).json({ ok: false, errorCategory: "DOWNLOAD_EXPIRED", message: "Link download sudah kedaluwarsa atau tidak valid. Silakan convert ulang." }); }
   }
+  res.setHeader("Cache-Control", "private, no-store");
+  res.type(job.filename);
   return res.download(fullPath, job.filename);
 });
 
+const cancelConverterJob = (id) => {
+  const job = converterJobs.get(String(id || ""));
+  if (!job) return null;
+  const queued = removeQueuedJobId(job.id);
+  if (job.status === CONVERTER_STATES.READY) return { job, cancelled: false, reason: "completed" };
+  if (!queued && job.startedAt && ![CONVERTER_STATES.FAILED, CONVERTER_STATES.CANCELLED, CONVERTER_STATES.EXPIRED].includes(job.status)) {
+    job.cancelRequested = true;
+    return { job, cancelled: false, reason: "active" };
+  }
+  job.status = CONVERTER_STATES.CANCELLED;
+  job.step = CONVERTER_STATES.CANCELLED;
+  job.message = "Job dibatalkan";
+  job.completedAt = Date.now();
+  job.errorCategory = CONVERTER_ERROR_CODES.CANCELLED;
+  job.error = buildConverterError({ code: CONVERTER_ERROR_CODES.CANCELLED, message: "Job dibatalkan oleh pengguna.", retryable: true });
+  job.logs = [...(job.logs || []), "Cancelled"];
+  scheduleConverterJobPersist();
+  return { job, cancelled: true, reason: queued ? "queued" : "terminal" };
+};
+
+app.post("/api/jobs/:id/cancel", (req, res) => {
+  const result = cancelConverterJob(req.params.id);
+  if (!result) return res.status(404).json({ ok: false, errorCategory: CONVERTER_ERROR_CODES.JOB_NOT_FOUND, message: "Job tidak ditemukan", error: buildConverterError({ code: CONVERTER_ERROR_CODES.JOB_NOT_FOUND, message: "Job tidak ditemukan", correlationId: req.requestId }) });
+  return res.json({ ok: true, cancelled: result.cancelled, reason: result.reason, job: serializeConverterJob(result.job) });
+});
+
+app.post("/api/jobs/:id/retry", (req, res) => {
+  const oldJob = converterJobs.get(String(req.params.id || ""));
+  if (!oldJob?.payload) return res.status(404).json({ ok: false, errorCategory: CONVERTER_ERROR_CODES.JOB_NOT_FOUND, message: "Job tidak bisa di-retry", error: buildConverterError({ code: CONVERTER_ERROR_CODES.JOB_NOT_FOUND, message: "Job tidak bisa di-retry", correlationId: req.requestId }) });
+  if (![CONVERTER_STATES.FAILED, CONVERTER_STATES.CANCELLED, CONVERTER_STATES.EXPIRED].includes(oldJob.status)) return res.status(409).json({ ok: false, errorCategory: "JOB_NOT_RETRYABLE", message: "Job masih aktif atau sudah selesai" });
+  const job = enqueueConverterJob({ ...oldJob.payload, requestId: req.requestId, retryOf: oldJob.id });
+  return res.status(202).json(serializeConverterJob(job));
+});
+
 app.delete("/api/jobs/:id", (req, res) => {
-  const id = String(req.params.id || "");
-  const existed = converterJobs.delete(id);
-  return res.json({ ok: true, jobId: id, deleted: existed });
+  const result = cancelConverterJob(req.params.id);
+  if (!result) return res.status(404).json({ ok: false, errorCategory: CONVERTER_ERROR_CODES.JOB_NOT_FOUND, message: "Job tidak ditemukan" });
+  return res.json({ ok: true, jobId: result.job.id, deleted: result.cancelled, cancelled: result.cancelled, reason: result.reason });
 });
 
 app.get("/api/admin/queue/status", (req, res) => {
@@ -9010,25 +9480,26 @@ app.get("/api/admin/queue/status", (req, res) => {
   const completed = jobs.filter((j) => j.status === "completed");
   const failed = jobs.filter((j) => j.status === "failed");
   const durations = completed.map((j) => (j.completedAt || Date.now()) - (j.startedAt || j.createdAt || Date.now())).filter(Number.isFinite);
-  return res.json({ ok: true, queued: converterQueue.length, processing: converterActive, success: completed.length, failed: failed.length, avgProcessingMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0, fastestMs: durations.length ? Math.min(...durations) : 0, slowestMs: durations.length ? Math.max(...durations) : 0, lastErrors: failed.slice(-10).map((j) => ({ jobId: j.id, errorCategory: j.errorCategory, error: j.error })) });
+  return res.json({ ok: true, ...getQueueMetrics(), success: completed.length, avgProcessingMs: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0, fastestMs: durations.length ? Math.min(...durations) : 0, slowestMs: durations.length ? Math.max(...durations) : 0, lastErrors: failed.slice(-10).map((j) => ({ jobId: j.id, errorCategory: j.errorCategory, error: j.error })) });
 });
 
 app.post("/api/admin/queue/clear", (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   converterQueue.length = 0;
   controlState.waiting = 0;
   controlState.queueLength = converterActive;
+  auditAdminAction({ req, action: "queue_clear", targetType: "queue", result: "success" });
   return res.json({ ok: true, queue: { queued: 0, processing: converterActive } });
 });
 
 app.post("/api/admin/converter/disable", (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   controlState.convertEnabled = false;
   return res.json({ ok: true, convertEnabled: false });
 });
 
 app.post("/api/admin/converter/enable", (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   controlState.convertEnabled = true;
   return res.json({ ok: true, convertEnabled: true });
 });
@@ -9313,6 +9784,8 @@ app.post("/api/private-share/:id/unlock", (req, res) => {
   }
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!password) return res.status(400).json({ error: "Password wajib diisi" });
+  const attempt = allowPrivateShareUnlock(share.id, req);
+  if (!attempt.ok) return res.status(429).json({ error: "Terlalu banyak percobaan unlock room", retryAfter: attempt.retryAfter });
   const hash = hashSharePassword(password);
   let match = false;
   try {
@@ -9715,10 +10188,13 @@ app.post("/api/convert-playlist", convertRateLimiter, async (req, res) => {
 });
 
 // ==== Admin: upload cookies.txt (Authorization: Bearer <token>) ====
-const BEARER = process.env.ADMIN_BEARER || process.env.ADMIN_TOKEN || "";
-const ADMIN_USER_HASH = process.env.ADMIN_USER_HASH || (process.env.ADMIN_USERNAME ? createHash("sha256").update(String(process.env.ADMIN_USERNAME), "utf8").digest("hex") : "");
-const ADMIN_PASS_HASH = process.env.ADMIN_PASS_HASH || (process.env.ADMIN_PASSWORD ? createHash("sha256").update(String(process.env.ADMIN_PASSWORD), "utf8").digest("hex") : "");
-const ADMIN_ENABLED = Boolean(BEARER && ADMIN_USER_HASH && ADMIN_PASS_HASH);
+const BEARER = runtimeEnv.ADMIN_BEARER || "";
+const ADMIN_USER_HASH = runtimeEnv.ADMIN_USER_HASH || (runtimeEnv.ADMIN_USERNAME ? createHash("sha256").update(String(runtimeEnv.ADMIN_USERNAME), "utf8").digest("hex") : "");
+const ADMIN_PASS_HASH = runtimeEnv.ADMIN_PASS_HASH || "";
+const ADMIN_SESSION_SECRET = runtimeEnv.ADMIN_JWT_SECRET || runtimeEnv.SESSION_SECRET || "";
+const ADMIN_SESSION_COOKIE = "ytconv_admin";
+const ADMIN_CSRF_COOKIE = "ytconv_admin_csrf";
+const ADMIN_ENABLED = Boolean((BEARER || ADMIN_SESSION_SECRET) && ADMIN_USER_HASH && ADMIN_PASS_HASH);
 
 const hashText = (value) => createHash("sha256").update(String(value ?? ""), "utf8").digest("hex");
 
@@ -9733,29 +10209,159 @@ const safeCompare = (left, right) => {
   }
 };
 
-const isAdminBearerValid = (req) => {
-  if (!ADMIN_ENABLED) return false;
-  const auth = req.get("Authorization") || "";
-  return auth === `Bearer ${BEARER}`;
+const parseCookiesHeader = (header = "") => Object.fromEntries(String(header || "").split(";").map((part) => {
+  const i = part.indexOf("=");
+  if (i < 0) return null;
+  return [part.slice(0, i).trim(), decodeURIComponent(part.slice(i + 1).trim())];
+}).filter(Boolean));
+
+
+const signAdminCsrf = (nonce) => {
+  if (!ADMIN_SESSION_SECRET || !nonce) return "";
+  const mac = createHmac("sha256", ADMIN_SESSION_SECRET).update(String(nonce)).digest("base64url");
+  return `${nonce}.${mac}`;
 };
 
-app.post("/admin/login", authRateLimiter, (req, res) => {
+const verifyAdminCsrf = (token) => {
+  const [nonce, mac] = String(token || "").split(".");
+  if (!nonce || !mac || nonce.length > 96) return false;
+  return safeCompare(signAdminCsrf(nonce), `${nonce}.${mac}`);
+};
+
+const setAdminCsrfCookie = (res, token) => {
+  const attrs = [`${ADMIN_CSRF_COOKIE}=${encodeURIComponent(token)}`, "Path=/", `Max-Age=${runtimeEnv.ADMIN_SESSION_TTL_SECONDS}`, `SameSite=${runtimeEnv.COOKIE_SAME_SITE || "Lax"}`];
+  if (runtimeEnv.SECURE_COOKIES) attrs.push("Secure");
+  const prev = res.getHeader("Set-Cookie");
+  const next = attrs.join("; ");
+  res.setHeader("Set-Cookie", Array.isArray(prev) ? [...prev, next] : prev ? [prev, next] : next);
+};
+
+const clearAdminCsrfCookie = (res) => {
+  const attrs = [`${ADMIN_CSRF_COOKIE}=`, "Path=/", "Max-Age=0", `SameSite=${runtimeEnv.COOKIE_SAME_SITE || "Lax"}`];
+  if (runtimeEnv.SECURE_COOKIES) attrs.push("Secure");
+  const prev = res.getHeader("Set-Cookie");
+  const next = attrs.join("; ");
+  res.setHeader("Set-Cookie", Array.isArray(prev) ? [...prev, next] : prev ? [prev, next] : next);
+};
+
+const signAdminSession = (payload) => {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const mac = createHmac("sha256", ADMIN_SESSION_SECRET).update(encoded).digest("base64url");
+  return `${encoded}.${mac}`;
+};
+
+const verifyAdminSession = (token) => {
+  if (!ADMIN_SESSION_SECRET || !token) return false;
+  const [encoded, mac] = String(token).split(".");
+  if (!encoded || !mac) return false;
+  const expected = createHmac("sha256", ADMIN_SESSION_SECRET).update(encoded).digest("base64url");
+  if (!safeCompare(mac, expected)) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    return payload?.role === "admin" && Number(payload.exp || 0) > Date.now();
+  } catch { return false; }
+};
+
+const setAdminSessionCookie = (res) => {
+  const ttlMs = runtimeEnv.ADMIN_SESSION_TTL_SECONDS * 1000;
+  const token = signAdminSession({ role: "admin", iat: Date.now(), exp: Date.now() + ttlMs });
+  const attrs = [`${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}`, "Path=/", "HttpOnly", `Max-Age=${runtimeEnv.ADMIN_SESSION_TTL_SECONDS}`, `SameSite=${runtimeEnv.COOKIE_SAME_SITE || "Lax"}`];
+  if (runtimeEnv.SECURE_COOKIES) attrs.push("Secure");
+  res.setHeader("Set-Cookie", attrs.join("; "));
+};
+
+const clearAdminSessionCookie = (res) => {
+  const attrs = [`${ADMIN_SESSION_COOKIE}=`, "Path=/", "HttpOnly", "Max-Age=0", `SameSite=${runtimeEnv.COOKIE_SAME_SITE || "Lax"}`];
+  if (runtimeEnv.SECURE_COOKIES) attrs.push("Secure");
+  res.setHeader("Set-Cookie", attrs.join("; "));
+  clearAdminCsrfCookie(res);
+};
+
+const isSameOriginAdminRequest = (req) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(String(req.method || "GET").toUpperCase())) return true;
+  const origin = req.get("origin") || "";
+  const referer = req.get("referer") || "";
+  const allowed = new Set([`${req.protocol}://${req.get("host")}`]);
+  try { allowed.add(new URL(runtimeEnv.PUBLIC_BASE_URL).origin); } catch { }
+  const candidate = origin || referer;
+  if (!candidate) return false;
+  try { return allowed.has(new URL(candidate).origin); } catch { return false; }
+};
+
+const hasValidAdminBearer = (req) => {
+  const auth = req.get("Authorization") || "";
+  return Boolean(ADMIN_ENABLED && BEARER && auth === `Bearer ${BEARER}`);
+};
+
+const hasValidAdminCookieSession = (req) => {
+  if (!ADMIN_ENABLED) return false;
+  const cookies = parseCookiesHeader(req.get("cookie") || "");
+  return verifyAdminSession(cookies[ADMIN_SESSION_COOKIE]) && isSameOriginAdminRequest(req);
+};
+
+const isAdminBearerValid = (req) => hasValidAdminBearer(req) || hasValidAdminCookieSession(req);
+
+const requireAdminCsrf = (req, res) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(String(req.method || "GET").toUpperCase())) return true;
+  if (hasValidAdminBearer(req)) return true;
+  if (!hasValidAdminCookieSession(req)) return false;
+  const cookies = parseCookiesHeader(req.get("cookie") || "");
+  const headerToken = req.get("x-csrf-token") || req.get("x-admin-csrf") || "";
+  const cookieToken = cookies[ADMIN_CSRF_COOKIE] || "";
+  if (!headerToken || !cookieToken || !safeCompare(headerToken, cookieToken) || !verifyAdminCsrf(headerToken)) {
+    res.status(403).json({ ok: false, error: "csrf_required", message: "CSRF token admin tidak valid.", requestId: req.requestId });
+    return false;
+  }
+  return true;
+};
+
+const requireAdminWrite = (req, res) => {
+  if (!isAdminBearerValid(req)) {
+    res.status(401).json({ ok: false, error: "unauthorized", requestId: req.requestId });
+    return false;
+  }
+  return requireAdminCsrf(req, res);
+};
+
+app.post("/admin/login", authRateLimiter, async (req, res) => {
   try {
     if (!ADMIN_ENABLED) {
       return res.status(503).json({ error: "admin_disabled" });
     }
+    try { await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip); } catch (err) { return res.status(err?.statusCode || 400).json({ error: err?.code || "turnstile_failed", message: err?.message || "Verifikasi anti-bot gagal" }); }
     const { username = "", password = "" } = req.body || {};
     const validUser = safeCompare(hashText(username), ADMIN_USER_HASH);
     const validPass = safeCompare(hashText(password), ADMIN_PASS_HASH);
     if (!validUser || !validPass) {
-      return res.status(401).json({ error: "invalid credentials" });
+      auditAdminAction({ req, action: "admin_login", result: "failure", message: "invalid_credentials" });
+      return res.status(401).json({ error: "invalid_credentials", message: "Username atau password tidak valid", requestId: req.requestId });
     }
-    return res.json({ ok: true, token: BEARER });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    setAdminSessionCookie(res);
+    const csrfToken = signAdminCsrf(randomBytes(24).toString("base64url"));
+    setAdminCsrfCookie(res, csrfToken);
+    auditAdminAction({ req, action: "admin_login", result: "success" });
+    return res.json({ ok: true, csrfToken, requestId: req.requestId });
+  } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/admin/login" });
+    return res.status(500).json({ error: "admin_login_failed", requestId: req.requestId });
   }
 });
 
+
+app.get("/api/admin/csrf", (req, res) => {
+  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized", requestId: req.requestId });
+  const csrfToken = signAdminCsrf(randomBytes(24).toString("base64url"));
+  setAdminCsrfCookie(res, csrfToken);
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  return res.json({ ok: true, csrfToken, requestId: req.requestId });
+});
+
+app.post("/admin/logout", (req, res) => {
+  if (!requireAdminCsrf(req, res)) return;
+  clearAdminSessionCookie(res);
+  auditAdminAction({ req, action: "admin_logout", result: "success" });
+  return res.json({ ok: true, requestId: req.requestId });
+});
 
 const sanitizedCookiesStatus = async () => {
   const status = await getCookiesStatus();
@@ -9793,7 +10399,7 @@ const testAdminCookies = async () => {
 
 app.post("/api/admin/cookies/upload", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
   try {
-    if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+    if (!requireAdminWrite(req, res)) return;
     const filename = req.get("x-file-name") || "cookies.txt";
     const saved = await saveCookies(req.body, { filename });
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
@@ -9811,13 +10417,13 @@ app.get("/api/admin/cookies/status", async (req, res) => {
 });
 
 app.post("/api/admin/cookies/test", async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const result = await testAdminCookies();
   return res.status(result.ok ? 200 : 400).json(result);
 });
 
 app.delete("/api/admin/cookies", async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   await deleteCookies();
   return res.json({ ok: true, ...(await sanitizedCookiesStatus()) });
 });
@@ -9825,7 +10431,7 @@ app.delete("/api/admin/cookies", async (req, res) => {
 app.post("/admin/upload-cookies", express.text({ type: "*/*", limit: "1mb" }), async (req, res) => {
   try {
     if (!ADMIN_ENABLED) return res.status(503).json({ error: "admin_disabled" });
-    if (!isAdminBearerValid(req)) return res.status(401).json({ error: "unauthorized" });
+    if (!requireAdminWrite(req, res)) return;
 
     const saved = await saveCookies(req.body);
     const workerBase = process.env.WORKER_API_BASE;
@@ -9974,6 +10580,39 @@ const retentionUsers = new Map();
 const apiRouteStats = new Map();
 const forumAppeals = new Map();
 const forumUnblockedUsers = new Map();
+const forumReports = new Map();
+const forumBlocks = new Map();
+const normalizeForumText = (value, max = 2000) => String(value || "").replace(/[<>]/g, "").trim().slice(0, max);
+const addForumBlock = (blockerId, blockedId) => {
+  const blocker = normalizeSocketId(blockerId || "");
+  const blocked = normalizeSocketId(blockedId || "");
+  if (!blocker || !blocked || blocker === blocked) return false;
+  const set = forumBlocks.get(blocker) || new Set();
+  set.add(blocked);
+  forumBlocks.set(blocker, set);
+  return true;
+};
+const isForumBlockedBy = (recipientId, senderId) => Boolean(forumBlocks.get(normalizeSocketId(recipientId || ""))?.has(normalizeSocketId(senderId || "")));
+const addForumReport = (report = {}) => {
+  const reportId = `MOD-${nanoid(10).toUpperCase()}`;
+  const item = {
+    reportId,
+    type: normalizeForumText(report.type || "content", 40),
+    room: normalizeRoom(report.room || "umum"),
+    reporterId: normalizeSocketId(report.reporterId || ""),
+    targetUserId: normalizeSocketId(report.targetUserId || ""),
+    messageId: normalizeForumText(report.messageId || "", 120),
+    reason: normalizeForumText(report.reason || report.text || "", 1200),
+    excerpt: normalizeForumText(report.excerpt || "", 500),
+    submittedAt: new Date().toISOString(),
+    source: normalizeForumText(report.source || "api", 40),
+  };
+  forumReports.set(reportId, item);
+  if (forumReports.size > 250) forumReports.delete(forumReports.keys().next().value);
+  pushActivityLog("forum_report_created", `Forum report ${reportId} dibuat`, { reportId, room: item.room, targetUserId: item.targetUserId });
+  emitAdminEvent("admin:forumReport", item);
+  return item;
+};
 const abMetrics = {
   A: { started: 0, success: 0 },
   B: { started: 0, success: 0 },
@@ -10123,7 +10762,7 @@ const submitForumAppeal = async ({
     userId: appeal.userId,
     source,
   });
-  io.emit("admin:appealCreated", {
+  emitAdminEvent("admin:appealCreated", {
     appealId,
     submittedAt,
     userId: persistedAppeal.userId,
@@ -10179,6 +10818,50 @@ app.use((req, res, next) => {
     apiRouteStats.set(routeKey, rec);
   });
   next();
+});
+
+app.post('/api/data-request', ticketRateLimiter, async (req, res) => {
+  try {
+    const { name, email, requestType, message } = req.body || {};
+    const safeName = String(name || "").trim().slice(0, 100);
+    const safeEmail = String(email || "").trim().slice(0, 200);
+    const safeType = String(requestType || "other").trim().toLowerCase().slice(0, 40);
+    const safeMessage = String(message || "").trim().slice(0, 2000);
+    if (!safeName || !/^\S+@\S+\.\S+$/.test(safeEmail) || !safeMessage) {
+      return res.status(400).json({ ok: false, error: "invalid_data_request", message: "Nama, email valid, dan detail permintaan wajib diisi." });
+    }
+    const allowedTypes = new Set(["access", "correction", "deletion", "export", "copyright", "other"]);
+    const type = allowedTypes.has(safeType) ? safeType : "other";
+    const tid = `TKT-${nanoid(12).toUpperCase()}`;
+    const now = new Date().toISOString();
+    const statusLink = `${DEFAULT_PUBLIC_BASE_URL || "https://ytconv.up.railway.app"}/ticket-status.html?ticket_id=${encodeURIComponent(tid)}`;
+    const ticket = await createTicket({
+      ticketId: tid,
+      name: safeName,
+      email: safeEmail,
+      category: `data_request:${type}`,
+      message: safeMessage,
+      proofCount: 0,
+      proofs: [],
+      submittedAt: now,
+      status: "received",
+      statusLabel: "Diterima",
+      statusUpdatedAt: now,
+      statusHistory: [{ status: "received", label: "Diterima", at: now, note: "Permintaan data dibuat oleh user" }],
+      adminReply: "",
+      chatHistory: [{ id: `CHAT-${Date.now().toString(36).toUpperCase().slice(-8)}`, sender: "user", message: safeMessage, at: now }],
+      statusLink,
+      privacyRequestType: type,
+      ip: req.ip,
+    });
+    supportTickets.set(tid, ticket);
+    pushActivityLog("data_request_created", `Permintaan data ${tid} dibuat`, { ticketId: tid, category: type });
+    emitAdminEvent("admin:newTicket", { ticketId: tid, submittedAt: now, category: `data_request:${type}`, status: "received", statusLabel: "Diterima", name: safeName });
+    return res.status(201).json({ ok: true, ticketId: tid, statusLink, message: "Permintaan data diterima dan dibuat sebagai tiket dukungan." });
+  } catch (err) {
+    recordError(err, { requestId: req.requestId, route: "/api/data-request" });
+    return res.status(500).json({ ok: false, error: "data_request_failed", message: "Permintaan belum dapat dikirim. Coba lagi nanti.", requestId: req.requestId });
+  }
 });
 
 app.post('/api/contact', ticketRateLimiter, async (req, res) => {
@@ -10365,7 +11048,7 @@ app.post('/api/contact', ticketRateLimiter, async (req, res) => {
     }) || initialTicket;
     supportTickets.set(tid, persistedTicket);
     pushActivityLog("ticket_created", `Tiket ${tid} dibuat`, { ticketId: tid, category: ticket.category });
-    io.emit("admin:newTicket", {
+    emitAdminEvent("admin:newTicket", {
       ticketId: tid,
       submittedAt: ticket.submittedAt,
       category: ticket.category,
@@ -10391,6 +11074,23 @@ app.post('/api/contact', ticketRateLimiter, async (req, res) => {
 });
 
 
+
+app.post('/api/forum/report', ticketRateLimiter, (req, res) => {
+  const body = req.body || {};
+  const reporterId = normalizeSocketId(body.reporterId || body.userId || "");
+  const targetUserId = normalizeSocketId(body.targetUserId || "");
+  const reason = normalizeForumText(body.reason || body.text || "", 1200);
+  if (!reporterId || !reason) return res.status(400).json({ ok: false, error: "reporter_and_reason_required" });
+  const report = addForumReport({ ...body, reporterId, targetUserId, source: "api" });
+  return res.status(201).json({ ok: true, reportId: report.reportId, status: "received" });
+});
+
+app.post('/api/forum/block', ticketRateLimiter, (req, res) => {
+  const blockerId = normalizeSocketId(req.body?.blockerId || req.body?.userId || "");
+  const blockedId = normalizeSocketId(req.body?.blockedId || req.body?.targetUserId || "");
+  if (!addForumBlock(blockerId, blockedId)) return res.status(400).json({ ok: false, error: "invalid_block_request" });
+  return res.json({ ok: true, blockerId, blockedId });
+});
 
 app.post('/api/forum/moderation-report', async (req, res) => {
   try {
@@ -10572,14 +11272,14 @@ app.get("/api/admin/tickets", async (req, res) => {
 });
 
 app.delete("/api/admin/tickets/:ticketId", async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   if (!ticketId) return res.status(400).json({ ok: false, error: "ticket_id_required" });
   try {
     const deleted = await deleteTicket(ticketId);
     if (!deleted) return res.status(404).json({ ok: false, error: "ticket_not_found" });
     supportTickets.delete(ticketId);
-    io.emit("admin:ticketDeleted", { ticketId });
+    emitAdminEvent("admin:ticketDeleted", { ticketId });
     io.to(ticketRoom(ticketId)).emit("ticket:deleted", { ticketId });
     pushActivityLog("ticket_deleted", `Tiket ${ticketId} dihapus admin`, { ticketId });
     return res.json({ ok: true, ticketId });
@@ -10603,15 +11303,16 @@ app.get("/api/admin/appeals", async (req, res) => {
 });
 
 app.delete("/api/admin/appeals/:appealId", async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const appealId = String(req.params.appealId || "").trim().toUpperCase();
   if (!appealId) return res.status(400).json({ ok: false, error: "appeal_id_required" });
   try {
     const deleted = await deleteAppeal(appealId);
     if (!deleted) return res.status(404).json({ ok: false, error: "appeal_not_found" });
     forumAppeals.delete(appealId);
-    io.emit("admin:appealDeleted", { appealId });
+    emitAdminEvent("admin:appealDeleted", { appealId });
     pushActivityLog("appeal_deleted", `Appeal ${appealId} dihapus admin`, { appealId });
+    auditAdminAction({ req, action: "appeal_delete", targetType: "appeal", targetId: appealId, result: "success" });
     return res.json({ ok: true, appealId });
   } catch (err) {
     console.error(`[appeal-store] gagal hapus ${appealId}`, err);
@@ -10631,7 +11332,7 @@ app.post("/api/load-test/report", express.json({ limit: "256kb" }), (req, res) =
   }
   const saved = addLoadTestReport(req.body || {});
   if (!saved) return res.status(400).json({ ok: false, error: "invalid_payload" });
-  io.emit("admin:loadTestReport", {
+  emitAdminEvent("admin:loadTestReport", {
     runId: saved.runId,
     scenario: saved.scenario,
     failureRate: saved.failureRate,
@@ -10647,7 +11348,7 @@ app.get("/api/admin/load-tests", (req, res) => {
 });
 
 app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const appealId = String(req.params.appealId || "").trim().toUpperCase();
   let status = String(req.body?.status || "").trim().toLowerCase();
   if (status === "resolved") status = "accepted";
@@ -10704,7 +11405,7 @@ app.patch("/api/admin/appeals/:appealId", express.json({ limit: "256kb" }), asyn
     appealId,
     status: appeal.status,
   });
-  io.emit("admin:appealUpdated", {
+  emitAdminEvent("admin:appealUpdated", {
     appealId,
     status: appeal.status,
     statusLabel: appeal.statusLabel,
@@ -10959,7 +11660,7 @@ app.get("/api/admin/stats", async (req, res) => {
 });
 
 app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   const requestedStatus = String(req.body?.status || "").trim().toLowerCase();
   const requestedLabel = String(req.body?.statusLabel || "").trim();
@@ -11002,7 +11703,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
       adminReply: ticket.adminReply || "",
       statusUpdatedAt: nowIso,
     };
-    io.emit("admin:ticketUpdated", updatePayload);
+    emitAdminEvent("admin:ticketUpdated", updatePayload);
     io.to(ticketRoom(ticketId)).emit("ticket:updated", updatePayload);
     pushActivityLog("ticket_updated", `Tiket ${ticketId} diubah ke ${ticket.statusLabel}`, { ticketId, status: ticket.status });
 
@@ -11032,7 +11733,7 @@ app.patch("/api/admin/tickets/:ticketId", express.json({ limit: "512kb" }), asyn
 });
 
 app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), async (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   const text = String(req.body?.message || "").trim();
   if (!text) return res.status(400).json({ ok: false, error: "message_required" });
@@ -11051,9 +11752,10 @@ app.post("/api/admin/tickets/:ticketId/chat", express.json({ limit: "512kb" }), 
     });
     if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
     supportTickets.set(ticketId, ticket);
-    io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+    emitAdminEvent("admin:ticketChat", { ticketId, chat: chatEntry });
     io.to(ticketRoom(ticketId)).emit("ticket:chat", { ticketId, chat: chatEntry });
     pushActivityLog("admin_reply", `Admin membalas tiket ${ticketId}`, { ticketId });
+    auditAdminAction({ req, action: "ticket_reply", targetType: "ticket", targetId: ticketId, result: "success" });
     return res.json({ ok: true, chat: chatEntry, ticketId });
   } catch (err) {
     console.error(`[ticket-store] gagal menyimpan chat admin ${ticketId}`, err);
@@ -11085,9 +11787,9 @@ app.post("/api/ticket/:ticketId/chat", express.json({ limit: "512kb" }), async (
     if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
     supportTickets.set(ticketId, ticket);
     const payload = { ticketId, chat: chatEntry };
-    io.emit("admin:ticketChat", payload);
+    emitAdminEvent("admin:ticketChat", payload);
     io.to(ticketRoom(ticketId)).emit("ticket:chat", payload);
-    io.emit("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
+    emitAdminEvent("admin:ticketUpdated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
     io.to(ticketRoom(ticketId)).emit("ticket:updated", { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso });
     pushActivityLog("user_reply", `User membalas tiket ${ticketId}`, { ticketId });
     return res.json({ ok: true, chat: chatEntry, ticketId, remaining: null });
@@ -11181,9 +11883,9 @@ app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async 
     if (!ticket) return res.status(404).json({ ok: false, error: "ticket_not_found" });
     supportTickets.set(ticketId, ticket);
     const updatePayload = { ticketId, status: ticket.status, statusLabel: ticket.statusLabel, statusUpdatedAt: nowIso };
-    io.emit("admin:ticketUpdated", updatePayload);
+    emitAdminEvent("admin:ticketUpdated", updatePayload);
     io.to(ticketRoom(ticketId)).emit("ticket:updated", updatePayload);
-    io.emit("admin:ticketChat", { ticketId, chat: chatEntry });
+    emitAdminEvent("admin:ticketChat", { ticketId, chat: chatEntry });
     io.to(ticketRoom(ticketId)).emit("ticket:chat", { ticketId, chat: chatEntry });
     pushActivityLog("ticket_proof_uploaded", `User upload bukti tambahan ${ticketId}`, { ticketId, count: uploaded.length });
     return res.json({ ok: true, uploaded, count: uploaded.length, ticketId });
@@ -11194,7 +11896,7 @@ app.post("/api/ticket/:ticketId/proofs", express.json({ limit: "12mb" }), async 
 });
 
 app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
-  if (!isAdminBearerValid(req)) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (!requireAdminWrite(req, res)) return;
   const action = String(req.body?.action || "").trim();
   if (action === "toggle_convert") {
     controlState.convertEnabled = !controlState.convertEnabled;
@@ -11210,7 +11912,8 @@ app.post("/api/admin/control", express.json({ limit: "128kb" }), (req, res) => {
     return res.status(400).json({ ok: false, error: "unknown_action" });
   }
   pushActivityLog("admin_control", `Control action: ${action}`, { action });
-  io.emit("admin:controlUpdated", { ...controlState });
+  auditAdminAction({ req, action: `admin_control:${action}`, targetType: "control", result: "success" });
+  emitAdminEvent("admin:controlUpdated", { ...controlState });
   io.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   emitDashboardStats();
   return res.json({ ok: true, control: { ...controlState } });
@@ -11220,6 +11923,10 @@ app.get("/ticket/:ticketId", (req, res) => {
   const ticketId = String(req.params.ticketId || "").trim().toUpperCase();
   if (!ticketId) return res.sendFile(join(__dirname, "public-ui", "ticket-status.html"));
   return res.redirect(302, `/ticket-status.html?ticket_id=${encodeURIComponent(ticketId)}`);
+});
+
+app.get("/admin", (req, res) => {
+  return res.redirect(302, "/admin/dashboard");
 });
 
 app.get("/admin/tickets", (req, res) => {
@@ -11240,6 +11947,18 @@ const io = new SocketIOServer(httpServer, {
     credentials: true,
   },
 });
+
+function isAdminSocketHandshake(socket) {
+  if (socket?.handshake?.auth?.adminBearer && BEARER && safeCompare(socket.handshake.auth.adminBearer, BEARER)) return true;
+  const cookies = parseCookiesHeader(socket?.handshake?.headers?.cookie || "");
+  const sessionOk = verifyAdminSession(cookies[ADMIN_SESSION_COOKIE]);
+  const csrfToken = String(socket?.handshake?.auth?.csrfToken || "");
+  return Boolean(sessionOk && csrfToken && cookies[ADMIN_CSRF_COOKIE] && safeCompare(csrfToken, cookies[ADMIN_CSRF_COOKIE]) && verifyAdminCsrf(csrfToken));
+}
+
+function emitAdminEvent(event, payload) {
+  io.to("admin").emit(event, payload);
+}
 
 const roomUsers = new Map();
 const socketState = new Map();
@@ -11312,7 +12031,7 @@ const upsertSessionReplay = (socketId, user = null, extras = {}) => {
 };
 
 const emitDashboardStats = () => {
-  io.emit("dashboard_stats", {
+  emitAdminEvent("dashboard_stats", {
     totalUsers: activeUsers.size,
     pageStats: getLiveBreakdown("page"),
     roomStats: getLiveBreakdown("room"),
@@ -11335,7 +12054,38 @@ const broadcastRoomUsers = (room) => {
   io.to(`forum:${room}`).emit("forum:users", { room, users });
 };
 
+const socketEventBuckets = new Map();
+const allowSocketEvent = (socket, eventName, { windowMs = 10_000, max = 20 } = {}) => {
+  const key = `${socket.id}:${eventName}`;
+  const now = Date.now();
+  let bucket = socketEventBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) bucket = { count: 0, resetAt: now + windowMs };
+  bucket.count += 1;
+  socketEventBuckets.set(key, bucket);
+  if (bucket.count > max) {
+    socket.emit("rate_limited", { event: eventName, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) });
+    return false;
+  }
+  return true;
+};
+
+const normalizeSocketId = (value, fallback = "") => String(value || fallback).replace(/[^a-zA-Z0-9:_@.=-]/g, "").slice(0, 120);
+const normalizeRoom = (value) => String(value || "umum").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 48) || "umum";
+const activeCalls = new Map();
+const normalizeCallId = (value) => String(value || "").replace(/[^a-zA-Z0-9:_@.=-]/g, "").slice(0, 120);
+const getRoomTargetSocket = (room, toUserId) => getOrCreateRoomMap(room).get(normalizeSocketId(toUserId || ""));
+const endSocketCalls = (socketId, reason = "disconnected") => {
+  for (const [callId, call] of Array.from(activeCalls.entries())) {
+    if (call.fromSocketId !== socketId && call.toSocketId !== socketId) continue;
+    const otherSocketId = call.fromSocketId === socketId ? call.toSocketId : call.fromSocketId;
+    if (otherSocketId) io.to(otherSocketId).emit("call:end", { room: call.room, callId, reason });
+    activeCalls.delete(callId);
+  }
+};
+
 io.on("connection", (socket) => {
+  const socketIsAdmin = isAdminSocketHandshake(socket);
+  if (socketIsAdmin) socket.join("admin");
   socket.emit("control_state", { ...controlState, updatedAt: new Date().toISOString() });
   activeUsers.set(socket.id, {
     page: "unknown",
@@ -11509,6 +12259,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("forum:chatMessage", async (payload) => {
+    if (!allowSocketEvent(socket, "forum:chatMessage", { max: 8, windowMs: 10_000 })) return;
     const from = socketState.get(socket.id);
     if (!from) return;
     const room = String(from.room || "umum");
@@ -11559,16 +12310,16 @@ io.on("connection", (socket) => {
       return; // don't broadcast
     }
 
-    // Broadcast clean message to room
-    io.to(`forum:${room}`).emit("forum:chatMessage", {
-      userId,
-      name: from.name,
-      text,
-      at: Date.now()
-    });
+    const message = { messageId: `MSG-${nanoid(10).toUpperCase()}`, userId, name: from.name, text, at: Date.now() };
+    const roomMap = getOrCreateRoomMap(room);
+    for (const member of roomMap.values()) {
+      if (!member?.socketId || isForumBlockedBy(member.userId, userId)) continue;
+      io.to(member.socketId).emit("forum:chatMessage", message);
+    }
   });
 
   socket.on("forum:appeal", async (payload) => {
+    if (!allowSocketEvent(socket, "forum:appeal", { max: 2, windowMs: 60_000 })) return;
     const from = socketState.get(socket.id);
     if (!from) return;
     const rec = userViolations.get(from.userId);
@@ -11594,10 +12345,39 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("forum:report", (payload, acknowledge) => {
+    if (!allowSocketEvent(socket, "forum:report", { max: 5, windowMs: 60_000 })) return;
+    const from = socketState.get(socket.id);
+    if (!from) {
+      if (typeof acknowledge === "function") acknowledge({ ok: false, error: "forum_join_required" });
+      return;
+    }
+    const reason = normalizeForumText(payload?.reason || payload?.text || "", 1200);
+    if (!reason) {
+      if (typeof acknowledge === "function") acknowledge({ ok: false, error: "reason_required" });
+      return;
+    }
+    const report = addForumReport({ ...payload, reporterId: from.userId, room: from.room, source: "socket" });
+    if (typeof acknowledge === "function") acknowledge({ ok: true, reportId: report.reportId });
+  });
+
+  socket.on("forum:blockUser", (payload, acknowledge) => {
+    if (!allowSocketEvent(socket, "forum:blockUser", { max: 10, windowMs: 60_000 })) return;
+    const from = socketState.get(socket.id);
+    if (!from) {
+      if (typeof acknowledge === "function") acknowledge({ ok: false, error: "forum_join_required" });
+      return;
+    }
+    const blockedId = normalizeSocketId(payload?.blockedUserId || payload?.targetUserId || "");
+    const ok = addForumBlock(from.userId, blockedId);
+    if (typeof acknowledge === "function") acknowledge(ok ? { ok: true, blockedUserId: blockedId } : { ok: false, error: "invalid_block_request" });
+  });
+
   socket.on("forum:join", (payload) => {
-    const room = String(payload?.room || "umum");
-    const userId = String(payload?.userId || socket.id);
-    const name = String(payload?.name || "Warga");
+    if (!allowSocketEvent(socket, "forum:join", { max: 10, windowMs: 60_000 })) return;
+    const room = normalizeRoom(payload?.room || "umum");
+    const userId = normalizeSocketId(payload?.userId, socket.id);
+    const name = String(payload?.name || "Warga").replace(/[<>]/g, "").slice(0, 80) || "Warga";
     const prev = socketState.get(socket.id);
     if (prev?.room && prev.room !== room) {
       try {
@@ -11608,7 +12388,14 @@ io.on("connection", (socket) => {
       broadcastRoomUsers(prev.room);
     }
 
+    const blockState = isForumUserBlocked({ userId });
+    if (blockState.blocked) {
+      socket.emit("forum:banned", { message: "Akun ini sedang dibatasi dari forum.", appealUrl: "/support" });
+      return;
+    }
     socket.join(`forum:${room}`);
+    socket.data.userId = userId;
+    socket.data.room = room;
     socketState.set(socket.id, { room, userId, name });
     const active = activeUsers.get(socket.id);
     if (active) {
@@ -11643,37 +12430,42 @@ io.on("connection", (socket) => {
     emitDashboardStats();
   });
 
-  socket.on("call:offer", (payload) => {
+  socket.on("call:offer", (payload, acknowledge) => {
+    if (!allowSocketEvent(socket, "call:offer", { max: 12, windowMs: 10_000 })) return;
     const from = socketState.get(socket.id);
     if (!from) return;
-    const room = String(payload?.room || from.room || "umum");
-    const toUserId = String(payload?.toUserId || "");
+    const room = normalizeRoom(payload?.room || from.room || "umum");
+    if (room !== from.room) return;
+    if (payload?.consent !== true) {
+      if (typeof acknowledge === "function") acknowledge({ ok: false, error: "microphone_consent_required" });
+      return;
+    }
+    const toUserId = normalizeSocketId(payload?.toUserId || "");
     const offer = payload?.offer;
-    const callId = String(payload?.callId || "");
+    const callId = normalizeCallId(payload?.callId || `CALL-${nanoid(10).toUpperCase()}`);
     if (!toUserId || !offer || !callId) return;
-    const map = getOrCreateRoomMap(room);
-    const target = map.get(toUserId);
-    if (!target?.socketId) return;
-    io.to(target.socketId).emit("call:offer", {
-      room,
-      callId,
-      fromUserId: from.userId,
-      fromName: from.name,
-      offer,
-    });
+    const target = getRoomTargetSocket(room, toUserId);
+    if (!target?.socketId || target.socketId === socket.id) return;
+    activeCalls.set(callId, { room, fromUserId: from.userId, toUserId, fromSocketId: socket.id, toSocketId: target.socketId, createdAt: Date.now(), status: "offered" });
+    io.to(target.socketId).emit("call:offer", { room, callId, fromUserId: from.userId, fromName: from.name, offer });
+    if (typeof acknowledge === "function") acknowledge({ ok: true, callId });
   });
 
   socket.on("call:answer", (payload) => {
+    if (!allowSocketEvent(socket, "call:answer", { max: 30, windowMs: 10_000 })) return;
     const from = socketState.get(socket.id);
     if (!from) return;
-    const room = String(payload?.room || from.room || "umum");
-    const toUserId = String(payload?.toUserId || "");
+    const room = normalizeRoom(payload?.room || from.room || "umum");
+    if (room !== from.room) return;
+    const toUserId = normalizeSocketId(payload?.toUserId || "");
     const answer = payload?.answer;
-    const callId = String(payload?.callId || "");
-    if (!toUserId || !answer || !callId) return;
-    const map = getOrCreateRoomMap(room);
-    const target = map.get(toUserId);
-    if (!target?.socketId) return;
+    const callId = normalizeCallId(payload?.callId || "");
+    const call = activeCalls.get(callId);
+    if (!toUserId || !answer || !call || call.room !== room || call.toSocketId !== socket.id) return;
+    const target = getRoomTargetSocket(room, toUserId);
+    if (!target?.socketId || target.socketId !== call.fromSocketId) return;
+    call.status = "answered";
+    activeCalls.set(callId, call);
     io.to(target.socketId).emit("call:answer", {
       room,
       callId,
@@ -11683,16 +12475,18 @@ io.on("connection", (socket) => {
   });
 
   socket.on("call:ice", (payload) => {
+    if (!allowSocketEvent(socket, "call:ice", { max: 30, windowMs: 10_000 })) return;
     const from = socketState.get(socket.id);
     if (!from) return;
-    const room = String(payload?.room || from.room || "umum");
-    const toUserId = String(payload?.toUserId || "");
+    const room = normalizeRoom(payload?.room || from.room || "umum");
+    if (room !== from.room) return;
+    const toUserId = normalizeSocketId(payload?.toUserId || "");
     const candidate = payload?.candidate;
-    const callId = String(payload?.callId || "");
-    if (!toUserId || !candidate || !callId) return;
-    const map = getOrCreateRoomMap(room);
-    const target = map.get(toUserId);
-    if (!target?.socketId) return;
+    const callId = normalizeCallId(payload?.callId || "");
+    const call = activeCalls.get(callId);
+    if (!toUserId || !candidate || !call || call.room !== room || (call.fromSocketId !== socket.id && call.toSocketId !== socket.id)) return;
+    const target = getRoomTargetSocket(room, toUserId);
+    if (!target?.socketId || ![call.fromSocketId, call.toSocketId].includes(target.socketId)) return;
     io.to(target.socketId).emit("call:ice", {
       room,
       callId,
@@ -11702,24 +12496,24 @@ io.on("connection", (socket) => {
   });
 
   socket.on("call:end", (payload) => {
+    if (!allowSocketEvent(socket, "call:end", { max: 30, windowMs: 10_000 })) return;
     const from = socketState.get(socket.id);
     if (!from) return;
-    const room = String(payload?.room || from.room || "umum");
-    const toUserId = String(payload?.toUserId || "");
-    const callId = String(payload?.callId || "");
-    if (!toUserId || !callId) return;
-    const map = getOrCreateRoomMap(room);
-    const target = map.get(toUserId);
-    if (target?.socketId) {
-      io.to(target.socketId).emit("call:end", {
-        room,
-        callId,
-        fromUserId: from.userId,
-      });
+    const room = normalizeRoom(payload?.room || from.room || "umum");
+    if (room !== from.room) return;
+    const toUserId = normalizeSocketId(payload?.toUserId || "");
+    const callId = normalizeCallId(payload?.callId || "");
+    const call = activeCalls.get(callId);
+    if (!toUserId || !call || call.room !== room || (call.fromSocketId !== socket.id && call.toSocketId !== socket.id)) return;
+    const target = getRoomTargetSocket(room, toUserId);
+    if (target?.socketId && [call.fromSocketId, call.toSocketId].includes(target.socketId)) {
+      io.to(target.socketId).emit("call:end", { room, callId, fromUserId: from.userId, reason: "ended" });
     }
+    activeCalls.delete(callId);
   });
 
   socket.on("disconnect", () => {
+    endSocketCalls(socket.id, "disconnected");
     const prev = socketState.get(socket.id);
     if (prev) {
       const map = getOrCreateRoomMap(prev.room);
@@ -11734,8 +12528,26 @@ io.on("connection", (socket) => {
   });
 });
 
+const shutdownGracefully = async (signal) => {
+  logger.info("server_shutdown_started", { signal, activeJobs: converterActive, queued: converterQueue.length });
+  await persistConverterJobsNow();
+  await new Promise((resolve) => server.close(resolve));
+  process.exit(0);
+};
+process.once("SIGTERM", () => shutdownGracefully("SIGTERM").catch(() => process.exit(1)));
+process.once("SIGINT", () => shutdownGracefully("SIGINT").catch(() => process.exit(1)));
+
 const server = httpServer.listen(PORT, HOST, () => {
-  console.log(`Server jalan di ${HOST}:${PORT}`);
+  logger.info("server_started", {
+    appVersion: runtimeEnv.APP_VERSION,
+    nodeVersion: process.version,
+    environment: runtimeEnv.APP_ENV,
+    port: PORT,
+    host: HOST,
+    queueDriver: runtimeEnv.QUEUE_DRIVER,
+    healthRoute: "/api/health",
+    runtimeDirs: ensureRuntimeDirectories(runtimeEnv).map((dir) => basename(dir || "runtime")),
+  });
   
   // 💥 Auto Maintenance: Keep yt-dlp up-to-date
   const autoUpdate = () => {
@@ -11769,4 +12581,7 @@ export {
   clearProgress,
   resolveToolVersions,
   createSessionToken,
+  buildAiModelsResponse,
+  signedPublicDownloadUrl,
+  isJobDownloadReady,
 };

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master, work ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.x, 24.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and integration tests
+        run: npm test
+      - name: Security regression tests
+        run: npm run test:security
+      - name: E2E route smoke tests
+        run: npm run test:e2e
+      - name: Accessibility static checks
+        run: npm run test:accessibility
+      - name: Production build check
+        run: npm run build
+      - name: Dependency audit
+        run: npm run audit
+      - name: Secret scan
+        run: npm run secret-scan

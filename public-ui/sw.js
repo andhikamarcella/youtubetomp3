@@ -1,5 +1,6 @@
-const CACHE_NAME = 'ytmp3-ui-v5';
-const CDN_CACHE = 'ytmp3-cdn-v2';
+const APP_VERSION = 'v4.0.0';
+const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
+const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
 const scopeReference = (self.registration && self.registration.scope) || self.location.href;
 const scopeUrl = new URL(scopeReference);
@@ -10,14 +11,27 @@ const APP_SHELL = [
   './',
   'index.html',
   'share.html',
-  'private.html',
+  'manifest.json',
   'manifest.webmanifest',
+  'offline.html',
+  'robots.txt',
   'icons/icon.svg',
   'icons/icon-maskable.svg'
 ].map((entry) => resolveToScopeUrl(entry));
 const NAVIGATION_FALLBACKS = ['./', 'index.html'].map((entry) => resolveToScopeUrl(entry));
 const API_PREFIX = resolveToScopePath('api/');
 const ADMIN_PREFIX = resolveToScopePath('admin/');
+const SENSITIVE_PREFIXES = [
+  API_PREFIX, ADMIN_PREFIX, resolveToScopePath('internal/'), resolveToScopePath('public/jobs/')
+];
+const SENSITIVE_PATHS = new Set([
+  resolveToScopePath('admin-cookies.html'),
+  resolveToScopePath('admin-dashboard.html'),
+  resolveToScopePath('admin-tickets.html'),
+  resolveToScopePath('ticket-status.html'),
+  resolveToScopePath('private.html'),
+  resolveToScopePath('data-request.html')
+]);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -41,6 +55,15 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+
+self.addEventListener('message', (event) => {
+  const type = event?.data?.type;
+  if (type === 'SKIP_WAITING') self.skipWaiting();
+  if (type === 'CLEAR_CACHE') {
+    event.waitUntil(caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))));
+  }
+});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -56,8 +79,8 @@ const shouldHandle = (request) => {
   if (url.origin !== scopeUrl.origin) {
     return /cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(url.host);
   }
-  if (url.pathname.startsWith(API_PREFIX)) return false;
-  if (url.pathname.startsWith(ADMIN_PREFIX)) return false;
+  if (SENSITIVE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) return false;
+  if (SENSITIVE_PATHS.has(url.pathname)) return false;
   return true;
 };
 

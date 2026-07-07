@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Permintaan Data • YTConv</title>
+  <meta name="description" content="Ajukan akses, koreksi, ekspor, atau penghapusan data YTConv melalui tiket dukungan yang dapat dilacak.">
+  <link rel="canonical" href="https://ytconv.up.railway.app/data-request">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <main class="mx-auto max-w-3xl p-5 py-10 leading-7">
+    <a href="/" class="text-cyan-300">← Kembali ke Converter</a>
+    <h1 class="mt-5 text-3xl font-black">Permintaan Data</h1>
+    <p class="mt-3 text-slate-300">Gunakan formulir ini untuk meminta akses, koreksi, ekspor, penghapusan akun, penghapusan tiket/forum, atau klarifikasi retensi data. Jangan masukkan password, cookie, token, atau API key.</p>
+    <form id="dataRequestForm" class="mt-8 space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <label class="block"><span class="text-sm font-semibold">Nama</span><input name="name" required maxlength="100" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2"></label>
+      <label class="block"><span class="text-sm font-semibold">Email untuk balasan</span><input name="email" required type="email" maxlength="200" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2"></label>
+      <label class="block"><span class="text-sm font-semibold">Jenis permintaan</span><select name="requestType" required class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2"><option value="access">Akses data</option><option value="correction">Koreksi data</option><option value="deletion">Penghapusan data/akun</option><option value="export">Ekspor data</option><option value="copyright">Copyright/takedown</option><option value="other">Lainnya</option></select></label>
+      <label class="block"><span class="text-sm font-semibold">Detail</span><textarea name="message" required maxlength="2000" rows="6" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2" placeholder="Sertakan ticket ID, user ID, atau konteks yang relevan. Jangan kirim rahasia."></textarea></label>
+      <button class="rounded-xl bg-cyan-600 px-4 py-3 font-bold hover:bg-cyan-500" type="submit">Kirim Permintaan</button>
+      <p id="result" class="min-h-6 text-sm" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+<script>
+const form = document.getElementById('dataRequestForm');
+const result = document.getElementById('result');
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const button = form.querySelector('button');
+  button.disabled = true;
+  result.textContent = 'Mengirim permintaan...';
+  try {
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const response = await fetch('/api/data-request', { method:'POST', headers:{ 'Content-Type':'application/json', Accept:'application/json' }, body: JSON.stringify(payload) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.message || data.error || 'Permintaan belum dapat dikirim.');
+    result.innerHTML = `Permintaan diterima. Nomor tiket: <a class="text-cyan-300 underline" href="${data.statusLink}">${data.ticketId}</a>`;
+    form.reset();
+  } catch (error) {
+    result.textContent = error.message || 'Gagal mengirim permintaan.';
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

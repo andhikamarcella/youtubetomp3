@@ -21,6 +21,8 @@ const {
   clearProgress,
   resolveToolVersions,
   createSessionToken,
+  signedPublicDownloadUrl,
+  isJobDownloadReady,
 } = mod;
 
 if (server?.unref) server.unref();
@@ -55,6 +57,13 @@ test('buildAssistantResponse memberikan arahan donasi yang jelas', () => {
   assert.match(result.reply, /donasi|Saweria/i);
   assert.ok(Array.isArray(result.suggestions));
   assert.ok(result.suggestions.length > 0);
+});
+
+test('download helper menyiapkan URL file publik dan status ready yang benar', () => {
+  assert.equal(signedPublicDownloadUrl('hasil convert.mp3'), '/public/jobs/hasil%20convert.mp3');
+  assert.equal(isJobDownloadReady({ status: 'ready', filename: 'hasil.mp3' }), true);
+  assert.equal(isJobDownloadReady({ status: 'completed', filename: 'hasil.mp3' }), true);
+  assert.equal(isJobDownloadReady({ status: 'processing', filename: 'hasil.mp3' }), false);
 });
 
 test('POST /api/assistant-chat mengembalikan jawaban subtitle', async () => {
@@ -179,4 +188,43 @@ test('POST /api/cheats/claim mengembalikan XP rahasia', async () => {
   const dupPayload = await duplicate.json();
   assert.equal(dupPayload.alreadyClaimed, true);
   assert.equal(dupPayload.user?.id, 'cheat-api-user');
+});
+
+test('GET /admin/dashboard redirects unauthenticated users to admin login', async () => {
+  const response = await fetch(`${baseUrl}/admin/dashboard`, { redirect: 'manual' });
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get('location') || '', /^\/admin\/login\?next=/);
+  assert.equal(response.headers.get('x-request-id')?.length > 0, true);
+});
+
+test('GET /api/status returns safe public dependency health', async () => {
+  const response = await fetch(`${baseUrl}/api/status`);
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.ok(['operational', 'degraded', 'maintenance'].includes(payload.status));
+  assert.equal(typeof payload.version, 'string');
+  assert.ok(payload.services?.api);
+  assert.ok(payload.services?.converter);
+  const raw = JSON.stringify(payload);
+  assert.doesNotMatch(raw, /DATABASE_URL|REDIS_URL|COOKIE|SECRET|api_secret/i);
+});
+
+test('GET /api/ai/models exposes safe public model modes', async () => {
+  const response = await fetch(`${baseUrl}/api/ai/models?advanced=true`);
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.modes.map((mode) => mode.id), ['auto', 'fast', 'smart']);
+  assert.doesNotMatch(JSON.stringify(payload), /API_KEY|SECRET|Bearer/i);
+});
+
+test('POST /api/assistant-chat rejects unavailable technical model names', async () => {
+  const response = await fetch(`${baseUrl}/api/assistant-chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: 'halo', model: 'non-existent-model' }),
+  });
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.equal(payload.error, 'ai_model_unavailable');
 });

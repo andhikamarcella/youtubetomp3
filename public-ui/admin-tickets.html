@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>Admin Tickets • YTConv</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -199,7 +200,31 @@
   </div>
 
 <script>
-const TOKEN_KEY = 'ytconv_admin_bearer';
+const TOKEN_KEY = 'admin_session_active';
+
+let adminCsrfToken = sessionStorage.getItem('admin_csrf_token') || '';
+async function refreshAdminCsrf(){
+  if (adminCsrfToken) return adminCsrfToken;
+  const r = await nativeFetch('/api/admin/csrf', { cache: 'no-store', credentials: 'same-origin' });
+  const d = await r.json().catch(()=>({}));
+  if (r.ok && d.csrfToken) {
+    adminCsrfToken = d.csrfToken;
+    try { sessionStorage.setItem('admin_csrf_token', adminCsrfToken); } catch {}
+  }
+  return adminCsrfToken;
+}
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, init = {}) => {
+  const url = typeof input === 'string' ? input : String(input?.url || '');
+  const method = String(init?.method || 'GET').toUpperCase();
+  const isAdminWrite = !['GET','HEAD','OPTIONS'].includes(method) && /(^|\/)admin|\/api\/admin\//.test(url) && !/\/admin\/login/.test(url);
+  if (!isAdminWrite) return nativeFetch(input, init);
+  const token = await refreshAdminCsrf();
+  const headers = new Headers(init.headers || {});
+  if (token) headers.set('x-csrf-token', token);
+  return nativeFetch(input, { ...init, headers, credentials: init.credentials || 'same-origin' });
+};
+
 const DRAFT_KEY = 'ytconv_ticket_drafts_v1';
 const fmt = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 const esc = (v = '') => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -219,8 +244,8 @@ const getDraft = id => draftStore[id] || null;
 const clearDraft = id => { delete draftStore[id]; saveDraftStore(); };
 
 const el = id => document.getElementById(id);
-const getToken = () => (localStorage.getItem(TOKEN_KEY) || '').trim();
-const saveToken = t => localStorage.setItem(TOKEN_KEY, t || '');
+const getToken = () => (sessionStorage.getItem(TOKEN_KEY) || 'cookie-session').trim();
+const saveToken = t => sessionStorage.setItem(TOKEN_KEY, t || '');
 
 let allTickets = [];
 let allAppeals = [];
@@ -273,8 +298,8 @@ async function loginAdmin(evt) {
   try {
     const r = await fetch('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || !d.ok || !d.token) throw new Error(d.error || 'Login gagal');
-    saveToken(d.token);
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Login gagal');
+    if(d.csrfToken){ adminCsrfToken=d.csrfToken; try{sessionStorage.setItem('admin_csrf_token',d.csrfToken)}catch{} } saveToken('cookie-session');
     el('authState').textContent = '✅ Login aktif';
     await loadAll();
   } catch (e) {
@@ -283,7 +308,7 @@ async function loginAdmin(evt) {
   }
 }
 
-function logout() { localStorage.removeItem(TOKEN_KEY); el('authState').textContent = 'Logout berhasil'; loadTickets(); }
+async function logout() { sessionStorage.removeItem(TOKEN_KEY); await fetch('/admin/logout', { method: 'POST' }).catch(() => {}); el('authState').textContent = 'Logout berhasil'; loadTickets(); }
 
 function setLastSync() { el('lastSync').textContent = 'Sync: ' + fmt.format(new Date()); }
 
