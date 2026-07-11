@@ -1,7 +1,7 @@
 import express from "express";
 import compression from "compression";
 import cors from "cors";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { promises as fsp } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
@@ -3089,13 +3089,14 @@ const runYtDlpAttempt = (command, args, { label }) =>
 
 const categorizeYtDlpError = (value = "") => {
   const raw = String(value || "");
+  if (/429|too many requests|rate.?limit/i.test(raw)) return "RATE_LIMITED";
   if (/sign in to confirm|not a bot|bot check|use --cookies|cookies-from-browser|confirm you(?:\'|’)re not a bot/i.test(raw)) return "BOT_CHECK";
   if (/login required|sign in|private video|members-only|account/i.test(raw)) return "LOGIN_REQUIRED";
   if (/age[- ]?restricted|confirm your age|age restriction/i.test(raw)) return "AGE_RESTRICTED";
   if (/not available in your country|geo|region/i.test(raw)) return "GEO_BLOCKED";
   if (/private video/i.test(raw)) return "PRIVATE_VIDEO";
-  if (/requested format is not available|no video formats|only images are available|format/i.test(raw)) return "FORMAT_UNAVAILABLE";
-  if (/429|too many requests|rate.?limit/i.test(raw)) return "RATE_LIMITED";
+  if (/JS runtimes:\s*none|No supported JavaScript runtime|JavaScript runtime could be found|js runtime/i.test(raw)) return "JS_RUNTIME_MISSING";
+  if (/requested format is not available|no video formats|only images are available|Use --list-formats/i.test(raw)) return "FORMAT_UNAVAILABLE";
   if (/ffmpeg/i.test(raw)) return "FFMPEG_MISSING";
   if (/yt-dlp tidak bisa dijalankan|yt-dlp.*not found|no such file/i.test(raw)) return "YTDLP_MISSING";
   if (/network|timed?out|econn|enotfound|http error 5\d\d/i.test(raw)) return "NETWORK_ERROR";
@@ -3124,13 +3125,26 @@ const publicDownloadError = (err) => {
   const logs = err?.logs || err?.message || "";
   const category = err?.errorCategory || categorizeYtDlpError(logs);
   const needsAdminCookies = ["BOT_CHECK", "LOGIN_REQUIRED", "AGE_RESTRICTED"].includes(category);
-  const message = needsAdminCookies
-    ? "Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager."
-    : (err?.message || "Gagal memproses video");
+  const messages = {
+    RATE_LIMITED: "YouTube sedang membatasi koneksi dari server ini. Coba lagi nanti, kurangi percobaan berulang, atau gunakan server/IP lain.",
+    BOT_CHECK: "YouTube meminta verifikasi bot dari koneksi server. Cookies login tidak diterima atau sudah kedaluwarsa.",
+    LOGIN_REQUIRED: "YouTube meminta login. Cookies login tidak diterima atau sudah tidak berlaku.",
+    AGE_RESTRICTED: "Video membutuhkan verifikasi umur. Admin perlu memperbarui cookies YouTube yang valid.",
+    JS_RUNTIME_MISSING: "JavaScript runtime yt-dlp belum tersedia. Pasang Deno/EJS atau set YTDLP_JS_RUNTIME yang valid.",
+    FORMAT_UNAVAILABLE: "Format YouTube yang tersedia berubah atau tidak bisa dibaca. Sistem sudah mencoba format fallback; coba lagi nanti atau pakai Panduan Error.",
+  };
+  const message = messages[category] || err?.message || "Gagal memproses video";
+  const hints = {
+    RATE_LIMITED: "Server/IP kemungkinan terkena rate limit YouTube. Hindari retry bertubi-tubi; pindah IP/server jika 429 tetap muncul.",
+    BOT_CHECK: "Admin: upload cookies Netscape baru dari sesi incognito YouTube, tutup sesi setelah ekspor, lalu jalankan Test Cookies.",
+    LOGIN_REQUIRED: "Admin: perbarui cookies YouTube dari sesi login yang masih valid dan pastikan format Netscape LF.",
+    AGE_RESTRICTED: "Admin: gunakan cookies akun cadangan yang sudah lolos verifikasi umur.",
+    JS_RUNTIME_MISSING: "Deploy image terbaru yang memasang Deno dan yt-dlp[default], atau set YTDLP_JS_RUNTIME=deno.",
+  };
   const wrapped = new Error(message);
   wrapped.errorCategory = category;
-  wrapped.adminActionRequired = needsAdminCookies;
-  wrapped.hint = needsAdminCookies ? "Admin: buka Admin Cookies Manager, upload cookies Netscape terbaru, lalu jalankan Test Cookies." : undefined;
+  wrapped.adminActionRequired = Boolean(needsAdminCookies || category === "RATE_LIMITED" || category === "JS_RUNTIME_MISSING");
+  wrapped.hint = hints[category];
   wrapped.logs = logs;
   return wrapped;
 };
@@ -7192,18 +7206,38 @@ const parseMajorVersion = (value = "") => {
   return match ? Number(match[1]) : 0;
 };
 
+const commandExistsSync = (cmd = "") => {
+  if (!cmd) return false;
+  const result = spawnSync(cmd, ["--version"], { stdio: "ignore" });
+  return !result.error;
+};
+
 const getYtDlpJsRuntimeArgs = () => {
-  const runtime = String(process.env.YTDLP_JS_RUNTIME || "node").trim().toLowerCase();
+  const runtime = String(process.env.YTDLP_JS_RUNTIME || "deno").trim().toLowerCase();
   if (runtime === "off" || runtime === "none" || runtime === "0") return [];
 
   const nodeMajor = parseMajorVersion(process.version);
-  const selected = runtime || "node";
+  let selected = runtime || "deno";
+  if (selected === "auto") {
+    if (commandExistsSync("deno")) selected = "deno";
+    else if (nodeMajor >= 22) selected = "node";
+    else selected = "";
+  }
+
+  if (selected === "deno" && !commandExistsSync("deno")) {
+    if (nodeMajor >= 22) selected = "node";
+    else {
+      console.warn("[yt-dlp] Deno is not installed and Node is below yt-dlp JS runtime minimum; skipping --js-runtimes");
+      return [];
+    }
+  }
   if (selected === "node" && nodeMajor < 22) {
     console.warn(`[yt-dlp] Node ${process.version} is below yt-dlp 2026.06.09 minimum for JS runtime; skipping --js-runtimes node`);
     return [];
   }
+  if (!selected) return [];
 
-  return ["--js-runtimes", selected, "--remote-components", "ejs:github", "--extractor-retries", "3"];
+  return ["--js-runtimes", selected, "--remote-components", "ejs:npm", "--extractor-retries", "3"];
 };
 
 
@@ -7230,6 +7264,49 @@ const pushYoutubeExtractorArgs = (args = []) => {
     args.push("--extractor-args", value);
   }
   return args;
+};
+
+const replaceYtDlpFormatSelector = (args = [], selector = "") => {
+  const next = Array.isArray(args) ? [...args] : [];
+  const url = next[next.length - 1];
+  const isUrlLike = typeof url === "string" && /^(https?:|ytsearch|ytmsearch)/i.test(url);
+  const urlArg = isUrlLike ? next.pop() : null;
+  let replaced = false;
+  for (let i = 0; i < next.length - 1; i++) {
+    if (next[i] === "-f" && typeof next[i + 1] === "string") {
+      if (selector) next[i + 1] = selector;
+      else next.splice(i, 2);
+      replaced = true;
+      break;
+    }
+  }
+  if (!replaced && selector) next.push("-f", selector);
+  if (urlArg) next.push(urlArg);
+  return next;
+};
+
+const removeYtDlpJsRuntimeArgs = (args = []) => {
+  const next = [];
+  const source = Array.isArray(args) ? args : [];
+  for (let i = 0; i < source.length; i++) {
+    const item = source[i];
+    if (["--js-runtimes", "--remote-components", "--extractor-retries"].includes(item)) {
+      i += 1;
+      continue;
+    }
+    next.push(item);
+  }
+  return next;
+};
+
+const dedupeYtDlpArgPlans = (plans = []) => {
+  const seen = new Set();
+  return plans.filter((plan) => {
+    const key = JSON.stringify(plan.args || []);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
 const buildYtDlpFallbackArgs = (args = []) => {
@@ -7742,6 +7819,7 @@ const convertSingle = async (payload = {}) => {
 
     let logs = "";
     let downloadResult = null;
+    let lastDownloadErrorCategory = "";
 
     // Untuk Spotify: metadata dari spotDL, download dari YouTube Music/YouTube via yt-dlp
     // Preview URL hanya untuk metadata, tidak digunakan untuk download
@@ -7753,6 +7831,7 @@ const convertSingle = async (payload = {}) => {
       } catch (err) {
         const baseLogs = err.logs || "";
         const errorCategory = categorizeYtDlpError(baseLogs || err?.message || "");
+        lastDownloadErrorCategory = errorCategory;
         const shouldRetryWithFallbackArgs = /Requested format is not available|HTTP Error 400|HTTP Error 403|Forbidden|Sign in|cookies|confirm your age|precondition|This video is unavailable/i.test(baseLogs || "") || isCookieRetryCategory(errorCategory);
         if (isCookieRetryCategory(errorCategory)) {
           const cookieRetry = await appendServerCookiesArgs(args);
@@ -7769,32 +7848,33 @@ const convertSingle = async (payload = {}) => {
           }
         }
         if (!downloadResult && shouldRetryWithFallbackArgs) {
-          try {
-            emitProgress({ stage: "downloading", message: "Mencoba mode kompatibilitas", percent: mapDownloadPercent(18) });
-            const fallbackArgs = buildYtDlpFallbackArgs(args);
-            downloadResult = await runYtDlpDownload({ args: fallbackArgs, id, onProgress: handleDownloadProgress });
-            logs = downloadResult.logs || baseLogs;
-          } catch (retryErr) {
-            logs = retryErr?.logs || logs || baseLogs;
-          }
-        }
-        if (!downloadResult && shouldRetryWithFallbackArgs) {
-          try {
-            emitProgress({ stage: "downloading", message: "Mencoba format universal", percent: mapDownloadPercent(19) });
-            const universalArgs = buildYtDlpFallbackArgs(args);
-            for (let i = 0; i < universalArgs.length - 1; i++) {
-              if (universalArgs[i] === "-f") {
-                universalArgs.splice(i, 2);
-                break;
-              }
+          const retryPlans = dedupeYtDlpArgPlans([
+            { label: "mode kompatibilitas", percent: 18, args: buildYtDlpFallbackArgs(args) },
+            { label: "audio universal", percent: 19, args: replaceYtDlpFormatSelector(buildYtDlpFallbackArgs(args), "ba/bestaudio/best/worst") },
+            { label: "format otomatis", percent: 20, args: replaceYtDlpFormatSelector(buildYtDlpFallbackArgs(args), "") },
+            { label: "format otomatis tanpa JS runtime", percent: 21, args: removeYtDlpJsRuntimeArgs(replaceYtDlpFormatSelector(buildYtDlpFallbackArgs(args), "")) },
+          ]);
+
+          for (const plan of retryPlans) {
+            if (downloadResult) break;
+            try {
+              emitProgress({ stage: "downloading", message: `Mencoba ${plan.label}`, percent: mapDownloadPercent(plan.percent) });
+              downloadResult = await runYtDlpDownload({ args: plan.args, id, onProgress: handleDownloadProgress });
+              logs = downloadResult.logs || logs || baseLogs;
+            } catch (retryErr) {
+              logs = retryErr?.logs || logs || baseLogs;
+              lastDownloadErrorCategory = categorizeYtDlpError(logs);
             }
-            downloadResult = await runYtDlpDownload({ args: universalArgs, id, onProgress: handleDownloadProgress });
-            logs = downloadResult.logs || logs || baseLogs;
-          } catch (retryErr) {
-            logs = retryErr?.logs || logs || baseLogs;
           }
         }
         if (!downloadResult) {
+          if (["RATE_LIMITED", "BOT_CHECK"].includes(lastDownloadErrorCategory)) {
+            if (coverPath) try { await fsp.unlink(coverPath); } catch { }
+            const restrictedError = new Error(err.message || "YouTube membatasi koneksi server");
+            restrictedError.logs = [logs, baseLogs].filter(Boolean).join("\n").slice(-8000);
+            restrictedError.errorCategory = lastDownloadErrorCategory;
+            throw restrictedError;
+          }
           if (isVideoFormat) {
             if (coverPath) try { await fsp.unlink(coverPath); } catch { }
             const videoError = new Error(err.message || "Gagal mengunduh video");
