@@ -164,7 +164,7 @@ def download_with_ytdlp(
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
     base_opts = {
-        "format": "bestaudio/best",
+        "format": "ba/bestaudio/best/worst",
         "outtmpl": template,
         "restrictfilenames": False,
         "noplaylist": True,
@@ -191,8 +191,11 @@ def download_with_ytdlp(
     tv_opts = dict(base_opts)
     tv_opts["extractor_args"] = {"youtube": {"player_client": ["mweb", "web_safari", "tv_embedded", "android"]}}
 
+    audio_opts = dict(compat_opts)
+    audio_opts["format"] = "ba/bestaudio/best/worst"
+
     relaxed_opts = dict(compat_opts)
-    relaxed_opts["format"] = "best"
+    relaxed_opts["format"] = "best/worst"
 
     http_opts = dict(relaxed_opts)
     http_opts["format"] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best/worst"
@@ -200,9 +203,13 @@ def download_with_ytdlp(
     universal_opts = dict(tv_opts)
     universal_opts.pop("format", None)
 
+    no_runtime_opts = dict(universal_opts)
+    no_runtime_opts.pop("js_runtimes", None)
+    no_runtime_opts.pop("remote_components", None)
+
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts, universal_opts]
+    attempts = [base_opts, compat_opts, tv_opts, audio_opts, relaxed_opts, http_opts, universal_opts, no_runtime_opts]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]
