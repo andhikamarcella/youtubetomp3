@@ -2434,6 +2434,12 @@
       display: block;
     }
 
+    #previewWrap .preview-visual.ytmusic-square-cover {
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
     #previewWrap .preview-visual::after {
       content: "";
       position: absolute;
@@ -5105,6 +5111,12 @@
         <i class="bi bi-grid-3x3-gap"></i>
         <span class="ms-2">Menu fitur</span>
       </button>
+      <a class="btn btn-danger d-none d-lg-inline-flex align-items-center ms-2" id="converterGuideBtn"
+        href="https://ytconvguide.vercel.app/" target="_blank" rel="noopener noreferrer"
+        aria-label="Buka Panduan Error converter">
+        <i class="bi bi-life-preserver"></i>
+        <span class="ms-2">Panduan Error</span>
+      </a>
       <button class="app-nav-btn d-inline-flex ms-2" type="button" id="ytMusicBtn" aria-label="Buka YT Music">
         <i class="bi bi-youtube"></i>
         <span class="ms-2">YT Music</span>
@@ -7823,6 +7835,14 @@
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
+            <!-- Panduan Error (mobile feature menu) -->
+            <a class="modern-nav-item d-lg-none" href="https://ytconvguide.vercel.app/" target="_blank"
+              rel="noopener noreferrer" aria-label="Buka Panduan Error converter">
+              <div class="modern-nav-icon"><i class="bi bi-life-preserver"></i></div>
+              <span class="modern-nav-label">Panduan Error</span>
+              <i class="bi bi-box-arrow-up-right modern-nav-arrow"></i>
+            </a>
+
             <!-- Divider -->
             <hr class="my-2 border-secondary-subtle opacity-25">
 
@@ -8178,12 +8198,15 @@
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan
                 warga lainnya.</p>
 
-              <button id="forumGoogleLoginBtn"
+              <button id="forumGoogleLoginBtn" type="button"
                 class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24"
                   alt="G">
                 <span>Masuk dengan Google</span>
               </button>
+              <div id="forumLoginFallback" class="small text-secondary mt-3" role="status" aria-live="polite">
+                Kalau tombol tidak merespons, tekan lagi untuk mode redirect.
+              </div>
             </div>
           </div>
 
@@ -10811,17 +10834,10 @@
 
           loginBtn.addEventListener('click', async () => {
             try {
-              const m = await waitForFirebase();
-              const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = m;
+              await waitForFirebase();
               loginBtn.disabled = true;
-              loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
-              const provider = new GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: 'select_account' });
-              try {
-                await signInWithPopup(auth, provider);
-              } catch {
-                await signInWithRedirect(auth, provider);
-              }
+              loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Membuka Google...';
+              await startFirebaseGoogleLogin({ status: (msg) => { loginBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${msg}`; } });
             } catch {
               if (typeof window.setToast === 'function') window.setToast('Login gagal.', 'danger');
             } finally {
@@ -13544,19 +13560,52 @@
           return next;
         };
 
+        const converterErrorMessages = {
+          RATE_LIMITED: 'YouTube sedang membatasi koneksi dari server ini. Coba lagi nanti, jangan spam retry, atau gunakan server/IP lain.',
+          BOT_CHECK: 'YouTube meminta verifikasi bot dari koneksi server. Cookies login tidak diterima atau sudah kedaluwarsa.',
+          LOGIN_REQUIRED: 'YouTube meminta login. Cookies YouTube perlu diperbarui oleh admin.',
+          AGE_RESTRICTED: 'Video membutuhkan verifikasi umur. Admin perlu memperbarui cookies YouTube yang valid.',
+          JS_RUNTIME_MISSING: 'JavaScript runtime yt-dlp belum tersedia. Deploy image terbaru yang memasang Deno/EJS.',
+          FORMAT_UNAVAILABLE: 'Format YouTube tidak bisa dibaca dari server ini. Sistem sudah mencoba fallback; cek Panduan Error kalau tetap gagal.',
+          INVALID_URL: 'Link belum valid atau domain belum didukung.',
+          QUEUE_FULL: 'Antrian server sedang penuh. Tunggu sebentar lalu coba lagi.',
+        };
+
+        const isGenericConverterError = (message = '') => /^(yt-dlp gagal|gagal memproses|terjadi kesalahan|gagal membuat job)$/i.test(String(message || '').trim());
+
+        const buildApiErrorMessage = (payload = {}, rawText = '', fallbackMessage = 'Terjadi kesalahan') => {
+          const errorObj = payload && typeof payload.error === 'object' ? payload.error : {};
+          const category = payload.errorCategory || errorObj.code || errorObj.errorCategory || '';
+          const rawMessage = typeof payload.error === 'string'
+            ? payload.error
+            : (payload.message || errorObj.message || (rawText ? String(rawText).trim().slice(0, 280) : '') || fallbackMessage);
+          const message = (category && (isGenericConverterError(rawMessage) || !rawMessage))
+            ? (converterErrorMessages[category] || rawMessage || fallbackMessage)
+            : rawMessage;
+          return {
+            message: message || fallbackMessage,
+            category,
+            hint: payload.hint || errorObj.hint || '',
+            adminActionRequired: Boolean(payload.adminActionRequired || errorObj.adminActionRequired),
+          };
+        };
+
         const resolveJsonResponse = async (resp, { fallbackMessage = 'Terjadi kesalahan', logLabel = '' } = {}) => {
           const safe = await readJsonSafe(resp);
           const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
-          if (!resp?.ok) {
+          if (!resp?.ok || payload.ok === false || payload.success === false) {
             const raw = (safe.rawText || '').trim();
             if (safe.parseError) {
               console?.warn?.('[json] gagal parsing', { label: logLabel || resp?.url, error: safe.parseError, raw });
             }
-            const message = payload.error || payload.message || (raw ? raw.slice(0, 280) : '') || fallbackMessage;
-            const err = new Error(message || fallbackMessage);
+            const friendly = buildApiErrorMessage(payload, raw, fallbackMessage);
+            const err = new Error(friendly.message);
             err.status = resp?.status;
             err.payload = payload;
             err.rawText = safe.rawText;
+            err.errorCategory = friendly.category;
+            err.hint = friendly.hint;
+            err.adminActionRequired = friendly.adminActionRequired;
             throw err;
           }
           if (safe.parseError) {
@@ -16451,6 +16500,85 @@
           }
         }
 
+        function prefersGoogleRedirectLogin() {
+          const ua = navigator.userAgent || '';
+          const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+          const isInApp = /FBAN|FBAV|Instagram|Line|TikTok|Twitter|WebView|wv\)/i.test(ua);
+          const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone;
+          return Boolean(isMobile || isInApp || isStandalone);
+        }
+
+        async function startFirebaseGoogleLogin({ preferRedirect = prefersGoogleRedirectLogin(), status, pendingKey = '' } = {}) {
+          const setStatus = typeof status === 'function' ? status : () => { };
+          const modules = window.firebaseModules || await new Promise((resolve, reject) => {
+            let attempts = 0;
+            const timer = window.setInterval(() => {
+              attempts += 1;
+              if (window.firebaseModules?.auth) {
+                window.clearInterval(timer);
+                resolve(window.firebaseModules);
+              } else if (attempts > 40) {
+                window.clearInterval(timer);
+                reject(new Error('Firebase auth belum siap.'));
+              }
+            }, 250);
+          });
+
+          const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = modules;
+          if (!auth || !GoogleAuthProvider || (!signInWithPopup && !signInWithRedirect)) {
+            throw new Error('Login Google belum siap di browser ini.');
+          }
+
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+
+          if (preferRedirect) {
+            if (!signInWithRedirect) throw new Error('Mode redirect Google tidak tersedia.');
+            if (pendingKey) sessionStorage.setItem(pendingKey, 'true');
+            setStatus('Mengalihkan ke Google Sign-In...');
+            await signInWithRedirect(auth, provider);
+            return null;
+          }
+
+          if (signInWithPopup) {
+            try {
+              setStatus('Membuka popup Google...');
+              return await signInWithPopup(auth, provider);
+            } catch (popupErr) {
+              console.warn('Popup Google gagal, pakai redirect', popupErr);
+            }
+          }
+
+          if (!signInWithRedirect) throw new Error('Popup diblokir dan mode redirect tidak tersedia.');
+          if (pendingKey) sessionStorage.setItem(pendingKey, 'true');
+          setStatus('Popup diblokir. Mengalihkan ke Google Sign-In...');
+          await signInWithRedirect(auth, provider);
+          return null;
+        }
+
+        function appendFirebaseGoogleFallback(container, id, label = 'Masuk mode mobile') {
+          if (!container || container.querySelector(`#${id}`)) return;
+          container.insertAdjacentHTML('beforeend', `
+            <button type="button" class="btn btn-link btn-sm text-decoration-none mt-2 px-0" id="${id}">
+              ${label}
+            </button>
+          `);
+          const btn = container.querySelector(`#${id}`);
+          if (!btn) return;
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Mengalihkan ke Google...';
+            try {
+              await startFirebaseGoogleLogin({ preferRedirect: true, status: (msg) => { btn.textContent = msg; } });
+            } catch (err) {
+              console.error('Fallback login gagal', err);
+              btn.disabled = false;
+              btn.textContent = label;
+              setToast(err?.message || translateMessage('Login gagal'));
+            }
+          });
+        }
+
         function renderGoogleFallback(messageKey) {
           if (!googleSignInButton) return;
           const message = translateMessage(
@@ -16468,8 +16596,17 @@
           const fallbackBtn = googleSignInButton.querySelector('#googleFallbackAction');
           if (fallbackBtn && !fallbackBtn.dataset.bound) {
             fallbackBtn.dataset.bound = 'true';
-            fallbackBtn.addEventListener('click', () => {
-              setToast(message);
+            fallbackBtn.addEventListener('click', async () => {
+              fallbackBtn.disabled = true;
+              fallbackBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengalihkan ke Google...';
+              try {
+                await startFirebaseGoogleLogin({ preferRedirect: true });
+              } catch (err) {
+                console.error('Google fallback login gagal', err);
+                fallbackBtn.disabled = false;
+                fallbackBtn.innerHTML = `<i class="bi bi-google"></i><span>${translateMessage('Masuk dengan Google')}</span>`;
+                setToast(err?.message || message);
+              }
             });
           }
         }
@@ -16580,6 +16717,7 @@
               text: 'signin_with',
               shape: 'pill',
             });
+            appendFirebaseGoogleFallback(googleSignInButton, 'googleMobileFallbackAction');
           }
 
           const googleSignInForum = document.getElementById('googleSignInForum');
@@ -16604,6 +16742,7 @@
               shape: 'pill',
               width: '300'
             });
+            appendFirebaseGoogleFallback(profileGoogleLoginBtn, 'profileMobileFallbackAction');
           }
         }
 
@@ -19457,7 +19596,8 @@
           const spotifyPreviewUrl = previewProvider === 'spotify'
             ? previewInfo.url || original?.previewUrl || ''
             : '';
-          const canEmbedYoutube = embedAllowed && (provider === 'youtube' || isYoutubeUrl(info.webpageUrl || '')) && info.id;
+          const wantsSquareArtwork = info.artworkShape === 'square' || isYoutubeMusicUrl(info.webpageUrl || '') || isYoutubeMusicUrl(original?.url || '');
+          const canEmbedYoutube = embedAllowed && !wantsSquareArtwork && (provider === 'youtube' || isYoutubeUrl(info.webpageUrl || '')) && info.id;
           const canEmbedSpotify = embedAllowed && !!spotifyEmbedUrl;
           if (videoPreviewFrame) {
             if (canEmbedYoutube) {
@@ -19476,8 +19616,11 @@
             }
           }
           if (videoPreviewWrap) {
-            const disabled = !embedAllowed || (!canEmbedYoutube && !canEmbedSpotify);
+            const disabled = !wantsSquareArtwork && (!embedAllowed || (!canEmbedYoutube && !canEmbedSpotify));
             videoPreviewWrap.classList.toggle('is-disabled', disabled);
+            videoPreviewWrap.classList.toggle('ratio-16x9', !wantsSquareArtwork);
+            videoPreviewWrap.classList.toggle('ratio-1x1', wantsSquareArtwork);
+            videoPreviewWrap.classList.toggle('ytmusic-square-cover', wantsSquareArtwork);
           }
           if (thumbEl) {
             if (info.cover || info.thumbnail) {
@@ -21660,6 +21803,16 @@
           return detectMediaSource(text) === 'youtube';
         }
 
+        function isYoutubeMusicUrl(text = '') {
+          const raw = String(text || '').trim();
+          if (!raw) return false;
+          try {
+            return new URL(raw).hostname.toLowerCase().endsWith('music.youtube.com');
+          } catch {
+            return /(^|\.)music\.youtube\.com/i.test(raw);
+          }
+        }
+
         const RATING_STORE_KEY = 'ytmp3.ratings.v1';
 
         function loadRatingStore() {
@@ -23441,13 +23594,22 @@
           return xp;
         };
 
-        function toFriendlyConvertError(message = '') {
+        function toFriendlyConvertError(error = '') {
+          const message = typeof error === 'string' ? error : (error?.message || '');
+          const category = typeof error === 'string' ? '' : (error?.errorCategory || error?.payload?.errorCategory || error?.payload?.error?.code || '');
+          const hint = typeof error === 'string' ? '' : (error?.hint || error?.payload?.hint || '');
+          const categorized = category && converterErrorMessages[category] ? converterErrorMessages[category] : '';
           const raw = String(message || '').toLowerCase();
-          if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) return 'Video ini diblokir atau butuh cookies. Coba video lain atau update cookies ya.';
-          if (raw.includes('429') || raw.includes('too many') || raw.includes('rate')) return 'Server lagi padat. Santai, coba lagi sebentar ya.';
-          if (raw.includes('invalid') && raw.includes('url')) return 'Link belum valid. Cek lagi lalu kirim ulang ya.';
-          if (raw.includes('captcha')) return 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
-          return `Hmm gagal nih, coba lagi yaa… (${message || 'unknown'})`;
+          let friendly = categorized || message;
+          if (!friendly || isGenericConverterError(friendly)) friendly = 'Hmm gagal nih, coba lagi yaa…';
+          if (!categorized) {
+            if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) friendly = 'Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager.';
+            else if (raw.includes('429') || raw.includes('too many') || raw.includes('rate') || raw.includes('bot')) friendly = 'YouTube sedang membatasi koneksi server. Tunggu dulu, jangan retry berkali-kali, atau gunakan server/IP lain.';
+            else if (raw.includes('invalid') && raw.includes('url')) friendly = 'Link belum valid. Cek lagi lalu kirim ulang ya.';
+            else if (raw.includes('captcha')) friendly = 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
+          }
+          if (hint && !friendly.includes(hint)) friendly = `${friendly} ${hint}`;
+          return friendly;
         }
 
         function getSpeedServerLabel(mode = 'auto') {
@@ -23876,7 +24038,7 @@
             $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
             resetAudioPreview();
             convertProgressAnimator.fail(translateMessage('Gagal'));
-            const friendlyErr = toFriendlyConvertError(err?.message || '');
+            const friendlyErr = toFriendlyConvertError(err);
             setToast(friendlyErr);
             announceNarrator(`Konversi gagal: ${friendlyErr}`);
             updateAiStatus(friendlyErr, 'danger');
@@ -28030,10 +28192,13 @@
               <h3 class="fw-bold mb-2 text-white" style="letter-spacing: -0.5px;">Gabung Forum</h3>
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan warga lainnya.</p>
               
-              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+              <button id="forumGoogleLoginBtn" type="button" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G">
                   <span>Masuk dengan Google</span>
-              </button>`;
+              </button>
+              <div id="forumLoginFallback" class="small text-secondary mt-3" role="status" aria-live="polite">
+                Kalau tombol tidak merespons, tekan lagi untuk mode redirect.
+              </div>`;
             const newBtn = document.getElementById('forumGoogleLoginBtn');
             if (newBtn) newBtn.addEventListener('click', handleLoginClick);
           }
@@ -28859,33 +29024,50 @@
             });
           }
 
-          async function handleLoginClick() {
-            // ... (Keep existing login logic mostly same but ensure new UI is handled)
+          function setForumLoginFallback(message, variant = 'secondary') {
+            const fallback = document.getElementById('forumLoginFallback');
+            if (!fallback) return;
+            fallback.className = `small text-${variant} mt-3`;
+            fallback.textContent = message;
+          }
+
+          function resetForumLoginButton() {
             const btn = document.getElementById('forumGoogleLoginBtn');
             if (!btn) return;
-            if (!window.firebaseModules || !window.firebaseModules.auth) return;
-            const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
+            btn.disabled = false;
+            btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G"><span>Masuk dengan Google</span>';
+          }
+
+          async function handleLoginClick() {
+            const btn = document.getElementById('forumGoogleLoginBtn');
+            if (!btn) return;
+            if (!window.firebaseModules || !window.firebaseModules.auth) {
+              setForumLoginFallback('Login sedang dimuat. Tunggu sebentar lalu tekan lagi.', 'warning');
+              return;
+            }
+
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Membuka Google...';
             btn.disabled = true;
+            setForumLoginFallback(prefersGoogleRedirectLogin()
+              ? 'Mode mobile aktif. Mengalihkan ke Google Sign-In...'
+              : 'Jika popup tidak muncul, sistem otomatis memakai mode redirect.', 'info');
+
             try {
-              const provider = new GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: 'select_account' });
-              try {
-                const result = await signInWithPopup(auth, provider);
-                if (result && result.user) {
-                  setToast('Login berhasil!', 'success');
-                  sessionStorage.removeItem('forum_login_pending');
-                  forumLoginOverlay.classList.remove('d-flex');
-                  forumLoginOverlay.classList.add('d-none');
-                }
-              } catch (popupErr) {
-                sessionStorage.setItem('forum_login_pending', 'true');
-                await signInWithRedirect(auth, provider);
+              const result = await startFirebaseGoogleLogin({
+                pendingKey: 'forum_login_pending',
+                status: (msg) => setForumLoginFallback(msg, 'info'),
+              });
+              if (result && result.user) {
+                setToast('Login berhasil!', 'success');
+                sessionStorage.removeItem('forum_login_pending');
+                forumLoginOverlay.classList.remove('d-flex');
+                forumLoginOverlay.classList.add('d-none');
               }
             } catch (error) {
-              console.error(error);
-              btn.innerHTML = 'Login Google';
-              btn.disabled = false;
+              console.error('Forum login failed', error);
+              sessionStorage.removeItem('forum_login_pending');
+              setForumLoginFallback(error?.message || 'Login belum bisa dibuka. Muat ulang halaman atau izinkan popup/redirect Google.', 'danger');
+              resetForumLoginButton();
             }
           }
 

@@ -2670,6 +2670,12 @@
       display: block;
     }
 
+    #previewWrap .preview-visual.ytmusic-square-cover {
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
     #previewWrap .preview-visual::after {
       content: "";
       position: absolute;
@@ -5707,6 +5713,12 @@
         <i class="bi bi-grid-3x3-gap"></i>
         <span class="ms-2">Menu fitur</span>
       </button>
+      <a class="btn btn-danger d-none d-lg-inline-flex align-items-center ms-2" id="converterGuideBtn"
+        href="https://ytconvguide.vercel.app/" target="_blank" rel="noopener noreferrer"
+        aria-label="Buka Panduan Error converter">
+        <i class="bi bi-life-preserver"></i>
+        <span class="ms-2">Panduan Error</span>
+      </a>
       <button class="app-nav-btn d-inline-flex ms-2" type="button" id="ytMusicBtn" aria-label="Buka YT Music">
         <i class="bi bi-youtube"></i>
         <span class="ms-2">YT Music</span>
@@ -8554,6 +8566,14 @@
               <span class="modern-nav-label">Bantuan</span>
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
+
+            <!-- Panduan Error (mobile feature menu) -->
+            <a class="modern-nav-item d-lg-none" href="https://ytconvguide.vercel.app/" target="_blank"
+              rel="noopener noreferrer" aria-label="Buka Panduan Error converter">
+              <div class="modern-nav-icon"><i class="bi bi-life-preserver"></i></div>
+              <span class="modern-nav-label">Panduan Error</span>
+              <i class="bi bi-box-arrow-up-right modern-nav-arrow"></i>
+            </a>
 
             <!-- Divider -->
             <hr class="my-2 border-secondary-subtle opacity-25">
@@ -14714,19 +14734,52 @@
           return next;
         };
 
+        const converterErrorMessages = {
+          RATE_LIMITED: 'YouTube sedang membatasi koneksi dari server ini. Coba lagi nanti, jangan spam retry, atau gunakan server/IP lain.',
+          BOT_CHECK: 'YouTube meminta verifikasi bot dari koneksi server. Cookies login tidak diterima atau sudah kedaluwarsa.',
+          LOGIN_REQUIRED: 'YouTube meminta login. Cookies YouTube perlu diperbarui oleh admin.',
+          AGE_RESTRICTED: 'Video membutuhkan verifikasi umur. Admin perlu memperbarui cookies YouTube yang valid.',
+          JS_RUNTIME_MISSING: 'JavaScript runtime yt-dlp belum tersedia. Deploy image terbaru yang memasang Deno/EJS.',
+          FORMAT_UNAVAILABLE: 'Format YouTube tidak bisa dibaca dari server ini. Sistem sudah mencoba fallback; cek Panduan Error kalau tetap gagal.',
+          INVALID_URL: 'Link belum valid atau domain belum didukung.',
+          QUEUE_FULL: 'Antrian server sedang penuh. Tunggu sebentar lalu coba lagi.',
+        };
+
+        const isGenericConverterError = (message = '') => /^(yt-dlp gagal|gagal memproses|terjadi kesalahan|gagal membuat job)$/i.test(String(message || '').trim());
+
+        const buildApiErrorMessage = (payload = {}, rawText = '', fallbackMessage = 'Terjadi kesalahan') => {
+          const errorObj = payload && typeof payload.error === 'object' ? payload.error : {};
+          const category = payload.errorCategory || errorObj.code || errorObj.errorCategory || '';
+          const rawMessage = typeof payload.error === 'string'
+            ? payload.error
+            : (payload.message || errorObj.message || (rawText ? String(rawText).trim().slice(0, 280) : '') || fallbackMessage);
+          const message = (category && (isGenericConverterError(rawMessage) || !rawMessage))
+            ? (converterErrorMessages[category] || rawMessage || fallbackMessage)
+            : rawMessage;
+          return {
+            message: message || fallbackMessage,
+            category,
+            hint: payload.hint || errorObj.hint || '',
+            adminActionRequired: Boolean(payload.adminActionRequired || errorObj.adminActionRequired),
+          };
+        };
+
         const resolveJsonResponse = async (resp, { fallbackMessage = 'Terjadi kesalahan', logLabel = '' } = {}) => {
           const safe = await readJsonSafe(resp);
           const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
-          if (!resp?.ok) {
+          if (!resp?.ok || payload.ok === false || payload.success === false) {
             const raw = (safe.rawText || '').trim();
             if (safe.parseError) {
               console?.warn?.('[json] gagal parsing', { label: logLabel || resp?.url, error: safe.parseError, raw });
             }
-            const message = payload.error || payload.message || (raw ? raw.slice(0, 280) : '') || fallbackMessage;
-            const err = new Error(message || fallbackMessage);
+            const friendly = buildApiErrorMessage(payload, raw, fallbackMessage);
+            const err = new Error(friendly.message);
             err.status = resp?.status;
             err.payload = payload;
             err.rawText = safe.rawText;
+            err.errorCategory = friendly.category;
+            err.hint = friendly.hint;
+            err.adminActionRequired = friendly.adminActionRequired;
             throw err;
           }
           if (safe.parseError) {
@@ -21148,7 +21201,8 @@
           const spotifyPreviewUrl = previewProvider === 'spotify'
             ? previewInfo.url || original?.previewUrl || ''
             : '';
-          const canEmbedYoutube = embedAllowed && (provider === 'youtube' || isYoutubeUrl(info.webpageUrl || '')) && info.id;
+          const wantsSquareArtwork = info.artworkShape === 'square' || isYoutubeMusicUrl(info.webpageUrl || '') || isYoutubeMusicUrl(original?.url || '');
+          const canEmbedYoutube = embedAllowed && !wantsSquareArtwork && (provider === 'youtube' || isYoutubeUrl(info.webpageUrl || '')) && info.id;
           const canEmbedSpotify = embedAllowed && !!spotifyEmbedUrl;
           if (videoPreviewFrame) {
             if (canEmbedYoutube) {
@@ -21167,8 +21221,11 @@
             }
           }
           if (videoPreviewWrap) {
-            const disabled = !embedAllowed || (!canEmbedYoutube && !canEmbedSpotify);
+            const disabled = !wantsSquareArtwork && (!embedAllowed || (!canEmbedYoutube && !canEmbedSpotify));
             videoPreviewWrap.classList.toggle('is-disabled', disabled);
+            videoPreviewWrap.classList.toggle('ratio-16x9', !wantsSquareArtwork);
+            videoPreviewWrap.classList.toggle('ratio-1x1', wantsSquareArtwork);
+            videoPreviewWrap.classList.toggle('ytmusic-square-cover', wantsSquareArtwork);
           }
           if (thumbEl) {
             if (info.cover || info.thumbnail) {
@@ -23479,6 +23536,16 @@
           return detectMediaSource(text) === 'youtube';
         }
 
+        function isYoutubeMusicUrl(text = '') {
+          const raw = String(text || '').trim();
+          if (!raw) return false;
+          try {
+            return new URL(raw).hostname.toLowerCase().endsWith('music.youtube.com');
+          } catch {
+            return /(^|\.)music\.youtube\.com/i.test(raw);
+          }
+        }
+
         const RATING_STORE_KEY = 'ytmp3.ratings.v1';
 
         function loadRatingStore() {
@@ -25382,13 +25449,22 @@
           return xp;
         };
 
-        function toFriendlyConvertError(message = '') {
+        function toFriendlyConvertError(error = '') {
+          const message = typeof error === 'string' ? error : (error?.message || '');
+          const category = typeof error === 'string' ? '' : (error?.errorCategory || error?.payload?.errorCategory || error?.payload?.error?.code || '');
+          const hint = typeof error === 'string' ? '' : (error?.hint || error?.payload?.hint || '');
+          const categorized = category && converterErrorMessages[category] ? converterErrorMessages[category] : '';
           const raw = String(message || '').toLowerCase();
-          if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) return 'Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager.';
-          if (raw.includes('429') || raw.includes('too many') || raw.includes('rate')) return 'Server lagi padat. Santai, coba lagi sebentar ya.';
-          if (raw.includes('invalid') && raw.includes('url')) return 'Link belum valid. Cek lagi lalu kirim ulang ya.';
-          if (raw.includes('captcha')) return 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
-          return `Hmm gagal nih, coba lagi yaa… (${message || 'unknown'})`;
+          let friendly = categorized || message;
+          if (!friendly || isGenericConverterError(friendly)) friendly = 'Hmm gagal nih, coba lagi yaa…';
+          if (!categorized) {
+            if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) friendly = 'Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager.';
+            else if (raw.includes('429') || raw.includes('too many') || raw.includes('rate') || raw.includes('bot')) friendly = 'YouTube sedang membatasi koneksi server. Tunggu dulu, jangan retry berkali-kali, atau gunakan server/IP lain.';
+            else if (raw.includes('invalid') && raw.includes('url')) friendly = 'Link belum valid. Cek lagi lalu kirim ulang ya.';
+            else if (raw.includes('captcha')) friendly = 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
+          }
+          if (hint && !friendly.includes(hint)) friendly = `${friendly} ${hint}`;
+          return friendly;
         }
 
         function getSpeedServerLabel(mode = 'auto') {
@@ -25822,7 +25898,7 @@
             $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
             resetAudioPreview();
             convertProgressAnimator.fail(translateMessage('Gagal'));
-            const friendlyErr = toFriendlyConvertError(err?.message || '');
+            const friendlyErr = toFriendlyConvertError(err);
             try {
               ensureForumSocket()?.emit('conversion_error', { reason: friendlyErr || 'convert_error' });
               window.reportUserAction?.('conversion_error', friendlyErr || 'convert_error');
