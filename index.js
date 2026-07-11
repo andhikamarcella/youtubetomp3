@@ -7232,6 +7232,49 @@ const pushYoutubeExtractorArgs = (args = []) => {
   return args;
 };
 
+const replaceYtDlpFormatSelector = (args = [], selector = "") => {
+  const next = Array.isArray(args) ? [...args] : [];
+  const url = next[next.length - 1];
+  const isUrlLike = typeof url === "string" && /^(https?:|ytsearch|ytmsearch)/i.test(url);
+  const urlArg = isUrlLike ? next.pop() : null;
+  let replaced = false;
+  for (let i = 0; i < next.length - 1; i++) {
+    if (next[i] === "-f" && typeof next[i + 1] === "string") {
+      if (selector) next[i + 1] = selector;
+      else next.splice(i, 2);
+      replaced = true;
+      break;
+    }
+  }
+  if (!replaced && selector) next.push("-f", selector);
+  if (urlArg) next.push(urlArg);
+  return next;
+};
+
+const removeYtDlpJsRuntimeArgs = (args = []) => {
+  const next = [];
+  const source = Array.isArray(args) ? args : [];
+  for (let i = 0; i < source.length; i++) {
+    const item = source[i];
+    if (["--js-runtimes", "--remote-components", "--extractor-retries"].includes(item)) {
+      i += 1;
+      continue;
+    }
+    next.push(item);
+  }
+  return next;
+};
+
+const dedupeYtDlpArgPlans = (plans = []) => {
+  const seen = new Set();
+  return plans.filter((plan) => {
+    const key = JSON.stringify(plan.args || []);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const buildYtDlpFallbackArgs = (args = []) => {
   const next = Array.isArray(args) ? [...args] : [];
   if (!next.length) return next;
@@ -7769,29 +7812,22 @@ const convertSingle = async (payload = {}) => {
           }
         }
         if (!downloadResult && shouldRetryWithFallbackArgs) {
-          try {
-            emitProgress({ stage: "downloading", message: "Mencoba mode kompatibilitas", percent: mapDownloadPercent(18) });
-            const fallbackArgs = buildYtDlpFallbackArgs(args);
-            downloadResult = await runYtDlpDownload({ args: fallbackArgs, id, onProgress: handleDownloadProgress });
-            logs = downloadResult.logs || baseLogs;
-          } catch (retryErr) {
-            logs = retryErr?.logs || logs || baseLogs;
-          }
-        }
-        if (!downloadResult && shouldRetryWithFallbackArgs) {
-          try {
-            emitProgress({ stage: "downloading", message: "Mencoba format universal", percent: mapDownloadPercent(19) });
-            const universalArgs = buildYtDlpFallbackArgs(args);
-            for (let i = 0; i < universalArgs.length - 1; i++) {
-              if (universalArgs[i] === "-f") {
-                universalArgs.splice(i, 2);
-                break;
-              }
+          const retryPlans = dedupeYtDlpArgPlans([
+            { label: "mode kompatibilitas", percent: 18, args: buildYtDlpFallbackArgs(args) },
+            { label: "audio universal", percent: 19, args: replaceYtDlpFormatSelector(buildYtDlpFallbackArgs(args), "ba/bestaudio/best/worst") },
+            { label: "format otomatis", percent: 20, args: replaceYtDlpFormatSelector(buildYtDlpFallbackArgs(args), "") },
+            { label: "format otomatis tanpa JS runtime", percent: 21, args: removeYtDlpJsRuntimeArgs(replaceYtDlpFormatSelector(buildYtDlpFallbackArgs(args), "")) },
+          ]);
+
+          for (const plan of retryPlans) {
+            if (downloadResult) break;
+            try {
+              emitProgress({ stage: "downloading", message: `Mencoba ${plan.label}`, percent: mapDownloadPercent(plan.percent) });
+              downloadResult = await runYtDlpDownload({ args: plan.args, id, onProgress: handleDownloadProgress });
+              logs = downloadResult.logs || logs || baseLogs;
+            } catch (retryErr) {
+              logs = retryErr?.logs || logs || baseLogs;
             }
-            downloadResult = await runYtDlpDownload({ args: universalArgs, id, onProgress: handleDownloadProgress });
-            logs = downloadResult.logs || logs || baseLogs;
-          } catch (retryErr) {
-            logs = retryErr?.logs || logs || baseLogs;
           }
         }
         if (!downloadResult) {
