@@ -8178,12 +8178,15 @@
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan
                 warga lainnya.</p>
 
-              <button id="forumGoogleLoginBtn"
+              <button id="forumGoogleLoginBtn" type="button"
                 class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24"
                   alt="G">
                 <span>Masuk dengan Google</span>
               </button>
+              <div id="forumLoginFallback" class="small text-secondary mt-3" role="status" aria-live="polite">
+                Kalau tombol tidak merespons, tekan lagi untuk mode redirect.
+              </div>
             </div>
           </div>
 
@@ -10811,17 +10814,10 @@
 
           loginBtn.addEventListener('click', async () => {
             try {
-              const m = await waitForFirebase();
-              const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = m;
+              await waitForFirebase();
               loginBtn.disabled = true;
-              loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
-              const provider = new GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: 'select_account' });
-              try {
-                await signInWithPopup(auth, provider);
-              } catch {
-                await signInWithRedirect(auth, provider);
-              }
+              loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Membuka Google...';
+              await startFirebaseGoogleLogin({ status: (msg) => { loginBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${msg}`; } });
             } catch {
               if (typeof window.setToast === 'function') window.setToast('Login gagal.', 'danger');
             } finally {
@@ -16451,6 +16447,85 @@
           }
         }
 
+        function prefersGoogleRedirectLogin() {
+          const ua = navigator.userAgent || '';
+          const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+          const isInApp = /FBAN|FBAV|Instagram|Line|TikTok|Twitter|WebView|wv\)/i.test(ua);
+          const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone;
+          return Boolean(isMobile || isInApp || isStandalone);
+        }
+
+        async function startFirebaseGoogleLogin({ preferRedirect = prefersGoogleRedirectLogin(), status, pendingKey = '' } = {}) {
+          const setStatus = typeof status === 'function' ? status : () => { };
+          const modules = window.firebaseModules || await new Promise((resolve, reject) => {
+            let attempts = 0;
+            const timer = window.setInterval(() => {
+              attempts += 1;
+              if (window.firebaseModules?.auth) {
+                window.clearInterval(timer);
+                resolve(window.firebaseModules);
+              } else if (attempts > 40) {
+                window.clearInterval(timer);
+                reject(new Error('Firebase auth belum siap.'));
+              }
+            }, 250);
+          });
+
+          const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = modules;
+          if (!auth || !GoogleAuthProvider || (!signInWithPopup && !signInWithRedirect)) {
+            throw new Error('Login Google belum siap di browser ini.');
+          }
+
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+
+          if (preferRedirect) {
+            if (!signInWithRedirect) throw new Error('Mode redirect Google tidak tersedia.');
+            if (pendingKey) sessionStorage.setItem(pendingKey, 'true');
+            setStatus('Mengalihkan ke Google Sign-In...');
+            await signInWithRedirect(auth, provider);
+            return null;
+          }
+
+          if (signInWithPopup) {
+            try {
+              setStatus('Membuka popup Google...');
+              return await signInWithPopup(auth, provider);
+            } catch (popupErr) {
+              console.warn('Popup Google gagal, pakai redirect', popupErr);
+            }
+          }
+
+          if (!signInWithRedirect) throw new Error('Popup diblokir dan mode redirect tidak tersedia.');
+          if (pendingKey) sessionStorage.setItem(pendingKey, 'true');
+          setStatus('Popup diblokir. Mengalihkan ke Google Sign-In...');
+          await signInWithRedirect(auth, provider);
+          return null;
+        }
+
+        function appendFirebaseGoogleFallback(container, id, label = 'Masuk mode mobile') {
+          if (!container || container.querySelector(`#${id}`)) return;
+          container.insertAdjacentHTML('beforeend', `
+            <button type="button" class="btn btn-link btn-sm text-decoration-none mt-2 px-0" id="${id}">
+              ${label}
+            </button>
+          `);
+          const btn = container.querySelector(`#${id}`);
+          if (!btn) return;
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Mengalihkan ke Google...';
+            try {
+              await startFirebaseGoogleLogin({ preferRedirect: true, status: (msg) => { btn.textContent = msg; } });
+            } catch (err) {
+              console.error('Fallback login gagal', err);
+              btn.disabled = false;
+              btn.textContent = label;
+              setToast(err?.message || translateMessage('Login gagal'));
+            }
+          });
+        }
+
         function renderGoogleFallback(messageKey) {
           if (!googleSignInButton) return;
           const message = translateMessage(
@@ -16468,8 +16543,17 @@
           const fallbackBtn = googleSignInButton.querySelector('#googleFallbackAction');
           if (fallbackBtn && !fallbackBtn.dataset.bound) {
             fallbackBtn.dataset.bound = 'true';
-            fallbackBtn.addEventListener('click', () => {
-              setToast(message);
+            fallbackBtn.addEventListener('click', async () => {
+              fallbackBtn.disabled = true;
+              fallbackBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengalihkan ke Google...';
+              try {
+                await startFirebaseGoogleLogin({ preferRedirect: true });
+              } catch (err) {
+                console.error('Google fallback login gagal', err);
+                fallbackBtn.disabled = false;
+                fallbackBtn.innerHTML = `<i class="bi bi-google"></i><span>${translateMessage('Masuk dengan Google')}</span>`;
+                setToast(err?.message || message);
+              }
             });
           }
         }
@@ -16580,6 +16664,7 @@
               text: 'signin_with',
               shape: 'pill',
             });
+            appendFirebaseGoogleFallback(googleSignInButton, 'googleMobileFallbackAction');
           }
 
           const googleSignInForum = document.getElementById('googleSignInForum');
@@ -16604,6 +16689,7 @@
               shape: 'pill',
               width: '300'
             });
+            appendFirebaseGoogleFallback(profileGoogleLoginBtn, 'profileMobileFallbackAction');
           }
         }
 
@@ -28030,10 +28116,13 @@
               <h3 class="fw-bold mb-2 text-white" style="letter-spacing: -0.5px;">Gabung Forum</h3>
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan warga lainnya.</p>
               
-              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+              <button id="forumGoogleLoginBtn" type="button" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G">
                   <span>Masuk dengan Google</span>
-              </button>`;
+              </button>
+              <div id="forumLoginFallback" class="small text-secondary mt-3" role="status" aria-live="polite">
+                Kalau tombol tidak merespons, tekan lagi untuk mode redirect.
+              </div>`;
             const newBtn = document.getElementById('forumGoogleLoginBtn');
             if (newBtn) newBtn.addEventListener('click', handleLoginClick);
           }
@@ -28859,33 +28948,50 @@
             });
           }
 
-          async function handleLoginClick() {
-            // ... (Keep existing login logic mostly same but ensure new UI is handled)
+          function setForumLoginFallback(message, variant = 'secondary') {
+            const fallback = document.getElementById('forumLoginFallback');
+            if (!fallback) return;
+            fallback.className = `small text-${variant} mt-3`;
+            fallback.textContent = message;
+          }
+
+          function resetForumLoginButton() {
             const btn = document.getElementById('forumGoogleLoginBtn');
             if (!btn) return;
-            if (!window.firebaseModules || !window.firebaseModules.auth) return;
-            const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
+            btn.disabled = false;
+            btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G"><span>Masuk dengan Google</span>';
+          }
+
+          async function handleLoginClick() {
+            const btn = document.getElementById('forumGoogleLoginBtn');
+            if (!btn) return;
+            if (!window.firebaseModules || !window.firebaseModules.auth) {
+              setForumLoginFallback('Login sedang dimuat. Tunggu sebentar lalu tekan lagi.', 'warning');
+              return;
+            }
+
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Membuka Google...';
             btn.disabled = true;
+            setForumLoginFallback(prefersGoogleRedirectLogin()
+              ? 'Mode mobile aktif. Mengalihkan ke Google Sign-In...'
+              : 'Jika popup tidak muncul, sistem otomatis memakai mode redirect.', 'info');
+
             try {
-              const provider = new GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: 'select_account' });
-              try {
-                const result = await signInWithPopup(auth, provider);
-                if (result && result.user) {
-                  setToast('Login berhasil!', 'success');
-                  sessionStorage.removeItem('forum_login_pending');
-                  forumLoginOverlay.classList.remove('d-flex');
-                  forumLoginOverlay.classList.add('d-none');
-                }
-              } catch (popupErr) {
-                sessionStorage.setItem('forum_login_pending', 'true');
-                await signInWithRedirect(auth, provider);
+              const result = await startFirebaseGoogleLogin({
+                pendingKey: 'forum_login_pending',
+                status: (msg) => setForumLoginFallback(msg, 'info'),
+              });
+              if (result && result.user) {
+                setToast('Login berhasil!', 'success');
+                sessionStorage.removeItem('forum_login_pending');
+                forumLoginOverlay.classList.remove('d-flex');
+                forumLoginOverlay.classList.add('d-none');
               }
             } catch (error) {
-              console.error(error);
-              btn.innerHTML = 'Login Google';
-              btn.disabled = false;
+              console.error('Forum login failed', error);
+              sessionStorage.removeItem('forum_login_pending');
+              setForumLoginFallback(error?.message || 'Login belum bisa dibuka. Muat ulang halaman atau izinkan popup/redirect Google.', 'danger');
+              resetForumLoginButton();
             }
           }
 
