@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.3';
+const APP_VERSION = 'v4.0.4';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
@@ -21,6 +21,9 @@ const APP_SHELL = [
 const NAVIGATION_FALLBACKS = ['./', 'index.html'].map((entry) => resolveToScopeUrl(entry));
 const API_PREFIX = resolveToScopePath('api/');
 const ADMIN_PREFIX = resolveToScopePath('admin/');
+const ALWAYS_NETWORK_PATHS = new Set([
+  resolveToScopePath('tailwind-ui-bridge.js'),
+]);
 const SENSITIVE_PREFIXES = [
   API_PREFIX, ADMIN_PREFIX, resolveToScopePath('internal/'), resolveToScopePath('public/jobs/')
 ];
@@ -94,9 +97,13 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match(request);
       const isNavigate = request.mode === 'navigate' || request.destination === 'document';
+      const isAlwaysNetwork = ALWAYS_NETWORK_PATHS.has(url.pathname);
 
-      const fetchAndCache = async () => {
-        const response = await fetch(request);
+      const fetchAndCache = async ({ bypassHttpCache = false } = {}) => {
+        const networkRequest = bypassHttpCache
+          ? new Request(request, { cache: 'no-store' })
+          : request;
+        const response = await fetch(networkRequest);
         if (response && response.ok) {
           cache.put(request, response.clone());
         }
@@ -111,9 +118,18 @@ self.addEventListener('fetch', (event) => {
         return null;
       };
 
+      if (isAlwaysNetwork) {
+        try {
+          return await fetchAndCache({ bypassHttpCache: true });
+        } catch (err) {
+          if (cached) return cached;
+          return offlineResponse();
+        }
+      }
+
       if (isNavigate) {
         try {
-          return await fetchAndCache();
+          return await fetchAndCache({ bypassHttpCache: true });
         } catch (err) {
           if (cached) return cached;
           const fallback = await matchNavigationFallback();
