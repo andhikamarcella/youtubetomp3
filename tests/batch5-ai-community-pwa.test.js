@@ -13,6 +13,7 @@ after(async () => {
 const server = await readFile(new URL('../index.js', import.meta.url), 'utf8');
 const sw = await readFile(new URL('../public-ui/sw.js', import.meta.url), 'utf8');
 const home = await readFile(new URL('../public-ui/index.html', import.meta.url), 'utf8');
+const bridge = await readFile(new URL('../public-ui/tailwind-ui-bridge.js', import.meta.url), 'utf8');
 
 test('AI models response exposes public modes without requiring provider secrets', () => {
   const payload = buildAiModelsResponse({ advanced: true });
@@ -39,13 +40,27 @@ test('voice signaling requires consent and active call participants', () => {
   assert.match(server, /endSocketCalls\(socket\.id, "disconnected"\)/);
 });
 
-test('PWA service worker has versioned caches, cache reset messages, and sensitive route exclusions', () => {
-  assert.match(sw, /const APP_VERSION = 'v4\.0\.1'/);
+test('PWA service worker refreshes the mobile header script instead of serving a stale cached copy', () => {
+  assert.match(sw, /const APP_VERSION = 'v4\.0\.4'/);
   assert.match(sw, /ytconv-ui-\$\{APP_VERSION\}/);
+  assert.match(sw, /ALWAYS_NETWORK_PATHS/);
+  assert.match(sw, /resolveToScopePath\('tailwind-ui-bridge\.js'\)/);
+  assert.match(sw, /cache: 'no-store'/);
   assert.match(sw, /CLEAR_CACHE/);
   assert.match(sw, /SKIP_WAITING/);
   assert.match(sw, /resolveToScopePath\('data-request\.html'\)/);
   assert.match(sw, /resolveToScopePath\('public\/jobs\/'\)/);
+});
+
+test('mobile header remains tappable above transparent overlays', () => {
+  assert.match(bridge, /const MOBILEBAR_Z = 2147483647/);
+  assert.match(bridge, /cleanupOrphanBackdrops/);
+  assert.match(bridge, /\.modal-backdrop/);
+  assert.match(bridge, /pointInside\(drawerButton, x, y\)/);
+  assert.match(bridge, /pointInside\(themeButton, x, y\)/);
+  assert.match(bridge, /window\.addEventListener\('pointerdown', handlePress, true\)/);
+  assert.match(bridge, /window\.addEventListener\('touchstart', handlePress/);
+  assert.match(bridge, /dataset\.mobileHeaderFix = 'v4'/);
 });
 
 test('rewards remain isolated behind the rewards route instead of becoming primary converter UI', () => {
