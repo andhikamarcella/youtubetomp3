@@ -27,7 +27,18 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Unit and integration tests
-        run: npm test
+        shell: bash
+        run: |
+          set +e
+          npm test > unit-test.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Unit test failure details"
+            tail -n 240 unit-test.log
+            echo "::endgroup::"
+            exit "$status"
+          fi
+          tail -n 40 unit-test.log
       - name: Security regression tests
         run: npm run test:security
       - name: E2E route smoke tests
