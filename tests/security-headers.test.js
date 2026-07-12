@@ -10,5 +10,11 @@ test('production CSP avoids unsafe-eval while keeping required script origins ex
   assert.match(csp, /script-src/);
   assert.doesNotMatch(csp, /unsafe-eval/);
   assert.match(csp, /challenges\.cloudflare\.com/);
+  assert.match(csp, /www\.gstatic\.com/);
+  assert.match(csp, /apis\.google\.com/);
+  assert.match(csp, /identitytoolkit\.googleapis\.com/);
+  assert.match(csp, /securetoken\.googleapis\.com/);
+  assert.match(csp, /forum-warga\.firebaseapp\.com/);
+  assert.match(csp, /lh3\.googleusercontent\.com/);
   assert.equal(headers.get('Strict-Transport-Security'), 'max-age=31536000; includeSubDomains');
 });
