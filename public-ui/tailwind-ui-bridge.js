@@ -113,10 +113,39 @@
       }
       .tw-glow-orb {
         display: none !important;
+        pointer-events: none !important;
       }
+      /*
+       * Jangan memberi semua anak langsung <body> z-index yang sama.
+       * Itu membuat .ytclean-shell menjadi stacking context z-index: 1 dan
+       * mengurung header mobile di bawah sibling konten walau header sendiri
+       * memakai z-index sangat tinggi.
+       */
       .tw-enhanced > :not(.tw-glow-orb) {
         position: relative;
-        z-index: 1;
+      }
+      .tw-enhanced > .ytclean-shell {
+        z-index: auto !important;
+        isolation: auto !important;
+      }
+      .tw-enhanced .ytclean-mobilebar {
+        z-index: var(--ytclean-mobilebar-z, 2147482000) !important;
+        pointer-events: auto !important;
+        touch-action: manipulation;
+      }
+      .tw-enhanced .ytclean-mobilebar::before,
+      .tw-enhanced .ytclean-mobilebar::after,
+      .tw-enhanced .ytclean-mobilebar strong {
+        pointer-events: none !important;
+      }
+      .tw-enhanced .ytclean-mobilebar button,
+      .tw-enhanced .ytclean-mobilebar a,
+      .tw-enhanced #ytcleanOpenDrawer,
+      .tw-enhanced #ytcleanMobileTheme {
+        position: relative;
+        z-index: 2;
+        pointer-events: auto !important;
+        touch-action: manipulation;
       }
       .tw-enhanced header,
       .tw-enhanced main > section,
