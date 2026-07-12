@@ -8,6 +8,7 @@
   window.__ytconvForumInteractionEmergencyV1 = true;
 
   const isMobile = () => window.innerWidth <= MOBILE_MAX_WIDTH;
+  const globalModalManagerActive = () => Boolean(window.__ytconvModalAccessibilityPolishV1);
   const isCommunityRoute = () => {
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
@@ -99,12 +100,18 @@
 
     if (modal.parentElement !== body) body.appendChild(modal);
     modal.dataset.forumModalPortal = 'body';
-    modal.style.setProperty('z-index', FORUM_MODAL_Z, 'important');
-    modal.style.setProperty('pointer-events', 'auto', 'important');
 
-    document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
-      backdrop.style.setProperty('z-index', FORUM_BACKDROP_Z, 'important');
-    });
+    // The legacy forum hotfix owns these layers only until the global modal
+    // manager loads. After that, it must preserve login forwarding without
+    // repeatedly overwriting z-index and backdrop styles.
+    if (!globalModalManagerActive()) {
+      modal.style.setProperty('z-index', FORUM_MODAL_Z, 'important');
+      modal.style.setProperty('pointer-events', 'auto', 'important');
+
+      document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+        backdrop.style.setProperty('z-index', FORUM_BACKDROP_Z, 'important');
+      });
+    }
 
     return modal;
   };
