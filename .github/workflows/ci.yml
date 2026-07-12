@@ -8,6 +8,13 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      OUTPUT_DIR: /tmp/ytconv/outputs
+      TEMP_DIR: /tmp/ytconv/jobs
+      CACHE_DIR: /tmp/ytconv/cache
+      COOKIES_PATH: /tmp/ytconv/cookies.txt
+      COOKIE_STORE_PATH: /tmp/ytconv/cookie-store.json
     strategy:
       fail-fast: false
       matrix:
