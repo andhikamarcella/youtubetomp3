@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.5';
+const APP_VERSION = 'v4.0.6';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
