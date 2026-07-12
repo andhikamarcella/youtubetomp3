@@ -1654,6 +1654,275 @@
       transform: scale(0.95) translateY(0);
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
+
+
+    /* YTConv clean professional shell (neutral, no gradients/glow). */
+    :root {
+      --background: #ffffff;
+      --sidebar: #f7f7f8;
+      --surface: #ffffff;
+      --surface-secondary: #f4f4f4;
+      --border: #e5e5e5;
+      --text: #202123;
+      --text-secondary: #6b6b6b;
+      --button-primary: #212121;
+      --button-primary-text: #ffffff;
+      --success: #17803d;
+      --warning: #a15c00;
+      --danger: #c83232;
+      --yt-shell-width: 264px;
+    }
+
+    html[data-bs-theme='dark'] {
+      --background: #212121;
+      --sidebar: #171717;
+      --surface: #2f2f2f;
+      --surface-secondary: #262626;
+      --border: #424242;
+      --text: #ececec;
+      --text-secondary: #b4b4b4;
+      --button-primary: #f4f4f4;
+      --button-primary-text: #171717;
+    }
+
+    html, body {
+      overflow-x: hidden;
+    }
+
+    body.ytclean-ui {
+      margin: 0;
+      background: var(--background) !important;
+      color: var(--text) !important;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    body.ytclean-ui *, body.ytclean-ui *::before, body.ytclean-ui *::after {
+      text-shadow: none !important;
+      box-shadow: none !important;
+      background-image: none !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    body.ytclean-ui .app-header-lite,
+    body.ytclean-ui #converterGuideBtn,
+    body.ytclean-ui #converterGuideMobileBtn {
+      display: none !important;
+    }
+
+    .ytclean-shell {
+      min-height: 100vh;
+      background: var(--background);
+    }
+
+    .ytclean-sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 1040;
+      width: var(--yt-shell-width);
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      transition: width .18s ease, transform .18s ease;
+    }
+
+    body.ytclean-collapsed .ytclean-sidebar { width: 78px; }
+    body.ytclean-collapsed .ytclean-label,
+    body.ytclean-collapsed .ytclean-sidebar-section-title,
+    body.ytclean-collapsed .ytclean-brand-text { display: none; }
+
+    .ytclean-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 6px 8px 14px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .ytclean-brand-mark, .ytclean-icon-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: inline-grid;
+      place-items: center;
+      background: var(--surface);
+      color: var(--text);
+      flex: 0 0 auto;
+    }
+
+    .ytclean-icon-btn { cursor: pointer; }
+    .ytclean-icon-btn:hover, .ytclean-link:hover { background: var(--surface-secondary); }
+
+    .ytclean-nav { display: flex; flex-direction: column; gap: 4px; }
+    .ytclean-sidebar-section { padding: 10px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+    .ytclean-sidebar-section-title { color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 0 10px 6px; }
+
+    .ytclean-link {
+      min-height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid transparent;
+      font-weight: 500;
+    }
+
+    .ytclean-link i { width: 20px; text-align: center; color: var(--text-secondary); }
+    .ytclean-link.is-active { background: var(--surface); border-color: var(--border); }
+    .ytclean-sidebar-footer { margin-top: auto; display: grid; gap: 8px; }
+
+    .ytclean-mobilebar {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 1030;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .ytclean-drawer-backdrop { display: none; }
+
+    body.ytclean-ui #mainContent {
+      max-width: 880px !important;
+      margin: 0 auto !important;
+      padding: 32px 24px !important;
+    }
+
+    body.ytclean-ui.ytclean-main-offset {
+      margin-left: var(--yt-shell-width);
+      transition: margin-left .18s ease;
+    }
+    body.ytclean-collapsed.ytclean-ui.ytclean-main-offset { margin-left: 78px; }
+
+    body.ytclean-ui .section-header {
+      display: block !important;
+      margin: 0 0 22px !important;
+      padding: 0 !important;
+      border: 0 !important;
+      background: transparent !important;
+    }
+    body.ytclean-ui #activeSectionTitle {
+      font-size: clamp(28px, 4vw, 40px) !important;
+      line-height: 1.15;
+      font-weight: 600 !important;
+      color: var(--text) !important;
+      margin: 0 0 8px !important;
+    }
+    body.ytclean-ui #activeSectionSubtitle {
+      color: var(--text-secondary) !important;
+      font-size: 16px !important;
+      margin: 0 !important;
+    }
+    body.ytclean-ui .section-header > :not(:first-child) { display: none !important; }
+
+    body.ytclean-ui #advanced-mode > .row,
+    body.ytclean-ui #advanced-mode > .row > .col-lg-7,
+    body.ytclean-ui #advanced-mode > .row > .col-lg-7 > .card {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    body.ytclean-ui #advanced-mode .brand-badge,
+    body.ytclean-ui #advanced-mode .card-body > .d-flex.flex-wrap.align-items-center.justify-content-between {
+      display: none !important;
+    }
+
+    body.ytclean-ui .card,
+    body.ytclean-ui .modal-content,
+    body.ytclean-ui .offcanvas,
+    body.ytclean-ui .accordion-item,
+    body.ytclean-ui .list-group-item {
+      background: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 14px !important;
+      color: var(--text) !important;
+    }
+
+    body.ytclean-ui #advanced-mode .card-body { padding: 22px !important; }
+    body.ytclean-ui label { color: var(--text) !important; font-weight: 500 !important; }
+    body.ytclean-ui .form-text, body.ytclean-ui .text-secondary { color: var(--text-secondary) !important; }
+    body.ytclean-ui .form-control, body.ytclean-ui .form-select, body.ytclean-ui textarea {
+      min-height: 46px;
+      background: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      border-radius: 12px !important;
+    }
+    body.ytclean-ui #url { min-height: 56px; font-size: 16px; }
+    body.ytclean-ui .input-group-text { background: var(--surface-secondary) !important; border-color: var(--border) !important; color: var(--text-secondary) !important; }
+
+    body.ytclean-ui .btn { border-radius: 12px !important; font-weight: 500; }
+    body.ytclean-ui .btn-primary, body.ytclean-ui .primary-cta-btn, body.ytclean-ui #convertBtn {
+      background: var(--button-primary) !important;
+      border-color: var(--button-primary) !important;
+      color: var(--button-primary-text) !important;
+    }
+    body.ytclean-ui .btn-outline-primary, body.ytclean-ui .btn-outline-secondary {
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+      background: var(--surface) !important;
+    }
+    body.ytclean-ui .progress { background: var(--surface-secondary) !important; border-radius: 999px; height: 10px !important; }
+    body.ytclean-ui .progress-bar { background: var(--button-primary) !important; }
+
+    .ytclean-ecosystem {
+      margin: 28px auto 0;
+      max-width: 880px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .ytclean-ecosystem a { color: var(--text-secondary); text-decoration: none; font-size: 14px; }
+    .ytclean-ecosystem a:hover { color: var(--text); }
+
+    .ytclean-error-actions {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-secondary);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .ytclean-error-actions p { margin: 0; flex: 1 1 100%; color: var(--text); }
+
+    :focus-visible { outline: 2px solid var(--text) !important; outline-offset: 2px; }
+
+    @media (max-width: 991.98px) {
+      .ytclean-mobilebar { display: flex; }
+      .ytclean-sidebar { transform: translateX(-100%); width: 270px; }
+      body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); }
+      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 1035; background: rgba(0,0,0,.35); border: 0; }
+      body.ytclean-ui.ytclean-main-offset { margin-left: 0 !important; }
+      body.ytclean-ui #mainContent { padding: 20px 16px !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body.ytclean-ui *, body.ytclean-ui *::before, body.ytclean-ui *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
   </style>
   <style>
     :root {
@@ -2432,6 +2701,12 @@
       height: 100%;
       object-fit: cover;
       display: block;
+    }
+
+    #previewWrap .preview-visual.ytmusic-square-cover {
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     #previewWrap .preview-visual::after {
@@ -5038,6 +5313,41 @@
 </head>
 
 <body>
+
+  <div class="ytclean-shell" aria-hidden="false">
+    <div class="ytclean-mobilebar">
+      <button class="ytclean-icon-btn" id="ytcleanOpenDrawer" type="button" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+      <strong>YTConv</strong>
+      <button class="ytclean-icon-btn" id="ytcleanMobileTheme" type="button" aria-label="Ganti tema"><i class="bi bi-circle-half"></i></button>
+    </div>
+    <button class="ytclean-drawer-backdrop" id="ytcleanDrawerBackdrop" type="button" aria-label="Tutup menu"></button>
+    <aside class="ytclean-sidebar" id="ytcleanSidebar" aria-label="Navigasi utama">
+      <div class="d-flex align-items-center justify-content-between gap-2">
+        <a class="ytclean-brand" href="/" aria-label="YTConv beranda"><span class="ytclean-brand-mark"><i class="bi bi-music-note-beamed"></i></span><span class="ytclean-brand-text">YTConv</span></a>
+        <button class="ytclean-icon-btn d-none d-lg-inline-grid" id="ytcleanCollapse" type="button" aria-label="Ciutkan sidebar"><i class="bi bi-layout-sidebar-inset"></i></button>
+        <button class="ytclean-icon-btn d-lg-none" id="ytcleanCloseDrawer" type="button" aria-label="Tutup menu"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <nav class="ytclean-nav" aria-label="Layanan utama">
+        <a class="ytclean-link is-active" href="/"><i class="bi bi-download"></i><span class="ytclean-label">Converter</span></a>
+        <a class="ytclean-link" href="/studio"><i class="bi bi-sliders"></i><span class="ytclean-label">Studio</span></a>
+        <a class="ytclean-link" href="/history"><i class="bi bi-clock-history"></i><span class="ytclean-label">Riwayat</span></a>
+        <a class="ytclean-link" href="https://ytconvhub.vercel.app/"><i class="bi bi-grid-3x3-gap"></i><span class="ytclean-label">YTConv Hub</span></a>
+      </nav>
+      <div class="ytclean-sidebar-section">
+        <div class="ytclean-sidebar-section-title">Ekosistem</div>
+        <nav class="ytclean-nav" aria-label="Ekosistem YTConv">
+          <a class="ytclean-link" href="https://ytconvtools.vercel.app/"><i class="bi bi-tools"></i><span class="ytclean-label">Tools</span></a>
+          <a class="ytclean-link" href="https://ytconvdocs.vercel.app/"><i class="bi bi-file-text"></i><span class="ytclean-label">Docs</span></a>
+          <a class="ytclean-link" href="https://ytconvstatus.vercel.app/"><i class="bi bi-activity"></i><span class="ytclean-label">Status</span></a>
+          <a class="ytclean-link" href="https://ytconvhelp.vercel.app/"><i class="bi bi-question-circle"></i><span class="ytclean-label">Help Center</span></a>
+        </nav>
+      </div>
+      <div class="ytclean-sidebar-footer">
+        <button class="ytclean-link" id="ytcleanSettings" type="button"><i class="bi bi-gear"></i><span class="ytclean-label">Pengaturan</span></button>
+        <button class="ytclean-link" id="ytcleanTheme" type="button"><i class="bi bi-circle-half"></i><span class="ytclean-label">Tema</span></button>
+      </div>
+    </aside>
+  </div>
   <a href="#mainContent" class="visually-hidden-focusable">Lewati ke konten utama</a>
   <nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary shadow-sm">
     <div class="container d-flex align-items-center gap-3">
@@ -7823,6 +8133,14 @@
               <i class="bi bi-chevron-right modern-nav-arrow"></i>
             </button>
 
+            <!-- Help Center (mobile feature menu) -->
+            <a class="modern-nav-item d-lg-none" href="https://ytconvguide.vercel.app/" target="_blank"
+              rel="noopener noreferrer" aria-label="Buka Help Center converter">
+              <div class="modern-nav-icon"><i class="bi bi-life-preserver"></i></div>
+              <span class="modern-nav-label">Help Center</span>
+              <i class="bi bi-box-arrow-up-right modern-nav-arrow"></i>
+            </a>
+
             <!-- Divider -->
             <hr class="my-2 border-secondary-subtle opacity-25">
 
@@ -8178,12 +8496,15 @@
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan
                 warga lainnya.</p>
 
-              <button id="forumGoogleLoginBtn"
+              <button id="forumGoogleLoginBtn" type="button"
                 class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24"
                   alt="G">
                 <span>Masuk dengan Google</span>
               </button>
+              <div id="forumLoginFallback" class="small text-secondary mt-3" role="status" aria-live="polite">
+                Kalau tombol tidak merespons, tekan lagi untuk mode redirect.
+              </div>
             </div>
           </div>
 
@@ -10811,17 +11132,10 @@
 
           loginBtn.addEventListener('click', async () => {
             try {
-              const m = await waitForFirebase();
-              const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = m;
+              await waitForFirebase();
               loginBtn.disabled = true;
-              loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
-              const provider = new GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: 'select_account' });
-              try {
-                await signInWithPopup(auth, provider);
-              } catch {
-                await signInWithRedirect(auth, provider);
-              }
+              loginBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Membuka Google...';
+              await startFirebaseGoogleLogin({ status: (msg) => { loginBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${msg}`; } });
             } catch {
               if (typeof window.setToast === 'function') window.setToast('Login gagal.', 'danger');
             } finally {
@@ -13544,19 +13858,52 @@
           return next;
         };
 
+        const converterErrorMessages = {
+          RATE_LIMITED: 'YouTube sedang membatasi koneksi dari server ini. Coba lagi nanti, jangan spam retry, atau gunakan server/IP lain.',
+          BOT_CHECK: 'YouTube meminta verifikasi bot dari koneksi server. Cookies login tidak diterima atau sudah kedaluwarsa.',
+          LOGIN_REQUIRED: 'YouTube meminta login. Cookies YouTube perlu diperbarui oleh admin.',
+          AGE_RESTRICTED: 'Video membutuhkan verifikasi umur. Admin perlu memperbarui cookies YouTube yang valid.',
+          JS_RUNTIME_MISSING: 'JavaScript runtime yt-dlp belum tersedia. Deploy image terbaru yang memasang Deno/EJS.',
+          FORMAT_UNAVAILABLE: 'Format YouTube tidak bisa dibaca dari server ini. Sistem sudah mencoba fallback; buka Help Center kalau tetap gagal.',
+          INVALID_URL: 'Link belum valid atau domain belum didukung.',
+          QUEUE_FULL: 'Antrian server sedang penuh. Tunggu sebentar lalu coba lagi.',
+        };
+
+        const isGenericConverterError = (message = '') => /^(yt-dlp gagal|gagal memproses|terjadi kesalahan|gagal membuat job)$/i.test(String(message || '').trim());
+
+        const buildApiErrorMessage = (payload = {}, rawText = '', fallbackMessage = 'Terjadi kesalahan') => {
+          const errorObj = payload && typeof payload.error === 'object' ? payload.error : {};
+          const category = payload.errorCategory || errorObj.code || errorObj.errorCategory || '';
+          const rawMessage = typeof payload.error === 'string'
+            ? payload.error
+            : (payload.message || errorObj.message || (rawText ? String(rawText).trim().slice(0, 280) : '') || fallbackMessage);
+          const message = (category && (isGenericConverterError(rawMessage) || !rawMessage))
+            ? (converterErrorMessages[category] || rawMessage || fallbackMessage)
+            : rawMessage;
+          return {
+            message: message || fallbackMessage,
+            category,
+            hint: payload.hint || errorObj.hint || '',
+            adminActionRequired: Boolean(payload.adminActionRequired || errorObj.adminActionRequired),
+          };
+        };
+
         const resolveJsonResponse = async (resp, { fallbackMessage = 'Terjadi kesalahan', logLabel = '' } = {}) => {
           const safe = await readJsonSafe(resp);
           const payload = safe.data && typeof safe.data === 'object' ? safe.data : {};
-          if (!resp?.ok) {
+          if (!resp?.ok || payload.ok === false || payload.success === false) {
             const raw = (safe.rawText || '').trim();
             if (safe.parseError) {
               console?.warn?.('[json] gagal parsing', { label: logLabel || resp?.url, error: safe.parseError, raw });
             }
-            const message = payload.error || payload.message || (raw ? raw.slice(0, 280) : '') || fallbackMessage;
-            const err = new Error(message || fallbackMessage);
+            const friendly = buildApiErrorMessage(payload, raw, fallbackMessage);
+            const err = new Error(friendly.message);
             err.status = resp?.status;
             err.payload = payload;
             err.rawText = safe.rawText;
+            err.errorCategory = friendly.category;
+            err.hint = friendly.hint;
+            err.adminActionRequired = friendly.adminActionRequired;
             throw err;
           }
           if (safe.parseError) {
@@ -13573,6 +13920,55 @@
           });
           return resolveJsonResponse(resp, options);
         };
+
+
+
+        const initYtcleanUi = () => {
+          document.body.classList.add('ytclean-ui');
+          const main = document.getElementById('mainContent');
+          if (main?.parentElement) main.parentElement.classList.add('ytclean-main-offset');
+          const title = document.getElementById('activeSectionTitle');
+          const subtitle = document.getElementById('activeSectionSubtitle');
+          const currentPath = window.location.pathname || '/';
+          const isConverterRoute = currentPath === '/' || currentPath === '';
+          if (isConverterRoute) {
+            if (title) title.textContent = 'Unduh audio atau video';
+            if (subtitle) subtitle.textContent = 'Tempel link, pilih format, lalu mulai prosesnya.';
+          }
+          document.querySelectorAll('.ytclean-link').forEach((link) => {
+            const href = link.getAttribute('href') || '';
+            const isActive = (currentPath === '/' && href === '/') || (href.startsWith('/') && href !== '/' && currentPath.startsWith(href));
+            link.classList.toggle('is-active', isActive);
+          });
+          document.querySelectorAll('a[href="https://ytconv.onrender.com/status"]').forEach((link) => { link.href = 'https://ytconvstatus.vercel.app/'; });
+          const openDrawer = () => document.body.classList.add('ytclean-drawer-open');
+          const closeDrawer = () => document.body.classList.remove('ytclean-drawer-open');
+          document.getElementById('ytcleanOpenDrawer')?.addEventListener('click', openDrawer);
+          document.getElementById('ytcleanCloseDrawer')?.addEventListener('click', closeDrawer);
+          document.getElementById('ytcleanDrawerBackdrop')?.addEventListener('click', closeDrawer);
+          document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDrawer(); });
+          document.getElementById('ytcleanCollapse')?.addEventListener('click', () => document.body.classList.toggle('ytclean-collapsed'));
+          const cycleTheme = () => {
+            const current = localStorage.getItem('ytconv.theme.mode') || localStorage.getItem('themeMode') || 'system';
+            const next = current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system';
+            localStorage.setItem('ytconv.theme.mode', next);
+            localStorage.setItem('themeMode', next === 'system' ? 'auto' : next);
+            const resolved = next === 'system'
+              ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+              : next;
+            document.documentElement.setAttribute('data-bs-theme', resolved);
+            setToast?.(`Tema: ${next === 'system' ? 'Sistem' : next === 'light' ? 'Terang' : 'Gelap'}`);
+          };
+          document.getElementById('ytcleanTheme')?.addEventListener('click', cycleTheme);
+          document.getElementById('ytcleanMobileTheme')?.addEventListener('click', cycleTheme);
+          document.getElementById('ytcleanSettings')?.addEventListener('click', () => document.querySelector('[data-bs-target="#offcanvasSettings"]')?.click());
+          const ecosystem = document.createElement('div');
+          ecosystem.className = 'ytclean-ecosystem';
+          ecosystem.innerHTML = '<a href="https://ytconvhub.vercel.app/"><i class="bi bi-grid-3x3-gap me-1"></i>YTConv Hub</a><a href="https://ytconvtools.vercel.app/">Tools</a><a href="https://ytconvdocs.vercel.app/">Docs</a><a href="https://ytconvstatus.vercel.app/">Status</a><a href="https://ytconvhelp.vercel.app/">Help Center</a>';
+          if (main && !document.querySelector('.ytclean-ecosystem')) main.insertAdjacentElement('afterend', ecosystem);
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initYtcleanUi, { once: true });
+        else initYtcleanUi();
 
         const xpSyncTracker = new Set();
 
@@ -16451,6 +16847,85 @@
           }
         }
 
+        function prefersGoogleRedirectLogin() {
+          const ua = navigator.userAgent || '';
+          const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+          const isInApp = /FBAN|FBAV|Instagram|Line|TikTok|Twitter|WebView|wv\)/i.test(ua);
+          const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || navigator.standalone;
+          return Boolean(isMobile || isInApp || isStandalone);
+        }
+
+        async function startFirebaseGoogleLogin({ preferRedirect = prefersGoogleRedirectLogin(), status, pendingKey = '' } = {}) {
+          const setStatus = typeof status === 'function' ? status : () => { };
+          const modules = window.firebaseModules || await new Promise((resolve, reject) => {
+            let attempts = 0;
+            const timer = window.setInterval(() => {
+              attempts += 1;
+              if (window.firebaseModules?.auth) {
+                window.clearInterval(timer);
+                resolve(window.firebaseModules);
+              } else if (attempts > 40) {
+                window.clearInterval(timer);
+                reject(new Error('Firebase auth belum siap.'));
+              }
+            }, 250);
+          });
+
+          const { auth, signInWithPopup, signInWithRedirect, GoogleAuthProvider } = modules;
+          if (!auth || !GoogleAuthProvider || (!signInWithPopup && !signInWithRedirect)) {
+            throw new Error('Login Google belum siap di browser ini.');
+          }
+
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+
+          if (preferRedirect) {
+            if (!signInWithRedirect) throw new Error('Mode redirect Google tidak tersedia.');
+            if (pendingKey) sessionStorage.setItem(pendingKey, 'true');
+            setStatus('Mengalihkan ke Google Sign-In...');
+            await signInWithRedirect(auth, provider);
+            return null;
+          }
+
+          if (signInWithPopup) {
+            try {
+              setStatus('Membuka popup Google...');
+              return await signInWithPopup(auth, provider);
+            } catch (popupErr) {
+              console.warn('Popup Google gagal, pakai redirect', popupErr);
+            }
+          }
+
+          if (!signInWithRedirect) throw new Error('Popup diblokir dan mode redirect tidak tersedia.');
+          if (pendingKey) sessionStorage.setItem(pendingKey, 'true');
+          setStatus('Popup diblokir. Mengalihkan ke Google Sign-In...');
+          await signInWithRedirect(auth, provider);
+          return null;
+        }
+
+        function appendFirebaseGoogleFallback(container, id, label = 'Masuk mode mobile') {
+          if (!container || container.querySelector(`#${id}`)) return;
+          container.insertAdjacentHTML('beforeend', `
+            <button type="button" class="btn btn-link btn-sm text-decoration-none mt-2 px-0" id="${id}">
+              ${label}
+            </button>
+          `);
+          const btn = container.querySelector(`#${id}`);
+          if (!btn) return;
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Mengalihkan ke Google...';
+            try {
+              await startFirebaseGoogleLogin({ preferRedirect: true, status: (msg) => { btn.textContent = msg; } });
+            } catch (err) {
+              console.error('Fallback login gagal', err);
+              btn.disabled = false;
+              btn.textContent = label;
+              setToast(err?.message || translateMessage('Login gagal'));
+            }
+          });
+        }
+
         function renderGoogleFallback(messageKey) {
           if (!googleSignInButton) return;
           const message = translateMessage(
@@ -16468,8 +16943,17 @@
           const fallbackBtn = googleSignInButton.querySelector('#googleFallbackAction');
           if (fallbackBtn && !fallbackBtn.dataset.bound) {
             fallbackBtn.dataset.bound = 'true';
-            fallbackBtn.addEventListener('click', () => {
-              setToast(message);
+            fallbackBtn.addEventListener('click', async () => {
+              fallbackBtn.disabled = true;
+              fallbackBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Mengalihkan ke Google...';
+              try {
+                await startFirebaseGoogleLogin({ preferRedirect: true });
+              } catch (err) {
+                console.error('Google fallback login gagal', err);
+                fallbackBtn.disabled = false;
+                fallbackBtn.innerHTML = `<i class="bi bi-google"></i><span>${translateMessage('Masuk dengan Google')}</span>`;
+                setToast(err?.message || message);
+              }
             });
           }
         }
@@ -16580,6 +17064,7 @@
               text: 'signin_with',
               shape: 'pill',
             });
+            appendFirebaseGoogleFallback(googleSignInButton, 'googleMobileFallbackAction');
           }
 
           const googleSignInForum = document.getElementById('googleSignInForum');
@@ -16604,6 +17089,7 @@
               shape: 'pill',
               width: '300'
             });
+            appendFirebaseGoogleFallback(profileGoogleLoginBtn, 'profileMobileFallbackAction');
           }
         }
 
@@ -19457,7 +19943,8 @@
           const spotifyPreviewUrl = previewProvider === 'spotify'
             ? previewInfo.url || original?.previewUrl || ''
             : '';
-          const canEmbedYoutube = embedAllowed && (provider === 'youtube' || isYoutubeUrl(info.webpageUrl || '')) && info.id;
+          const wantsSquareArtwork = info.artworkShape === 'square' || isYoutubeMusicUrl(info.webpageUrl || '') || isYoutubeMusicUrl(original?.url || '');
+          const canEmbedYoutube = embedAllowed && !wantsSquareArtwork && (provider === 'youtube' || isYoutubeUrl(info.webpageUrl || '')) && info.id;
           const canEmbedSpotify = embedAllowed && !!spotifyEmbedUrl;
           if (videoPreviewFrame) {
             if (canEmbedYoutube) {
@@ -19476,8 +19963,11 @@
             }
           }
           if (videoPreviewWrap) {
-            const disabled = !embedAllowed || (!canEmbedYoutube && !canEmbedSpotify);
+            const disabled = !wantsSquareArtwork && (!embedAllowed || (!canEmbedYoutube && !canEmbedSpotify));
             videoPreviewWrap.classList.toggle('is-disabled', disabled);
+            videoPreviewWrap.classList.toggle('ratio-16x9', !wantsSquareArtwork);
+            videoPreviewWrap.classList.toggle('ratio-1x1', wantsSquareArtwork);
+            videoPreviewWrap.classList.toggle('ytmusic-square-cover', wantsSquareArtwork);
           }
           if (thumbEl) {
             if (info.cover || info.thumbnail) {
@@ -21660,6 +22150,16 @@
           return detectMediaSource(text) === 'youtube';
         }
 
+        function isYoutubeMusicUrl(text = '') {
+          const raw = String(text || '').trim();
+          if (!raw) return false;
+          try {
+            return new URL(raw).hostname.toLowerCase().endsWith('music.youtube.com');
+          } catch {
+            return /(^|\.)music\.youtube\.com/i.test(raw);
+          }
+        }
+
         const RATING_STORE_KEY = 'ytmp3.ratings.v1';
 
         function loadRatingStore() {
@@ -23441,13 +23941,22 @@
           return xp;
         };
 
-        function toFriendlyConvertError(message = '') {
+        function toFriendlyConvertError(error = '') {
+          const message = typeof error === 'string' ? error : (error?.message || '');
+          const category = typeof error === 'string' ? '' : (error?.errorCategory || error?.payload?.errorCategory || error?.payload?.error?.code || '');
+          const hint = typeof error === 'string' ? '' : (error?.hint || error?.payload?.hint || '');
+          const categorized = category && converterErrorMessages[category] ? converterErrorMessages[category] : '';
           const raw = String(message || '').toLowerCase();
-          if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) return 'Video ini diblokir atau butuh cookies. Coba video lain atau update cookies ya.';
-          if (raw.includes('429') || raw.includes('too many') || raw.includes('rate')) return 'Server lagi padat. Santai, coba lagi sebentar ya.';
-          if (raw.includes('invalid') && raw.includes('url')) return 'Link belum valid. Cek lagi lalu kirim ulang ya.';
-          if (raw.includes('captcha')) return 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
-          return `Hmm gagal nih, coba lagi yaa… (${message || 'unknown'})`;
+          let friendly = categorized || message;
+          if (!friendly || isGenericConverterError(friendly)) friendly = 'Hmm gagal nih, coba lagi yaa…';
+          if (!categorized) {
+            if (raw.includes('age') || raw.includes('restricted') || raw.includes('cookies')) friendly = 'Video membutuhkan cookies YouTube terbaru. Admin perlu memperbarui cookies di Admin Cookies Manager.';
+            else if (raw.includes('429') || raw.includes('too many') || raw.includes('rate') || raw.includes('bot')) friendly = 'YouTube sedang membatasi koneksi server. Tunggu dulu, jangan retry berkali-kali, atau gunakan server/IP lain.';
+            else if (raw.includes('invalid') && raw.includes('url')) friendly = 'Link belum valid. Cek lagi lalu kirim ulang ya.';
+            else if (raw.includes('captcha')) friendly = 'Verifikasi keamanan belum lolos. Coba klik convert sekali lagi ya.';
+          }
+          if (hint && !friendly.includes(hint)) friendly = `${friendly} ${hint}`;
+          return friendly;
         }
 
         function getSpeedServerLabel(mode = 'auto') {
@@ -23866,7 +24375,17 @@
             }
             if ($('#autoClear').checked && !overrideUrl) { $('#clearBtn').click(); }
           } catch (err) {
-            $('#status').textContent = translateMessage(`Error: ${err.message}`);
+            $('#status').textContent = 'Proses belum berhasil. Coba lagi atau buka Help Center.';
+            let cleanActions = document.getElementById('ytcleanConvertErrorActions');
+            if (!cleanActions) {
+              cleanActions = document.createElement('div');
+              cleanActions.id = 'ytcleanConvertErrorActions';
+              cleanActions.className = 'ytclean-error-actions';
+              cleanActions.setAttribute('aria-live', 'polite');
+              document.getElementById('statusWrap')?.appendChild(cleanActions);
+            }
+            cleanActions.innerHTML = '<p>Proses belum berhasil. Coba lagi atau buka Help Center.</p><button type="button" class="btn btn-primary btn-sm" id="ytcleanRetryConvert">Coba Lagi</button><a class="btn btn-outline-secondary btn-sm" href="https://ytconvhelp.vercel.app/">Buka Help Center</a>';
+            document.getElementById('ytcleanRetryConvert')?.addEventListener('click', () => doConvert(null, false), { once: true });
             $('#loadingSpinner').style.display = 'none';
             if (window.manageCTAState) window.manageCTAState('completed');
             $('#resultWrap').hidden = true;
@@ -23876,7 +24395,7 @@
             $('#logs').textContent = (err && err.stack) ? err.stack : String(err);
             resetAudioPreview();
             convertProgressAnimator.fail(translateMessage('Gagal'));
-            const friendlyErr = toFriendlyConvertError(err?.message || '');
+            const friendlyErr = toFriendlyConvertError(err);
             setToast(friendlyErr);
             announceNarrator(`Konversi gagal: ${friendlyErr}`);
             updateAiStatus(friendlyErr, 'danger');
@@ -28030,10 +28549,13 @@
               <h3 class="fw-bold mb-2 text-white" style="letter-spacing: -0.5px;">Gabung Forum</h3>
               <p class="text-secondary mb-4" style="max-width: 300px;">Diskusi seru, berbagi gambar, dan stiker dengan warga lainnya.</p>
               
-              <button id="forumGoogleLoginBtn" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
+              <button id="forumGoogleLoginBtn" type="button" class="btn btn-light rounded-pill py-3 px-5 fw-bold d-flex align-items-center gap-3 shadow-lg hover-scale">
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G">
                   <span>Masuk dengan Google</span>
-              </button>`;
+              </button>
+              <div id="forumLoginFallback" class="small text-secondary mt-3" role="status" aria-live="polite">
+                Kalau tombol tidak merespons, tekan lagi untuk mode redirect.
+              </div>`;
             const newBtn = document.getElementById('forumGoogleLoginBtn');
             if (newBtn) newBtn.addEventListener('click', handleLoginClick);
           }
@@ -28859,33 +29381,50 @@
             });
           }
 
-          async function handleLoginClick() {
-            // ... (Keep existing login logic mostly same but ensure new UI is handled)
+          function setForumLoginFallback(message, variant = 'secondary') {
+            const fallback = document.getElementById('forumLoginFallback');
+            if (!fallback) return;
+            fallback.className = `small text-${variant} mt-3`;
+            fallback.textContent = message;
+          }
+
+          function resetForumLoginButton() {
             const btn = document.getElementById('forumGoogleLoginBtn');
             if (!btn) return;
-            if (!window.firebaseModules || !window.firebaseModules.auth) return;
-            const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>...';
+            btn.disabled = false;
+            btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24" height="24" alt="G"><span>Masuk dengan Google</span>';
+          }
+
+          async function handleLoginClick() {
+            const btn = document.getElementById('forumGoogleLoginBtn');
+            if (!btn) return;
+            if (!window.firebaseModules || !window.firebaseModules.auth) {
+              setForumLoginFallback('Login sedang dimuat. Tunggu sebentar lalu tekan lagi.', 'warning');
+              return;
+            }
+
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Membuka Google...';
             btn.disabled = true;
+            setForumLoginFallback(prefersGoogleRedirectLogin()
+              ? 'Mode mobile aktif. Mengalihkan ke Google Sign-In...'
+              : 'Jika popup tidak muncul, sistem otomatis memakai mode redirect.', 'info');
+
             try {
-              const provider = new GoogleAuthProvider();
-              provider.setCustomParameters({ prompt: 'select_account' });
-              try {
-                const result = await signInWithPopup(auth, provider);
-                if (result && result.user) {
-                  setToast('Login berhasil!', 'success');
-                  sessionStorage.removeItem('forum_login_pending');
-                  forumLoginOverlay.classList.remove('d-flex');
-                  forumLoginOverlay.classList.add('d-none');
-                }
-              } catch (popupErr) {
-                sessionStorage.setItem('forum_login_pending', 'true');
-                await signInWithRedirect(auth, provider);
+              const result = await startFirebaseGoogleLogin({
+                pendingKey: 'forum_login_pending',
+                status: (msg) => setForumLoginFallback(msg, 'info'),
+              });
+              if (result && result.user) {
+                setToast('Login berhasil!', 'success');
+                sessionStorage.removeItem('forum_login_pending');
+                forumLoginOverlay.classList.remove('d-flex');
+                forumLoginOverlay.classList.add('d-none');
               }
             } catch (error) {
-              console.error(error);
-              btn.innerHTML = 'Login Google';
-              btn.disabled = false;
+              console.error('Forum login failed', error);
+              sessionStorage.removeItem('forum_login_pending');
+              setForumLoginFallback(error?.message || 'Login belum bisa dibuka. Muat ulang halaman atau izinkan popup/redirect Google.', 'danger');
+              resetForumLoginButton();
             }
           }
 
