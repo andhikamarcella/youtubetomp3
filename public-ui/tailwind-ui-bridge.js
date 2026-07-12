@@ -1,6 +1,7 @@
 (() => {
   const MOBILE_MAX_WIDTH = 991.98;
-  const MOBILEBAR_Z = 2147482000;
+  const MOBILEBAR_Z = 2147483647;
+  const ACTION_DEBOUNCE_MS = 650;
 
   const injectPolish = () => {
     if (document.getElementById('tw-premium-button-polish')) return;
@@ -172,11 +173,12 @@
         border-radius: 999px;
       }
 
-      /*
-       * Mobilebar dipindah langsung ke <body>. Ini sengaja menghindari semua
-       * stacking context dari .ytclean-shell, card, transform, filter, contain,
-       * isolation, serta overlay transparan yang sebelumnya menangkap sentuhan.
-       */
+      body > .modal-backdrop:not(.show),
+      body > .offcanvas-backdrop:not(.show) {
+        display: none !important;
+        pointer-events: none !important;
+      }
+
       @media (max-width: ${MOBILE_MAX_WIDTH}px) {
         body.tw-enhanced > .ytclean-mobilebar,
         body.tw-enhanced.ui-overlay-open > .ytclean-mobilebar,
@@ -243,10 +245,34 @@
     const mobilebar = document.querySelector('.ytclean-mobilebar');
     if (!mobilebar) return null;
 
-    if (mobilebar.parentElement !== body) body.appendChild(mobilebar);
+    if (mobilebar.parentElement !== body || mobilebar !== body.lastElementChild) {
+      body.appendChild(mobilebar);
+    }
     mobilebar.dataset.mobileHeaderPortal = 'body';
+    mobilebar.dataset.mobileHeaderFix = 'v4';
     mobilebar.removeAttribute('aria-hidden');
+    mobilebar.style.setProperty('z-index', String(MOBILEBAR_Z), 'important');
+    mobilebar.style.setProperty('pointer-events', 'auto', 'important');
     return mobilebar;
+  };
+
+  const cleanupOrphanBackdrops = () => {
+    const body = document.body;
+    if (!body) return;
+
+    const visibleModal = document.querySelector('.modal.show, .modal[aria-modal="true"]');
+    const visibleOffcanvas = document.querySelector('.offcanvas.show, .offcanvas.showing');
+
+    if (!visibleModal) {
+      document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+      body.classList.remove('modal-open', 'has-open-modal');
+    }
+
+    if (!visibleOffcanvas) {
+      document.querySelectorAll('.offcanvas-backdrop').forEach((backdrop) => backdrop.remove());
+    }
+
+    portalMobileHeader(body);
   };
 
   const syncDrawerState = () => {
@@ -255,54 +281,109 @@
   };
 
   const toggleDrawer = () => {
+    cleanupOrphanBackdrops();
     document.body.classList.toggle('ytclean-drawer-open');
     syncDrawerState();
   };
 
   const toggleTheme = () => {
-    const desktopThemeToggle = document.getElementById('themeToggle');
-    if (desktopThemeToggle) {
-      desktopThemeToggle.click();
-      return;
-    }
-
+    cleanupOrphanBackdrops();
     const root = document.documentElement;
     const current = root.getAttribute('data-bs-theme') || localStorage.getItem('ytmp3.theme') || 'dark';
     const next = current === 'light' ? 'dark' : 'light';
+
     localStorage.setItem('ytmp3.theme', next);
     localStorage.setItem('themeMode', next);
+    localStorage.setItem('ytconv.theme.mode', next);
     root.setAttribute('data-bs-theme', next);
+    root.style.colorScheme = next;
+
+    document.dispatchEvent(new CustomEvent('ytconv:themechange', { detail: { theme: next } }));
+  };
+
+  const pointInside = (element, x, y) => {
+    if (!element || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+    const rect = element.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  };
+
+  const coordinatesFromEvent = (event) => {
+    const touch = event.changedTouches?.[0] || event.touches?.[0];
+    return {
+      x: Number(touch?.clientX ?? event.clientX),
+      y: Number(touch?.clientY ?? event.clientY),
+    };
   };
 
   const installMobileControlFallback = () => {
-    if (window.__ytconvMobileHeaderFallbackInstalled) return;
-    window.__ytconvMobileHeaderFallbackInstalled = true;
+    if (window.__ytconvMobileHeaderFallbackInstalledV4) return;
+    window.__ytconvMobileHeaderFallbackInstalledV4 = true;
 
-    let lastPointerHandledAt = 0;
+    let lastAction = '';
+    let lastActionAt = 0;
 
     const resolveAction = (event) => {
-      const target = event.target?.closest?.('#ytcleanOpenDrawer, #ytcleanMobileTheme');
-      if (!target) return null;
-      return target.id === 'ytcleanOpenDrawer' ? toggleDrawer : toggleTheme;
+      const directTarget = event.target?.closest?.('#ytcleanOpenDrawer, #ytcleanMobileTheme');
+      if (directTarget) {
+        return directTarget.id === 'ytcleanOpenDrawer'
+          ? { id: 'drawer', action: toggleDrawer }
+          : { id: 'theme', action: toggleTheme };
+      }
+
+      const { x, y } = coordinatesFromEvent(event);
+      const drawerButton = document.getElementById('ytcleanOpenDrawer');
+      const themeButton = document.getElementById('ytcleanMobileTheme');
+
+      if (pointInside(drawerButton, x, y)) return { id: 'drawer', action: toggleDrawer };
+      if (pointInside(themeButton, x, y)) return { id: 'theme', action: toggleTheme };
+      return null;
     };
 
-    document.addEventListener('pointerup', (event) => {
-      const action = resolveAction(event);
-      if (!action) return;
-      lastPointerHandledAt = Date.now();
-      event.preventDefault();
-      event.stopPropagation();
-      action();
-    }, true);
+    const handlePress = (event) => {
+      if (window.innerWidth > MOBILE_MAX_WIDTH) return;
+      const resolved = resolveAction(event);
+      if (!resolved) return;
 
-    document.addEventListener('click', (event) => {
-      const action = resolveAction(event);
-      if (!action) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (Date.now() - lastPointerHandledAt < 700) return;
-      action();
-    }, true);
+      const now = Date.now();
+      if (lastAction === resolved.id && now - lastActionAt < ACTION_DEBOUNCE_MS) {
+        event.preventDefault?.();
+        event.stopImmediatePropagation?.();
+        return;
+      }
+
+      lastAction = resolved.id;
+      lastActionAt = now;
+      event.preventDefault?.();
+      event.stopImmediatePropagation?.();
+      resolved.action();
+    };
+
+    window.addEventListener('pointerdown', handlePress, true);
+    window.addEventListener('touchstart', handlePress, { capture: true, passive: false });
+    window.addEventListener('click', handlePress, true);
+  };
+
+  const installBackdropGuard = () => {
+    if (window.__ytconvBackdropGuardInstalled) return;
+    window.__ytconvBackdropGuardInstalled = true;
+
+    let cleanupTimer = 0;
+    const scheduleCleanup = () => {
+      window.clearTimeout(cleanupTimer);
+      cleanupTimer = window.setTimeout(cleanupOrphanBackdrops, 80);
+    };
+
+    const observer = new MutationObserver(scheduleCleanup);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'aria-hidden', 'aria-modal'],
+    });
+
+    window.addEventListener('pageshow', scheduleCleanup);
+    window.addEventListener('resize', scheduleCleanup, { passive: true });
+    scheduleCleanup();
   };
 
   const markReady = () => {
@@ -314,13 +395,15 @@
     body.classList.add('tw-enhanced');
     injectPolish();
     ensureGlowOrb(body);
+    cleanupOrphanBackdrops();
     portalMobileHeader(body);
     installMobileControlFallback();
+    installBackdropGuard();
     syncDrawerState();
 
     const interactiveSelector = 'button, a.btn, .btn, a[class*="bg-"], [role="button"], input, select, textarea';
-    document.querySelectorAll(interactiveSelector).forEach((el) => {
-      el.dataset.tailwindConnected = 'true';
+    document.querySelectorAll(interactiveSelector).forEach((element) => {
+      element.dataset.tailwindConnected = 'true';
     });
 
     document.addEventListener('pointerdown', (event) => {
