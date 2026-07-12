@@ -40,7 +40,7 @@ test('voice signaling requires consent and active call participants', () => {
 });
 
 test('PWA service worker has versioned caches, cache reset messages, and sensitive route exclusions', () => {
-  assert.match(sw, /const APP_VERSION = 'v4\.0\.0'/);
+  assert.match(sw, /const APP_VERSION = 'v4\.0\.1'/);
   assert.match(sw, /ytconv-ui-\$\{APP_VERSION\}/);
   assert.match(sw, /CLEAR_CACHE/);
   assert.match(sw, /SKIP_WAITING/);

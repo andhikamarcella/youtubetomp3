@@ -16,19 +16,29 @@ export const createSecurityHeadersMiddleware = (env) => (req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
   res.setHeader("Cross-Origin-Resource-Policy", "same-site");
-  const connectSrc = ["'self'", "https:", "wss:", ...(env.CORS_ORIGINS || [])].join(" ");
+  const connectSrc = [
+    "'self'",
+    "https:",
+    "wss:",
+    "https://identitytoolkit.googleapis.com",
+    "https://securetoken.googleapis.com",
+    "https://*.googleapis.com",
+    "https://*.firebaseio.com",
+    "wss://*.firebaseio.com",
+    ...(env.CORS_ORIGINS || []),
+  ].join(" ");
   const scriptSrc = env.NODE_ENV === "production"
-    ? "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://accounts.google.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com"
+    ? "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://accounts.google.com https://challenges.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com"
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:";
   res.setHeader("Content-Security-Policy", [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https:",
-    "img-src 'self' data: blob: https:",
+    "img-src 'self' data: blob: https: https://lh3.googleusercontent.com",
     "font-src 'self' data: https:",
     `connect-src ${connectSrc}`,
     "media-src 'self' blob: data: https:",
-    "frame-src 'self' https://www.youtube.com https://accounts.google.com https://challenges.cloudflare.com https://*.firebaseapp.com",
+    "frame-src 'self' https://www.youtube.com https://accounts.google.com https://forum-warga.firebaseapp.com https://challenges.cloudflare.com https://*.firebaseapp.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self' https://accounts.google.com",
