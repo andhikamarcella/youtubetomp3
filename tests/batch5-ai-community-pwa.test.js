@@ -15,6 +15,7 @@ const sw = await readFile(new URL('../public-ui/sw.js', import.meta.url), 'utf8'
 const home = await readFile(new URL('../public-ui/index.html', import.meta.url), 'utf8');
 const bridge = await readFile(new URL('../public-ui/tailwind-ui-bridge.js', import.meta.url), 'utf8');
 const emergency = await readFile(new URL('../public-ui/mobile-header-emergency.js', import.meta.url), 'utf8');
+const forumEmergency = await readFile(new URL('../public-ui/forum-interaction-emergency.js', import.meta.url), 'utf8');
 const prepareUi = await readFile(new URL('../scripts/prepare_mobile_header.mjs', import.meta.url), 'utf8');
 
 test('AI models response exposes public modes without requiring provider secrets', () => {
@@ -42,12 +43,13 @@ test('voice signaling requires consent and active call participants', () => {
   assert.match(server, /endSocketCalls\(socket\.id, "disconnected"\)/);
 });
 
-test('PWA service worker refreshes mobile header scripts instead of serving stale cached copies', () => {
-  assert.match(sw, /const APP_VERSION = 'v4\.0\.6'/);
+test('PWA service worker refreshes interaction hotfix scripts instead of serving stale cached copies', () => {
+  assert.match(sw, /const APP_VERSION = 'v4\.0\.7'/);
   assert.match(sw, /ytconv-ui-\$\{APP_VERSION\}/);
   assert.match(sw, /ALWAYS_NETWORK_PATHS/);
   assert.match(sw, /resolveToScopePath\('tailwind-ui-bridge\.js'\)/);
   assert.match(sw, /resolveToScopePath\('mobile-header-emergency\.js'\)/);
+  assert.match(sw, /resolveToScopePath\('forum-interaction-emergency\.js'\)/);
   assert.match(sw, /cache: 'no-store'/);
   assert.match(sw, /CLEAR_CACHE/);
   assert.match(sw, /SKIP_WAITING/);
@@ -65,10 +67,11 @@ test('mobile header remains tappable above transparent overlays', () => {
 });
 
 test('mobile controls perform one stable action after the finger is released', () => {
-  assert.match(prepareUi, /const version = '4\.0\.6'/);
+  assert.match(prepareUi, /const version = '4\.0\.7'/);
   assert.match(prepareUi, /mobile-header-emergency\.js\?v=\$\{version\}/);
   assert.match(prepareUi, /tailwind-ui-bridge\.js\?v=\$\{version\}/);
-  assert.match(prepareUi, /\$\{emergencyTag\}\\n  \$\{bridgeTag\}/);
+  assert.match(prepareUi, /forum-interaction-emergency\.js\?v=\$\{version\}/);
+  assert.match(prepareUi, /\$\{emergencyTag\}\\n  \$\{bridgeTag\}\\n  \$\{forumTag\}/);
   assert.match(emergency, /const VERSION = 'v6'/);
   assert.match(emergency, /__ytconvMobileHeaderFallbackInstalledV4 = true/);
   assert.match(emergency, /TAP_MOVE_TOLERANCE_PX = 18/);
@@ -79,6 +82,18 @@ test('mobile controls perform one stable action after the finger is released', (
   assert.match(emergency, /const captureClick = \(event\) =>/);
   assert.match(emergency, /SYNTHETIC_CLICK_WINDOW_MS/);
   assert.match(emergency, /dataset\.mobileHeaderEmergency = VERSION/);
+});
+
+test('forum modal is portaled above its backdrop and Google login taps remain interactive on mobile', () => {
+  assert.match(forumEmergency, /const FORUM_MODAL_Z = '2147483200'/);
+  assert.match(forumEmergency, /const FORUM_BACKDROP_Z = '2147482000'/);
+  assert.match(forumEmergency, /modal\.parentElement !== body/);
+  assert.match(forumEmergency, /body\.appendChild\(modal\)/);
+  assert.match(forumEmergency, /dataset\.forumModalPortal = 'body'/);
+  assert.match(forumEmergency, /#googleSignInBtn, #forumGoogleLoginBtn/);
+  assert.match(forumEmergency, /neutralizeBlockersOverButton/);
+  assert.match(forumEmergency, /current\.button\.click\(\)/);
+  assert.match(forumEmergency, /window\.addEventListener\('pointerup', finishTap, true\)/);
 });
 
 test('rewards remain isolated behind the rewards route instead of becoming primary converter UI', () => {
