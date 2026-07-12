@@ -1,11 +1,17 @@
 (() => {
   const MOBILE_MAX_WIDTH = 991.98;
   const MAX_Z_INDEX = '2147483647';
-  const VERSION = 'v5';
-  const DEBOUNCE_MS = 650;
+  const VERSION = 'v6';
+  const TAP_MOVE_TOLERANCE_PX = 18;
+  const SYNTHETIC_CLICK_WINDOW_MS = 900;
 
-  if (window.__ytconvMobileHeaderEmergencyV5) return;
-  window.__ytconvMobileHeaderEmergencyV5 = true;
+  if (window.__ytconvMobileHeaderEmergencyV6) return;
+  window.__ytconvMobileHeaderEmergencyV6 = true;
+
+  // Emergency script is loaded before the Tailwind bridge. Setting this flag
+  // prevents the older pointerdown/touchstart fallback from installing and
+  // toggling the same control before the user's finger is released.
+  window.__ytconvMobileHeaderFallbackInstalledV4 = true;
 
   const isMobile = () => window.innerWidth <= MOBILE_MAX_WIDTH;
 
@@ -56,7 +62,14 @@
           visibility: visible !important;
           pointer-events: auto !important;
           touch-action: manipulation !important;
+          transform: none !important;
+          transition: background-color .12s ease, border-color .12s ease, color .12s ease !important;
           -webkit-tap-highlight-color: transparent;
+        }
+
+        body > .ytclean-mobilebar button:active,
+        body > .ytclean-mobilebar a:active {
+          transform: none !important;
         }
 
         body > .modal-backdrop:not(.show),
@@ -107,6 +120,7 @@
       const button = document.getElementById(id);
       button?.style.setProperty('pointer-events', 'auto', 'important');
       button?.style.setProperty('touch-action', 'manipulation', 'important');
+      button?.style.setProperty('transform', 'none', 'important');
     }
 
     return mobilebar;
@@ -166,28 +180,83 @@
     return null;
   };
 
-  let lastAction = '';
-  let lastActionAt = 0;
+  let gesture = null;
+  let lastCompletedAction = '';
+  let lastCompletedAt = 0;
 
-  const captureMobilePress = (event) => {
+  const beginPress = (event) => {
     if (!isMobile()) return;
     mountHeader();
-    const action = actionForEvent(event);
-    if (!action) return;
 
-    const now = Date.now();
+    const action = actionForEvent(event);
+    if (!action) {
+      gesture = null;
+      return;
+    }
+
+    const { x, y } = eventPoint(event);
+    gesture = {
+      pointerId: event.pointerId ?? 'touch',
+      action,
+      startX: x,
+      startY: y,
+    };
+  };
+
+  const finishPress = (event) => {
+    if (!isMobile() || !gesture) return;
+    if (event.pointerId != null && gesture.pointerId !== event.pointerId) return;
+
+    const currentGesture = gesture;
+    gesture = null;
+
+    const endingAction = actionForEvent(event);
+    const { x, y } = eventPoint(event);
+    const distance = Math.hypot(x - currentGesture.startX, y - currentGesture.startY);
+    const isTap = endingAction?.id === currentGesture.action.id && distance <= TAP_MOVE_TOLERANCE_PX;
+    if (!isTap) return;
+
     event.preventDefault?.();
     event.stopImmediatePropagation?.();
 
-    if (lastAction === action.id && now - lastActionAt < DEBOUNCE_MS) return;
-    lastAction = action.id;
-    lastActionAt = now;
+    lastCompletedAction = currentGesture.action.id;
+    lastCompletedAt = Date.now();
+    currentGesture.action.run();
+  };
+
+  const cancelPress = () => {
+    gesture = null;
+  };
+
+  const captureClick = (event) => {
+    if (!isMobile()) return;
+    const action = actionForEvent(event);
+    if (!action) return;
+
+    event.preventDefault?.();
+    event.stopImmediatePropagation?.();
+
+    const isSyntheticDuplicate =
+      action.id === lastCompletedAction &&
+      Date.now() - lastCompletedAt < SYNTHETIC_CLICK_WINDOW_MS;
+
+    if (isSyntheticDuplicate) return;
+
+    lastCompletedAction = action.id;
+    lastCompletedAt = Date.now();
     action.run();
   };
 
-  window.addEventListener('pointerdown', captureMobilePress, true);
-  window.addEventListener('touchstart', captureMobilePress, { capture: true, passive: false });
-  window.addEventListener('click', captureMobilePress, true);
+  if ('PointerEvent' in window) {
+    window.addEventListener('pointerdown', beginPress, true);
+    window.addEventListener('pointerup', finishPress, true);
+    window.addEventListener('pointercancel', cancelPress, true);
+  } else {
+    window.addEventListener('touchstart', beginPress, { capture: true, passive: true });
+    window.addEventListener('touchend', finishPress, { capture: true, passive: false });
+    window.addEventListener('touchcancel', cancelPress, true);
+  }
+  window.addEventListener('click', captureClick, true);
 
   const boot = () => {
     mountHeader();
