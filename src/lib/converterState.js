@@ -82,6 +82,7 @@ export const publicJobSnapshot = (job = {}) => {
     downloadUrl: job.downloadUrl || null,
     error,
     errorCategory: job.errorCategory || error?.code || null,
+    hint: job.hint || null,
     createdAt: job.createdAt || null,
     startedAt: job.startedAt || null,
     completedAt: job.completedAt || null,

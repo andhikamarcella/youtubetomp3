@@ -46,11 +46,21 @@ def get_youtube_extractor_args() -> Dict[str, Dict[str, list[str]]]:
 
 
 def get_js_runtime_options() -> Dict[str, object]:
-    runtime = os.environ.get("YTDLP_JS_RUNTIME", "node").strip().lower()
+    runtime = os.environ.get("YTDLP_JS_RUNTIME", "deno").strip().lower()
     if runtime in {"", "off", "none", "0"}:
         return {}
 
-    if runtime == "node":
+    selected = runtime
+    if runtime == "auto":
+        if shutil.which("deno"):
+            selected = "deno"
+        else:
+            selected = "node"
+
+    if selected == "deno" and not shutil.which("deno"):
+        selected = "node"
+
+    if selected == "node":
         node_bin = shutil.which("node")
         if not node_bin:
             print("node runtime not found; yt_dlp JS runtime disabled", file=sys.stderr)
@@ -65,8 +75,8 @@ def get_js_runtime_options() -> Dict[str, object]:
             return {}
 
     return {
-        "js_runtimes": {runtime: {}},
-        "remote_components": ["ejs:github"],
+        "js_runtimes": {selected: {}},
+        "remote_components": ["ejs:npm"],
         "extractor_retries": 3,
     }
 
@@ -164,7 +174,7 @@ def download_with_ytdlp(
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
     base_opts = {
-        "format": "bestaudio/best",
+        "format": "ba/bestaudio/best/worst",
         "outtmpl": template,
         "restrictfilenames": False,
         "noplaylist": True,
@@ -191,8 +201,11 @@ def download_with_ytdlp(
     tv_opts = dict(base_opts)
     tv_opts["extractor_args"] = {"youtube": {"player_client": ["mweb", "web_safari", "tv_embedded", "android"]}}
 
+    audio_opts = dict(compat_opts)
+    audio_opts["format"] = "ba/bestaudio/best/worst"
+
     relaxed_opts = dict(compat_opts)
-    relaxed_opts["format"] = "best"
+    relaxed_opts["format"] = "best/worst"
 
     http_opts = dict(relaxed_opts)
     http_opts["format"] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best/worst"
@@ -200,9 +213,13 @@ def download_with_ytdlp(
     universal_opts = dict(tv_opts)
     universal_opts.pop("format", None)
 
+    no_runtime_opts = dict(universal_opts)
+    no_runtime_opts.pop("js_runtimes", None)
+    no_runtime_opts.pop("remote_components", None)
+
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, tv_opts, relaxed_opts, http_opts, universal_opts]
+    attempts = [base_opts, compat_opts, tv_opts, audio_opts, relaxed_opts, http_opts, universal_opts, no_runtime_opts]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]
