@@ -35,7 +35,7 @@ Use `/data` for persistent Railway volume data:
 - `CACHE_DIR=/data/ytconv/cache`
 - `TEMP_DIR=/tmp/ytconv-jobs`
 
-`YTDLP_PATH`, `FFMPEG_PATH`, and `FFPROBE_PATH` may be empty if binaries are on `PATH`. Configure `YTDLP_JS_RUNTIME=node` for the supported yt-dlp JavaScript runtime.
+`YTDLP_PATH`, `FFMPEG_PATH`, and `FFPROBE_PATH` may be empty if binaries are on `PATH`. Configure `YTDLP_JS_RUNTIME=deno` (default in Docker) for yt-dlp JavaScript challenge solving; use `auto` to fall back to Node >= 22 when Deno is unavailable.
 
 ## Security and abuse controls
 
