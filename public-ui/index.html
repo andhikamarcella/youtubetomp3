@@ -1772,7 +1772,7 @@
     .ytclean-sidebar {
       position: fixed;
       inset: 0 auto 0 0;
-      z-index: 1040;
+      z-index: 120100;
       width: var(--yt-shell-width);
       background: var(--sidebar);
       border-right: 1px solid var(--border);
@@ -1962,7 +1962,8 @@
       .ytclean-mobilebar { display: flex; position: fixed; left: 0; right: 0; }
       .ytclean-sidebar { transform: translateX(-100%); width: 270px; }
       body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); }
-      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 1035; background: rgba(0,0,0,.35); border: 0; }
+      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 120090; background: rgba(0,0,0,.55); border: 0; pointer-events: auto; }
+      body.ytclean-drawer-open { overflow: hidden; }
       body.ytclean-ui.ytclean-main-offset { margin-left: 0 !important; }
       body.ytclean-ui #mainContent { padding: 72px 16px 20px !important; }
     }
@@ -6031,6 +6032,11 @@
         <a class="ytclean-link is-active" href="/"><i class="bi bi-download"></i><span class="ytclean-label">Converter</span></a>
         <a class="ytclean-link" href="/studio"><i class="bi bi-sliders"></i><span class="ytclean-label">Studio</span></a>
         <a class="ytclean-link" href="/history"><i class="bi bi-clock-history"></i><span class="ytclean-label">Riwayat</span></a>
+        <button class="ytclean-link" type="button" data-section-target="saweria" data-route-path="/rewards" data-section-label="Rewards"><i class="bi bi-heart-fill"></i><span class="ytclean-label">Saweria / Rewards</span></button>
+        <button class="ytclean-link" type="button" data-section-target="faq" data-route-path="/support" data-section-label="Bantuan"><i class="bi bi-question-circle"></i><span class="ytclean-label">FAQ / Bantuan</span></button>
+        <button class="ytclean-link" type="button" data-route-modal="community" data-bs-toggle="modal" data-bs-target="#forumModal"><i class="bi bi-chat-dots"></i><span class="ytclean-label">Komunitas</span></button>
+        <button class="ytclean-link" type="button" data-route-modal="account" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()"><i class="bi bi-person-circle"></i><span class="ytclean-label">Profil</span></button>
+        <button class="ytclean-link" type="button" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="bi bi-info-circle"></i><span class="ytclean-label">About</span></button>
         <a class="ytclean-link" href="https://ytconvhub.vercel.app/"><i class="bi bi-grid-3x3-gap"></i><span class="ytclean-label">YTConv Hub</span></a>
       </nav>
       <div class="ytclean-sidebar-section">
@@ -15256,7 +15262,13 @@
           };
           document.getElementById('ytcleanTheme')?.addEventListener('click', cycleTheme);
           document.getElementById('ytcleanMobileTheme')?.addEventListener('click', cycleTheme);
-          document.getElementById('ytcleanSettings')?.addEventListener('click', () => document.querySelector('[data-bs-target="#offcanvasSettings"]')?.click());
+          document.getElementById('ytcleanSettings')?.addEventListener('click', () => {
+            closeDrawer();
+            document.querySelector('[data-bs-target="#offcanvasSettings"]')?.click();
+          });
+          document.querySelectorAll('#ytcleanSidebar [data-section-target], #ytcleanSidebar [data-bs-toggle="modal"]').forEach((item) => {
+            item.addEventListener('click', () => window.setTimeout(closeDrawer, 80));
+          });
 
           const applyLazyLoading = () => {
             document.querySelectorAll('img').forEach((img) => {
@@ -30983,14 +30995,16 @@
             return modules;
           };
 
+          const isForumMobileAuthFlow = () => window.matchMedia?.('(max-width: 767.98px)')?.matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+
           const shouldFallbackToForumRedirect = (error) => {
             const code = String(error?.code || '').toLowerCase();
-            return ['auth/popup-blocked', 'auth/popup-redirect-cancelled', 'auth/operation-not-supported-in-this-environment'].includes(code);
+            return ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/popup-redirect-cancelled', 'auth/operation-not-supported-in-this-environment'].includes(code);
           };
 
           const forumAuthErrorMessage = (error) => {
             const code = String(error?.code || '').toLowerCase();
-            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Login dibatalkan. Tekan tombol Google lagi untuk mencoba.';
+            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Popup Google tertutup/diblokir. Tekan lagi; mobile akan memakai redirect Google.';
             if (code === 'auth/unauthorized-domain') return 'Domain belum diizinkan di Firebase Authentication. Tambahkan domain Railway ini di Firebase Console.';
             if (code === 'auth/popup-blocked') return 'Popup Google diblokir browser. Izinkan popup untuk situs ini, lalu coba lagi.';
             if (code === 'auth/network-request-failed') return 'Koneksi ke Firebase gagal. Coba ganti jaringan atau refresh.';
@@ -31949,7 +31963,7 @@
             const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
             if (forumLoginAttempting) return;
             forumLoginAttempting = true;
-            setForumLoginLoading('Membuka popup Google. Jika browser memblokir popup, sistem baru akan fallback redirect sekali.');
+            setForumLoginLoading(isForumMobileAuthFlow() ? 'Mode mobile: mengalihkan ke Google Sign-In...' : 'Membuka popup Google. Jika browser memblokir popup, sistem akan fallback redirect sekali.');
             try {
               await waitForForumAuthReady();
               if (auth.currentUser) {
@@ -31963,6 +31977,12 @@
               const provider = new GoogleAuthProvider();
               provider.setCustomParameters({ prompt: 'select_account' });
               try {
+                if (isForumMobileAuthFlow()) {
+                  sessionStorage.setItem(FORUM_LOGIN_PENDING_KEY, 'true');
+                  sessionStorage.setItem(FORUM_LOGIN_REDIRECT_ATTEMPTED_KEY, 'true');
+                  await signInWithRedirect(auth, provider);
+                  return;
+                }
                 const result = await signInWithPopup(auth, provider);
                 if (result && result.user) {
                   setToast('Login berhasil!', 'success');
