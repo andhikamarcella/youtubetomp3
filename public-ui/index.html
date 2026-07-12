@@ -1912,30 +1912,74 @@
     .ytclean-sidebar-footer { margin-top: auto; display: grid; gap: 8px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
     @media (max-height: 760px) { .ytclean-sidebar-footer { margin-top: 10px; } }
 
+    :root {
+      --ytclean-mobilebar-z: 2147482000;
+      --ytclean-mobilebar-top-gap: 8px;
+      --ytclean-mobilebar-x-gap: 10px;
+      --ytclean-mobilebar-min-height: 58px;
+      --ytclean-mobilebar-padding-y: 8px;
+      --ytclean-mobilebar-safe-offset: calc(env(safe-area-inset-top, 0px) + var(--ytclean-mobilebar-top-gap));
+      --ytclean-mobilebar-total-height: calc(var(--ytclean-mobilebar-safe-offset) + var(--ytclean-mobilebar-min-height) + (var(--ytclean-mobilebar-padding-y) * 2));
+    }
+
     .ytclean-mobilebar {
       display: none;
-      position: sticky;
-      top: 0;
-      z-index: 120130;
-      min-height: 56px;
+      position: fixed;
+      top: var(--ytclean-mobilebar-safe-offset);
+      left: var(--ytclean-mobilebar-x-gap);
+      right: var(--ytclean-mobilebar-x-gap);
+      width: auto;
+      z-index: var(--ytclean-mobilebar-z);
+      min-height: var(--ytclean-mobilebar-min-height);
       background: #18181b !important;
       background-color: #18181b !important;
-      border: 1px solid rgba(148, 163, 184, .42);
-      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, .48);
+      border-radius: 999px;
       pointer-events: auto;
-      padding: 10px 14px;
+      padding: var(--ytclean-mobilebar-padding-y) 12px;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 12px 34px rgba(0, 0, 0, .55) !important;
+      box-shadow: 0 16px 38px rgba(0, 0, 0, .58) !important;
       isolation: isolate;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
-      overflow: hidden;
+      overflow: visible;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .ytclean-mobilebar::before,
+    .ytclean-mobilebar::after {
+      pointer-events: none;
+    }
+
+    .ytclean-mobilebar .ytclean-icon-btn,
+    .ytclean-mobilebar a,
+    .ytclean-mobilebar button {
+      position: relative;
+      z-index: calc(var(--ytclean-mobilebar-z) + 1);
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .ytclean-mobilebar strong {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      text-align: center;
+      pointer-events: none;
+      font-size: 1rem;
+      letter-spacing: .01em;
+      line-height: 1.15;
     }
 
     .ytclean-drawer-backdrop { display: none; }
 
     body.ytclean-ui #mainContent {
+      position: relative;
+      z-index: 1;
       max-width: 880px !important;
       margin: 0 auto !important;
       padding: 32px 24px !important;
@@ -2046,17 +2090,17 @@
     :focus-visible { outline: 2px solid var(--text) !important; outline-offset: 2px; }
 
     @media (max-width: 991.98px) {
-      .ytclean-mobilebar { display: flex !important; position: fixed !important; top: calc(env(safe-area-inset-top) + 10px) !important; left: 12px; right: 12px; }
-      .ytclean-sidebar { transform: translateX(-100%); width: min(86vw, 310px); }
-      body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); padding-top: calc(86px + env(safe-area-inset-top)); }
-      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 120090; background: rgba(0,0,0,.55); border: 0; pointer-events: auto; }
+      .ytclean-mobilebar { display: flex !important; }
+      .ytclean-sidebar { transform: translateX(-100%); width: min(86vw, 310px); z-index: calc(var(--ytclean-mobilebar-z) - 10); }
+      body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); padding-top: calc(var(--ytclean-mobilebar-total-height) + 10px); }
+      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: calc(var(--ytclean-mobilebar-z) - 20); background: rgba(0,0,0,.55); border: 0; pointer-events: auto; }
       body.ytclean-drawer-open { overflow: hidden; }
       body.ytclean-ui.ytclean-main-offset { margin-left: 0 !important; }
-      body.ytclean-ui #mainContent { padding: calc(96px + env(safe-area-inset-top)) 16px 20px !important; }
+      body.ytclean-ui #mainContent { padding: calc(var(--ytclean-mobilebar-total-height) + 20px) 16px 20px !important; }
     }
 
     body.has-open-modal .ytclean-mobilebar,
-    body.modal-open .ytclean-mobilebar {
+    body.ui-overlay-open .ytclean-mobilebar {
       z-index: 0 !important;
       pointer-events: none !important;
     }
@@ -2736,11 +2780,11 @@
     }
 
     body .modal {
-      z-index: 100000 !important;
+      z-index: 2147482500 !important;
     }
 
     body .modal-backdrop {
-      z-index: 99990 !important;
+      z-index: 2147482400 !important;
       pointer-events: auto !important;
       background: transparent !important;
     }
@@ -6124,10 +6168,10 @@
   </div>
 
   <div class="ytclean-shell" aria-hidden="false">
-    <div class="ytclean-mobilebar">
-      <button class="ytclean-icon-btn" id="ytcleanOpenDrawer" type="button" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+    <div class="ytclean-mobilebar" role="banner" aria-label="Header mobile YTConv">
+      <button class="ytclean-icon-btn" id="ytcleanOpenDrawer" type="button" aria-label="Buka menu fitur" aria-controls="ytcleanSidebar" aria-expanded="false"><i class="bi bi-list"></i></button>
       <strong>YTConv</strong>
-      <button class="ytclean-icon-btn" id="ytcleanMobileTheme" type="button" aria-label="Ganti tema"><i class="bi bi-circle-half"></i></button>
+      <button class="ytclean-icon-btn" id="ytcleanMobileTheme" type="button" aria-label="Ganti dark atau light mode"><i class="bi bi-circle-half"></i></button>
     </div>
     <button class="ytclean-drawer-backdrop" id="ytcleanDrawerBackdrop" type="button" aria-label="Tutup menu"></button>
     <aside class="ytclean-sidebar" id="ytcleanSidebar" aria-label="Navigasi utama">
@@ -15351,27 +15395,38 @@
             link.classList.toggle('is-active', isActive);
           });
           document.querySelectorAll('a[href="https://ytconv.onrender.com/status"]').forEach((link) => { link.href = 'https://ytconvstatus.vercel.app/'; });
-          const openDrawer = () => document.body.classList.add('ytclean-drawer-open');
-          const closeDrawer = () => document.body.classList.remove('ytclean-drawer-open');
-          const toggleDrawer = () => document.body.classList.toggle('ytclean-drawer-open');
-          document.getElementById('ytcleanOpenDrawer')?.addEventListener('click', toggleDrawer);
-          document.getElementById('ytcleanCloseDrawer')?.addEventListener('click', closeDrawer);
-          document.getElementById('ytcleanDrawerBackdrop')?.addEventListener('click', closeDrawer);
+          const syncDrawerButtonState = () => {
+            const isOpen = document.body.classList.contains('ytclean-drawer-open');
+            document.getElementById('ytcleanOpenDrawer')?.setAttribute('aria-expanded', String(isOpen));
+          };
+          const openDrawer = () => { document.body.classList.add('ytclean-drawer-open'); syncDrawerButtonState(); };
+          const closeDrawer = () => { document.body.classList.remove('ytclean-drawer-open'); syncDrawerButtonState(); };
+          const toggleDrawer = () => { document.body.classList.toggle('ytclean-drawer-open'); syncDrawerButtonState(); };
+          const bindMobilePress = (element, action) => {
+            if (!element) return;
+            let handledPointer = false;
+            element.addEventListener('pointerup', (event) => { handledPointer = true; event.preventDefault(); action(event); });
+            element.addEventListener('click', (event) => { if (handledPointer) { handledPointer = false; return; } action(event); });
+          };
+          bindMobilePress(document.getElementById('ytcleanOpenDrawer'), toggleDrawer);
+          bindMobilePress(document.getElementById('ytcleanCloseDrawer'), closeDrawer);
+          bindMobilePress(document.getElementById('ytcleanDrawerBackdrop'), closeDrawer);
           document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDrawer(); });
           document.getElementById('ytcleanCollapse')?.addEventListener('click', () => document.body.classList.toggle('ytclean-collapsed'));
           const cycleTheme = () => {
-            const current = localStorage.getItem('ytconv.theme.mode') || localStorage.getItem('themeMode') || 'system';
-            const next = current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system';
-            localStorage.setItem('ytconv.theme.mode', next);
-            localStorage.setItem('themeMode', next === 'system' ? 'auto' : next);
-            const resolved = next === 'system'
-              ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-              : next;
-            document.documentElement.setAttribute('data-bs-theme', resolved);
-            setToast?.(`Tema: ${next === 'system' ? 'Sistem' : next === 'light' ? 'Terang' : 'Gelap'}`);
+            const desktopThemeToggle = document.getElementById('themeToggle');
+            if (desktopThemeToggle) {
+              desktopThemeToggle.click();
+              return;
+            }
+            const current = document.documentElement.getAttribute('data-bs-theme') || localStorage.getItem('ytmp3.theme') || 'dark';
+            const next = current === 'light' ? 'dark' : 'light';
+            localStorage.setItem('ytmp3.theme', next);
+            document.documentElement.setAttribute('data-bs-theme', next);
+            setToast?.(`Tema: ${next === 'light' ? 'Terang' : 'Gelap'}`);
           };
-          document.getElementById('ytcleanTheme')?.addEventListener('click', cycleTheme);
-          document.getElementById('ytcleanMobileTheme')?.addEventListener('click', cycleTheme);
+          bindMobilePress(document.getElementById('ytcleanTheme'), cycleTheme);
+          bindMobilePress(document.getElementById('ytcleanMobileTheme'), cycleTheme);
           document.getElementById('ytcleanSettings')?.addEventListener('click', () => {
             closeDrawer();
             document.querySelector('[data-bs-target="#offcanvasSettings"]')?.click();
