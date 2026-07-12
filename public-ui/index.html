@@ -1912,30 +1912,58 @@
     .ytclean-sidebar-footer { margin-top: auto; display: grid; gap: 8px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
     @media (max-height: 760px) { .ytclean-sidebar-footer { margin-top: 10px; } }
 
+    :root {
+      --ytclean-mobilebar-z: 2147482000;
+      --ytclean-mobilebar-top-gap: 10px;
+      --ytclean-mobilebar-x-gap: 12px;
+      --ytclean-mobilebar-min-height: 56px;
+      --ytclean-mobilebar-padding-y: 10px;
+      --ytclean-mobilebar-safe-offset: calc(env(safe-area-inset-top, 0px) + var(--ytclean-mobilebar-top-gap));
+      --ytclean-mobilebar-total-height: calc(var(--ytclean-mobilebar-safe-offset) + var(--ytclean-mobilebar-min-height) + (var(--ytclean-mobilebar-padding-y) * 2));
+    }
+
     .ytclean-mobilebar {
       display: none;
-      position: sticky;
-      top: 0;
-      z-index: 120130;
-      min-height: 56px;
+      position: fixed;
+      top: var(--ytclean-mobilebar-safe-offset);
+      left: var(--ytclean-mobilebar-x-gap);
+      right: var(--ytclean-mobilebar-x-gap);
+      width: auto;
+      z-index: var(--ytclean-mobilebar-z);
+      min-height: var(--ytclean-mobilebar-min-height);
       background: #18181b !important;
       background-color: #18181b !important;
       border: 1px solid rgba(148, 163, 184, .42);
       border-radius: 18px;
       pointer-events: auto;
-      padding: 10px 14px;
+      padding: var(--ytclean-mobilebar-padding-y) 14px;
       align-items: center;
       justify-content: space-between;
       box-shadow: 0 12px 34px rgba(0, 0, 0, .55) !important;
       isolation: isolate;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
-      overflow: hidden;
+      overflow: visible;
+      touch-action: manipulation;
+    }
+
+    .ytclean-mobilebar::before,
+    .ytclean-mobilebar::after {
+      pointer-events: none;
+    }
+
+    .ytclean-mobilebar .ytclean-icon-btn,
+    .ytclean-mobilebar a,
+    .ytclean-mobilebar button {
+      position: relative;
+      z-index: calc(var(--ytclean-mobilebar-z) + 1);
+      pointer-events: auto;
+      touch-action: manipulation;
     }
 
     .ytclean-drawer-backdrop { display: none; }
 
     body.ytclean-ui #mainContent {
+      position: relative;
+      z-index: 1;
       max-width: 880px !important;
       margin: 0 auto !important;
       padding: 32px 24px !important;
@@ -2046,13 +2074,13 @@
     :focus-visible { outline: 2px solid var(--text) !important; outline-offset: 2px; }
 
     @media (max-width: 991.98px) {
-      .ytclean-mobilebar { display: flex !important; position: fixed !important; top: calc(env(safe-area-inset-top) + 10px) !important; left: 12px; right: 12px; }
-      .ytclean-sidebar { transform: translateX(-100%); width: min(86vw, 310px); }
-      body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); padding-top: calc(86px + env(safe-area-inset-top)); }
-      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 120090; background: rgba(0,0,0,.55); border: 0; pointer-events: auto; }
+      .ytclean-mobilebar { display: flex !important; }
+      .ytclean-sidebar { transform: translateX(-100%); width: min(86vw, 310px); z-index: calc(var(--ytclean-mobilebar-z) - 10); }
+      body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); padding-top: calc(var(--ytclean-mobilebar-total-height) + 10px); }
+      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: calc(var(--ytclean-mobilebar-z) - 20); background: rgba(0,0,0,.55); border: 0; pointer-events: auto; }
       body.ytclean-drawer-open { overflow: hidden; }
       body.ytclean-ui.ytclean-main-offset { margin-left: 0 !important; }
-      body.ytclean-ui #mainContent { padding: calc(96px + env(safe-area-inset-top)) 16px 20px !important; }
+      body.ytclean-ui #mainContent { padding: calc(var(--ytclean-mobilebar-total-height) + 20px) 16px 20px !important; }
     }
 
     body.has-open-modal .ytclean-mobilebar,

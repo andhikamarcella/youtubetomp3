@@ -39,15 +39,20 @@ test('clean UI boots with skeleton and scrollable sidebar', () => {
 });
 
 test('mobile clean header stays above drawer layers and can toggle drawer', () => {
-  assert.match(html, /\.ytclean-mobilebar \{[\s\S]*?z-index: 120130;/);
-  assert.match(html, /min-height: 56px;/);
+  assert.match(html, /--ytclean-mobilebar-z: 2147482000;/);
+  assert.match(html, /--ytclean-mobilebar-safe-offset: calc\(env\(safe-area-inset-top, 0px\) \+ var\(--ytclean-mobilebar-top-gap\)\);/);
+  assert.match(html, /--ytclean-mobilebar-total-height: calc\(var\(--ytclean-mobilebar-safe-offset\) \+ var\(--ytclean-mobilebar-min-height\) \+ \(var\(--ytclean-mobilebar-padding-y\) \* 2\)\);/);
+  assert.match(html, /\.ytclean-mobilebar \{[\s\S]*?position: fixed;[\s\S]*?z-index: var\(--ytclean-mobilebar-z\);/);
+  assert.match(html, /min-height: var\(--ytclean-mobilebar-min-height\);/);
   assert.match(html, /background: #18181b !important;/);
   assert.match(html, /background-color: #18181b !important;/);
   assert.match(html, /box-shadow: 0 12px 34px rgba\(0, 0, 0, \.55\) !important;/);
   assert.match(html, /isolation: isolate;/);
-  assert.match(html, /\.ytclean-mobilebar \{ display: flex !important; position: fixed !important; top: calc\(env\(safe-area-inset-top\) \+ 10px\) !important; left: 12px; right: 12px; \}/);
-  assert.match(html, /body\.ytclean-drawer-open \.ytclean-sidebar \{ transform: translateX\(0\); padding-top: calc\(86px \+ env\(safe-area-inset-top\)\); \}/);
-  assert.match(html, /body\.ytclean-ui #mainContent \{ padding: calc\(96px \+ env\(safe-area-inset-top\)\) 16px 20px !important; \}/);
+  assert.match(html, /\.ytclean-mobilebar::before,[\s\S]*?\.ytclean-mobilebar::after \{[\s\S]*?pointer-events: none;/);
+  assert.match(html, /\.ytclean-mobilebar \.ytclean-icon-btn,[\s\S]*?pointer-events: auto;[\s\S]*?touch-action: manipulation;/);
+  assert.match(html, /\.ytclean-mobilebar \{ display: flex !important; \}/);
+  assert.match(html, /body\.ytclean-drawer-open \.ytclean-sidebar \{ transform: translateX\(0\); padding-top: calc\(var\(--ytclean-mobilebar-total-height\) \+ 10px\); \}/);
+  assert.match(html, /body\.ytclean-ui #mainContent \{ padding: calc\(var\(--ytclean-mobilebar-total-height\) \+ 20px\) 16px 20px !important; \}/);
   assert.match(html, /body\.modal-open \.ytclean-mobilebar/);
   assert.match(html, /const toggleDrawer = \(\) => document\.body\.classList\.toggle\('ytclean-drawer-open'\);/);
   assert.match(html, /ytcleanOpenDrawer'\)\?\.addEventListener\('click', toggleDrawer\)/);
