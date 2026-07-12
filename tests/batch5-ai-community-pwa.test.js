@@ -14,6 +14,8 @@ const server = await readFile(new URL('../index.js', import.meta.url), 'utf8');
 const sw = await readFile(new URL('../public-ui/sw.js', import.meta.url), 'utf8');
 const home = await readFile(new URL('../public-ui/index.html', import.meta.url), 'utf8');
 const bridge = await readFile(new URL('../public-ui/tailwind-ui-bridge.js', import.meta.url), 'utf8');
+const emergency = await readFile(new URL('../public-ui/mobile-header-emergency.js', import.meta.url), 'utf8');
+const prepareUi = await readFile(new URL('../scripts/prepare_mobile_header.mjs', import.meta.url), 'utf8');
 
 test('AI models response exposes public modes without requiring provider secrets', () => {
   const payload = buildAiModelsResponse({ advanced: true });
@@ -40,11 +42,12 @@ test('voice signaling requires consent and active call participants', () => {
   assert.match(server, /endSocketCalls\(socket\.id, "disconnected"\)/);
 });
 
-test('PWA service worker refreshes the mobile header script instead of serving a stale cached copy', () => {
-  assert.match(sw, /const APP_VERSION = 'v4\.0\.4'/);
+test('PWA service worker refreshes mobile header scripts instead of serving stale cached copies', () => {
+  assert.match(sw, /const APP_VERSION = 'v4\.0\.5'/);
   assert.match(sw, /ytconv-ui-\$\{APP_VERSION\}/);
   assert.match(sw, /ALWAYS_NETWORK_PATHS/);
   assert.match(sw, /resolveToScopePath\('tailwind-ui-bridge\.js'\)/);
+  assert.match(sw, /resolveToScopePath\('mobile-header-emergency\.js'\)/);
   assert.match(sw, /cache: 'no-store'/);
   assert.match(sw, /CLEAR_CACHE/);
   assert.match(sw, /SKIP_WAITING/);
@@ -61,6 +64,17 @@ test('mobile header remains tappable above transparent overlays', () => {
   assert.match(bridge, /window\.addEventListener\('pointerdown', handlePress, true\)/);
   assert.match(bridge, /window\.addEventListener\('touchstart', handlePress/);
   assert.match(bridge, /dataset\.mobileHeaderFix = 'v4'/);
+});
+
+test('startup injects a unique emergency mobile control script', () => {
+  assert.match(prepareUi, /const version = '4\.0\.5'/);
+  assert.match(prepareUi, /mobile-header-emergency\.js\?v=\$\{version\}/);
+  assert.match(prepareUi, /tailwind-ui-bridge\.js\?v=\$\{version\}/);
+  assert.match(emergency, /const MAX_Z_INDEX = '2147483647'/);
+  assert.match(emergency, /captureMobilePress/);
+  assert.match(emergency, /window\.addEventListener\('pointerdown', captureMobilePress, true\)/);
+  assert.match(emergency, /window\.addEventListener\('touchstart', captureMobilePress/);
+  assert.match(emergency, /dataset\.mobileHeaderEmergency = VERSION/);
 });
 
 test('rewards remain isolated behind the rewards route instead of becoming primary converter UI', () => {
