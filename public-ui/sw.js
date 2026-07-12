@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.9';
+const APP_VERSION = 'v4.0.10';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
@@ -27,6 +27,7 @@ const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('forum-interaction-emergency.js'),
   resolveToScopePath('modal-accessibility-polish.js'),
   resolveToScopePath('modal-lifecycle-guard.js'),
+  resolveToScopePath('forum-auth-stability.js'),
 ]);
 const SENSITIVE_PREFIXES = [
   API_PREFIX, ADMIN_PREFIX, resolveToScopePath('internal/'), resolveToScopePath('public/jobs/')
