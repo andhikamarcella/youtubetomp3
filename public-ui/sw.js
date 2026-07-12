@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.6';
+const APP_VERSION = 'v4.0.7';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
@@ -24,6 +24,7 @@ const ADMIN_PREFIX = resolveToScopePath('admin/');
 const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
+  resolveToScopePath('forum-interaction-emergency.js'),
 ]);
 const SENSITIVE_PREFIXES = [
   API_PREFIX, ADMIN_PREFIX, resolveToScopePath('internal/'), resolveToScopePath('public/jobs/')
