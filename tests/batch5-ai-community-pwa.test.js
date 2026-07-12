@@ -16,6 +16,7 @@ const home = await readFile(new URL('../public-ui/index.html', import.meta.url),
 const bridge = await readFile(new URL('../public-ui/tailwind-ui-bridge.js', import.meta.url), 'utf8');
 const emergency = await readFile(new URL('../public-ui/mobile-header-emergency.js', import.meta.url), 'utf8');
 const forumEmergency = await readFile(new URL('../public-ui/forum-interaction-emergency.js', import.meta.url), 'utf8');
+const forumAuth = await readFile(new URL('../public-ui/forum-auth-stability.js', import.meta.url), 'utf8');
 const modalPolish = await readFile(new URL('../public-ui/modal-accessibility-polish.js', import.meta.url), 'utf8');
 const modalLifecycle = await readFile(new URL('../public-ui/modal-lifecycle-guard.js', import.meta.url), 'utf8');
 const prepareUi = await readFile(new URL('../scripts/prepare_mobile_header.mjs', import.meta.url), 'utf8');
@@ -45,13 +46,14 @@ test('voice signaling requires consent and active call participants', () => {
   assert.match(server, /endSocketCalls\(socket\.id, "disconnected"\)/);
 });
 
-test('PWA service worker refreshes interaction and modal assets instead of serving stale cached copies', () => {
-  assert.match(sw, /const APP_VERSION = 'v4\.0\.9'/);
+test('PWA service worker refreshes interaction, modal, and auth assets instead of serving stale copies', () => {
+  assert.match(sw, /const APP_VERSION = 'v4\.0\.10'/);
   assert.match(sw, /ytconv-ui-\$\{APP_VERSION\}/);
   assert.match(sw, /ALWAYS_NETWORK_PATHS/);
   assert.match(sw, /resolveToScopePath\('tailwind-ui-bridge\.js'\)/);
   assert.match(sw, /resolveToScopePath\('mobile-header-emergency\.js'\)/);
   assert.match(sw, /resolveToScopePath\('forum-interaction-emergency\.js'\)/);
+  assert.match(sw, /resolveToScopePath\('forum-auth-stability\.js'\)/);
   assert.match(sw, /resolveToScopePath\('modal-accessibility-polish\.js'\)/);
   assert.match(sw, /resolveToScopePath\('modal-lifecycle-guard\.js'\)/);
   assert.match(sw, /cache: 'no-store'/);
@@ -71,13 +73,14 @@ test('mobile header remains tappable above transparent overlays', () => {
 });
 
 test('mobile controls perform one stable action after the finger is released', () => {
-  assert.match(prepareUi, /const version = '4\.0\.9'/);
+  assert.match(prepareUi, /const version = '4\.0\.10'/);
   assert.match(prepareUi, /mobile-header-emergency\.js\?v=\$\{version\}/);
   assert.match(prepareUi, /tailwind-ui-bridge\.js\?v=\$\{version\}/);
   assert.match(prepareUi, /forum-interaction-emergency\.js\?v=\$\{version\}/);
+  assert.match(prepareUi, /forum-auth-stability\.js\?v=\$\{version\}/);
   assert.match(prepareUi, /modal-accessibility-polish\.js\?v=\$\{version\}/);
   assert.match(prepareUi, /modal-lifecycle-guard\.js\?v=\$\{version\}/);
-  assert.match(prepareUi, /\$\{emergencyTag\}\\n  \$\{bridgeTag\}\\n  \$\{forumTag\}\\n  \$\{modalTag\}\\n  \$\{lifecycleTag\}/);
+  assert.match(prepareUi, /\$\{emergencyTag\}\\n  \$\{bridgeTag\}\\n  \$\{forumTag\}\\n  \$\{modalTag\}\\n  \$\{lifecycleTag\}\\n  \$\{authTag\}/);
   assert.match(emergency, /const VERSION = 'v6'/);
   assert.match(emergency, /__ytconvMobileHeaderFallbackInstalledV4 = true/);
   assert.match(emergency, /TAP_MOVE_TOLERANCE_PX = 18/);
@@ -102,6 +105,20 @@ test('forum modal is portaled above its backdrop and Google login taps remain in
   assert.match(forumEmergency, /neutralizeBlockersOverButton/);
   assert.match(forumEmergency, /current\.button\.click\(\)/);
   assert.match(forumEmergency, /window\.addEventListener\('pointerup', finishTap, true\)/);
+});
+
+test('forum auth opens Google popup synchronously and prevents the redirect loop handler from also running', () => {
+  assert.match(forumAuth, /window\.__ytconvForumAuthPopupFirst = true/);
+  assert.match(forumAuth, /document\.addEventListener\('click',[\s\S]*true\);/);
+  assert.match(forumAuth, /event\.stopImmediatePropagation\(\)/);
+  assert.match(forumAuth, /popupPromise = modules\.signInWithPopup\(modules\.auth, provider\)/);
+  assert.match(forumAuth, /Do not await readiness or any other promise before opening the popup/);
+  assert.match(forumAuth, /clearStaleRedirectState/);
+  assert.match(forumAuth, /login belum selesai\|sistem akan coba popup dulu/);
+  assert.match(forumAuth, /modules\.onAuthStateChanged\(modules\.auth/);
+  assert.match(forumAuth, /auth\/unauthorized-domain/);
+  assert.match(forumAuth, /auth\/popup-blocked/);
+  assert.match(forumAuth, /aria-live', 'polite'/);
 });
 
 test('all dialogs use a subtle backdrop, reliable close controls, and accessible focus management', () => {
