@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.2';
+const APP_VERSION = 'v4.0.3';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
@@ -54,7 +54,6 @@ self.addEventListener('install', (event) => {
   );
   self.skipWaiting();
 });
-
 
 self.addEventListener('message', (event) => {
   const type = event?.data?.type;
