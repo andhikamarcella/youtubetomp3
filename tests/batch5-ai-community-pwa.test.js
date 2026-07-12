@@ -90,6 +90,8 @@ test('mobile controls perform one stable action after the finger is released', (
 test('forum modal is portaled above its backdrop and Google login taps remain interactive on mobile', () => {
   assert.match(forumEmergency, /const FORUM_MODAL_Z = '2147483200'/);
   assert.match(forumEmergency, /const FORUM_BACKDROP_Z = '2147482000'/);
+  assert.match(forumEmergency, /globalModalManagerActive/);
+  assert.match(forumEmergency, /if \(!globalModalManagerActive\(\)\)/);
   assert.match(forumEmergency, /modal\.parentElement !== body/);
   assert.match(forumEmergency, /body\.appendChild\(modal\)/);
   assert.match(forumEmergency, /dataset\.forumModalPortal = 'body'/);
