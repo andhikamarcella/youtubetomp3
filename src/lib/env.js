@@ -138,7 +138,7 @@ export const loadEnv = (rawEnv = process.env) => {
     INTERNAL_API_KEY: str(rawEnv.INTERNAL_API_KEY),
     INTERNAL_REQUEST_TIMEOUT_MS: int(rawEnv.INTERNAL_REQUEST_TIMEOUT_MS, 15_000, { min: 500, max: 120_000 }),
 
-    YTDLP_JS_RUNTIME: str(rawEnv.YTDLP_JS_RUNTIME, "node"),
+    YTDLP_JS_RUNTIME: str(rawEnv.YTDLP_JS_RUNTIME, "deno"),
     YTDLP_PATH: str(rawEnv.YTDLP_PATH),
     FFMPEG_PATH: str(rawEnv.FFMPEG_PATH),
     FFPROBE_PATH: str(rawEnv.FFPROBE_PATH),
