@@ -1739,6 +1739,73 @@
       overflow-x: hidden;
     }
 
+    body.ytclean-booting {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background: var(--background);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body.ytclean-booting > :not(.ytclean-boot-skeleton) {
+      visibility: hidden !important;
+    }
+
+    .ytclean-boot-skeleton {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483000;
+      display: grid;
+      grid-template-columns: minmax(230px, 264px) 1fr;
+      gap: 0;
+      background: var(--background);
+      color: var(--text);
+      pointer-events: none;
+    }
+
+    body:not(.ytclean-booting) .ytclean-boot-skeleton { display: none !important; }
+
+    .ytclean-boot-side {
+      border-right: 1px solid var(--border);
+      background: var(--sidebar);
+      padding: 18px 14px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .ytclean-boot-main {
+      padding: clamp(24px, 5vw, 56px);
+      display: grid;
+      align-content: start;
+      gap: 18px;
+      background: linear-gradient(135deg, rgba(30, 64, 175, .18), transparent 40%), var(--background);
+    }
+
+    .ytclean-boot-row, .ytclean-boot-card, .ytclean-boot-pill {
+      border-radius: 16px;
+      background: linear-gradient(90deg, var(--surface), var(--surface-secondary), var(--surface));
+      background-size: 220% 100%;
+      animation: ytcleanSkeleton 1.15s ease-in-out infinite;
+      border: 1px solid var(--border);
+    }
+
+    .ytclean-boot-row { height: 44px; }
+    .ytclean-boot-pill { width: min(100%, 520px); height: 36px; }
+    .ytclean-boot-card { width: min(100%, 620px); height: 260px; margin: 34px auto 0; }
+
+    @keyframes ytcleanSkeleton {
+      0% { background-position: 120% 0; }
+      100% { background-position: -120% 0; }
+    }
+
+    @media (max-width: 991.98px) {
+      .ytclean-boot-skeleton { grid-template-columns: 1fr; }
+      .ytclean-boot-side { display: none; }
+      .ytclean-boot-main { padding-top: 88px; }
+    }
+
     body.ytclean-ui {
       margin: 0;
       background: var(--background) !important;
@@ -1772,15 +1839,25 @@
     .ytclean-sidebar {
       position: fixed;
       inset: 0 auto 0 0;
-      z-index: 1040;
+      z-index: 120100;
       width: var(--yt-shell-width);
       background: var(--sidebar);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       padding: 14px;
+      max-height: 100dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, .38) transparent;
       transition: width .18s ease, transform .18s ease;
     }
+
+    .ytclean-sidebar::-webkit-scrollbar { width: 8px; }
+    .ytclean-sidebar::-webkit-scrollbar-track { background: transparent; }
+    .ytclean-sidebar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .34); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+    .ytclean-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(203, 213, 225, .5); background-clip: content-box; }
 
     body.ytclean-collapsed .ytclean-sidebar { width: 78px; }
     body.ytclean-collapsed .ytclean-label,
@@ -1832,7 +1909,8 @@
 
     .ytclean-link i { width: 20px; text-align: center; color: var(--text-secondary); }
     .ytclean-link.is-active { background: var(--surface); border-color: var(--border); }
-    .ytclean-sidebar-footer { margin-top: auto; display: grid; gap: 8px; }
+    .ytclean-sidebar-footer { margin-top: auto; display: grid; gap: 8px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    @media (max-height: 760px) { .ytclean-sidebar-footer { margin-top: 10px; } }
 
     .ytclean-mobilebar {
       display: none;
@@ -1962,7 +2040,8 @@
       .ytclean-mobilebar { display: flex; position: fixed; left: 0; right: 0; }
       .ytclean-sidebar { transform: translateX(-100%); width: 270px; }
       body.ytclean-drawer-open .ytclean-sidebar { transform: translateX(0); }
-      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 1035; background: rgba(0,0,0,.35); border: 0; }
+      body.ytclean-drawer-open .ytclean-drawer-backdrop { display: block; position: fixed; inset: 0; z-index: 120090; background: rgba(0,0,0,.55); border: 0; pointer-events: auto; }
+      body.ytclean-drawer-open { overflow: hidden; }
       body.ytclean-ui.ytclean-main-offset { margin-left: 0 !important; }
       body.ytclean-ui #mainContent { padding: 72px 16px 20px !important; }
     }
@@ -6012,7 +6091,22 @@
 
 </head>
 
-<body>
+<body class="ytclean-booting">
+  <div class="ytclean-boot-skeleton" role="status" aria-live="polite" aria-label="Memuat tampilan YTConv">
+    <div class="ytclean-boot-side">
+      <div class="ytclean-boot-row" style="width: 70%;"></div>
+      <div class="ytclean-boot-row"></div>
+      <div class="ytclean-boot-row"></div>
+      <div class="ytclean-boot-row"></div>
+      <div class="ytclean-boot-row"></div>
+      <div class="ytclean-boot-row" style="width: 82%;"></div>
+    </div>
+    <div class="ytclean-boot-main">
+      <div class="ytclean-boot-pill"></div>
+      <div class="ytclean-boot-pill" style="width:min(100%, 360px);"></div>
+      <div class="ytclean-boot-card"></div>
+    </div>
+  </div>
 
   <div class="ytclean-shell" aria-hidden="false">
     <div class="ytclean-mobilebar">
@@ -6031,6 +6125,11 @@
         <a class="ytclean-link is-active" href="/"><i class="bi bi-download"></i><span class="ytclean-label">Converter</span></a>
         <a class="ytclean-link" href="/studio"><i class="bi bi-sliders"></i><span class="ytclean-label">Studio</span></a>
         <a class="ytclean-link" href="/history"><i class="bi bi-clock-history"></i><span class="ytclean-label">Riwayat</span></a>
+        <button class="ytclean-link" type="button" data-section-target="saweria" data-route-path="/rewards" data-section-label="Rewards"><i class="bi bi-heart-fill"></i><span class="ytclean-label">Saweria / Rewards</span></button>
+        <button class="ytclean-link" type="button" data-section-target="faq" data-route-path="/support" data-section-label="Bantuan"><i class="bi bi-question-circle"></i><span class="ytclean-label">FAQ / Bantuan</span></button>
+        <button class="ytclean-link" type="button" data-route-modal="community" data-bs-toggle="modal" data-bs-target="#forumModal"><i class="bi bi-chat-dots"></i><span class="ytclean-label">Komunitas</span></button>
+        <button class="ytclean-link" type="button" data-route-modal="account" data-bs-toggle="modal" data-bs-target="#profileModal" onclick="updateProfileModal()"><i class="bi bi-person-circle"></i><span class="ytclean-label">Profil</span></button>
+        <button class="ytclean-link" type="button" data-bs-toggle="modal" data-bs-target="#aboutModal"><i class="bi bi-info-circle"></i><span class="ytclean-label">About</span></button>
         <a class="ytclean-link" href="https://ytconvhub.vercel.app/"><i class="bi bi-grid-3x3-gap"></i><span class="ytclean-label">YTConv Hub</span></a>
       </nav>
       <div class="ytclean-sidebar-section">
@@ -15209,7 +15308,8 @@
 
 
         const initYtcleanUi = () => {
-          document.body.classList.add('ytclean-ui');
+          document.body.classList.add('ytclean-ui', 'ytclean-ready');
+          document.body.classList.remove('ytclean-booting');
           const main = document.getElementById('mainContent');
           if (main?.parentElement) main.parentElement.classList.add('ytclean-main-offset');
           const title = document.getElementById('activeSectionTitle');
@@ -15256,7 +15356,13 @@
           };
           document.getElementById('ytcleanTheme')?.addEventListener('click', cycleTheme);
           document.getElementById('ytcleanMobileTheme')?.addEventListener('click', cycleTheme);
-          document.getElementById('ytcleanSettings')?.addEventListener('click', () => document.querySelector('[data-bs-target="#offcanvasSettings"]')?.click());
+          document.getElementById('ytcleanSettings')?.addEventListener('click', () => {
+            closeDrawer();
+            document.querySelector('[data-bs-target="#offcanvasSettings"]')?.click();
+          });
+          document.querySelectorAll('#ytcleanSidebar [data-section-target], #ytcleanSidebar [data-bs-toggle="modal"]').forEach((item) => {
+            item.addEventListener('click', () => window.setTimeout(closeDrawer, 80));
+          });
 
           const applyLazyLoading = () => {
             document.querySelectorAll('img').forEach((img) => {
@@ -30983,18 +31089,29 @@
             return modules;
           };
 
+          const isForumMobileAuthFlow = () => window.matchMedia?.('(max-width: 767.98px)')?.matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+
           const shouldFallbackToForumRedirect = (error) => {
             const code = String(error?.code || '').toLowerCase();
-            return ['auth/popup-blocked', 'auth/popup-redirect-cancelled', 'auth/operation-not-supported-in-this-environment'].includes(code);
+            return ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/popup-redirect-cancelled', 'auth/operation-not-supported-in-this-environment'].includes(code);
           };
 
           const forumAuthErrorMessage = (error) => {
             const code = String(error?.code || '').toLowerCase();
-            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Login dibatalkan. Tekan tombol Google lagi untuk mencoba.';
-            if (code === 'auth/unauthorized-domain') return 'Domain belum diizinkan di Firebase Authentication. Tambahkan domain Railway ini di Firebase Console.';
+            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Popup Google tertutup/diblokir. Tekan lagi; mobile akan memakai redirect Google.';
+            if (code === 'auth/unauthorized-domain') return `Domain ${location.hostname} belum diizinkan di Firebase Authentication. Tambahkan ytconv.onrender.com di Authentication > Settings > Authorized domains.`;
+            if (code === 'auth/operation-not-allowed') return 'Provider Google belum aktif. Aktifkan Authentication > Sign-in method > Google di Firebase Console.';
             if (code === 'auth/popup-blocked') return 'Popup Google diblokir browser. Izinkan popup untuk situs ini, lalu coba lagi.';
             if (code === 'auth/network-request-failed') return 'Koneksi ke Firebase gagal. Coba ganti jaringan atau refresh.';
             return error?.message || 'Login Google forum gagal. Coba lagi.';
+          };
+
+          const showForumAuthError = (error) => {
+            const code = String(error?.code || 'auth/unknown');
+            const message = forumAuthErrorMessage(error);
+            console.error('Firebase Google Login Error:', code, error?.message, error);
+            setForumLoginHint(`${code}: ${message}`, 'danger');
+            try { window.alert(`${code}\n${message}`); } catch { }
           };
 
           async function initAuth() {
@@ -31022,11 +31139,10 @@
                 setTimeout(restoreOverlayContent, 1000);
               }
             }).catch((error) => {
-              console.error("Redirect login failed", error);
               sessionStorage.removeItem(FORUM_LOGIN_PENDING_KEY);
               sessionStorage.removeItem(FORUM_LOGIN_REDIRECT_ATTEMPTED_KEY);
               restoreOverlayContent();
-              setForumLoginHint(forumAuthErrorMessage(error), 'danger');
+              showForumAuthError(error);
             }).finally(() => {
               window.setTimeout(() => {
                 if (sessionStorage.getItem(FORUM_LOGIN_PENDING_KEY) !== 'true') return;
@@ -31115,8 +31231,8 @@
                   <span>Masuk dengan Google</span>
                 </button>
               </div>`;
-            const newBtn = document.getElementById('forumGoogleLoginBtn');
-            if (newBtn) newBtn.addEventListener('click', handleLoginClick);
+            // Login click is handled by one guarded delegated listener below.
+            // Do not bind here; restoreOverlayContent can run many times.
           }
 
           const moduleCheckInterval = setInterval(() => {
@@ -31949,7 +32065,7 @@
             const { auth, signInWithPopup, GoogleAuthProvider, signInWithRedirect } = window.firebaseModules;
             if (forumLoginAttempting) return;
             forumLoginAttempting = true;
-            setForumLoginLoading('Membuka popup Google. Jika browser memblokir popup, sistem baru akan fallback redirect sekali.');
+            setForumLoginLoading(isForumMobileAuthFlow() ? 'Mode mobile: mengalihkan ke Google Sign-In...' : 'Membuka popup Google. Jika browser memblokir popup, sistem akan fallback redirect sekali.');
             try {
               await waitForForumAuthReady();
               if (auth.currentUser) {
@@ -31963,6 +32079,12 @@
               const provider = new GoogleAuthProvider();
               provider.setCustomParameters({ prompt: 'select_account' });
               try {
+                if (isForumMobileAuthFlow()) {
+                  sessionStorage.setItem(FORUM_LOGIN_PENDING_KEY, 'true');
+                  sessionStorage.setItem(FORUM_LOGIN_REDIRECT_ATTEMPTED_KEY, 'true');
+                  await signInWithRedirect(auth, provider);
+                  return;
+                }
                 const result = await signInWithPopup(auth, provider);
                 if (result && result.user) {
                   setToast('Login berhasil!', 'success');
@@ -31981,9 +32103,8 @@
                 await signInWithRedirect(auth, provider);
               }
             } catch (error) {
-              console.error(error);
               sessionStorage.removeItem(FORUM_LOGIN_PENDING_KEY);
-              setForumLoginHint(forumAuthErrorMessage(error), 'danger');
+              showForumAuthError(error);
               resetForumLoginButton();
             } finally {
               forumLoginAttempting = false;
@@ -31991,7 +32112,16 @@
             }
           }
 
-          forumGoogleLoginBtn.addEventListener('click', handleLoginClick);
+          if (!window.__forumGoogleLoginInstalled) {
+            window.__forumGoogleLoginInstalled = true;
+            document.addEventListener('click', (event) => {
+              const button = event.target.closest('#googleSignInBtn, #forumGoogleLoginBtn');
+              if (!button) return;
+              if (forumLoginAttempting) return;
+              console.log('Mulai signInWithPopup');
+              handleLoginClick();
+            });
+          }
 
           if (forumLogoutBtn) {
             forumLogoutBtn.addEventListener('click', () => {
@@ -32781,6 +32911,11 @@
           try { window.openForumFromFooter && window.openForumFromFooter(); } catch { }
         });
       });
+    </script>
+    <script>
+      window.addEventListener('load', () => {
+        window.setTimeout(() => document.body.classList.remove('ytclean-booting'), 2500);
+      }, { once: true });
     </script>
     <script src="./forum-widget.js" defer></script>
     <script src="./music-widget.js" defer></script>
