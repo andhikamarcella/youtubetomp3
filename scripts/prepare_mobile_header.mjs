@@ -4,33 +4,32 @@ import { dirname, join } from 'node:path';
 
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const indexPath = join(rootDir, 'public-ui', 'index.html');
-const version = '4.0.5';
+const version = '4.0.6';
 const bridgeTag = `<script src="/tailwind-ui-bridge.js?v=${version}" defer></script>`;
 const emergencyTag = `<script src="/mobile-header-emergency.js?v=${version}" defer></script>`;
 
 const bridgePattern = /<script\s+src=["'](?:\.\/|\/)?tailwind-ui-bridge\.js(?:\?[^"']*)?["']\s+defer><\/script>/i;
-const emergencyPattern = /<script\s+src=["'](?:\.\/|\/)?mobile-header-emergency\.js(?:\?[^"']*)?["']\s+defer><\/script>/i;
+const emergencyPattern = /<script\s+src=["'](?:\.\/|\/)?mobile-header-emergency\.js(?:\?[^"']*)?["']\s+defer><\/script>/gi;
 
 let html = await readFile(indexPath, 'utf8');
 const original = html;
 
-if (bridgePattern.test(html)) {
-  html = html.replace(bridgePattern, bridgeTag);
-} else if (/<\/head>/i.test(html)) {
-  html = html.replace(/<\/head>/i, `  ${bridgeTag}\n</head>`);
-}
+// Remove any previous emergency tag first. It must execute before the bridge so
+// it can disable the old pointerdown/touchstart fallback before that fallback
+// gets registered.
+html = html.replace(emergencyPattern, '');
 
-if (emergencyPattern.test(html)) {
-  html = html.replace(emergencyPattern, emergencyTag);
-} else if (/<\/body>/i.test(html)) {
-  html = html.replace(/<\/body>/i, `  ${emergencyTag}\n</body>`);
+if (bridgePattern.test(html)) {
+  html = html.replace(bridgePattern, `${emergencyTag}\n  ${bridgeTag}`);
+} else if (/<\/head>/i.test(html)) {
+  html = html.replace(/<\/head>/i, `  ${emergencyTag}\n  ${bridgeTag}\n</head>`);
 } else {
-  html += `\n${emergencyTag}\n`;
+  html = `${emergencyTag}\n${bridgeTag}\n${html}`;
 }
 
 if (html !== original) {
   await writeFile(indexPath, html, 'utf8');
-  console.log(`[prepare-ui] Mobile header assets pinned to v${version}.`);
+  console.log(`[prepare-ui] Single-tap mobile header assets pinned to v${version}.`);
 } else {
-  console.log(`[prepare-ui] Mobile header assets already pinned to v${version}.`);
+  console.log(`[prepare-ui] Single-tap mobile header assets already pinned to v${version}.`);
 }
