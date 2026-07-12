@@ -2,9 +2,10 @@
   "name": "ytmp3-backend",
   "type": "module",
   "scripts": {
+    "prestart": "node scripts/prepare_mobile_header.mjs",
     "start": "node index.js",
-    "dev": "node --watch index.js",
-    "build": "node --check index.js",
+    "dev": "node scripts/prepare_mobile_header.mjs && node --watch index.js",
+    "build": "node --check scripts/prepare_mobile_header.mjs && node --check public-ui/mobile-header-emergency.js && node --check public-ui/tailwind-ui-bridge.js && node --check index.js",
     "lint": "node scripts/lint.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "test": "node --test tests/*.test.js",
