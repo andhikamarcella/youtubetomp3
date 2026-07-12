@@ -27,6 +27,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Unit and integration tests
+        id: unit_tests
         shell: bash
         run: |
           set +e
@@ -39,6 +40,14 @@ jobs:
             exit "$status"
           fi
           tail -n 40 unit-test.log
+      - name: Upload unit test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-log-node-${{ matrix.node-version }}
+          path: unit-test.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Security regression tests
         run: npm run test:security
       - name: E2E route smoke tests
