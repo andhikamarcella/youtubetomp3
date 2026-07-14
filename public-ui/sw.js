@@ -33,6 +33,7 @@ const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('route-theme-v10.js'),
   resolveToScopePath('secondary-route-ui-v11.js'),
   resolveToScopePath('secondary-route-ui-v12.js'),
+  resolveToScopePath('secondary-route-ui-v13.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
