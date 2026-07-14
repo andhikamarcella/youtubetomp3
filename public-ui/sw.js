@@ -22,6 +22,8 @@ const NAVIGATION_FALLBACKS = ['./', 'index.html'].map((entry) => resolveToScopeU
 const API_PREFIX = resolveToScopePath('api/');
 const ADMIN_PREFIX = resolveToScopePath('admin/');
 const ALWAYS_NETWORK_PATHS = new Set([
+  resolveToScopePath('analytics.js'),
+  resolveToScopePath('ui-enhancements.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
