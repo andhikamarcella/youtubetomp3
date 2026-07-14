@@ -27,4 +27,13 @@
     } catch {}
   };
   window.trackYtconvEvent('page_view');
+
+  // Load small visual enhancements separately so the main converter HTML stays stable.
+  if (!document.querySelector('script[data-ytconv-ui-enhancements]')) {
+    const script = document.createElement('script');
+    script.src = '/ui-enhancements.js?v=20260714';
+    script.defer = true;
+    script.dataset.ytconvUiEnhancements = 'true';
+    document.head.appendChild(script);
+  }
 })();
