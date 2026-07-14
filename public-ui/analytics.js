@@ -28,12 +28,25 @@
   };
   window.trackYtconvEvent('page_view');
 
-  // Load small visual enhancements separately so the main converter HTML stays stable.
-  if (!document.querySelector('script[data-ytconv-ui-enhancements]')) {
+  const loadChatLayout = () => {
+    if (document.querySelector('script[data-ytconv-chat-layout]')) return;
+    const chat = document.createElement('script');
+    chat.src = '/chat-layout-v4.js?v=20260714-4';
+    chat.async = false;
+    chat.dataset.ytconvChatLayout = 'v4';
+    document.head.appendChild(chat);
+  };
+
+  const existingEnhancement = document.querySelector('script[data-ytconv-ui-enhancements]');
+  if (existingEnhancement) {
+    if (document.documentElement.dataset.ytconvUiEnhancements) loadChatLayout();
+    else existingEnhancement.addEventListener('load', loadChatLayout, { once: true });
+  } else {
     const script = document.createElement('script');
-    script.src = '/ui-enhancements.js?v=20260714';
-    script.defer = true;
+    script.src = '/ui-enhancements.js?v=20260714-4';
+    script.async = false;
     script.dataset.ytconvUiEnhancements = 'true';
+    script.addEventListener('load', loadChatLayout, { once: true });
     document.head.appendChild(script);
   }
 })();
