@@ -29,6 +29,8 @@ const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('chat-interaction-v6.js'),
   resolveToScopePath('chat-runtime-v7.js'),
   resolveToScopePath('responsive-polish-v8.js'),
+  resolveToScopePath('theme-mobile-fix-v9.js'),
+  resolveToScopePath('route-theme-v10.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
