@@ -24,6 +24,9 @@ const ADMIN_PREFIX = resolveToScopePath('admin/');
 const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('analytics.js'),
   resolveToScopePath('ui-enhancements.js'),
+  resolveToScopePath('chat-layout-v4.js'),
+  resolveToScopePath('chat-realism-v5.js'),
+  resolveToScopePath('chat-interaction-v6.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
