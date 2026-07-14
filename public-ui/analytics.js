@@ -28,28 +28,27 @@
   };
   window.trackYtconvEvent('page_view');
 
-  const loadCriticalFix = () => {
-    if (document.querySelector('script[data-ytconv-critical-fix-v14]')) return;
-    const critical = document.createElement('script');
-    critical.src = '/ui-critical-fix-v14.js?v=20260714-14';
-    critical.async = false;
-    critical.dataset.ytconvCriticalFixV14 = 'true';
-    document.head.appendChild(critical);
-  };
-
   const loadSecondaryRouteUi = () => {
-    const existing = document.querySelector('script[data-ytconv-secondary-route-ui-v13]');
-    if (existing) {
-      if (document.documentElement.dataset.ytconvSecondaryRouteUi === 'v13') loadCriticalFix();
-      else existing.addEventListener('load', loadCriticalFix, { once: true });
-      return;
-    }
-    document.querySelectorAll('script[data-ytconv-secondary-route-ui], script[data-ytconv-secondary-route-ui-v12]').forEach((node) => node.remove());
+    if (document.querySelector('script[data-ytconv-secondary-route-ui-v15]')) return;
+
+    document.querySelectorAll([
+      'script[data-ytconv-secondary-route-ui]',
+      'script[data-ytconv-secondary-route-ui-v12]',
+      'script[data-ytconv-secondary-route-ui-v13]',
+      'script[data-ytconv-critical-fix-v14]'
+    ].join(',')).forEach((node) => node.remove());
+
+    document.querySelectorAll([
+      '#ytconv-secondary-route-ui-v11',
+      '#ytconv-secondary-route-ui-v12',
+      '#ytconv-secondary-route-ui-v13',
+      '#ytconv-critical-fix-v14'
+    ].join(',')).forEach((node) => node.remove());
+
     const routeUi = document.createElement('script');
-    routeUi.src = '/secondary-route-ui-v13.js?v=20260714-14';
+    routeUi.src = '/secondary-route-ui-v15.js?v=20260714-15';
     routeUi.async = false;
-    routeUi.dataset.ytconvSecondaryRouteUiV13 = 'true';
-    routeUi.addEventListener('load', loadCriticalFix, { once: true });
+    routeUi.dataset.ytconvSecondaryRouteUiV15 = 'true';
     document.head.appendChild(routeUi);
   };
 
@@ -61,7 +60,7 @@
       return;
     }
     const fix = document.createElement('script');
-    fix.src = '/theme-mobile-fix-v9.js?v=20260714-14';
+    fix.src = '/theme-mobile-fix-v9.js?v=20260714-15';
     fix.async = false;
     fix.dataset.ytconvVisualFix = 'v9';
     fix.addEventListener('load', loadSecondaryRouteUi, { once: true });
@@ -76,7 +75,7 @@
       return;
     }
     const polish = document.createElement('script');
-    polish.src = '/responsive-polish-v8.js?v=20260714-14';
+    polish.src = '/responsive-polish-v8.js?v=20260714-15';
     polish.async = false;
     polish.dataset.ytconvResponsivePolish = 'v8';
     polish.addEventListener('load', loadVisualFix, { once: true });
@@ -91,7 +90,7 @@
       return;
     }
     const runtime = document.createElement('script');
-    runtime.src = '/chat-runtime-v7.js?v=20260714-14';
+    runtime.src = '/chat-runtime-v7.js?v=20260714-15';
     runtime.async = false;
     runtime.dataset.ytconvChatRuntime = 'v7';
     runtime.addEventListener('load', loadResponsivePolish, { once: true });
@@ -106,7 +105,7 @@
       return;
     }
     const interaction = document.createElement('script');
-    interaction.src = '/chat-interaction-v6.js?v=20260714-14';
+    interaction.src = '/chat-interaction-v6.js?v=20260714-15';
     interaction.async = false;
     interaction.dataset.ytconvChatInteraction = 'v6';
     interaction.addEventListener('load', loadChatRuntime, { once: true });
@@ -121,7 +120,7 @@
       return;
     }
     const realism = document.createElement('script');
-    realism.src = '/chat-realism-v5.js?v=20260714-14';
+    realism.src = '/chat-realism-v5.js?v=20260714-15';
     realism.async = false;
     realism.dataset.ytconvChatRealism = 'v5';
     realism.addEventListener('load', loadChatInteraction, { once: true });
@@ -136,7 +135,7 @@
       return;
     }
     const chat = document.createElement('script');
-    chat.src = '/chat-layout-v4.js?v=20260714-14';
+    chat.src = '/chat-layout-v4.js?v=20260714-15';
     chat.async = false;
     chat.dataset.ytconvChatLayout = 'v4';
     chat.addEventListener('load', loadRealisticChat, { once: true });
@@ -149,7 +148,7 @@
     else existingEnhancement.addEventListener('load', loadChatLayout, { once: true });
   } else {
     const script = document.createElement('script');
-    script.src = '/ui-enhancements.js?v=20260714-14';
+    script.src = '/ui-enhancements.js?v=20260714-15';
     script.async = false;
     script.dataset.ytconvUiEnhancements = 'true';
     script.addEventListener('load', loadChatLayout, { once: true });
