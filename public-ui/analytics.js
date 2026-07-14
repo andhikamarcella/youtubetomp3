@@ -28,12 +28,28 @@
   };
   window.trackYtconvEvent('page_view');
 
+  const loadRealisticChat = () => {
+    if (document.querySelector('script[data-ytconv-chat-realism]')) return;
+    const realism = document.createElement('script');
+    realism.src = '/chat-realism-v5.js?v=20260714-5';
+    realism.async = false;
+    realism.dataset.ytconvChatRealism = 'v5';
+    document.head.appendChild(realism);
+  };
+
   const loadChatLayout = () => {
-    if (document.querySelector('script[data-ytconv-chat-layout]')) return;
+    const existingChat = document.querySelector('script[data-ytconv-chat-layout]');
+    if (existingChat) {
+      if (document.documentElement.dataset.ytconvChatLayout) loadRealisticChat();
+      else existingChat.addEventListener('load', loadRealisticChat, { once: true });
+      return;
+    }
+
     const chat = document.createElement('script');
-    chat.src = '/chat-layout-v4.js?v=20260714-4';
+    chat.src = '/chat-layout-v4.js?v=20260714-5';
     chat.async = false;
     chat.dataset.ytconvChatLayout = 'v4';
+    chat.addEventListener('load', loadRealisticChat, { once: true });
     document.head.appendChild(chat);
   };
 
@@ -43,7 +59,7 @@
     else existingEnhancement.addEventListener('load', loadChatLayout, { once: true });
   } else {
     const script = document.createElement('script');
-    script.src = '/ui-enhancements.js?v=20260714-4';
+    script.src = '/ui-enhancements.js?v=20260714-5';
     script.async = false;
     script.dataset.ytconvUiEnhancements = 'true';
     script.addEventListener('load', loadChatLayout, { once: true });
