@@ -28,8 +28,22 @@
   };
   window.trackYtconvEvent('page_view');
 
+  const loadSkeletonGuard = () => {
+    if (document.querySelector('script[data-ytconv-skeleton-guard-v16]')) return;
+    const guard = document.createElement('script');
+    guard.src = '/skeleton-route-guard-v16.js?v=20260714-16';
+    guard.async = false;
+    guard.dataset.ytconvSkeletonGuardV16 = 'true';
+    document.head.appendChild(guard);
+  };
+
   const loadSecondaryRouteUi = () => {
-    if (document.querySelector('script[data-ytconv-secondary-route-ui-v15]')) return;
+    const existingRouteUi = document.querySelector('script[data-ytconv-secondary-route-ui-v15]');
+    if (existingRouteUi) {
+      if (document.documentElement.dataset.ytconvSecondaryRouteUi === 'v15') loadSkeletonGuard();
+      else existingRouteUi.addEventListener('load', loadSkeletonGuard, { once: true });
+      return;
+    }
 
     document.querySelectorAll([
       'script[data-ytconv-secondary-route-ui]',
@@ -46,9 +60,10 @@
     ].join(',')).forEach((node) => node.remove());
 
     const routeUi = document.createElement('script');
-    routeUi.src = '/secondary-route-ui-v15.js?v=20260714-15';
+    routeUi.src = '/secondary-route-ui-v15.js?v=20260714-16';
     routeUi.async = false;
     routeUi.dataset.ytconvSecondaryRouteUiV15 = 'true';
+    routeUi.addEventListener('load', loadSkeletonGuard, { once: true });
     document.head.appendChild(routeUi);
   };
 
@@ -60,7 +75,7 @@
       return;
     }
     const fix = document.createElement('script');
-    fix.src = '/theme-mobile-fix-v9.js?v=20260714-15';
+    fix.src = '/theme-mobile-fix-v9.js?v=20260714-16';
     fix.async = false;
     fix.dataset.ytconvVisualFix = 'v9';
     fix.addEventListener('load', loadSecondaryRouteUi, { once: true });
@@ -75,7 +90,7 @@
       return;
     }
     const polish = document.createElement('script');
-    polish.src = '/responsive-polish-v8.js?v=20260714-15';
+    polish.src = '/responsive-polish-v8.js?v=20260714-16';
     polish.async = false;
     polish.dataset.ytconvResponsivePolish = 'v8';
     polish.addEventListener('load', loadVisualFix, { once: true });
@@ -90,7 +105,7 @@
       return;
     }
     const runtime = document.createElement('script');
-    runtime.src = '/chat-runtime-v7.js?v=20260714-15';
+    runtime.src = '/chat-runtime-v7.js?v=20260714-16';
     runtime.async = false;
     runtime.dataset.ytconvChatRuntime = 'v7';
     runtime.addEventListener('load', loadResponsivePolish, { once: true });
@@ -105,7 +120,7 @@
       return;
     }
     const interaction = document.createElement('script');
-    interaction.src = '/chat-interaction-v6.js?v=20260714-15';
+    interaction.src = '/chat-interaction-v6.js?v=20260714-16';
     interaction.async = false;
     interaction.dataset.ytconvChatInteraction = 'v6';
     interaction.addEventListener('load', loadChatRuntime, { once: true });
@@ -120,7 +135,7 @@
       return;
     }
     const realism = document.createElement('script');
-    realism.src = '/chat-realism-v5.js?v=20260714-15';
+    realism.src = '/chat-realism-v5.js?v=20260714-16';
     realism.async = false;
     realism.dataset.ytconvChatRealism = 'v5';
     realism.addEventListener('load', loadChatInteraction, { once: true });
@@ -135,7 +150,7 @@
       return;
     }
     const chat = document.createElement('script');
-    chat.src = '/chat-layout-v4.js?v=20260714-15';
+    chat.src = '/chat-layout-v4.js?v=20260714-16';
     chat.async = false;
     chat.dataset.ytconvChatLayout = 'v4';
     chat.addEventListener('load', loadRealisticChat, { once: true });
@@ -148,7 +163,7 @@
     else existingEnhancement.addEventListener('load', loadChatLayout, { once: true });
   } else {
     const script = document.createElement('script');
-    script.src = '/ui-enhancements.js?v=20260714-15';
+    script.src = '/ui-enhancements.js?v=20260714-16';
     script.async = false;
     script.dataset.ytconvUiEnhancements = 'true';
     script.addEventListener('load', loadChatLayout, { once: true });
