@@ -45,10 +45,27 @@
         --ytconv-music: #ff0033;
         --ytconv-music-hover: #d9002b;
         --ytconv-music-soft: rgba(255, 0, 51, .09);
+        --ytconv-chat-bg: #212121;
+        --ytconv-chat-sidebar: #171717;
+        --ytconv-chat-surface: #2f2f2f;
+        --ytconv-chat-surface-hover: #383838;
+        --ytconv-chat-border: rgba(255, 255, 255, .10);
+      }
+
+      body.tw-enhanced.ytclean-ui {
+        background: var(--ytconv-chat-bg) !important;
+      }
+
+      body.tw-enhanced.ytclean-ui #offcanvasNav,
+      body.tw-enhanced.ytclean-ui [data-bs-target="#offcanvasNav"] {
+        display: none !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytclean-sidebar {
-        border-right-color: rgba(148, 163, 184, .24) !important;
+        width: 260px !important;
+        padding: 12px !important;
+        background: var(--ytconv-chat-sidebar) !important;
+        border-right: 1px solid var(--ytconv-chat-border) !important;
         scrollbar-width: none;
       }
 
@@ -56,8 +73,13 @@
         display: none;
       }
 
+      body.tw-enhanced.ytclean-ui.ytclean-main-offset {
+        margin-left: 260px !important;
+      }
+
       body.tw-enhanced.ytclean-ui .ytclean-brand {
-        padding-bottom: 12px !important;
+        min-height: 48px !important;
+        padding: 4px 8px 12px !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytclean-brand-mark {
@@ -75,31 +97,45 @@
         border-radius: 9px;
       }
 
+      body.tw-enhanced.ytclean-ui .ytclean-brand-text {
+        font-size: 16px !important;
+        letter-spacing: -.01em;
+      }
+
       body.tw-enhanced.ytclean-ui .ytclean-nav {
-        gap: 3px !important;
+        gap: 2px !important;
+      }
+
+      body.tw-enhanced.ytclean-ui .ytclean-sidebar-section {
+        margin-top: 10px !important;
+        padding-top: 10px !important;
+        border-color: var(--ytconv-chat-border) !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytclean-link {
         min-height: 40px !important;
-        border-radius: 10px !important;
         padding: 8px 10px !important;
-        font-weight: 600 !important;
-        transition: background-color .16s ease, border-color .16s ease, color .16s ease !important;
+        border: 1px solid transparent !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        transition: background-color .14s ease, border-color .14s ease, color .14s ease !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytclean-link:hover {
         transform: none !important;
+        background: rgba(255, 255, 255, .07) !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytclean-link.is-active {
-        background: var(--surface-secondary) !important;
-        border-color: rgba(96, 165, 250, .42) !important;
-        box-shadow: inset 3px 0 0 #3b82f6 !important;
+        background: rgba(255, 255, 255, .10) !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
       }
 
-      body.tw-enhanced.ytclean-ui .ytconv-music-link {
-        background: transparent !important;
-        border-color: transparent !important;
+      body.tw-enhanced.ytclean-ui .ytclean-link i {
+        color: rgba(255, 255, 255, .72) !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytconv-music-link i {
@@ -108,7 +144,12 @@
 
       body.tw-enhanced.ytclean-ui .ytconv-music-link:hover {
         background: var(--ytconv-music-soft) !important;
-        border-color: rgba(255, 0, 51, .22) !important;
+      }
+
+      body.tw-enhanced.ytclean-ui #mainContent {
+        width: min(100%, 940px) !important;
+        max-width: 940px !important;
+        padding: 30px 24px 42px !important;
       }
 
       body.tw-enhanced.ytclean-ui .section-header.ytconv-hero-clean {
@@ -116,11 +157,12 @@
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center !important;
         gap: 18px !important;
-        padding: 22px !important;
-        margin: 0 0 20px !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 18px !important;
-        background: var(--surface) !important;
+        margin: 0 0 22px !important;
+        padding: 6px 2px 18px !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--ytconv-chat-border) !important;
+        border-radius: 0 !important;
+        background: transparent !important;
         box-shadow: none !important;
       }
 
@@ -133,10 +175,10 @@
       }
 
       body.tw-enhanced.ytclean-ui .section-header.ytconv-hero-clean #activeSectionTitle {
-        margin: 0 0 6px !important;
-        font-size: clamp(28px, 3.3vw, 36px) !important;
+        margin: 0 0 7px !important;
+        font-size: clamp(28px, 3.4vw, 38px) !important;
         line-height: 1.08 !important;
-        letter-spacing: -.03em !important;
+        letter-spacing: -.035em !important;
         text-transform: none !important;
       }
 
@@ -144,7 +186,8 @@
         max-width: 620px;
         margin: 0 !important;
         font-size: 15px !important;
-        line-height: 1.5 !important;
+        line-height: 1.55 !important;
+        color: rgba(255, 255, 255, .62) !important;
       }
 
       .ytconv-header-actions {
@@ -155,19 +198,19 @@
       }
 
       body.tw-enhanced.ytclean-ui .ytconv-header-action {
-        min-height: 42px !important;
+        min-height: 40px !important;
         width: auto !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         gap: 8px !important;
-        padding: 9px 13px !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 11px !important;
-        background: var(--surface-secondary) !important;
-        color: var(--text) !important;
+        padding: 8px 13px !important;
+        border: 1px solid var(--ytconv-chat-border) !important;
+        border-radius: 10px !important;
+        background: var(--ytconv-chat-surface) !important;
+        color: #f4f4f4 !important;
         font-size: 14px !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         white-space: nowrap;
         box-shadow: none !important;
         outline: none !important;
@@ -175,7 +218,8 @@
 
       body.tw-enhanced.ytclean-ui .ytconv-header-action:hover {
         transform: none !important;
-        border-color: rgba(96, 165, 250, .45) !important;
+        background: var(--ytconv-chat-surface-hover) !important;
+        border-color: rgba(255, 255, 255, .16) !important;
       }
 
       body.tw-enhanced.ytclean-ui .ytconv-header-action--music {
@@ -194,16 +238,86 @@
         box-shadow: none !important;
       }
 
-      body.tw-enhanced.ytclean-ui #url:focus {
-        border-color: #60a5fa !important;
-        box-shadow: 0 0 0 3px rgba(96, 165, 250, .14) !important;
+      body.tw-enhanced.ytclean-ui .card,
+      body.tw-enhanced.ytclean-ui #advanced-mode .card {
+        border: 1px solid var(--ytconv-chat-border) !important;
+        border-radius: 16px !important;
+        background: var(--ytconv-chat-surface) !important;
+        box-shadow: none !important;
       }
 
-      body.tw-enhanced.ytclean-ui #advanced-mode .card {
-        border-color: rgba(148, 163, 184, .24) !important;
+      body.tw-enhanced.ytclean-ui #advanced-mode .card-body {
+        padding: 22px !important;
+      }
+
+      body.tw-enhanced.ytclean-ui .form-control,
+      body.tw-enhanced.ytclean-ui .form-select,
+      body.tw-enhanced.ytclean-ui textarea {
+        border-color: var(--ytconv-chat-border) !important;
+        border-radius: 12px !important;
+        background: #242424 !important;
+      }
+
+      body.tw-enhanced.ytclean-ui #url {
+        min-height: 54px !important;
+      }
+
+      body.tw-enhanced.ytclean-ui #url:focus {
+        border-color: rgba(255, 255, 255, .30) !important;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, .07) !important;
+      }
+
+      body.tw-enhanced.ytclean-ui .btn:not(.btn-primary),
+      body.tw-enhanced.ytclean-ui .app-nav-btn {
+        border-color: var(--ytconv-chat-border) !important;
+        background: var(--ytconv-chat-surface) !important;
+        color: #f4f4f4 !important;
+      }
+
+      body.tw-enhanced.ytclean-ui .btn:not(.btn-primary):hover,
+      body.tw-enhanced.ytclean-ui .app-nav-btn:hover {
+        background: var(--ytconv-chat-surface-hover) !important;
+      }
+
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui {
+        --ytconv-chat-bg: #f7f7f8;
+        --ytconv-chat-sidebar: #f0f0f0;
+        --ytconv-chat-surface: #ffffff;
+        --ytconv-chat-surface-hover: #ececec;
+        --ytconv-chat-border: rgba(0, 0, 0, .10);
+        background: var(--ytconv-chat-bg) !important;
+      }
+
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .section-header.ytconv-hero-clean #activeSectionSubtitle {
+        color: rgba(0, 0, 0, .58) !important;
+      }
+
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .ytclean-link i {
+        color: rgba(0, 0, 0, .68) !important;
+      }
+
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .ytclean-link:hover,
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .ytclean-link.is-active {
+        background: rgba(0, 0, 0, .06) !important;
+      }
+
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .form-control,
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .form-select,
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui textarea {
+        background: #fff !important;
+      }
+
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .ytconv-header-action,
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .btn:not(.btn-primary),
+      [data-bs-theme="light"] body.tw-enhanced.ytclean-ui .app-nav-btn {
+        color: #202123 !important;
       }
 
       @media (max-width: ${MOBILE_MAX_WIDTH}px) {
+        body.tw-enhanced.ytclean-ui.ytclean-main-offset {
+          margin-left: 0 !important;
+        }
+
         html body.tw-enhanced > .ytclean-mobilebar.ytconv-mobilebar-upgraded {
           display: grid !important;
           grid-template-columns: 46px minmax(0, 1fr) 46px 46px;
@@ -233,9 +347,18 @@
           border-color: var(--ytconv-music) !important;
         }
 
+        body.tw-enhanced.ytclean-ui .ytclean-sidebar {
+          width: min(86vw, 310px) !important;
+        }
+
+        body.tw-enhanced.ytclean-ui #mainContent {
+          width: 100% !important;
+          padding: calc(var(--ytclean-mobilebar-total-height) + 18px) 16px 28px !important;
+        }
+
         body.tw-enhanced.ytclean-ui .section-header.ytconv-hero-clean {
           grid-template-columns: 1fr;
-          padding: 18px !important;
+          padding: 2px 0 16px !important;
         }
 
         .ytconv-header-actions {
@@ -252,10 +375,6 @@
 
         body.tw-enhanced.ytclean-ui .ytconv-header-action {
           width: 100% !important;
-        }
-
-        body.tw-enhanced.ytclean-ui #headerModeToggle {
-          grid-column: 1 / -1;
         }
       }
 
@@ -313,6 +432,31 @@
     probe.addEventListener('load', () => applyLogo(LOGO_PRIMARY), { once: true });
     probe.addEventListener('error', () => applyLogo(LOGO_FALLBACK), { once: true });
     probe.src = LOGO_PRIMARY;
+  };
+
+  const closeLegacyFeatureMenu = () => {
+    document.querySelectorAll('[data-bs-target="#offcanvasNav"]').forEach((button) => button.remove());
+
+    const legacyMenu = document.getElementById('offcanvasNav');
+    if (legacyMenu) {
+      try {
+        window.bootstrap?.Offcanvas?.getInstance(legacyMenu)?.hide();
+      } catch {}
+      legacyMenu.classList.remove('show', 'showing');
+      legacyMenu.setAttribute('aria-hidden', 'true');
+      legacyMenu.style.visibility = 'hidden';
+    }
+
+    document.querySelectorAll('.offcanvas-backdrop').forEach((backdrop) => backdrop.remove());
+    if (!document.querySelector('.offcanvas.show, .offcanvas.showing')) {
+      document.body.classList.remove('offcanvas-open');
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('padding-right');
+    }
+
+    if (window.location.hash === '#offcanvasNav') {
+      history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
   };
 
   const removeOldEnhancements = () => {
@@ -419,25 +563,23 @@
       musicButton = document.createElement('button');
       musicButton.id = 'ytconvHeaderMusic';
     }
+
     normalizeActionButton(musicButton, {
       icon: 'bi-youtube',
       label: 'YT Music',
       extraClass: 'ytconv-header-action--music',
     });
+
     if (musicButton.dataset.ytconvBound !== 'true') {
       musicButton.dataset.ytconvBound = 'true';
       musicButton.addEventListener('click', openYouTubeMusic);
     }
-
-    const featureButton = header.querySelector(':scope > button[data-bs-target="#offcanvasNav"], #ytconvHeaderActions button[data-bs-target="#offcanvasNav"]');
-    normalizeActionButton(featureButton, { icon: 'bi-grid-3x3-gap', label: 'Menu fitur' });
 
     const modeButton = document.getElementById('headerModeToggle');
     normalizeActionButton(modeButton, { icon: 'bi-sliders', label: 'Mode' });
     modeButton?.setAttribute('aria-label', 'Ganti mode converter');
 
     actions.replaceChildren(musicButton);
-    if (featureButton) actions.appendChild(featureButton);
     if (modeButton) actions.appendChild(modeButton);
     header.appendChild(actions);
   };
@@ -460,6 +602,7 @@
 
   const applyEnhancements = () => {
     injectStyles();
+    closeLegacyFeatureMenu();
     removeOldEnhancements();
     ensureBrandAssets();
     ensureSidebarMusicButton();
@@ -467,7 +610,7 @@
     ensureCleanHeader();
     polishInput();
     upgradeExternalLinks();
-    document.documentElement.dataset.ytconvUiEnhancements = 'clean-v2';
+    document.documentElement.dataset.ytconvUiEnhancements = 'chat-clean-v3';
   };
 
   onReady(() => {
