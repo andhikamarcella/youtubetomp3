@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.10';
+const APP_VERSION = 'v4.0.11';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
@@ -27,6 +27,8 @@ const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('chat-layout-v4.js'),
   resolveToScopePath('chat-realism-v5.js'),
   resolveToScopePath('chat-interaction-v6.js'),
+  resolveToScopePath('chat-runtime-v7.js'),
+  resolveToScopePath('responsive-polish-v8.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
