@@ -28,8 +28,22 @@
   };
   window.trackYtconvEvent('page_view');
 
+  const loadInteractionRecovery = () => {
+    if (document.querySelector('script[data-ytconv-interaction-recovery-v18]')) return;
+    const recovery = document.createElement('script');
+    recovery.src = '/interaction-recovery-v18.js?v=20260715-18';
+    recovery.async = false;
+    recovery.dataset.ytconvInteractionRecoveryV18 = 'true';
+    document.head.appendChild(recovery);
+  };
+
   const loadStabilityUi = () => {
-    if (document.querySelector('script[data-ytconv-ui-stability-v17]')) return;
+    const existing = document.querySelector('script[data-ytconv-ui-stability-v17]');
+    if (existing) {
+      if (document.documentElement.dataset.ytconvUiStability === 'v17') loadInteractionRecovery();
+      else existing.addEventListener('load', loadInteractionRecovery, { once: true });
+      return;
+    }
     document.querySelectorAll([
       'script[data-ytconv-secondary-route-ui]',
       'script[data-ytconv-secondary-route-ui-v12]',
@@ -39,9 +53,10 @@
       'script[data-ytconv-skeleton-guard-v16]'
     ].join(',')).forEach((node) => node.remove());
     const stability = document.createElement('script');
-    stability.src = '/ui-stability-v17.js?v=20260715-17';
+    stability.src = '/ui-stability-v17.js?v=20260715-18';
     stability.async = false;
     stability.dataset.ytconvUiStabilityV17 = 'true';
+    stability.addEventListener('load', loadInteractionRecovery, { once: true });
     document.head.appendChild(stability);
   };
 
@@ -53,7 +68,7 @@
       return;
     }
     const fix = document.createElement('script');
-    fix.src = '/theme-mobile-fix-v9.js?v=20260715-17';
+    fix.src = '/theme-mobile-fix-v9.js?v=20260715-18';
     fix.async = false;
     fix.dataset.ytconvVisualFix = 'v9';
     fix.addEventListener('load', loadStabilityUi, { once: true });
@@ -68,7 +83,7 @@
       return;
     }
     const polish = document.createElement('script');
-    polish.src = '/responsive-polish-v8.js?v=20260715-17';
+    polish.src = '/responsive-polish-v8.js?v=20260715-18';
     polish.async = false;
     polish.dataset.ytconvResponsivePolish = 'v8';
     polish.addEventListener('load', loadVisualFix, { once: true });
@@ -83,7 +98,7 @@
       return;
     }
     const runtime = document.createElement('script');
-    runtime.src = '/chat-runtime-v7.js?v=20260715-17';
+    runtime.src = '/chat-runtime-v7.js?v=20260715-18';
     runtime.async = false;
     runtime.dataset.ytconvChatRuntime = 'v7';
     runtime.addEventListener('load', loadResponsivePolish, { once: true });
@@ -98,7 +113,7 @@
       return;
     }
     const interaction = document.createElement('script');
-    interaction.src = '/chat-interaction-v6.js?v=20260715-17';
+    interaction.src = '/chat-interaction-v6.js?v=20260715-18';
     interaction.async = false;
     interaction.dataset.ytconvChatInteraction = 'v6';
     interaction.addEventListener('load', loadChatRuntime, { once: true });
@@ -113,7 +128,7 @@
       return;
     }
     const realism = document.createElement('script');
-    realism.src = '/chat-realism-v5.js?v=20260715-17';
+    realism.src = '/chat-realism-v5.js?v=20260715-18';
     realism.async = false;
     realism.dataset.ytconvChatRealism = 'v5';
     realism.addEventListener('load', loadChatInteraction, { once: true });
@@ -128,7 +143,7 @@
       return;
     }
     const chat = document.createElement('script');
-    chat.src = '/chat-layout-v4.js?v=20260715-17';
+    chat.src = '/chat-layout-v4.js?v=20260715-18';
     chat.async = false;
     chat.dataset.ytconvChatLayout = 'v4';
     chat.addEventListener('load', loadRealisticChat, { once: true });
@@ -141,7 +156,7 @@
     else existingEnhancement.addEventListener('load', loadChatLayout, { once: true });
   } else {
     const script = document.createElement('script');
-    script.src = '/ui-enhancements.js?v=20260715-17';
+    script.src = '/ui-enhancements.js?v=20260715-18';
     script.async = false;
     script.dataset.ytconvUiEnhancements = 'true';
     script.addEventListener('load', loadChatLayout, { once: true });
