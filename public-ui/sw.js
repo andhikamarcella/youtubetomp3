@@ -1,4 +1,4 @@
-const APP_VERSION = 'v4.0.10';
+const APP_VERSION = 'v4.0.11';
 const CACHE_NAME = `ytconv-ui-${APP_VERSION}`;
 const CDN_CACHE = `ytmp3-cdn-${APP_VERSION}`;
 
@@ -38,6 +38,7 @@ const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('secondary-route-ui-v15.js'),
   resolveToScopePath('skeleton-route-guard-v16.js'),
   resolveToScopePath('ui-stability-v17.js'),
+  resolveToScopePath('interaction-recovery-v18.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
