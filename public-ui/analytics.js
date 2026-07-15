@@ -28,57 +28,35 @@
   };
   window.trackYtconvEvent('page_view');
 
-  const loadSkeletonGuard = () => {
-    if (document.querySelector('script[data-ytconv-skeleton-guard-v16]')) return;
-    const guard = document.createElement('script');
-    guard.src = '/skeleton-route-guard-v16.js?v=20260714-16';
-    guard.async = false;
-    guard.dataset.ytconvSkeletonGuardV16 = 'true';
-    document.head.appendChild(guard);
-  };
-
-  const loadSecondaryRouteUi = () => {
-    const existingRouteUi = document.querySelector('script[data-ytconv-secondary-route-ui-v15]');
-    if (existingRouteUi) {
-      if (document.documentElement.dataset.ytconvSecondaryRouteUi === 'v15') loadSkeletonGuard();
-      else existingRouteUi.addEventListener('load', loadSkeletonGuard, { once: true });
-      return;
-    }
-
+  const loadStabilityUi = () => {
+    if (document.querySelector('script[data-ytconv-ui-stability-v17]')) return;
     document.querySelectorAll([
       'script[data-ytconv-secondary-route-ui]',
       'script[data-ytconv-secondary-route-ui-v12]',
       'script[data-ytconv-secondary-route-ui-v13]',
-      'script[data-ytconv-critical-fix-v14]'
+      'script[data-ytconv-secondary-route-ui-v15]',
+      'script[data-ytconv-critical-fix-v14]',
+      'script[data-ytconv-skeleton-guard-v16]'
     ].join(',')).forEach((node) => node.remove());
-
-    document.querySelectorAll([
-      '#ytconv-secondary-route-ui-v11',
-      '#ytconv-secondary-route-ui-v12',
-      '#ytconv-secondary-route-ui-v13',
-      '#ytconv-critical-fix-v14'
-    ].join(',')).forEach((node) => node.remove());
-
-    const routeUi = document.createElement('script');
-    routeUi.src = '/secondary-route-ui-v15.js?v=20260714-16';
-    routeUi.async = false;
-    routeUi.dataset.ytconvSecondaryRouteUiV15 = 'true';
-    routeUi.addEventListener('load', loadSkeletonGuard, { once: true });
-    document.head.appendChild(routeUi);
+    const stability = document.createElement('script');
+    stability.src = '/ui-stability-v17.js?v=20260715-17';
+    stability.async = false;
+    stability.dataset.ytconvUiStabilityV17 = 'true';
+    document.head.appendChild(stability);
   };
 
   const loadVisualFix = () => {
     const existingFix = document.querySelector('script[data-ytconv-visual-fix]');
     if (existingFix) {
-      if (document.documentElement.dataset.ytconvVisualFix) loadSecondaryRouteUi();
-      else existingFix.addEventListener('load', loadSecondaryRouteUi, { once: true });
+      if (document.documentElement.dataset.ytconvVisualFix) loadStabilityUi();
+      else existingFix.addEventListener('load', loadStabilityUi, { once: true });
       return;
     }
     const fix = document.createElement('script');
-    fix.src = '/theme-mobile-fix-v9.js?v=20260714-16';
+    fix.src = '/theme-mobile-fix-v9.js?v=20260715-17';
     fix.async = false;
     fix.dataset.ytconvVisualFix = 'v9';
-    fix.addEventListener('load', loadSecondaryRouteUi, { once: true });
+    fix.addEventListener('load', loadStabilityUi, { once: true });
     document.head.appendChild(fix);
   };
 
@@ -90,7 +68,7 @@
       return;
     }
     const polish = document.createElement('script');
-    polish.src = '/responsive-polish-v8.js?v=20260714-16';
+    polish.src = '/responsive-polish-v8.js?v=20260715-17';
     polish.async = false;
     polish.dataset.ytconvResponsivePolish = 'v8';
     polish.addEventListener('load', loadVisualFix, { once: true });
@@ -105,7 +83,7 @@
       return;
     }
     const runtime = document.createElement('script');
-    runtime.src = '/chat-runtime-v7.js?v=20260714-16';
+    runtime.src = '/chat-runtime-v7.js?v=20260715-17';
     runtime.async = false;
     runtime.dataset.ytconvChatRuntime = 'v7';
     runtime.addEventListener('load', loadResponsivePolish, { once: true });
@@ -120,7 +98,7 @@
       return;
     }
     const interaction = document.createElement('script');
-    interaction.src = '/chat-interaction-v6.js?v=20260714-16';
+    interaction.src = '/chat-interaction-v6.js?v=20260715-17';
     interaction.async = false;
     interaction.dataset.ytconvChatInteraction = 'v6';
     interaction.addEventListener('load', loadChatRuntime, { once: true });
@@ -135,7 +113,7 @@
       return;
     }
     const realism = document.createElement('script');
-    realism.src = '/chat-realism-v5.js?v=20260714-16';
+    realism.src = '/chat-realism-v5.js?v=20260715-17';
     realism.async = false;
     realism.dataset.ytconvChatRealism = 'v5';
     realism.addEventListener('load', loadChatInteraction, { once: true });
@@ -150,7 +128,7 @@
       return;
     }
     const chat = document.createElement('script');
-    chat.src = '/chat-layout-v4.js?v=20260714-16';
+    chat.src = '/chat-layout-v4.js?v=20260715-17';
     chat.async = false;
     chat.dataset.ytconvChatLayout = 'v4';
     chat.addEventListener('load', loadRealisticChat, { once: true });
@@ -163,7 +141,7 @@
     else existingEnhancement.addEventListener('load', loadChatLayout, { once: true });
   } else {
     const script = document.createElement('script');
-    script.src = '/ui-enhancements.js?v=20260714-16';
+    script.src = '/ui-enhancements.js?v=20260715-17';
     script.async = false;
     script.dataset.ytconvUiEnhancements = 'true';
     script.addEventListener('load', loadChatLayout, { once: true });
