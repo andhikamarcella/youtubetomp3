@@ -19,6 +19,7 @@ const forumEmergency = await readFile(new URL('../public-ui/forum-interaction-em
 const forumAuth = await readFile(new URL('../public-ui/forum-auth-stability.js', import.meta.url), 'utf8');
 const modalPolish = await readFile(new URL('../public-ui/modal-accessibility-polish.js', import.meta.url), 'utf8');
 const modalLifecycle = await readFile(new URL('../public-ui/modal-lifecycle-guard.js', import.meta.url), 'utf8');
+const interactionRecovery = await readFile(new URL('../public-ui/interaction-recovery-v18.js', import.meta.url), 'utf8');
 const prepareUi = await readFile(new URL('../scripts/prepare_mobile_header.mjs', import.meta.url), 'utf8');
 
 test('AI models response exposes public modes without requiring provider secrets', () => {
@@ -47,7 +48,7 @@ test('voice signaling requires consent and active call participants', () => {
 });
 
 test('PWA service worker refreshes interaction, modal, and auth assets instead of serving stale copies', () => {
-  assert.match(sw, /const APP_VERSION = 'v4\.0\.10'/);
+  assert.match(sw, /const APP_VERSION = 'v4\.0\.11'/);
   assert.match(sw, /ytconv-ui-\$\{APP_VERSION\}/);
   assert.match(sw, /ALWAYS_NETWORK_PATHS/);
   assert.match(sw, /resolveToScopePath\('tailwind-ui-bridge\.js'\)/);
@@ -56,6 +57,7 @@ test('PWA service worker refreshes interaction, modal, and auth assets instead o
   assert.match(sw, /resolveToScopePath\('forum-auth-stability\.js'\)/);
   assert.match(sw, /resolveToScopePath\('modal-accessibility-polish\.js'\)/);
   assert.match(sw, /resolveToScopePath\('modal-lifecycle-guard\.js'\)/);
+  assert.match(sw, /resolveToScopePath\('interaction-recovery-v18\.js'\)/);
   assert.match(sw, /cache: 'no-store'/);
   assert.match(sw, /CLEAR_CACHE/);
   assert.match(sw, /SKIP_WAITING/);
@@ -144,6 +146,16 @@ test('modal lifecycle guard fully releases closed dialogs and orphan backdrops',
   assert.match(modalLifecycle, /modal\.removeAttribute\('aria-modal'\)/);
   assert.match(modalLifecycle, /document\.querySelectorAll\('\.modal-backdrop'\)/);
   assert.match(modalLifecycle, /document\.body\.classList\.remove\('modal-open', 'ytconv-dialog-open'\)/);
+});
+
+test('interaction recovery keeps converter status horizontal and releases stale full-screen blockers', () => {
+  assert.match(interactionRecovery, /ytv18-convert-status/);
+  assert.match(interactionRecovery, /white-space: nowrap !important/);
+  assert.match(interactionRecovery, /removeCoveringBlockers/);
+  assert.match(interactionRecovery, /restoreAppInteraction/);
+  assert.match(interactionRecovery, /document\.body\.classList\.remove/);
+  assert.match(interactionRecovery, /\$\$\('\[inert\]'\)/);
+  assert.match(interactionRecovery, /pointerdown/);
 });
 
 test('support ticket and community dialogs receive matching user-friendly surfaces without replacing handlers', () => {
