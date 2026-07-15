@@ -37,6 +37,7 @@ const ALWAYS_NETWORK_PATHS = new Set([
   resolveToScopePath('ui-critical-fix-v14.js'),
   resolveToScopePath('secondary-route-ui-v15.js'),
   resolveToScopePath('skeleton-route-guard-v16.js'),
+  resolveToScopePath('ui-stability-v17.js'),
   resolveToScopePath('tailwind-ui-bridge.js'),
   resolveToScopePath('mobile-header-emergency.js'),
   resolveToScopePath('forum-interaction-emergency.js'),
