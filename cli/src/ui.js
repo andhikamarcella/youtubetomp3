@@ -4,7 +4,6 @@ import process from 'node:process';
 import { spawn } from 'node:child_process';
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Text, render, useApp, useInput } from 'ink';
-import TextInput from 'ink-text-input';
 import figlet from 'figlet';
 import ansiShadowFont from 'figlet/importable-fonts/ANSI Shadow.js';
 import smallFont from 'figlet/importable-fonts/Small.js';
@@ -20,6 +19,10 @@ import {
   isTermux,
   termuxSharedDownloadsDirectory,
 } from './platform.js';
+import {
+  createTerminalInputDecoder,
+  readClipboardText,
+} from './terminal-input.js';
 
 figlet.parseFont('ANSI Shadow', ansiShadowFont);
 figlet.parseFont('Small', smallFont);
@@ -114,6 +117,34 @@ function modeSummary({ mode, resolution, audioFormat, audioQuality }) {
     : `audio · MP3 ${audioQuality.replace('K', ' kbps')}`;
 }
 
+function cleanInputText(value) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, '')
+    .replace(/[\r\n\t]/gu, '')
+    .trimStart();
+}
+
+function firstUrl(value) {
+  return cleanInputText(value).match(/https?:\/\/[^\s]+/iu)?.[0] ?? '';
+}
+
+function applyIncomingText(current, incoming) {
+  const cleaned = cleanInputText(incoming);
+  if (!cleaned) return current;
+
+  const pastedUrl = firstUrl(cleaned);
+  if (pastedUrl) return pastedUrl;
+
+  return `${current}${cleaned}`.slice(0, 4096);
+}
+
+function displayInput(value, width) {
+  const characters = Array.from(value);
+  const available = Math.max(8, width - 5);
+  if (characters.length <= available) return value;
+  return `…${characters.slice(-(available - 1)).join('')}`;
+}
+
 function Logo({ compact }) {
   return h(
     Box,
@@ -145,8 +176,6 @@ function HomeScreen(props) {
   const {
     panelWidth,
     url,
-    setUrl,
-    submit,
     inputError,
     mode,
     resolution,
@@ -159,6 +188,7 @@ function HomeScreen(props) {
 
   const inputWidth = Math.max(24, panelWidth - 14);
   const buttonFocused = activeControl === 'convert';
+  const shownValue = displayInput(url, inputWidth);
 
   return h(
     Box,
@@ -175,14 +205,12 @@ function HomeScreen(props) {
           paddingX: 1,
         },
         h(Text, null, '▣ '),
-        h(TextInput, {
-          value: url,
-          onChange: setUrl,
-          onSubmit: submit,
-          placeholder: 'https://...',
-          focus: activeControl === 'input',
-          showCursor: activeControl === 'input',
-        }),
+        h(
+          Text,
+          { wrap: 'truncate-end' },
+          shownValue || h(Text, { dimColor: true }, 'https://...'),
+        ),
+        activeControl === 'input' ? h(Text, { inverse: true }, ' ') : null,
       ),
       h(
         Box,
@@ -209,8 +237,8 @@ function HomeScreen(props) {
         playlist,
       }),
     ),
-    h(Text, { dimColor: true }, 'tap/click convert · tab select · enter run · ^g video/audio'),
-    h(Text, { dimColor: true }, '^q quality · ^b cookies · ^p playlist · esc/^c quit'),
+    h(Text, { dimColor: true }, 'Ctrl+V/right-click paste · click convert · Tab+Enter fallback'),
+    h(Text, { dimColor: true }, '^g video/audio · ^q quality · ^b cookies · ^p playlist · esc/^c quit'),
     mode === 'audio' ? h(Text, { dimColor: true }, '^f MP3/M4A · type exit then Enter to close') : null,
   );
 }
@@ -319,7 +347,7 @@ function logoLineCount(compact) {
     .length;
 }
 
-function convertButtonBounds({ columns, rows, panelWidth, compactLogo, mode }) {
+function controlBounds({ columns, rows, panelWidth, compactLogo, mode }) {
   const rootHeight = Math.max(20, rows - 1);
   const logoHeight = logoLineCount(compactLogo) + 2;
   const homeHeight = 1 + 1 + 3 + 1 + 1 + 2 + (mode === 'audio' ? 1 : 0);
@@ -327,37 +355,37 @@ function convertButtonBounds({ columns, rows, panelWidth, compactLogo, mode }) {
   const rootTop = Math.max(1, Math.floor((rootHeight - totalHeight) / 2) + 1);
   const panelLeft = Math.max(1, Math.floor((columns - panelWidth) / 2) + 1);
   const inputWidth = Math.max(24, panelWidth - 14);
-  const buttonLeft = panelLeft + inputWidth + 1;
   const inputTop = rootTop + logoHeight + 2;
+  const buttonLeft = panelLeft + inputWidth + 1;
 
   return {
-    left: buttonLeft - 1,
-    right: buttonLeft + 12,
-    top: inputTop - 1,
-    bottom: inputTop + 3,
+    input: {
+      left: panelLeft - 1,
+      right: panelLeft + inputWidth,
+      top: inputTop - 1,
+      bottom: inputTop + 3,
+    },
+    convert: {
+      left: buttonLeft - 1,
+      right: buttonLeft + 12,
+      top: inputTop - 1,
+      bottom: inputTop + 3,
+    },
   };
 }
 
-function parseMouseEvents(chunk) {
-  const events = [];
-  const text = chunk.toString();
-  const expression = /\u001b\[<(\d+);(\d+);(\d+)([Mm])/gu;
-  let match;
-  while ((match = expression.exec(text)) !== null) {
-    events.push({
-      button: Number.parseInt(match[1], 10),
-      x: Number.parseInt(match[2], 10),
-      y: Number.parseInt(match[3], 10),
-      pressed: match[4] === 'M',
-    });
-  }
-  return events;
+function inside(event, bounds) {
+  return event.x >= bounds.left
+    && event.x <= bounds.right
+    && event.y >= bounds.top
+    && event.y <= bounds.bottom;
 }
 
 function App({ dependencies, initialUrl = '' }) {
   const { exit } = useApp();
   const termux = dependencies.platform?.termux ?? isTermux();
   const cookieOptions = cookieSourcesForPlatform(termux);
+  const decoderRef = useRef(createTerminalInputDecoder());
   const [url, setUrl] = useState(initialUrl);
   const [stage, setStage] = useState('home');
   const [mode, setMode] = useState('video');
@@ -375,7 +403,6 @@ function App({ dependencies, initialUrl = '' }) {
   const [outputPath, setOutputPath] = useState('');
   const controllerRef = useRef(null);
   const initialSubmittedRef = useRef(false);
-  const startDownloadRef = useRef(null);
 
   const columns = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
@@ -391,9 +418,24 @@ function App({ dependencies, initialUrl = '' }) {
     exit();
   };
 
+  const pasteClipboard = () => {
+    const clipboard = readClipboardText({ termux });
+    if (!clipboard) {
+      setInputError(termux
+        ? 'Clipboard API unavailable. Long-press Termux and choose Paste.'
+        : 'Clipboard could not be read. Try Ctrl+V again or use Shift+Insert.');
+      return;
+    }
+
+    setUrl((current) => applyIncomingText(current, clipboard));
+    setInputError('');
+    setActiveControl('input');
+  };
+
   const reset = () => {
     controllerRef.current?.abort();
     controllerRef.current = null;
+    decoderRef.current.reset();
     setUrl('');
     setStage('home');
     setActiveControl('input');
@@ -492,37 +534,13 @@ function App({ dependencies, initialUrl = '' }) {
     }
   };
 
-  startDownloadRef.current = startDownload;
-
   useEffect(() => {
     if (!process.stdin.isTTY || !process.stdout.isTTY) return undefined;
-
-    const enableMouse = '\u001b[?1000h\u001b[?1006h';
-    const disableMouse = '\u001b[?1000l\u001b[?1006l';
-    process.stdout.write(enableMouse);
-
-    const handleMouseData = (chunk) => {
-      if (stage !== 'home') return;
-      const bounds = convertButtonBounds({ columns, rows, panelWidth, compactLogo, mode });
-      for (const event of parseMouseEvents(chunk)) {
-        const primaryPress = event.pressed && (event.button & 3) === 0;
-        const inside = event.x >= bounds.left
-          && event.x <= bounds.right
-          && event.y >= bounds.top
-          && event.y <= bounds.bottom;
-        if (primaryPress && inside) {
-          setActiveControl('convert');
-          void startDownloadRef.current?.(url);
-        }
-      }
-    };
-
-    process.stdin.prependListener('data', handleMouseData);
+    process.stdout.write('\u001b[?1000h\u001b[?1006h');
     return () => {
-      process.stdin.removeListener('data', handleMouseData);
-      if (process.stdout.writable) process.stdout.write(disableMouse);
+      if (process.stdout.writable) process.stdout.write('\u001b[?1000l\u001b[?1006l');
     };
-  }, [stage, url, columns, rows, panelWidth, compactLogo, mode]);
+  }, []);
 
   useEffect(() => {
     if (!initialUrl || initialSubmittedRef.current || !hasDependencies) return;
@@ -531,7 +549,29 @@ function App({ dependencies, initialUrl = '' }) {
   }, [initialUrl, hasDependencies]);
 
   useInput((input, key) => {
-    const lower = input.toLowerCase();
+    const decoded = decoderRef.current.feed(input);
+    const lower = decoded.text.toLowerCase();
+    const bounds = controlBounds({ columns, rows, panelWidth, compactLogo, mode });
+
+    for (const event of decoded.events) {
+      if (!event.pressed) continue;
+      const button = event.button & 3;
+
+      if (button === 2 && stage === 'home') {
+        pasteClipboard();
+        continue;
+      }
+
+      if (button !== 0 || stage !== 'home') continue;
+
+      if (inside(event, bounds.convert)) {
+        setActiveControl('convert');
+        void startDownload(url);
+      } else if (inside(event, bounds.input)) {
+        setActiveControl('input');
+      }
+    }
+
     const directQuit = key.escape
       || (key.ctrl && (lower === 'c' || lower === 'd'))
       || (lower === 'q' && (stage !== 'home' || activeControl === 'convert' || !hasDependencies));
@@ -543,32 +583,49 @@ function App({ dependencies, initialUrl = '' }) {
 
     if (!hasDependencies) return;
 
+    if (key.ctrl && lower === 'v') {
+      pasteClipboard();
+      return;
+    }
+
     const configurable = stage === 'home' || stage === 'error';
+
     if (stage === 'home' && key.tab) {
       setActiveControl((current) => (current === 'input' ? 'convert' : 'input'));
       return;
     }
-    if (stage === 'home' && activeControl === 'convert' && (key.return || input === ' ')) {
+
+    if (stage === 'home' && key.return) {
       void startDownload(url);
       return;
     }
+
+    if (stage === 'home' && activeControl === 'convert' && decoded.text === ' ') {
+      void startDownload(url);
+      return;
+    }
+
     if (configurable && key.ctrl && lower === 'g') {
       setMode((current) => (current === 'video' ? 'audio' : 'video'));
       return;
     }
+
     if (configurable && key.ctrl && lower === 'q') {
       if (mode === 'video') setResolution((current) => cycle(VIDEO_QUALITIES, current));
       else setAudioQuality((current) => cycle(AUDIO_QUALITIES, current));
       return;
     }
+
     if (configurable && key.ctrl && lower === 'f' && mode === 'audio') {
       setAudioFormat((current) => cycle(AUDIO_FORMATS, current));
       return;
     }
+
     if (configurable && key.ctrl && lower === 'b') {
       setCookieSource((current) => cycle(cookieOptions, current));
       return;
     }
+
     if (configurable && key.ctrl && lower === 'p') {
       setPlaylist((current) => !current);
       return;
@@ -586,6 +643,26 @@ function App({ dependencies, initialUrl = '' }) {
         setStage('home');
         setActiveControl('input');
       }
+      return;
+    }
+
+    if (stage !== 'home' || activeControl !== 'input') return;
+
+    if (key.backspace || key.delete) {
+      setUrl((current) => Array.from(current).slice(0, -1).join(''));
+      setInputError('');
+      return;
+    }
+
+    if (key.ctrl && lower === 'l') {
+      setUrl('');
+      setInputError('');
+      return;
+    }
+
+    if (decoded.text) {
+      setUrl((current) => applyIncomingText(current, decoded.text));
+      setInputError('');
     }
   });
 
@@ -596,8 +673,6 @@ function App({ dependencies, initialUrl = '' }) {
     content = h(HomeScreen, {
       panelWidth,
       url,
-      setUrl,
-      submit: startDownload,
       inputError,
       mode,
       resolution,
