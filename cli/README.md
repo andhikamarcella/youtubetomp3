@@ -1,4 +1,4 @@
-# YTConv CLI 1.0.0
+# YTConv CLI 1.0.1
 
 YTConv adalah aplikasi terminal hitam-putih untuk mengunduh media dari link sosial. Satu command dapat menangani video, audio, gambar tunggal, carousel, reels, story, highlights, dan posting campuran selama link tersebut didukung oleh engine yang digunakan.
 
@@ -12,7 +12,7 @@ YTConv memakai tiga alat:
 - `gallery-dl` untuk gambar, carousel, reels/story tertentu, posting campuran, dan situs galeri.
 - FFmpeg untuk merge dan konversi video/audio.
 
-Pada Windows dan Linux, YTConv mencoba menyiapkan executable `yt-dlp`, `gallery-dl`, dan FFmpeg saat instalasi. Pada Termux, YTConv menyiapkan modul Python yang kompatibel dengan Android saat pemakaian pertama.
+Pada Windows dan Linux, YTConv mencoba menyiapkan executable `yt-dlp`, `gallery-dl`, dan FFmpeg saat instalasi. Pada Termux, YTConv menyiapkan modul Python yang kompatibel dengan Android saat pemakaian pertama. Pada iSH/iOS, YTConv memakai frontend Python native agar tidak bergantung pada Node/npm lama bawaan iSH.
 
 ## Perangkat
 
@@ -20,10 +20,11 @@ Pada Windows dan Linux, YTConv mencoba menyiapkan executable `yt-dlp`, `gallery-
 - Linux x64/ARM64/ARM
 - macOS Intel dan Apple Silicon
 - Android melalui Termux
+- iPhone/iPad melalui iSH native mode
 
 Catatan macOS: `yt-dlp` dan FFmpeg tetap otomatis. Bila executable `gallery-dl` tidak tersedia, YTConv mencoba modul Python. Pada perangkat macOS tanpa Python 3, image/gallery mode memerlukan Python 3 terlebih dahulu.
 
-## Instalasi
+## Instalasi desktop dan Termux
 
 Pasang Node.js 18 atau lebih baru, lalu:
 
@@ -38,14 +39,72 @@ Tanpa instalasi global:
 npx -y ytconv@latest
 ```
 
+## Instalasi iSH di iPhone/iPad
+
+**Jangan memakai `npm install -g ytconv` di iSH.** iSH App Store umumnya memakai Alpine x86 lama; contoh Node `14.21.3` dan npm `7.17.0` tidak memenuhi kebutuhan TUI Node modern dan dapat menghasilkan `EBADENGINE`, `TAR_ENTRY_INVALID`, atau `ENOTEMPTY`.
+
+Di iSH jalankan installer native berikut:
+
+```sh
+wget -qO- https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh | sh
+```
+
+Installer akan:
+
+- menghapus sisa instalasi npm YTConv yang rusak;
+- memasang `python3`, `py3-pip`, `ffmpeg`, `curl`, dan sertifikat Alpine;
+- memasang `yt-dlp` dan `gallery-dl` versi yang kompatibel dengan Python iSH;
+- membuat command `/usr/local/bin/ytconv`;
+- membuat folder hasil `~/Downloads/YTConv`.
+
+Setelah selesai:
+
+```sh
+ytconv --version
+ytconv --diagnose
+ytconv
+```
+
+Hasil dapat dibuka melalui:
+
+```text
+Files → iSH → root → Downloads → YTConv
+```
+
+Update frontend iSH:
+
+```sh
+ytconv --check-update
+ytconv --update
+```
+
+atau jalankan ulang installer yang sama.
+
+### Batasan iSH yang perlu diketahui
+
+- iSH adalah emulasi Linux x86 di iOS, bukan terminal native seperti Termux.
+- Python iSH lama mungkin masih 3.9, sedangkan yt-dlp terbaru resmi membutuhkan Python 3.10+. pip akan memilih rilis yt-dlp terakhir yang kompatibel, sehingga sebagian situs terbaru dapat gagal.
+- iOS dapat menghentikan iSH ketika aplikasi berada lama di background.
+- Kecepatan convert dan FFmpeg lebih lambat dibanding Windows, Linux, macOS, atau Termux.
+- Cookies browser Safari tidak dapat dibaca langsung. Gunakan file Netscape `cookies.txt`.
+
 ## Update wajib
 
-Mulai YTConv `1.0.0`, aplikasi memeriksa versi terbaru dari npm. Bila versi baru tersedia, YTConv memperbarui dirinya sebelum membuka converter. Update manual:
+Mulai YTConv `1.0.0`, aplikasi memeriksa versi terbaru. Bila versi baru tersedia, YTConv memperbarui dirinya sebelum membuka converter.
+
+Desktop/Termux:
 
 ```bash
 ytconv --check-update
 ytconv --update
 npm install -g ytconv@latest
+```
+
+iSH native:
+
+```sh
+ytconv --check-update
+ytconv --update
 ```
 
 Setelah update:
@@ -63,14 +122,14 @@ ytconv --no-update-check
 
 ### Pengguna versi lama
 
-- `0.5.6` dan `0.5.7` sudah memiliki update checker dan akan melihat versi `1.0.0` setelah versi tersebut diterbitkan di npm.
-- `0.5.5` atau lebih lama tidak memiliki kode update checker. Versi yang sudah terpasang tidak dapat diubah dari jarak jauh, sehingga perlu satu kali update manual:
+- `0.5.6` dan versi sesudahnya memiliki update checker dan akan melihat versi terbaru setelah diterbitkan.
+- `0.5.5` atau lebih lama tidak memiliki kode update checker dan perlu satu kali update manual:
 
 ```bash
 npm install -g ytconv@latest
 ```
 
-Sesudah pindah ke `1.0.0`, update berikutnya ditangani oleh sistem update wajib.
+- Pengguna iSH yang pernah mencoba npm harus menjalankan installer native satu kali; installer membersihkan folder npm YTConv yang gagal.
 
 ## Termux
 
@@ -104,7 +163,7 @@ Hasil disimpan ke:
 
 1. Jalankan `ytconv`.
 2. Tempel link.
-3. Tekan Enter atau pilih tombol `convert`.
+3. Tekan Enter atau pilih tombol `convert` pada TUI Node.
 4. YTConv memilih engine video/audio atau image/gallery berdasarkan link.
 
 Link langsung:
@@ -169,7 +228,7 @@ ytconv --version
 
 `--auto` adalah perilaku default. `--video` memaksa yt-dlp dan tidak memakai gallery fallback. `--image` memaksa gallery-dl.
 
-## Shortcut TUI
+## Shortcut TUI desktop/Termux
 
 ```text
 Tab         pilih input / tombol convert
@@ -190,11 +249,11 @@ R           link lain / retry
 E           edit link setelah error
 ```
 
-Meskipun label TUI menampilkan mode video, link gambar/carousel pada mode default tetap dialihkan otomatis ke gallery engine. Gunakan `--video` hanya ketika ingin memaksa hasil video.
+Frontend iSH sengaja memakai prompt sederhana tanpa Ink agar stabil pada Node lama dan emulasi x86.
 
 ## Cookies
 
-Tekan `Ctrl+B` untuk memilih sumber cookies.
+File cookies harus memakai format Netscape.
 
 Desktop:
 
@@ -202,16 +261,16 @@ Desktop:
 off → cookies.txt → Chrome → Edge → Firefox → Brave → Chromium → Opera → Vivaldi → Safari/Whale
 ```
 
-File cookies harus memakai format Netscape. Lokasi khusus:
-
-```cmd
-ytconv --cookies C:\Users\Nama\Downloads\cookies.txt LINK
-```
-
-Termux tidak dapat membaca database aplikasi Chrome Android secara langsung. Gunakan:
+Termux:
 
 ```bash
 ytconv --cookies "$HOME/storage/downloads/cookies.txt" LINK
+```
+
+iSH:
+
+```sh
+ytconv --cookies "$HOME/Downloads/cookies.txt" LINK
 ```
 
 Jangan pernah membagikan `cookies.txt`, karena file tersebut dapat berisi sesi login.
@@ -222,24 +281,7 @@ Jangan pernah membagikan `cookies.txt`, karena file tersebut dapat berisi sesi l
 ytconv --diagnose
 ```
 
-Diagnostics menampilkan:
-
-- versi YTConv dan status update;
-- Node.js dan platform;
-- versi/runner yt-dlp;
-- versi/runner gallery-dl;
-- FFmpeg;
-- folder output;
-- cookies dan cakupan Instagram.
-
-## Membuka hasil
-
-Sesudah selesai:
-
-- `O` membuka folder hasil.
-- `F` membuka file terakhir.
-- `C` menyalin lokasinya.
-- `Ctrl+O` sebelum download mengaktifkan auto-open.
+Diagnostics menampilkan versi YTConv, status update, platform, yt-dlp, gallery-dl, FFmpeg, folder output, dan ketersediaan cookies/engine.
 
 ## Batasan nyata
 
