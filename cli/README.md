@@ -52,6 +52,48 @@ Pemakaian pertama menampilkan progres pemasangan Python, `yt-dlp`, FFmpeg, dan `
 /storage/emulated/0/Download/YTConv
 ```
 
+## Update otomatis
+
+YTConv memeriksa versi terbaru dari npm paling sering sekali setiap enam jam. Jika ada rilis baru, sebelum tampilan utama terbuka akan muncul pemberitahuan:
+
+```text
+Update YTConv tersedia: 0.5.5 → 0.5.6
+U = update sekarang · Enter = lanjut memakai versi lama
+```
+
+Tekan `U` lalu Enter untuk memperbarui langsung. Perintah update juga dapat dijalankan kapan saja:
+
+```bash
+ytconv --check-update
+ytconv --update
+ytconv --version
+```
+
+Cara manual yang setara:
+
+```bash
+npm install -g ytconv@latest
+```
+
+Setelah update selesai, tutup terminal, buka terminal baru, lalu jalankan:
+
+```bash
+ytconv --version
+ytconv
+```
+
+Pengecekan update dapat dimatikan untuk satu sesi:
+
+```bash
+ytconv --no-update-check
+```
+
+Atau:
+
+```bash
+YTCONV_NO_UPDATE_CHECK=1 ytconv
+```
+
 ## Cara memakai
 
 1. Jalankan `ytconv` atau `npx -y ytconv@latest`.
@@ -108,6 +150,9 @@ Windows mencoba memilih file langsung di Explorer lalu memakai beberapa fallback
 ytconv --help
 ytconv --version
 ytconv --diagnose
+ytconv --check-update
+ytconv --update
+ytconv --no-update-check
 ytconv --audio LINK
 ytconv --video LINK
 ytconv --playlist LINK
@@ -127,7 +172,7 @@ Contoh Termux:
 ytconv --audio --output "$HOME/storage/downloads/Music" "https://..."
 ```
 
-`ytconv --diagnose` menampilkan versi Node.js, yt-dlp, FFmpeg, runner yang digunakan, folder output, serta status cookies.
+`ytconv --diagnose` menampilkan versi Node.js, status update, yt-dlp, FFmpeg, runner yang digunakan, folder output, serta status cookies.
 
 ## Cookies dan media login
 
@@ -217,6 +262,7 @@ Environment variable lama tetap didukung:
 YTCONV_OUTPUT
 YTCONV_COOKIES
 YTCONV_BROWSER_PROFILE
+YTCONV_NO_UPDATE_CHECK
 ```
 
 ## Menjalankan dari repository
