@@ -55,12 +55,6 @@ Setujui izin penyimpanan Android, lalu pasang YTConv:
 npm install -g ytconv
 ```
 
-Saat instalasi, YTConv otomatis meminta Termux memasang alat native Android berikut:
-
-- `python-yt-dlp`
-- `ffmpeg`
-- `yt-dlp-ejs` bila tersedia
-
 Jalankan:
 
 ```bash
@@ -70,8 +64,16 @@ ytconv
 atau:
 
 ```bash
-npx ytconv
+npx -y ytconv
 ```
+
+Pada pemakaian pertama, YTConv menampilkan proses setup secara langsung lalu memasang alat Android yang diperlukan:
+
+- `python-yt-dlp`
+- `ffmpeg`
+- `yt-dlp-ejs` bila tersedia
+
+Setup Termux sengaja dijalankan saat aplikasi pertama kali dibuka, bukan diam-diam saat `npm install`, supaya pengguna tetap melihat progres dan pesan error. Bila paket `python-yt-dlp` tidak tersedia dari mirror, YTConv mencoba fallback Python dan pip.
 
 Hasil Termux disimpan ke:
 
@@ -85,26 +87,31 @@ melalui shortcut Termux:
 ~/storage/downloads/YTConv
 ```
 
-Jika instalasi alat Termux sempat gagal, jalankan:
+## Tombol convert
 
-```bash
-pkg install -y python-yt-dlp ffmpeg
-pkg install -y yt-dlp-ejs
-npm rebuild ytconv
-```
+Tombol `convert` di sebelah input dapat digunakan dengan beberapa cara:
+
+- Klik dengan mouse pada Windows Terminal atau terminal lain yang mengirim mouse events.
+- Tap pada Termux yang mendukung terminal mouse reporting.
+- Tekan `Tab` untuk memilih tombol, kemudian `Enter` atau `Space`.
+- Tekan `Enter` langsung saat kursor masih berada di kotak link.
+
+YTConv mengaktifkan SGR mouse reporting saat aplikasi berjalan. Beberapa host terminal lama mungkin tetap mengambil klik untuk memilih teks; pada kondisi tersebut gunakan `Tab` + `Enter` sebagai fallback.
 
 ## Cara memakai
 
-1. Jalankan `ytconv` atau `npx ytconv`.
+1. Jalankan `ytconv` atau `npx -y ytconv`.
 2. Tempel link.
-3. Tekan Enter untuk mulai convert.
+3. Klik/tap `convert`, atau tekan Enter.
 4. Hasil tersimpan di folder Downloads.
 
 Shortcut:
 
 ```text
-Enter       convert
-Tab         ganti Video / Audio
+Enter       convert dari input / jalankan tombol terpilih
+Space       jalankan tombol convert saat terpilih
+Tab         pilih input atau tombol convert
+Ctrl + G    ganti Video / Audio
 Ctrl + Q    ganti kualitas
 Ctrl + F    ganti MP3 / M4A saat mode Audio
 Ctrl + B    ganti browser cookies
@@ -119,6 +126,22 @@ Link juga bisa diberikan langsung:
 
 ```bash
 ytconv "https://www.youtube.com/watch?v=..."
+```
+
+## Jika Termux berhenti setelah prompt npx
+
+Gunakan bentuk berikut agar prompt pemasangan dilewati:
+
+```bash
+npx -y ytconv
+```
+
+Kalau alat Android belum berhasil dipasang:
+
+```bash
+pkg install -y python-yt-dlp ffmpeg
+pkg install -y yt-dlp-ejs
+npx -y ytconv
 ```
 
 ## Folder hasil khusus
@@ -168,7 +191,7 @@ Setelah berhasil diterbitkan:
 
 ```bash
 npm install -g ytconv
-npx ytconv
+npx -y ytconv
 ```
 
 ## Catatan keamanan akun npm
