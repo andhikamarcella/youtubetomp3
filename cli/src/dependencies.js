@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import ffmpegStaticPath from 'ffmpeg-static';
 import which from 'which';
 import { ensureBundledYtDlp } from './binaries.js';
+import { isTermux } from './platform.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,6 +28,18 @@ async function resolveCommand(names) {
   return null;
 }
 
+async function resolveBundledFfmpeg() {
+  if (isTermux()) return null;
+
+  try {
+    const module = await import('ffmpeg-static');
+    const candidate = module.default;
+    return await fileExists(candidate) ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 async function readVersion(command, args = ['--version']) {
   if (!command) return null;
 
@@ -43,20 +55,32 @@ async function readVersion(command, args = ['--version']) {
 }
 
 export async function inspectDependencies() {
+  const termux = isTermux();
   let bundledYtDlp = null;
   let ytDlpInstallError = null;
 
-  try {
-    bundledYtDlp = await ensureBundledYtDlp({ silent: true });
-  } catch (error) {
-    ytDlpInstallError = error instanceof Error ? error.message : String(error);
+  if (!termux) {
+    try {
+      bundledYtDlp = await ensureBundledYtDlp({ silent: true });
+    } catch (error) {
+      ytDlpInstallError = error instanceof Error ? error.message : String(error);
+    }
   }
 
-  const ytDlpPath = bundledYtDlp || await resolveCommand(['yt-dlp', 'yt-dlp.exe']);
-  const bundledFfmpeg = await fileExists(ffmpegStaticPath) ? ffmpegStaticPath : null;
-  const ffmpegPath = bundledFfmpeg || await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+  const systemYtDlp = await resolveCommand(['yt-dlp', 'yt-dlp.exe']);
+  const ytDlpPath = termux ? systemYtDlp : (bundledYtDlp || systemYtDlp);
+
+  const bundledFfmpeg = await resolveBundledFfmpeg();
+  const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+  const ffmpegPath = termux ? systemFfmpeg : (bundledFfmpeg || systemFfmpeg);
+
+  const termuxSetupCommand = 'pkg install -y python-yt-dlp yt-dlp-ejs ffmpeg';
 
   return {
+    platform: {
+      termux,
+      setupCommand: termux ? termuxSetupCommand : null,
+    },
     ytDlp: {
       path: ytDlpPath,
       version: await readVersion(ytDlpPath),
