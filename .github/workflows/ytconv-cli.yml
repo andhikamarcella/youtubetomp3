@@ -54,3 +54,30 @@ jobs:
 
       - name: Preview npm package
         run: npm pack --dry-run
+
+  windows-update-check:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: cli
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install CLI dependencies
+        run: npm install
+
+      - name: Run syntax and unit tests
+        run: |
+          npm run check
+          npm test
+
+      - name: Smoke test update check on Windows
+        run: node ./bin/ytconv.js --check-update
