@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cookieArgs, cookieSourcesForPlatform } from '../src/cookies.js';
 import { buildDownloadArgs, formatVideoSelector } from '../src/downloader.js';
+import { parseSgrMouseEvents, stripMouseSequences } from '../src/terminal-input.js';
 
 test('Termux only offers none and cookies.txt authentication', () => {
   assert.deepEqual(cookieSourcesForPlatform(true), ['none', 'file']);
@@ -50,4 +51,15 @@ test('download arguments include retries, JS runtime, cookies and container fall
   assert.ok(args.includes('--cookies'));
   assert.ok(args.includes('mp4/mkv'));
   assert.equal(args.at(-1), 'https://example.com/video');
+});
+
+test('mouse escape sequences never become visible link text', () => {
+  const brokenInput = '\u001b[<0;62;19M\u001b[<0;62;19mhttps://example.com/video';
+  assert.equal(stripMouseSequences(brokenInput), 'https://example.com/video');
+});
+
+test('SGR mouse parser keeps button coordinates for clickable convert', () => {
+  assert.deepEqual(parseSgrMouseEvents('\u001b[<0;62;19M'), [
+    { button: 0, x: 62, y: 19, pressed: true },
+  ]);
 });
