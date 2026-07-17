@@ -29,6 +29,33 @@ function commonExtractorArgs() {
   ];
 }
 
+function normalizeYtDlpRunner(value) {
+  if (typeof value === 'string') {
+    return {
+      command: value,
+      prefixArgs: [],
+      displayPath: value,
+    };
+  }
+
+  const command = value?.command || value?.path;
+  if (!command) throw new Error('Executable yt-dlp belum tersedia.');
+
+  return {
+    command,
+    prefixArgs: Array.isArray(value?.prefixArgs) ? value.prefixArgs : [],
+    displayPath: value?.path || command,
+  };
+}
+
+function spawnYtDlp(runnerValue, args, options = {}) {
+  const runner = normalizeYtDlpRunner(runnerValue);
+  return {
+    runner,
+    child: spawn(runner.command, [...runner.prefixArgs, ...args], options),
+  };
+}
+
 function platformFromInfo(info, url) {
   const value = `${info?.extractor_key ?? ''} ${info?.extractor ?? ''} ${info?.webpage_url_domain ?? ''} ${url}`.toLowerCase();
   const platforms = [
@@ -119,13 +146,21 @@ function readableError(stderr, fallback) {
   return usefulLines.at(-1)?.replace(/^ERROR:\s*/u, '') || fallback;
 }
 
-function runBuffered(command, args, { signal, maxBytes = MAX_METADATA_BYTES } = {}) {
+function runBuffered(runnerValue, args, { signal, maxBytes = MAX_METADATA_BYTES } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let spawned;
+    try {
+      spawned = spawnYtDlp(runnerValue, args, {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: process.env,
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
 
+    const { child, runner } = spawned;
     let stdout = '';
     let stderr = '';
     let settled = false;
@@ -162,7 +197,9 @@ function runBuffered(command, args, { signal, maxBytes = MAX_METADATA_BYTES } = 
     });
 
     child.on('error', (error) => {
-      finish(() => reject(new Error(`Gagal menjalankan yt-dlp: ${error.message}`)));
+      finish(() => reject(new Error(
+        `Gagal menjalankan yt-dlp (${runner.displayPath}): ${error.message}`,
+      )));
     });
 
     child.on('close', (code) => {
@@ -179,6 +216,7 @@ function runBuffered(command, args, { signal, maxBytes = MAX_METADATA_BYTES } = 
 }
 
 export async function inspectMedia({
+  ytDlp,
   ytDlpPath,
   url,
   cookieConfig = { kind: 'none' },
@@ -198,7 +236,7 @@ export async function inspectMedia({
 
   args.push(url);
 
-  const { stdout } = await runBuffered(ytDlpPath, args, { signal });
+  const { stdout } = await runBuffered(ytDlp || ytDlpPath, args, { signal });
   let info;
   try {
     info = JSON.parse(stdout.trim());
@@ -271,15 +309,23 @@ export function buildDownloadArgs(options) {
   return args;
 }
 
-export function downloadMedia({ ytDlpPath, options, onProgress, onLog, signal }) {
+export function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onLog, signal }) {
   return new Promise((resolve, reject) => {
     const args = buildDownloadArgs(options);
-    const child = spawn(ytDlpPath, args, {
-      cwd: options.outputDirectory,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    let spawned;
+    try {
+      spawned = spawnYtDlp(ytDlp || ytDlpPath, args, {
+        cwd: options.outputDirectory,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: process.env,
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
 
+    const { child, runner } = spawned;
     let bufferedStdout = '';
     let bufferedStderr = '';
     let allStderr = '';
@@ -348,7 +394,9 @@ export function downloadMedia({ ytDlpPath, options, onProgress, onLog, signal })
     child.stderr.on('data', (chunk) => consume(chunk, true));
 
     child.on('error', (error) => {
-      finish(() => reject(new Error(`Gagal menjalankan yt-dlp: ${error.message}`)));
+      finish(() => reject(new Error(
+        `Gagal menjalankan yt-dlp (${runner.displayPath}): ${error.message}`,
+      )));
     });
 
     child.on('close', (code) => {
