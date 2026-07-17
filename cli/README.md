@@ -1,8 +1,18 @@
-# YTConv CLI
+# YTConv CLI 1.0.0
 
-YTConv adalah aplikasi terminal hitam-putih untuk mengunduh dan mengonversi video/audio dari link media yang didukung `yt-dlp`. Tampilannya memakai satu kotak link, tombol `convert`, progress bar, speed, ETA, dukungan cookies, serta mode video dan audio.
+YTConv adalah aplikasi terminal hitam-putih untuk mengunduh media dari link sosial. Satu command dapat menangani video, audio, gambar tunggal, carousel, reels, story, highlights, dan posting campuran selama link tersebut didukung oleh engine yang digunakan.
 
-> Gunakan hanya untuk media milik sendiri, media berlisensi bebas, atau media yang memang diizinkan untuk diunduh.
+> Gunakan hanya untuk media milik sendiri, media berlisensi bebas, atau media yang memang diizinkan untuk diunduh. YTConv tidak melewati DRM, pembayaran, akun privat yang tidak dapat kamu akses, atau pembatasan hak cipta.
+
+## Engine bawaan
+
+YTConv memakai tiga alat:
+
+- `yt-dlp` untuk video dan audio.
+- `gallery-dl` untuk gambar, carousel, reels/story tertentu, posting campuran, dan situs galeri.
+- FFmpeg untuk merge dan konversi video/audio.
+
+Pada Windows dan Linux, YTConv mencoba menyiapkan executable `yt-dlp`, `gallery-dl`, dan FFmpeg saat instalasi. Pada Termux, YTConv menyiapkan modul Python yang kompatibel dengan Android saat pemakaian pertama.
 
 ## Perangkat
 
@@ -11,9 +21,11 @@ YTConv adalah aplikasi terminal hitam-putih untuk mengunduh dan mengonversi vide
 - macOS Intel dan Apple Silicon
 - Android melalui Termux
 
-## Instalasi desktop
+Catatan macOS: `yt-dlp` dan FFmpeg tetap otomatis. Bila executable `gallery-dl` tidak tersedia, YTConv mencoba modul Python. Pada perangkat macOS tanpa Python 3, image/gallery mode memerlukan Python 3 terlebih dahulu.
 
-Pasang Node.js 18 atau lebih baru:
+## Instalasi
+
+Pasang Node.js 18 atau lebih baru, lalu:
 
 ```bash
 npm install -g ytconv
@@ -26,11 +38,43 @@ Tanpa instalasi global:
 npx -y ytconv@latest
 ```
 
-YTConv menyiapkan `yt-dlp` dan FFmpeg sendiri. Binary `yt-dlp` diperiksa dan disegarkan berkala agar extractor situs tidak terlalu lama.
+## Update wajib
 
-## Instalasi Termux
+Mulai YTConv `1.0.0`, aplikasi memeriksa versi terbaru dari npm. Bila versi baru tersedia, YTConv memperbarui dirinya sebelum membuka converter. Update manual:
 
-Gunakan Termux versi F-Droid atau GitHub Releases.
+```bash
+ytconv --check-update
+ytconv --update
+npm install -g ytconv@latest
+```
+
+Setelah update:
+
+```bash
+ytconv --version
+ytconv
+```
+
+Pengecekan dapat dilewati hanya untuk pemulihan/offline:
+
+```bash
+ytconv --no-update-check
+```
+
+### Pengguna versi lama
+
+- `0.5.6` dan `0.5.7` sudah memiliki update checker dan akan melihat versi `1.0.0` setelah versi tersebut diterbitkan di npm.
+- `0.5.5` atau lebih lama tidak memiliki kode update checker. Versi yang sudah terpasang tidak dapat diubah dari jarak jauh, sehingga perlu satu kali update manual:
+
+```bash
+npm install -g ytconv@latest
+```
+
+Sesudah pindah ke `1.0.0`, update berikutnya ditangani oleh sistem update wajib.
+
+## Termux
+
+Gunakan Termux dari F-Droid atau GitHub Releases:
 
 ```bash
 pkg update
@@ -40,79 +84,92 @@ npm install -g ytconv
 ytconv
 ```
 
-Atau:
+Pada pemakaian pertama, YTConv menyiapkan:
 
-```bash
-npx -y ytconv@latest
+```text
+Python
+yt-dlp
+gallery-dl
+FFmpeg
+yt-dlp-ejs (jika tersedia)
 ```
 
-Pemakaian pertama menampilkan progres pemasangan Python, `yt-dlp`, FFmpeg, dan `yt-dlp-ejs` bila tersedia. Hasil disimpan ke:
+Hasil disimpan ke:
 
 ```text
 /storage/emulated/0/Download/YTConv
 ```
 
-## Update otomatis
+## Cara memakai
 
-YTConv memeriksa versi terbaru dari npm paling sering sekali setiap enam jam. Jika ada rilis baru, sebelum tampilan utama terbuka akan muncul pemberitahuan:
+1. Jalankan `ytconv`.
+2. Tempel link.
+3. Tekan Enter atau pilih tombol `convert`.
+4. YTConv memilih engine video/audio atau image/gallery berdasarkan link.
 
-```text
-Update YTConv tersedia: 0.5.5 → 0.5.6
-U = update sekarang · Enter = lanjut memakai versi lama
-```
-
-Tekan `U` lalu Enter untuk memperbarui langsung. Perintah update juga dapat dijalankan kapan saja:
+Link langsung:
 
 ```bash
+ytconv "https://www.instagram.com/p/..."
+```
+
+## Gambar dan carousel
+
+Mode otomatis mengenali banyak link gambar dan carousel dari Instagram, Pinterest, TikTok photo posts, X/Twitter, Facebook, Reddit Gallery, Tumblr, Imgur, Flickr, DeviantArt, Pixiv, Bluesky, dan situs lain yang didukung `gallery-dl`.
+
+Paksa image/gallery engine:
+
+```bash
+ytconv --image "https://www.instagram.com/p/..."
+ytconv --image "https://www.pinterest.com/pin/..."
+```
+
+Untuk satu posting carousel, semua item yang tersedia akan disimpan, bukan hanya gambar pertama.
+
+## Instagram Reels, Stories, dan Highlights
+
+Direct URL reel atau story dapat ditempel seperti link biasa:
+
+```bash
+ytconv "https://www.instagram.com/reel/..."
+ytconv --cookies cookies.txt "https://www.instagram.com/stories/username/..."
+```
+
+Ambil story dari URL profil:
+
+```bash
+ytconv --stories --cookies cookies.txt "https://www.instagram.com/username/"
+```
+
+Ambil post, reels, stories, dan highlights dari profil:
+
+```bash
+ytconv --all-media --cookies cookies.txt "https://www.instagram.com/username/"
+```
+
+Story, highlights, akun privat, dan media login-only memerlukan cookies akun yang memang memiliki akses. YTConv tidak membuka akun privat yang tidak dapat dilihat oleh akun tersebut.
+
+## Mode command line
+
+```text
+ytconv --auto LINK
+ytconv --video LINK
+ytconv --audio LINK
+ytconv --image LINK
+ytconv --stories --cookies cookies.txt PROFILE_URL
+ytconv --all-media --cookies cookies.txt PROFILE_URL
+ytconv --playlist LINK
+ytconv --output PATH LINK
+ytconv --cookies cookies.txt LINK
+ytconv --diagnose
 ytconv --check-update
 ytconv --update
 ytconv --version
 ```
 
-Cara manual yang setara:
+`--auto` adalah perilaku default. `--video` memaksa yt-dlp dan tidak memakai gallery fallback. `--image` memaksa gallery-dl.
 
-```bash
-npm install -g ytconv@latest
-```
-
-Setelah update selesai, tutup terminal, buka terminal baru, lalu jalankan:
-
-```bash
-ytconv --version
-ytconv
-```
-
-Pengecekan update dapat dimatikan untuk satu sesi:
-
-```bash
-ytconv --no-update-check
-```
-
-Atau:
-
-```bash
-YTCONV_NO_UPDATE_CHECK=1 ytconv
-```
-
-## Cara memakai
-
-1. Jalankan `ytconv` atau `npx -y ytconv@latest`.
-2. Tempel link media.
-3. Klik/tap `convert`, atau tekan `Tab` lalu `Enter`.
-4. Enter dari kotak link juga langsung memulai proses.
-
-YTConv memakai alternate terminal screen. Aplikasi tetap berjalan di tab terminal yang sama dan tampilan TUI tidak memenuhi riwayat scrollback.
-
-### Keluar
-
-- `Esc`
-- `Ctrl+C`
-- Tekan `q` saat tombol/status dipilih
-- Ketik `exit`, `quit`, atau `:q` pada kotak link lalu Enter
-
-Setelah YTConv ditutup, terminal kembali ke tampilan sebelumnya.
-
-### Shortcut
+## Shortcut TUI
 
 ```text
 Tab         pilih input / tombol convert
@@ -122,148 +179,71 @@ Ctrl + Q    ganti kualitas
 Ctrl + F    ganti MP3 / M4A saat mode Audio
 Ctrl + B    ganti sumber cookies
 Ctrl + P    aktif/nonaktifkan playlist
-Ctrl + O    aktif/nonaktifkan auto-open setelah selesai
-Ctrl + H    buka bantuan shortcut
-Ctrl + D    buka diagnostics
+Ctrl + O    aktif/nonaktifkan auto-open
+Ctrl + H    bantuan
+Ctrl + D    diagnostics
 Esc/Ctrl+C  batalkan dan keluar
 O           buka folder hasil
 F           buka file hasil
 C           salin lokasi hasil
-R           convert link lain / retry
+R           link lain / retry
 E           edit link setelah error
 ```
 
-## Membuka hasil
+Meskipun label TUI menampilkan mode video, link gambar/carousel pada mode default tetap dialihkan otomatis ke gallery engine. Gunakan `--video` hanya ketika ingin memaksa hasil video.
 
-Setelah conversion selesai:
+## Cookies
 
-- `O` membuka folder hasil.
-- `F` membuka file dengan aplikasi default.
-- `C` menyalin lokasi file/folder ke clipboard.
-- `Ctrl+O` sebelum convert mengaktifkan auto-open.
+Tekan `Ctrl+B` untuk memilih sumber cookies.
 
-Windows mencoba memilih file langsung di Explorer lalu memakai beberapa fallback. Linux memakai `xdg-open`/GIO, macOS memakai Finder, dan Termux mencoba Android DocumentsUI serta `termux-open`. Jika file manager tidak bisa dibuka, YTConv tetap menyalin lokasi folder agar dapat ditempel secara manual.
-
-## Command-line tambahan
-
-```text
-ytconv --help
-ytconv --version
-ytconv --diagnose
-ytconv --check-update
-ytconv --update
-ytconv --no-update-check
-ytconv --audio LINK
-ytconv --video LINK
-ytconv --playlist LINK
-ytconv --output PATH LINK
-ytconv --cookies cookies.txt LINK
-```
-
-Contoh Windows:
-
-```cmd
-ytconv --audio --output D:\Music "https://www.youtube.com/watch?v=..."
-```
-
-Contoh Termux:
-
-```bash
-ytconv --audio --output "$HOME/storage/downloads/Music" "https://..."
-```
-
-`ytconv --diagnose` menampilkan versi Node.js, status update, yt-dlp, FFmpeg, runner yang digunakan, folder output, serta status cookies.
-
-## Cookies dan media login
-
-Tekan `Ctrl+B` untuk mengganti sumber cookies.
-
-### Windows, Linux, macOS
-
-Sumber yang tersedia:
+Desktop:
 
 ```text
 off → cookies.txt → Chrome → Edge → Firefox → Brave → Chromium → Opera → Vivaldi → Safari/Whale
 ```
 
-Tutup browser sepenuhnya apabila pembacaan cookies browser gagal. Alternatif paling portabel adalah file Netscape `cookies.txt`.
-
-YTConv otomatis mencari `cookies.txt` di:
-
-- folder tempat command dijalankan
-- folder hasil YTConv
-- folder Downloads
-- home directory
-
-Lokasi khusus juga bisa diberikan:
+File cookies harus memakai format Netscape. Lokasi khusus:
 
 ```cmd
-ytconv --cookies C:\Users\Nama\Downloads\cookies.txt
+ytconv --cookies C:\Users\Nama\Downloads\cookies.txt LINK
 ```
 
-Profil browser khusus:
-
-```cmd
-set YTCONV_BROWSER_PROFILE=Default
-ytconv
-```
-
-### Termux
-
-Android tidak mengizinkan Termux membaca database cookies aplikasi Chrome/Firefox secara langsung. Gunakan file Netscape:
-
-```text
-/storage/emulated/0/Download/YTConv/cookies.txt
-```
-
-atau:
+Termux tidak dapat membaca database aplikasi Chrome Android secara langsung. Gunakan:
 
 ```bash
-ytconv --cookies "$HOME/storage/downloads/cookies.txt"
+ytconv --cookies "$HOME/storage/downloads/cookies.txt" LINK
 ```
 
-Tekan `Ctrl+B` sampai status menunjukkan `cookies:cookies.txt`.
+Jangan pernah membagikan `cookies.txt`, karena file tersebut dapat berisi sesi login.
 
-Jangan membagikan `cookies.txt`; file tersebut dapat berisi sesi login akun.
-
-## Dukungan situs
-
-YTConv meneruskan URL secara generik ke extractor `yt-dlp`, mengaktifkan Node sebagai JavaScript runtime, komponen EJS resmi, pengecekan format, retry jaringan, serta fallback container MP4/MKV. Ini mencakup banyak link video/audio dari layanan seperti:
-
-```text
-YouTube, Instagram, TikTok, X/Twitter, Facebook, Pinterest,
-Reddit, Twitch, Vimeo, SoundCloud, Dailymotion, Bilibili,
-Tumblr, Snapchat, LinkedIn, Telegram embeds, Weibo, VK,
-Streamable, Rumble, Kick, Bandcamp, Mixcloud, Imgur, 9GAG,
-dan situs lain yang didukung extractor atau generic extractor.
-```
-
-Tidak ada downloader yang dapat menjamin semua link selalu berhasil. Situs dapat berubah, posting dapat dihapus, wilayah dapat dibatasi, dan beberapa link membutuhkan cookies. YTConv tidak melewati DRM, pembayaran, atau akses privat yang tidak dimiliki pengguna. Pinterest/Instagram yang hanya berisi gambar bukan video/audio tidak dikonversi sebagai video.
-
-## Link langsung
+## Diagnostics
 
 ```bash
-ytconv "https://www.youtube.com/watch?v=..."
+ytconv --diagnose
 ```
 
-## Folder hasil khusus
+Diagnostics menampilkan:
 
-```cmd
-ytconv --output D:\Video\YTConv
-```
+- versi YTConv dan status update;
+- Node.js dan platform;
+- versi/runner yt-dlp;
+- versi/runner gallery-dl;
+- FFmpeg;
+- folder output;
+- cookies dan cakupan Instagram.
 
-```bash
-ytconv --output "$HOME/MyDownloads"
-```
+## Membuka hasil
 
-Environment variable lama tetap didukung:
+Sesudah selesai:
 
-```text
-YTCONV_OUTPUT
-YTCONV_COOKIES
-YTCONV_BROWSER_PROFILE
-YTCONV_NO_UPDATE_CHECK
-```
+- `O` membuka folder hasil.
+- `F` membuka file terakhir.
+- `C` menyalin lokasinya.
+- `Ctrl+O` sebelum download mengaktifkan auto-open.
+
+## Batasan nyata
+
+Tidak ada downloader yang dapat menjamin setiap link selalu berhasil. Situs dapat mengganti API, meminta login, membatasi wilayah, menerapkan 429, menghapus posting, atau menambahkan DRM. YTConv melakukan retry dan fallback antarmesin, tetapi tidak menjanjikan akses ke media yang secara teknis atau hukum tidak tersedia.
 
 ## Menjalankan dari repository
 
@@ -287,4 +267,4 @@ npm pack --dry-run
 npm publish
 ```
 
-Setiap publikasi harus memakai nomor versi yang belum pernah dipublikasikan.
+Setiap publikasi wajib memakai nomor versi yang belum pernah dipublikasikan.
