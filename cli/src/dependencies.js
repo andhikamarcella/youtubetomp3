@@ -46,7 +46,8 @@ async function readVersion(command, args = ['--version']) {
   try {
     const { stdout, stderr } = await execFileAsync(command, args, {
       windowsHide: true,
-      timeout: 15_000,
+      timeout: 20_000,
+      env: process.env,
     });
     return `${stdout || stderr}`.trim().split(/\r?\n/u)[0] || null;
   } catch {
@@ -70,17 +71,77 @@ function runVisible(command, args, { optional = false } = {}) {
   return true;
 }
 
+async function resolveTermuxYtDlpRunner() {
+  const python = await resolveCommand(['python', 'python3']);
+  if (python) {
+    const version = await readVersion(python, ['-m', 'yt_dlp', '--version']);
+    if (version) {
+      return {
+        command: python,
+        prefixArgs: ['-m', 'yt_dlp'],
+        displayPath: `${python} -m yt_dlp`,
+        version,
+        mode: 'python-module',
+      };
+    }
+  }
+
+  const executable = await resolveCommand(['yt-dlp']);
+  const version = await readVersion(executable);
+  if (!executable || !version) return null;
+
+  return {
+    command: executable,
+    prefixArgs: [],
+    displayPath: executable,
+    version,
+    mode: 'executable',
+  };
+}
+
+async function resolveDesktopYtDlpRunner({ bundledYtDlp = null } = {}) {
+  const executable = bundledYtDlp || await resolveCommand(['yt-dlp', 'yt-dlp.exe']);
+  const version = await readVersion(executable);
+  if (!executable || !version) return null;
+
+  return {
+    command: executable,
+    prefixArgs: [],
+    displayPath: executable,
+    version,
+    mode: bundledYtDlp ? 'bundled' : 'executable',
+  };
+}
+
 export async function prepareTermuxDependencies() {
   if (!isTermux()) return { prepared: false, termux: false };
 
-  let installedFromRepository = false;
-  try {
-    runVisible('pkg', ['install', '-y', 'python-yt-dlp', 'ffmpeg']);
-    installedFromRepository = true;
-  } catch {
-    console.log('\nPaket python-yt-dlp belum tersedia dari mirror. Mencoba fallback Python...');
-    runVisible('pkg', ['install', '-y', 'python', 'ffmpeg']);
-    runVisible('python', ['-m', 'pip', 'install', '--upgrade', 'yt-dlp']);
+  runVisible('pkg', ['install', '-y', 'python', 'ffmpeg']);
+  const installedFromRepository = runVisible(
+    'pkg',
+    ['install', '-y', 'python-yt-dlp'],
+    { optional: true },
+  );
+
+  const python = await resolveCommand(['python', 'python3']);
+  if (!python) throw new Error('Python tidak ditemukan setelah instalasi Termux.');
+
+  let version = await readVersion(python, ['-m', 'yt_dlp', '--version']);
+  if (!version) {
+    console.log('\nMemasang yt-dlp melalui modul Python Termux...');
+    runVisible(python, [
+      '-m',
+      'pip',
+      'install',
+      '--upgrade',
+      '--no-cache-dir',
+      'yt-dlp',
+    ]);
+    version = await readVersion(python, ['-m', 'yt_dlp', '--version']);
+  }
+
+  if (!version) {
+    throw new Error('Modul Python yt_dlp tetap tidak dapat dijalankan.');
   }
 
   runVisible('pkg', ['install', '-y', 'yt-dlp-ejs'], { optional: true });
@@ -89,6 +150,7 @@ export async function prepareTermuxDependencies() {
     prepared: true,
     termux: true,
     installedFromRepository,
+    version,
   };
 }
 
@@ -105,8 +167,9 @@ export async function inspectDependencies() {
     }
   }
 
-  const systemYtDlp = await resolveCommand(['yt-dlp', 'yt-dlp.exe']);
-  const ytDlpPath = termux ? systemYtDlp : (bundledYtDlp || systemYtDlp);
+  const ytDlpRunner = termux
+    ? await resolveTermuxYtDlpRunner()
+    : await resolveDesktopYtDlpRunner({ bundledYtDlp });
 
   const bundledFfmpeg = await resolveBundledFfmpeg();
   const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
@@ -116,13 +179,16 @@ export async function inspectDependencies() {
     platform: {
       termux,
       setupCommand: termux
-        ? 'pkg install -y python-yt-dlp ffmpeg'
+        ? 'pkg install -y python ffmpeg && python -m pip install -U yt-dlp'
         : null,
     },
     ytDlp: {
-      path: ytDlpPath,
-      version: await readVersion(ytDlpPath),
-      installed: Boolean(ytDlpPath),
+      command: ytDlpRunner?.command ?? null,
+      prefixArgs: ytDlpRunner?.prefixArgs ?? [],
+      path: ytDlpRunner?.displayPath ?? null,
+      mode: ytDlpRunner?.mode ?? null,
+      version: ytDlpRunner?.version ?? null,
+      installed: Boolean(ytDlpRunner),
       bundled: Boolean(bundledYtDlp),
       error: ytDlpInstallError,
     },
