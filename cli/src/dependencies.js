@@ -3,6 +3,7 @@ import { execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import which from 'which';
 import { ensureBundledYtDlp } from './binaries.js';
+import { installGalleryDlPython, resolveGalleryDlRunner } from './gallery.js';
 import { isTermux } from './platform.js';
 
 const execFileAsync = promisify(execFile);
@@ -126,8 +127,8 @@ export async function prepareTermuxDependencies() {
   const python = await resolveCommand(['python', 'python3']);
   if (!python) throw new Error('Python tidak ditemukan setelah instalasi Termux.');
 
-  let version = await readVersion(python, ['-m', 'yt_dlp', '--version']);
-  if (!version) {
+  let ytDlpVersion = await readVersion(python, ['-m', 'yt_dlp', '--version']);
+  if (!ytDlpVersion) {
     console.log('\nMemasang yt-dlp melalui modul Python Termux...');
     runVisible(python, [
       '-m',
@@ -137,11 +138,17 @@ export async function prepareTermuxDependencies() {
       '--no-cache-dir',
       'yt-dlp',
     ]);
-    version = await readVersion(python, ['-m', 'yt_dlp', '--version']);
+    ytDlpVersion = await readVersion(python, ['-m', 'yt_dlp', '--version']);
   }
 
-  if (!version) {
+  if (!ytDlpVersion) {
     throw new Error('Modul Python yt_dlp tetap tidak dapat dijalankan.');
+  }
+
+  console.log('\nMemasang engine gambar, carousel, dan story...');
+  const galleryRunner = await installGalleryDlPython({ visible: true });
+  if (!galleryRunner) {
+    throw new Error('Modul gallery_dl tidak dapat dipasang di Termux.');
   }
 
   runVisible('pkg', ['install', '-y', 'yt-dlp-ejs'], { optional: true });
@@ -150,7 +157,8 @@ export async function prepareTermuxDependencies() {
     prepared: true,
     termux: true,
     installedFromRepository,
-    version,
+    ytDlpVersion,
+    galleryDlVersion: galleryRunner.version,
   };
 }
 
@@ -170,6 +178,7 @@ export async function inspectDependencies() {
   const ytDlpRunner = termux
     ? await resolveTermuxYtDlpRunner()
     : await resolveDesktopYtDlpRunner({ bundledYtDlp });
+  const galleryDlRunner = await resolveGalleryDlRunner({ install: false });
 
   const bundledFfmpeg = await resolveBundledFfmpeg();
   const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
@@ -186,7 +195,7 @@ export async function inspectDependencies() {
     platform: {
       termux,
       setupCommand: termux
-        ? 'pkg install -y python ffmpeg && python -m pip install -U yt-dlp'
+        ? 'pkg install -y python ffmpeg && python -m pip install -U yt-dlp gallery-dl'
         : null,
     },
     ytDlp: {
@@ -199,6 +208,15 @@ export async function inspectDependencies() {
       installed: Boolean(ytDlpRunner),
       bundled: Boolean(bundledYtDlp),
       error: ytDlpInstallError,
+    },
+    galleryDl: {
+      command: galleryDlRunner?.command ?? null,
+      prefixArgs: galleryDlRunner?.prefixArgs ?? [],
+      path: galleryDlRunner ?? null,
+      displayPath: galleryDlRunner?.displayPath ?? null,
+      mode: galleryDlRunner?.mode ?? null,
+      version: galleryDlRunner?.version ?? null,
+      installed: Boolean(galleryDlRunner),
     },
     ffmpeg: {
       path: ffmpegPath,
