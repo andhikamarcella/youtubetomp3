@@ -1,155 +1,107 @@
 # YTConv CLI
 
-YTConv adalah aplikasi terminal interaktif berbasis Node.js untuk mengunduh media dengan satu link. Antarmukanya dibuat seperti aplikasi terminal modern: logo di tengah, satu kotak link, tombol `ytconv`, progress bar, status proses, dan shortcut keyboard.
+YTConv adalah aplikasi terminal hitam-putih untuk mengubah dan mengunduh media dari satu link. Antarmukanya dibuat sederhana: paste link, pilih format bila perlu, lalu tekan Enter untuk **convert**.
 
-> Gunakan hanya untuk media milik sendiri, media berlisensi bebas, atau media yang memang diizinkan untuk diunduh.
+> Gunakan hanya untuk media milik sendiri atau media yang memang diizinkan untuk diunduh.
+
+## Instalasi paling mudah
+
+Yang perlu dipasang pengguna hanya **Node.js 18 atau lebih baru**.
+
+```powershell
+npm install -g ytconv
+```
+
+Saat instalasi, paket YTConv otomatis menyiapkan:
+
+- binary resmi `yt-dlp` yang sesuai dengan Windows, Linux, atau macOS pengguna;
+- binary FFmpeg melalui paket `ffmpeg-static`;
+- seluruh library antarmuka terminal yang dibutuhkan.
+
+Pengguna tidak perlu memasang Python, yt-dlp, atau FFmpeg secara terpisah.
+
+Setelah terpasang, jalankan salah satu:
+
+```powershell
+npx ytconv
+```
+
+atau:
+
+```powershell
+ytconv
+```
+
+Link juga bisa langsung diberikan:
+
+```powershell
+npx ytconv "https://www.youtube.com/watch?v=..."
+```
+
+## Tampilan dan kontrol
+
+YTConv menggunakan tampilan CLI monokrom atau hitam-putih dengan tombol visual **convert**.
+
+```text
+Enter       convert link
+Tab         ganti video/audio
+Ctrl + Q    ganti resolusi atau kualitas audio
+Ctrl + F    ganti MP3/M4A ketika mode audio
+Ctrl + B    ganti browser cookies
+Ctrl + P    aktif/nonaktifkan playlist
+Ctrl + C    batalkan atau keluar
+O           buka folder hasil
+R           convert link lain atau ulangi
+E           kembali mengedit link setelah gagal
+```
+
+Hasil otomatis disimpan ke folder `Downloads`. Lokasi dapat diubah dengan environment variable `YTCONV_OUTPUT`.
 
 ## Dukungan situs
 
-YTConv tidak memakai daftar situs yang dikunci di dalam aplikasi. Link diteruskan ke extractor milik `yt-dlp`, sehingga dapat mencoba YouTube, TikTok, Instagram, X/Twitter, Facebook, Reddit, Twitch, SoundCloud, Vimeo, Dailymotion, Bilibili, Pinterest, Tumblr, Streamable, Rumble, Kick, Bandcamp, Mixcloud, dan banyak situs lainnya.
+YTConv meneruskan link ke extractor generik `yt-dlp`, sehingga dapat mencoba YouTube, TikTok, Instagram, X/Twitter, Facebook, Reddit, Twitch, SoundCloud, Vimeo, Dailymotion, Bilibili, Pinterest, Tumblr, Streamable, Rumble, Kick, Bandcamp, Mixcloud, dan banyak situs lain yang didukung versi yt-dlp yang ikut terpasang.
 
-Dukungan nyata mengikuti versi `yt-dlp` yang terpasang. Situs dapat berubah sewaktu-waktu. Konten privat, login-only, berbayar, DRM, atau extractor yang sedang rusak mungkin tidak dapat diunduh.
+Dukungan extractor tidak menjamin semua link selalu berhasil. Konten privat, login-only, berbayar, DRM, dibatasi wilayah, atau situs yang baru mengubah sistemnya dapat gagal.
 
-## Fitur
+## Cookies browser
 
-- Tampilan TUI satu-link yang terpusat dan responsif.
-- Deteksi platform, judul, uploader, durasi, dan playlist sebelum download.
-- Video MP4 hingga kualitas terbaik yang tersedia.
-- Audio MP3 atau M4A.
-- Progress bar, persentase, kecepatan, ETA, serta status merging/converting.
-- Cookies browser untuk Chrome, Edge, Firefox, Brave, Chromium, Opera, dan Vivaldi.
-- Dukungan playlist yang bisa dinyalakan atau dimatikan.
-- Folder hasil otomatis ke `Downloads`.
-- Bisa langsung diberi link: `ytconv https://...`.
-- Berjalan di Windows, Linux, dan macOS.
+Tekan `Ctrl+B` untuk memilih Chrome, Edge, Firefox, Brave, Chromium, Opera, atau Vivaldi. Ini berguna untuk media yang hanya bisa dibuka ketika akun pengguna sudah login.
 
-## Shortcut
-
-| Tombol | Fungsi |
-|---|---|
-| `Enter` | Mulai download |
-| `Tab` | Ganti Video/Audio |
-| `Ctrl+Q` | Ganti resolusi atau kualitas audio |
-| `Ctrl+F` | Ganti MP3/M4A saat mode Audio |
-| `Ctrl+B` | Ganti browser cookies |
-| `Ctrl+P` | Aktif/nonaktifkan playlist |
-| `Ctrl+T` | Ganti tema warna |
-| `Ctrl+C` | Batalkan atau keluar |
-| `O` | Buka folder hasil setelah selesai |
-| `R` | Download link lain / coba lagi |
-| `E` | Edit link setelah error |
-
-## Persyaratan
-
-- Node.js 18 atau lebih baru.
-- `yt-dlp` tersedia di PATH.
-- FFmpeg tersedia di PATH.
-
-### Windows
-
-Buka PowerShell sebagai Administrator:
+## Menjalankan dari repository
 
 ```powershell
-winget install OpenJS.NodeJS.LTS
-winget install yt-dlp.yt-dlp
-winget install Gyan.FFmpeg
-```
-
-Tutup semua PowerShell/CMD, buka kembali, lalu cek:
-
-```powershell
-node --version
-npm --version
-yt-dlp --version
-ffmpeg -version
-```
-
-### Ubuntu/Debian
-
-```bash
-sudo apt update
-sudo apt install -y nodejs npm yt-dlp ffmpeg
-```
-
-## Menjalankan branch pengembangan ini
-
-```powershell
-cd C:\Users\andhi\youtubetomp3
+git clone https://github.com/andhikamarcella/youtubetomp3.git
+cd youtubetomp3
 git checkout codex/add-ytconv-cli
 cd cli
 npm install
 npm start
 ```
 
-Apabila PowerShell memblokir `npm.ps1`, gunakan:
+`npm install` akan mengunduh binary yt-dlp dan FFmpeg yang sesuai dengan komputer tersebut.
 
-```powershell
-npm.cmd install
-npm.cmd start
-```
-
-## Membuat command `ytconv` di komputer
-
-Dari folder `cli`:
+Untuk memasang command lokal:
 
 ```powershell
 npm link
-```
-
-Sesudah itu YTConv dapat dibuka dari folder mana pun:
-
-```powershell
 ytconv
 ```
 
-Link juga dapat diberikan langsung:
+Setelah ada perubahan baru di branch:
 
 ```powershell
-ytconv "https://www.youtube.com/watch?v=..."
-```
-
-Untuk menghapus command lokal:
-
-```powershell
-npm unlink -g ytconv
-```
-
-## Menjalankan melalui npm setelah dipublikasikan
-
-Tanpa instalasi global:
-
-```powershell
+cd C:\Users\andhi\youtubetomp3
+git checkout codex/add-ytconv-cli
+git pull origin codex/add-ytconv-cli
+cd cli
+npm install
+npm link
 npx ytconv
 ```
 
-Dengan instalasi global:
+## Menerbitkan ke npm
 
-```powershell
-npm install -g ytconv
-ytconv
-```
-
-`npx ytconv` baru dapat digunakan publik setelah paket diterbitkan ke registry npm.
-
-## Folder hasil
-
-Secara default, file disimpan ke folder `Downloads` milik pengguna.
-
-Folder dapat diganti sementara dengan environment variable:
-
-```powershell
-$env:YTCONV_OUTPUT = "D:\Video"
-ytconv
-```
-
-CMD:
-
-```cmd
-set YTCONV_OUTPUT=D:\Video
-ytconv
-```
-
-## Cara menerbitkan ke npm
+`npx ytconv` untuk pengguna umum baru tersedia setelah paket diterbitkan ke registry npm.
 
 ```powershell
 cd cli
@@ -159,14 +111,14 @@ npm pack --dry-run
 npm publish --access public
 ```
 
-Untuk versi berikutnya:
+Versi berikutnya:
 
 ```powershell
 npm version patch
 npm publish --access public
 ```
 
-Jika nama paket `ytconv` sudah dimiliki akun lain, ubah nama package menjadi scoped:
+Apabila nama paket `ytconv` sudah dimiliki akun lain, gunakan scoped package:
 
 ```json
 {
@@ -177,56 +129,53 @@ Jika nama paket `ytconv` sudah dimiliki akun lain, ubah nama package menjadi sco
 }
 ```
 
-Lalu:
+Kemudian:
 
 ```powershell
 npm publish --access public
+npm install -g @andhikamarcella/ytconv
 npx @andhikamarcella/ytconv
 ```
 
-Command setelah instalasi global tetap bernama `ytconv`.
-
-## Masalah umum
-
-### `npm` mencari `C:\Users\andhi\package.json`
-
-Kamu sedang berada di folder yang salah. Masuk ke folder CLI lebih dulu:
+Command setelah instalasi global tetap dapat menggunakan:
 
 ```powershell
-cd C:\Users\andhi\youtubetomp3\cli
-npm install
-npm start
+ytconv
 ```
 
-### `yt-dlp` atau FFmpeg tidak ditemukan
+## Masalah instalasi
 
-Pastikan keduanya dapat dijalankan langsung dari terminal. Sesudah instalasi, tutup dan buka kembali terminal agar PATH diperbarui.
+### Binary belum selesai disiapkan
 
-### Link meminta login atau ditandai privat
-
-Pada layar utama tekan `Ctrl+B` sampai browser yang sudah login muncul, lalu coba kembali. Tutup browser terlebih dahulu jika database cookies sedang terkunci.
-
-### Situs tidak bisa diunduh
-
-Update `yt-dlp`:
+Pastikan internet aktif, lalu:
 
 ```powershell
-yt-dlp -U
+npm rebuild ytconv
 ```
 
-Beberapa situs dapat berubah dan sementara tidak didukung. YTConv tidak dapat melewati DRM, pembayaran, atau akses yang tidak dimiliki pengguna.
+Atau instal ulang:
 
-## Struktur
-
-```text
-cli/
-├── bin/
-│   └── ytconv.js
-├── src/
-│   ├── dependencies.js
-│   ├── downloader.js
-│   └── ui.js
-├── LICENSE
-├── package.json
-└── README.md
+```powershell
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv
 ```
+
+### PowerShell memblokir `npm.ps1`
+
+Gunakan `npm.cmd`:
+
+```powershell
+npm.cmd install -g ytconv
+npx.cmd ytconv
+```
+
+Atau atur Execution Policy khusus akun pengguna:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+### Lisensi komponen
+
+Kode YTConv menggunakan lisensi MIT. Binary yt-dlp dan FFmpeg tetap mengikuti lisensi proyek masing-masing. `ffmpeg-static` mendistribusikan binary FFmpeg sesuai ketentuan lisensinya.
