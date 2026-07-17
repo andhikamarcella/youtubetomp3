@@ -1,13 +1,17 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
-const SGR_MOUSE_PATTERN = /\u001b\[<(\d+);(\d+);(\d+)([Mm])/gu;
-const LEAKED_MOUSE_PATTERN = /\[<\d+;\d+;\d+[Mm]/gu;
+const COMPLETE_MOUSE_PATTERN = /(?:\u001b)?\[<(\d+);(\d+);(\d+)([Mm])/gu;
+const PARTIAL_MOUSE_TAIL_PATTERN = /(?:\u001b)?\[<[\d;]*$/u;
+
+function asText(value) {
+  return Buffer.isBuffer(value) ? value.toString() : String(value ?? '');
+}
 
 export function parseSgrMouseEvents(value) {
   const events = [];
-  const text = Buffer.isBuffer(value) ? value.toString() : String(value ?? '');
-  const expression = new RegExp(SGR_MOUSE_PATTERN.source, SGR_MOUSE_PATTERN.flags);
+  const text = asText(value);
+  const expression = new RegExp(COMPLETE_MOUSE_PATTERN.source, COMPLETE_MOUSE_PATTERN.flags);
   let match;
 
   while ((match = expression.exec(text)) !== null) {
@@ -23,10 +27,32 @@ export function parseSgrMouseEvents(value) {
 }
 
 export function stripMouseSequences(value) {
-  const text = Buffer.isBuffer(value) ? value.toString() : String(value ?? '');
-  return text
-    .replace(new RegExp(SGR_MOUSE_PATTERN.source, SGR_MOUSE_PATTERN.flags), '')
-    .replace(new RegExp(LEAKED_MOUSE_PATTERN.source, LEAKED_MOUSE_PATTERN.flags), '');
+  return asText(value).replace(
+    new RegExp(COMPLETE_MOUSE_PATTERN.source, COMPLETE_MOUSE_PATTERN.flags),
+    '',
+  );
+}
+
+export function splitTerminalInput(value, carry = '') {
+  let text = `${carry}${asText(value)}`;
+  const events = parseSgrMouseEvents(text);
+  text = stripMouseSequences(text);
+
+  let nextCarry = '';
+  const partialMatch = text.match(PARTIAL_MOUSE_TAIL_PATTERN);
+  if (partialMatch?.index !== undefined) {
+    nextCarry = text.slice(partialMatch.index);
+    text = text.slice(0, partialMatch.index);
+  } else if (text.endsWith('\u001b')) {
+    nextCarry = '\u001b';
+    text = text.slice(0, -1);
+  }
+
+  return {
+    text,
+    events,
+    carry: nextCarry,
+  };
 }
 
 function cleanClipboardText(value) {
@@ -68,66 +94,116 @@ export function readClipboardText({ platform = process.platform, termux = false 
     || runClipboardCommand('xclip', ['-selection', 'clipboard', '-o']);
 }
 
+function isMouseHandler(listener) {
+  return listener?.name === 'handleMouseData';
+}
+
 export function installTerminalInputFilter({
   stdin = process.stdin,
   platform = process.platform,
   termux = false,
 } = {}) {
-  if (!stdin || typeof stdin.emit !== 'function') return () => {};
+  if (!stdin || typeof stdin.on !== 'function') return () => {};
 
-  const originalEmit = stdin.emit;
-  const originalPrependListener = stdin.prependListener;
-  const originalRemoveListener = stdin.removeListener;
-  let mouseListener = null;
+  const original = {
+    on: stdin.on,
+    addListener: stdin.addListener,
+    prependListener: stdin.prependListener,
+    once: stdin.once,
+    prependOnceListener: stdin.prependOnceListener,
+    removeListener: stdin.removeListener,
+    off: stdin.off,
+  };
+
+  const wrappedByOriginal = new Map();
+
+  function makeWrapper(listener, once = false) {
+    let carry = '';
+
+    const wrapped = function filteredTerminalData(chunk, ...rest) {
+      if (isMouseHandler(listener)) {
+        return listener.call(this, chunk, ...rest);
+      }
+
+      const result = splitTerminalInput(chunk, carry);
+      carry = result.carry;
+
+      const rightClick = result.events.some(
+        (event) => event.pressed && (event.button & 3) === 2,
+      );
+      const clipboard = rightClick ? readClipboardText({ platform, termux }) : '';
+      const forwardedText = `${result.text}${clipboard}`;
+
+      if (!forwardedText) return undefined;
+
+      const forwardedChunk = Buffer.isBuffer(chunk)
+        ? Buffer.from(forwardedText)
+        : forwardedText;
+
+      if (once) wrappedByOriginal.delete(listener);
+      return listener.call(this, forwardedChunk, ...rest);
+    };
+
+    wrappedByOriginal.set(listener, wrapped);
+    return wrapped;
+  }
+
+  function wrapRegistration(method, eventName, listener, once = false) {
+    if (eventName !== 'data' || typeof listener !== 'function') {
+      return method.call(stdin, eventName, listener);
+    }
+
+    return method.call(stdin, eventName, makeWrapper(listener, once));
+  }
+
+  stdin.on = function patchedOn(eventName, listener) {
+    return wrapRegistration(original.on, eventName, listener);
+  };
+
+  stdin.addListener = function patchedAddListener(eventName, listener) {
+    return wrapRegistration(original.addListener, eventName, listener);
+  };
 
   stdin.prependListener = function patchedPrependListener(eventName, listener) {
-    if (eventName === 'data' && listener?.name === 'handleMouseData') {
-      mouseListener = listener;
-      return this;
-    }
-
-    return originalPrependListener.call(this, eventName, listener);
+    return wrapRegistration(original.prependListener, eventName, listener);
   };
+
+  stdin.once = function patchedOnce(eventName, listener) {
+    return wrapRegistration(original.once, eventName, listener, true);
+  };
+
+  if (typeof original.prependOnceListener === 'function') {
+    stdin.prependOnceListener = function patchedPrependOnceListener(eventName, listener) {
+      return wrapRegistration(original.prependOnceListener, eventName, listener, true);
+    };
+  }
+
+  function removeWrapped(method, eventName, listener) {
+    const wrapped = eventName === 'data' ? wrappedByOriginal.get(listener) : null;
+    if (wrapped) wrappedByOriginal.delete(listener);
+    return method.call(stdin, eventName, wrapped ?? listener);
+  }
 
   stdin.removeListener = function patchedRemoveListener(eventName, listener) {
-    if (eventName === 'data' && mouseListener === listener) {
-      mouseListener = null;
-      return this;
-    }
-
-    return originalRemoveListener.call(this, eventName, listener);
+    return removeWrapped(original.removeListener, eventName, listener);
   };
 
-  stdin.emit = function patchedEmit(eventName, ...args) {
-    if (eventName !== 'data' || args.length === 0) {
-      return originalEmit.call(this, eventName, ...args);
-    }
-
-    const originalChunk = args[0];
-    const events = parseSgrMouseEvents(originalChunk);
-    if (events.length === 0) {
-      return originalEmit.call(this, eventName, ...args);
-    }
-
-    mouseListener?.(originalChunk);
-
-    let forwardedText = stripMouseSequences(originalChunk);
-    const rightClick = events.some((event) => event.pressed && (event.button & 3) === 2);
-    if (rightClick) forwardedText += readClipboardText({ platform, termux });
-
-    if (!forwardedText) return true;
-
-    const forwardedChunk = Buffer.isBuffer(originalChunk)
-      ? Buffer.from(forwardedText)
-      : forwardedText;
-
-    return originalEmit.call(this, eventName, forwardedChunk, ...args.slice(1));
-  };
+  if (typeof original.off === 'function') {
+    stdin.off = function patchedOff(eventName, listener) {
+      return removeWrapped(original.off, eventName, listener);
+    };
+  }
 
   return () => {
-    stdin.emit = originalEmit;
-    stdin.prependListener = originalPrependListener;
-    stdin.removeListener = originalRemoveListener;
-    mouseListener = null;
+    stdin.on = original.on;
+    stdin.addListener = original.addListener;
+    stdin.prependListener = original.prependListener;
+    stdin.once = original.once;
+    if (typeof original.prependOnceListener === 'function') {
+      stdin.prependOnceListener = original.prependOnceListener;
+    }
+    stdin.removeListener = original.removeListener;
+    if (typeof original.off === 'function') stdin.off = original.off;
+    wrappedByOriginal.clear();
   };
 }
