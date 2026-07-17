@@ -22,9 +22,7 @@ function defaultOutputDirectory() {
 }
 
 function updateStatusText(updateInfo) {
-  if (updateInfo.available) {
-    return `wajib ${updateInfo.latestVersion} (terpasang ${CLI_VERSION})`;
-  }
+  if (updateInfo.available) return `wajib ${updateInfo.latestVersion} (terpasang ${CLI_VERSION})`;
   if (updateInfo.checked) return `sudah terbaru (${CLI_VERSION})`;
   if (updateInfo.disabled) return 'pengecekan dimatikan';
   return `tidak dapat diperiksa${updateInfo.error ? `: ${updateInfo.error}` : ''}`;
@@ -54,10 +52,7 @@ async function printDiagnostics() {
 
   console.log('YTConv diagnostics\n');
   for (const [label, value] of rows) console.log(`${label.padEnd(16)} ${value}`);
-
-  if (updateInfo.available) {
-    console.log(`\nUpdate wajib dengan: ${updateCommand()}`);
-  }
+  if (updateInfo.available) console.log(`\nUpdate wajib dengan: ${updateCommand()}`);
 
   if (!dependencies.ytDlp.installed || !dependencies.ffmpeg.installed || !dependencies.galleryDl?.installed) {
     console.log('\nSetup yang disarankan:');
@@ -65,7 +60,6 @@ async function printDiagnostics() {
       || 'npm rebuild ytconv (macOS fallback: python3 -m pip install -U gallery-dl)');
     return 1;
   }
-
   return 0;
 }
 
@@ -103,7 +97,6 @@ async function performUpdate() {
 
 function showMandatoryUpdateNotice(updateInfo) {
   if (!updateInfo.available) return false;
-
   console.log('\n┌────────────────────────────────────────────────────────────┐');
   console.log(`│ UPDATE WAJIB YTConv: ${CLI_VERSION} → ${updateInfo.latestVersion}`.padEnd(61, ' ') + '│');
   console.log('│ YTConv akan memasang versi terbaru sebelum dapat dipakai.  │');
@@ -131,7 +124,6 @@ async function main() {
     console.log(helpText());
     return 0;
   }
-
   if (options.version) {
     console.log(CLI_VERSION);
     return 0;
@@ -139,7 +131,6 @@ async function main() {
 
   if (options.outputDirectory) process.env.YTCONV_OUTPUT = options.outputDirectory;
   if (options.cookiesPath) process.env.YTCONV_COOKIES = options.cookiesPath;
-
   if (options.checkUpdate) return printUpdateCheck();
   if (options.update) return performUpdate();
   if (options.diagnose) return printDiagnostics();
@@ -152,6 +143,7 @@ async function main() {
       initialUrl: options.initialUrl,
       initialMode: options.initialMode,
       initialPlaylist: options.initialPlaylist,
+      initialImageFormat: options.initialImageFormat,
     });
     return 0;
   } catch (error) {
