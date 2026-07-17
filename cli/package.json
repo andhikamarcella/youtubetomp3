@@ -1,21 +1,22 @@
 {
   "name": "ytconv",
-  "version": "1.0.0",
-  "description": "All-in-one social media video, audio, image, carousel, reel, and story downloader for desktop and Termux.",
+  "version": "1.0.1",
+  "description": "All-in-one social media video, audio, image, carousel, reel, and story downloader for desktop, Termux, and iSH on iOS.",
   "type": "module",
   "bin": "bin/ytconv.js",
   "files": [
     "bin",
     "src",
     "scripts",
+    "ish",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv.js",
-    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/system-actions.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
-    "test": "node --test ./test/*.test.js"
+    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/system-actions.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js && python3 -m py_compile ./ish/ytconv.py",
+    "test": "node --test ./test/*.test.js && python3 ./ish/ytconv.py --version"
   },
   "keywords": [
     "yt-dlp",
@@ -37,6 +38,10 @@
     "cookies",
     "termux",
     "android",
+    "ish",
+    "ios",
+    "iphone",
+    "ipad",
     "tui",
     "cli",
     "terminal"
