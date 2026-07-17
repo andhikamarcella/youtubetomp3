@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Text, render, useApp, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import figlet from 'figlet';
@@ -15,7 +15,6 @@ figlet.parseFont('ANSI Shadow', ansiShadowFont);
 figlet.parseFont('Small', smallFont);
 
 const h = React.createElement;
-const THEMES = ['auto', 'dark', 'light'];
 const COOKIE_BROWSERS = ['none', 'chrome', 'edge', 'firefox', 'brave', 'chromium', 'opera', 'vivaldi'];
 const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480'];
 const AUDIO_QUALITIES = ['0', '320K', '256K', '192K', '128K'];
@@ -42,12 +41,6 @@ function isValidUrl(value) {
 function cycle(values, current) {
   const index = values.indexOf(current);
   return values[(index + 1) % values.length];
-}
-
-function paletteFor(theme) {
-  if (theme === 'light') return { primary: 'blueBright', secondary: 'magentaBright', border: 'blue' };
-  if (theme === 'dark') return { primary: 'cyanBright', secondary: 'whiteBright', border: 'gray' };
-  return { primary: 'cyan', secondary: 'white', border: 'gray' };
 }
 
 function formatDuration(seconds) {
@@ -99,26 +92,13 @@ function modeSummary({ mode, resolution, audioFormat, audioQuality }) {
   return audioQuality === '0' ? 'audio · MP3 best VBR' : `audio · MP3 ${audioQuality.replace('K', ' kbps')}`;
 }
 
-function dependencyHelp(dependencies) {
-  const missing = [];
-  if (!dependencies.ytDlp.installed) missing.push('yt-dlp');
-  if (!dependencies.ffmpeg.installed) missing.push('FFmpeg');
-
-  return {
-    missing,
-    commands: process.platform === 'win32'
-      ? ['winget install yt-dlp.yt-dlp', 'winget install Gyan.FFmpeg']
-      : ['sudo apt update', 'sudo apt install -y yt-dlp ffmpeg'],
-  };
-}
-
-function Logo({ palette, compact }) {
+function Logo({ compact }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center' },
-    h(Text, { color: palette.primary, bold: true }, compact ? LOGO_COMPACT : LOGO_WIDE),
-    h(Text, { color: palette.secondary }, 'paste a link. press enter. ytconv handles the rest.'),
-    h(Text, { dimColor: true }, 'youtube · x · instagram · tiktok · facebook · reddit · twitch · + many more'),
+    h(Text, { bold: true }, compact ? LOGO_COMPACT : LOGO_WIDE),
+    h(Text, null, 'paste any video. convert. done.'),
+    h(Text, { dimColor: true }, 'youtube · x · instagram · tiktok · facebook · reddit · twitch · +1800 more'),
   );
 }
 
@@ -133,7 +113,6 @@ function SettingLine({ mode, resolution, audioFormat, audioQuality, cookiesFromB
 
 function HomeScreen(props) {
   const {
-    palette,
     panelWidth,
     url,
     setUrl,
@@ -145,22 +124,21 @@ function HomeScreen(props) {
     audioQuality,
     cookiesFromBrowser,
     playlist,
-    theme,
   } = props;
 
-  const inputWidth = Math.max(24, panelWidth - 13);
+  const inputWidth = Math.max(24, panelWidth - 14);
 
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, { color: palette.secondary }, 'Paste a link')),
+    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, null, 'Paste a link')),
     h(
       Box,
       { width: panelWidth, flexDirection: 'row' },
       h(
         Box,
-        { width: inputWidth, borderStyle: 'round', borderColor: inputError ? 'red' : palette.border, paddingX: 1 },
-        h(Text, { color: palette.primary }, '▣ '),
+        { width: inputWidth, borderStyle: 'round', paddingX: 1 },
+        h(Text, null, '▣ '),
         h(TextInput, {
           value: url,
           onChange: setUrl,
@@ -170,20 +148,18 @@ function HomeScreen(props) {
       ),
       h(
         Box,
-        { width: 11, marginLeft: 1, borderStyle: 'round', borderColor: palette.primary, justifyContent: 'center' },
-        h(Text, { color: palette.primary, bold: true }, 'ytconv'),
+        { width: 12, marginLeft: 1, borderStyle: 'round', justifyContent: 'center', alignItems: 'center' },
+        h(Text, { inverse: true, bold: true }, ' convert '),
       ),
     ),
-    inputError ? h(Text, { color: 'red' }, inputError) : null,
+    inputError ? h(Text, { inverse: true }, ` ${inputError} `) : null,
     h(Box, { marginTop: 1 }, h(SettingLine, { mode, resolution, audioFormat, audioQuality, cookiesFromBrowser, playlist })),
-    h(Text, { dimColor: true }, `↵ start  ·  tab format  ·  ^q quality  ·  ^b cookies  ·  ^p playlist  ·  ^t theme:${theme}`),
-    mode === 'audio'
-      ? h(Text, { dimColor: true }, '^f audio format')
-      : null,
+    h(Text, { dimColor: true }, '↵ convert  ·  tab format  ·  ^q quality  ·  ^b cookies  ·  ^p playlist'),
+    mode === 'audio' ? h(Text, { dimColor: true }, '^f audio format') : null,
   );
 }
 
-function MediaCard({ media, palette, panelWidth }) {
+function MediaCard({ media, panelWidth }) {
   if (!media) return null;
   const duration = formatDuration(media.duration);
   const details = [media.platform, media.uploader, duration].filter(Boolean).join('  ·  ');
@@ -191,70 +167,82 @@ function MediaCard({ media, palette, panelWidth }) {
 
   return h(
     Box,
-    { width: panelWidth, borderStyle: 'round', borderColor: palette.border, paddingX: 1, flexDirection: 'column' },
-    h(Text, { color: palette.primary, bold: true, wrap: 'truncate-end' }, media.title),
+    { width: panelWidth, borderStyle: 'round', paddingX: 1, flexDirection: 'column' },
+    h(Text, { bold: true, wrap: 'truncate-end' }, media.title),
     h(Text, { dimColor: true, wrap: 'truncate-end' }, `${details}${playlistText}`),
   );
 }
 
-function WorkingScreen({ stage, media, progress, statusText, palette, panelWidth }) {
+function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
   const probing = stage === 'probing';
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(MediaCard, { media, palette, panelWidth }),
-    h(Box, { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { color: palette.primary, bold: true }, probing ? 'checking the link...' : makeProgressBar(progress.percent)),
+    h(MediaCard, { media, panelWidth }),
+    h(
+      Box,
+      { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
+      h(Text, { bold: true }, probing ? 'checking the link...' : makeProgressBar(progress.percent)),
       h(Text, { dimColor: true }, probing
         ? 'detecting platform and media information'
         : [progress.percent || '0%', progress.speed, progress.eta ? `ETA ${progress.eta}` : ''].filter(Boolean).join('  ·  ')),
-      h(Text, { dimColor: true, wrap: 'truncate-end' }, statusText || (probing ? 'please wait' : 'downloading...')),
+      h(Text, { dimColor: true, wrap: 'truncate-end' }, statusText || (probing ? 'please wait' : 'converting...')),
     ),
     h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, '^c cancel')),
   );
 }
 
-function DoneScreen({ media, palette, panelWidth, outputDirectory, outputPath }) {
+function DoneScreen({ media, panelWidth, outputDirectory, outputPath }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(MediaCard, { media, palette, panelWidth }),
-    h(Box, { marginTop: 1, borderStyle: 'round', borderColor: 'green', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { color: 'greenBright', bold: true }, 'done. your media is ready.'),
+    h(MediaCard, { media, panelWidth }),
+    h(
+      Box,
+      { marginTop: 1, borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, inverse: true }, ' conversion complete '),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
     ),
     h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'o open folder  ·  r another link  ·  ^c quit')),
   );
 }
 
-function ErrorScreen({ error, media, palette, panelWidth, cookiesFromBrowser }) {
+function ErrorScreen({ error, media, panelWidth, cookiesFromBrowser }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(MediaCard, { media, palette, panelWidth }),
-    h(Box, { marginTop: 1, borderStyle: 'round', borderColor: 'red', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { color: 'redBright', bold: true }, 'ytconv could not download this link'),
+    h(MediaCard, { media, panelWidth }),
+    h(
+      Box,
+      { marginTop: 1, borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, inverse: true }, ' conversion failed '),
       h(Text, { wrap: 'wrap' }, error),
       h(Text, { dimColor: true }, `cookies: ${cookiesFromBrowser === 'none' ? 'off' : cookiesFromBrowser}`),
     ),
-    h(Box, { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
+    h(
+      Box,
+      { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
       h(Text, { dimColor: true }, 'r retry  ·  e edit link  ·  ^b change cookies  ·  ^c quit'),
-      h(Text, { dimColor: true }, 'Private, login-only, DRM, or unsupported posts may not be downloadable.'),
+      h(Text, { dimColor: true }, 'Private, login-only, paid, DRM, or unsupported posts may fail.'),
     ),
   );
 }
 
-function MissingDependencies({ dependencies, palette, panelWidth }) {
-  const help = dependencyHelp(dependencies);
+function MissingDependencies({ dependencies, panelWidth }) {
+  const details = [dependencies.ytDlp.error, !dependencies.ffmpeg.installed ? 'Bundled FFmpeg was not found.' : '']
+    .filter(Boolean)
+    .join(' ');
+
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { borderStyle: 'round', borderColor: 'yellow', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { color: 'yellowBright', bold: true }, `Missing: ${help.missing.join(' and ')}`),
-      h(Text, null, 'Install the required tools, then close and reopen the terminal:'),
-      h(Box, { marginTop: 1, flexDirection: 'column' },
-        ...help.commands.map((command) => h(Text, { key: command, color: palette.primary }, command)),
-      ),
+    h(
+      Box,
+      { borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, inverse: true }, ' setup incomplete '),
+      h(Text, null, details || 'YTConv could not prepare its included converter tools.'),
+      h(Text, { dimColor: true }, 'Connect to the internet, then reinstall or run:'),
+      h(Text, { bold: true }, 'npm rebuild ytconv'),
     ),
     h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, '^c quit')),
   );
@@ -264,7 +252,6 @@ function App({ dependencies, initialUrl = '' }) {
   const { exit } = useApp();
   const [url, setUrl] = useState(initialUrl);
   const [stage, setStage] = useState('home');
-  const [theme, setTheme] = useState('auto');
   const [mode, setMode] = useState('video');
   const [resolution, setResolution] = useState('best');
   const [audioFormat, setAudioFormat] = useState('mp3');
@@ -280,7 +267,6 @@ function App({ dependencies, initialUrl = '' }) {
   const controllerRef = useRef(null);
   const initialSubmittedRef = useRef(false);
 
-  const palette = useMemo(() => paletteFor(theme), [theme]);
   const columns = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
   const panelWidth = Math.max(34, Math.min(72, columns - 4));
@@ -333,7 +319,7 @@ function App({ dependencies, initialUrl = '' }) {
       });
       setMedia(inspected);
       setStage('downloading');
-      setStatusText('starting download...');
+      setStatusText('starting conversion...');
 
       const result = await downloadMedia({
         ytDlpPath: dependencies.ytDlp.path,
@@ -347,6 +333,7 @@ function App({ dependencies, initialUrl = '' }) {
           cookiesFromBrowser,
           playlist,
           outputDirectory,
+          ffmpegPath: dependencies.ffmpeg.path,
         },
         onProgress: (nextProgress) => setProgress(nextProgress),
         onLog: (line) => {
@@ -408,10 +395,6 @@ function App({ dependencies, initialUrl = '' }) {
       setPlaylist((current) => !current);
       return;
     }
-    if (configurable && key.ctrl && input === 't') {
-      setTheme((current) => cycle(THEMES, current));
-      return;
-    }
 
     if (stage === 'done') {
       if (input.toLowerCase() === 'o') openDirectory(outputDirectory);
@@ -427,10 +410,9 @@ function App({ dependencies, initialUrl = '' }) {
 
   let content;
   if (!hasDependencies) {
-    content = h(MissingDependencies, { dependencies, palette, panelWidth });
+    content = h(MissingDependencies, { dependencies, panelWidth });
   } else if (stage === 'home') {
     content = h(HomeScreen, {
-      palette,
       panelWidth,
       url,
       setUrl,
@@ -442,14 +424,13 @@ function App({ dependencies, initialUrl = '' }) {
       audioQuality,
       cookiesFromBrowser,
       playlist,
-      theme,
     });
   } else if (stage === 'probing' || stage === 'downloading') {
-    content = h(WorkingScreen, { stage, media, progress, statusText, palette, panelWidth });
+    content = h(WorkingScreen, { stage, media, progress, statusText, panelWidth });
   } else if (stage === 'done') {
-    content = h(DoneScreen, { media, palette, panelWidth, outputDirectory, outputPath });
+    content = h(DoneScreen, { media, panelWidth, outputDirectory, outputPath });
   } else {
-    content = h(ErrorScreen, { error, media, palette, panelWidth, cookiesFromBrowser });
+    content = h(ErrorScreen, { error, media, panelWidth, cookiesFromBrowser });
   }
 
   return h(
@@ -461,14 +442,16 @@ function App({ dependencies, initialUrl = '' }) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    h(Logo, { palette, compact: compactLogo }),
+    h(Logo, { compact: compactLogo }),
     content,
   );
 }
 
 export async function runApp({ initialUrl = '' } = {}) {
   console.clear();
+  process.stdout.write('Preparing YTConv and included tools...\r');
   const dependencies = await inspectDependencies();
+  console.clear();
   const instance = render(h(App, { dependencies, initialUrl }), { exitOnCtrlC: false });
   await instance.waitUntilExit();
 }
