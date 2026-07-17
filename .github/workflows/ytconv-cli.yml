@@ -48,8 +48,10 @@ jobs:
       - name: Verify included tools
         run: |
           test -x vendor/yt-dlp
+          test -x vendor/gallery-dl
           test -x node_modules/ffmpeg-static/ffmpeg
           ./vendor/yt-dlp --version
+          ./vendor/gallery-dl --version
           node -e "import('ffmpeg-static').then(({default:p}) => console.log(p))"
 
       - name: Preview npm package
@@ -76,6 +78,12 @@ jobs:
 
       - name: Check JavaScript syntax
         run: npm run check
+
+      - name: Verify Windows gallery engine
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "vendor/gallery-dl.exe")) { throw "gallery-dl.exe was not bundled" }
+          & "./vendor/gallery-dl.exe" --version
 
       - name: Smoke test update check on Windows
         run: node ./bin/ytconv.js --check-update
