@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cookieArgs, cookieSourcesForPlatform } from '../src/cookies.js';
 import { buildDownloadArgs, formatVideoSelector } from '../src/downloader.js';
-import { parseSgrMouseEvents, stripMouseSequences } from '../src/terminal-input.js';
+import {
+  createTerminalInputDecoder,
+  parseSgrMouseEvents,
+  stripMouseSequences,
+} from '../src/terminal-input.js';
 
 test('Termux only offers none and cookies.txt authentication', () => {
   assert.deepEqual(cookieSourcesForPlatform(true), ['none', 'file']);
@@ -56,6 +60,30 @@ test('download arguments include retries, JS runtime, cookies and container fall
 test('mouse escape sequences never become visible link text', () => {
   const brokenInput = '\u001b[<0;62;19M\u001b[<0;62;19mhttps://example.com/video';
   assert.equal(stripMouseSequences(brokenInput), 'https://example.com/video');
+});
+
+test('mouse sequences without ESC are also removed', () => {
+  const brokenInput = '[<2;61;19M[<2;61;19mhttps://example.com/video';
+  assert.equal(stripMouseSequences(brokenInput), 'https://example.com/video');
+});
+
+test('streaming decoder joins mouse sequences split across chunks', () => {
+  const decoder = createTerminalInputDecoder();
+  assert.deepEqual(decoder.feed('[<2;61'), { text: '', events: [] });
+  assert.deepEqual(decoder.feed(';19Mhttps://example.com/video'), {
+    text: 'https://example.com/video',
+    events: [{ button: 2, x: 61, y: 19, pressed: true }],
+  });
+});
+
+test('reported drag and click noise is fully discarded', () => {
+  const decoder = createTerminalInputDecoder();
+  const result = decoder.feed(
+    '[<2;61;19M[<2;61;19m[<10;61;19M[<10;61;19m[<0;93;10Mhttps://example.com/video',
+  );
+
+  assert.equal(result.text, 'https://example.com/video');
+  assert.equal(result.events.length, 5);
 });
 
 test('SGR mouse parser keeps button coordinates for clickable convert', () => {
