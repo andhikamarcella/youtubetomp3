@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { CLI_VERSION } from './version.js';
 
+const IMAGE_FORMATS = new Set(['original', 'jpg', 'png', 'webp']);
+
 function takeValue(args, index, flag) {
   const value = args[index + 1];
-  if (!value || value.startsWith('-')) {
-    throw new Error(`${flag} membutuhkan nilai.`);
-  }
+  if (!value || value.startsWith('-')) throw new Error(`${flag} membutuhkan nilai.`);
   return value;
 }
 
@@ -20,7 +20,8 @@ export function parseCliOptions(argv = []) {
     initialUrl: '',
     outputDirectory: '',
     cookiesPath: '',
-    initialMode: 'video',
+    initialMode: 'auto',
+    initialImageFormat: 'original',
     initialPlaylist: false,
     forceGallery: false,
     forceVideo: false,
@@ -29,7 +30,6 @@ export function parseCliOptions(argv = []) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-
     if (/^https?:\/\//iu.test(argument)) {
       options.initialUrl ||= argument;
       continue;
@@ -69,27 +69,36 @@ export function parseCliOptions(argv = []) {
       case '--image':
       case '--images':
       case '--gallery':
-        options.initialMode = 'video';
+        options.initialMode = 'image';
         options.forceGallery = true;
         options.forceVideo = false;
         break;
       case '--auto':
-        options.initialMode = 'video';
+        options.initialMode = 'auto';
         options.forceGallery = false;
         options.forceVideo = false;
         break;
       case '--stories':
-        options.initialMode = 'video';
+        options.initialMode = 'image';
         options.forceGallery = true;
         options.forceVideo = false;
         options.galleryInclude = 'stories';
         break;
       case '--all-media':
-        options.initialMode = 'video';
+        options.initialMode = 'image';
         options.forceGallery = true;
         options.forceVideo = false;
         options.galleryInclude = 'all';
         break;
+      case '--image-format': {
+        const format = takeValue(argv, index, argument).toLowerCase();
+        if (!IMAGE_FORMATS.has(format)) {
+          throw new Error('--image-format harus original, jpg, png, atau webp.');
+        }
+        options.initialImageFormat = format;
+        index += 1;
+        break;
+      }
       case '--playlist':
         options.initialPlaylist = true;
         break;
@@ -116,28 +125,25 @@ export function helpText() {
     + '  ytconv [link] [opsi]\n'
     + '  npx -y ytconv@latest [link]\n\n'
     + 'Opsi:\n'
-    + '  -h, --help            Tampilkan bantuan\n'
-    + '  -v, --version         Tampilkan versi\n'
-    + '      --diagnose        Cek Node.js, yt-dlp, gallery-dl, FFmpeg, output, dan update\n'
-    + '      --check-update    Cek versi terbaru di npm\n'
-    + '      --update          Update otomatis ke ytconv@latest\n'
-    + '      --no-update-check Matikan pengecekan update saat aplikasi dibuka\n'
-    + '      --auto            Deteksi video, audio, gambar, carousel, reel, atau story\n'
-    + '      --audio           Ambil audio dengan yt-dlp/FFmpeg\n'
-    + '      --video           Paksa hanya jalur video yt-dlp\n'
-    + '      --image           Paksa jalur gambar/gallery-dl\n'
-    + '      --stories         Ambil Instagram Stories dari URL profil/story (perlu cookies)\n'
-    + '      --all-media       Ambil post, reels, stories, dan highlights dari profil Instagram\n'
-    + '      --playlist        Aktifkan playlist\n'
-    + '  -o, --output PATH     Pilih folder hasil\n'
-    + '      --cookies FILE    Gunakan cookies.txt Netscape\n\n'
+    + '  -h, --help             Tampilkan bantuan\n'
+    + '  -v, --version          Tampilkan versi\n'
+    + '      --diagnose         Cek seluruh engine dan update\n'
+    + '      --check-update     Cek versi terbaru di npm\n'
+    + '      --update           Update otomatis ke ytconv@latest\n'
+    + '      --no-update-check  Matikan pengecekan update untuk sesi ini\n'
+    + '      --auto             Deteksi video, audio, gambar, carousel, reel, atau story\n'
+    + '      --audio            Ambil audio\n'
+    + '      --video            Paksa jalur video yt-dlp\n'
+    + '      --image            Paksa jalur gambar/gallery-dl\n'
+    + '      --image-format FMT Pilih original, jpg, png, atau webp\n'
+    + '      --stories          Ambil Instagram Stories (perlu cookies)\n'
+    + '      --all-media        Ambil post, reels, stories, dan highlights profil Instagram\n'
+    + '      --playlist         Aktifkan playlist\n'
+    + '  -o, --output PATH      Pilih folder hasil\n'
+    + '      --cookies FILE     Gunakan cookies.txt Netscape\n\n'
     + 'Contoh:\n'
-    + '  ytconv "https://www.instagram.com/p/..."\n'
-    + '  ytconv --image "https://www.pinterest.com/pin/..."\n'
+    + '  ytconv --auto "https://www.instagram.com/reel/..."\n'
+    + '  ytconv --image --image-format jpg "https://www.instagram.com/p/..."\n'
     + '  ytconv --stories --cookies cookies.txt "https://www.instagram.com/username/"\n'
-    + '  ytconv --all-media --cookies cookies.txt "https://www.instagram.com/username/"\n'
-    + '  ytconv --audio --output D:\\Music "https://..."\n'
-    + '  ytconv --check-update\n'
-    + '  ytconv --update\n'
-    + '  ytconv --diagnose\n';
+    + '  ytconv --audio --output D:\\Music "https://..."\n';
 }
