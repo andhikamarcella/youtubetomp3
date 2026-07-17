@@ -2,12 +2,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { isTermux } from './platform.js';
 
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VENDOR_DIRECTORY = path.join(PACKAGE_ROOT, 'vendor');
 const MINIMUM_BINARY_SIZE = 1024 * 1024;
 
 function releaseAsset() {
+  if (isTermux()) return null;
+
   const key = `${process.platform}-${process.arch}`;
   const assets = {
     'win32-x64': 'yt-dlp.exe',
@@ -36,6 +39,10 @@ async function binaryLooksValid(binaryPath) {
 }
 
 export async function ensureBundledYtDlp({ force = false, silent = false } = {}) {
+  if (isTermux()) {
+    throw new Error('Termux memakai paket native python-yt-dlp agar kompatibel dengan Android.');
+  }
+
   const asset = releaseAsset();
   if (!asset) {
     throw new Error(`Platform ${process.platform}/${process.arch} belum didukung oleh paket YTConv.`);
