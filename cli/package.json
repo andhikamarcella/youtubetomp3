@@ -1,7 +1,7 @@
 {
   "name": "ytconv",
-  "version": "0.4.1",
-  "description": "One-link social media converter TUI for desktop and Termux.",
+  "version": "0.5.0",
+  "description": "Powerful one-link social media converter TUI for desktop and Termux.",
   "type": "module",
   "bin": "bin/ytconv.js",
   "files": [
@@ -14,7 +14,8 @@
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv.js",
-    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js"
+    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
+    "test": "node --test ./test/*.test.js"
   },
   "keywords": [
     "yt-dlp",
@@ -22,10 +23,13 @@
     "youtube",
     "instagram",
     "tiktok",
+    "pinterest",
     "twitter",
+    "facebook",
     "social-media",
     "downloader",
     "converter",
+    "cookies",
     "termux",
     "android",
     "tui",
