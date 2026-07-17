@@ -1,10 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EventEmitter } from 'node:events';
 import {
-  installTerminalInputFilter,
+  createTerminalInputDecoder,
   parseSgrMouseEvents,
-  splitTerminalInput,
   stripMouseSequences,
 } from '../src/terminal-input.js';
 
@@ -26,32 +24,23 @@ test('removes leaked mouse coordinates without damaging pasted URLs', () => {
 });
 
 test('reassembles a mouse sequence split across terminal chunks', () => {
-  const first = splitTerminalInput('\u001b[<2;43;');
-  assert.equal(first.text, '');
-  assert.equal(first.carry, '\u001b[<2;43;');
+  const decoder = createTerminalInputDecoder();
+  const first = decoder.feed('\u001b[<2;43;');
+  assert.deepEqual(first, { text: '', events: [] });
 
-  const second = splitTerminalInput('19Mhttps://example.com/video', first.carry);
+  const second = decoder.feed('19Mhttps://example.com/video');
   assert.equal(second.text, 'https://example.com/video');
   assert.deepEqual(second.events, [
     { button: 2, x: 43, y: 19, pressed: true },
   ]);
 });
 
-test('filters mouse bytes for normal input listeners but keeps them for mouse handler', () => {
-  const stdin = new EventEmitter();
-  const restore = installTerminalInputFilter({ stdin, platform: 'linux' });
-  const received = [];
-  const mouseEvents = [];
+test('discards repeated click, release and drag sequences from visible text', () => {
+  const decoder = createTerminalInputDecoder();
+  const result = decoder.feed(
+    '[<2;61;19M[<2;61;19m[<10;61;19M[<10;61;19mhttps://example.com/video',
+  );
 
-  function handleMouseData(chunk) {
-    mouseEvents.push(chunk.toString());
-  }
-
-  stdin.prependListener('data', handleMouseData);
-  stdin.on('data', (chunk) => received.push(chunk.toString()));
-  stdin.emit('data', Buffer.from('\u001b[<0;62;19Mhttps://example.com'));
-
-  assert.deepEqual(mouseEvents, ['\u001b[<0;62;19Mhttps://example.com']);
-  assert.deepEqual(received, ['https://example.com']);
-  restore();
+  assert.equal(result.text, 'https://example.com/video');
+  assert.equal(result.events.length, 4);
 });
