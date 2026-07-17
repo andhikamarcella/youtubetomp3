@@ -1,10 +1,32 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import { cookieArgs } from './cookies.js';
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
 
-function browserArgs(browser) {
-  return browser && browser !== 'none' ? ['--cookies-from-browser', browser] : [];
+function commonExtractorArgs() {
+  return [
+    '--ignore-config',
+    '--js-runtimes',
+    'node',
+    '--remote-components',
+    'ejs:github',
+    '--socket-timeout',
+    '30',
+    '--retries',
+    '10',
+    '--fragment-retries',
+    '10',
+    '--extractor-retries',
+    '5',
+    '--retry-sleep',
+    'http:linear=1::2',
+    '--retry-sleep',
+    'fragment:linear=1::2',
+    '--retry-sleep',
+    'extractor:linear=1:5:1',
+    '--geo-bypass',
+  ];
 }
 
 function platformFromInfo(info, url) {
@@ -14,23 +36,32 @@ function platformFromInfo(info, url) {
     ['youtu.be', 'YouTube'],
     ['tiktok', 'TikTok'],
     ['instagram', 'Instagram'],
+    ['threads.net', 'Threads'],
     ['twitter', 'X / Twitter'],
     ['x.com', 'X / Twitter'],
     ['facebook', 'Facebook'],
+    ['fb.watch', 'Facebook'],
+    ['pinterest', 'Pinterest'],
+    ['pin.it', 'Pinterest'],
     ['reddit', 'Reddit'],
     ['twitch', 'Twitch'],
     ['soundcloud', 'SoundCloud'],
     ['vimeo', 'Vimeo'],
     ['dailymotion', 'Dailymotion'],
     ['bilibili', 'Bilibili'],
-    ['pinterest', 'Pinterest'],
     ['tumblr', 'Tumblr'],
     ['snapchat', 'Snapchat'],
+    ['linkedin', 'LinkedIn'],
+    ['telegram', 'Telegram'],
+    ['weibo', 'Weibo'],
+    ['vk.com', 'VK'],
     ['streamable', 'Streamable'],
     ['rumble', 'Rumble'],
     ['kick', 'Kick'],
     ['bandcamp', 'Bandcamp'],
     ['mixcloud', 'Mixcloud'],
+    ['imgur', 'Imgur'],
+    ['9gag', '9GAG'],
   ];
 
   return platforms.find(([needle]) => value.includes(needle))?.[1]
@@ -39,9 +70,14 @@ function platformFromInfo(info, url) {
     ?? 'Situs media';
 }
 
-function formatVideoSelector(resolution) {
-  if (resolution === 'best') return 'bv*+ba/b';
-  return `bv*[height<=${resolution}]+ba/b[height<=${resolution}]`;
+export function formatVideoSelector(resolution) {
+  const limit = resolution === 'best' ? '' : `[height<=${resolution}]`;
+  return [
+    `bv*${limit}[ext=mp4]+ba[ext=m4a]`,
+    `b${limit}[ext=mp4]`,
+    `bv*${limit}+ba`,
+    `b${limit}`,
+  ].join('/');
 }
 
 function outputTemplate(options) {
@@ -55,12 +91,30 @@ function outputTemplate(options) {
   );
 }
 
+function cookieFailureMessage(stderr) {
+  if (/could not copy.*cookie|cookie database|decrypt.*cookie|dpapi|keyring/iu.test(stderr)) {
+    return 'Gagal membaca cookies browser. Tutup browser sepenuhnya lalu coba lagi, '
+      + 'atau gunakan cookies.txt melalui Ctrl+B.';
+  }
+  if (/cookies?.*(expired|invalid)|sign in|login required|authentication/iu.test(stderr)) {
+    return 'Situs meminta login atau cookies yang masih aktif. Gunakan cookies.txt terbaru '
+      + 'atau pilih browser tempat akun tersebut sudah login.';
+  }
+  return null;
+}
+
 function readableError(stderr, fallback) {
+  const cookieMessage = cookieFailureMessage(stderr);
+  if (cookieMessage) return cookieMessage;
+
   const usefulLines = stderr
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line) => /error|unsupported|login|cookie|private|unavailable|failed|blocked/iu.test(line));
+    .filter((line) => (
+      /error|unsupported|login|cookie|private|unavailable|failed|blocked|forbidden|requested format|http error/iu
+        .test(line)
+    ));
 
   return usefulLines.at(-1)?.replace(/^ERROR:\s*/u, '') || fallback;
 }
@@ -124,13 +178,19 @@ function runBuffered(command, args, { signal, maxBytes = MAX_METADATA_BYTES } = 
   });
 }
 
-export async function inspectMedia({ ytDlpPath, url, cookiesFromBrowser = 'none', playlist = false, signal }) {
+export async function inspectMedia({
+  ytDlpPath,
+  url,
+  cookieConfig = { kind: 'none' },
+  playlist = false,
+  signal,
+}) {
   const args = [
     '--dump-single-json',
     '--skip-download',
     '--no-warnings',
-    '--ignore-config',
-    ...browserArgs(cookiesFromBrowser),
+    ...commonExtractorArgs(),
+    ...cookieArgs(cookieConfig),
   ];
 
   if (playlist) args.push('--yes-playlist', '--flat-playlist');
@@ -163,10 +223,11 @@ export async function inspectMedia({ ytDlpPath, url, cookiesFromBrowser = 'none'
 export function buildDownloadArgs(options) {
   const args = [
     '--newline',
-    '--ignore-config',
+    ...commonExtractorArgs(),
     '--windows-filenames',
     '--no-overwrites',
     '--continue',
+    '--check-formats',
     '--concurrent-fragments',
     '4',
     '--progress-template',
@@ -175,29 +236,33 @@ export function buildDownloadArgs(options) {
     'after_move:ytconv-file:%(filepath)s',
     '--output',
     outputTemplate(options),
-    ...browserArgs(options.cookiesFromBrowser),
+    ...cookieArgs(options.cookieConfig),
   ];
 
   if (options.ffmpegPath) args.push('--ffmpeg-location', options.ffmpegPath);
 
-  if (options.playlist) args.push('--yes-playlist');
+  if (options.playlist) args.push('--yes-playlist', '--no-abort-on-error');
   else args.push('--no-playlist');
 
   if (options.mode === 'audio') {
-    args.push('-f', 'ba/b', '-x', '--audio-format', options.audioFormat);
+    args.push(
+      '-f',
+      'ba/b',
+      '-x',
+      '--audio-format',
+      options.audioFormat,
+      '--embed-metadata',
+    );
 
     if (options.audioFormat === 'mp3') args.push('--audio-quality', options.audioQuality);
-
-    args.push('--embed-thumbnail', '--convert-thumbnails', 'jpg', '--embed-metadata');
   } else {
     args.push(
       '-f',
       formatVideoSelector(options.resolution),
       '--merge-output-format',
-      'mp4',
-      '--embed-thumbnail',
-      '--convert-thumbnails',
-      'jpg',
+      'mp4/mkv',
+      '--remux-video',
+      'mov>mp4/mkv',
       '--embed-metadata',
     );
   }
@@ -217,7 +282,7 @@ export function downloadMedia({ ytDlpPath, options, onProgress, onLog, signal })
 
     let bufferedStdout = '';
     let bufferedStderr = '';
-    let lastError = '';
+    let allStderr = '';
     let outputPath = '';
     let settled = false;
 
@@ -259,13 +324,17 @@ export function downloadMedia({ ytDlpPath, options, onProgress, onLog, signal })
         return;
       }
 
-      if (isError && /ERROR:/u.test(cleanLine)) lastError = cleanLine;
       onLog?.(cleanLine, isError);
     };
 
     const consume = (chunk, isError) => {
+      const text = chunk.toString();
+      if (isError) {
+        allStderr = `${allStderr}${text}`.slice(-MAX_METADATA_BYTES);
+      }
+
       const previous = isError ? bufferedStderr : bufferedStdout;
-      const combined = previous + chunk.toString();
+      const combined = previous + text;
       const lines = combined.split(/\r?\n/u);
       const remaining = lines.pop() ?? '';
 
@@ -292,7 +361,7 @@ export function downloadMedia({ ytDlpPath, options, onProgress, onLog, signal })
         return;
       }
 
-      const message = readableError(lastError || bufferedStderr, `yt-dlp selesai dengan kode ${code ?? 'tidak diketahui'}.`);
+      const message = readableError(allStderr, `yt-dlp selesai dengan kode ${code ?? 'tidak diketahui'}.`);
       finish(() => reject(new Error(message)));
     });
   });
