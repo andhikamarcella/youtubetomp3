@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import which from 'which';
 import { ensureBundledYtDlp } from './binaries.js';
@@ -54,6 +54,44 @@ async function readVersion(command, args = ['--version']) {
   }
 }
 
+function runVisible(command, args, { optional = false } = {}) {
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    windowsHide: true,
+    env: process.env,
+  });
+
+  if (result.error || result.status !== 0) {
+    if (optional) return false;
+    const detail = result.error?.message || `exit code ${result.status ?? 'unknown'}`;
+    throw new Error(`${command} gagal: ${detail}`);
+  }
+
+  return true;
+}
+
+export async function prepareTermuxDependencies() {
+  if (!isTermux()) return { prepared: false, termux: false };
+
+  let installedFromRepository = false;
+  try {
+    runVisible('pkg', ['install', '-y', 'python-yt-dlp', 'ffmpeg']);
+    installedFromRepository = true;
+  } catch {
+    console.log('\nPaket python-yt-dlp belum tersedia dari mirror. Mencoba fallback Python...');
+    runVisible('pkg', ['install', '-y', 'python', 'ffmpeg']);
+    runVisible('python', ['-m', 'pip', 'install', '--upgrade', 'yt-dlp']);
+  }
+
+  runVisible('pkg', ['install', '-y', 'yt-dlp-ejs'], { optional: true });
+
+  return {
+    prepared: true,
+    termux: true,
+    installedFromRepository,
+  };
+}
+
 export async function inspectDependencies() {
   const termux = isTermux();
   let bundledYtDlp = null;
@@ -74,12 +112,12 @@ export async function inspectDependencies() {
   const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
   const ffmpegPath = termux ? systemFfmpeg : (bundledFfmpeg || systemFfmpeg);
 
-  const termuxSetupCommand = 'pkg install -y python-yt-dlp yt-dlp-ejs ffmpeg';
-
   return {
     platform: {
       termux,
-      setupCommand: termux ? termuxSetupCommand : null,
+      setupCommand: termux
+        ? 'pkg install -y python-yt-dlp ffmpeg'
+        : null,
     },
     ytDlp: {
       path: ytDlpPath,
