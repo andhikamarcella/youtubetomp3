@@ -40,10 +40,7 @@ function platformFromInfo(info, url) {
 }
 
 function formatVideoSelector(resolution) {
-  if (resolution === 'best') {
-    return 'bv*+ba/b';
-  }
-
+  if (resolution === 'best') return 'bv*+ba/b';
   return `bv*[height<=${resolution}]+ba/b[height<=${resolution}]`;
 }
 
@@ -107,9 +104,7 @@ function runBuffered(command, args, { signal, maxBytes = MAX_METADATA_BYTES } = 
 
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
-      if (Buffer.byteLength(stderr, 'utf8') > maxBytes) {
-        stderr = stderr.slice(-maxBytes);
-      }
+      if (Buffer.byteLength(stderr, 'utf8') > maxBytes) stderr = stderr.slice(-maxBytes);
     });
 
     child.on('error', (error) => {
@@ -183,15 +178,15 @@ export function buildDownloadArgs(options) {
     ...browserArgs(options.cookiesFromBrowser),
   ];
 
+  if (options.ffmpegPath) args.push('--ffmpeg-location', options.ffmpegPath);
+
   if (options.playlist) args.push('--yes-playlist');
   else args.push('--no-playlist');
 
   if (options.mode === 'audio') {
     args.push('-f', 'ba/b', '-x', '--audio-format', options.audioFormat);
 
-    if (options.audioFormat === 'mp3') {
-      args.push('--audio-quality', options.audioQuality);
-    }
+    if (options.audioFormat === 'mp3') args.push('--audio-quality', options.audioQuality);
 
     args.push('--embed-thumbnail', '--convert-thumbnails', 'jpg', '--embed-metadata');
   } else {
