@@ -174,6 +174,13 @@ export async function inspectDependencies() {
   const bundledFfmpeg = await resolveBundledFfmpeg();
   const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
   const ffmpegPath = termux ? systemFfmpeg : (bundledFfmpeg || systemFfmpeg);
+  const runnerValue = ytDlpRunner
+    ? {
+      command: ytDlpRunner.command,
+      prefixArgs: ytDlpRunner.prefixArgs,
+      path: ytDlpRunner.displayPath,
+    }
+    : null;
 
   return {
     platform: {
@@ -185,7 +192,8 @@ export async function inspectDependencies() {
     ytDlp: {
       command: ytDlpRunner?.command ?? null,
       prefixArgs: ytDlpRunner?.prefixArgs ?? [],
-      path: ytDlpRunner?.displayPath ?? null,
+      path: runnerValue,
+      displayPath: ytDlpRunner?.displayPath ?? null,
       mode: ytDlpRunner?.mode ?? null,
       version: ytDlpRunner?.version ?? null,
       installed: Boolean(ytDlpRunner),
