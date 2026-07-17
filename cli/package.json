@@ -3,9 +3,7 @@
   "version": "0.3.0",
   "description": "One-link social media converter TUI with bundled yt-dlp and FFmpeg.",
   "type": "module",
-  "bin": {
-    "ytconv": "./bin/ytconv.js"
-  },
+  "bin": "bin/ytconv.js",
   "files": [
     "bin",
     "src",
