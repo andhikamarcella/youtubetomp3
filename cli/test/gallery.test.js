@@ -10,8 +10,8 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv public release is version 1.0.1', () => {
-  assert.equal(manifest.version, '1.0.1');
+test('YTConv public release is version 1.0.2', () => {
+  assert.equal(manifest.version, '1.0.2');
 });
 
 test('native iSH frontend and installer are included in the package source', () => {
@@ -21,7 +21,7 @@ test('native iSH frontend and installer are included in the package source', () 
   assert.ok(manifest.files.includes('ish'));
 });
 
-test('routes social image, carousel, reel, and story sites to gallery-dl', () => {
+test('gallery engine recognizes social image, carousel, reel, and story sites', () => {
   const urls = [
     'https://www.instagram.com/p/ABC123/',
     'https://www.instagram.com/stories/example/123/',
@@ -41,4 +41,5 @@ test('parses image, stories, all-media, video, and automatic modes', () => {
   assert.equal(parseCliOptions(['--all-media']).galleryInclude, 'all');
   assert.equal(parseCliOptions(['--video']).forceVideo, true);
   assert.equal(parseCliOptions(['--auto']).forceGallery, false);
+  assert.equal(parseCliOptions(['--auto']).initialMode, 'auto');
 });
