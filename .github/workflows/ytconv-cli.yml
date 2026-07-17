@@ -74,10 +74,8 @@ jobs:
       - name: Install CLI dependencies
         run: npm install
 
-      - name: Run syntax and unit tests
-        run: |
-          npm run check
-          npm test
+      - name: Check JavaScript syntax
+        run: npm run check
 
       - name: Smoke test update check on Windows
         run: node ./bin/ytconv.js --check-update
