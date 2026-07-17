@@ -33,6 +33,9 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check
 
+      - name: Run CLI unit tests
+        run: npm test
+
       - name: Verify included tools
         run: |
           test -x vendor/yt-dlp
