@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import readline from 'node:readline/promises';
 import { helpText, parseCliOptions } from '../src/cli-options.js';
 import { inspectDependencies } from '../src/dependencies.js';
 import { desktopDownloadsDirectory, isTermux, termuxSharedDownloadsDirectory } from '../src/platform.js';
@@ -24,7 +23,7 @@ function defaultOutputDirectory() {
 
 function updateStatusText(updateInfo) {
   if (updateInfo.available) {
-    return `tersedia ${updateInfo.latestVersion} (terpasang ${CLI_VERSION})`;
+    return `wajib ${updateInfo.latestVersion} (terpasang ${CLI_VERSION})`;
   }
   if (updateInfo.checked) return `sudah terbaru (${CLI_VERSION})`;
   if (updateInfo.disabled) return 'pengecekan dimatikan';
@@ -44,22 +43,26 @@ async function printDiagnostics() {
     ['Platform', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
     ['yt-dlp', dependencies.ytDlp.installed ? dependencies.ytDlp.version : 'tidak ditemukan'],
     ['yt-dlp runner', dependencies.ytDlp.displayPath || dependencies.ytDlp.path || '-'],
+    ['gallery-dl', dependencies.galleryDl?.installed ? dependencies.galleryDl.version : 'tidak ditemukan'],
+    ['gallery runner', dependencies.galleryDl?.displayPath || '-'],
     ['FFmpeg', dependencies.ffmpeg.installed ? dependencies.ffmpeg.version : 'tidak ditemukan'],
     ['FFmpeg path', dependencies.ffmpeg.path || '-'],
     ['Output', outputDirectory],
     ['Cookies file', process.env.YTCONV_COOKIES || 'tidak dipilih'],
+    ['Gallery include', process.env.YTCONV_GALLERY_INCLUDE || 'direct URL / auto'],
   ];
 
   console.log('YTConv diagnostics\n');
-  for (const [label, value] of rows) console.log(`${label.padEnd(14)} ${value}`);
+  for (const [label, value] of rows) console.log(`${label.padEnd(16)} ${value}`);
 
   if (updateInfo.available) {
-    console.log(`\nUpdate dengan: ${updateCommand()}`);
+    console.log(`\nUpdate wajib dengan: ${updateCommand()}`);
   }
 
-  if (!dependencies.ytDlp.installed || !dependencies.ffmpeg.installed) {
+  if (!dependencies.ytDlp.installed || !dependencies.ffmpeg.installed || !dependencies.galleryDl?.installed) {
     console.log('\nSetup yang disarankan:');
-    console.log(dependencies.platform?.setupCommand || 'npm rebuild ytconv');
+    console.log(dependencies.platform?.setupCommand
+      || 'npm rebuild ytconv (macOS fallback: python3 -m pip install -U gallery-dl)');
     return 1;
   }
 
@@ -70,7 +73,7 @@ async function printUpdateCheck() {
   console.log('Memeriksa update YTConv...');
   const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION, force: true });
   console.log(updateStatusText(updateInfo));
-  if (updateInfo.available) console.log(`Update dengan: ${updateCommand()}`);
+  if (updateInfo.available) console.log(`Update wajib dengan: ${updateCommand()}`);
   return !updateInfo.checked && !updateInfo.disabled ? 1 : 0;
 }
 
@@ -82,7 +85,7 @@ async function performUpdate() {
   }
 
   console.log(updateInfo.available
-    ? `Mengupdate YTConv ${CLI_VERSION} → ${updateInfo.latestVersion}...\n`
+    ? `Mengupdate wajib YTConv ${CLI_VERSION} → ${updateInfo.latestVersion}...\n`
     : 'Versi terbaru tidak dapat diperiksa, mencoba memasang ytconv@latest...\n');
 
   const result = runSelfUpdate();
@@ -98,24 +101,15 @@ async function performUpdate() {
   return 0;
 }
 
-async function showStartupUpdateNotice(updateInfo) {
+function showMandatoryUpdateNotice(updateInfo) {
   if (!updateInfo.available) return false;
 
   console.log('\n┌────────────────────────────────────────────────────────────┐');
-  console.log(`│ Update YTConv tersedia: ${CLI_VERSION} → ${updateInfo.latestVersion}`.padEnd(61, ' ') + '│');
-  console.log('│ Ketik U lalu Enter untuk update sekarang.                  │');
-  console.log(`│ Nanti juga bisa: ${updateCommand()}`.padEnd(61, ' ') + '│');
-  console.log('└────────────────────────────────────────────────────────────┘');
-
-  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
-
-  const prompt = readline.createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const answer = await prompt.question('U = update sekarang · Enter = lanjut memakai versi lama: ');
-    return answer.trim().toLowerCase() === 'u';
-  } finally {
-    prompt.close();
-  }
+  console.log(`│ UPDATE WAJIB YTConv: ${CLI_VERSION} → ${updateInfo.latestVersion}`.padEnd(61, ' ') + '│');
+  console.log('│ YTConv akan memasang versi terbaru sebelum dapat dipakai.  │');
+  console.log(`│ Perintah manual: ${updateCommand()}`.padEnd(61, ' ') + '│');
+  console.log('└────────────────────────────────────────────────────────────┘\n');
+  return true;
 }
 
 async function main() {
@@ -129,6 +123,9 @@ async function main() {
   }
 
   if (options.noUpdateCheck) process.env.YTCONV_NO_UPDATE_CHECK = '1';
+  if (options.forceGallery) process.env.YTCONV_FORCE_GALLERY = '1';
+  if (options.forceVideo) process.env.YTCONV_FORCE_VIDEO = '1';
+  if (options.galleryInclude) process.env.YTCONV_GALLERY_INCLUDE = options.galleryInclude;
 
   if (options.help) {
     console.log(helpText());
@@ -149,7 +146,7 @@ async function main() {
 
   try {
     const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION });
-    if (await showStartupUpdateNotice(updateInfo)) return performUpdate();
+    if (showMandatoryUpdateNotice(updateInfo)) return performUpdate();
 
     await runApp({
       initialUrl: options.initialUrl,
