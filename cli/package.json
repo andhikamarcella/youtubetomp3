@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Powerful one-link social media converter TUI for desktop and Termux.",
   "type": "module",
   "bin": "bin/ytconv.js",
@@ -14,7 +14,7 @@
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv.js",
-    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
+    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
     "test": "node --test ./test/*.test.js"
   },
   "keywords": [
