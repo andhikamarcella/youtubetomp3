@@ -1,75 +1,146 @@
 # YTConv CLI
 
-YTConv adalah aplikasi terminal hitam-putih untuk mengubah dan mengunduh media dari satu link. Antarmukanya dibuat sederhana: paste link, pilih format bila perlu, lalu tekan Enter untuk **convert**.
+YTConv adalah aplikasi terminal hitam-putih untuk mengubah satu link media menjadi video MP4 atau audio MP3/M4A. Antarmukanya memakai satu kotak link, tombol `convert`, progress bar, speed, ETA, dan status proses.
 
-> Gunakan hanya untuk media milik sendiri atau media yang memang diizinkan untuk diunduh.
+> Gunakan hanya untuk media milik sendiri, media berlisensi bebas, atau media yang memang diizinkan untuk diunduh.
 
-## Instalasi paling mudah
+## Dukungan perangkat
 
-Yang perlu dipasang pengguna hanya **Node.js 18 atau lebih baru**.
+- Windows x64/ARM64
+- Linux x64/ARM64/ARM
+- macOS Intel dan Apple Silicon
+- Android melalui Termux
 
-```powershell
+YTConv meneruskan link ke extractor `yt-dlp`, sehingga dapat mencoba YouTube, TikTok, Instagram, X/Twitter, Facebook, Reddit, Twitch, SoundCloud, Vimeo, Dailymotion, Bilibili, Pinterest, Tumblr, Streamable, Rumble, Kick, Bandcamp, Mixcloud, dan banyak situs lainnya.
+
+Konten privat, login-only, berbayar, DRM, dibatasi wilayah, atau situs yang berubah dapat gagal.
+
+## Instalasi desktop
+
+Pasang Node.js 18 atau lebih baru, lalu:
+
+```bash
 npm install -g ytconv
 ```
 
-Saat instalasi, paket YTConv otomatis menyiapkan:
+Jalankan:
 
-- binary resmi `yt-dlp` yang sesuai dengan Windows, Linux, atau macOS pengguna;
-- binary FFmpeg melalui paket `ffmpeg-static`;
-- seluruh library antarmuka terminal yang dibutuhkan.
-
-Pengguna tidak perlu memasang Python, yt-dlp, atau FFmpeg secara terpisah.
-
-Setelah terpasang, jalankan salah satu:
-
-```powershell
-npx ytconv
+```bash
+ytconv
 ```
 
 atau:
 
-```powershell
+```bash
+npx ytconv
+```
+
+Pada Windows, Linux desktop, dan macOS, instalasi npm menyiapkan `yt-dlp` dan FFmpeg yang dibutuhkan YTConv.
+
+## Instalasi Android dengan Termux
+
+Gunakan Termux dari F-Droid atau GitHub Releases, bukan build Play Store lama.
+
+Pertama kali saja:
+
+```bash
+pkg update
+pkg install -y nodejs
+termux-setup-storage
+```
+
+Setujui izin penyimpanan Android, lalu pasang YTConv:
+
+```bash
+npm install -g ytconv
+```
+
+Saat instalasi, YTConv otomatis meminta Termux memasang alat native Android berikut:
+
+- `python-yt-dlp`
+- `ffmpeg`
+- `yt-dlp-ejs` bila tersedia
+
+Jalankan:
+
+```bash
 ytconv
 ```
 
-Link juga bisa langsung diberikan:
+atau:
 
-```powershell
-npx ytconv "https://www.youtube.com/watch?v=..."
+```bash
+npx ytconv
 ```
 
-## Tampilan dan kontrol
-
-YTConv menggunakan tampilan CLI monokrom atau hitam-putih dengan tombol visual **convert**.
+Hasil Termux disimpan ke:
 
 ```text
-Enter       convert link
-Tab         ganti video/audio
-Ctrl + Q    ganti resolusi atau kualitas audio
-Ctrl + F    ganti MP3/M4A ketika mode audio
+/storage/emulated/0/Download/YTConv
+```
+
+melalui shortcut Termux:
+
+```text
+~/storage/downloads/YTConv
+```
+
+Jika instalasi alat Termux sempat gagal, jalankan:
+
+```bash
+pkg install -y python-yt-dlp ffmpeg
+pkg install -y yt-dlp-ejs
+npm rebuild ytconv
+```
+
+## Cara memakai
+
+1. Jalankan `ytconv` atau `npx ytconv`.
+2. Tempel link.
+3. Tekan Enter untuk mulai convert.
+4. Hasil tersimpan di folder Downloads.
+
+Shortcut:
+
+```text
+Enter       convert
+Tab         ganti Video / Audio
+Ctrl + Q    ganti kualitas
+Ctrl + F    ganti MP3 / M4A saat mode Audio
 Ctrl + B    ganti browser cookies
 Ctrl + P    aktif/nonaktifkan playlist
 Ctrl + C    batalkan atau keluar
 O           buka folder hasil
-R           convert link lain atau ulangi
-E           kembali mengedit link setelah gagal
+R           convert link lain
+E           edit link setelah error
 ```
 
-Hasil otomatis disimpan ke folder `Downloads`. Lokasi dapat diubah dengan environment variable `YTCONV_OUTPUT`.
+Link juga bisa diberikan langsung:
 
-## Dukungan situs
+```bash
+ytconv "https://www.youtube.com/watch?v=..."
+```
 
-YTConv meneruskan link ke extractor generik `yt-dlp`, sehingga dapat mencoba YouTube, TikTok, Instagram, X/Twitter, Facebook, Reddit, Twitch, SoundCloud, Vimeo, Dailymotion, Bilibili, Pinterest, Tumblr, Streamable, Rumble, Kick, Bandcamp, Mixcloud, dan banyak situs lain yang didukung versi yt-dlp yang ikut terpasang.
+## Folder hasil khusus
 
-Dukungan extractor tidak menjamin semua link selalu berhasil. Konten privat, login-only, berbayar, DRM, dibatasi wilayah, atau situs yang baru mengubah sistemnya dapat gagal.
+Gunakan environment variable `YTCONV_OUTPUT`:
 
-## Cookies browser
+### Windows CMD
 
-Tekan `Ctrl+B` untuk memilih Chrome, Edge, Firefox, Brave, Chromium, Opera, atau Vivaldi. Ini berguna untuk media yang hanya bisa dibuka ketika akun pengguna sudah login.
+```cmd
+set YTCONV_OUTPUT=D:\Video\YTConv
+ytconv
+```
+
+### Linux, macOS, atau Termux
+
+```bash
+YTCONV_OUTPUT="$HOME/MyDownloads" ytconv
+```
 
 ## Menjalankan dari repository
 
-```powershell
+```bash
 git clone https://github.com/andhikamarcella/youtubetomp3.git
 cd youtubetomp3
 git checkout codex/add-ytconv-cli
@@ -78,104 +149,28 @@ npm install
 npm start
 ```
 
-`npm install` akan mengunduh binary yt-dlp dan FFmpeg yang sesuai dengan komputer tersebut.
+Membuat command lokal:
 
-Untuk memasang command lokal:
-
-```powershell
+```bash
 npm link
 ytconv
 ```
 
-Setelah ada perubahan baru di branch:
+## Pemeriksaan sebelum publish
 
-```powershell
-cd C:\Users\andhi\youtubetomp3
-git checkout codex/add-ytconv-cli
-git pull origin codex/add-ytconv-cli
-cd cli
-npm install
-npm link
+```bash
+npm run check
+npm pack --dry-run
+npm publish
+```
+
+Setelah berhasil diterbitkan:
+
+```bash
+npm install -g ytconv
 npx ytconv
 ```
 
-## Menerbitkan ke npm
+## Catatan keamanan akun npm
 
-`npx ytconv` untuk pengguna umum baru tersedia setelah paket diterbitkan ke registry npm.
-
-```powershell
-cd cli
-npm login
-npm run check
-npm pack --dry-run
-npm publish --access public
-```
-
-Versi berikutnya:
-
-```powershell
-npm version patch
-npm publish --access public
-```
-
-Apabila nama paket `ytconv` sudah dimiliki akun lain, gunakan scoped package:
-
-```json
-{
-  "name": "@andhikamarcella/ytconv",
-  "bin": {
-    "ytconv": "./bin/ytconv.js"
-  }
-}
-```
-
-Kemudian:
-
-```powershell
-npm publish --access public
-npm install -g @andhikamarcella/ytconv
-npx @andhikamarcella/ytconv
-```
-
-Command setelah instalasi global tetap dapat menggunakan:
-
-```powershell
-ytconv
-```
-
-## Masalah instalasi
-
-### Binary belum selesai disiapkan
-
-Pastikan internet aktif, lalu:
-
-```powershell
-npm rebuild ytconv
-```
-
-Atau instal ulang:
-
-```powershell
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv
-```
-
-### PowerShell memblokir `npm.ps1`
-
-Gunakan `npm.cmd`:
-
-```powershell
-npm.cmd install -g ytconv
-npx.cmd ytconv
-```
-
-Atau atur Execution Policy khusus akun pengguna:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-```
-
-### Lisensi komponen
-
-Kode YTConv menggunakan lisensi MIT. Binary yt-dlp dan FFmpeg tetap mengikuti lisensi proyek masing-masing. `ffmpeg-static` mendistribusikan binary FFmpeg sesuai ketentuan lisensinya.
+Publikasi npm memerlukan 2FA atau granular access token yang diizinkan untuk publishing. Jangan simpan token npm di repository atau membagikannya melalui screenshot.
