@@ -1,161 +1,177 @@
 # YTConv CLI
 
-YTConv adalah aplikasi terminal hitam-putih untuk mengubah satu link media menjadi video MP4 atau audio MP3/M4A. Antarmukanya memakai satu kotak link, tombol `convert`, progress bar, speed, ETA, dan status proses.
+YTConv adalah aplikasi terminal hitam-putih untuk mengunduh dan mengonversi video/audio dari link media yang didukung `yt-dlp`. Tampilannya memakai satu kotak link, tombol `convert`, progress bar, speed, ETA, dukungan cookies, serta mode video dan audio.
 
 > Gunakan hanya untuk media milik sendiri, media berlisensi bebas, atau media yang memang diizinkan untuk diunduh.
 
-## Dukungan perangkat
+## Perangkat
 
 - Windows x64/ARM64
 - Linux x64/ARM64/ARM
 - macOS Intel dan Apple Silicon
 - Android melalui Termux
 
-YTConv meneruskan link ke extractor `yt-dlp`, sehingga dapat mencoba YouTube, TikTok, Instagram, X/Twitter, Facebook, Reddit, Twitch, SoundCloud, Vimeo, Dailymotion, Bilibili, Pinterest, Tumblr, Streamable, Rumble, Kick, Bandcamp, Mixcloud, dan banyak situs lainnya.
-
-Konten privat, login-only, berbayar, DRM, dibatasi wilayah, atau situs yang berubah dapat gagal.
-
 ## Instalasi desktop
 
-Pasang Node.js 18 atau lebih baru, lalu:
+Pasang Node.js 18 atau lebih baru:
 
 ```bash
 npm install -g ytconv
-```
-
-Jalankan:
-
-```bash
 ytconv
 ```
 
-atau:
+Tanpa instalasi global:
 
 ```bash
-npx ytconv
+npx -y ytconv
 ```
 
-Pada Windows, Linux desktop, dan macOS, instalasi npm menyiapkan `yt-dlp` dan FFmpeg yang dibutuhkan YTConv.
+YTConv menyiapkan `yt-dlp` dan FFmpeg sendiri. Binary `yt-dlp` diperiksa dan disegarkan berkala agar extractor situs tidak terlalu lama.
 
-## Instalasi Android dengan Termux
+## Instalasi Termux
 
-Gunakan Termux dari F-Droid atau GitHub Releases, bukan build Play Store lama.
-
-Pertama kali saja:
+Gunakan Termux versi F-Droid atau GitHub Releases.
 
 ```bash
 pkg update
 pkg install -y nodejs
 termux-setup-storage
-```
-
-Setujui izin penyimpanan Android, lalu pasang YTConv:
-
-```bash
 npm install -g ytconv
-```
-
-Jalankan:
-
-```bash
 ytconv
 ```
 
-atau:
+Atau:
 
 ```bash
 npx -y ytconv
 ```
 
-Pada pemakaian pertama, YTConv menampilkan proses setup secara langsung lalu memasang alat Android yang diperlukan:
-
-- `python-yt-dlp`
-- `ffmpeg`
-- `yt-dlp-ejs` bila tersedia
-
-Setup Termux sengaja dijalankan saat aplikasi pertama kali dibuka, bukan diam-diam saat `npm install`, supaya pengguna tetap melihat progres dan pesan error. Bila paket `python-yt-dlp` tidak tersedia dari mirror, YTConv mencoba fallback Python dan pip.
-
-Hasil Termux disimpan ke:
+Pemakaian pertama menampilkan progres pemasangan `python-yt-dlp`, `ffmpeg`, dan `yt-dlp-ejs` bila tersedia. Hasil disimpan ke:
 
 ```text
 /storage/emulated/0/Download/YTConv
 ```
 
-melalui shortcut Termux:
-
-```text
-~/storage/downloads/YTConv
-```
-
-## Tombol convert
-
-Tombol `convert` di sebelah input dapat digunakan dengan beberapa cara:
-
-- Klik dengan mouse pada Windows Terminal atau terminal lain yang mengirim mouse events.
-- Tap pada Termux yang mendukung terminal mouse reporting.
-- Tekan `Tab` untuk memilih tombol, kemudian `Enter` atau `Space`.
-- Tekan `Enter` langsung saat kursor masih berada di kotak link.
-
-YTConv mengaktifkan SGR mouse reporting saat aplikasi berjalan. Beberapa host terminal lama mungkin tetap mengambil klik untuk memilih teks; pada kondisi tersebut gunakan `Tab` + `Enter` sebagai fallback.
-
 ## Cara memakai
 
 1. Jalankan `ytconv` atau `npx -y ytconv`.
-2. Tempel link.
-3. Klik/tap `convert`, atau tekan Enter.
-4. Hasil tersimpan di folder Downloads.
+2. Tempel link media.
+3. Klik/tap `convert`, atau tekan `Tab` lalu `Enter`.
+4. Enter dari kotak link juga langsung memulai proses.
 
-Shortcut:
+YTConv memakai alternate terminal screen. Aplikasi tetap berjalan di tab terminal yang sama dan tampilan TUI tidak memenuhi riwayat scrollback.
+
+### Keluar
+
+- `Esc`
+- `Ctrl+C`
+- `Ctrl+D`
+- Tekan `q` saat tombol/status dipilih
+- Ketik `exit`, `quit`, atau `:q` pada kotak link lalu Enter
+
+Setelah YTConv ditutup, terminal kembali ke tampilan sebelumnya.
+
+### Shortcut
 
 ```text
-Enter       convert dari input / jalankan tombol terpilih
-Space       jalankan tombol convert saat terpilih
-Tab         pilih input atau tombol convert
+Tab         pilih input / tombol convert
+Enter       jalankan convert
 Ctrl + G    ganti Video / Audio
 Ctrl + Q    ganti kualitas
 Ctrl + F    ganti MP3 / M4A saat mode Audio
-Ctrl + B    ganti browser cookies
+Ctrl + B    ganti sumber cookies
 Ctrl + P    aktif/nonaktifkan playlist
-Ctrl + C    batalkan atau keluar
+Esc/Ctrl+C  batalkan dan keluar
 O           buka folder hasil
-R           convert link lain
+R           convert link lain / retry
 E           edit link setelah error
 ```
 
-Link juga bisa diberikan langsung:
+## Cookies dan media login
+
+Tekan `Ctrl+B` untuk mengganti sumber cookies.
+
+### Windows, Linux, macOS
+
+Sumber yang tersedia:
+
+```text
+off → cookies.txt → Chrome → Edge → Firefox → Brave → Chromium → Opera → Vivaldi → Safari/Whale
+```
+
+Tutup browser sepenuhnya apabila pembacaan cookies browser gagal. Alternatif paling portabel adalah file Netscape `cookies.txt`.
+
+YTConv otomatis mencari `cookies.txt` di:
+
+- folder tempat command dijalankan
+- folder hasil YTConv
+- folder Downloads
+- home directory
+
+Lokasi khusus juga bisa diberikan:
+
+**Windows CMD**
+
+```cmd
+set YTCONV_COOKIES=C:\Users\Nama\Downloads\cookies.txt
+ytconv
+```
+
+Profil browser khusus:
+
+```cmd
+set YTCONV_BROWSER_PROFILE=Default
+ytconv
+```
+
+### Termux
+
+Android tidak mengizinkan Termux membaca database cookies aplikasi Chrome/Firefox secara langsung. Gunakan file Netscape:
+
+```text
+/storage/emulated/0/Download/YTConv/cookies.txt
+```
+
+atau:
+
+```bash
+YTCONV_COOKIES="$HOME/storage/downloads/cookies.txt" ytconv
+```
+
+Tekan `Ctrl+B` sampai status menunjukkan `cookies:cookies.txt`.
+
+Jangan membagikan `cookies.txt`; file tersebut dapat berisi sesi login akun.
+
+## Dukungan situs
+
+YTConv meneruskan URL secara generik ke extractor `yt-dlp`, mengaktifkan Node sebagai JavaScript runtime, komponen EJS resmi, pengecekan format, retry jaringan, serta fallback container MP4/MKV. Ini mencakup banyak link video/audio dari layanan seperti:
+
+```text
+YouTube, Instagram, TikTok, X/Twitter, Facebook, Pinterest,
+Reddit, Twitch, Vimeo, SoundCloud, Dailymotion, Bilibili,
+Tumblr, Snapchat, LinkedIn, Telegram embeds, Weibo, VK,
+Streamable, Rumble, Kick, Bandcamp, Mixcloud, Imgur, 9GAG,
+dan situs lain yang didukung extractor atau generic extractor.
+```
+
+Tidak ada downloader yang dapat menjamin semua link selalu berhasil. Situs dapat berubah, posting dapat dihapus, wilayah dapat dibatasi, dan beberapa link membutuhkan cookies. YTConv tidak melewati DRM, pembayaran, atau akses privat yang tidak dimiliki pengguna. Pinterest/Instagram yang hanya berisi gambar bukan video/audio tidak dikonversi sebagai video.
+
+## Link langsung
 
 ```bash
 ytconv "https://www.youtube.com/watch?v=..."
 ```
 
-## Jika Termux berhenti setelah prompt npx
-
-Gunakan bentuk berikut agar prompt pemasangan dilewati:
-
-```bash
-npx -y ytconv
-```
-
-Kalau alat Android belum berhasil dipasang:
-
-```bash
-pkg install -y python-yt-dlp ffmpeg
-pkg install -y yt-dlp-ejs
-npx -y ytconv
-```
-
 ## Folder hasil khusus
 
-Gunakan environment variable `YTCONV_OUTPUT`:
-
-### Windows CMD
+**Windows CMD**
 
 ```cmd
 set YTCONV_OUTPUT=D:\Video\YTConv
 ytconv
 ```
 
-### Linux, macOS, atau Termux
+**Linux, macOS, Termux**
 
 ```bash
 YTCONV_OUTPUT="$HOME/MyDownloads" ytconv
@@ -169,31 +185,18 @@ cd youtubetomp3
 git checkout codex/add-ytconv-cli
 cd cli
 npm install
+npm run check
+npm test
 npm start
 ```
 
-Membuat command lokal:
-
-```bash
-npm link
-ytconv
-```
-
-## Pemeriksaan sebelum publish
+## Publish
 
 ```bash
 npm run check
+npm test
 npm pack --dry-run
 npm publish
 ```
 
-Setelah berhasil diterbitkan:
-
-```bash
-npm install -g ytconv
-npx -y ytconv
-```
-
-## Catatan keamanan akun npm
-
-Publikasi npm memerlukan 2FA atau granular access token yang diizinkan untuk publishing. Jangan simpan token npm di repository atau membagikannya melalui screenshot.
+Setiap publikasi harus memakai nomor versi yang belum pernah dipublikasikan.
