@@ -1,6 +1,12 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import process from 'node:process';
 import { cookieArgs } from './cookies.js';
+import {
+  downloadGallery,
+  inspectGallery,
+  isGalleryPreferredUrl,
+} from './gallery.js';
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
 
@@ -215,12 +221,12 @@ function runBuffered(runnerValue, args, { signal, maxBytes = MAX_METADATA_BYTES 
   });
 }
 
-export async function inspectMedia({
+async function inspectWithYtDlp({
   ytDlp,
   ytDlpPath,
   url,
-  cookieConfig = { kind: 'none' },
-  playlist = false,
+  cookieConfig,
+  playlist,
   signal,
 }) {
   const args = [
@@ -255,7 +261,52 @@ export async function inspectMedia({
     itemCount: Array.isArray(info.entries) ? info.entries.filter(Boolean).length : 1,
     isPlaylist: info._type === 'playlist' || Array.isArray(info.entries),
     originalUrl: info.webpage_url || representative?.webpage_url || url,
+    engine: 'yt-dlp',
   };
+}
+
+export async function inspectMedia({
+  ytDlp,
+  ytDlpPath,
+  url,
+  cookieConfig = { kind: 'none' },
+  playlist = false,
+  signal,
+}) {
+  const forceVideo = process.env.YTCONV_FORCE_VIDEO === '1';
+  const galleryPreferred = !forceVideo && isGalleryPreferredUrl(url);
+
+  if (galleryPreferred) {
+    return inspectGallery({
+      url,
+      cookieConfig,
+      outputDirectory: process.cwd(),
+      signal,
+    });
+  }
+
+  try {
+    return await inspectWithYtDlp({
+      ytDlp,
+      ytDlpPath,
+      url,
+      cookieConfig,
+      playlist,
+      signal,
+    });
+  } catch (ytDlpError) {
+    if (forceVideo) throw ytDlpError;
+    try {
+      return await inspectGallery({
+        url,
+        cookieConfig,
+        outputDirectory: process.cwd(),
+        signal,
+      });
+    } catch {
+      throw ytDlpError;
+    }
+  }
 }
 
 export function buildDownloadArgs(options) {
@@ -309,7 +360,7 @@ export function buildDownloadArgs(options) {
   return args;
 }
 
-export function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onLog, signal }) {
+function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signal }) {
   return new Promise((resolve, reject) => {
     const args = buildDownloadArgs(options);
     let spawned;
@@ -405,7 +456,7 @@ export function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onLog, si
       processLine(bufferedStderr, true);
 
       if (code === 0) {
-        finish(() => resolve({ outputPath }));
+        finish(() => resolve({ outputPath, engine: 'yt-dlp' }));
         return;
       }
 
@@ -413,4 +464,44 @@ export function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onLog, si
       finish(() => reject(new Error(message)));
     });
   });
+}
+
+export async function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onLog, signal }) {
+  const forceVideo = process.env.YTCONV_FORCE_VIDEO === '1';
+  const forceGallery = process.env.YTCONV_FORCE_GALLERY === '1';
+  const mayUseGallery = options.mode !== 'audio' && !forceVideo;
+
+  if (mayUseGallery && (forceGallery || isGalleryPreferredUrl(options.url))) {
+    onLog?.('Using gallery engine for images, carousels, stories, reels, and mixed posts.', false);
+    return downloadGallery({
+      url: options.url,
+      cookieConfig: options.cookieConfig,
+      outputDirectory: options.outputDirectory,
+      onProgress,
+      onLog,
+      signal,
+    });
+  }
+
+  try {
+    return await downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signal });
+  } catch (ytDlpError) {
+    if (!mayUseGallery) throw ytDlpError;
+    onLog?.('yt-dlp could not handle this media; trying the gallery/image engine...', true);
+    try {
+      return await downloadGallery({
+        url: options.url,
+        cookieConfig: options.cookieConfig,
+        outputDirectory: options.outputDirectory,
+        onProgress,
+        onLog,
+        signal,
+      });
+    } catch (galleryError) {
+      throw new Error(
+        `${ytDlpError instanceof Error ? ytDlpError.message : String(ytDlpError)} `
+        + `Gallery fallback: ${galleryError instanceof Error ? galleryError.message : String(galleryError)}`,
+      );
+    }
+  }
 }
