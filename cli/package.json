@@ -1,0 +1,48 @@
+{
+  "name": "ytconv",
+  "version": "0.1.0",
+  "description": "Interactive terminal downloader powered by yt-dlp and FFmpeg.",
+  "type": "module",
+  "bin": {
+    "ytconv": "./bin/ytconv.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node ./bin/ytconv.js",
+    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/dependencies.js && node --check ./src/downloader.js"
+  },
+  "keywords": [
+    "yt-dlp",
+    "ffmpeg",
+    "youtube",
+    "downloader",
+    "cli",
+    "terminal"
+  ],
+  "author": "Andhika Marcella Fernanda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
+    "directory": "cli"
+  },
+  "homepage": "https://ytconv.onrender.com/",
+  "bugs": {
+    "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.8.0",
+    "chalk": "^5.4.1",
+    "figlet": "^1.8.2",
+    "ora": "^8.2.0",
+    "which": "^5.0.0"
+  }
+}
