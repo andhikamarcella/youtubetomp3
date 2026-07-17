@@ -7,6 +7,7 @@ import { isTermux } from './platform.js';
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VENDOR_DIRECTORY = path.join(PACKAGE_ROOT, 'vendor');
 const MINIMUM_BINARY_SIZE = 1024 * 1024;
+const MAX_BINARY_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function releaseAsset() {
   if (isTermux()) return null;
@@ -29,28 +30,19 @@ export function bundledYtDlpPath() {
   return path.join(VENDOR_DIRECTORY, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
 }
 
-async function binaryLooksValid(binaryPath) {
+async function binaryStatus(binaryPath) {
   try {
     const stats = await fs.stat(binaryPath);
-    return stats.isFile() && stats.size >= MINIMUM_BINARY_SIZE;
+    return {
+      valid: stats.isFile() && stats.size >= MINIMUM_BINARY_SIZE,
+      fresh: Date.now() - stats.mtimeMs < MAX_BINARY_AGE_MS,
+    };
   } catch {
-    return false;
+    return { valid: false, fresh: false };
   }
 }
 
-export async function ensureBundledYtDlp({ force = false, silent = false } = {}) {
-  if (isTermux()) {
-    throw new Error('Termux memakai paket native python-yt-dlp agar kompatibel dengan Android.');
-  }
-
-  const asset = releaseAsset();
-  if (!asset) {
-    throw new Error(`Platform ${process.platform}/${process.arch} belum didukung oleh paket YTConv.`);
-  }
-
-  const destination = bundledYtDlpPath();
-  if (!force && await binaryLooksValid(destination)) return destination;
-
+async function downloadLatest(asset, destination, { silent }) {
   await fs.mkdir(VENDOR_DIRECTORY, { recursive: true });
   const temporary = `${destination}.download`;
   await fs.rm(temporary, { force: true });
@@ -79,7 +71,33 @@ export async function ensureBundledYtDlp({ force = false, silent = false } = {})
   if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);
   await fs.rm(destination, { force: true });
   await fs.rename(temporary, destination);
-
   if (!silent) console.log('YTConv: yt-dlp is ready.');
-  return destination;
+}
+
+export async function ensureBundledYtDlp({ force = false, silent = false } = {}) {
+  if (isTermux()) {
+    throw new Error('Termux memakai paket native python-yt-dlp agar kompatibel dengan Android.');
+  }
+
+  const asset = releaseAsset();
+  if (!asset) {
+    throw new Error(`Platform ${process.platform}/${process.arch} belum didukung oleh paket YTConv.`);
+  }
+
+  const destination = bundledYtDlpPath();
+  const existing = await binaryStatus(destination);
+  if (!force && existing.valid && existing.fresh) return destination;
+
+  try {
+    await downloadLatest(asset, destination, { silent });
+    return destination;
+  } catch (error) {
+    if (existing.valid) {
+      if (!silent) {
+        console.warn(`YTConv: pembaruan yt-dlp gagal, memakai versi yang sudah ada. ${error.message}`);
+      }
+      return destination;
+    }
+    throw error;
+  }
 }
