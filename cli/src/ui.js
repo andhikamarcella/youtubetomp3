@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
@@ -7,6 +8,11 @@ import TextInput from 'ink-text-input';
 import figlet from 'figlet';
 import ansiShadowFont from 'figlet/importable-fonts/ANSI Shadow.js';
 import smallFont from 'figlet/importable-fonts/Small.js';
+import {
+  cookieSourceLabel,
+  cookieSourcesForPlatform,
+  resolveCookieConfig,
+} from './cookies.js';
 import { inspectDependencies, prepareTermuxDependencies } from './dependencies.js';
 import { downloadMedia, inspectMedia } from './downloader.js';
 import {
@@ -19,10 +25,10 @@ figlet.parseFont('ANSI Shadow', ansiShadowFont);
 figlet.parseFont('Small', smallFont);
 
 const h = React.createElement;
-const COOKIE_BROWSERS = ['none', 'chrome', 'edge', 'firefox', 'brave', 'chromium', 'opera', 'vivaldi'];
 const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480'];
 const AUDIO_QUALITIES = ['0', '320K', '256K', '192K', '128K'];
 const AUDIO_FORMATS = ['mp3', 'm4a'];
+const EXIT_COMMANDS = new Set(['q', 'quit', 'exit', ':q']);
 
 const LOGO_WIDE = figlet.textSync('YTCONV', {
   font: 'ANSI Shadow',
@@ -97,7 +103,9 @@ function openDirectory(directory) {
 
 function modeSummary({ mode, resolution, audioFormat, audioQuality }) {
   if (mode === 'video') {
-    return resolution === 'best' ? 'video · best MP4' : `video · max ${resolution}p MP4`;
+    return resolution === 'best'
+      ? 'video · best MP4/MKV'
+      : `video · max ${resolution}p MP4/MKV`;
   }
 
   if (audioFormat === 'm4a') return 'audio · M4A';
@@ -111,17 +119,25 @@ function Logo({ compact }) {
     Box,
     { flexDirection: 'column', alignItems: 'center' },
     h(Text, { bold: true }, compact ? LOGO_COMPACT : LOGO_WIDE),
-    h(Text, null, 'paste any video. convert. done.'),
-    h(Text, { dimColor: true }, 'youtube · x · instagram · tiktok · facebook · reddit · twitch · +1800 more'),
+    h(Text, null, 'paste a media link. convert. done.'),
+    h(Text, { dimColor: true }, 'youtube · instagram · tiktok · x · facebook · pinterest · + supported sites'),
   );
 }
 
-function SettingLine({ mode, resolution, audioFormat, audioQuality, cookiesFromBrowser, playlist }) {
-  const cookieLabel = cookiesFromBrowser === 'none' ? 'cookies:off' : `cookies:${cookiesFromBrowser}`;
+function SettingLine({
+  mode,
+  resolution,
+  audioFormat,
+  audioQuality,
+  cookieSource,
+  playlist,
+}) {
   return h(
     Text,
     { dimColor: true },
-    `${modeSummary({ mode, resolution, audioFormat, audioQuality })}  ·  ${cookieLabel}  ·  playlist:${playlist ? 'on' : 'off'}`,
+    `${modeSummary({ mode, resolution, audioFormat, audioQuality })}`
+      + `  ·  cookies:${cookieSourceLabel(cookieSource)}`
+      + `  ·  playlist:${playlist ? 'on' : 'off'}`,
   );
 }
 
@@ -136,7 +152,7 @@ function HomeScreen(props) {
     resolution,
     audioFormat,
     audioQuality,
-    cookiesFromBrowser,
+    cookieSource,
     playlist,
     activeControl,
   } = props;
@@ -163,7 +179,7 @@ function HomeScreen(props) {
           value: url,
           onChange: setUrl,
           onSubmit: submit,
-          placeholder: 'https://youtube.com/watch?v=...',
+          placeholder: 'https://...',
           focus: activeControl === 'input',
           showCursor: activeControl === 'input',
         }),
@@ -180,15 +196,22 @@ function HomeScreen(props) {
         h(Text, { inverse: true, bold: true }, buttonFocused ? '» convert «' : ' convert '),
       ),
     ),
-    inputError ? h(Text, { inverse: true }, ` ${inputError} `) : null,
+    inputError ? h(Text, { inverse: true, wrap: 'wrap' }, ` ${inputError} `) : null,
     h(
       Box,
       { marginTop: 1 },
-      h(SettingLine, { mode, resolution, audioFormat, audioQuality, cookiesFromBrowser, playlist }),
+      h(SettingLine, {
+        mode,
+        resolution,
+        audioFormat,
+        audioQuality,
+        cookieSource,
+        playlist,
+      }),
     ),
-    h(Text, { dimColor: true }, 'tap/click convert  ·  tab select  ·  enter run  ·  ^g format'),
-    h(Text, { dimColor: true }, '^q quality  ·  ^b cookies  ·  ^p playlist'),
-    mode === 'audio' ? h(Text, { dimColor: true }, '^f audio format') : null,
+    h(Text, { dimColor: true }, 'tap/click convert · tab select · enter run · ^g video/audio'),
+    h(Text, { dimColor: true }, '^q quality · ^b cookies · ^p playlist · esc/^c quit'),
+    mode === 'audio' ? h(Text, { dimColor: true }, '^f MP3/M4A · type exit then Enter to close') : null,
   );
 }
 
@@ -227,7 +250,7 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
       ),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, statusText || (probing ? 'please wait' : 'converting...')),
     ),
-    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, '^c cancel')),
+    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'esc/^c/q cancel and close')),
   );
 }
 
@@ -242,11 +265,11 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath }) {
       h(Text, { bold: true, inverse: true }, ' conversion complete '),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
     ),
-    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'o open folder  ·  r another link  ·  ^c quit')),
+    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'o open folder · r another link · q/esc quit')),
   );
 }
 
-function ErrorScreen({ error, media, panelWidth, cookiesFromBrowser }) {
+function ErrorScreen({ error, media, panelWidth, cookieSource }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
@@ -256,13 +279,13 @@ function ErrorScreen({ error, media, panelWidth, cookiesFromBrowser }) {
       { marginTop: 1, borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
       h(Text, { bold: true, inverse: true }, ' conversion failed '),
       h(Text, { wrap: 'wrap' }, error),
-      h(Text, { dimColor: true }, `cookies: ${cookiesFromBrowser === 'none' ? 'off' : cookiesFromBrowser}`),
+      h(Text, { dimColor: true }, `cookies: ${cookieSourceLabel(cookieSource)}`),
     ),
     h(
       Box,
       { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { dimColor: true }, 'r retry  ·  e edit link  ·  ^b change cookies  ·  ^c quit'),
-      h(Text, { dimColor: true }, 'Private, login-only, paid, DRM, or unsupported posts may fail.'),
+      h(Text, { dimColor: true }, 'r retry · e edit link · ^b change cookies · q/esc quit'),
+      h(Text, { dimColor: true }, 'DRM, paid media, deleted posts, or inaccessible private posts cannot be bypassed.'),
     ),
   );
 }
@@ -285,7 +308,7 @@ function MissingDependencies({ dependencies, panelWidth }) {
       h(Text, null, details || 'YTConv could not prepare its converter tools.'),
       h(Text, { dimColor: true }, termuxCommand || 'Connect to the internet, then reinstall or run npm rebuild ytconv.'),
     ),
-    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, '^c quit')),
+    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'q/esc/^c quit')),
   );
 }
 
@@ -333,13 +356,15 @@ function parseMouseEvents(chunk) {
 
 function App({ dependencies, initialUrl = '' }) {
   const { exit } = useApp();
+  const termux = dependencies.platform?.termux ?? isTermux();
+  const cookieOptions = cookieSourcesForPlatform(termux);
   const [url, setUrl] = useState(initialUrl);
   const [stage, setStage] = useState('home');
   const [mode, setMode] = useState('video');
   const [resolution, setResolution] = useState('best');
   const [audioFormat, setAudioFormat] = useState('mp3');
   const [audioQuality, setAudioQuality] = useState('0');
-  const [cookiesFromBrowser, setCookiesFromBrowser] = useState('none');
+  const [cookieSource, setCookieSource] = useState(process.env.YTCONV_COOKIES ? 'file' : 'none');
   const [playlist, setPlaylist] = useState(false);
   const [activeControl, setActiveControl] = useState('input');
   const [inputError, setInputError] = useState('');
@@ -358,8 +383,13 @@ function App({ dependencies, initialUrl = '' }) {
   const compactLogo = columns < 78;
   const outputDirectory = process.env.YTCONV_OUTPUT
     ? path.resolve(process.env.YTCONV_OUTPUT)
-    : (isTermux() ? termuxSharedDownloadsDirectory() : desktopDownloadsDirectory());
+    : (termux ? termuxSharedDownloadsDirectory() : desktopDownloadsDirectory());
   const hasDependencies = dependencies.ytDlp.installed && dependencies.ffmpeg.installed;
+
+  const quit = () => {
+    controllerRef.current?.abort();
+    exit();
+  };
 
   const reset = () => {
     controllerRef.current?.abort();
@@ -377,8 +407,14 @@ function App({ dependencies, initialUrl = '' }) {
 
   const startDownload = async (candidate = url) => {
     const normalizedUrl = candidate.trim();
+
+    if (EXIT_COMMANDS.has(normalizedUrl.toLowerCase())) {
+      quit();
+      return;
+    }
+
     if (!isValidUrl(normalizedUrl)) {
-      setInputError('Paste a valid http/https link.');
+      setInputError('Paste a valid http/https link, or type exit then press Enter.');
       setActiveControl('input');
       return;
     }
@@ -390,7 +426,18 @@ function App({ dependencies, initialUrl = '' }) {
     setMedia(null);
     setOutputPath('');
     setProgress({ percent: '0%', speed: '', eta: '' });
-    setStatusText('reading metadata...');
+
+    let cookieConfig;
+    try {
+      await fs.mkdir(outputDirectory, { recursive: true });
+      cookieConfig = await resolveCookieConfig({ source: cookieSource, outputDirectory });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setStage('error');
+      return;
+    }
+
+    setStatusText(`reading metadata · cookies:${cookieConfig.label}`);
     setStage('probing');
 
     const controller = new AbortController();
@@ -400,7 +447,7 @@ function App({ dependencies, initialUrl = '' }) {
       const inspected = await inspectMedia({
         ytDlpPath: dependencies.ytDlp.path,
         url: normalizedUrl,
-        cookiesFromBrowser,
+        cookieConfig,
         playlist,
         signal: controller.signal,
       });
@@ -417,7 +464,7 @@ function App({ dependencies, initialUrl = '' }) {
           resolution,
           audioFormat,
           audioQuality,
-          cookiesFromBrowser,
+          cookieConfig,
           playlist,
           outputDirectory,
           ffmpegPath: dependencies.ffmpeg.path,
@@ -425,8 +472,8 @@ function App({ dependencies, initialUrl = '' }) {
         onProgress: (nextProgress) => setProgress(nextProgress),
         onLog: (line) => {
           if (/\[Merger\]/u.test(line)) setStatusText('merging video and audio...');
+          else if (/\[VideoRemuxer\]/u.test(line)) setStatusText('making a compatible video file...');
           else if (/\[ExtractAudio\]/u.test(line)) setStatusText('converting audio...');
-          else if (/\[EmbedThumbnail\]/u.test(line)) setStatusText('embedding thumbnail...');
           else if (/\[Metadata\]/u.test(line)) setStatusText('writing metadata...');
           else if (/Tersimpan:/u.test(line)) setStatusText(line);
         },
@@ -484,9 +531,13 @@ function App({ dependencies, initialUrl = '' }) {
   }, [initialUrl, hasDependencies]);
 
   useInput((input, key) => {
-    if (key.ctrl && input === 'c') {
-      controllerRef.current?.abort();
-      exit();
+    const lower = input.toLowerCase();
+    const directQuit = key.escape
+      || (key.ctrl && (lower === 'c' || lower === 'd'))
+      || (lower === 'q' && (stage !== 'home' || activeControl === 'convert' || !hasDependencies));
+
+    if (directQuit) {
+      quit();
       return;
     }
 
@@ -501,37 +552,37 @@ function App({ dependencies, initialUrl = '' }) {
       void startDownload(url);
       return;
     }
-    if (configurable && key.ctrl && input === 'g') {
+    if (configurable && key.ctrl && lower === 'g') {
       setMode((current) => (current === 'video' ? 'audio' : 'video'));
       return;
     }
-    if (configurable && key.ctrl && input === 'q') {
+    if (configurable && key.ctrl && lower === 'q') {
       if (mode === 'video') setResolution((current) => cycle(VIDEO_QUALITIES, current));
       else setAudioQuality((current) => cycle(AUDIO_QUALITIES, current));
       return;
     }
-    if (configurable && key.ctrl && input === 'f' && mode === 'audio') {
+    if (configurable && key.ctrl && lower === 'f' && mode === 'audio') {
       setAudioFormat((current) => cycle(AUDIO_FORMATS, current));
       return;
     }
-    if (configurable && key.ctrl && input === 'b') {
-      setCookiesFromBrowser((current) => cycle(COOKIE_BROWSERS, current));
+    if (configurable && key.ctrl && lower === 'b') {
+      setCookieSource((current) => cycle(cookieOptions, current));
       return;
     }
-    if (configurable && key.ctrl && input === 'p') {
+    if (configurable && key.ctrl && lower === 'p') {
       setPlaylist((current) => !current);
       return;
     }
 
     if (stage === 'done') {
-      if (input.toLowerCase() === 'o') openDirectory(outputDirectory);
-      else if (input.toLowerCase() === 'r' || key.escape) reset();
+      if (lower === 'o') openDirectory(outputDirectory);
+      else if (lower === 'r') reset();
       return;
     }
 
     if (stage === 'error') {
-      if (input.toLowerCase() === 'r') void startDownload(url);
-      else if (input.toLowerCase() === 'e' || key.escape) {
+      if (lower === 'r') void startDownload(url);
+      else if (lower === 'e') {
         setStage('home');
         setActiveControl('input');
       }
@@ -552,7 +603,7 @@ function App({ dependencies, initialUrl = '' }) {
       resolution,
       audioFormat,
       audioQuality,
-      cookiesFromBrowser,
+      cookieSource,
       playlist,
       activeControl,
     });
@@ -561,7 +612,7 @@ function App({ dependencies, initialUrl = '' }) {
   } else if (stage === 'done') {
     content = h(DoneScreen, { media, panelWidth, outputDirectory, outputPath });
   } else {
-    content = h(ErrorScreen, { error, media, panelWidth, cookiesFromBrowser });
+    content = h(ErrorScreen, { error, media, panelWidth, cookieSource });
   }
 
   return h(
@@ -582,7 +633,19 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function enterAlternateScreen() {
+  if (!process.stdout.isTTY) return false;
+  process.stdout.write('\u001b[?1049h\u001b[2J\u001b[H');
+  return true;
+}
+
+function leaveAlternateScreen(enabled) {
+  if (!enabled || !process.stdout.writable) return;
+  process.stdout.write('\u001b[?1000l\u001b[?1006l\u001b[?1049l');
+}
+
 export async function runApp({ initialUrl = '' } = {}) {
+  process.title = 'YTConv';
   console.clear();
   process.stdout.write('Preparing YTConv...\r');
   let dependencies = await inspectDependencies();
@@ -594,13 +657,24 @@ export async function runApp({ initialUrl = '' } = {}) {
     console.clear();
     console.log('YTConv first-run setup for Termux');
     console.log('Installing Android-compatible yt-dlp and FFmpeg. Please wait...\n');
-    await prepareTermuxDependencies();
+    try {
+      await prepareTermuxDependencies();
+    } catch (error) {
+      console.error(`\nSetup gagal: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Coba jalankan: pkg update && pkg install -y python-yt-dlp ffmpeg');
+      await sleep(1500);
+    }
     dependencies = await inspectDependencies();
-    console.log('\nYTConv setup finished.');
-    await sleep(700);
   }
 
-  console.clear();
-  const instance = render(h(App, { dependencies, initialUrl }), { exitOnCtrlC: false });
-  await instance.waitUntilExit();
+  const alternateScreen = enterAlternateScreen();
+  let instance;
+  try {
+    console.clear();
+    instance = render(h(App, { dependencies, initialUrl }), { exitOnCtrlC: false });
+    await instance.waitUntilExit();
+  } finally {
+    instance?.unmount();
+    leaveAlternateScreen(alternateScreen);
+  }
 }
