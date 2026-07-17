@@ -7,10 +7,18 @@ import { isGalleryPreferredUrl } from '../src/gallery.js';
 import { parseCliOptions } from '../src/cli-options.js';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-const manifest = JSON.parse(fs.readFileSync(path.join(directory, '..', 'package.json'), 'utf8'));
+const packageRoot = path.join(directory, '..');
+const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv public release is version 1.0.0', () => {
-  assert.equal(manifest.version, '1.0.0');
+test('YTConv public release is version 1.0.1', () => {
+  assert.equal(manifest.version, '1.0.1');
+});
+
+test('native iSH frontend and installer are included in the package source', () => {
+  assert.equal(fs.existsSync(path.join(packageRoot, 'ish', 'ytconv.py')), true);
+  assert.equal(fs.existsSync(path.join(packageRoot, 'ish', 'VERSION')), true);
+  assert.equal(fs.existsSync(path.join(packageRoot, 'scripts', 'install-ish.sh')), true);
+  assert.ok(manifest.files.includes('ish'));
 });
 
 test('routes social image, carousel, reel, and story sites to gallery-dl', () => {
