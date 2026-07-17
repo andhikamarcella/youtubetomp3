@@ -60,8 +60,10 @@ async function printDiagnostics() {
   if (!dependencies.ytDlp.installed || !dependencies.ffmpeg.installed) {
     console.log('\nSetup yang disarankan:');
     console.log(dependencies.platform?.setupCommand || 'npm rebuild ytconv');
-    process.exitCode = 1;
+    return 1;
   }
+
+  return 0;
 }
 
 async function printUpdateCheck() {
@@ -69,15 +71,14 @@ async function printUpdateCheck() {
   const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION, force: true });
   console.log(updateStatusText(updateInfo));
   if (updateInfo.available) console.log(`Update dengan: ${updateCommand()}`);
-  if (!updateInfo.checked && !updateInfo.disabled) process.exitCode = 1;
-  return updateInfo;
+  return !updateInfo.checked && !updateInfo.disabled ? 1 : 0;
 }
 
 async function performUpdate() {
   const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION, force: true });
   if (updateInfo.checked && !updateInfo.available) {
     console.log(`YTConv ${CLI_VERSION} sudah versi terbaru.`);
-    return;
+    return 0;
   }
 
   console.log(updateInfo.available
@@ -88,13 +89,13 @@ async function performUpdate() {
   if (!result.ok) {
     console.error(`\nUpdate gagal: ${result.error.message}`);
     console.error(`Jalankan manual: ${result.command}`);
-    process.exitCode = 1;
-    return;
+    return 1;
   }
 
   console.log('\nUpdate selesai. Tutup terminal ini, buka terminal baru, lalu jalankan:');
   console.log('ytconv --version');
   console.log('ytconv');
+  return 0;
 }
 
 async function showStartupUpdateNotice(updateInfo) {
@@ -117,59 +118,50 @@ async function showStartupUpdateNotice(updateInfo) {
   }
 }
 
-let options;
-try {
-  options = parseCliOptions(process.argv.slice(2));
-} catch (error) {
-  console.error(`YTConv: ${error instanceof Error ? error.message : String(error)}\n`);
-  console.error(helpText());
-  process.exit(1);
-}
-
-if (options.noUpdateCheck) process.env.YTCONV_NO_UPDATE_CHECK = '1';
-
-if (options.help) {
-  console.log(helpText());
-  process.exit(0);
-}
-
-if (options.version) {
-  console.log(CLI_VERSION);
-  process.exit(0);
-}
-
-if (options.outputDirectory) process.env.YTCONV_OUTPUT = options.outputDirectory;
-if (options.cookiesPath) process.env.YTCONV_COOKIES = options.cookiesPath;
-
-if (options.checkUpdate) {
-  await printUpdateCheck();
-  process.exit(process.exitCode || 0);
-}
-
-if (options.update) {
-  await performUpdate();
-  process.exit(process.exitCode || 0);
-}
-
-if (options.diagnose) {
-  await printDiagnostics();
-  process.exit(process.exitCode || 0);
-}
-
-try {
-  const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION });
-  if (await showStartupUpdateNotice(updateInfo)) {
-    await performUpdate();
-    process.exit(process.exitCode || 0);
+async function main() {
+  let options;
+  try {
+    options = parseCliOptions(process.argv.slice(2));
+  } catch (error) {
+    console.error(`YTConv: ${error instanceof Error ? error.message : String(error)}\n`);
+    console.error(helpText());
+    return 1;
   }
 
-  await runApp({
-    initialUrl: options.initialUrl,
-    initialMode: options.initialMode,
-    initialPlaylist: options.initialPlaylist,
-  });
-} catch (error) {
-  process.stdout.write('\n');
-  console.error(`YTConv berhenti: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
+  if (options.noUpdateCheck) process.env.YTCONV_NO_UPDATE_CHECK = '1';
+
+  if (options.help) {
+    console.log(helpText());
+    return 0;
+  }
+
+  if (options.version) {
+    console.log(CLI_VERSION);
+    return 0;
+  }
+
+  if (options.outputDirectory) process.env.YTCONV_OUTPUT = options.outputDirectory;
+  if (options.cookiesPath) process.env.YTCONV_COOKIES = options.cookiesPath;
+
+  if (options.checkUpdate) return printUpdateCheck();
+  if (options.update) return performUpdate();
+  if (options.diagnose) return printDiagnostics();
+
+  try {
+    const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION });
+    if (await showStartupUpdateNotice(updateInfo)) return performUpdate();
+
+    await runApp({
+      initialUrl: options.initialUrl,
+      initialMode: options.initialMode,
+      initialPlaylist: options.initialPlaylist,
+    });
+    return 0;
+  } catch (error) {
+    process.stdout.write('\n');
+    console.error(`YTConv berhenti: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
 }
+
+process.exitCode = await main();
