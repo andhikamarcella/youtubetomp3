@@ -23,7 +23,7 @@ ytconv
 Tanpa instalasi global:
 
 ```bash
-npx -y ytconv
+npx -y ytconv@latest
 ```
 
 YTConv menyiapkan `yt-dlp` dan FFmpeg sendiri. Binary `yt-dlp` diperiksa dan disegarkan berkala agar extractor situs tidak terlalu lama.
@@ -43,10 +43,10 @@ ytconv
 Atau:
 
 ```bash
-npx -y ytconv
+npx -y ytconv@latest
 ```
 
-Pemakaian pertama menampilkan progres pemasangan `python-yt-dlp`, `ffmpeg`, dan `yt-dlp-ejs` bila tersedia. Hasil disimpan ke:
+Pemakaian pertama menampilkan progres pemasangan Python, `yt-dlp`, FFmpeg, dan `yt-dlp-ejs` bila tersedia. Hasil disimpan ke:
 
 ```text
 /storage/emulated/0/Download/YTConv
@@ -54,7 +54,7 @@ Pemakaian pertama menampilkan progres pemasangan `python-yt-dlp`, `ffmpeg`, dan 
 
 ## Cara memakai
 
-1. Jalankan `ytconv` atau `npx -y ytconv`.
+1. Jalankan `ytconv` atau `npx -y ytconv@latest`.
 2. Tempel link media.
 3. Klik/tap `convert`, atau tekan `Tab` lalu `Enter`.
 4. Enter dari kotak link juga langsung memulai proses.
@@ -65,7 +65,6 @@ YTConv memakai alternate terminal screen. Aplikasi tetap berjalan di tab termina
 
 - `Esc`
 - `Ctrl+C`
-- `Ctrl+D`
 - Tekan `q` saat tombol/status dipilih
 - Ketik `exit`, `quit`, atau `:q` pada kotak link lalu Enter
 
@@ -81,11 +80,54 @@ Ctrl + Q    ganti kualitas
 Ctrl + F    ganti MP3 / M4A saat mode Audio
 Ctrl + B    ganti sumber cookies
 Ctrl + P    aktif/nonaktifkan playlist
+Ctrl + O    aktif/nonaktifkan auto-open setelah selesai
+Ctrl + H    buka bantuan shortcut
+Ctrl + D    buka diagnostics
 Esc/Ctrl+C  batalkan dan keluar
 O           buka folder hasil
+F           buka file hasil
+C           salin lokasi hasil
 R           convert link lain / retry
 E           edit link setelah error
 ```
+
+## Membuka hasil
+
+Setelah conversion selesai:
+
+- `O` membuka folder hasil.
+- `F` membuka file dengan aplikasi default.
+- `C` menyalin lokasi file/folder ke clipboard.
+- `Ctrl+O` sebelum convert mengaktifkan auto-open.
+
+Windows mencoba memilih file langsung di Explorer lalu memakai beberapa fallback. Linux memakai `xdg-open`/GIO, macOS memakai Finder, dan Termux mencoba Android DocumentsUI serta `termux-open`. Jika file manager tidak bisa dibuka, YTConv tetap menyalin lokasi folder agar dapat ditempel secara manual.
+
+## Command-line tambahan
+
+```text
+ytconv --help
+ytconv --version
+ytconv --diagnose
+ytconv --audio LINK
+ytconv --video LINK
+ytconv --playlist LINK
+ytconv --output PATH LINK
+ytconv --cookies cookies.txt LINK
+```
+
+Contoh Windows:
+
+```cmd
+ytconv --audio --output D:\Music "https://www.youtube.com/watch?v=..."
+```
+
+Contoh Termux:
+
+```bash
+ytconv --audio --output "$HOME/storage/downloads/Music" "https://..."
+```
+
+`ytconv --diagnose` menampilkan versi Node.js, yt-dlp, FFmpeg, runner yang digunakan, folder output, serta status cookies.
 
 ## Cookies dan media login
 
@@ -110,11 +152,8 @@ YTConv otomatis mencari `cookies.txt` di:
 
 Lokasi khusus juga bisa diberikan:
 
-**Windows CMD**
-
 ```cmd
-set YTCONV_COOKIES=C:\Users\Nama\Downloads\cookies.txt
-ytconv
+ytconv --cookies C:\Users\Nama\Downloads\cookies.txt
 ```
 
 Profil browser khusus:
@@ -135,7 +174,7 @@ Android tidak mengizinkan Termux membaca database cookies aplikasi Chrome/Firefo
 atau:
 
 ```bash
-YTCONV_COOKIES="$HOME/storage/downloads/cookies.txt" ytconv
+ytconv --cookies "$HOME/storage/downloads/cookies.txt"
 ```
 
 Tekan `Ctrl+B` sampai status menunjukkan `cookies:cookies.txt`.
@@ -164,17 +203,20 @@ ytconv "https://www.youtube.com/watch?v=..."
 
 ## Folder hasil khusus
 
-**Windows CMD**
-
 ```cmd
-set YTCONV_OUTPUT=D:\Video\YTConv
-ytconv
+ytconv --output D:\Video\YTConv
 ```
 
-**Linux, macOS, Termux**
-
 ```bash
-YTCONV_OUTPUT="$HOME/MyDownloads" ytconv
+ytconv --output "$HOME/MyDownloads"
+```
+
+Environment variable lama tetap didukung:
+
+```text
+YTCONV_OUTPUT
+YTCONV_COOKIES
+YTCONV_BROWSER_PROFILE
 ```
 
 ## Menjalankan dari repository
