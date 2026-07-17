@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Powerful one-link social media converter TUI for desktop and Termux.",
   "type": "module",
   "bin": "bin/ytconv.js",
