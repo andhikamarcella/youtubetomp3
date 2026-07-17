@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { spawn } from 'node:child_process';
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Text, render, useApp, useInput } from 'ink';
 import figlet from 'figlet';
@@ -20,9 +19,15 @@ import {
   termuxSharedDownloadsDirectory,
 } from './platform.js';
 import {
+  copyText,
+  openOutputFile,
+  openOutputLocation,
+} from './system-actions.js';
+import {
   createTerminalInputDecoder,
   readClipboardText,
 } from './terminal-input.js';
+import { CLI_VERSION } from './version.js';
 
 figlet.parseFont('ANSI Shadow', ansiShadowFont);
 figlet.parseFont('Small', smallFont);
@@ -32,6 +37,7 @@ const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480'];
 const AUDIO_QUALITIES = ['0', '320K', '256K', '192K', '128K'];
 const AUDIO_FORMATS = ['mp3', 'm4a'];
 const EXIT_COMMANDS = new Set(['q', 'quit', 'exit', ':q']);
+const OVERLAY_STAGES = new Set(['help', 'diagnostics']);
 
 const LOGO_WIDE = figlet.textSync('YTCONV', {
   font: 'ANSI Shadow',
@@ -77,33 +83,6 @@ function makeProgressBar(percent, width = 34) {
   return `${'█'.repeat(completed)}${'░'.repeat(Math.max(0, width - completed))}`;
 }
 
-function openDirectory(directory) {
-  let command;
-  let args;
-
-  if (isTermux()) {
-    command = 'termux-open';
-    args = [directory];
-  } else if (process.platform === 'win32') {
-    command = 'explorer.exe';
-    args = [directory];
-  } else if (process.platform === 'darwin') {
-    command = 'open';
-    args = [directory];
-  } else {
-    command = 'xdg-open';
-    args = [directory];
-  }
-
-  const child = spawn(command, args, {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-  });
-  child.on('error', () => {});
-  child.unref();
-}
-
 function modeSummary({ mode, resolution, audioFormat, audioQuality }) {
   if (mode === 'video') {
     return resolution === 'best'
@@ -145,6 +124,14 @@ function displayInput(value, width) {
   return `…${characters.slice(-(available - 1)).join('')}`;
 }
 
+function runnerLabel(dependencies) {
+  const runner = dependencies.ytDlp;
+  if (runner.displayPath) return runner.displayPath;
+  if (typeof runner.path === 'string') return runner.path;
+  if (runner.path?.path) return runner.path.path;
+  return '-';
+}
+
 function Logo({ compact }) {
   return h(
     Box,
@@ -162,13 +149,15 @@ function SettingLine({
   audioQuality,
   cookieSource,
   playlist,
+  autoOpen,
 }) {
   return h(
     Text,
     { dimColor: true },
     `${modeSummary({ mode, resolution, audioFormat, audioQuality })}`
       + `  ·  cookies:${cookieSourceLabel(cookieSource)}`
-      + `  ·  playlist:${playlist ? 'on' : 'off'}`,
+      + `  ·  playlist:${playlist ? 'on' : 'off'}`
+      + `  ·  auto-open:${autoOpen ? 'on' : 'off'}`,
   );
 }
 
@@ -177,12 +166,14 @@ function HomeScreen(props) {
     panelWidth,
     url,
     inputError,
+    actionMessage,
     mode,
     resolution,
     audioFormat,
     audioQuality,
     cookieSource,
     playlist,
+    autoOpen,
     activeControl,
   } = props;
 
@@ -225,6 +216,7 @@ function HomeScreen(props) {
       ),
     ),
     inputError ? h(Text, { inverse: true, wrap: 'wrap' }, ` ${inputError} `) : null,
+    actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
     h(
       Box,
       { marginTop: 1 },
@@ -235,10 +227,12 @@ function HomeScreen(props) {
         audioQuality,
         cookieSource,
         playlist,
+        autoOpen,
       }),
     ),
     h(Text, { dimColor: true }, 'Ctrl+V/right-click paste · click convert · Tab+Enter fallback'),
-    h(Text, { dimColor: true }, '^g video/audio · ^q quality · ^b cookies · ^p playlist · esc/^c quit'),
+    h(Text, { dimColor: true }, '^g video/audio · ^q quality · ^b cookies · ^p playlist · ^o auto-open'),
+    h(Text, { dimColor: true }, '^h help · ^d diagnostics · esc/^c quit'),
     mode === 'audio' ? h(Text, { dimColor: true }, '^f MP3/M4A · type exit then Enter to close') : null,
   );
 }
@@ -282,7 +276,7 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
   );
 }
 
-function DoneScreen({ media, panelWidth, outputDirectory, outputPath }) {
+function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMessage }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
@@ -293,11 +287,13 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath }) {
       h(Text, { bold: true, inverse: true }, ' conversion complete '),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
     ),
-    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'o open folder · r another link · q/esc quit')),
+    actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
+    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'o open folder · f open file · c copy path · r another link')),
+    h(Text, { dimColor: true }, 'h help · d diagnostics · q/esc quit'),
   );
 }
 
-function ErrorScreen({ error, media, panelWidth, cookieSource }) {
+function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
@@ -309,12 +305,73 @@ function ErrorScreen({ error, media, panelWidth, cookieSource }) {
       h(Text, { wrap: 'wrap' }, error),
       h(Text, { dimColor: true }, `cookies: ${cookieSourceLabel(cookieSource)}`),
     ),
+    actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
     h(
       Box,
       { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { dimColor: true }, 'r retry · e edit link · ^b change cookies · q/esc quit'),
+      h(Text, { dimColor: true }, 'r retry · e edit link · ^b change cookies · d diagnostics · q/esc quit'),
       h(Text, { dimColor: true }, 'DRM, paid media, deleted posts, or inaccessible private posts cannot be bypassed.'),
     ),
+  );
+}
+
+function HelpScreen({ panelWidth, termux }) {
+  const rows = [
+    ['Enter / click', 'start conversion'],
+    ['Tab', 'move between input and convert'],
+    ['Ctrl+V / right-click', 'paste link'],
+    ['Ctrl+G', 'video or audio'],
+    ['Ctrl+Q', 'resolution or audio quality'],
+    ['Ctrl+F', 'MP3 or M4A in audio mode'],
+    ['Ctrl+B', 'cookies source'],
+    ['Ctrl+P', 'playlist on or off'],
+    ['Ctrl+O', 'auto-open result on or off'],
+    ['O / F / C', 'open folder / open file / copy path after conversion'],
+    ['Esc / Ctrl+C / Q', 'close or cancel'],
+  ];
+
+  return h(
+    Box,
+    { width: panelWidth, flexDirection: 'column', marginTop: 1 },
+    h(Text, { bold: true, inverse: true }, ` YTConv ${CLI_VERSION} help `),
+    ...rows.map(([key, description]) => h(
+      Box,
+      { key, flexDirection: 'row' },
+      h(Box, { width: 24 }, h(Text, { bold: true }, key)),
+      h(Text, { dimColor: true }, description),
+    )),
+    h(Text, { dimColor: true }, termux
+      ? 'Termux saves files to Download/YTConv. Folder opening depends on the installed Android file manager.'
+      : 'Use ytconv --help or ytconv --diagnose outside the TUI for command-line help.'),
+    h(Box, { marginTop: 1 }, h(Text, null, 'b back · q/esc quit')),
+  );
+}
+
+function DiagnosticsScreen({ dependencies, panelWidth, outputDirectory, cookieSource }) {
+  const rows = [
+    ['YTConv', CLI_VERSION],
+    ['Node.js', process.version],
+    ['Platform', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
+    ['yt-dlp', dependencies.ytDlp.version || 'not found'],
+    ['Runner', runnerLabel(dependencies)],
+    ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
+    ['FFmpeg path', dependencies.ffmpeg.path || '-'],
+    ['Output', outputDirectory],
+    ['Cookies', cookieSourceLabel(cookieSource)],
+  ];
+
+  return h(
+    Box,
+    { width: panelWidth, flexDirection: 'column', marginTop: 1 },
+    h(Text, { bold: true, inverse: true }, ' diagnostics '),
+    ...rows.map(([label, value]) => h(
+      Box,
+      { key: label, flexDirection: 'row' },
+      h(Box, { width: 16 }, h(Text, { bold: true }, label)),
+      h(Text, { dimColor: true, wrap: 'truncate-end' }, String(value)),
+    )),
+    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'Outside the app: ytconv --diagnose')),
+    h(Text, null, 'b back · q/esc quit'),
   );
 }
 
@@ -336,7 +393,7 @@ function MissingDependencies({ dependencies, panelWidth }) {
       h(Text, null, details || 'YTConv could not prepare its converter tools.'),
       h(Text, { dimColor: true }, termuxCommand || 'Connect to the internet, then reinstall or run npm rebuild ytconv.'),
     ),
-    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, 'q/esc/^c quit')),
+    h(Box, { marginTop: 1 }, h(Text, { dimColor: true }, '^d diagnostics · q/esc/^c quit')),
   );
 }
 
@@ -350,7 +407,7 @@ function logoLineCount(compact) {
 function controlBounds({ columns, rows, panelWidth, compactLogo, mode }) {
   const rootHeight = Math.max(20, rows - 1);
   const logoHeight = logoLineCount(compactLogo) + 2;
-  const homeHeight = 1 + 1 + 3 + 1 + 1 + 2 + (mode === 'audio' ? 1 : 0);
+  const homeHeight = 1 + 1 + 3 + 1 + 1 + 3 + (mode === 'audio' ? 1 : 0);
   const totalHeight = logoHeight + homeHeight;
   const rootTop = Math.max(1, Math.floor((rootHeight - totalHeight) / 2) + 1);
   const panelLeft = Math.max(1, Math.floor((columns - panelWidth) / 2) + 1);
@@ -381,21 +438,29 @@ function inside(event, bounds) {
     && event.y <= bounds.bottom;
 }
 
-function App({ dependencies, initialUrl = '' }) {
+function App({
+  dependencies,
+  initialUrl = '',
+  initialMode = 'video',
+  initialPlaylist = false,
+}) {
   const { exit } = useApp();
   const termux = dependencies.platform?.termux ?? isTermux();
   const cookieOptions = cookieSourcesForPlatform(termux);
   const decoderRef = useRef(createTerminalInputDecoder());
   const [url, setUrl] = useState(initialUrl);
   const [stage, setStage] = useState('home');
-  const [mode, setMode] = useState('video');
+  const [overlayReturnStage, setOverlayReturnStage] = useState('home');
+  const [mode, setMode] = useState(initialMode === 'audio' ? 'audio' : 'video');
   const [resolution, setResolution] = useState('best');
   const [audioFormat, setAudioFormat] = useState('mp3');
   const [audioQuality, setAudioQuality] = useState('0');
   const [cookieSource, setCookieSource] = useState(process.env.YTCONV_COOKIES ? 'file' : 'none');
-  const [playlist, setPlaylist] = useState(false);
+  const [playlist, setPlaylist] = useState(Boolean(initialPlaylist));
+  const [autoOpen, setAutoOpen] = useState(false);
   const [activeControl, setActiveControl] = useState('input');
   const [inputError, setInputError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
   const [media, setMedia] = useState(null);
   const [progress, setProgress] = useState({ percent: '0%', speed: '', eta: '' });
   const [statusText, setStatusText] = useState('');
@@ -406,7 +471,7 @@ function App({ dependencies, initialUrl = '' }) {
 
   const columns = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
-  const panelWidth = Math.max(34, Math.min(72, columns - 4));
+  const panelWidth = Math.max(34, Math.min(76, columns - 4));
   const compactLogo = columns < 78;
   const outputDirectory = process.env.YTCONV_OUTPUT
     ? path.resolve(process.env.YTCONV_OUTPUT)
@@ -417,6 +482,13 @@ function App({ dependencies, initialUrl = '' }) {
     controllerRef.current?.abort();
     exit();
   };
+
+  const showOverlay = (nextStage) => {
+    if (!OVERLAY_STAGES.has(stage)) setOverlayReturnStage(stage);
+    setStage(nextStage);
+  };
+
+  const closeOverlay = () => setStage(overlayReturnStage);
 
   const pasteClipboard = () => {
     const clipboard = readClipboardText({ termux });
@@ -429,7 +501,34 @@ function App({ dependencies, initialUrl = '' }) {
 
     setUrl((current) => applyIncomingText(current, clipboard));
     setInputError('');
+    setActionMessage('link pasted from clipboard');
     setActiveControl('input');
+  };
+
+  const handleOpenFolder = async (filePath = outputPath) => {
+    setActionMessage('opening output location...');
+    const copied = copyText(outputDirectory, { termux });
+    const result = await openOutputLocation({ directory: outputDirectory, filePath });
+    if (result.ok) {
+      setActionMessage(`opened with ${result.label}${copied ? ' · folder path copied' : ''}`);
+    } else {
+      setActionMessage(`could not open folder${copied ? ' · path copied' : ''}: ${outputDirectory}`);
+    }
+    return result;
+  };
+
+  const handleOpenFile = async () => {
+    setActionMessage('opening downloaded file...');
+    const result = await openOutputFile(outputPath);
+    setActionMessage(result.ok
+      ? `opened with ${result.label}`
+      : `could not open file: ${result.error?.message || outputPath}`);
+  };
+
+  const handleCopyPath = () => {
+    const target = outputPath || outputDirectory;
+    const copied = copyText(target, { termux });
+    setActionMessage(copied ? 'output path copied to clipboard' : `copy failed · path: ${target}`);
   };
 
   const reset = () => {
@@ -438,8 +537,10 @@ function App({ dependencies, initialUrl = '' }) {
     decoderRef.current.reset();
     setUrl('');
     setStage('home');
+    setOverlayReturnStage('home');
     setActiveControl('input');
     setInputError('');
+    setActionMessage('');
     setMedia(null);
     setProgress({ percent: '0%', speed: '', eta: '' });
     setStatusText('');
@@ -464,6 +565,7 @@ function App({ dependencies, initialUrl = '' }) {
 
     setUrl(normalizedUrl);
     setInputError('');
+    setActionMessage('');
     setError('');
     setMedia(null);
     setOutputPath('');
@@ -521,10 +623,13 @@ function App({ dependencies, initialUrl = '' }) {
         },
       });
 
-      setOutputPath(result.outputPath || outputDirectory);
+      const finalPath = result.outputPath || outputDirectory;
+      setOutputPath(finalPath);
       setProgress((current) => ({ ...current, percent: '100%' }));
       setStatusText('complete');
       setStage('done');
+
+      if (autoOpen) await handleOpenFolder(finalPath);
     } catch (caught) {
       if (controller.signal.aborted) return;
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -573,11 +678,26 @@ function App({ dependencies, initialUrl = '' }) {
     }
 
     const directQuit = key.escape
-      || (key.ctrl && (lower === 'c' || lower === 'd'))
+      || (key.ctrl && lower === 'c')
       || (lower === 'q' && (stage !== 'home' || activeControl === 'convert' || !hasDependencies));
 
     if (directQuit) {
       quit();
+      return;
+    }
+
+    if (OVERLAY_STAGES.has(stage)) {
+      if (lower === 'b' || key.backspace) closeOverlay();
+      return;
+    }
+
+    if (key.ctrl && lower === 'd') {
+      showOverlay('diagnostics');
+      return;
+    }
+
+    if (key.ctrl && lower === 'h') {
+      showOverlay('help');
       return;
     }
 
@@ -589,6 +709,12 @@ function App({ dependencies, initialUrl = '' }) {
     }
 
     const configurable = stage === 'home' || stage === 'error';
+
+    if (configurable && key.ctrl && lower === 'o') {
+      setAutoOpen((current) => !current);
+      setActionMessage(`auto-open ${autoOpen ? 'disabled' : 'enabled'}`);
+      return;
+    }
 
     if (stage === 'home' && key.tab) {
       setActiveControl((current) => (current === 'input' ? 'convert' : 'input'));
@@ -632,8 +758,12 @@ function App({ dependencies, initialUrl = '' }) {
     }
 
     if (stage === 'done') {
-      if (lower === 'o') openDirectory(outputDirectory);
+      if (lower === 'o') void handleOpenFolder();
+      else if (lower === 'f') void handleOpenFile();
+      else if (lower === 'c') handleCopyPath();
       else if (lower === 'r') reset();
+      else if (lower === 'h') showOverlay('help');
+      else if (lower === 'd') showOverlay('diagnostics');
       return;
     }
 
@@ -642,7 +772,8 @@ function App({ dependencies, initialUrl = '' }) {
       else if (lower === 'e') {
         setStage('home');
         setActiveControl('input');
-      }
+      } else if (lower === 'h') showOverlay('help');
+      else if (lower === 'd') showOverlay('diagnostics');
       return;
     }
 
@@ -651,43 +782,69 @@ function App({ dependencies, initialUrl = '' }) {
     if (key.backspace || key.delete) {
       setUrl((current) => Array.from(current).slice(0, -1).join(''));
       setInputError('');
+      setActionMessage('');
       return;
     }
 
     if (key.ctrl && lower === 'l') {
       setUrl('');
       setInputError('');
+      setActionMessage('');
       return;
     }
 
     if (decoded.text) {
       setUrl((current) => applyIncomingText(current, decoded.text));
       setInputError('');
+      setActionMessage('');
     }
   });
 
   let content;
-  if (!hasDependencies) {
+  if (stage === 'help') {
+    content = h(HelpScreen, { panelWidth, termux });
+  } else if (stage === 'diagnostics') {
+    content = h(DiagnosticsScreen, {
+      dependencies,
+      panelWidth,
+      outputDirectory,
+      cookieSource,
+    });
+  } else if (!hasDependencies) {
     content = h(MissingDependencies, { dependencies, panelWidth });
   } else if (stage === 'home') {
     content = h(HomeScreen, {
       panelWidth,
       url,
       inputError,
+      actionMessage,
       mode,
       resolution,
       audioFormat,
       audioQuality,
       cookieSource,
       playlist,
+      autoOpen,
       activeControl,
     });
   } else if (stage === 'probing' || stage === 'downloading') {
     content = h(WorkingScreen, { stage, media, progress, statusText, panelWidth });
   } else if (stage === 'done') {
-    content = h(DoneScreen, { media, panelWidth, outputDirectory, outputPath });
+    content = h(DoneScreen, {
+      media,
+      panelWidth,
+      outputDirectory,
+      outputPath,
+      actionMessage,
+    });
   } else {
-    content = h(ErrorScreen, { error, media, panelWidth, cookieSource });
+    content = h(ErrorScreen, {
+      error,
+      media,
+      panelWidth,
+      cookieSource,
+      actionMessage,
+    });
   }
 
   return h(
@@ -719,8 +876,12 @@ function leaveAlternateScreen(enabled) {
   process.stdout.write('\u001b[?1000l\u001b[?1006l\u001b[?1049l');
 }
 
-export async function runApp({ initialUrl = '' } = {}) {
-  process.title = 'YTConv';
+export async function runApp({
+  initialUrl = '',
+  initialMode = 'video',
+  initialPlaylist = false,
+} = {}) {
+  process.title = `YTConv ${CLI_VERSION}`;
   console.clear();
   process.stdout.write('Preparing YTConv...\r');
   let dependencies = await inspectDependencies();
@@ -731,12 +892,12 @@ export async function runApp({ initialUrl = '' } = {}) {
   ) {
     console.clear();
     console.log('YTConv first-run setup for Termux');
-    console.log('Installing Android-compatible yt-dlp and FFmpeg. Please wait...\n');
+    console.log('Installing Python yt-dlp and FFmpeg. Please wait...\n');
     try {
       await prepareTermuxDependencies();
     } catch (error) {
       console.error(`\nSetup gagal: ${error instanceof Error ? error.message : String(error)}`);
-      console.error('Coba jalankan: pkg update && pkg install -y python-yt-dlp ffmpeg');
+      console.error('Coba: pkg update && pkg install -y python ffmpeg && python -m pip install -U yt-dlp');
       await sleep(1500);
     }
     dependencies = await inspectDependencies();
@@ -746,7 +907,12 @@ export async function runApp({ initialUrl = '' } = {}) {
   let instance;
   try {
     console.clear();
-    instance = render(h(App, { dependencies, initialUrl }), { exitOnCtrlC: false });
+    instance = render(h(App, {
+      dependencies,
+      initialUrl,
+      initialMode,
+      initialPlaylist,
+    }), { exitOnCtrlC: false });
     await instance.waitUntilExit();
   } finally {
     instance?.unmount();
