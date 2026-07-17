@@ -33,6 +33,11 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check
 
+      - name: Check native iSH frontend
+        run: |
+          npm run check:ish
+          npm run test:ish
+
       - name: Run CLI unit tests
         run: |
           set -o pipefail
@@ -55,7 +60,11 @@ jobs:
           node -e "import('ffmpeg-static').then(({default:p}) => console.log(p))"
 
       - name: Preview npm package
-        run: npm pack --dry-run
+        run: |
+          npm pack --dry-run
+          npm pack --json > package-preview.json
+          grep -q 'ish/ytconv.py' package-preview.json
+          grep -q 'scripts/install-ish.sh' package-preview.json
 
   windows-update-check:
     runs-on: windows-latest
