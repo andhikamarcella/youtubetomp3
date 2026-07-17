@@ -27,11 +27,18 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Install bundled CLI dependencies
         run: npm install
 
       - name: Check JavaScript syntax
         run: npm run check
+
+      - name: Verify included tools
+        run: |
+          test -x vendor/yt-dlp
+          test -x node_modules/ffmpeg-static/ffmpeg
+          ./vendor/yt-dlp --version
+          node -e "import('ffmpeg-static').then(({default:p}) => console.log(p))"
 
       - name: Preview npm package
         run: npm pack --dry-run
