@@ -59,6 +59,13 @@ export function effectiveMediaMode({ url, mode = 'auto', platformHint = 'auto' }
   return socialRouteMode({ url, requestedMode: mode, platformHint });
 }
 
+export function automaticFallbackMode({ requestedMode = 'auto', effectiveMode = 'auto' } = {}) {
+  if (requestedMode !== 'auto' || effectiveMode === 'audio') return '';
+  if (effectiveMode === 'image') return 'video';
+  if (effectiveMode === 'video') return 'image';
+  return 'video';
+}
+
 function restoreEnvironment(previous) {
   for (const [key, value] of Object.entries(previous)) {
     if (value === undefined) delete process.env[key];
@@ -232,12 +239,20 @@ function accessHint({ url, cookieConfig, originalError }) {
   return `${originalError} ${platform}: ${browserHint}`;
 }
 
+async function runDownloadMode({ mode, options, rest, url }) {
+  return withEngineMode(mode, () => downloadWithEngines({
+    ...rest,
+    options: { ...options, url, mode: mode === 'auto' ? 'video' : mode },
+  }));
+}
+
 export async function downloadMedia({ options, ...rest }) {
   const url = cleanMediaUrl(options.url);
   assertPlatformSelection(url, options.platformHint || 'auto');
+  const requestedMode = options.mode || 'auto';
   const mode = effectiveMediaMode({
     url,
-    mode: options.mode,
+    mode: requestedMode,
     platformHint: options.platformHint,
   });
   const outputDirectory = options.outputDirectory;
@@ -245,16 +260,38 @@ export async function downloadMedia({ options, ...rest }) {
 
   let result;
   try {
-    result = await withEngineMode(mode, () => downloadWithEngines({
-      ...rest,
-      options: { ...options, url, mode: mode === 'auto' ? 'video' : mode },
-    }));
-  } catch (error) {
-    throw new Error(accessHint({
-      url,
-      cookieConfig: options.cookieConfig,
-      originalError: error instanceof Error ? error.message : String(error),
-    }));
+    result = await runDownloadMode({ mode, options, rest, url });
+  } catch (primaryError) {
+    const fallbackMode = automaticFallbackMode({
+      requestedMode,
+      effectiveMode: mode,
+    });
+
+    if (!fallbackMode) {
+      throw new Error(accessHint({
+        url,
+        cookieConfig: options.cookieConfig,
+        originalError: primaryError instanceof Error ? primaryError.message : String(primaryError),
+      }));
+    }
+
+    rest.onLog?.(
+      `Engine ${mode === 'image' ? 'gallery-dl' : 'yt-dlp'} gagal; mencoba `
+      + `${fallbackMode === 'image' ? 'gallery-dl' : 'yt-dlp'}...`,
+      true,
+    );
+
+    try {
+      result = await runDownloadMode({ mode: fallbackMode, options, rest, url });
+    } catch (fallbackError) {
+      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
+      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      throw new Error(accessHint({
+        url,
+        cookieConfig: options.cookieConfig,
+        originalError: `${primaryMessage} Fallback ${fallbackMode}: ${fallbackMessage}`,
+      }));
+    }
   }
 
   const after = await listFiles(outputDirectory);
