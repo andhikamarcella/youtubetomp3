@@ -67,6 +67,14 @@ jobs:
           grep -q 'ish/ytconv.py' package-preview.json
           grep -q 'scripts/install-ish.sh' package-preview.json
 
+      - name: Simulate Termux npm install without desktop optional dependencies
+        run: |
+          TARBALL=$(npm pack --silent)
+          rm -rf /tmp/ytconv-termux-sim
+          mkdir -p /tmp/ytconv-termux-sim
+          npm install --prefix /tmp/ytconv-termux-sim "$PWD/$TARBALL" --omit=optional --ignore-scripts
+          node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --version
+
   windows-update-check:
     runs-on: windows-latest
 
