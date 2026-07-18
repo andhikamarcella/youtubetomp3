@@ -10,8 +10,8 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv public release is version 1.0.2', () => {
-  assert.equal(manifest.version, '1.0.2');
+test('YTConv public release is version 1.1.0', () => {
+  assert.equal(manifest.version, '1.1.0');
 });
 
 test('native iSH frontend and installer are included in the package source', () => {
@@ -21,11 +21,10 @@ test('native iSH frontend and installer are included in the package source', () 
   assert.ok(manifest.files.includes('ish'));
 });
 
-test('gallery engine recognizes social image, carousel, reel, and story sites', () => {
+test('gallery engine recognizes social image and mixed-post sites', () => {
   const urls = [
     'https://www.instagram.com/p/ABC123/',
     'https://www.instagram.com/stories/example/123/',
-    'https://www.instagram.com/reel/ABC123/',
     'https://www.pinterest.com/pin/123/',
     'https://www.tiktok.com/@user/photo/123',
     'https://x.com/user/status/123',
@@ -35,8 +34,8 @@ test('gallery engine recognizes social image, carousel, reel, and story sites', 
   assert.equal(isGalleryPreferredUrl('https://www.youtube.com/watch?v=test'), false);
 });
 
-test('parses image, stories, all-media, video, and automatic modes', () => {
-  assert.equal(parseCliOptions(['--image']).forceGallery, true);
+test('parses platform-first and legacy compatibility modes', () => {
+  assert.equal(parseCliOptions(['--platform', 'instagram']).initialPlatform, 'instagram');
   assert.equal(parseCliOptions(['--stories']).galleryInclude, 'stories');
   assert.equal(parseCliOptions(['--all-media']).galleryInclude, 'all');
   assert.equal(parseCliOptions(['--video']).forceVideo, true);
