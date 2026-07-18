@@ -134,9 +134,10 @@ function genericGalleryMetadata(url) {
 export async function inspectMedia(options) {
   const url = cleanMediaUrl(options.url);
   assertPlatformSelection(url, options.platformHint || 'auto');
+  const requestedMode = options.mode || 'auto';
   const mode = effectiveMediaMode({
     url,
-    mode: options.mode,
+    mode: requestedMode,
     platformHint: options.platformHint,
   });
 
@@ -144,7 +145,17 @@ export async function inspectMedia(options) {
   // though the real download works. Let the real download be the source of truth.
   if (mode === 'image') return genericGalleryMetadata(url);
 
-  return withEngineMode(mode, () => inspectWithEngines({ ...options, url }));
+  try {
+    return await withEngineMode(mode, () => inspectWithEngines({ ...options, url }));
+  } catch (primaryError) {
+    const fallbackMode = automaticFallbackMode({
+      requestedMode,
+      effectiveMode: mode,
+    });
+    if (!fallbackMode) throw primaryError;
+    if (fallbackMode === 'image') return genericGalleryMetadata(url);
+    return withEngineMode(fallbackMode, () => inspectWithEngines({ ...options, url }));
+  }
 }
 
 async function listFiles(directory) {
