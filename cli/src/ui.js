@@ -9,7 +9,7 @@ import smallFont from 'figlet/importable-fonts/Small.js';
 import {
   cookieSourceLabel,
   cookieSourcesForPlatform,
-  resolveCookieConfig,
+  resolveCookieConfigs,
 } from './cookies.js';
 import { inspectDependencies, prepareTermuxDependencies } from './dependencies.js';
 import { downloadMedia, inspectMedia } from './media-controller.js';
@@ -18,6 +18,12 @@ import {
   isTermux,
   termuxSharedDownloadsDirectory,
 } from './platform.js';
+import {
+  SOCIAL_PLATFORM_KEYS,
+  detectSocialPlatform,
+  socialPlatformLabel,
+  socialPlatformSummary,
+} from './social-platforms.js';
 import { copyText, openOutputFile, openOutputLocation } from './system-actions.js';
 import { createTerminalInputDecoder, readClipboardText } from './terminal-input.js';
 import { CLI_VERSION } from './version.js';
@@ -26,10 +32,7 @@ figlet.parseFont('ANSI Shadow', ansiShadowFont);
 figlet.parseFont('Small', smallFont);
 
 const h = React.createElement;
-const MODES = ['auto', 'video', 'audio', 'image'];
 const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480'];
-const AUDIO_QUALITIES = ['0', '320K', '256K', '192K', '128K'];
-const AUDIO_FORMATS = ['mp3', 'm4a'];
 const IMAGE_FORMATS = ['original', 'jpg', 'png', 'webp'];
 const EXIT_COMMANDS = new Set(['q', 'quit', 'exit', ':q']);
 const OVERLAYS = new Set(['help', 'diagnostics']);
@@ -96,38 +99,38 @@ function durationText(seconds) {
     : `${minutes}:${String(secs).padStart(2, '0')}`;
 }
 
-function modeLabel({ mode, resolution, audioFormat, audioQuality, imageFormat }) {
-  if (mode === 'auto') return 'auto · video/image detection';
-  if (mode === 'image') return `image · ${imageFormat.toUpperCase()}`;
-  if (mode === 'audio') {
-    if (audioFormat === 'm4a') return 'audio · M4A';
-    return audioQuality === '0' ? 'audio · MP3 best VBR' : `audio · MP3 ${audioQuality}`;
-  }
-  return resolution === 'best' ? 'video · best MP4/MKV' : `video · max ${resolution}p`;
-}
-
 function Logo({ compact }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center' },
     h(Text, { bold: true }, compact ? LOGO_COMPACT : LOGO_WIDE),
-    h(Text, null, 'paste a media link. convert. done.'),
-    h(Text, { dimColor: true }, 'video · audio · image · carousel · reel · story · supported sites'),
+    h(Text, null, 'paste a social link. convert. done.'),
+    h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + lainnya'),
   );
 }
 
 function HomeScreen(props) {
   const {
-    panelWidth, url, inputError, actionMessage, mode, resolution, audioFormat,
-    audioQuality, imageFormat, cookieSource, playlist, autoOpen, activeControl,
+    panelWidth,
+    url,
+    inputError,
+    actionMessage,
+    platformHint,
+    resolution,
+    imageFormat,
+    cookieSource,
+    playlist,
+    autoOpen,
+    activeControl,
   } = props;
   const inputWidth = Math.max(24, panelWidth - 14);
   const buttonFocused = activeControl === 'convert';
+  const platform = socialPlatformSummary({ selected: platformHint, url });
 
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, null, 'Paste a link')),
+    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, null, 'Paste link sosmed')),
     h(
       Box,
       { width: panelWidth, flexDirection: 'row' },
@@ -159,18 +162,16 @@ function HomeScreen(props) {
       Box,
       { marginTop: 1 },
       h(Text, { dimColor: true },
-        `${modeLabel({ mode, resolution, audioFormat, audioQuality, imageFormat })}`
+        `${platform}`
         + ` · cookies:${cookieSourceLabel(cookieSource)}`
+        + ` · kualitas:${resolution}`
+        + ` · gambar:${imageFormat.toUpperCase()}`
         + ` · playlist:${playlist ? 'on' : 'off'}`
         + ` · auto-open:${autoOpen ? 'on' : 'off'}`),
     ),
-    h(Text, { dimColor: true }, 'Ctrl+G mode: AUTO → VIDEO → AUDIO → IMAGE'),
-    h(Text, { dimColor: true }, mode === 'image'
-      ? 'Ctrl+F image format: ORIGINAL → JPG → PNG → WEBP'
-      : mode === 'audio'
-        ? 'Ctrl+F MP3/M4A · Ctrl+Q audio quality'
-        : 'Ctrl+Q video quality · Ctrl+B cookies · Ctrl+P playlist'),
-    h(Text, { dimColor: true }, 'Ctrl+O auto-open · Ctrl+H help · Ctrl+D diagnostics · Esc/Ctrl+C quit'),
+    h(Text, { dimColor: true }, 'Ctrl+G pilih sosmed: AUTO → YouTube → Instagram → Facebook → TikTok → X → lainnya'),
+    h(Text, { dimColor: true }, 'Ctrl+F format gambar · Ctrl+Q kualitas · Ctrl+B cookies · Ctrl+P playlist'),
+    h(Text, { dimColor: true }, 'Ctrl+O auto-open · Ctrl+H bantuan · Ctrl+D diagnostics · Esc/Ctrl+C keluar'),
   );
 }
 
@@ -192,13 +193,13 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
     h(MediaCard, { media, panelWidth }),
     h(Box, { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { bold: true }, stage === 'probing' ? 'checking the link...' : progressBar(progress.percent)),
+      h(Text, { bold: true }, stage === 'probing' ? 'checking the social link...' : progressBar(progress.percent)),
       h(Text, { dimColor: true }, stage === 'probing'
-        ? 'selecting yt-dlp or gallery-dl'
+        ? 'detecting platform and choosing the best engine'
         : [progress.percent || '0%', progress.speed, progress.eta ? `ETA ${progress.eta}` : ''].filter(Boolean).join(' · ')),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, statusText || 'please wait'),
     ),
-    h(Text, { dimColor: true }, 'Esc/Ctrl+C cancels and closes'),
+    h(Text, { dimColor: true }, 'Esc/Ctrl+C membatalkan dan menutup'),
   );
 }
 
@@ -212,8 +213,8 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMess
       h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
-    h(Text, { dimColor: true }, 'O open folder · F open file · C copy path · R another link'),
-    h(Text, { dimColor: true }, 'H help · D diagnostics · Q/Esc quit'),
+    h(Text, { dimColor: true }, 'O buka folder · F buka file · C copy lokasi · R link lain'),
+    h(Text, { dimColor: true }, 'H bantuan · D diagnostics · Q/Esc keluar'),
   );
 }
 
@@ -228,21 +229,21 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage }) 
       h(Text, { dimColor: true }, `cookies: ${cookieSourceLabel(cookieSource)}`),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
-    h(Text, { dimColor: true }, 'R retry · E edit link · Ctrl+B cookies · D diagnostics · Q/Esc quit'),
-    h(Text, { dimColor: true }, 'Private/login-only media needs valid cookies and account access.'),
+    h(Text, { dimColor: true }, 'R coba lagi · E edit link · Ctrl+B cookies · D diagnostics · Q/Esc keluar'),
+    h(Text, { dimColor: true }, 'Konten publik dicoba tanpa cookies. Konten login-only membutuhkan akses akun yang sah.'),
   );
 }
 
 function HelpScreen({ panelWidth, termux }) {
   const rows = [
-    ['Ctrl+G', 'cycle Auto, Video, Audio, Image'],
-    ['Ctrl+F', 'audio format or image format'],
-    ['Ctrl+Q', 'video/audio quality'],
-    ['Ctrl+B', 'cookies source'],
-    ['Ctrl+P', 'playlist'],
-    ['Ctrl+O', 'auto-open result'],
-    ['Enter/click', 'convert'],
-    ['O / F / C', 'open folder / file / copy path'],
+    ['Ctrl+G', 'pilih nama sosmed / AUTO semua sosmed'],
+    ['Ctrl+F', 'format gambar ORIGINAL/JPG/PNG/WEBP'],
+    ['Ctrl+Q', 'kualitas hasil video'],
+    ['Ctrl+B', 'AUTO cookies / off / cookies.txt / browser'],
+    ['Ctrl+P', 'playlist atau kumpulan post'],
+    ['Ctrl+O', 'buka hasil otomatis'],
+    ['Enter/click', 'convert link'],
+    ['O / F / C', 'buka folder / file / copy lokasi'],
   ];
   return h(
     Box,
@@ -252,17 +253,18 @@ function HelpScreen({ panelWidth, termux }) {
       h(Box, { width: 18 }, h(Text, { bold: true }, key)),
       h(Text, { dimColor: true }, description))),
     h(Text, { dimColor: true }, termux
-      ? 'Termux output: Download/YTConv. Instagram login-only media needs cookies.txt.'
-      : 'Image mode downloads complete carousels; choose JPG/PNG/WEBP with Ctrl+F.'),
-    h(Text, null, 'B back · Q/Esc quit'),
+      ? 'Termux otomatis mencari cookies.txt di Download dan Download/YTConv. Database privat browser Android tidak dapat dibaca langsung.'
+      : 'AUTO mencoba tanpa cookies dulu, lalu cookies.txt atau browser yang terdeteksi bila situs meminta login.'),
+    h(Text, null, 'B kembali · Q/Esc keluar'),
   );
 }
 
-function DiagnosticsScreen({ dependencies, panelWidth, outputDirectory, cookieSource }) {
+function DiagnosticsScreen({ dependencies, panelWidth, outputDirectory, cookieSource, platformHint }) {
   const rows = [
     ['YTConv', CLI_VERSION],
     ['Node.js', process.version],
-    ['Platform', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
+    ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
+    ['Sosmed', socialPlatformLabel(platformHint)],
     ['yt-dlp', dependencies.ytDlp.version || 'not found'],
     ['gallery-dl', dependencies.galleryDl?.version || 'not found'],
     ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
@@ -276,7 +278,7 @@ function DiagnosticsScreen({ dependencies, panelWidth, outputDirectory, cookieSo
     ...rows.map(([label, value]) => h(Box, { key: label, flexDirection: 'row' },
       h(Box, { width: 16 }, h(Text, { bold: true }, label)),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, String(value)))),
-    h(Text, null, 'B back · Q/Esc quit'),
+    h(Text, null, 'B kembali · Q/Esc keluar'),
   );
 }
 
@@ -285,9 +287,9 @@ function MissingDependencies({ dependencies, panelWidth }) {
     Box,
     { width: panelWidth, borderStyle: 'double', paddingX: 1, flexDirection: 'column' },
     h(Text, { bold: true, inverse: true }, ' setup incomplete '),
-    h(Text, null, dependencies.ytDlp.error || 'yt-dlp or FFmpeg was not found.'),
-    h(Text, { dimColor: true }, dependencies.platform?.setupCommand || 'Run npm rebuild ytconv.'),
-    h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C quit'),
+    h(Text, null, dependencies.ytDlp.error || 'yt-dlp, gallery-dl, atau FFmpeg belum siap.'),
+    h(Text, { dimColor: true }, dependencies.platform?.setupCommand || 'Jalankan npm rebuild ytconv.'),
+    h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C keluar'),
   );
 }
 
@@ -313,7 +315,14 @@ function inside(event, bounds) {
   return event.x >= bounds.left && event.x <= bounds.right && event.y >= bounds.top && event.y <= bounds.bottom;
 }
 
-function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlaylist = false, initialImageFormat = 'original' }) {
+function App({
+  dependencies,
+  initialUrl = '',
+  initialMode = 'auto',
+  initialPlaylist = false,
+  initialImageFormat = 'original',
+  initialPlatform = 'auto',
+}) {
   const { exit } = useApp();
   const termux = dependencies.platform?.termux ?? isTermux();
   const decoderRef = useRef(createTerminalInputDecoder());
@@ -324,12 +333,17 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
   const [url, setUrl] = useState(initialUrl);
   const [stage, setStage] = useState('home');
   const [returnStage, setReturnStage] = useState('home');
-  const [mode, setMode] = useState(MODES.includes(initialMode) ? initialMode : 'auto');
+  const [platformHint, setPlatformHint] = useState(
+    SOCIAL_PLATFORM_KEYS.includes(initialPlatform) ? initialPlatform : 'auto',
+  );
+  const [mode] = useState(['auto', 'video', 'audio', 'image'].includes(initialMode) ? initialMode : 'auto');
   const [resolution, setResolution] = useState('best');
-  const [audioFormat, setAudioFormat] = useState('mp3');
-  const [audioQuality, setAudioQuality] = useState('0');
-  const [imageFormat, setImageFormat] = useState(IMAGE_FORMATS.includes(initialImageFormat) ? initialImageFormat : 'original');
-  const [cookieSource, setCookieSource] = useState(process.env.YTCONV_COOKIES ? 'file' : 'none');
+  const [audioFormat] = useState('mp3');
+  const [audioQuality] = useState('0');
+  const [imageFormat, setImageFormat] = useState(
+    IMAGE_FORMATS.includes(initialImageFormat) ? initialImageFormat : 'original',
+  );
+  const [cookieSource, setCookieSource] = useState(process.env.YTCONV_COOKIES ? 'file' : 'auto');
   const [playlist, setPlaylist] = useState(Boolean(initialPlaylist));
   const [autoOpen, setAutoOpen] = useState(false);
   const [activeControl, setActiveControl] = useState('input');
@@ -343,12 +357,14 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
 
   const columns = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
-  const panelWidth = Math.max(34, Math.min(78, columns - 4));
+  const panelWidth = Math.max(34, Math.min(82, columns - 4));
   const compactLogo = columns < 78;
   const outputDirectory = process.env.YTCONV_OUTPUT
     ? path.resolve(process.env.YTCONV_OUTPUT)
     : (termux ? termuxSharedDownloadsDirectory() : desktopDownloadsDirectory());
-  const hasDependencies = dependencies.ytDlp.installed && dependencies.ffmpeg.installed;
+  const hasDependencies = dependencies.ytDlp.installed
+    && dependencies.ffmpeg.installed
+    && dependencies.galleryDl?.installed;
 
   const quit = () => {
     controllerRef.current?.abort();
@@ -363,7 +379,7 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
   const pasteClipboard = () => {
     const value = readClipboardText({ termux });
     if (!value) {
-      setInputError(termux ? 'Long-press Termux and choose Paste.' : 'Clipboard could not be read.');
+      setInputError(termux ? 'Tekan lama Termux lalu pilih Paste.' : 'Clipboard tidak dapat dibaca.');
       return;
     }
     setUrl((current) => applyText(current, value));
@@ -407,7 +423,7 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
     const value = candidate.trim();
     if (EXIT_COMMANDS.has(value.toLowerCase())) return quit();
     if (!isValidUrl(value)) {
-      setInputError('Paste a valid http/https link.');
+      setInputError('Paste link http/https yang valid.');
       setActiveControl('input');
       return;
     }
@@ -420,10 +436,10 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
     setOutputPath('');
     setProgress({ percent: '0%', speed: '', eta: '' });
 
-    let cookieConfig;
+    let cookieConfigs;
     try {
       await fs.mkdir(outputDirectory, { recursive: true });
-      cookieConfig = await resolveCookieConfig({ source: cookieSource, outputDirectory });
+      cookieConfigs = await resolveCookieConfigs({ source: cookieSource, outputDirectory });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setStage('error');
@@ -432,51 +448,71 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
 
     const controller = new AbortController();
     controllerRef.current = controller;
-    setStage('probing');
-    setStatusText(`mode:${mode} · cookies:${cookieConfig.label}`);
+    let lastError = null;
 
     try {
-      const inspected = await inspectMedia({
-        ytDlpPath: dependencies.ytDlp.path,
-        url: value,
-        cookieConfig,
-        playlist,
-        signal: controller.signal,
-        mode,
-      });
-      setMedia(inspected);
-      setStage('downloading');
-      setStatusText(`using ${inspected.engine || 'automatic engine'}...`);
+      for (let index = 0; index < cookieConfigs.length; index += 1) {
+        const cookieConfig = cookieConfigs[index];
+        const platformKey = platformHint === 'auto' ? detectSocialPlatform(value) : platformHint;
+        setStage('probing');
+        setStatusText(`${socialPlatformLabel(platformKey)} · mencoba ${cookieConfig.label}`);
 
-      const result = await downloadMedia({
-        ytDlpPath: dependencies.ytDlp.path,
-        signal: controller.signal,
-        options: {
-          url: value,
-          mode,
-          resolution,
-          audioFormat,
-          audioQuality,
-          imageFormat,
-          cookieConfig,
-          playlist,
-          outputDirectory,
-          ffmpegPath: dependencies.ffmpeg.path,
-        },
-        onProgress: setProgress,
-        onLog: (line) => {
-          if (/Tersimpan:/u.test(line)) setStatusText(line);
-          else if (/gallery|gambar|image|carousel/iu.test(line)) setStatusText(line);
-          else if (/Merger|ExtractAudio|VideoRemuxer/iu.test(line)) setStatusText(line);
-        },
-      });
+        try {
+          const inspected = await inspectMedia({
+            ytDlpPath: dependencies.ytDlp.path,
+            url: value,
+            cookieConfig,
+            playlist,
+            signal: controller.signal,
+            mode,
+            platformHint,
+          });
+          setMedia(inspected);
+          setStage('downloading');
+          setStatusText(`${inspected.platform || socialPlatformLabel(platformKey)} · ${cookieConfig.label}`);
 
-      const finalPath = result.outputPath || outputDirectory;
-      setOutputPath(finalPath);
-      setProgress((current) => ({ ...current, percent: '100%' }));
-      setStatusText(`${result.fileCount || 1} file · ${result.engine || 'done'}`);
-      setStage('done');
-      if (autoOpen) await openOutputLocation({ directory: outputDirectory, filePath: finalPath });
+          const result = await downloadMedia({
+            ytDlpPath: dependencies.ytDlp.path,
+            signal: controller.signal,
+            options: {
+              url: value,
+              mode,
+              platformHint,
+              resolution,
+              audioFormat,
+              audioQuality,
+              imageFormat,
+              cookieConfig,
+              playlist,
+              outputDirectory,
+              ffmpegPath: dependencies.ffmpeg.path,
+            },
+            onProgress: setProgress,
+            onLog: (line) => {
+              if (/Tersimpan:/u.test(line)) setStatusText(line);
+              else if (/gallery|gambar|image|carousel|Merger|ExtractAudio|VideoRemuxer/iu.test(line)) setStatusText(line);
+            },
+          });
+
+          const finalPath = result.outputPath || outputDirectory;
+          setOutputPath(finalPath);
+          setProgress((current) => ({ ...current, percent: '100%' }));
+          setStatusText(`${result.fileCount || 1} file · ${result.engine || 'done'}`);
+          setStage('done');
+          if (autoOpen) await openOutputLocation({ directory: outputDirectory, filePath: finalPath });
+          return;
+        } catch (caught) {
+          if (controller.signal.aborted) return;
+          lastError = caught;
+          const next = cookieConfigs[index + 1];
+          if (next) {
+            setStatusText(`akses publik gagal · mencoba cookies ${next.label}`);
+            continue;
+          }
+        }
+      }
+
+      throw lastError || new Error('Tidak ada engine yang berhasil memproses link tersebut.');
     } catch (caught) {
       if (controller.signal.aborted) return;
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -531,18 +567,17 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
 
     const configurable = stage === 'home' || stage === 'error';
     if (configurable && key.ctrl && lower === 'g') {
-      setMode((current) => cycle(MODES, current));
-      setActionMessage('mode changed');
+      setPlatformHint((current) => cycle(SOCIAL_PLATFORM_KEYS, current));
+      setActionMessage('pilihan sosmed diubah');
       return;
     }
     if (configurable && key.ctrl && lower === 'f') {
-      if (mode === 'audio') setAudioFormat((current) => cycle(AUDIO_FORMATS, current));
-      else if (mode === 'image') setImageFormat((current) => cycle(IMAGE_FORMATS, current));
+      setImageFormat((current) => cycle(IMAGE_FORMATS, current));
+      setActionMessage('format gambar diubah');
       return;
     }
     if (configurable && key.ctrl && lower === 'q') {
-      if (mode === 'audio') setAudioQuality((current) => cycle(AUDIO_QUALITIES, current));
-      else setResolution((current) => cycle(VIDEO_QUALITIES, current));
+      setResolution((current) => cycle(VIDEO_QUALITIES, current));
       return;
     }
     if (configurable && key.ctrl && lower === 'b') return setCookieSource((current) => cycle(cookieOptions, current));
@@ -583,19 +618,37 @@ function App({ dependencies, initialUrl = '', initialMode = 'auto', initialPlayl
 
   let content;
   if (stage === 'help') content = h(HelpScreen, { panelWidth, termux });
-  else if (stage === 'diagnostics') content = h(DiagnosticsScreen, { dependencies, panelWidth, outputDirectory, cookieSource });
+  else if (stage === 'diagnostics') content = h(DiagnosticsScreen, {
+    dependencies, panelWidth, outputDirectory, cookieSource, platformHint,
+  });
   else if (!hasDependencies) content = h(MissingDependencies, { dependencies, panelWidth });
   else if (stage === 'home') content = h(HomeScreen, {
-    panelWidth, url, inputError, actionMessage, mode, resolution, audioFormat,
-    audioQuality, imageFormat, cookieSource, playlist, autoOpen, activeControl,
+    panelWidth,
+    url,
+    inputError,
+    actionMessage,
+    platformHint,
+    resolution,
+    imageFormat,
+    cookieSource,
+    playlist,
+    autoOpen,
+    activeControl,
   });
-  else if (stage === 'probing' || stage === 'downloading') content = h(WorkingScreen, { stage, media, progress, statusText, panelWidth });
-  else if (stage === 'done') content = h(DoneScreen, { media, panelWidth, outputDirectory, outputPath, actionMessage });
+  else if (stage === 'probing' || stage === 'downloading') content = h(WorkingScreen, {
+    stage, media, progress, statusText, panelWidth,
+  });
+  else if (stage === 'done') content = h(DoneScreen, {
+    media, panelWidth, outputDirectory, outputPath, actionMessage,
+  });
   else content = h(ErrorScreen, { error, media, panelWidth, cookieSource, actionMessage });
 
   return h(Box, {
-    width: '100%', minHeight: Math.max(20, rows - 1), flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
+    width: '100%',
+    minHeight: Math.max(20, rows - 1),
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
   }, h(Logo, { compact: compactLogo }), content);
 }
 
@@ -614,7 +667,11 @@ function leaveAlternateScreen(enabled) {
 }
 
 export async function runApp({
-  initialUrl = '', initialMode = 'auto', initialPlaylist = false, initialImageFormat = 'original',
+  initialUrl = '',
+  initialMode = 'auto',
+  initialPlaylist = false,
+  initialImageFormat = 'original',
+  initialPlatform = 'auto',
 } = {}) {
   process.title = `YTConv ${CLI_VERSION}`;
   console.clear();
@@ -640,7 +697,12 @@ export async function runApp({
   try {
     console.clear();
     instance = render(h(App, {
-      dependencies, initialUrl, initialMode, initialPlaylist, initialImageFormat,
+      dependencies,
+      initialUrl,
+      initialMode,
+      initialPlaylist,
+      initialImageFormat,
+      initialPlatform,
     }), { exitOnCtrlC: false });
     await instance.waitUntilExit();
   } finally {
