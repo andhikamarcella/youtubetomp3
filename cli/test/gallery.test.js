@@ -10,13 +10,13 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv public release is version 1.1.1', () => {
-  assert.equal(manifest.version, '1.1.1');
+test('YTConv public release is version 1.1.2', () => {
+  assert.equal(manifest.version, '1.1.2');
 });
 
-test('FFmpeg is a required dependency instead of an optional dependency', () => {
-  assert.equal(manifest.dependencies['ffmpeg-static'], '5.3.0');
-  assert.equal(manifest.optionalDependencies, undefined);
+test('FFmpeg static is optional so Termux can use pkg ffmpeg', () => {
+  assert.equal(manifest.optionalDependencies['ffmpeg-static'], '5.3.0');
+  assert.equal(manifest.dependencies['ffmpeg-static'], undefined);
 });
 
 test('native iSH frontend and installer are included in the package source', () => {
