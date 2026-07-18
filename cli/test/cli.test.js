@@ -8,12 +8,13 @@ import {
   stripMouseSequences,
 } from '../src/terminal-input.js';
 
-test('Termux only offers none and cookies.txt authentication', () => {
-  assert.deepEqual(cookieSourcesForPlatform(true), ['none', 'file']);
+test('Termux offers automatic public-first cookies, none, and cookies.txt', () => {
+  assert.deepEqual(cookieSourcesForPlatform(true), ['auto', 'none', 'file']);
 });
 
-test('desktop offers browser and file cookie sources', () => {
+test('desktop offers automatic browser detection and manual sources', () => {
   const sources = cookieSourcesForPlatform(false);
+  assert.equal(sources[0], 'auto');
   assert.ok(sources.includes('file'));
   assert.ok(sources.includes('chrome'));
   assert.ok(sources.includes('firefox'));
