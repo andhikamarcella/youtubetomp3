@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  automaticFallbackMode,
   cleanMediaUrl,
   effectiveMediaMode,
   instagramMediaKind,
@@ -108,6 +109,15 @@ test('keeps mixed-post services in automatic fallback mode', () => {
     'https://9gag.com/gag/abc',
   ];
   for (const url of urls) assert.equal(socialRouteMode({ url }), 'auto', url);
+});
+
+test('automatic mode retries the alternate engine but forced modes do not', () => {
+  assert.equal(automaticFallbackMode({ requestedMode: 'auto', effectiveMode: 'image' }), 'video');
+  assert.equal(automaticFallbackMode({ requestedMode: 'auto', effectiveMode: 'video' }), 'image');
+  assert.equal(automaticFallbackMode({ requestedMode: 'auto', effectiveMode: 'auto' }), 'video');
+  assert.equal(automaticFallbackMode({ requestedMode: 'auto', effectiveMode: 'audio' }), '');
+  assert.equal(automaticFallbackMode({ requestedMode: 'video', effectiveMode: 'video' }), '');
+  assert.equal(automaticFallbackMode({ requestedMode: 'image', effectiveMode: 'image' }), '');
 });
 
 test('platform hint detects mismatched social links', () => {
