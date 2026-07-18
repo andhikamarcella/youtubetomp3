@@ -50,7 +50,7 @@ jobs:
           name: ytconv-test-output
           path: cli/test-output.txt
 
-      - name: Verify included tools
+      - name: Verify included tools and dependency inspection
         run: |
           test -x vendor/yt-dlp
           test -x vendor/gallery-dl
@@ -58,6 +58,7 @@ jobs:
           ./vendor/yt-dlp --version
           ./vendor/gallery-dl --version
           node -e "import('ffmpeg-static').then(({default:p}) => console.log(p))"
+          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies(); console.log(d); if (!d.ready) process.exitCode = 1; })"
 
       - name: Preview npm package
         run: |
@@ -88,11 +89,15 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check
 
-      - name: Verify Windows gallery engine
+      - name: Verify Windows media engines and dependency inspection
         shell: pwsh
         run: |
+          if (-not (Test-Path "vendor/yt-dlp.exe")) { throw "yt-dlp.exe was not bundled" }
           if (-not (Test-Path "vendor/gallery-dl.exe")) { throw "gallery-dl.exe was not bundled" }
+          if (-not (Test-Path "node_modules/ffmpeg-static/ffmpeg.exe")) { throw "ffmpeg-static was not installed" }
+          & "./vendor/yt-dlp.exe" --version
           & "./vendor/gallery-dl.exe" --version
+          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies(); console.log(d); if (!d.ready) process.exitCode = 1; })"
 
       - name: Smoke test update check on Windows
         run: node ./bin/ytconv.js --check-update
