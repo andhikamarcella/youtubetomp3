@@ -145,7 +145,7 @@ export async function prepareTermuxDependencies() {
     throw new Error('Modul Python yt_dlp tetap tidak dapat dijalankan.');
   }
 
-  console.log('\nMemasang engine gambar, carousel, dan story...');
+  console.log('\nMemasang engine gambar, posting, dan sosial media...');
   const galleryRunner = await installGalleryDlPython({ visible: true });
   if (!galleryRunner) {
     throw new Error('Modul gallery_dl tidak dapat dipasang di Termux.');
@@ -162,7 +162,43 @@ export async function prepareTermuxDependencies() {
   };
 }
 
-export async function inspectDependencies() {
+export async function prepareDesktopDependencies({ silent = false } = {}) {
+  if (isTermux()) return { prepared: false, termux: true };
+
+  const errors = [];
+  let ytDlpPath = null;
+  let galleryRunner = null;
+  let ffmpegPath = null;
+
+  try {
+    ytDlpPath = await ensureBundledYtDlp({ silent });
+  } catch (error) {
+    errors.push(`yt-dlp: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  try {
+    galleryRunner = await resolveGalleryDlRunner({ install: true, silent });
+    if (!galleryRunner) errors.push('gallery-dl: installer tidak menghasilkan executable yang dapat dijalankan.');
+  } catch (error) {
+    errors.push(`gallery-dl: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  ffmpegPath = await resolveBundledFfmpeg() || await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+  if (!ffmpegPath) {
+    errors.push('FFmpeg: paket ffmpeg-static tidak ditemukan dan FFmpeg tidak tersedia di PATH.');
+  }
+
+  return {
+    prepared: Boolean(ytDlpPath && galleryRunner && ffmpegPath),
+    termux: false,
+    ytDlpPath,
+    galleryDlPath: galleryRunner?.displayPath ?? null,
+    ffmpegPath,
+    errors,
+  };
+}
+
+export async function inspectDependencies({ repair = true } = {}) {
   const termux = isTermux();
   let bundledYtDlp = null;
   let ytDlpInstallError = null;
@@ -178,34 +214,55 @@ export async function inspectDependencies() {
   const ytDlpRunner = termux
     ? await resolveTermuxYtDlpRunner()
     : await resolveDesktopYtDlpRunner({ bundledYtDlp });
-  const galleryDlRunner = await resolveGalleryDlRunner({ install: false });
 
-  const bundledFfmpeg = await resolveBundledFfmpeg();
-  const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+  let galleryDlRunner = await resolveGalleryDlRunner({ install: false });
+  let bundledFfmpeg = await resolveBundledFfmpeg();
+  let systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+
+  if (!termux && repair && (!ytDlpRunner || !galleryDlRunner || !(bundledFfmpeg || systemFfmpeg))) {
+    await prepareDesktopDependencies({ silent: true });
+    galleryDlRunner = await resolveGalleryDlRunner({ install: false });
+    bundledFfmpeg = await resolveBundledFfmpeg();
+    systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+  }
+
+  const finalYtDlpRunner = termux
+    ? await resolveTermuxYtDlpRunner()
+    : await resolveDesktopYtDlpRunner({
+      bundledYtDlp: bundledYtDlp || await ensureBundledYtDlp({ silent: true }).catch(() => null),
+    });
   const ffmpegPath = termux ? systemFfmpeg : (bundledFfmpeg || systemFfmpeg);
-  const runnerValue = ytDlpRunner
+  const runnerValue = finalYtDlpRunner
     ? {
-      command: ytDlpRunner.command,
-      prefixArgs: ytDlpRunner.prefixArgs,
-      path: ytDlpRunner.displayPath,
+      command: finalYtDlpRunner.command,
+      prefixArgs: finalYtDlpRunner.prefixArgs,
+      path: finalYtDlpRunner.displayPath,
     }
     : null;
+
+  const missing = [
+    !finalYtDlpRunner ? 'yt-dlp' : '',
+    !galleryDlRunner ? 'gallery-dl' : '',
+    !ffmpegPath ? 'FFmpeg' : '',
+  ].filter(Boolean);
 
   return {
     platform: {
       termux,
       setupCommand: termux
         ? 'pkg install -y python ffmpeg && python -m pip install -U yt-dlp gallery-dl'
-        : null,
+        : 'npm uninstall -g ytconv && npm cache clean --force && npm install -g ytconv@latest --force',
     },
+    ready: missing.length === 0,
+    missing,
     ytDlp: {
-      command: ytDlpRunner?.command ?? null,
-      prefixArgs: ytDlpRunner?.prefixArgs ?? [],
+      command: finalYtDlpRunner?.command ?? null,
+      prefixArgs: finalYtDlpRunner?.prefixArgs ?? [],
       path: runnerValue,
-      displayPath: ytDlpRunner?.displayPath ?? null,
-      mode: ytDlpRunner?.mode ?? null,
-      version: ytDlpRunner?.version ?? null,
-      installed: Boolean(ytDlpRunner),
+      displayPath: finalYtDlpRunner?.displayPath ?? null,
+      mode: finalYtDlpRunner?.mode ?? null,
+      version: finalYtDlpRunner?.version ?? null,
+      installed: Boolean(finalYtDlpRunner),
       bundled: Boolean(bundledYtDlp),
       error: ytDlpInstallError,
     },
