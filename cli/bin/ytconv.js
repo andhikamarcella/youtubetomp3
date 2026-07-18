@@ -7,6 +7,7 @@ import process from 'node:process';
 import { helpText, parseCliOptions } from '../src/cli-options.js';
 import { inspectDependencies } from '../src/dependencies.js';
 import { desktopDownloadsDirectory, isTermux, termuxSharedDownloadsDirectory } from '../src/platform.js';
+import { socialPlatformLabel } from '../src/social-platforms.js';
 import { runApp } from '../src/ui.js';
 import { checkForUpdate, runSelfUpdate, updateCommand } from '../src/update.js';
 import { CLI_VERSION } from '../src/version.js';
@@ -28,7 +29,7 @@ function updateStatusText(updateInfo) {
   return `tidak dapat diperiksa${updateInfo.error ? `: ${updateInfo.error}` : ''}`;
 }
 
-async function printDiagnostics() {
+async function printDiagnostics(platformHint = 'auto') {
   const [dependencies, updateInfo] = await Promise.all([
     inspectDependencies(),
     checkForUpdate({ currentVersion: CLI_VERSION, force: true }),
@@ -38,7 +39,8 @@ async function printDiagnostics() {
     ['YTConv', CLI_VERSION],
     ['Update', updateStatusText(updateInfo)],
     ['Node.js', process.version],
-    ['Platform', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
+    ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
+    ['Sosmed', socialPlatformLabel(platformHint)],
     ['yt-dlp', dependencies.ytDlp.installed ? dependencies.ytDlp.version : 'tidak ditemukan'],
     ['yt-dlp runner', dependencies.ytDlp.displayPath || dependencies.ytDlp.path || '-'],
     ['gallery-dl', dependencies.galleryDl?.installed ? dependencies.galleryDl.version : 'tidak ditemukan'],
@@ -46,7 +48,7 @@ async function printDiagnostics() {
     ['FFmpeg', dependencies.ffmpeg.installed ? dependencies.ffmpeg.version : 'tidak ditemukan'],
     ['FFmpeg path', dependencies.ffmpeg.path || '-'],
     ['Output', outputDirectory],
-    ['Cookies file', process.env.YTCONV_COOKIES || 'tidak dipilih'],
+    ['Cookies', process.env.YTCONV_COOKIES || 'AUTO: publik dulu, lalu sistem'],
     ['Gallery include', process.env.YTCONV_GALLERY_INCLUDE || 'direct URL / auto'],
   ];
 
@@ -133,7 +135,7 @@ async function main() {
   if (options.cookiesPath) process.env.YTCONV_COOKIES = options.cookiesPath;
   if (options.checkUpdate) return printUpdateCheck();
   if (options.update) return performUpdate();
-  if (options.diagnose) return printDiagnostics();
+  if (options.diagnose) return printDiagnostics(options.initialPlatform);
 
   try {
     const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION });
@@ -142,6 +144,7 @@ async function main() {
     await runApp({
       initialUrl: options.initialUrl,
       initialMode: options.initialMode,
+      initialPlatform: options.initialPlatform,
       initialPlaylist: options.initialPlaylist,
       initialImageFormat: options.initialImageFormat,
     });
