@@ -58,6 +58,62 @@ test('download arguments include retries, JS runtime, cookies and container fall
   assert.equal(args.at(-1), 'https://example.com/video');
 });
 
+test('MP3 keeps a separate JPG thumbnail and embeds cover plus metadata', () => {
+  const args = buildDownloadArgs({
+    url: 'https://www.youtube.com/watch?v=video-id',
+    mode: 'audio',
+    resolution: 'best',
+    audioFormat: 'mp3',
+    audioQuality: '0',
+    cookieConfig: { kind: 'none' },
+    playlist: false,
+    outputDirectory: '/tmp/output',
+  });
+
+  assert.ok(args.includes('--embed-metadata'));
+  assert.ok(args.includes('--write-thumbnail'));
+  assert.ok(args.includes('--embed-thumbnail'));
+  assert.equal(args[args.indexOf('--convert-thumbnails') + 1], 'jpg');
+  assert.equal(args.includes('--ppa'), false);
+});
+
+test('YouTube Music MP3 crops the saved and embedded cover to square', () => {
+  const args = buildDownloadArgs({
+    url: 'https://music.youtube.com/watch?v=music-id',
+    mode: 'audio',
+    resolution: 'best',
+    audioFormat: 'mp3',
+    audioQuality: '0',
+    cookieConfig: { kind: 'none' },
+    playlist: false,
+    outputDirectory: '/tmp/output',
+  });
+
+  assert.equal(
+    args[args.indexOf('--ppa') + 1],
+    'ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih',
+  );
+  assert.equal(args.at(-1), 'https://music.youtube.com/watch?v=music-id');
+});
+
+test('non-MP3 audio keeps the existing metadata-only behavior', () => {
+  const args = buildDownloadArgs({
+    url: 'https://music.youtube.com/watch?v=music-id',
+    mode: 'audio',
+    resolution: 'best',
+    audioFormat: 'm4a',
+    audioQuality: '0',
+    cookieConfig: { kind: 'none' },
+    playlist: false,
+    outputDirectory: '/tmp/output',
+  });
+
+  assert.ok(args.includes('--embed-metadata'));
+  assert.equal(args.includes('--write-thumbnail'), false);
+  assert.equal(args.includes('--embed-thumbnail'), false);
+  assert.equal(args.includes('--ppa'), false);
+});
+
 test('mouse escape sequences never become visible link text', () => {
   const brokenInput = '\u001b[<0;62;19M\u001b[<0;62;19mhttps://example.com/video';
   assert.equal(stripMouseSequences(brokenInput), 'https://example.com/video');
