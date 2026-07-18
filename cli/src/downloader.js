@@ -124,6 +124,14 @@ function outputTemplate(options) {
   );
 }
 
+function isYouTubeMusicUrl(value) {
+  try {
+    return new URL(value).hostname.toLowerCase() === 'music.youtube.com';
+  } catch {
+    return false;
+  }
+}
+
 function cookieFailureMessage(stderr) {
   if (/could not copy.*cookie|cookie database|decrypt.*cookie|dpapi|keyring/iu.test(stderr)) {
     return 'Gagal membaca cookies browser. Tutup browser sepenuhnya lalu coba lagi, '
@@ -343,7 +351,23 @@ export function buildDownloadArgs(options) {
       '--embed-metadata',
     );
 
-    if (options.audioFormat === 'mp3') args.push('--audio-quality', options.audioQuality);
+    if (options.audioFormat === 'mp3') {
+      args.push(
+        '--audio-quality',
+        options.audioQuality,
+        '--write-thumbnail',
+        '--convert-thumbnails',
+        'jpg',
+        '--embed-thumbnail',
+      );
+
+      if (isYouTubeMusicUrl(options.url)) {
+        args.push(
+          '--ppa',
+          'ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih',
+        );
+      }
+    }
   } else {
     args.push(
       '-f',
