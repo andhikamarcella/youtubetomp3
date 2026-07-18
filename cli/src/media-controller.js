@@ -5,6 +5,12 @@ import {
   downloadMedia as downloadWithEngines,
   inspectMedia as inspectWithEngines,
 } from './downloader.js';
+import {
+  detectSocialPlatform,
+  socialPlatformLabel,
+  socialRouteMode,
+  validatePlatformHint,
+} from './social-platforms.js';
 
 const STATIC_IMAGE_EXTENSIONS = new Set([
   '.avif',
@@ -18,30 +24,13 @@ const STATIC_IMAGE_EXTENSIONS = new Set([
   '.webp',
 ]);
 
-const GALLERY_HOSTS = new Set([
-  'instagram.com',
-  'pinterest.com',
-  'pin.it',
-  'imgur.com',
-  'flickr.com',
-  'deviantart.com',
-  'pixiv.net',
-  'bsky.app',
-]);
-
-function normalizedHost(url) {
-  try {
-    return new URL(url).hostname.toLowerCase().replace(/^www\./u, '');
-  } catch {
-    return '';
-  }
-}
-
 export function cleanMediaUrl(value) {
   try {
     const parsed = new URL(value);
     for (const key of [...parsed.searchParams.keys()]) {
-      if (/^(utm_|igsh$|fbclid$|si$)/iu.test(key)) parsed.searchParams.delete(key);
+      if (/^(utm_|igsh$|fbclid$|si$|share_id$|share_app_id$)/iu.test(key)) {
+        parsed.searchParams.delete(key);
+      }
     }
     parsed.hash = '';
     return parsed.toString();
@@ -65,15 +54,9 @@ export function instagramMediaKind(value) {
   }
 }
 
-export function effectiveMediaMode({ url, mode = 'auto' } = {}) {
-  if (['video', 'audio', 'image'].includes(mode)) return mode;
-  const instagramKind = instagramMediaKind(url);
-  if (instagramKind === 'video') return 'video';
-  if (instagramKind === 'post' || instagramKind === 'story') return 'image';
+export function effectiveMediaMode({ url, mode = 'auto', platformHint = 'auto' } = {}) {
   if (process.env.YTCONV_GALLERY_INCLUDE) return 'image';
-  const host = normalizedHost(url);
-  if (GALLERY_HOSTS.has(host) && host !== 'instagram.com') return 'image';
-  return 'auto';
+  return socialRouteMode({ url, requestedMode: mode, platformHint });
 }
 
 function restoreEnvironment(previous) {
@@ -107,18 +90,32 @@ async function withEngineMode(mode, callback) {
   }
 }
 
+function assertPlatformSelection(url, platformHint) {
+  const result = validatePlatformHint({ url, platformHint });
+  if (result.valid) return result.detected;
+  throw new Error(
+    `Link terdeteksi sebagai ${socialPlatformLabel(result.detected)}, bukan `
+    + `${socialPlatformLabel(platformHint)}. Pilih AUTO atau platform yang sesuai.`,
+  );
+}
+
 function genericGalleryMetadata(url) {
+  const platformKey = detectSocialPlatform(url);
   const kind = instagramMediaKind(url);
-  let title = 'Media gambar / carousel';
-  if (kind === 'post') title = 'Instagram post / carousel';
+  let title = `${socialPlatformLabel(platformKey)} post`;
+  if (kind === 'post') title = 'Instagram post';
   else if (kind === 'story') title = 'Instagram Story';
   else if (kind === 'profile') title = 'Instagram profile media';
-  else if (normalizedHost(url).includes('pinterest')) title = 'Pinterest image / pin';
+  else if (platformKey === 'pinterest') title = 'Pinterest Pin';
+  else if (platformKey === 'reddit') title = 'Reddit post';
+  else if (platformKey === 'facebook') title = 'Facebook post';
+  else if (platformKey === 'tiktok') title = 'TikTok post';
+  else if (platformKey === 'x') title = 'X / Twitter post';
 
   return {
     title,
     uploader: '',
-    platform: normalizedHost(url).includes('instagram') ? 'Instagram' : 'Media gallery',
+    platform: socialPlatformLabel(platformKey),
     duration: null,
     itemCount: 1,
     isPlaylist: false,
@@ -129,11 +126,15 @@ function genericGalleryMetadata(url) {
 
 export async function inspectMedia(options) {
   const url = cleanMediaUrl(options.url);
-  const mode = effectiveMediaMode({ url, mode: options.mode });
+  assertPlatformSelection(url, options.platformHint || 'auto');
+  const mode = effectiveMediaMode({
+    url,
+    mode: options.mode,
+    platformHint: options.platformHint,
+  });
 
-  // gallery-dl's simulated JSON probe can return no rows for Instagram even
-  // though a real download succeeds. Use a generic card and let the actual
-  // download be the source of truth for image/carousel links.
+  // Some social platforms return no rows during gallery-dl simulation even
+  // though the real download works. Let the real download be the source of truth.
   if (mode === 'image') return genericGalleryMetadata(url);
 
   return withEngineMode(mode, () => inspectWithEngines({ ...options, url }));
@@ -223,16 +224,22 @@ async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
   return files.map((file) => replacements.get(file) || file);
 }
 
-function instagramAccessHint({ cookieConfig, originalError }) {
-  const cookieLabel = cookieConfig?.kind === 'browser'
-    ? 'Cookies browser belum dapat dibaca dengan benar. Coba tutup Chrome sepenuhnya atau gunakan cookies.txt Netscape.'
-    : 'Instagram sering meminta login. Aktifkan cookies Chrome/Edge/Firefox atau gunakan cookies.txt Netscape.';
-  return `${originalError} ${cookieLabel}`;
+function accessHint({ url, cookieConfig, originalError }) {
+  const platform = socialPlatformLabel(detectSocialPlatform(url));
+  const browserHint = cookieConfig?.kind === 'browser'
+    ? 'Cookies browser terdeteksi tetapi belum dapat dibaca. Tutup browser sepenuhnya atau gunakan cookies.txt Netscape.'
+    : 'Konten publik dicoba tanpa cookies terlebih dahulu. Untuk konten login-only, gunakan cookies browser atau cookies.txt yang masih aktif.';
+  return `${originalError} ${platform}: ${browserHint}`;
 }
 
 export async function downloadMedia({ options, ...rest }) {
   const url = cleanMediaUrl(options.url);
-  const mode = effectiveMediaMode({ url, mode: options.mode });
+  assertPlatformSelection(url, options.platformHint || 'auto');
+  const mode = effectiveMediaMode({
+    url,
+    mode: options.mode,
+    platformHint: options.platformHint,
+  });
   const outputDirectory = options.outputDirectory;
   const before = await listFiles(outputDirectory);
 
@@ -243,24 +250,21 @@ export async function downloadMedia({ options, ...rest }) {
       options: { ...options, url, mode: mode === 'auto' ? 'video' : mode },
     }));
   } catch (error) {
-    if (instagramMediaKind(url)) {
-      throw new Error(instagramAccessHint({
-        cookieConfig: options.cookieConfig,
-        originalError: error instanceof Error ? error.message : String(error),
-      }));
-    }
-    throw error;
+    throw new Error(accessHint({
+      url,
+      cookieConfig: options.cookieConfig,
+      originalError: error instanceof Error ? error.message : String(error),
+    }));
   }
 
   const after = await listFiles(outputDirectory);
   let created = [...after].filter((file) => !before.has(file));
   if (result.engine === 'gallery-dl' && !created.length) {
-    throw new Error(instagramMediaKind(url)
-      ? instagramAccessHint({
-        cookieConfig: options.cookieConfig,
-        originalError: 'Instagram tidak mengembalikan file dari link tersebut.',
-      })
-      : 'Tidak ada file gambar atau media gallery yang berhasil diunduh.');
+    throw new Error(accessHint({
+      url,
+      cookieConfig: options.cookieConfig,
+      originalError: `${socialPlatformLabel(detectSocialPlatform(url))} tidak mengembalikan file dari link tersebut.`,
+    }));
   }
 
   if (result.engine === 'gallery-dl') {
