@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { SOCIAL_PLATFORM_KEYS } from './social-platforms.js';
 import { CLI_VERSION } from './version.js';
 
 const IMAGE_FORMATS = new Set(['original', 'jpg', 'png', 'webp']);
@@ -21,6 +22,7 @@ export function parseCliOptions(argv = []) {
     outputDirectory: '',
     cookiesPath: '',
     initialMode: 'auto',
+    initialPlatform: 'auto',
     initialImageFormat: 'original',
     initialPlaylist: false,
     forceGallery: false,
@@ -56,6 +58,16 @@ export function parseCliOptions(argv = []) {
       case '--no-update-check':
         options.noUpdateCheck = true;
         break;
+      case '--platform':
+      case '--social': {
+        const platform = takeValue(argv, index, argument).toLowerCase();
+        if (!SOCIAL_PLATFORM_KEYS.includes(platform)) {
+          throw new Error(`Platform "${platform}" tidak dikenali. Pilih: ${SOCIAL_PLATFORM_KEYS.join(', ')}`);
+        }
+        options.initialPlatform = platform;
+        index += 1;
+        break;
+      }
       case '--audio':
         options.initialMode = 'audio';
         options.forceGallery = false;
@@ -80,12 +92,14 @@ export function parseCliOptions(argv = []) {
         break;
       case '--stories':
         options.initialMode = 'image';
+        options.initialPlatform = 'instagram';
         options.forceGallery = true;
         options.forceVideo = false;
         options.galleryInclude = 'stories';
         break;
       case '--all-media':
         options.initialMode = 'image';
+        options.initialPlatform = 'instagram';
         options.forceGallery = true;
         options.forceVideo = false;
         options.galleryInclude = 'all';
@@ -124,26 +138,32 @@ export function helpText() {
     + 'Pemakaian:\n'
     + '  ytconv [link] [opsi]\n'
     + '  npx -y ytconv@latest [link]\n\n'
+    + 'Pilihan sosmed:\n'
+    + '  --platform auto        Deteksi otomatis semua sosmed\n'
+    + '  --platform youtube     YouTube / YouTube Music\n'
+    + '  --platform instagram   Instagram post, Reel, dan Story\n'
+    + '  --platform facebook    Facebook post, video, Reel, dan foto\n'
+    + '  --platform tiktok      TikTok video dan photo post\n'
+    + '  --platform x           X / Twitter\n'
+    + '  --platform pinterest   Pinterest\n'
+    + '  --platform reddit      Reddit\n\n'
     + 'Opsi:\n'
     + '  -h, --help             Tampilkan bantuan\n'
     + '  -v, --version          Tampilkan versi\n'
-    + '      --diagnose         Cek seluruh engine dan update\n'
+    + '      --diagnose         Cek engine, output, cookies, dan update\n'
     + '      --check-update     Cek versi terbaru di npm\n'
     + '      --update           Update otomatis ke ytconv@latest\n'
     + '      --no-update-check  Matikan pengecekan update untuk sesi ini\n'
-    + '      --auto             Deteksi video, audio, gambar, carousel, reel, atau story\n'
-    + '      --audio            Ambil audio\n'
-    + '      --video            Paksa jalur video yt-dlp\n'
-    + '      --image            Paksa jalur gambar/gallery-dl\n'
     + '      --image-format FMT Pilih original, jpg, png, atau webp\n'
-    + '      --stories          Ambil Instagram Stories (perlu cookies)\n'
-    + '      --all-media        Ambil post, reels, stories, dan highlights profil Instagram\n'
-    + '      --playlist         Aktifkan playlist\n'
+    + '      --playlist         Aktifkan playlist atau kumpulan post\n'
     + '  -o, --output PATH      Pilih folder hasil\n'
     + '      --cookies FILE     Gunakan cookies.txt Netscape\n\n'
+    + 'Mode lanjutan kompatibilitas lama:\n'
+    + '      --auto / --video / --audio / --image\n'
+    + '      --stories / --all-media\n\n'
     + 'Contoh:\n'
-    + '  ytconv --auto "https://www.instagram.com/reel/..."\n'
-    + '  ytconv --image --image-format jpg "https://www.instagram.com/p/..."\n'
-    + '  ytconv --stories --cookies cookies.txt "https://www.instagram.com/username/"\n'
-    + '  ytconv --audio --output D:\\Music "https://..."\n';
+    + '  ytconv --platform instagram "https://www.instagram.com/p/..."\n'
+    + '  ytconv --platform facebook "https://www.facebook.com/..."\n'
+    + '  ytconv --platform tiktok "https://www.tiktok.com/@user/video/..."\n'
+    + '  ytconv --platform pinterest --image-format jpg "LINK_PIN"\n';
 }
