@@ -196,6 +196,33 @@ def _with_player_clients(opts: Dict[str, object], clients: list[str]) -> Dict[st
     return next_opts
 
 
+def _enhanced_options(
+    base_opts: Dict[str, object],
+    cookies_path: Optional[str] = None,
+) -> Dict[str, object]:
+    """Build compatibility options without mutating the vanilla first attempt."""
+
+    enhanced = copy.deepcopy(base_opts)
+    enhanced.update(get_js_runtime_options())
+
+    extractor_args = get_youtube_extractor_args()
+    if extractor_args:
+        enhanced["extractor_args"] = extractor_args
+
+    proxy_url = os.environ.get("YTDLP_PROXY", "").strip()
+    if proxy_url:
+        enhanced["proxy"] = proxy_url
+
+    impersonate = os.environ.get("YTDLP_IMPERSONATE", "").strip()
+    if impersonate and impersonate.lower() not in {"0", "false", "off", "none"}:
+        enhanced["impersonate"] = impersonate
+
+    if should_use_cookies() and cookies_path and os.path.isfile(cookies_path):
+        enhanced["cookiefile"] = cookies_path
+
+    return enhanced
+
+
 def download_with_ytdlp(
     url: str,
     out_dir: str,
@@ -207,6 +234,9 @@ def download_with_ytdlp(
         raise RuntimeError("yt_dlp unavailable")
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
+    # This dictionary intentionally mirrors a normal yt-dlp library call. Do not
+    # add forced clients, JS runtimes, PO tokens, cookies, proxies, or
+    # impersonation here; those belong only to enhanced retries below.
     base_opts: Dict[str, object] = {
         "format": "ba/bestaudio/best/worst",
         "outtmpl": template,
@@ -219,28 +249,13 @@ def download_with_ytdlp(
         "ignoreerrors": False,
     }
 
-    base_opts.update(get_js_runtime_options())
+    enhanced_opts = _enhanced_options(base_opts, cookies_path)
 
-    extractor_args = get_youtube_extractor_args()
-    if extractor_args:
-        base_opts["extractor_args"] = extractor_args
-
-    proxy_url = os.environ.get("YTDLP_PROXY", "").strip()
-    if proxy_url:
-        base_opts["proxy"] = proxy_url
-
-    impersonate = os.environ.get("YTDLP_IMPERSONATE", "").strip()
-    if impersonate and impersonate.lower() not in {"0", "false", "off", "none"}:
-        base_opts["impersonate"] = impersonate
-
-    if should_use_cookies() and cookies_path and os.path.isfile(cookies_path):
-        base_opts["cookiefile"] = cookies_path
-
-    ipv4_opts = copy.deepcopy(base_opts)
+    ipv4_opts = copy.deepcopy(enhanced_opts)
     ipv4_opts["force_ipv4"] = True
 
-    web_safari_opts = _with_player_clients(base_opts, ["web_safari"])
-    android_vr_opts = _with_player_clients(base_opts, ["android_vr"])
+    web_safari_opts = _with_player_clients(enhanced_opts, ["web_safari"])
+    android_vr_opts = _with_player_clients(enhanced_opts, ["android_vr"])
 
     audio_opts = copy.deepcopy(ipv4_opts)
     audio_opts["format"] = "ba/bestaudio/best/worst"
@@ -257,11 +272,13 @@ def download_with_ytdlp(
     no_runtime_opts = copy.deepcopy(universal_opts)
     no_runtime_opts.pop("js_runtimes", None)
     no_runtime_opts.pop("remote_components", None)
+    no_runtime_opts.pop("extractor_retries", None)
 
     last_exc: Optional[Exception] = None
     upgrade_tried = False
     attempts = [
         base_opts,
+        enhanced_opts,
         ipv4_opts,
         web_safari_opts,
         android_vr_opts,
