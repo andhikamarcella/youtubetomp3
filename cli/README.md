@@ -1,8 +1,38 @@
-# YTConv CLI 1.2.0
+# YTConv CLI 1.2.1
 
-YTConv adalah downloader dan converter media sosial berbasis terminal yang memakai **yt-dlp**, **gallery-dl**, dan **FFmpeg**. Versi 1.2.0 adalah rilis pematangan: opsi lebih lengkap, preset siap pakai, pemeriksaan tanpa download, logging, dokumentasi rinci, serta validasi agar command aman dipakai di CMD Windows, Linux, macOS, Termux, dan frontend native iSH.
+YTConv adalah downloader dan converter media sosial berbasis terminal yang memakai **yt-dlp**, **gallery-dl**, dan **FFmpeg**. Versi 1.2.1 adalah hotfix Windows di atas rilis pematangan 1.2.0: self-updater sekarang menjalankan npm melalui `cmd.exe` dan tidak lagi memanggil `npm.cmd` secara langsung, sehingga error `spawnSync npm.cmd EINVAL` dapat dihindari.
+
+Seluruh fitur 1.2.0 tetap tersedia: preset siap pakai, pemeriksaan tanpa download, logging, dokumentasi rinci, serta validasi agar command aman dipakai di CMD Windows, Linux, macOS, Termux, dan frontend native iSH.
 
 > Gunakan hanya untuk media milik sendiri, berlisensi bebas, atau yang memang diizinkan untuk diunduh. YTConv tidak melewati DRM, pembayaran, akun privat tanpa akses, atau pembatasan hak cipta.
+
+## Hotfix Windows 1.2.1
+
+Instalasi global 1.1.5 atau 1.2.0 yang sudah menampilkan `spawnSync npm.cmd EINVAL` tidak dapat memperbaiki dirinya sendiri. Jalankan manual:
+
+```cmd
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@1.2.1 --force
+where ytconv
+ytconv --version
+```
+
+Untuk menguji branch sebelum publish:
+
+```cmd
+cd C:\Users\andhi\youtubetomp3
+git switch codex/add-ytconv-cli
+git pull --ff-only origin codex/add-ytconv-cli
+cd cli
+npm install
+npm run check
+npm test
+npm install -g . --force
+ytconv --version
+```
+
+`node .\bin\ytconv.js --version` membaca versi lokal repository, sedangkan `ytconv --version` membaca instalasi global.
 
 ## Yang didukung
 
@@ -21,7 +51,7 @@ YTConv adalah downloader dan converter media sosial berbasis terminal yang memak
 Pasang Node.js 18 atau lebih baru:
 
 ```bash
-npm install -g ytconv@1.2.0
+npm install -g ytconv@1.2.1
 ytconv --version
 ytconv --diagnose
 ytconv
@@ -30,7 +60,7 @@ ytconv
 Tanpa instalasi global:
 
 ```bash
-npx -y ytconv@1.2.0
+npx -y ytconv@1.2.1
 ```
 
 ### Android Termux
@@ -41,7 +71,7 @@ Gunakan Termux dari F-Droid atau GitHub Releases:
 pkg update
 pkg install -y nodejs python ffmpeg
 termux-setup-storage
-npm install -g ytconv@1.2.0 --omit=optional
+npm install -g ytconv@1.2.1 --omit=optional
 ytconv --diagnose
 ytconv
 ```
@@ -54,7 +84,7 @@ Hasil default berada di:
 
 ### iPhone/iPad melalui iSH
 
-Jangan memasang paket npm di iSH. Gunakan frontend Python native:
+Jangan memasang paket npm di iSH. Gunakan frontend Python native. Frontend iSH tetap versi 1.2.0 karena hotfix 1.2.1 hanya memperbaiki self-update npm pada Windows:
 
 ```sh
 wget -qO- https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh | sh
