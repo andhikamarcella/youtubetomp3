@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.2.0
+# Troubleshooting YTConv 1.2.1
 
 ## Mulai dari diagnostics
 
@@ -9,14 +9,46 @@ ytconv --diagnose
 
 Pastikan yt-dlp, gallery-dl, dan FFmpeg ditemukan.
 
+## `spawnSync npm.cmd EINVAL` saat update Windows
+
+Error ini berasal dari updater lama yang mencoba menjalankan `npm.cmd` secara langsung. Instalasi global 1.1.5 atau 1.2.0 yang sudah mengalami error tersebut tidak dapat memperbaiki dirinya sendiri.
+
+Dari CMD jalankan:
+
+```cmd
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@1.2.1 --force
+where ytconv
+ytconv --version
+```
+
+Versi harus menampilkan `1.2.1`. YTConv 1.2.1 menjalankan npm melalui `cmd.exe`, sehingga tidak lagi memakai pemanggilan `npm.cmd` yang menghasilkan `EINVAL`.
+
+Untuk menguji branch GitHub sebelum 1.2.1 dipublikasikan:
+
+```cmd
+cd C:\Users\andhi\youtubetomp3
+git switch codex/add-ytconv-cli
+git pull --ff-only origin codex/add-ytconv-cli
+cd cli
+npm install
+npm run check
+npm test
+npm install -g . --force
+ytconv --version
+```
+
+Perintah `node .\bin\ytconv.js --version` menguji kode lokal. Perintah `ytconv --version` menguji instalasi global.
+
 ## Update bersih npm
 
 ### Windows CMD
 
 ```cmd
 npm uninstall -g ytconv
-npm cache clean --force
-npm install -g ytconv@1.2.0 --force
+npm cache verify
+npm install -g ytconv@1.2.1 --force
 ytconv --version
 ```
 
@@ -27,9 +59,11 @@ pkg update
 pkg install -y nodejs python ffmpeg
 python -m pip install -U yt-dlp gallery-dl
 npm uninstall -g ytconv
-npm install -g ytconv@1.2.0 --omit=optional
+npm install -g ytconv@1.2.1 --omit=optional
 ytconv --diagnose
 ```
+
+Frontend native iSH tetap 1.2.0 karena hotfix 1.2.1 hanya memperbaiki self-update npm pada Windows.
 
 ## Link gagal tetapi bisa dibuka di browser
 
@@ -119,6 +153,7 @@ Sertakan:
 
 - `ytconv --version`
 - keluaran `ytconv --diagnose`
+- hasil `where ytconv` pada Windows
 - sistem operasi
 - platform/link yang sudah disensor bila privat
 - log dari `--log-file`
