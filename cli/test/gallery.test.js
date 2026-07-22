@@ -10,8 +10,8 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv public release is version 1.1.3', () => {
-  assert.equal(manifest.version, '1.1.3');
+test('YTConv public release is version 1.1.4', () => {
+  assert.equal(manifest.version, '1.1.4');
 });
 
 test('FFmpeg static is optional so Termux can use pkg ffmpeg', () => {
