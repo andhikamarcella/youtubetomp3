@@ -8,15 +8,20 @@ const childProcess = require("node:child_process");
 const originalSpawn = childProcess.spawn.bind(childProcess);
 
 const cookiesEnabled = !/^(0|false|off|no)$/i.test(String(process.env.ENABLE_SERVER_COOKIES || "true"));
+const autoInjectCookies = /^(1|true|yes|on)$/i.test(String(process.env.YTDLP_AUTO_INJECT_COOKIES || "false"));
 const workerBase = String(process.env.WORKER_API_BASE || "").trim().replace(/\/$/, "");
 const workerSecret = String(process.env.WORKER_SHARED_SECRET || "").trim();
 const syncIntervalMs = Math.max(5_000, Number(process.env.COOKIES_SYNC_INTERVAL_MS || 15_000));
 const explicitYoutubeClients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "").trim();
+const fetchPotPolicy = String(process.env.YTDLP_FETCH_POT || "").trim().toLowerCase();
+const potProviderUrl = String(process.env.YTDLP_POT_PROVIDER_URL || "").trim().replace(/\/$/, "");
 const impersonateTarget = String(process.env.YTDLP_IMPERSONATE || "").trim();
 const sleepRequests = String(process.env.YTDLP_SLEEP_REQUESTS || "").trim();
+const proxyUrl = String(process.env.YTDLP_PROXY || "").trim();
 let lastForwardedHash = "";
 let syncRunning = false;
 let warnedLegacyClients = false;
+let loggedGuestMode = false;
 
 const unique = (values) => [...new Set(values.filter(Boolean).map((value) => resolve(String(value))))];
 
@@ -85,15 +90,31 @@ const rewriteYoutubeExtractorArg = (value = "") => {
     .map((part) => part.trim())
     .filter(Boolean);
 
-  const filtered = parts.filter((part) => {
-    if (!/^player[-_]client\s*=/i.test(part)) return true;
-    return Boolean(explicitYoutubeClients);
-  });
+  const filtered = [];
+  let foundPlayerClient = false;
+  let foundFetchPot = false;
 
-  if (!explicitYoutubeClients && filtered.length !== parts.length && !warnedLegacyClients) {
-    warnedLegacyClients = true;
-    console.log("[yt-dlp] removed hard-coded YouTube player clients; yt-dlp will choose cookie-compatible defaults");
+  for (const part of parts) {
+    if (/^player[-_]client\s*=/i.test(part)) {
+      foundPlayerClient = true;
+      if (explicitYoutubeClients) filtered.push(`player_client=${explicitYoutubeClients}`);
+      continue;
+    }
+    if (/^fetch_pot\s*=/i.test(part)) {
+      foundFetchPot = true;
+      if (fetchPotPolicy) filtered.push(`fetch_pot=${fetchPotPolicy}`);
+      else filtered.push(part);
+      continue;
+    }
+    filtered.push(part);
   }
+
+  if (!explicitYoutubeClients && foundPlayerClient && !warnedLegacyClients) {
+    warnedLegacyClients = true;
+    console.log("[yt-dlp] removed hard-coded YouTube player clients; yt-dlp will choose current defaults");
+  }
+  if (explicitYoutubeClients && !foundPlayerClient) filtered.push(`player_client=${explicitYoutubeClients}`);
+  if (fetchPotPolicy && !foundFetchPot) filtered.push(`fetch_pot=${fetchPotPolicy}`);
 
   return filtered.length ? `youtube:${filtered.join(";")}` : "";
 };
@@ -129,14 +150,33 @@ const insertBeforeUrl = (args, ...values) => {
   return next;
 };
 
+const hasExtractorArg = (args = [], prefix = "") => {
+  for (let index = 0; index < args.length - 1; index += 1) {
+    if (args[index] === "--extractor-args" && String(args[index + 1] || "").startsWith(prefix)) return true;
+  }
+  return false;
+};
+
 const injectYtDlpArgs = (command, args) => {
   const source = Array.isArray(args) ? [...args] : [];
   if (!commandUsesYtDlp(command, source)) return source;
 
   let next = normalizeExtractorArgs(source);
+
+  if (potProviderUrl && !hasExtractorArg(next, "youtubepot-bgutilhttp:")) {
+    next = insertBeforeUrl(next, "--extractor-args", `youtubepot-bgutilhttp:base_url=${potProviderUrl}`);
+  }
+
   const cookies = readValidCookies();
-  if (cookies && !next.includes("--cookies") && !next.includes("--cookies-from-browser")) {
+  if (autoInjectCookies && cookies && !next.includes("--cookies") && !next.includes("--cookies-from-browser")) {
     next = insertBeforeUrl(next, "--cookies", cookies.filePath);
+  } else if (!autoInjectCookies && cookies && !loggedGuestMode) {
+    loggedGuestMode = true;
+    console.log("[yt-dlp] guest mode first: uploaded cookies are reserved for the explicit retry path");
+  }
+
+  if (proxyUrl && !isDisabledValue(proxyUrl) && !next.includes("--proxy")) {
+    next = insertBeforeUrl(next, "--proxy", proxyUrl);
   }
 
   if (impersonateTarget && !isDisabledValue(impersonateTarget) && !next.includes("--impersonate")) {
