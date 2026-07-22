@@ -25,19 +25,38 @@ if (existsSync(runtimePythonDir)) {
 
 const cookiesEnabled = !/^(0|false|off|no)$/i.test(String(process.env.ENABLE_SERVER_COOKIES || "true"));
 const autoInjectCookies = /^(1|true|yes|on)$/i.test(String(process.env.YTDLP_AUTO_INJECT_COOKIES || "false"));
+const vanillaFirst = !/^(0|false|off|no)$/i.test(String(process.env.YTDLP_VANILLA_FIRST || "true"));
 const workerBase = String(process.env.WORKER_API_BASE || "").trim().replace(/\/$/, "");
 const workerSecret = String(process.env.WORKER_SHARED_SECRET || "").trim();
 const syncIntervalMs = Math.max(5_000, Number(process.env.COOKIES_SYNC_INTERVAL_MS || 15_000));
 const configuredYoutubeClients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "mweb").trim();
+const supportedYoutubeClients = new Set([
+  "mweb",
+  "web",
+  "web_safari",
+  "web_embedded",
+  "web_music",
+  "tv",
+  "tv_simply",
+  "ios",
+  "visionos",
+  "android_vr",
+  "default",
+]);
+const normalizeYoutubeClient = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "tv_embedded") return "web_embedded";
+  if (normalized === "android") return "android_vr";
+  return normalized;
+};
 const rawYoutubeClientPool = String(
-  process.env.YTDLP_YOUTUBE_CLIENT_POOL || "mweb,web_embedded,android_vr,web_safari,default",
+  process.env.YTDLP_YOUTUBE_CLIENT_POOL || "mweb,web,web_safari,web_embedded,tv,ios,android_vr,default",
 ).trim();
 const youtubeClientPool = [...new Set(rawYoutubeClientPool
   .split(/[,+]/)
-  .map((value) => value.trim().toLowerCase())
-  .map((value) => value === "tv_embedded" ? "web_embedded" : value === "android" ? "android_vr" : value)
-  .filter((value) => ["mweb", "web_embedded", "android_vr", "web_safari", "default"].includes(value)))];
-const youtubeAttemptByTarget = new Map();
+  .map(normalizeYoutubeClient)
+  .filter((value) => supportedYoutubeClients.has(value)))];
+const youtubeAttemptByOperation = new Map();
 const fetchPotPolicy = String(process.env.YTDLP_FETCH_POT || "always").trim().toLowerCase();
 const potProviderUrl = String(process.env.YTDLP_POT_PROVIDER_URL || "http://127.0.0.1:4416").trim().replace(/\/$/, "");
 const manualPoToken = String(process.env.YTDLP_YOUTUBE_PO_TOKEN || "").trim();
@@ -112,12 +131,8 @@ const isDisabledValue = (value = "") => /^(0|false|off|no|none)$/i.test(String(v
 const preferredYoutubeClient = () => {
   const values = configuredYoutubeClients
     .split(/[,+]/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-  if (values.includes("mweb")) return "mweb";
-  if (values.includes("web_embedded")) return "web_embedded";
-  if (values.includes("android_vr")) return "android_vr";
-  if (values.includes("web_safari")) return "web_safari";
+    .map(normalizeYoutubeClient)
+    .filter((value) => supportedYoutubeClients.has(value));
   return values[0] || "mweb";
 };
 
@@ -131,13 +146,39 @@ const getYoutubeTarget = (args = []) => {
   return "youtube";
 };
 
-const nextYoutubeClient = (args = []) => {
+const isMetadataInvocation = (args = []) => args.some((item) => [
+  "--dump-single-json",
+  "--dump-json",
+  "-J",
+  "-j",
+  "--get-url",
+  "--get-title",
+  "--get-id",
+  "--get-duration",
+  "--skip-download",
+].includes(String(item || "")));
+
+const getYoutubeOperationKey = (args = []) => `${isMetadataInvocation(args) ? "metadata" : "download"}:${getYoutubeTarget(args)}`;
+
+const nextYoutubeStrategy = (args = []) => {
+  const key = getYoutubeOperationKey(args);
+  const attempt = youtubeAttemptByOperation.get(key) || 0;
+  youtubeAttemptByOperation.set(key, attempt + 1);
+  if (youtubeAttemptByOperation.size > 1_000) {
+    const oldest = youtubeAttemptByOperation.keys().next().value;
+    if (oldest) youtubeAttemptByOperation.delete(oldest);
+  }
+  if (vanillaFirst && attempt === 0) return { mode: "vanilla", attempt, client: "" };
   const pool = youtubeClientPool.length ? youtubeClientPool : [preferredYoutubeClient()];
-  const target = getYoutubeTarget(args);
-  const attempt = youtubeAttemptByTarget.get(target) || 0;
-  youtubeAttemptByTarget.set(target, attempt + 1);
-  return pool[attempt % pool.length];
+  const enhancedAttempt = vanillaFirst ? Math.max(0, attempt - 1) : attempt;
+  return {
+    mode: "enhanced",
+    attempt,
+    client: pool[enhancedAttempt % pool.length],
+  };
 };
+
+const nextYoutubeClient = (args = []) => nextYoutubeStrategy(args).client || "default";
 
 const rewriteYoutubeExtractorArg = (value = "", selectedClient = preferredYoutubeClient()) => {
   const raw = String(value || "");
@@ -191,6 +232,43 @@ const isYoutubeTarget = (args = []) => args.some((item) => {
   return /^(?:ytsearch|ytmsearch)/i.test(value) || /(?:youtube\.com|youtu\.be)/i.test(value);
 });
 
+const removeOptionPairs = (args = [], names = []) => {
+  const blocked = new Set(names);
+  const next = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const item = String(args[index] || "");
+    if (blocked.has(item)) {
+      index += 1;
+      continue;
+    }
+    next.push(args[index]);
+  }
+  return next;
+};
+
+const stripYoutubeEnhancements = (args = []) => {
+  const source = removeOptionPairs(args, [
+    "--js-runtimes",
+    "--remote-components",
+    "--extractor-retries",
+    "--impersonate",
+    "--sleep-requests",
+  ]);
+  const next = [];
+  for (let index = 0; index < source.length; index += 1) {
+    const item = source[index];
+    if (item !== "--extractor-args") {
+      next.push(item);
+      continue;
+    }
+    const value = String(source[index + 1] || "");
+    index += 1;
+    if (/^(?:youtube|youtubepot-bgutilhttp):/i.test(value)) continue;
+    next.push("--extractor-args", value);
+  }
+  return next;
+};
+
 const ensureExtractorArgs = (args = [], selectedClient = preferredYoutubeClient()) => {
   if (!isYoutubeTarget(args)) return [...args];
   const source = [...args];
@@ -226,7 +304,7 @@ const ensureExtractorArgs = (args = [], selectedClient = preferredYoutubeClient(
   if (!youtubeArgSeen) {
     next.push("--extractor-args", rewriteYoutubeExtractorArg("youtube:", selectedClient));
   }
-  if (potProviderUrl && !providerArgSeen) {
+  if (selectedClient === "mweb" && potProviderUrl && !providerArgSeen) {
     next.push("--extractor-args", `youtubepot-bgutilhttp:base_url=${potProviderUrl}`);
   }
   if (urlArg) next.push(urlArg);
@@ -257,11 +335,20 @@ const chooseProxy = () => {
 
 const injectYtDlpArgs = (command, args) => {
   const source = Array.isArray(args) ? [...args] : [];
-  if (!commandUsesYtDlp(command, source)) return source;
+  if (!commandUsesYtDlp(command, source) || !isYoutubeTarget(source)) return source;
 
   const hasExplicitCookies = source.includes("--cookies") || source.includes("--cookies-from-browser");
-  const selectedClient = hasExplicitCookies ? preferredYoutubeClient() : nextYoutubeClient(source);
-  let next = ensureExtractorArgs(source, selectedClient);
+  const strategy = hasExplicitCookies
+    ? { mode: "enhanced", client: preferredYoutubeClient() }
+    : nextYoutubeStrategy(source);
+
+  if (strategy.mode === "vanilla") {
+    const vanillaArgs = stripYoutubeEnhancements(source);
+    console.log(`[yt-dlp] vanilla ${isMetadataInvocation(source) ? "metadata" : "download"} attempt for ${getYoutubeTarget(source)}`);
+    return vanillaArgs;
+  }
+
+  let next = ensureExtractorArgs(source, strategy.client || preferredYoutubeClient());
   const cookies = readValidCookies();
   if (autoInjectCookies && cookies && !next.includes("--cookies") && !next.includes("--cookies-from-browser")) {
     next = insertBeforeUrl(next, "--cookies", cookies.filePath);
@@ -325,4 +412,12 @@ setTimeout(forwardCookiesToWorker, 1_000).unref?.();
 const syncTimer = setInterval(forwardCookiesToWorker, syncIntervalMs);
 syncTimer.unref?.();
 
-export { forwardCookiesToWorker, injectYtDlpArgs, nextYoutubeClient, readValidCookies, rewriteYoutubeExtractorArg };
+export {
+  forwardCookiesToWorker,
+  injectYtDlpArgs,
+  nextYoutubeClient,
+  nextYoutubeStrategy,
+  readValidCookies,
+  rewriteYoutubeExtractorArg,
+  stripYoutubeEnhancements,
+};
