@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 const REGISTRY_URL = 'https://registry.npmjs.org/ytconv/latest';
 const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 4_000;
+const UPDATE_ARGUMENTS = ['install', '-g', 'ytconv@latest'];
 
 function numericParts(version) {
   return String(version ?? '')
@@ -128,25 +129,43 @@ export async function checkForUpdate({
   }
 }
 
-export function updateCommand({ platform = process.platform } = {}) {
-  return platform === 'win32'
-    ? 'npm install -g ytconv@latest'
-    : 'npm install -g ytconv@latest';
+export function updateCommand() {
+  return 'npm install -g ytconv@latest';
 }
 
-export function runSelfUpdate({ platform = process.platform } = {}) {
-  const command = platform === 'win32' ? 'npm.cmd' : 'npm';
-  const args = ['install', '-g', 'ytconv@latest'];
-  const result = spawnSync(command, args, {
+export function selfUpdateInvocation({
+  platform = process.platform,
+  env = process.env,
+} = {}) {
+  if (platform === 'win32') {
+    return {
+      command: env.ComSpec || env.COMSPEC || 'cmd.exe',
+      args: ['/d', '/s', '/c', updateCommand()],
+    };
+  }
+
+  return {
+    command: 'npm',
+    args: [...UPDATE_ARGUMENTS],
+  };
+}
+
+export function runSelfUpdate({
+  platform = process.platform,
+  env = process.env,
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  const invocation = selfUpdateInvocation({ platform, env });
+  const result = spawnSyncImpl(invocation.command, invocation.args, {
     stdio: 'inherit',
     windowsHide: true,
-    env: process.env,
+    env,
   });
 
   if (result.error || result.status !== 0) {
     const detail = result.error?.message || `exit code ${result.status ?? 'unknown'}`;
-    return { ok: false, command: updateCommand({ platform }), error: new Error(detail) };
+    return { ok: false, command: updateCommand(), error: new Error(detail) };
   }
 
-  return { ok: true, command: updateCommand({ platform }) };
+  return { ok: true, command: updateCommand() };
 }
