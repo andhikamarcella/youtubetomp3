@@ -1,291 +1,230 @@
-# YTConv CLI 1.0.1
+# YTConv CLI 1.2.0
 
-YTConv adalah aplikasi terminal hitam-putih untuk mengunduh media dari link sosial. Satu command dapat menangani video, audio, gambar tunggal, carousel, reels, story, highlights, dan posting campuran selama link tersebut didukung oleh engine yang digunakan.
+YTConv adalah downloader dan converter media sosial berbasis terminal yang memakai **yt-dlp**, **gallery-dl**, dan **FFmpeg**. Versi 1.2.0 adalah rilis pematangan: opsi lebih lengkap, preset siap pakai, pemeriksaan tanpa download, logging, dokumentasi rinci, serta validasi agar command aman dipakai di CMD Windows, Linux, macOS, Termux, dan frontend native iSH.
 
-> Gunakan hanya untuk media milik sendiri, media berlisensi bebas, atau media yang memang diizinkan untuk diunduh. YTConv tidak melewati DRM, pembayaran, akun privat yang tidak dapat kamu akses, atau pembatasan hak cipta.
+> Gunakan hanya untuk media milik sendiri, berlisensi bebas, atau yang memang diizinkan untuk diunduh. YTConv tidak melewati DRM, pembayaran, akun privat tanpa akses, atau pembatasan hak cipta.
 
-## Engine bawaan
+## Yang didukung
 
-YTConv memakai tiga alat:
+- Video, audio, gambar, carousel, story, Reel, post campuran, dan playlist.
+- MP3, M4A, AAC, OPUS, Vorbis, FLAC, ALAC, dan WAV.
+- MP4, MKV, WEBM, resolusi sampai 2160p bila sumber tersedia.
+- Thumbnail terpisah, cover tertanam, metadata, chapter, subtitle, description, dan `info.json`.
+- Crop thumbnail persegi 1:1 khusus YouTube Music.
+- Potong bagian tertentu, SponsorBlock, normalisasi audio, archive anti-duplikat, proxy, rate limit, dan output template.
+- Fallback yt-dlp ↔ gallery-dl untuk link AUTO yang cocok.
 
-- `yt-dlp` untuk video dan audio.
-- `gallery-dl` untuk gambar, carousel, reels/story tertentu, posting campuran, dan situs galeri.
-- FFmpeg untuk merge dan konversi video/audio.
+## Instalasi
 
-Pada Windows dan Linux, YTConv mencoba menyiapkan executable `yt-dlp`, `gallery-dl`, dan FFmpeg saat instalasi. Pada Termux, YTConv menyiapkan modul Python yang kompatibel dengan Android saat pemakaian pertama. Pada iSH/iOS, YTConv memakai frontend Python native agar tidak bergantung pada Node/npm lama bawaan iSH.
+### Windows, Linux, macOS
 
-## Perangkat
-
-- Windows x64/ARM64
-- Linux x64/ARM64/ARM
-- macOS Intel dan Apple Silicon
-- Android melalui Termux
-- iPhone/iPad melalui iSH native mode
-
-Catatan macOS: `yt-dlp` dan FFmpeg tetap otomatis. Bila executable `gallery-dl` tidak tersedia, YTConv mencoba modul Python. Pada perangkat macOS tanpa Python 3, image/gallery mode memerlukan Python 3 terlebih dahulu.
-
-## Instalasi desktop dan Termux
-
-Pasang Node.js 18 atau lebih baru, lalu:
+Pasang Node.js 18 atau lebih baru:
 
 ```bash
-npm install -g ytconv
+npm install -g ytconv@1.2.0
+ytconv --version
+ytconv --diagnose
 ytconv
 ```
 
 Tanpa instalasi global:
 
 ```bash
-npx -y ytconv@latest
+npx -y ytconv@1.2.0
 ```
 
-## Instalasi iSH di iPhone/iPad
-
-**Jangan memakai `npm install -g ytconv` di iSH.** iSH App Store umumnya memakai Alpine x86 lama; contoh Node `14.21.3` dan npm `7.17.0` tidak memenuhi kebutuhan TUI Node modern dan dapat menghasilkan `EBADENGINE`, `TAR_ENTRY_INVALID`, atau `ENOTEMPTY`.
-
-Di iSH jalankan installer native berikut:
-
-```sh
-wget -qO- https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh | sh
-```
-
-Installer akan:
-
-- menghapus sisa instalasi npm YTConv yang rusak;
-- memasang `python3`, `py3-pip`, `ffmpeg`, `curl`, dan sertifikat Alpine;
-- memasang `yt-dlp` dan `gallery-dl` versi yang kompatibel dengan Python iSH;
-- membuat command `/usr/local/bin/ytconv`;
-- membuat folder hasil `~/Downloads/YTConv`.
-
-Setelah selesai:
-
-```sh
-ytconv --version
-ytconv --diagnose
-ytconv
-```
-
-Hasil dapat dibuka melalui:
-
-```text
-Files → iSH → root → Downloads → YTConv
-```
-
-Update frontend iSH:
-
-```sh
-ytconv --check-update
-ytconv --update
-```
-
-atau jalankan ulang installer yang sama.
-
-### Batasan iSH yang perlu diketahui
-
-- iSH adalah emulasi Linux x86 di iOS, bukan terminal native seperti Termux.
-- Python iSH lama mungkin masih 3.9, sedangkan yt-dlp terbaru resmi membutuhkan Python 3.10+. pip akan memilih rilis yt-dlp terakhir yang kompatibel, sehingga sebagian situs terbaru dapat gagal.
-- iOS dapat menghentikan iSH ketika aplikasi berada lama di background.
-- Kecepatan convert dan FFmpeg lebih lambat dibanding Windows, Linux, macOS, atau Termux.
-- Cookies browser Safari tidak dapat dibaca langsung. Gunakan file Netscape `cookies.txt`.
-
-## Update wajib
-
-Mulai YTConv `1.0.0`, aplikasi memeriksa versi terbaru. Bila versi baru tersedia, YTConv memperbarui dirinya sebelum membuka converter.
-
-Desktop/Termux:
-
-```bash
-ytconv --check-update
-ytconv --update
-npm install -g ytconv@latest
-```
-
-iSH native:
-
-```sh
-ytconv --check-update
-ytconv --update
-```
-
-Setelah update:
-
-```bash
-ytconv --version
-ytconv
-```
-
-Pengecekan dapat dilewati hanya untuk pemulihan/offline:
-
-```bash
-ytconv --no-update-check
-```
-
-### Pengguna versi lama
-
-- `0.5.6` dan versi sesudahnya memiliki update checker dan akan melihat versi terbaru setelah diterbitkan.
-- `0.5.5` atau lebih lama tidak memiliki kode update checker dan perlu satu kali update manual:
-
-```bash
-npm install -g ytconv@latest
-```
-
-- Pengguna iSH yang pernah mencoba npm harus menjalankan installer native satu kali; installer membersihkan folder npm YTConv yang gagal.
-
-## Termux
+### Android Termux
 
 Gunakan Termux dari F-Droid atau GitHub Releases:
 
 ```bash
 pkg update
-pkg install -y nodejs
+pkg install -y nodejs python ffmpeg
 termux-setup-storage
-npm install -g ytconv
+npm install -g ytconv@1.2.0 --omit=optional
+ytconv --diagnose
 ytconv
 ```
 
-Pada pemakaian pertama, YTConv menyiapkan:
-
-```text
-Python
-yt-dlp
-gallery-dl
-FFmpeg
-yt-dlp-ejs (jika tersedia)
-```
-
-Hasil disimpan ke:
+Hasil default berada di:
 
 ```text
 /storage/emulated/0/Download/YTConv
 ```
 
-## Cara memakai
+### iPhone/iPad melalui iSH
 
-1. Jalankan `ytconv`.
-2. Tempel link.
-3. Tekan Enter atau pilih tombol `convert` pada TUI Node.
-4. YTConv memilih engine video/audio atau image/gallery berdasarkan link.
+Jangan memasang paket npm di iSH. Gunakan frontend Python native:
 
-Link langsung:
-
-```bash
-ytconv "https://www.instagram.com/p/..."
+```sh
+wget -qO- https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh | sh
 ```
 
-## Gambar dan carousel
+Lalu:
 
-Mode otomatis mengenali banyak link gambar dan carousel dari Instagram, Pinterest, TikTok photo posts, X/Twitter, Facebook, Reddit Gallery, Tumblr, Imgur, Flickr, DeviantArt, Pixiv, Bluesky, dan situs lain yang didukung `gallery-dl`.
-
-Paksa image/gallery engine:
-
-```bash
-ytconv --image "https://www.instagram.com/p/..."
-ytconv --image "https://www.pinterest.com/pin/..."
-```
-
-Untuk satu posting carousel, semua item yang tersedia akan disimpan, bukan hanya gambar pertama.
-
-## Instagram Reels, Stories, dan Highlights
-
-Direct URL reel atau story dapat ditempel seperti link biasa:
-
-```bash
-ytconv "https://www.instagram.com/reel/..."
-ytconv --cookies cookies.txt "https://www.instagram.com/stories/username/..."
-```
-
-Ambil story dari URL profil:
-
-```bash
-ytconv --stories --cookies cookies.txt "https://www.instagram.com/username/"
-```
-
-Ambil post, reels, stories, dan highlights dari profil:
-
-```bash
-ytconv --all-media --cookies cookies.txt "https://www.instagram.com/username/"
-```
-
-Story, highlights, akun privat, dan media login-only memerlukan cookies akun yang memang memiliki akses. YTConv tidak membuka akun privat yang tidak dapat dilihat oleh akun tersebut.
-
-## Mode command line
-
-```text
-ytconv --auto LINK
-ytconv --video LINK
-ytconv --audio LINK
-ytconv --image LINK
-ytconv --stories --cookies cookies.txt PROFILE_URL
-ytconv --all-media --cookies cookies.txt PROFILE_URL
-ytconv --playlist LINK
-ytconv --output PATH LINK
-ytconv --cookies cookies.txt LINK
-ytconv --diagnose
-ytconv --check-update
-ytconv --update
+```sh
 ytconv --version
+ytconv --diagnose
+ytconv
 ```
 
-`--auto` adalah perilaku default. `--video` memaksa yt-dlp dan tidak memakai gallery fallback. `--image` memaksa gallery-dl.
+Hasil dapat dibuka dari `Files → iSH → root → Downloads → YTConv`.
 
-## Shortcut TUI desktop/Termux
+## Pemakaian cepat
 
-```text
-Tab         pilih input / tombol convert
-Enter       jalankan convert
-Ctrl + G    ganti Video / Audio
-Ctrl + Q    ganti kualitas
-Ctrl + F    ganti MP3 / M4A saat mode Audio
-Ctrl + B    ganti sumber cookies
-Ctrl + P    aktif/nonaktifkan playlist
-Ctrl + O    aktif/nonaktifkan auto-open
-Ctrl + H    bantuan
-Ctrl + D    diagnostics
-Esc/Ctrl+C  batalkan dan keluar
-O           buka folder hasil
-F           buka file hasil
-C           salin lokasi hasil
-R           link lain / retry
-E           edit link setelah error
+```bash
+ytconv "LINK"
+ytconv --preset music "LINK"
+ytconv --preset mobile "LINK"
+ytconv --preset archive --playlist "LINK_PLAYLIST"
 ```
 
-Frontend iSH sengaja memakai prompt sederhana tanpa Ink agar stabil pada Node lama dan emulasi x86.
+### Preset
+
+| Preset | Fungsi |
+|---|---|
+| `balanced` | AUTO, kualitas terbaik, perilaku aman |
+| `music` | MP3 320 kbps + thumbnail + cover + metadata |
+| `lossless` | FLAC terbaik + thumbnail + metadata |
+| `mobile` | MP4 720p yang ringan dan kompatibel |
+| `hd` | MP4 1080p |
+| `archive` | kualitas terbaik, MKV, subtitle, sidecar, thumbnail, archive |
+
+Lihat dari terminal:
+
+```bash
+ytconv --list-presets
+```
+
+## Audio
+
+```bash
+ytconv --audio-format mp3 --audio-quality 320 "LINK"
+ytconv --audio-format flac --thumbnail "LINK"
+ytconv --audio-format alac "LINK"
+ytconv --audio --normalize-audio "LINK"
+ytconv --audio --keep-video "LINK"
+```
+
+MP3 selalu menyimpan thumbnail JPG dan menanamnya sebagai cover. YouTube Music mengubah gambar menjadi persegi 1:1 sebelum disimpan dan ditanam.
+
+## Video dan subtitle
+
+```bash
+ytconv --video-format mp4 --resolution 1080 "LINK"
+ytconv --video-format webm --resolution 720 "LINK"
+ytconv --subtitles --subtitle-langs "id,en" "LINK"
+```
+
+Subtitle normal dan otomatis dicoba, dikonversi ke SRT, lalu ditanam bila container mendukungnya.
+
+## SponsorBlock
+
+```bash
+ytconv --sponsorblock mark "LINK"
+ytconv --sponsorblock remove "LINK"
+ytconv --remove-sponsors "LINK"
+```
+
+SponsorBlock bergantung pada ketersediaan segmen untuk video tersebut. Pada situs non-YouTube biasanya tidak ada data SponsorBlock.
+
+## Metadata, thumbnail, dan potong durasi
+
+```bash
+ytconv --metadata-files --thumbnail "LINK"
+ytconv --start 01:00 --end 02:30 "LINK"
+ytconv --write-info-json --write-description "LINK"
+```
+
+Waktu menerima detik, `MM:SS`, atau `HH:MM:SS`.
+
+## Playlist dan anti-duplikat
+
+```bash
+ytconv --playlist "LINK_PLAYLIST"
+ytconv --playlist-items "1,3,5-10" --playlist "LINK_PLAYLIST"
+ytconv --max-downloads 25 --playlist "LINK_PLAYLIST"
+ytconv --archive downloaded.txt --playlist "LINK_PLAYLIST"
+```
+
+## Jaringan dan performa
+
+```bash
+ytconv --rate-limit 2M "LINK"
+ytconv --concurrent-fragments 8 "LINK"
+ytconv --proxy socks5://127.0.0.1:1080 "LINK"
+ytconv --live-from-start "LINK_LIVE"
+```
+
+Fragmen paralel dibatasi 1–16 agar pengguna tidak sengaja membebani perangkat atau koneksi.
+
+## Nama dan lokasi file
+
+```bash
+ytconv -o "D:\Media\YTConv" "LINK"
+ytconv --restrict-filenames "LINK"
+ytconv --output-template "%(uploader)s/%(title)s [%(id)s].%(ext)s" "LINK"
+ytconv --overwrite "LINK"
+```
+
+Template harus relatif, tidak boleh keluar dari folder output, dan wajib memuat `%(ext)s`.
+
+## Pemeriksaan tanpa download
+
+```bash
+ytconv --dry-run "LINK"
+ytconv --json "LINK"
+ytconv --list-formats "LINK"
+ytconv --list-subs "LINK"
+```
+
+`--json` menghasilkan schema stabil versi 1 untuk automasi. Mode ini melewati update check agar stdout tetap bersih.
+
+## Logging
+
+```bash
+ytconv --log-file ytconv.log "LINK"
+```
+
+Log menyimpan waktu, status, engine, dan pesan error. File tidak menyimpan isi cookies.
 
 ## Cookies
 
-File cookies harus memakai format Netscape.
-
-Desktop:
-
-```text
-off → cookies.txt → Chrome → Edge → Firefox → Brave → Chromium → Opera → Vivaldi → Safari/Whale
-```
-
-Termux:
-
 ```bash
-ytconv --cookies "$HOME/storage/downloads/cookies.txt" LINK
+ytconv --cookies cookies.txt "LINK"
 ```
 
-iSH:
+File harus berformat Netscape. Jangan pernah membagikan `cookies.txt`, karena dapat berisi sesi login. Pada Termux dan iSH, database privat browser tidak dapat dibaca langsung; gunakan file cookies yang diekspor secara sah.
 
-```sh
-ytconv --cookies "$HOME/Downloads/cookies.txt" LINK
-```
+## Shortcut TUI
 
-Jangan pernah membagikan `cookies.txt`, karena file tersebut dapat berisi sesi login.
+| Tombol | Fungsi |
+|---|---|
+| `Ctrl+M` | mode AUTO/VIDEO/AUDIO/IMAGE |
+| `Ctrl+A` | format audio |
+| `Ctrl+T` | container video |
+| `Ctrl+Q` | resolusi video |
+| `Ctrl+S` | subtitle |
+| `Ctrl+N` | thumbnail terpisah |
+| `Ctrl+F` | format gambar |
+| `Ctrl+G` | platform/AUTO |
+| `Ctrl+B` | sumber cookies |
+| `Ctrl+P` | playlist |
+| `Ctrl+O` | auto-open |
+| `Ctrl+H` | bantuan |
+| `Ctrl+D` | diagnostics |
 
-## Diagnostics
+## Dokumentasi lengkap
 
-```bash
-ytconv --diagnose
-```
-
-Diagnostics menampilkan versi YTConv, status update, platform, yt-dlp, gallery-dl, FFmpeg, folder output, dan ketersediaan cookies/engine.
+- [Semua command dan contoh](docs/COMMANDS.md)
+- [Dukungan platform dan batasan](docs/PLATFORMS.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Checklist rilis npm](docs/RELEASE.md)
+- [Riwayat perubahan](CHANGELOG.md)
 
 ## Batasan nyata
 
-Tidak ada downloader yang dapat menjamin setiap link selalu berhasil. Situs dapat mengganti API, meminta login, membatasi wilayah, menerapkan 429, menghapus posting, atau menambahkan DRM. YTConv melakukan retry dan fallback antarmesin, tetapi tidak menjanjikan akses ke media yang secara teknis atau hukum tidak tersedia.
+Tidak ada downloader yang dapat menjamin setiap link selalu berhasil. Situs dapat mengganti API, meminta login, membatasi wilayah, menerapkan 429, menghapus posting, atau menambahkan DRM. YTConv melakukan retry, cookies fallback, dan fallback antarmesin, tetapi tidak menjanjikan akses ke media yang secara teknis atau hukum tidak tersedia.
 
 ## Menjalankan dari repository
 
@@ -300,13 +239,6 @@ npm test
 npm start
 ```
 
-## Publish
+## Lisensi
 
-```bash
-npm run check
-npm test
-npm pack --dry-run
-npm publish
-```
-
-Setiap publikasi wajib memakai nomor versi yang belum pernah dipublikasikan.
+MIT. Engine pihak ketiga memiliki lisensinya masing-masing.
