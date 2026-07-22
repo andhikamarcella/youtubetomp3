@@ -97,7 +97,7 @@ jobs:
                 --sleep-requests 0.75 \
                 -f "worstaudio/best" \
                 -o "/tmp/ytconv-smoke.%(ext)s" \
-                "https://www.youtube.com/watch?v=BaW_jenozKc"; then
+                "https://www.youtube.com/watch?v=jNQXAC9IVRw"; then
                 test -n "$(find /tmp -maxdepth 1 -type f -name "ytconv-smoke.*" -print -quit)"
                 echo "Cookie-free YouTube download succeeded"
                 exit 0
