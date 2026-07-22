@@ -69,9 +69,12 @@ jobs:
         if: matrix.node-version == '22.x'
         run: docker build --pull -t ytconv-render-ci .
       - name: Cookie-free YouTube Docker smoke test
+        id: youtube_smoke
         if: matrix.node-version == '22.x'
+        continue-on-error: true
         shell: bash
         run: |
+          set -o pipefail
           docker run --rm --entrypoint sh ytconv-render-ci -c '
             set -eu
             node /opt/bgutil-provider/build/main.js --port 4416 >/tmp/pot-provider.log 2>&1 &
@@ -81,6 +84,7 @@ jobs:
             attempt=1
             while [ "$attempt" -le 3 ]; do
               rm -f /tmp/ytconv-smoke.*
+              echo "=== yt-dlp attempt $attempt ==="
               if yt-dlp \
                 --verbose \
                 --no-playlist \
@@ -95,15 +99,27 @@ jobs:
                 -o "/tmp/ytconv-smoke.%(ext)s" \
                 "https://www.youtube.com/watch?v=BaW_jenozKc"; then
                 test -n "$(find /tmp -maxdepth 1 -type f -name "ytconv-smoke.*" -print -quit)"
+                echo "Cookie-free YouTube download succeeded"
                 exit 0
               fi
               attempt=$((attempt + 1))
               sleep $((attempt * 3))
             done
-            echo "PO-token provider log:"
+            echo "=== PO-token provider log ==="
             cat /tmp/pot-provider.log || true
             exit 1
-          '
+          ' 2>&1 | tee youtube-smoke.log
+      - name: Upload YouTube smoke log
+        if: matrix.node-version == '22.x' && steps.youtube_smoke.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-smoke-log
+          path: youtube-smoke.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Enforce YouTube smoke result
+        if: matrix.node-version == '22.x' && steps.youtube_smoke.outcome == 'failure'
+        run: exit 1
       - name: Dependency audit
         run: npm run audit
       - name: Secret scan
