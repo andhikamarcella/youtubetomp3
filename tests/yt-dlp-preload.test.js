@@ -24,7 +24,15 @@ const withEnv = async (patch, operation) => {
   }
 };
 
-test("yt-dlp preload keeps HttpOnly cookies and removes stale default clients", async () => {
+const extractorArgValues = (args) => {
+  const values = [];
+  for (let index = 0; index < args.length - 1; index += 1) {
+    if (args[index] === "--extractor-args") values.push(args[index + 1]);
+  }
+  return values;
+};
+
+test("yt-dlp preload uses guest mode, mweb PO tokens, and keeps cookies for retry", async () => {
   const directory = await mkdtemp(join(tmpdir(), "ytconv-cookies-"));
   const cookiesPath = join(directory, "cookies.txt");
   await writeFile(
@@ -42,9 +50,13 @@ test("yt-dlp preload keeps HttpOnly cookies and removes stale default clients", 
     await withEnv({
       COOKIES_PATH: cookiesPath,
       ENABLE_SERVER_COOKIES: "true",
-      YTDLP_YOUTUBE_PLAYER_CLIENTS: undefined,
+      YTDLP_AUTO_INJECT_COOKIES: "false",
+      YTDLP_YOUTUBE_PLAYER_CLIENTS: "mweb",
+      YTDLP_FETCH_POT: "always",
+      YTDLP_POT_PROVIDER_URL: "http://127.0.0.1:4416",
       YTDLP_IMPERSONATE: "chrome",
       YTDLP_SLEEP_REQUESTS: "0.75",
+      YTDLP_PROXY: "http://proxy.example:8080",
     }, async () => {
       const module = await import(`${preloadUrl}?test=${Date.now()}`);
       const cookies = module.readValidCookies();
@@ -58,11 +70,22 @@ test("yt-dlp preload keeps HttpOnly cookies and removes stale default clients", 
         url,
       ]);
 
-      assert.equal(args.includes("--extractor-args"), false);
-      assert.deepEqual(args.slice(args.indexOf("--cookies"), args.indexOf("--cookies") + 2), ["--cookies", cookiesPath]);
+      const extractorArgs = extractorArgValues(args);
+      assert.ok(extractorArgs.includes("youtube:player_client=mweb;fetch_pot=always"));
+      assert.ok(extractorArgs.includes("youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"));
+      assert.equal(args.includes("--cookies"), false, "public-video attempt must stay cookie-free");
+      assert.deepEqual(args.slice(args.indexOf("--proxy"), args.indexOf("--proxy") + 2), ["--proxy", "http://proxy.example:8080"]);
       assert.deepEqual(args.slice(args.indexOf("--impersonate"), args.indexOf("--impersonate") + 2), ["--impersonate", "chrome"]);
       assert.deepEqual(args.slice(args.indexOf("--sleep-requests"), args.indexOf("--sleep-requests") + 2), ["--sleep-requests", "0.75"]);
       assert.equal(args.at(-1), url);
+
+      const retryArgs = module.injectYtDlpArgs("yt-dlp", [
+        "--cookies", cookiesPath,
+        "--extractor-args", "youtube:player_client=mweb",
+        url,
+      ]);
+      assert.deepEqual(retryArgs.slice(retryArgs.indexOf("--cookies"), retryArgs.indexOf("--cookies") + 2), ["--cookies", cookiesPath]);
+      assert.equal(retryArgs.filter((item) => item === "--cookies").length, 1);
     });
   } finally {
     await rm(directory, { recursive: true, force: true });
