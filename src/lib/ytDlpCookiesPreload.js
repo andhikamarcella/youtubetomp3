@@ -7,32 +7,51 @@ const require = createRequire(import.meta.url);
 const childProcess = require("node:child_process");
 const originalSpawn = childProcess.spawn.bind(childProcess);
 
+const runtimeDir = join(process.cwd(), ".runtime");
+const runtimeBinDir = join(runtimeDir, "bin");
+const runtimePythonDir = join(runtimeDir, "python");
+if (existsSync(runtimeBinDir)) {
+  const currentPath = String(process.env.PATH || "");
+  const pathParts = currentPath.split(":").filter(Boolean);
+  if (!pathParts.includes(runtimeBinDir)) process.env.PATH = [runtimeBinDir, currentPath].filter(Boolean).join(":");
+}
+if (existsSync(runtimePythonDir)) {
+  const currentPythonPath = String(process.env.PYTHONPATH || "");
+  const pythonParts = currentPythonPath.split(":").filter(Boolean);
+  if (!pythonParts.includes(runtimePythonDir)) {
+    process.env.PYTHONPATH = [runtimePythonDir, currentPythonPath].filter(Boolean).join(":");
+  }
+}
+
 const cookiesEnabled = !/^(0|false|off|no)$/i.test(String(process.env.ENABLE_SERVER_COOKIES || "true"));
 const autoInjectCookies = /^(1|true|yes|on)$/i.test(String(process.env.YTDLP_AUTO_INJECT_COOKIES || "false"));
 const workerBase = String(process.env.WORKER_API_BASE || "").trim().replace(/\/$/, "");
 const workerSecret = String(process.env.WORKER_SHARED_SECRET || "").trim();
 const syncIntervalMs = Math.max(5_000, Number(process.env.COOKIES_SYNC_INTERVAL_MS || 15_000));
-const requestedYoutubeClients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "").trim();
-const legacyYoutubeClients = "mweb,web_safari,tv_embedded,android,default";
-const explicitYoutubeClients = requestedYoutubeClients.replace(/\s+/g, "").toLowerCase() === legacyYoutubeClients
-  ? "mweb"
-  : requestedYoutubeClients;
-const fetchPotPolicy = String(process.env.YTDLP_FETCH_POT || "").trim().toLowerCase();
-const potProviderUrl = String(process.env.YTDLP_POT_PROVIDER_URL || "").trim().replace(/\/$/, "");
+const configuredYoutubeClients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "mweb").trim();
+const rawYoutubeClientPool = String(
+  process.env.YTDLP_YOUTUBE_CLIENT_POOL || "mweb,web_embedded,android_vr,web_safari,default",
+).trim();
+const youtubeClientPool = [...new Set(rawYoutubeClientPool
+  .split(/[,+]/)
+  .map((value) => value.trim().toLowerCase())
+  .map((value) => value === "tv_embedded" ? "web_embedded" : value === "android" ? "android_vr" : value)
+  .filter((value) => ["mweb", "web_embedded", "android_vr", "web_safari", "default"].includes(value)))];
+const youtubeAttemptByTarget = new Map();
+const fetchPotPolicy = String(process.env.YTDLP_FETCH_POT || "always").trim().toLowerCase();
+const potProviderUrl = String(process.env.YTDLP_POT_PROVIDER_URL || "http://127.0.0.1:4416").trim().replace(/\/$/, "");
+const manualPoToken = String(process.env.YTDLP_YOUTUBE_PO_TOKEN || "").trim();
 const impersonateTarget = String(process.env.YTDLP_IMPERSONATE || "").trim();
 const sleepRequests = String(process.env.YTDLP_SLEEP_REQUESTS || "").trim();
-const proxyPool = [...new Set([
-  String(process.env.YTDLP_PROXY || "").trim(),
-  ...String(process.env.YTDLP_PROXY_POOL || "")
-    .split(/[\r\n,]+/)
-    .map((value) => value.trim()),
-].filter((value) => value && !/^(0|false|off|no|none)$/i.test(value)))];
+const fixedProxy = String(process.env.YTDLP_PROXY || "").trim();
+const proxyPool = String(process.env.YTDLP_PROXY_POOL || "")
+  .split(/[\n,;]+/)
+  .map((value) => value.trim())
+  .filter(Boolean);
 let proxyCursor = 0;
 let lastForwardedHash = "";
 let syncRunning = false;
 let warnedLegacyClients = false;
-let loggedGuestMode = false;
-let loggedProxyPool = false;
 
 const unique = (values) => [...new Set(values.filter(Boolean).map((value) => resolve(String(value))))];
 
@@ -90,18 +109,37 @@ const commandUsesYtDlp = (command, args = []) => {
 
 const isDisabledValue = (value = "") => /^(0|false|off|no|none)$/i.test(String(value || "").trim());
 
-const nextProxyUrl = () => {
-  if (!proxyPool.length) return "";
-  const selected = proxyPool[proxyCursor % proxyPool.length];
-  proxyCursor += 1;
-  if (!loggedProxyPool) {
-    loggedProxyPool = true;
-    console.log(`[yt-dlp] egress proxy pool enabled (${proxyPool.length} endpoint${proxyPool.length === 1 ? "" : "s"})`);
-  }
-  return selected;
+const preferredYoutubeClient = () => {
+  const values = configuredYoutubeClients
+    .split(/[,+]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (values.includes("mweb")) return "mweb";
+  if (values.includes("web_embedded")) return "web_embedded";
+  if (values.includes("android_vr")) return "android_vr";
+  if (values.includes("web_safari")) return "web_safari";
+  return values[0] || "mweb";
 };
 
-const rewriteYoutubeExtractorArg = (value = "") => {
+const getYoutubeTarget = (args = []) => {
+  for (let index = args.length - 1; index >= 0; index -= 1) {
+    const value = String(args[index] || "");
+    if (/^(?:https?:|ytsearch|ytmsearch)/i.test(value) && (/(?:youtube\.com|youtu\.be)/i.test(value) || /^(?:ytsearch|ytmsearch)/i.test(value))) {
+      return value;
+    }
+  }
+  return "youtube";
+};
+
+const nextYoutubeClient = (args = []) => {
+  const pool = youtubeClientPool.length ? youtubeClientPool : [preferredYoutubeClient()];
+  const target = getYoutubeTarget(args);
+  const attempt = youtubeAttemptByTarget.get(target) || 0;
+  youtubeAttemptByTarget.set(target, attempt + 1);
+  return pool[attempt % pool.length];
+};
+
+const rewriteYoutubeExtractorArg = (value = "", selectedClient = preferredYoutubeClient()) => {
   const raw = String(value || "");
   if (!/^youtube:/i.test(raw)) return raw;
 
@@ -112,53 +150,86 @@ const rewriteYoutubeExtractorArg = (value = "") => {
     .map((part) => part.trim())
     .filter(Boolean);
 
-  const filtered = [];
-  let foundPlayerClient = false;
-  let foundFetchPot = false;
-
+  const nextParts = [];
+  let hadPlayerClient = false;
+  let hadFetchPot = false;
+  let hadPoToken = false;
   for (const part of parts) {
     if (/^player[-_]client\s*=/i.test(part)) {
-      foundPlayerClient = true;
-      if (explicitYoutubeClients) filtered.push(`player_client=${explicitYoutubeClients}`);
+      hadPlayerClient = true;
+      nextParts.push(`player_client=${selectedClient}`);
+      const originalClients = part.split("=").slice(1).join("=");
+      if (/[,+]/.test(originalClients) && !warnedLegacyClients) {
+        warnedLegacyClients = true;
+        console.log(`[yt-dlp] normalized legacy YouTube clients to ${selectedClient}`);
+      }
       continue;
     }
     if (/^fetch_pot\s*=/i.test(part)) {
-      foundFetchPot = true;
-      if (fetchPotPolicy) filtered.push(`fetch_pot=${fetchPotPolicy}`);
-      else filtered.push(part);
+      hadFetchPot = true;
+      if (selectedClient === "mweb" && !isDisabledValue(fetchPotPolicy)) {
+        nextParts.push(`fetch_pot=${fetchPotPolicy || "always"}`);
+      }
       continue;
     }
-    filtered.push(part);
+    if (/^po_token\s*=/i.test(part)) {
+      hadPoToken = true;
+      nextParts.push(part);
+      continue;
+    }
+    nextParts.push(part);
   }
 
-  if (!explicitYoutubeClients && foundPlayerClient && !warnedLegacyClients) {
-    warnedLegacyClients = true;
-    console.log("[yt-dlp] removed hard-coded YouTube player clients; yt-dlp will choose current defaults");
-  }
-  if (requestedYoutubeClients && explicitYoutubeClients === "mweb" && requestedYoutubeClients !== "mweb" && !warnedLegacyClients) {
-    warnedLegacyClients = true;
-    console.log("[yt-dlp] normalized stale YouTube player client configuration to mweb");
-  }
-  if (explicitYoutubeClients && !foundPlayerClient) filtered.push(`player_client=${explicitYoutubeClients}`);
-  if (fetchPotPolicy && !foundFetchPot) filtered.push(`fetch_pot=${fetchPotPolicy}`);
-
-  return filtered.length ? `youtube:${filtered.join(";")}` : "";
+  if (!hadPlayerClient) nextParts.unshift(`player_client=${selectedClient}`);
+  if (!hadFetchPot && selectedClient === "mweb" && !isDisabledValue(fetchPotPolicy)) nextParts.push(`fetch_pot=${fetchPotPolicy || "always"}`);
+  if (!hadPoToken && manualPoToken) nextParts.push(`po_token=${manualPoToken}`);
+  return `youtube:${nextParts.join(";")}`;
 };
 
-const normalizeExtractorArgs = (args = []) => {
+const isYoutubeTarget = (args = []) => args.some((item) => {
+  const value = String(item || "");
+  return /^(?:ytsearch|ytmsearch)/i.test(value) || /(?:youtube\.com|youtu\.be)/i.test(value);
+});
+
+const ensureExtractorArgs = (args = [], selectedClient = preferredYoutubeClient()) => {
+  if (!isYoutubeTarget(args)) return [...args];
+  const source = [...args];
+  let urlArg = null;
+  for (let index = source.length - 1; index >= 0; index -= 1) {
+    if (/^(https?:|ytsearch|ytmsearch)/i.test(String(source[index] || ""))) {
+      urlArg = source.splice(index, 1)[0];
+      break;
+    }
+  }
   const next = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const item = args[index];
+  let youtubeArgSeen = false;
+  let providerArgSeen = false;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const item = source[index];
     if (item !== "--extractor-args") {
       next.push(item);
       continue;
     }
 
-    const value = rewriteYoutubeExtractorArg(args[index + 1]);
+    const value = String(source[index + 1] || "");
     index += 1;
-    if (!value) continue;
+    if (/^youtube:/i.test(value)) {
+      next.push("--extractor-args", rewriteYoutubeExtractorArg(value, selectedClient));
+      youtubeArgSeen = true;
+      continue;
+    }
+    if (/^youtubepot-bgutilhttp:/i.test(value)) providerArgSeen = true;
     next.push("--extractor-args", value);
   }
+
+  if (!youtubeArgSeen) {
+    next.push("--extractor-args", rewriteYoutubeExtractorArg("youtube:", selectedClient));
+  }
+  if (potProviderUrl && !providerArgSeen) {
+    next.push("--extractor-args", `youtubepot-bgutilhttp:base_url=${potProviderUrl}`);
+  }
+  if (urlArg) next.push(urlArg);
   return next;
 };
 
@@ -176,34 +247,29 @@ const insertBeforeUrl = (args, ...values) => {
   return next;
 };
 
-const hasExtractorArg = (args = [], prefix = "") => {
-  for (let index = 0; index < args.length - 1; index += 1) {
-    if (args[index] === "--extractor-args" && String(args[index + 1] || "").startsWith(prefix)) return true;
-  }
-  return false;
+const chooseProxy = () => {
+  if (fixedProxy) return fixedProxy;
+  if (!proxyPool.length) return "";
+  const selected = proxyPool[proxyCursor % proxyPool.length];
+  proxyCursor = (proxyCursor + 1) % proxyPool.length;
+  return selected;
 };
 
 const injectYtDlpArgs = (command, args) => {
   const source = Array.isArray(args) ? [...args] : [];
   if (!commandUsesYtDlp(command, source)) return source;
 
-  let next = normalizeExtractorArgs(source);
-
-  if (potProviderUrl && !hasExtractorArg(next, "youtubepot-bgutilhttp:")) {
-    next = insertBeforeUrl(next, "--extractor-args", `youtubepot-bgutilhttp:base_url=${potProviderUrl}`);
-  }
-
+  const hasExplicitCookies = source.includes("--cookies") || source.includes("--cookies-from-browser");
+  const selectedClient = hasExplicitCookies ? preferredYoutubeClient() : nextYoutubeClient(source);
+  let next = ensureExtractorArgs(source, selectedClient);
   const cookies = readValidCookies();
   if (autoInjectCookies && cookies && !next.includes("--cookies") && !next.includes("--cookies-from-browser")) {
     next = insertBeforeUrl(next, "--cookies", cookies.filePath);
-  } else if (!autoInjectCookies && cookies && !loggedGuestMode) {
-    loggedGuestMode = true;
-    console.log("[yt-dlp] guest mode first: uploaded cookies are reserved for the explicit retry path");
   }
 
   if (!next.includes("--proxy")) {
-    const selectedProxy = nextProxyUrl();
-    if (selectedProxy) next = insertBeforeUrl(next, "--proxy", selectedProxy);
+    const proxy = chooseProxy();
+    if (proxy) next = insertBeforeUrl(next, "--proxy", proxy);
   }
 
   if (impersonateTarget && !isDisabledValue(impersonateTarget) && !next.includes("--impersonate")) {
@@ -259,4 +325,4 @@ setTimeout(forwardCookiesToWorker, 1_000).unref?.();
 const syncTimer = setInterval(forwardCookiesToWorker, syncIntervalMs);
 syncTimer.unref?.();
 
-export { forwardCookiesToWorker, injectYtDlpArgs, readValidCookies, rewriteYoutubeExtractorArg };
+export { forwardCookiesToWorker, injectYtDlpArgs, nextYoutubeClient, readValidCookies, rewriteYoutubeExtractorArg };
