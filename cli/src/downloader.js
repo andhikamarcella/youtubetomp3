@@ -10,8 +10,27 @@ import {
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
 
-function commonExtractorArgs() {
-  return [
+function envValue(name, fallback = '') {
+  return process.env[name]?.trim() || fallback;
+}
+
+function envFlag(name) {
+  return process.env[name] === '1';
+}
+
+function optionValue(options, key, envName, fallback = '') {
+  const value = options?.[key];
+  if (value !== undefined && value !== null && value !== '') return String(value);
+  return envValue(envName, fallback);
+}
+
+function optionFlag(options, key, envName) {
+  if (typeof options?.[key] === 'boolean') return options[key];
+  return envFlag(envName);
+}
+
+function commonExtractorArgs(options = {}) {
+  const args = [
     '--ignore-config',
     '--js-runtimes',
     'node',
@@ -33,6 +52,9 @@ function commonExtractorArgs() {
     'extractor:linear=1:5:1',
     '--geo-bypass',
   ];
+  const proxy = optionValue(options, 'proxy', 'YTCONV_PROXY');
+  if (proxy) args.push('--proxy', proxy);
+  return args;
 }
 
 function normalizeYtDlpRunner(value) {
@@ -96,6 +118,8 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
 }
 
 function outputTemplate(options) {
+  const custom = optionValue(options, 'outputTemplate', 'YTCONV_OUTPUT_TEMPLATE');
+  if (custom) return path.join(options.outputDirectory, custom);
   const fileName = '%(title).180B [%(id)s].%(ext)s';
   if (!options.playlist) return path.join(options.outputDirectory, fileName);
   return path.join(
@@ -111,14 +135,6 @@ function isYouTubeMusicUrl(value) {
   } catch {
     return false;
   }
-}
-
-function envValue(name, fallback = '') {
-  return process.env[name]?.trim() || fallback;
-}
-
-function envFlag(name) {
-  return process.env[name] === '1';
 }
 
 function cookieFailureMessage(stderr) {
@@ -256,13 +272,34 @@ export async function inspectMedia({
   }
 }
 
+function appendSponsorBlockArgs(args, options) {
+  const mode = optionValue(options, 'sponsorBlockMode', 'YTCONV_SPONSORBLOCK_MODE', 'off');
+  if (mode === 'off') return;
+  const categories = optionValue(
+    options,
+    'sponsorBlockCategories',
+    'YTCONV_SPONSORBLOCK_CATEGORIES',
+    'sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic',
+  );
+  args.push(mode === 'remove' ? '--sponsorblock-remove' : '--sponsorblock-mark', categories);
+}
+
 function appendAdvancedArgs(args, options) {
-  const archivePath = envValue('YTCONV_ARCHIVE');
-  const clipStart = envValue('YTCONV_CLIP_START');
-  const clipEnd = envValue('YTCONV_CLIP_END');
+  const archivePath = optionValue(options, 'archivePath', 'YTCONV_ARCHIVE');
+  const clipStart = optionValue(options, 'clipStart', 'YTCONV_CLIP_START');
+  const clipEnd = optionValue(options, 'clipEnd', 'YTCONV_CLIP_END');
+  const rateLimit = optionValue(options, 'rateLimit', 'YTCONV_RATE_LIMIT');
+  const playlistItems = optionValue(options, 'playlistItems', 'YTCONV_PLAYLIST_ITEMS');
+  const maxDownloads = optionValue(options, 'maxDownloads', 'YTCONV_MAX_DOWNLOADS');
+
   if (archivePath) args.push('--download-archive', archivePath);
-  if (envFlag('YTCONV_WRITE_INFO_JSON')) args.push('--write-info-json');
-  if (envFlag('YTCONV_WRITE_DESCRIPTION')) args.push('--write-description');
+  if (optionFlag(options, 'writeInfoJson', 'YTCONV_WRITE_INFO_JSON')) args.push('--write-info-json');
+  if (optionFlag(options, 'writeDescription', 'YTCONV_WRITE_DESCRIPTION')) args.push('--write-description');
+  if (optionFlag(options, 'restrictFilenames', 'YTCONV_RESTRICT_FILENAMES')) args.push('--restrict-filenames');
+  if (rateLimit) args.push('--limit-rate', rateLimit);
+  if (playlistItems) args.push('--playlist-items', playlistItems);
+  if (maxDownloads) args.push('--max-downloads', maxDownloads);
+  if (optionFlag(options, 'liveFromStart', 'YTCONV_LIVE_FROM_START')) args.push('--live-from-start');
   if (clipStart || clipEnd) {
     args.push(
       '--download-sections',
@@ -271,17 +308,21 @@ function appendAdvancedArgs(args, options) {
     );
   }
 
+  appendSponsorBlockArgs(args, options);
+
   const mode = options.mode;
-  const audioFormat = envValue('YTCONV_AUDIO_FORMAT', options.audioFormat || 'mp3');
-  const thumbnailRequested = envFlag('YTCONV_WRITE_THUMBNAIL') || (mode === 'audio' && audioFormat === 'mp3');
+  const audioFormat = optionValue(options, 'audioFormat', 'YTCONV_AUDIO_FORMAT', 'mp3');
+  const thumbnailRequested = optionFlag(options, 'writeThumbnail', 'YTCONV_WRITE_THUMBNAIL')
+    || (mode === 'audio' && audioFormat === 'mp3');
   if (thumbnailRequested) args.push('--write-thumbnail', '--convert-thumbnails', 'jpg');
 
-  if (mode !== 'audio' && envFlag('YTCONV_SUBTITLES')) {
+  const subtitles = optionFlag(options, 'subtitles', 'YTCONV_SUBTITLES');
+  if (mode !== 'audio' && subtitles) {
     args.push(
       '--write-subs',
       '--write-auto-subs',
       '--sub-langs',
-      envValue('YTCONV_SUBTITLE_LANGS', 'all,-live_chat'),
+      optionValue(options, 'subtitleLanguages', 'YTCONV_SUBTITLE_LANGS', 'all,-live_chat'),
       '--sub-format',
       'best',
       '--convert-subs',
@@ -306,15 +347,22 @@ function appendVideoContainerArgs(args, videoFormat) {
 }
 
 export function buildDownloadArgs(options) {
+  const overwrite = optionFlag(options, 'overwrite', 'YTCONV_OVERWRITE');
+  const concurrentFragments = optionValue(
+    options,
+    'concurrentFragments',
+    'YTCONV_CONCURRENT_FRAGMENTS',
+    '4',
+  );
   const args = [
     '--newline',
-    ...commonExtractorArgs(),
+    ...commonExtractorArgs(options),
     '--windows-filenames',
-    '--no-overwrites',
+    overwrite ? '--force-overwrites' : '--no-overwrites',
     '--continue',
     '--check-formats',
     '--concurrent-fragments',
-    '4',
+    concurrentFragments,
     '--progress-template',
     'download:ytconv-progress:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s',
     '--print',
@@ -330,7 +378,7 @@ export function buildDownloadArgs(options) {
 
   const { audioFormat, thumbnailRequested } = appendAdvancedArgs(args, options);
   if (options.mode === 'audio') {
-    const quality = envValue('YTCONV_AUDIO_QUALITY', options.audioQuality || 'best');
+    const quality = optionValue(options, 'audioQuality', 'YTCONV_AUDIO_QUALITY', 'best');
     args.push(
       '-f',
       'ba/b',
@@ -342,13 +390,17 @@ export function buildDownloadArgs(options) {
       '--embed-metadata',
       '--embed-chapters',
     );
+    if (optionFlag(options, 'keepVideo', 'YTCONV_KEEP_VIDEO')) args.push('--keep-video');
     if (thumbnailRequested && audioFormat !== 'wav') args.push('--embed-thumbnail');
     if (thumbnailRequested && isYouTubeMusicUrl(options.url)) {
       args.push('--ppa', 'ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih');
     }
+    if (optionFlag(options, 'normalizeAudio', 'YTCONV_NORMALIZE_AUDIO')) {
+      args.push('--ppa', 'ExtractAudio+ffmpeg_o:-af loudnorm=I=-16:LRA=11:TP=-1.5');
+    }
   } else {
-    const videoFormat = envValue('YTCONV_VIDEO_FORMAT', 'auto');
-    const resolution = envValue('YTCONV_RESOLUTION', options.resolution || 'best');
+    const videoFormat = optionValue(options, 'videoFormat', 'YTCONV_VIDEO_FORMAT', 'auto');
+    const resolution = optionValue(options, 'resolution', 'YTCONV_RESOLUTION', 'best');
     args.push(
       '-f',
       formatVideoSelector(resolution, videoFormat),
@@ -360,6 +412,44 @@ export function buildDownloadArgs(options) {
 
   args.push(options.url);
   return args;
+}
+
+export function buildUtilityArgs({ url, cookieConfig, playlist = false, kind }) {
+  const args = [
+    ...commonExtractorArgs(),
+    ...cookieArgs(cookieConfig),
+    playlist ? '--yes-playlist' : '--no-playlist',
+  ];
+  if (kind === 'formats') args.push('--list-formats');
+  else if (kind === 'subs') args.push('--list-subs');
+  else throw new Error(`Utility yt-dlp tidak dikenal: ${kind}`);
+  args.push(url);
+  return args;
+}
+
+export function runYtDlpUtility({ ytDlp, ytDlpPath, url, cookieConfig, playlist, kind }) {
+  return new Promise((resolve, reject) => {
+    let spawned;
+    try {
+      spawned = spawnYtDlp(ytDlp || ytDlpPath, buildUtilityArgs({
+        url, cookieConfig, playlist, kind,
+      }), {
+        windowsHide: true,
+        stdio: 'inherit',
+        env: process.env,
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    spawned.child.once('error', (error) => reject(new Error(
+      `Gagal menjalankan yt-dlp (${spawned.runner.displayPath}): ${error.message}`,
+    )));
+    spawned.child.once('close', (code) => {
+      if (code === 0) resolve(0);
+      else reject(new Error(`yt-dlp selesai dengan kode ${code ?? 'tidak diketahui'}.`));
+    });
+  });
 }
 
 function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signal }) {
