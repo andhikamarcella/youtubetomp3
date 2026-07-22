@@ -1,7 +1,7 @@
 {
   "name": "ytconv",
-  "version": "1.1.5",
-  "description": "Platform-first all-in-one social media downloader for desktop, Termux, and iSH on iOS.",
+  "version": "1.2.0",
+  "description": "Mature all-in-one social media downloader and converter for desktop, Termux, and iSH.",
   "type": "module",
   "bin": "bin/ytconv.js",
   "files": [
@@ -9,13 +9,15 @@
     "src",
     "scripts",
     "ish",
+    "docs",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv.js",
-    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/system-actions.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
+    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/system-actions.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
     "check:ish": "python3 -m py_compile ./ish/ytconv.py && sh -n ./scripts/install-ish.sh",
     "test": "node --test ./test/*.test.js",
     "test:ish": "python3 ./ish/ytconv.py --version"
@@ -25,6 +27,7 @@
     "gallery-dl",
     "ffmpeg",
     "youtube",
+    "youtube-music",
     "instagram",
     "facebook",
     "tiktok",
@@ -34,9 +37,13 @@
     "threads",
     "twitch",
     "snapchat",
+    "soundcloud",
     "social-media",
     "downloader",
     "converter",
+    "sponsorblock",
+    "subtitles",
+    "metadata",
     "cookies",
     "termux",
     "android",
