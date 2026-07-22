@@ -112,6 +112,23 @@ jobs:
             cat /tmp/pot-provider.log || true
             exit 1
           ' 2>&1 | tee youtube-guest-diagnostic.log
+      - name: Record cookie-free client result
+        if: matrix.node-version == '22.x' && always()
+        shell: bash
+        run: |
+          result="$(grep -o 'COOKIE_FREE_CLIENT_SUCCESS=[A-Za-z0-9_-]*' youtube-guest-diagnostic.log 2>/dev/null | tail -n 1 || true)"
+          if [ -z "$result" ]; then
+            result="COOKIE_FREE_CLIENT_SUCCESS=none"
+          fi
+          printf '%s\n' "$result" | tee youtube-client-result.txt
+      - name: Upload cookie-free client result
+        if: matrix.node-version == '22.x' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-client-result
+          path: youtube-client-result.txt
+          if-no-files-found: error
+          retention-days: 3
       - name: Upload cookie-free client diagnostic
         if: matrix.node-version == '22.x' && steps.youtube_guest_diagnostic.outcome == 'failure'
         uses: actions/upload-artifact@v4
