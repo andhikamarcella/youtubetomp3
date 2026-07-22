@@ -37,7 +37,7 @@ const optionPair = (args, name) => {
   return index >= 0 ? args.slice(index, index + 2) : [];
 };
 
-test("yt-dlp preload uses guest mode, PO tokens, and rotates egress proxies", async () => {
+test("yt-dlp preload normalizes stale clients, uses guest mode, and rotates egress proxies", async () => {
   const directory = await mkdtemp(join(tmpdir(), "ytconv-cookies-"));
   const cookiesPath = join(directory, "cookies.txt");
   await writeFile(
@@ -56,7 +56,7 @@ test("yt-dlp preload uses guest mode, PO tokens, and rotates egress proxies", as
       COOKIES_PATH: cookiesPath,
       ENABLE_SERVER_COOKIES: "true",
       YTDLP_AUTO_INJECT_COOKIES: "false",
-      YTDLP_YOUTUBE_PLAYER_CLIENTS: "mweb",
+      YTDLP_YOUTUBE_PLAYER_CLIENTS: "mweb,web_safari,tv_embedded,android,default",
       YTDLP_FETCH_POT: "always",
       YTDLP_POT_PROVIDER_URL: "http://127.0.0.1:4416",
       YTDLP_IMPERSONATE: "chrome",
