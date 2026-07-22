@@ -57,6 +57,7 @@ test("yt-dlp preload normalizes stale clients, uses guest mode, and rotates egre
       ENABLE_SERVER_COOKIES: "true",
       YTDLP_AUTO_INJECT_COOKIES: "false",
       YTDLP_YOUTUBE_PLAYER_CLIENTS: "mweb,web_safari,tv_embedded,android,default",
+      YTDLP_YOUTUBE_CLIENT_POOL: "mweb,web_embedded,android_vr,web_safari,default",
       YTDLP_FETCH_POT: "always",
       YTDLP_POT_PROVIDER_URL: "http://127.0.0.1:4416",
       YTDLP_IMPERSONATE: "chrome",
@@ -96,6 +97,7 @@ test("yt-dlp preload normalizes stale clients, uses guest mode, and rotates egre
 
       const wrappedArgs = module.injectYtDlpArgs("python3", ["-m", "yt_dlp", url]);
       assert.deepEqual(optionPair(wrappedArgs, "--proxy"), ["--proxy", "http://proxy-a.example:8080"]);
+      assert.ok(extractorArgValues(wrappedArgs).includes("youtube:player_client=web_embedded"));
 
       const explicitProxyArgs = module.injectYtDlpArgs("yt-dlp", [
         "--proxy", "socks5://explicit.example:1080",
