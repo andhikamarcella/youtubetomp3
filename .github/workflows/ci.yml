@@ -82,17 +82,26 @@ jobs:
             provider_pid=$!
             trap "kill $provider_pid 2>/dev/null || true" EXIT
             sleep 4
-            for client in mweb web_embedded android_vr web_safari default; do
+            strategies="default android_vr web_embedded tv web_safari mweb ios visionos web web_music web_creator android tv_downgraded tv_simply default_skip android_vr_skip tv_skip mweb_skip"
+            for strategy in $strategies; do
               rm -f /tmp/ytconv-guest-smoke.*
-              echo "=== cookie-free client: $client ==="
+              client="${strategy%_skip}"
               extractor="youtube:player_client=$client"
+              case "$strategy" in
+                *_skip) extractor="$extractor;player_skip=webpage,configs" ;;
+              esac
               if [ "$client" = "mweb" ]; then
                 extractor="$extractor;fetch_pot=always"
               fi
+              echo "=== cookie-free strategy: $strategy ($extractor) ==="
               if yt-dlp \
                 --verbose \
                 --no-playlist \
                 --no-part \
+                --socket-timeout 15 \
+                --extractor-retries 1 \
+                --retries 1 \
+                --fragment-retries 1 \
                 --js-runtimes deno \
                 --remote-components ejs:npm \
                 --extractor-args "$extractor" \
@@ -103,10 +112,10 @@ jobs:
                 -o "/tmp/ytconv-guest-smoke.%(ext)s" \
                 "https://www.youtube.com/watch?v=jNQXAC9IVRw"; then
                 test -n "$(find /tmp -maxdepth 1 -type f -name "ytconv-guest-smoke.*" -print -quit)"
-                echo "COOKIE_FREE_CLIENT_SUCCESS=$client"
+                echo "COOKIE_FREE_CLIENT_SUCCESS=$strategy"
                 exit 0
               fi
-              sleep 3
+              sleep 2
             done
             echo "=== PO-token provider log ==="
             cat /tmp/pot-provider.log || true
