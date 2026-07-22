@@ -2,6 +2,21 @@
 
 Semua perubahan penting YTConv CLI dicatat di sini. Format versi mengikuti Semantic Versioning.
 
+## 1.2.1 — Windows updater hotfix
+
+### Diperbaiki
+
+- Self-updater Windows tidak lagi menjalankan `npm.cmd` secara langsung, yang dapat menghasilkan `spawnSync npm.cmd EINVAL` pada sebagian versi Node.js/Windows.
+- Windows sekarang menjalankan update melalui `cmd.exe /d /s /c "npm install -g ytconv@latest"`.
+- Ditambahkan unit test dan pemeriksaan GitHub Actions khusus invocation updater Windows.
+- Pesan kegagalan tetap menampilkan command manual yang aman bila npm atau izin global bermasalah.
+
+### Catatan upgrade
+
+- Instalasi global 1.1.5 atau 1.2.0 yang updater-nya sudah gagal tidak dapat memperbaiki dirinya sendiri. Jalankan `npm install -g ytconv@1.2.1 --force` setelah 1.2.1 dipublikasikan.
+- Untuk menguji branch sebelum publish, jalankan `npm install -g . --force` dari folder `cli`.
+- Frontend native iSH tetap versi 1.2.0 karena bug ini hanya menyentuh proses self-update npm pada Windows.
+
 ## 1.2.0 — Final maturity release
 
 ### Ditambahkan
