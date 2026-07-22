@@ -29,6 +29,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Compile Python downloader
+        run: python3 -m py_compile download_audio.py
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -63,6 +65,9 @@ jobs:
         run: npm run test:accessibility
       - name: Production build check
         run: npm run build
+      - name: Build Render Docker image
+        if: matrix.node-version == '22.x'
+        run: docker build --pull -t ytconv-render-ci .
       - name: Dependency audit
         run: npm run audit
       - name: Secret scan
