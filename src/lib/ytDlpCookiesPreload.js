@@ -17,11 +17,18 @@ const fetchPotPolicy = String(process.env.YTDLP_FETCH_POT || "").trim().toLowerC
 const potProviderUrl = String(process.env.YTDLP_POT_PROVIDER_URL || "").trim().replace(/\/$/, "");
 const impersonateTarget = String(process.env.YTDLP_IMPERSONATE || "").trim();
 const sleepRequests = String(process.env.YTDLP_SLEEP_REQUESTS || "").trim();
-const proxyUrl = String(process.env.YTDLP_PROXY || "").trim();
+const proxyPool = [...new Set([
+  String(process.env.YTDLP_PROXY || "").trim(),
+  ...String(process.env.YTDLP_PROXY_POOL || "")
+    .split(/[\r\n,]+/)
+    .map((value) => value.trim()),
+].filter((value) => value && !/^(0|false|off|no|none)$/i.test(value)))];
+let proxyCursor = 0;
 let lastForwardedHash = "";
 let syncRunning = false;
 let warnedLegacyClients = false;
 let loggedGuestMode = false;
+let loggedProxyPool = false;
 
 const unique = (values) => [...new Set(values.filter(Boolean).map((value) => resolve(String(value))))];
 
@@ -78,6 +85,17 @@ const commandUsesYtDlp = (command, args = []) => {
 };
 
 const isDisabledValue = (value = "") => /^(0|false|off|no|none)$/i.test(String(value || "").trim());
+
+const nextProxyUrl = () => {
+  if (!proxyPool.length) return "";
+  const selected = proxyPool[proxyCursor % proxyPool.length];
+  proxyCursor += 1;
+  if (!loggedProxyPool) {
+    loggedProxyPool = true;
+    console.log(`[yt-dlp] egress proxy pool enabled (${proxyPool.length} endpoint${proxyPool.length === 1 ? "" : "s"})`);
+  }
+  return selected;
+};
 
 const rewriteYoutubeExtractorArg = (value = "") => {
   const raw = String(value || "");
@@ -175,8 +193,9 @@ const injectYtDlpArgs = (command, args) => {
     console.log("[yt-dlp] guest mode first: uploaded cookies are reserved for the explicit retry path");
   }
 
-  if (proxyUrl && !isDisabledValue(proxyUrl) && !next.includes("--proxy")) {
-    next = insertBeforeUrl(next, "--proxy", proxyUrl);
+  if (!next.includes("--proxy")) {
+    const selectedProxy = nextProxyUrl();
+    if (selectedProxy) next = insertBeforeUrl(next, "--proxy", selectedProxy);
   }
 
   if (impersonateTarget && !isDisabledValue(impersonateTarget) && !next.includes("--impersonate")) {
