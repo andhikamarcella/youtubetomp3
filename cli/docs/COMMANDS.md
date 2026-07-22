@@ -1,4 +1,6 @@
-# Referensi command YTConv 1.2.0
+# Referensi command YTConv 1.2.1
+
+Versi 1.2.1 mempertahankan seluruh command 1.2.0 dan memperbaiki self-updater Windows agar npm dijalankan melalui `cmd.exe`, bukan dengan memanggil `npm.cmd` secara langsung.
 
 ## Bentuk umum
 
@@ -6,7 +8,7 @@
 ytconv [LINK] [OPSI]
 ```
 
-Opsi dapat diletakkan sebelum atau setelah link. Semua argumen diteruskan tanpa shell wrapper, sehingga spasi pada path aman selama diberi tanda kutip.
+Opsi dapat diletakkan sebelum atau setelah link. Semua argumen diteruskan tanpa shell wrapper, sehingga spasi pada path aman selama diberi tanda kutip. Pengecualian terkontrol hanya pada self-update Windows, yang memakai `cmd.exe` dengan command npm statis.
 
 ## Preset
 
@@ -140,7 +142,7 @@ Template wajib relatif, tidak boleh memiliki segmen `..`, dan wajib memuat `%(ex
 
 Gunakan format Netscape. Cookies hanya untuk akun yang sah dan memiliki akses terhadap media.
 
-## Pemeriksaan
+## Pemeriksaan dan update
 
 ```text
 --dry-run LINK
@@ -156,3 +158,15 @@ Gunakan format Netscape. Cookies hanya untuk akun yang sah dan memiliki akses te
 ```
 
 `--json` memakai schemaVersion 1 dengan field versi YTConv, preset, request, dan media.
+
+Pada Windows, `--update` memakai bentuk setara berikut secara internal:
+
+```cmd
+cmd.exe /d /s /c "npm install -g ytconv@latest"
+```
+
+Instalasi 1.1.5 atau 1.2.0 yang sudah gagal dengan `spawnSync npm.cmd EINVAL` harus diperbarui manual:
+
+```cmd
+npm install -g ytconv@1.2.1 --force
+```
