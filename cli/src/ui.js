@@ -32,7 +32,10 @@ figlet.parseFont('ANSI Shadow', ansiShadowFont);
 figlet.parseFont('Small', smallFont);
 
 const h = React.createElement;
-const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480'];
+const MODES = ['auto', 'video', 'audio', 'image'];
+const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480', '360'];
+const VIDEO_FORMATS = ['auto', 'mp4', 'mkv', 'webm'];
+const AUDIO_FORMATS = ['mp3', 'm4a', 'aac', 'opus', 'flac', 'wav'];
 const IMAGE_FORMATS = ['original', 'jpg', 'png', 'webp'];
 const EXIT_COMMANDS = new Set(['q', 'quit', 'exit', ':q']);
 const OVERLAYS = new Set(['help', 'diagnostics']);
@@ -99,6 +102,14 @@ function durationText(seconds) {
     : `${minutes}:${String(secs).padStart(2, '0')}`;
 }
 
+async function appendSessionLog(message, kind = 'info') {
+  const target = process.env.YTCONV_LOG_FILE;
+  if (!target) return;
+  const line = `[${new Date().toISOString()}] [${kind}] ${String(message).replace(/[\r\n]+/gu, ' ')}\n`;
+  await fs.mkdir(path.dirname(target), { recursive: true }).catch(() => {});
+  await fs.appendFile(target, line, 'utf8').catch(() => {});
+}
+
 function Logo({ compact }) {
   return h(
     Box,
@@ -116,8 +127,14 @@ function HomeScreen(props) {
     inputError,
     actionMessage,
     platformHint,
+    mode,
     resolution,
+    videoFormat,
+    audioFormat,
+    audioQuality,
     imageFormat,
+    subtitles,
+    writeThumbnail,
     cookieSource,
     playlist,
     autoOpen,
@@ -126,6 +143,11 @@ function HomeScreen(props) {
   const inputWidth = Math.max(24, panelWidth - 14);
   const buttonFocused = activeControl === 'convert';
   const platform = socialPlatformSummary({ selected: platformHint, url });
+  const mediaSetting = mode === 'audio'
+    ? `audio:${audioFormat}/${audioQuality}`
+    : mode === 'image'
+      ? `gambar:${imageFormat.toUpperCase()}`
+      : `video:${videoFormat}/${resolution}`;
 
   return h(
     Box,
@@ -162,16 +184,14 @@ function HomeScreen(props) {
       Box,
       { marginTop: 1 },
       h(Text, { dimColor: true },
-        `${platform}`
-        + ` · cookies:${cookieSourceLabel(cookieSource)}`
-        + ` · kualitas:${resolution}`
-        + ` · gambar:${imageFormat.toUpperCase()}`
-        + ` · playlist:${playlist ? 'on' : 'off'}`
-        + ` · auto-open:${autoOpen ? 'on' : 'off'}`),
+        `${platform} · mode:${mode} · ${mediaSetting}`
+        + ` · subs:${subtitles ? 'on' : 'off'} · thumb:${writeThumbnail ? 'on' : 'auto'}`),
     ),
-    h(Text, { dimColor: true }, 'Ctrl+G pilih sosmed: AUTO → YouTube → Instagram → Facebook → TikTok → X → lainnya'),
-    h(Text, { dimColor: true }, 'Ctrl+F format gambar · Ctrl+Q kualitas · Ctrl+B cookies · Ctrl+P playlist'),
-    h(Text, { dimColor: true }, 'Ctrl+O auto-open · Ctrl+H bantuan · Ctrl+D diagnostics · Esc/Ctrl+C keluar'),
+    h(Text, { dimColor: true },
+      `cookies:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`),
+    h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T container · Ctrl+Q kualitas'),
+    h(Text, { dimColor: true }, 'Ctrl+S subtitle · Ctrl+N thumbnail · Ctrl+F gambar · Ctrl+G sosmed'),
+    h(Text, { dimColor: true }, 'Ctrl+B cookies · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H bantuan'),
   );
 }
 
@@ -236,12 +256,13 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage }) 
 
 function HelpScreen({ panelWidth, termux }) {
   const rows = [
+    ['Ctrl+M', 'mode AUTO/VIDEO/AUDIO/IMAGE'],
+    ['Ctrl+A / Ctrl+T', 'format audio / container video'],
+    ['Ctrl+Q / Ctrl+F', 'resolusi video / format gambar'],
+    ['Ctrl+S / Ctrl+N', 'subtitle / thumbnail terpisah'],
     ['Ctrl+G', 'pilih nama sosmed / AUTO semua sosmed'],
-    ['Ctrl+F', 'format gambar ORIGINAL/JPG/PNG/WEBP'],
-    ['Ctrl+Q', 'kualitas hasil video'],
     ['Ctrl+B', 'AUTO cookies / off / cookies.txt / browser'],
-    ['Ctrl+P', 'playlist atau kumpulan post'],
-    ['Ctrl+O', 'buka hasil otomatis'],
+    ['Ctrl+P / Ctrl+O', 'playlist / buka hasil otomatis'],
     ['Enter/click', 'convert link'],
     ['O / F / C', 'buka folder / file / copy lokasi'],
   ];
@@ -259,12 +280,27 @@ function HelpScreen({ panelWidth, termux }) {
   );
 }
 
-function DiagnosticsScreen({ dependencies, panelWidth, outputDirectory, cookieSource, platformHint }) {
+function DiagnosticsScreen({
+  dependencies,
+  panelWidth,
+  outputDirectory,
+  cookieSource,
+  platformHint,
+  mode,
+  audioFormat,
+  videoFormat,
+  resolution,
+  subtitles,
+}) {
   const rows = [
     ['YTConv', CLI_VERSION],
     ['Node.js', process.version],
     ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
     ['Sosmed', socialPlatformLabel(platformHint)],
+    ['Mode', mode],
+    ['Audio', audioFormat],
+    ['Video', `${videoFormat}/${resolution}`],
+    ['Subtitle', subtitles ? 'on' : 'off'],
     ['yt-dlp', dependencies.ytDlp.version || 'not found'],
     ['gallery-dl', dependencies.galleryDl?.version || 'not found'],
     ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
@@ -300,7 +336,7 @@ function logoLines(compact) {
 function controlBounds({ columns, rows, panelWidth, compactLogo }) {
   const rootHeight = Math.max(20, rows - 1);
   const logoHeight = logoLines(compactLogo) + 2;
-  const homeHeight = 11;
+  const homeHeight = 14;
   const rootTop = Math.max(1, Math.floor((rootHeight - logoHeight - homeHeight) / 2) + 1);
   const panelLeft = Math.max(1, Math.floor((columns - panelWidth) / 2) + 1);
   const inputWidth = Math.max(24, panelWidth - 14);
@@ -322,6 +358,12 @@ function App({
   initialPlaylist = false,
   initialImageFormat = 'original',
   initialPlatform = 'auto',
+  initialAudioFormat = 'mp3',
+  initialAudioQuality = 'best',
+  initialVideoFormat = 'auto',
+  initialResolution = 'best',
+  initialSubtitles = false,
+  initialWriteThumbnail = false,
 }) {
   const { exit } = useApp();
   const termux = dependencies.platform?.termux ?? isTermux();
@@ -336,13 +378,22 @@ function App({
   const [platformHint, setPlatformHint] = useState(
     SOCIAL_PLATFORM_KEYS.includes(initialPlatform) ? initialPlatform : 'auto',
   );
-  const [mode] = useState(['auto', 'video', 'audio', 'image'].includes(initialMode) ? initialMode : 'auto');
-  const [resolution, setResolution] = useState('best');
-  const [audioFormat] = useState('mp3');
-  const [audioQuality] = useState('0');
+  const [mode, setMode] = useState(MODES.includes(initialMode) ? initialMode : 'auto');
+  const [resolution, setResolution] = useState(
+    VIDEO_QUALITIES.includes(initialResolution) ? initialResolution : 'best',
+  );
+  const [videoFormat, setVideoFormat] = useState(
+    VIDEO_FORMATS.includes(initialVideoFormat) ? initialVideoFormat : 'auto',
+  );
+  const [audioFormat, setAudioFormat] = useState(
+    AUDIO_FORMATS.includes(initialAudioFormat) ? initialAudioFormat : 'mp3',
+  );
+  const [audioQuality] = useState(initialAudioQuality || 'best');
   const [imageFormat, setImageFormat] = useState(
     IMAGE_FORMATS.includes(initialImageFormat) ? initialImageFormat : 'original',
   );
+  const [subtitles, setSubtitles] = useState(Boolean(initialSubtitles));
+  const [writeThumbnail, setWriteThumbnail] = useState(Boolean(initialWriteThumbnail));
   const [cookieSource, setCookieSource] = useState(process.env.YTCONV_COOKIES ? 'file' : 'auto');
   const [playlist, setPlaylist] = useState(Boolean(initialPlaylist));
   const [autoOpen, setAutoOpen] = useState(false);
@@ -435,6 +486,7 @@ function App({
     setMedia(null);
     setOutputPath('');
     setProgress({ percent: '0%', speed: '', eta: '' });
+    await appendSessionLog(`START ${value} mode=${mode} audio=${audioFormat}/${audioQuality} video=${videoFormat}/${resolution}`);
 
     let cookieConfigs;
     try {
@@ -479,18 +531,23 @@ function App({
               mode,
               platformHint,
               resolution,
+              videoFormat,
               audioFormat,
               audioQuality,
               imageFormat,
+              subtitles,
+              subtitleLanguages: process.env.YTCONV_SUBTITLE_LANGS || 'all,-live_chat',
+              writeThumbnail,
               cookieConfig,
               playlist,
               outputDirectory,
               ffmpegPath: dependencies.ffmpeg.path,
             },
             onProgress: setProgress,
-            onLog: (line) => {
+            onLog: (line, isError) => {
+              void appendSessionLog(line, isError ? 'error' : 'info');
               if (/Tersimpan:/u.test(line)) setStatusText(line);
-              else if (/gallery|gambar|image|carousel|Merger|ExtractAudio|VideoRemuxer/iu.test(line)) setStatusText(line);
+              else if (/gallery|gambar|image|carousel|Merger|ExtractAudio|VideoRemuxer|SponsorBlock/iu.test(line)) setStatusText(line);
             },
           });
 
@@ -499,11 +556,13 @@ function App({
           setProgress((current) => ({ ...current, percent: '100%' }));
           setStatusText(`${result.fileCount || 1} file · ${result.engine || 'done'}`);
           setStage('done');
+          await appendSessionLog(`DONE ${finalPath}`);
           if (autoOpen) await openOutputLocation({ directory: outputDirectory, filePath: finalPath });
           return;
         } catch (caught) {
           if (controller.signal.aborted) return;
           lastError = caught;
+          void appendSessionLog(caught instanceof Error ? caught.message : String(caught), 'error');
           const next = cookieConfigs[index + 1];
           if (next) {
             setStatusText(`akses publik gagal · mencoba cookies ${next.label}`);
@@ -566,6 +625,19 @@ function App({
     if (key.ctrl && lower === 'v') return pasteClipboard();
 
     const configurable = stage === 'home' || stage === 'error';
+    if (configurable && key.ctrl && lower === 'm') return setMode((current) => cycle(MODES, current));
+    if (configurable && key.ctrl && lower === 'a') {
+      setAudioFormat((current) => cycle(AUDIO_FORMATS, current));
+      setMode('audio');
+      return;
+    }
+    if (configurable && key.ctrl && lower === 't') {
+      setVideoFormat((current) => cycle(VIDEO_FORMATS, current));
+      setMode('video');
+      return;
+    }
+    if (configurable && key.ctrl && lower === 's') return setSubtitles((current) => !current);
+    if (configurable && key.ctrl && lower === 'n') return setWriteThumbnail((current) => !current);
     if (configurable && key.ctrl && lower === 'g') {
       setPlatformHint((current) => cycle(SOCIAL_PLATFORM_KEYS, current));
       setActionMessage('pilihan sosmed diubah');
@@ -573,6 +645,7 @@ function App({
     }
     if (configurable && key.ctrl && lower === 'f') {
       setImageFormat((current) => cycle(IMAGE_FORMATS, current));
+      setMode('image');
       setActionMessage('format gambar diubah');
       return;
     }
@@ -619,7 +692,16 @@ function App({
   let content;
   if (stage === 'help') content = h(HelpScreen, { panelWidth, termux });
   else if (stage === 'diagnostics') content = h(DiagnosticsScreen, {
-    dependencies, panelWidth, outputDirectory, cookieSource, platformHint,
+    dependencies,
+    panelWidth,
+    outputDirectory,
+    cookieSource,
+    platformHint,
+    mode,
+    audioFormat,
+    videoFormat,
+    resolution,
+    subtitles,
   });
   else if (!hasDependencies) content = h(MissingDependencies, { dependencies, panelWidth });
   else if (stage === 'home') content = h(HomeScreen, {
@@ -628,8 +710,14 @@ function App({
     inputError,
     actionMessage,
     platformHint,
+    mode,
     resolution,
+    videoFormat,
+    audioFormat,
+    audioQuality,
     imageFormat,
+    subtitles,
+    writeThumbnail,
     cookieSource,
     playlist,
     autoOpen,
@@ -672,6 +760,12 @@ export async function runApp({
   initialPlaylist = false,
   initialImageFormat = 'original',
   initialPlatform = 'auto',
+  initialAudioFormat = 'mp3',
+  initialAudioQuality = 'best',
+  initialVideoFormat = 'auto',
+  initialResolution = 'best',
+  initialSubtitles = false,
+  initialWriteThumbnail = false,
 } = {}) {
   process.title = `YTConv ${CLI_VERSION}`;
   console.clear();
@@ -703,6 +797,12 @@ export async function runApp({
       initialPlaylist,
       initialImageFormat,
       initialPlatform,
+      initialAudioFormat,
+      initialAudioQuality,
+      initialVideoFormat,
+      initialResolution,
+      initialSubtitles,
+      initialWriteThumbnail,
     }), { exitOnCtrlC: false });
     await instance.waitUntilExit();
   } finally {
