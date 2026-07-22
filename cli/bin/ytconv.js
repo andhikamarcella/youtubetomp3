@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { helpText, parseCliOptions } from '../src/cli-options.js';
+import { applyCliEnvironment, helpText, parseCliOptions } from '../src/cli-options.js';
 import { inspectDependencies } from '../src/dependencies.js';
 import { desktopDownloadsDirectory, isTermux, termuxSharedDownloadsDirectory } from '../src/platform.js';
 import { socialPlatformLabel } from '../src/social-platforms.js';
@@ -48,6 +48,10 @@ async function printDiagnostics(platformHint = 'auto') {
     ['FFmpeg', dependencies.ffmpeg.installed ? dependencies.ffmpeg.version : 'tidak ditemukan'],
     ['FFmpeg path', dependencies.ffmpeg.path || '-'],
     ['Output', outputDirectory],
+    ['Audio', `${process.env.YTCONV_AUDIO_FORMAT || 'mp3'} / ${process.env.YTCONV_AUDIO_QUALITY || 'best'}`],
+    ['Video', `${process.env.YTCONV_VIDEO_FORMAT || 'auto'} / ${process.env.YTCONV_RESOLUTION || 'best'}`],
+    ['Subtitle', process.env.YTCONV_SUBTITLES === '1' ? process.env.YTCONV_SUBTITLE_LANGS : 'off'],
+    ['Archive', process.env.YTCONV_ARCHIVE || 'off'],
     ['Cookies', process.env.YTCONV_COOKIES || 'AUTO: publik dulu, lalu sistem'],
     ['Gallery include', process.env.YTCONV_GALLERY_INCLUDE || 'direct URL / auto'],
   ];
@@ -117,6 +121,7 @@ async function main() {
     return 1;
   }
 
+  applyCliEnvironment(options);
   if (options.noUpdateCheck) process.env.YTCONV_NO_UPDATE_CHECK = '1';
   if (options.forceGallery) process.env.YTCONV_FORCE_GALLERY = '1';
   if (options.forceVideo) process.env.YTCONV_FORCE_VIDEO = '1';
