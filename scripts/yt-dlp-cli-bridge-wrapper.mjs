@@ -133,8 +133,25 @@ export const shouldUseBridge = ({ code, stderr = "", stdout = "" } = {}) => {
   return BOT_CHECK_PATTERN.test(`${stderr}\n${stdout}`);
 };
 
-const callBridge = async (request) => {
-  const baseUrl = String(process.env.YTDLP_CLI_BRIDGE_URL || "").trim().replace(/\/$/, "");
+export const normalizeBridgeBaseUrl = (value = "") => {
+  let parsed;
+  try {
+    parsed = new URL(String(value || "").trim());
+  } catch {
+    throw new Error("YTDLP_CLI_BRIDGE_URL tidak valid");
+  }
+  const localHost = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname.toLowerCase());
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && localHost)) {
+    throw new Error("CLI bridge publik wajib memakai HTTPS");
+  }
+  parsed.pathname = parsed.pathname.replace(/\/$/, "");
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+};
+
+export const callBridge = async (request) => {
+  const baseUrl = normalizeBridgeBaseUrl(process.env.YTDLP_CLI_BRIDGE_URL);
   const secret = String(process.env.YTDLP_CLI_BRIDGE_SECRET || "").trim();
   const timeoutMs = Math.max(10_000, Number(process.env.YTDLP_CLI_BRIDGE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS));
   const controller = new AbortController();
@@ -164,7 +181,7 @@ const callBridge = async (request) => {
       const text = await response.text();
       if (remoteLog) process.stderr.write(`${remoteLog}\n`);
       process.stdout.write(text);
-      return { code: 0, kind, bytes: Buffer.byteLength(text) };
+      return { code: 0, kind, bytes: Buffer.byteLength(text), text };
     }
 
     const remoteFilename = response.headers.get("x-ytconv-filename") || "ytconv-bridge.bin";
