@@ -13,6 +13,7 @@ RUN apt-get update \
        pytube \
   && deno --version \
   && python3 -m yt_dlp --version \
+  && mv /usr/local/bin/yt-dlp /usr/local/bin/yt-dlp-real \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=bgutil-provider /app /opt/bgutil-provider
@@ -27,12 +28,17 @@ ENV YTDLP_POT_PROVIDER_URL=http://127.0.0.1:4416
 ENV YTDLP_AUTO_INJECT_COOKIES=false
 ENV YTDLP_IMPERSONATE=chrome
 ENV YTDLP_SLEEP_REQUESTS=0.75
+ENV YTDLP_REAL_PATH=/usr/local/bin/yt-dlp-real
 
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
 COPY . .
+RUN printf '#!/bin/sh\nexec node /app/scripts/yt-dlp-cli-bridge-wrapper.mjs "$@"\n' > /usr/local/bin/yt-dlp \
+  && chmod 0755 /usr/local/bin/yt-dlp \
+  && node --check /app/scripts/yt-dlp-cli-bridge-wrapper.mjs \
+  && node --check /app/cli-bridge/server.mjs
 EXPOSE 3000
 
 # Keep the PO-token provider private inside the same container, then start the app.
