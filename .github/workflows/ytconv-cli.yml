@@ -61,7 +61,7 @@ jobs:
           npm test 2>&1 | tee test-output.txt
       - name: Smoke test commands
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.2.0"
+          test "$(node ./bin/ytconv.js --version)" = "1.2.1"
           node ./bin/ytconv.js --help | grep -q -- "--preset"
           node ./bin/ytconv.js --list-presets | grep -q "archive"
       - name: Upload CLI test output
@@ -124,6 +124,10 @@ jobs:
         with:
           name: ytconv-windows-test-output
           path: cli/windows-test-output.txt
+      - name: Verify Windows-safe npm updater invocation
+        shell: pwsh
+        run: |
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({platform:'win32', env:{ComSpec:'cmd.exe'}}); console.log(i); if (i.command !== 'cmd.exe' || i.args.join(' ') !== '/d /s /c npm install -g ytconv@latest') process.exitCode = 1; })"
       - name: Verify Windows media engines and dependency inspection
         shell: pwsh
         run: |
