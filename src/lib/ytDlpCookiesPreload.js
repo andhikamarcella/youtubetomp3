@@ -12,7 +12,11 @@ const autoInjectCookies = /^(1|true|yes|on)$/i.test(String(process.env.YTDLP_AUT
 const workerBase = String(process.env.WORKER_API_BASE || "").trim().replace(/\/$/, "");
 const workerSecret = String(process.env.WORKER_SHARED_SECRET || "").trim();
 const syncIntervalMs = Math.max(5_000, Number(process.env.COOKIES_SYNC_INTERVAL_MS || 15_000));
-const explicitYoutubeClients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "").trim();
+const requestedYoutubeClients = String(process.env.YTDLP_YOUTUBE_PLAYER_CLIENTS || "").trim();
+const legacyYoutubeClients = "mweb,web_safari,tv_embedded,android,default";
+const explicitYoutubeClients = requestedYoutubeClients.replace(/\s+/g, "").toLowerCase() === legacyYoutubeClients
+  ? "mweb"
+  : requestedYoutubeClients;
 const fetchPotPolicy = String(process.env.YTDLP_FETCH_POT || "").trim().toLowerCase();
 const potProviderUrl = String(process.env.YTDLP_POT_PROVIDER_URL || "").trim().replace(/\/$/, "");
 const impersonateTarget = String(process.env.YTDLP_IMPERSONATE || "").trim();
@@ -130,6 +134,10 @@ const rewriteYoutubeExtractorArg = (value = "") => {
   if (!explicitYoutubeClients && foundPlayerClient && !warnedLegacyClients) {
     warnedLegacyClients = true;
     console.log("[yt-dlp] removed hard-coded YouTube player clients; yt-dlp will choose current defaults");
+  }
+  if (requestedYoutubeClients && explicitYoutubeClients === "mweb" && requestedYoutubeClients !== "mweb" && !warnedLegacyClients) {
+    warnedLegacyClients = true;
+    console.log("[yt-dlp] normalized stale YouTube player client configuration to mweb");
   }
   if (explicitYoutubeClients && !foundPlayerClient) filtered.push(`player_client=${explicitYoutubeClients}`);
   if (fetchPotPolicy && !foundFetchPot) filtered.push(`fetch_pot=${fetchPotPolicy}`);
