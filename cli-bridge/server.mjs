@@ -10,6 +10,7 @@ const HOST = String(process.env.HOST || "127.0.0.1").trim();
 const PORT = Math.max(1, Math.min(65535, Number(process.env.PORT || 4417)));
 const SECRET = String(process.env.YTCONV_BRIDGE_SECRET || "").trim();
 const MAX_BODY_BYTES = 128 * 1024;
+const MAX_TARGET_LENGTH = 2048;
 const MAX_LOG_BYTES = 64 * 1024;
 const JOB_TIMEOUT_MS = Math.max(30_000, Number(process.env.YTCONV_BRIDGE_JOB_TIMEOUT_MS || 15 * 60 * 1000));
 const MAX_CONCURRENT = Math.max(1, Math.min(8, Number(process.env.YTCONV_BRIDGE_MAX_CONCURRENT || 2)));
@@ -65,7 +66,8 @@ const readJsonBody = (req) => new Promise((resolve, reject) => {
 
 const validateTarget = (value = "") => {
   const target = String(value || "").trim();
-  if (/^(?:ytsearch|ytmsearch):/i.test(target)) {
+  if (!target || target.length > MAX_TARGET_LENGTH) throw Object.assign(new Error("invalid_target_length"), { status: 400 });
+  if (/^(?:ytsearch|ytmsearch)\d*:/i.test(target)) {
     if (target.length > 600) throw Object.assign(new Error("search_too_long"), { status: 400 });
     return target;
   }
@@ -76,6 +78,7 @@ const validateTarget = (value = "") => {
     throw Object.assign(new Error("invalid_target"), { status: 400 });
   }
   if (!["http:", "https:"].includes(parsed.protocol)) throw Object.assign(new Error("invalid_protocol"), { status: 400 });
+  if (parsed.username || parsed.password) throw Object.assign(new Error("url_credentials_not_allowed"), { status: 400 });
   const host = parsed.hostname.toLowerCase();
   const allowed = host === "youtu.be" || host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com");
   if (!allowed) throw Object.assign(new Error("youtube_only"), { status: 400 });
@@ -178,7 +181,7 @@ const listOutputFiles = async (directory) => {
   return results.sort((a, b) => b.mtimeMs - a.mtimeMs);
 };
 
-const logHeader = (value = "") => Buffer.from(String(value).slice(-6000), "utf8").toString("base64url");
+const logHeader = (value = "") => Buffer.from(String(value).slice(-4000), "utf8").toString("base64url");
 
 const processRequest = async (request, res) => {
   if (!["metadata", "download"].includes(request.mode)) throw Object.assign(new Error("invalid_mode"), { status: 400 });
