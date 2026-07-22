@@ -111,10 +111,19 @@ jobs:
           node-version: 20
       - name: Install CLI dependencies
         run: npm install
-      - name: Check JavaScript syntax and tests
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run Windows CLI unit tests
+        shell: pwsh
         run: |
-          npm run check
-          npm test
+          npm test 2>&1 | Tee-Object -FilePath windows-test-output.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload Windows test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytconv-windows-test-output
+          path: cli/windows-test-output.txt
       - name: Verify Windows media engines and dependency inspection
         shell: pwsh
         run: |
