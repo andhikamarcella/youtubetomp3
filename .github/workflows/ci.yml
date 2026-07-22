@@ -69,9 +69,60 @@ jobs:
       - name: Build Render Docker image
         if: matrix.node-version == '22.x'
         run: docker build --pull -t ytconv-render-ci .
+      - name: Cookie-free YouTube client rotation diagnostic
+        id: youtube_guest_diagnostic
+        if: matrix.node-version == '22.x'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          docker run --rm --entrypoint sh ytconv-render-ci -c '
+            set -u
+            node /opt/bgutil-provider/build/main.js --port 4416 >/tmp/pot-provider.log 2>&1 &
+            provider_pid=$!
+            trap "kill $provider_pid 2>/dev/null || true" EXIT
+            sleep 4
+            for client in mweb web_embedded android_vr web_safari default; do
+              rm -f /tmp/ytconv-guest-smoke.*
+              echo "=== cookie-free client: $client ==="
+              extractor="youtube:player_client=$client"
+              if [ "$client" = "mweb" ]; then
+                extractor="$extractor;fetch_pot=always"
+              fi
+              if yt-dlp \
+                --verbose \
+                --no-playlist \
+                --no-part \
+                --js-runtimes deno \
+                --remote-components ejs:npm \
+                --extractor-args "$extractor" \
+                --extractor-args "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416" \
+                --impersonate chrome \
+                --sleep-requests 0.75 \
+                -f "worstaudio/best" \
+                -o "/tmp/ytconv-guest-smoke.%(ext)s" \
+                "https://www.youtube.com/watch?v=jNQXAC9IVRw"; then
+                test -n "$(find /tmp -maxdepth 1 -type f -name "ytconv-guest-smoke.*" -print -quit)"
+                echo "COOKIE_FREE_CLIENT_SUCCESS=$client"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "=== PO-token provider log ==="
+            cat /tmp/pot-provider.log || true
+            exit 1
+          ' 2>&1 | tee youtube-guest-diagnostic.log
+      - name: Upload cookie-free client diagnostic
+        if: matrix.node-version == '22.x' && steps.youtube_guest_diagnostic.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-guest-diagnostic-log
+          path: youtube-guest-diagnostic.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Explain live YouTube smoke requirement
         if: matrix.node-version == '22.x' && env.YTDLP_SMOKE_PROXY == ''
-        run: echo "Live YouTube smoke skipped because datacenter IPs are bot-checked. Configure the YTDLP_SMOKE_PROXY repository secret with residential/static egress to enable it."
+        run: echo "Proxy-backed smoke skipped. The cookie-free client diagnostic above still tests direct datacenter egress. Configure YTDLP_SMOKE_PROXY with private residential/static egress for the production-equivalent check."
       - name: Cookie-free YouTube Docker smoke test
         id: youtube_smoke
         if: matrix.node-version == '22.x' && env.YTDLP_SMOKE_PROXY != ''
