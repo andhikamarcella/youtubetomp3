@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Mature all-in-one social media downloader and converter for desktop, Termux, and iSH.",
   "type": "module",
   "bin": "bin/ytconv.js",
