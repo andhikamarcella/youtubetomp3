@@ -1,4 +1,5 @@
 # download_audio.py — helper for yt_dlp / PyTube audio download
+import copy
 import os
 import re
 import shutil
@@ -30,19 +31,37 @@ def _major_version(value: str) -> int:
     return int(match.group(1)) if match else 0
 
 
+def _enabled(value: object, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def get_youtube_extractor_args() -> Dict[str, Dict[str, list[str]]]:
-    clients_raw = os.environ.get(
-        "YTDLP_YOUTUBE_PLAYER_CLIENTS",
-        "mweb,web_safari,tv_embedded,android,default",
-    )
+    extractor_args: Dict[str, Dict[str, list[str]]] = {}
+
+    clients_raw = os.environ.get("YTDLP_YOUTUBE_PLAYER_CLIENTS", "mweb")
     clients = [item.strip() for item in re.split(r"[,+]", clients_raw) if item.strip()]
     youtube_args: Dict[str, list[str]] = {}
     if clients:
         youtube_args["player_client"] = clients
+
+    fetch_pot = os.environ.get("YTDLP_FETCH_POT", "auto").strip().lower()
+    if fetch_pot in {"auto", "always", "never"}:
+        youtube_args["fetch_pot"] = [fetch_pot]
+
     po_token = os.environ.get("YTDLP_YOUTUBE_PO_TOKEN", "").strip()
     if po_token:
         youtube_args["po_token"] = [po_token]
-    return {"youtube": youtube_args} if youtube_args else {}
+
+    if youtube_args:
+        extractor_args["youtube"] = youtube_args
+
+    provider_url = os.environ.get("YTDLP_POT_PROVIDER_URL", "").strip().rstrip("/")
+    if provider_url:
+        extractor_args["youtubepot-bgutilhttp"] = {"base_url": [provider_url]}
+
+    return extractor_args
 
 
 def get_js_runtime_options() -> Dict[str, object]:
@@ -82,10 +101,13 @@ def get_js_runtime_options() -> Dict[str, object]:
 
 
 def should_use_cookies() -> bool:
-    # Server-managed cookies are enabled by ENABLE_SERVER_COOKIES in the Node app.
-    # YTDLP_USE_COOKIES remains as a backwards-compatible alias.
-    raw = os.environ.get("ENABLE_SERVER_COOKIES", os.environ.get("YTDLP_USE_COOKIES", "true"))
-    return str(raw).strip().lower() not in {"0", "false", "off", "no"}
+    # Public videos intentionally start in guest mode, matching a normal CLI call.
+    # Cookies are available only when the helper retry is explicitly enabled.
+    raw = os.environ.get(
+        "YTDLP_HELPER_USE_COOKIES",
+        os.environ.get("YTDLP_AUTO_INJECT_COOKIES", "false"),
+    )
+    return _enabled(raw, default=False)
 
 
 def ensure_ytdlp() -> bool:
@@ -162,6 +184,18 @@ def _iter_candidates(info) -> Iterable[object]:
         yield info
 
 
+def _with_player_clients(opts: Dict[str, object], clients: list[str]) -> Dict[str, object]:
+    next_opts = copy.deepcopy(opts)
+    extractor_args = next_opts.setdefault("extractor_args", {})
+    if not isinstance(extractor_args, dict):
+        extractor_args = {}
+        next_opts["extractor_args"] = extractor_args
+    youtube_args = dict(extractor_args.get("youtube") or {})
+    youtube_args["player_client"] = clients
+    extractor_args["youtube"] = youtube_args
+    return next_opts
+
+
 def download_with_ytdlp(
     url: str,
     out_dir: str,
@@ -173,7 +207,7 @@ def download_with_ytdlp(
         raise RuntimeError("yt_dlp unavailable")
 
     template = os.path.join(out_dir, f"{out_basename}.%(ext)s")
-    base_opts = {
+    base_opts: Dict[str, object] = {
         "format": "ba/bestaudio/best/worst",
         "outtmpl": template,
         "restrictfilenames": False,
@@ -191,35 +225,52 @@ def download_with_ytdlp(
     if extractor_args:
         base_opts["extractor_args"] = extractor_args
 
+    proxy_url = os.environ.get("YTDLP_PROXY", "").strip()
+    if proxy_url:
+        base_opts["proxy"] = proxy_url
+
+    impersonate = os.environ.get("YTDLP_IMPERSONATE", "").strip()
+    if impersonate and impersonate.lower() not in {"0", "false", "off", "none"}:
+        base_opts["impersonate"] = impersonate
+
     if should_use_cookies() and cookies_path and os.path.isfile(cookies_path):
         base_opts["cookiefile"] = cookies_path
 
-    compat_opts = dict(base_opts)
-    compat_opts["force_ipv4"] = True
-    compat_opts["extractor_args"] = {"youtube": {"player_client": ["android", "mweb"]}}
+    ipv4_opts = copy.deepcopy(base_opts)
+    ipv4_opts["force_ipv4"] = True
 
-    tv_opts = dict(base_opts)
-    tv_opts["extractor_args"] = {"youtube": {"player_client": ["mweb", "web_safari", "tv_embedded", "android"]}}
+    web_safari_opts = _with_player_clients(base_opts, ["web_safari"])
+    android_vr_opts = _with_player_clients(base_opts, ["android_vr"])
 
-    audio_opts = dict(compat_opts)
+    audio_opts = copy.deepcopy(ipv4_opts)
     audio_opts["format"] = "ba/bestaudio/best/worst"
 
-    relaxed_opts = dict(compat_opts)
+    relaxed_opts = copy.deepcopy(ipv4_opts)
     relaxed_opts["format"] = "best/worst"
 
-    http_opts = dict(relaxed_opts)
+    http_opts = copy.deepcopy(relaxed_opts)
     http_opts["format"] = "bestaudio[protocol^=http]/best[protocol^=http]/bestaudio/best/worst"
 
-    universal_opts = dict(tv_opts)
+    universal_opts = copy.deepcopy(web_safari_opts)
     universal_opts.pop("format", None)
 
-    no_runtime_opts = dict(universal_opts)
+    no_runtime_opts = copy.deepcopy(universal_opts)
     no_runtime_opts.pop("js_runtimes", None)
     no_runtime_opts.pop("remote_components", None)
 
     last_exc: Optional[Exception] = None
     upgrade_tried = False
-    attempts = [base_opts, compat_opts, tv_opts, audio_opts, relaxed_opts, http_opts, universal_opts, no_runtime_opts]
+    attempts = [
+        base_opts,
+        ipv4_opts,
+        web_safari_opts,
+        android_vr_opts,
+        audio_opts,
+        relaxed_opts,
+        http_opts,
+        universal_opts,
+        no_runtime_opts,
+    ]
     for opts in attempts:
         try:
             with YoutubeDL(opts) as ydl:  # type: ignore[misc]
