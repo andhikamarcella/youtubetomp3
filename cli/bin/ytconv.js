@@ -4,9 +4,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { applyCliEnvironment, helpText, parseCliOptions } from '../src/cli-options.js';
+import {
+  applyCliEnvironment,
+  helpText,
+  isDirectCommand,
+  parseCliOptions,
+} from '../src/cli-options.js';
 import { inspectDependencies } from '../src/dependencies.js';
+import { runDirectCommand } from '../src/direct.js';
 import { desktopDownloadsDirectory, isTermux, termuxSharedDownloadsDirectory } from '../src/platform.js';
+import { presetText } from '../src/presets.js';
 import { socialPlatformLabel } from '../src/social-platforms.js';
 import { runApp } from '../src/ui.js';
 import { checkForUpdate, runSelfUpdate, updateCommand } from '../src/update.js';
@@ -40,6 +47,7 @@ async function printDiagnostics(platformHint = 'auto') {
     ['Update', updateStatusText(updateInfo)],
     ['Node.js', process.version],
     ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
+    ['Preset', process.env.YTCONV_PRESET || 'balanced'],
     ['Sosmed', socialPlatformLabel(platformHint)],
     ['yt-dlp', dependencies.ytDlp.installed ? dependencies.ytDlp.version : 'tidak ditemukan'],
     ['yt-dlp runner', dependencies.ytDlp.displayPath || dependencies.ytDlp.path || '-'],
@@ -48,10 +56,16 @@ async function printDiagnostics(platformHint = 'auto') {
     ['FFmpeg', dependencies.ffmpeg.installed ? dependencies.ffmpeg.version : 'tidak ditemukan'],
     ['FFmpeg path', dependencies.ffmpeg.path || '-'],
     ['Output', outputDirectory],
+    ['Template', process.env.YTCONV_OUTPUT_TEMPLATE || 'default'],
     ['Audio', `${process.env.YTCONV_AUDIO_FORMAT || 'mp3'} / ${process.env.YTCONV_AUDIO_QUALITY || 'best'}`],
     ['Video', `${process.env.YTCONV_VIDEO_FORMAT || 'auto'} / ${process.env.YTCONV_RESOLUTION || 'best'}`],
     ['Subtitle', process.env.YTCONV_SUBTITLES === '1' ? process.env.YTCONV_SUBTITLE_LANGS : 'off'],
+    ['SponsorBlock', process.env.YTCONV_SPONSORBLOCK_MODE || 'off'],
     ['Archive', process.env.YTCONV_ARCHIVE || 'off'],
+    ['Rate limit', process.env.YTCONV_RATE_LIMIT || 'off'],
+    ['Fragments', process.env.YTCONV_CONCURRENT_FRAGMENTS || '4'],
+    ['Proxy', process.env.YTCONV_PROXY ? 'configured' : 'off'],
+    ['Log', process.env.YTCONV_LOG_FILE || 'off'],
     ['Cookies', process.env.YTCONV_COOKIES || 'AUTO: publik dulu, lalu sistem'],
     ['Gallery include', process.env.YTCONV_GALLERY_INCLUDE || 'direct URL / auto'],
   ];
@@ -124,8 +138,13 @@ async function main() {
   applyCliEnvironment(options);
   if (options.noUpdateCheck) process.env.YTCONV_NO_UPDATE_CHECK = '1';
   if (options.forceGallery) process.env.YTCONV_FORCE_GALLERY = '1';
+  else delete process.env.YTCONV_FORCE_GALLERY;
   if (options.forceVideo) process.env.YTCONV_FORCE_VIDEO = '1';
+  else delete process.env.YTCONV_FORCE_VIDEO;
   if (options.galleryInclude) process.env.YTCONV_GALLERY_INCLUDE = options.galleryInclude;
+  else delete process.env.YTCONV_GALLERY_INCLUDE;
+  if (options.outputDirectory) process.env.YTCONV_OUTPUT = options.outputDirectory;
+  if (options.cookiesPath) process.env.YTCONV_COOKIES = options.cookiesPath;
 
   if (options.help) {
     console.log(helpText());
@@ -135,12 +154,22 @@ async function main() {
     console.log(CLI_VERSION);
     return 0;
   }
-
-  if (options.outputDirectory) process.env.YTCONV_OUTPUT = options.outputDirectory;
-  if (options.cookiesPath) process.env.YTCONV_COOKIES = options.cookiesPath;
+  if (options.listPresets) {
+    console.log(`YTConv ${CLI_VERSION} presets\n\n${presetText()}`);
+    return 0;
+  }
   if (options.checkUpdate) return printUpdateCheck();
   if (options.update) return performUpdate();
   if (options.diagnose) return printDiagnostics(options.initialPlatform);
+
+  if (isDirectCommand(options)) {
+    try {
+      return await runDirectCommand({ options, outputDirectory: defaultOutputDirectory() });
+    } catch (error) {
+      console.error(`YTConv: ${error instanceof Error ? error.message : String(error)}`);
+      return 1;
+    }
+  }
 
   try {
     const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION });
@@ -152,6 +181,12 @@ async function main() {
       initialPlatform: options.initialPlatform,
       initialPlaylist: options.initialPlaylist,
       initialImageFormat: options.initialImageFormat,
+      initialAudioFormat: options.audioFormat,
+      initialAudioQuality: options.audioQuality,
+      initialVideoFormat: options.videoFormat,
+      initialResolution: options.resolution,
+      initialSubtitles: options.subtitles,
+      initialWriteThumbnail: options.writeThumbnail,
     });
     return 0;
   } catch (error) {
