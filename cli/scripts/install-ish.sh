@@ -13,7 +13,7 @@ fail() { printf 'YTConv iSH: %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = "0" ] || fail "jalankan sebagai root di iSH."
 [ -f /etc/alpine-release ] || fail "installer ini khusus iSH/Alpine Linux."
 
-say "YTConv iSH 1.2.3 installer"
+say "YTConv iSH 1.3.0 installer"
 say "Menyiapkan Python, FFmpeg, yt-dlp, gallery-dl, curl, dan sertifikat..."
 
 apk update
@@ -29,10 +29,13 @@ pip_install yt-dlp gallery-dl
 mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
 
 rm -f "$TMP_FILE"
+trap 'rm -f "$TMP_FILE"' EXIT HUP INT TERM
 curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 \
   "$RAW_BASE/ish/ytconv.py" -o "$TMP_FILE"
 python3 -m py_compile "$TMP_FILE" || fail "frontend yang terunduh tidak valid."
+python3 "$TMP_FILE" --version | grep -qx '1.3.0' || fail "versi frontend yang terunduh bukan 1.3.0."
 mv "$TMP_FILE" "$APP_FILE"
+trap - EXIT HUP INT TERM
 chmod 755 "$APP_FILE"
 
 cat > "$BIN_FILE" <<'SH'
@@ -48,6 +51,7 @@ say "YTConv iSH berhasil dipasang."
 "$BIN_FILE" --diagnose || true
 say ""
 say "Jalankan: ytconv"
-say "Batch: ytconv --batch-file links.txt --continue-on-error"
-say "Repair: ytconv --repair"
+say "Playlist: ytconv playlist LINK --archive downloaded.txt"
+say "Batch: ytconv batch links.txt --continue-on-error"
+say "Repair: ytconv repair"
 say "Hasil: $HOME/Downloads/YTConv"
