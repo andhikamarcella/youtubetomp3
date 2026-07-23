@@ -2,10 +2,12 @@
 """YTConv 1.4.0 stable compatibility frontend for iSH and Alpine."""
 
 from pathlib import Path
-import sys
 
 VERSION = "1.4.0"
-TARGET = Path(__file__).with_name("ytconv-core.py")
+DIRECTORY = Path(__file__).resolve().parent
+TARGET = DIRECTORY / "ytconv-core.py"
+if not TARGET.is_file():
+    TARGET = DIRECTORY / "ytconv-beta.py"
 
 if not TARGET.is_file():
     raise SystemExit("YTConv core frontend is missing: %s" % TARGET)
