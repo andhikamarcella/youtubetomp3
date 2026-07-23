@@ -3,12 +3,12 @@ import path from 'node:path';
 export const PRESET_NAMES = ['balanced', 'music', 'lossless', 'mobile', 'hd', 'archive'];
 
 export const PRESET_DESCRIPTIONS = {
-  balanced: 'Deteksi otomatis dengan kualitas terbaik dan pengaturan aman.',
-  music: 'MP3 320 kbps dengan thumbnail JPG, cover, metadata, dan chapter.',
-  lossless: 'FLAC kualitas terbaik dengan thumbnail dan metadata.',
-  mobile: 'MP4 720p yang ringan dan kompatibel untuk ponsel.',
-  hd: 'MP4 1080p dengan format yang kompatibel untuk pemutar umum.',
-  archive: 'Kualitas terbaik, MKV, subtitle, thumbnail, sidecar metadata, dan anti-duplikat.',
+  balanced: 'Automatic detection with the best available quality and safe settings.',
+  music: 'MP3 320 kbps with a JPG thumbnail, embedded cover, metadata, and chapters.',
+  lossless: 'Best-source FLAC with a thumbnail and metadata.',
+  mobile: 'Lightweight and compatible MP4 up to 720p.',
+  hd: 'Compatible MP4 up to 1080p.',
+  archive: 'Best quality, MKV, subtitles, thumbnail, metadata sidecars, and duplicate prevention.',
 };
 
 const PRESETS = {
@@ -54,7 +54,7 @@ const PRESETS = {
 export function applyPreset(options, name, { cwd = process.cwd() } = {}) {
   const preset = PRESETS[name];
   if (!preset) {
-    throw new Error(`Preset "${name}" tidak dikenal. Pilih: ${PRESET_NAMES.join(', ')}.`);
+    throw new Error(`Unknown preset "${name}". Choose: ${PRESET_NAMES.join(', ')}.`);
   }
   Object.assign(options, preset, { preset: name });
   if (name === 'archive' && !options.archivePath) {
