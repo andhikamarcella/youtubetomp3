@@ -1,0 +1,44 @@
+name: YTConv Test Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/ytconv-test-debug.yml"
+  workflow_dispatch:
+
+jobs:
+  debug-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --ignore-scripts --omit=optional
+      - name: Capture syntax and unit test output
+        shell: bash
+        run: |
+          set +e
+          npm run check > syntax.log 2>&1
+          CHECK_CODE=$?
+          npm test > test.log 2>&1
+          TEST_CODE=$?
+          printf 'check=%s\ntest=%s\n' "$CHECK_CODE" "$TEST_CODE" > status.txt
+          cat syntax.log
+          cat test.log
+          if [ "$CHECK_CODE" -ne 0 ]; then exit "$CHECK_CODE"; fi
+          exit "$TEST_CODE"
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytconv-test-diagnostics
+          path: |
+            cli/syntax.log
+            cli/test.log
+            cli/status.txt
