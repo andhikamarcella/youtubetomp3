@@ -17,10 +17,10 @@
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv.js",
-    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/commands.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
-    "check:ish": "python3 -m py_compile ./ish/ytconv.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
+    "check": "node --check ./bin/ytconv.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/commands.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/gallery-beta.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
+    "check:ish": "python3 -m py_compile ./ish/ytconv-beta.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node --test",
-    "test:ish": "python3 ./ish/ytconv.py --version"
+    "test:ish": "python3 ./ish/ytconv-beta.py --version"
   },
   "keywords": [
     "yt-dlp", "gallery-dl", "ffmpeg", "youtube", "youtube-music",
