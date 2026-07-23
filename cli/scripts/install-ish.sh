@@ -1,20 +1,22 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.4.0/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
+CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
-TMP_FILE="/tmp/ytconv-ish.py.$$"
+TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
+TMP_CORE="/tmp/ytconv-ish-core.py.$$"
 
 say() { printf '%s\n' "$*"; }
-fail() { printf 'YTConv iSH: %s\n' "$*" >&2; exit 1; }
+fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
 
-[ "$(id -u)" = "0" ] || fail "jalankan sebagai root di iSH."
-[ -f /etc/alpine-release ] || fail "installer ini khusus iSH/Alpine Linux."
+[ "$(id -u)" = "0" ] || fail "run this installer as root inside iSH."
+[ -f /etc/alpine-release ] || fail "this installer is intended for iSH/Alpine Linux."
 
-say "YTConv iSH 1.5.0 Beta installer"
-say "Menyiapkan Python, FFmpeg, yt-dlp, gallery-dl, curl, dan sertifikat..."
+say "YTConv iSH 1.4.0 stable installer"
+say "Installing Python, FFmpeg, yt-dlp, gallery-dl, curl, and CA certificates..."
 
 apk update
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
@@ -26,17 +28,20 @@ pip_install() {
 }
 
 pip_install yt-dlp gallery-dl
-mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" "$HOME/.ytconv/archives" /usr/local/bin
+mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
 
-rm -f "$TMP_FILE"
-trap 'rm -f "$TMP_FILE"' EXIT HUP INT TERM
-curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 \
-  "$RAW_BASE/ish/ytconv-beta.py" -o "$TMP_FILE"
-python3 -m py_compile "$TMP_FILE" || fail "frontend yang terunduh tidak valid."
-python3 "$TMP_FILE" --version | grep -qx '1.5.0-beta.1' || fail "versi frontend yang terunduh bukan 1.5.0-beta.1."
-mv "$TMP_FILE" "$APP_FILE"
+rm -f "$TMP_APP" "$TMP_CORE"
+trap 'rm -f "$TMP_APP" "$TMP_CORE"' EXIT HUP INT TERM
+
+curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv.py" -o "$TMP_APP"
+curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv-beta.py" -o "$TMP_CORE"
+python3 -m py_compile "$TMP_APP" "$TMP_CORE" || fail "the downloaded frontend is invalid."
+
+mkdir -p "$APP_DIR"
+mv "$TMP_APP" "$APP_FILE"
+mv "$TMP_CORE" "$CORE_FILE"
 trap - EXIT HUP INT TERM
-chmod 755 "$APP_FILE"
+chmod 755 "$APP_FILE" "$CORE_FILE"
 
 cat > "$BIN_FILE" <<'SH'
 #!/bin/sh
@@ -45,15 +50,15 @@ SH
 chmod 755 "$BIN_FILE"
 hash -r 2>/dev/null || true
 
+"$BIN_FILE" --version | grep -qx '1.4.0' || fail "the installed frontend did not report version 1.4.0."
+
 say ""
-say "YTConv iSH Beta berhasil dipasang."
+say "YTConv iSH 1.4.0 was installed successfully."
 "$BIN_FILE" --version
 "$BIN_FILE" --diagnose || true
 say ""
-say "Default: subtitle ON, SponsorBlock mark ON, archive ON."
-say "Matikan: --no-subtitles --no-sponsorblock --no-archive"
-say "Jalankan: ytconv"
-say "Playlist: ytconv playlist LINK"
+say "Run: ytconv"
+say "Playlist: ytconv playlist URL"
 say "Batch: ytconv batch links.txt --continue-on-error"
 say "Repair: ytconv repair"
-say "Hasil: $HOME/Downloads/YTConv"
+say "Output: $HOME/Downloads/YTConv"
