@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { applyBetaDefaults, betaDefaultsHelpText, extractBetaToggles } from '../src/beta-defaults.js';
 import { applyCliEnvironment, helpText, isDirectCommand, parseCliOptions } from '../src/cli-options.js';
 import { commandSummaryText, normalizeCommandArgs } from '../src/commands.js';
 import { inspectDependencies } from '../src/dependencies.js';
@@ -74,7 +75,8 @@ async function printDiagnostics(platformHint = 'auto') {
     ['Video', `${process.env.YTCONV_VIDEO_FORMAT || 'auto'} / ${process.env.YTCONV_RESOLUTION || 'best'}`],
     ['Subtitle', process.env.YTCONV_SUBTITLES === '1' ? process.env.YTCONV_SUBTITLE_LANGS : 'off'],
     ['SponsorBlock', process.env.YTCONV_SPONSORBLOCK_MODE || 'off'],
-    ['Archive', process.env.YTCONV_ARCHIVE || 'off'],
+    ['Archive yt-dlp', process.env.YTCONV_ARCHIVE || 'off'],
+    ['Archive gallery', process.env.YTCONV_GALLERY_ARCHIVE || 'off'],
     ['Resume', process.env.YTCONV_RESUME === '0' ? 'off' : 'on'],
     ['Retries', process.env.YTCONV_RETRIES || '10'],
     ['Cookies', process.env.YTCONV_BROWSER_COOKIE_SPEC
@@ -113,9 +115,9 @@ async function performUpdate() {
 
   console.log(updateInfo.available
     ? `Mengupdate YTConv ${CLI_VERSION} → ${updateInfo.latestVersion}...\n`
-    : 'Registry tidak dapat diperiksa. Mencoba memasang ytconv@latest...\n');
+    : 'Registry tidak dapat diperiksa. Mencoba memasang channel YTConv aktif...\n');
 
-  const result = runSelfUpdate();
+  const result = runSelfUpdate({ currentVersion: CLI_VERSION });
   if (!result.ok) {
     console.error(`\nUpdate otomatis gagal (${result.strategy}): ${result.error.message}`);
     console.error(`Jalankan manual: ${result.command}`);
@@ -133,8 +135,12 @@ function showUpdateNotice(updateInfo) {
   console.log('\n┌────────────────────────────────────────────────────────────┐');
   console.log(`│ UPDATE YTConv TERSEDIA: ${CLI_VERSION} → ${updateInfo.latestVersion}`.padEnd(61, ' ') + '│');
   console.log('│ Aplikasi tetap dapat dipakai; update tidak lagi memblokir. │');
-  console.log(`│ Jalankan: ${updateCommand()}`.padEnd(61, ' ') + '│');
+  console.log(`│ Jalankan: ${updateCommand(CLI_VERSION)}`.padEnd(61, ' ') + '│');
   console.log('└────────────────────────────────────────────────────────────┘\n');
+}
+
+function fullHelpText() {
+  return `${commandSummaryText()}${betaDefaultsHelpText()}${helpText()}\n${systemHelpText()}`;
 }
 
 async function main() {
@@ -143,11 +149,13 @@ async function main() {
   let options;
   try {
     const normalizedArgs = normalizeCommandArgs(process.argv.slice(2));
-    ({ system, cleanArgs } = extractSystemOptions(normalizedArgs));
+    const betaToggles = extractBetaToggles(normalizedArgs);
+    ({ system, cleanArgs } = extractSystemOptions(betaToggles.cleanArgs));
     options = parseCliOptions(cleanArgs);
+    applyBetaDefaults(options, betaToggles);
   } catch (error) {
     console.error(`YTConv: ${explainError(error)}\n`);
-    console.error(`${commandSummaryText()}${helpText()}\n${systemHelpText()}`);
+    console.error(fullHelpText());
     return exitCodeForError(error);
   }
 
@@ -156,6 +164,8 @@ async function main() {
     process.env.FORCE_COLOR = '0';
   }
   applyCliEnvironment(options);
+  if (options.galleryArchivePath) process.env.YTCONV_GALLERY_ARCHIVE = options.galleryArchivePath;
+  else delete process.env.YTCONV_GALLERY_ARCHIVE;
   if (options.noUpdateCheck) process.env.YTCONV_NO_UPDATE_CHECK = '1';
   if (options.forceGallery) process.env.YTCONV_FORCE_GALLERY = '1'; else delete process.env.YTCONV_FORCE_GALLERY;
   if (options.forceVideo) process.env.YTCONV_FORCE_VIDEO = '1'; else delete process.env.YTCONV_FORCE_VIDEO;
@@ -166,7 +176,7 @@ async function main() {
   const outputDirectory = defaultOutputDirectory();
 
   if (options.help) {
-    console.log(`${commandSummaryText()}${helpText()}\n${systemHelpText()}`);
+    console.log(fullHelpText());
     return EXIT_CODES.SUCCESS;
   }
   if (options.version) { console.log(CLI_VERSION); return EXIT_CODES.SUCCESS; }
