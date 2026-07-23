@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.3.0"
+$Version = "1.5.0-beta.1"
 Write-Host "YTConv $Version installer untuk PowerShell" -ForegroundColor Cyan
 
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
@@ -29,14 +29,18 @@ if ($Local) {
 } else {
   & npm.cmd uninstall -g ytconv 2>$null
   & npm.cmd cache verify
-  & npm.cmd install -g "ytconv@$Version" --force
+  & npm.cmd install -g "ytconv@beta" --force
 }
-if ($LASTEXITCODE -ne 0) { throw "npm gagal memasang YTConv." }
+if ($LASTEXITCODE -ne 0) { throw "npm gagal memasang YTConv beta." }
 
 Write-Host "`nVerifikasi:" -ForegroundColor Cyan
-& ytconv.cmd --version
+$installed = (& ytconv.cmd --version).Trim()
+if ($installed -ne $Version) { throw "Versi terpasang $installed, seharusnya $Version." }
 & ytconv.cmd --self-test
 & ytconv.cmd --shell-info
-Write-Host "`nSelesai. Jalankan: ytconv.cmd atau ytconv" -ForegroundColor Green
+& ytconv.cmd doctor
+Write-Host "`nDefault beta: subtitle ON, SponsorBlock mark ON, archive ON." -ForegroundColor Yellow
+Write-Host "Matikan per proses: --no-subtitles --no-sponsorblock --no-archive" -ForegroundColor Yellow
+Write-Host "Selesai. Jalankan: ytconv.cmd atau ytconv" -ForegroundColor Green
 Write-Host "Bila PowerShell memblokir ytconv.ps1, gunakan ytconv.cmd. Untuk mengizinkannya:" -ForegroundColor Yellow
 Write-Host "Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
