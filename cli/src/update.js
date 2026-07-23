@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process';
 const REGISTRY_BASE = 'https://registry.npmjs.org/ytconv';
 const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 4_000;
+const MANIFEST_VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 function parseVersion(version) {
   const normalized = String(version ?? '').trim().replace(/^v/iu, '');
@@ -43,11 +44,11 @@ export function compareVersions(left, right) {
   return 0;
 }
 
-export function releaseChannel(currentVersion = '') {
+export function releaseChannel(currentVersion = MANIFEST_VERSION) {
   return String(currentVersion).includes('-') ? 'beta' : 'latest';
 }
 
-export function defaultCacheFile(currentVersion = '') {
+export function defaultCacheFile(currentVersion = MANIFEST_VERSION) {
   return path.join(os.homedir(), '.ytconv', `update-check-${releaseChannel(currentVersion)}.json`);
 }
 
@@ -94,7 +95,7 @@ async function fetchLatestVersion({ fetchImpl, timeoutMs, channel }) {
 }
 
 export async function checkForUpdate({
-  currentVersion,
+  currentVersion = MANIFEST_VERSION,
   force = false,
   fetchImpl = globalThis.fetch,
   cacheFile = defaultCacheFile(currentVersion),
@@ -147,11 +148,11 @@ export async function checkForUpdate({
   }
 }
 
-export function updateCommand(currentVersion = '') {
+export function updateCommand(currentVersion = MANIFEST_VERSION) {
   return `npm install -g ytconv@${releaseChannel(currentVersion)} --force`;
 }
 
-function updateArguments(currentVersion = '') {
+function updateArguments(currentVersion = MANIFEST_VERSION) {
   return ['install', '-g', `ytconv@${releaseChannel(currentVersion)}`, '--force'];
 }
 
@@ -178,7 +179,7 @@ export function findNpmCli(options = {}) {
 }
 
 export function selfUpdateInvocation({
-  currentVersion = '',
+  currentVersion = MANIFEST_VERSION,
   platform = process.platform,
   env = process.env,
   execPath = process.execPath,
@@ -205,7 +206,7 @@ export function selfUpdateInvocation({
 }
 
 export function runSelfUpdate({
-  currentVersion = '',
+  currentVersion = MANIFEST_VERSION,
   platform = process.platform,
   env = process.env,
   execPath = process.execPath,
