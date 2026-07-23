@@ -1,53 +1,35 @@
-# YTConv CLI 1.5.0 Beta
+# YTConv CLI 1.4.0
 
-Versi npm: **`1.5.0-beta.1`**
+YTConv is a beginner-friendly media downloader and converter for Windows CMD, PowerShell, Linux distributions, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through the native iSH frontend. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
-YTConv adalah downloader dan converter media sosial untuk CMD, PowerShell, Linux, macOS, SSH/headless, Android Termux, dan iPhone/iPad melalui frontend native iSH. YTConv memakai **yt-dlp**, **gallery-dl**, dan **FFmpeg** untuk video, audio, gambar, carousel, Story, Reel, post campuran, serta playlist.
+> Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-> Gunakan hanya untuk media milik sendiri, berlisensi bebas, atau yang memang diizinkan untuk diunduh. YTConv tidak melewati DRM, paywall, akun privat tanpa akses, region lock, atau pembatasan hak cipta.
+## Stable release behavior
 
-## Default baru pada versi beta
-
-Tiga fitur sekarang aktif otomatis:
-
-- **Subtitle ON** untuk mode video.
-- **SponsorBlock ON** dengan mode aman `mark`.
-- **Archive anti-duplikat ON** untuk yt-dlp dan gallery-dl.
-
-SponsorBlock `mark` hanya menambahkan chapter/penanda ketika data tersedia. Default ini **tidak memotong media**.
-
-Matikan sesuai kebutuhan:
-
-```bash
-ytconv download "LINK" --no-subtitles
-ytconv download "LINK" --no-sponsorblock
-ytconv download "LINK" --no-archive
-```
-
-Ketiganya sekaligus:
-
-```bash
-ytconv download "LINK" --no-subtitles --no-sponsorblock --no-archive
-```
-
-Archive otomatis disimpan per profil di:
+YTConv 1.4.0 is the stable `latest` release. Potentially surprising features remain opt-in:
 
 ```text
-~/.ytconv/archives/
+Subtitles       OFF by default
+SponsorBlock    OFF by default
+Download archive OFF by default
 ```
 
-Audio, video, dan gallery menggunakan archive terpisah agar format berbeda tidak saling menghalangi. Detail lengkap tersedia di [docs/BETA.md](docs/BETA.md).
+Enable them when needed:
 
-## Instalasi beta
+```bash
+ytconv download "URL" --subtitles
+ytconv download "URL" --sponsorblock mark
+ytconv playlist "URL" --archive downloaded.txt
+```
 
-Gunakan tag **`beta`**, bukan `latest`.
+## Install from npm
 
 ### Windows CMD
 
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd --self-test
 ytconv.cmd doctor
@@ -55,33 +37,29 @@ ytconv.cmd doctor
 
 ### Windows PowerShell
 
-Gunakan shim `.cmd` agar tidak terganggu Execution Policy:
+Use the `.cmd` shim so PowerShell execution policy cannot block the command:
 
 ```powershell
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-### Linux, macOS, dan SSH
+### Linux, macOS, and SSH
 
 ```bash
 npm uninstall -g ytconv
 npm cache verify
-npm install -g ytconv@beta --force
+npm install -g ytconv@latest --force
 ytconv --version
 ytconv --self-test
 ytconv doctor
 ```
 
-Installer source untuk keluarga apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, dan Homebrew:
-
-```bash
-sh ./scripts/install-unix.sh
-```
+The complete Linux guide includes Ubuntu, Debian, Linux Mint, Pop!_OS, Fedora, RHEL, Rocky Linux, AlmaLinux, Arch Linux, CachyOS, Manjaro, EndeavourOS, openSUSE, Alpine, Void Linux, Gentoo, NixOS, and macOS: [docs/LINUX.md](docs/LINUX.md).
 
 ### Android Termux
 
@@ -89,199 +67,149 @@ sh ./scripts/install-unix.sh
 pkg update
 pkg install -y nodejs python ffmpeg
 termux-setup-storage
-python -m pip install -U yt-dlp gallery-dl
-npm install -g ytconv@beta --omit=optional --force
+python -m pip install -U --no-cache-dir yt-dlp gallery-dl
+npm install -g ytconv@latest --omit=optional --force
 ytconv repair
+ytconv --self-test
 ytconv doctor
 ```
 
-Hasil default: `~/storage/downloads/YTConv`.
+Default output: `~/storage/downloads/YTConv`.
 
-### iPhone/iPad melalui iSH
+### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.4.0/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
 ```
 
-Hasil default: `~/Downloads/YTConv`.
+Default output: `~/Downloads/YTConv`.
 
-### Tanpa instalasi global
-
-```bash
-npx -y ytconv@beta --help
-npx -y ytconv@beta download "LINK"
-```
-
-## Command utama
+## Quick commands
 
 ```bash
-ytconv download "LINK"
-ytconv playlist "LINK_PLAYLIST"
+ytconv download "URL"
+ytconv playlist "PLAYLIST_URL"
 ytconv batch links.txt
-ytconv info "LINK"
-ytconv formats "LINK"
-ytconv subtitles "LINK"
+ytconv info "URL"
+ytconv formats "URL"
+ytconv subtitles "URL"
 ytconv doctor
 ytconv repair
 ytconv clean
 ```
 
-Sintaks lama tetap didukung:
+The legacy URL-first syntax remains supported:
 
 ```bash
-ytconv "LINK" --preset music
+ytconv "URL" --preset music
 ```
 
-## Subtitle
-
-Subtitle manual dan otomatis dicoba, dikonversi ke SRT, lalu ditanam bila container mendukungnya:
+## Presets
 
 ```bash
-ytconv download "LINK"
-ytconv download "LINK" --subtitle-langs "id,en"
-ytconv download "LINK" --subtitle-only --subtitle-langs "id,en"
+ytconv --list-presets
+ytconv download "URL" --preset music
+ytconv download "URL" --preset mobile
+ytconv playlist "URL" --preset archive
 ```
 
-Matikan untuk satu download:
+Available presets: `balanced`, `music`, `lossless`, `mobile`, `hd`, and `archive`.
+
+## Playlist and batch downloads
 
 ```bash
-ytconv download "LINK" --no-subtitles
-```
-
-Tidak semua video memiliki subtitle. Ketiadaan subtitle tidak seharusnya menggagalkan download media utama.
-
-## SponsorBlock
-
-Default aman:
-
-```bash
-ytconv download "LINK"
-```
-
-Setara dengan mode `mark`.
-
-Hapus segmen secara eksplisit:
-
-```bash
-ytconv download "LINK" --sponsorblock remove
-```
-
-Matikan:
-
-```bash
-ytconv download "LINK" --no-sponsorblock
-```
-
-SponsorBlock terutama tersedia untuk YouTube. Situs lain mungkin tidak memiliki data segmen.
-
-## Archive anti-duplikat
-
-Archive otomatis aktif. Download media yang sama dengan profil yang sama akan dilewati.
-
-Archive khusus:
-
-```bash
-ytconv playlist "LINK" --archive downloaded.txt
-```
-
-Matikan:
-
-```bash
-ytconv download "LINK" --no-archive
-```
-
-Untuk archive khusus, YTConv memakai:
-
-```text
-downloaded.txt
-```
-
-untuk yt-dlp dan:
-
-```text
-downloaded.txt.gallery.sqlite3
-```
-
-untuk gallery-dl. File tersebut tidak boleh digabung karena formatnya berbeda.
-
-## Playlist dan batch
-
-```bash
-ytconv playlist "LINK"
-ytconv playlist "LINK" --playlist-items "1-10"
-ytconv playlist "LINK" --max-downloads 25 --skip-playlist-after-errors 5
+ytconv playlist "URL"
+ytconv playlist "URL" --playlist-items "1-10"
+ytconv playlist "URL" --max-downloads 25 --skip-playlist-after-errors 5
 ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
 ```
 
-## Retry dan resume
+A batch file is UTF-8 text with one URL per line. Blank lines and lines beginning with `#` are ignored.
+
+## Retry, resume, and duplicate prevention
+
+Resume is enabled by default:
 
 ```bash
-ytconv download "LINK" \
-  --retries 20 \
-  --fragment-retries 30 \
-  --file-access-retries 5 \
-  --retry-sleep "linear=1:10:2" \
-  --resume
+ytconv download "URL" --resume
+ytconv download "URL" --retries 20 --fragment-retries 30 --file-access-retries 5
+ytconv playlist "URL" --archive downloaded.txt
 ```
 
-Resume aktif secara default. Matikan dengan `--no-resume`.
+Disable resume with `--no-resume`. The archive prevents downloading the same media again with the same archive file.
 
-## Format dan kualitas
+## Audio and video formats
 
 ```bash
-ytconv formats "LINK"
-ytconv formats "LINK" --json
-ytconv info "LINK" --json
-ytconv download "LINK" --format mp3 --quality 192
-ytconv download "LINK" --format mp4 --quality 1080p
+ytconv formats "URL"
+ytconv formats "URL" --json
+ytconv download "URL" --audio --audio-format mp3 --audio-quality 192
+ytconv download "URL" --video --video-format mp4 --resolution 1080
 ```
 
-MP3 320 kbps adalah target encoder dan tidak meningkatkan detail di atas sumber.
+MP3 at 320 kbps is an encoder target; it does not create quality that was absent from the source.
 
-## Metadata dan cover
+## Metadata and cover art
 
 ```bash
-ytconv download "LINK" --preset music
-ytconv download "LINK" --metadata --thumbnail --metadata-files
-ytconv download "LINK" --format mp3 \
-  --artist "Nama Artis" \
-  --title "Judul Lagu" \
-  --album "Nama Album" \
-  --track 3 \
-  --year 2026 \
-  --genre "Pop"
+ytconv download "URL" --preset music
+ytconv download "URL" --metadata --thumbnail --metadata-files
+ytconv download "URL" --audio-format mp3 --artist "Artist" --title "Title" --album "Album" --track 3 --year 2026 --genre "Pop"
 ```
 
-MP3 menyimpan thumbnail JPG terpisah dan embedded cover. YouTube Music memakai crop persegi 1:1.
+MP3 output can include embedded metadata, chapters, a separate JPG thumbnail, and embedded cover art. YouTube Music thumbnails are cropped to a centered square when FFmpeg is available.
 
-## Cookies dan login
+## Subtitles
 
 ```bash
-ytconv download "LINK" --cookies cookies.txt
-ytconv download "LINK" --cookies-from-browser chrome
-ytconv download "LINK" --cookies-from-browser "firefox:default-release"
+ytconv subtitles "URL"
+ytconv download "URL" --subtitles --subtitle-langs "en,id"
+ytconv download "URL" --subtitle-only --subtitle-langs "en,id"
 ```
 
-Cookies adalah kredensial sensitif. Jangan membagikannya melalui chat, screenshot, log, atau issue publik.
+Not every source provides manual or automatic subtitles. Missing subtitles should not fail the main media download.
 
-## Potong durasi
+## SponsorBlock
 
 ```bash
-ytconv download "LINK" --from 00:01:20 --to 00:03:45
+ytconv download "URL" --sponsorblock mark
+ytconv download "URL" --sponsorblock remove
 ```
 
-## SSH dan automasi
+`mark` adds chapters when community segment data exists. `remove` cuts matching segments and must be requested explicitly. SponsorBlock data is mainly available for YouTube.
+
+## Cookies and authenticated access
 
 ```bash
-ytconv --headless "LINK"
-printf '%s\n' "LINK1" "LINK2" | ytconv --stdin --jobs 2 --continue-on-error
-ytconv info "LINK" --json
+ytconv download "URL" --cookies cookies.txt
+ytconv download "URL" --cookies-from-browser chrome
+ytconv download "URL" --cookies-from-browser "firefox:default-release"
 ```
 
-## Diagnosis
+Cookies are sensitive credentials. Never post them in screenshots, logs, issues, or chat messages.
+
+## Clip a section
+
+```bash
+ytconv download "URL" --from 00:01:20 --to 00:03:45
+```
+
+Cut accuracy depends on source keyframes and codecs.
+
+## SSH, cron, and automation
+
+```bash
+ytconv --headless "URL"
+printf '%s\n' "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error
+ytconv info "URL" --json
+```
+
+Stable exit codes are documented in [docs/COMMANDS.md](docs/COMMANDS.md).
+
+## Diagnostics
 
 ```bash
 ytconv doctor
@@ -291,36 +219,38 @@ ytconv --shell-info
 ytconv clean
 ```
 
-Doctor menampilkan status subtitle, SponsorBlock, archive yt-dlp, archive gallery-dl, dependency, distro, dan folder output.
+`doctor` reports the active version, distribution, package manager, output path, yt-dlp, gallery-dl, FFmpeg, ffprobe, cookies, retry settings, and update channel.
 
-## Publish beta
+## Update and uninstall
+
+Update stable:
 
 ```bash
-node -p "require('./package.json').version"
-npm view ytconv versions --json
-npm publish --dry-run
-npm publish --tag beta --access public
-npm view ytconv@beta version --prefer-online
-npm view ytconv dist-tags --json
+npm install -g ytconv@latest --force
 ```
 
-Publish beta tidak boleh mengubah dist-tag `latest`.
+Uninstall:
 
-## Dokumentasi
+```bash
+npm uninstall -g ytconv
+```
 
-- [Default dan pengujian beta](docs/BETA.md)
-- [Instalasi lengkap](docs/INSTALL.md)
-- [Linux dan macOS](docs/LINUX.md)
-- [CMD, PowerShell, SSH, Termux, dan iSH](docs/SHELLS.md)
-- [Seluruh command](docs/COMMANDS.md)
+Downloaded files and archive files are not removed automatically.
+
+## Documentation
+
+- [Complete installation guide](docs/INSTALL.md)
+- [Linux distribution guide](docs/LINUX.md)
+- [Shell guide](docs/SHELLS.md)
+- [Command reference](docs/COMMANDS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Checklist rilis](docs/RELEASE.md)
+- [Release checklist](docs/RELEASE.md)
 - [Changelog](CHANGELOG.md)
 
-## Dukungan dan batasan
+## Limitations
 
-Tidak ada downloader yang dapat menjamin semua link, distro, arsitektur, dan perangkat selalu berhasil. Situs dapat mengubah API, meminta login, memblokir wilayah, menghapus post, memberi HTTP 429, atau memakai DRM. YTConv memperkuat fallback, retry, repair, diagnosis, dan pesan error, tetapi tidak menerobos akses yang tidak tersedia secara teknis atau hukum.
+No downloader can guarantee every URL, site, distribution, architecture, and device forever. Sites can change APIs, require login, remove posts, return HTTP 429, restrict regions, or use DRM. YTConv provides fallback engines, retries, repair tools, diagnostics, and actionable error messages, but it cannot create access that is technically or legally unavailable.
 
-## Lisensi
+## License
 
-MIT. yt-dlp, gallery-dl, FFmpeg, dan dependency lain memiliki lisensi masing-masing.
+MIT. yt-dlp, gallery-dl, FFmpeg, and other dependencies keep their own licenses.
