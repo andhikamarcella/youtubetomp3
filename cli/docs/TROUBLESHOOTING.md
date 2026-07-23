@@ -1,10 +1,8 @@
-# Troubleshooting YTConv 1.5.0 Beta
+# Troubleshooting YTConv 1.4.0
 
-Versi npm: `1.5.0-beta.1`
+Start with this safe sequence:
 
-## Urutan pemeriksaan aman
-
-```sh
+```bash
 ytconv clean
 ytconv repair
 ytconv --self-test
@@ -12,69 +10,58 @@ ytconv doctor
 ytconv --shell-info
 ```
 
-`ytconv clean` hanya menghapus cache update/error. Archive download di `~/.ytconv/archives` tetap dipertahankan.
+Do not include cookies, tokens, private URLs, or proxy credentials when sharing diagnostics.
 
-Saat melaporkan bug, sertakan hasil command tersebut tanpa cookies, token, atau kredensial proxy.
+## The wrong npm version is being published
 
-## Versi salah saat publish atau install
+From the `cli` directory:
 
-Periksa folder, branch, versi, dan tag:
-
-```cmd
-cd C:\Users\andhi\youtubetomp3\cli
+```bash
 node -p "require('./package.json').version"
 node -p "require('./package.json').publishConfig.tag"
 git branch --show-current
 git status --short
 ```
 
-Hasil harus:
+For the stable release, expected values are:
 
 ```text
-1.5.0-beta.1
-beta
-codex/add-ytconv-cli
+1.4.0
+latest
+release/ytconv-1.4.0
 ```
 
-npm tidak mengizinkan versi yang pernah dipublikasikan untuk ditimpa.
+npm never allows a published version number to be overwritten.
 
-Instal beta dengan:
+## `spawnSync npm.cmd EINVAL` on Windows
 
-```cmd
-npm.cmd install -g ytconv@beta --force
-```
-
-Bukan `ytconv@latest`.
-
-## `spawnSync npm.cmd EINVAL`
-
-Updater baru tidak menjalankan `npm.cmd` secara langsung. Ia memakai npm CLI melalui Node, dengan fallback `cmd.exe`.
-
-Pemulihan CMD:
+Older updater code attempted to spawn a `.cmd` file directly. Install the current stable version manually:
 
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ```
 
-## PowerShell: scripts are disabled
+The current updater uses the npm CLI through Node.js, with `cmd.exe` only as a controlled fallback.
 
-Gunakan shim CMD:
+## PowerShell says scripts are disabled
+
+Use the CMD shim:
 
 ```powershell
 ytconv.cmd --version
 ytconv.cmd doctor
 ```
 
-Atau untuk akun sendiri:
+Optionally enable local/signed scripts for the current user:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-## `ytconv` tidak ditemukan
+## `ytconv: command not found`
 
 Windows:
 
@@ -86,312 +73,231 @@ npm.cmd prefix -g
 
 Linux/macOS:
 
-```sh
+```bash
 command -v ytconv
 type -a ytconv
 npm prefix -g
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## Permission denied / EACCES
+Persist the PATH line in the shell profile.
 
-Jangan memakai `sudo npm install -g`. Gunakan prefix pengguna:
+## npm reports `EACCES` or permission denied
 
-```sh
+Do not use `sudo npm install -g`. Configure a user prefix:
+
+```bash
 npm config set prefix "$HOME/.local"
+mkdir -p "$HOME/.local/bin"
 export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@beta --force
+npm install -g ytconv@latest --force
 ```
 
-## Default beta tidak aktif
+## Node.js is too old
 
-Periksa:
+YTConv requires Node.js 18 or newer:
 
-```sh
-ytconv --version
-ytconv --self-test
-ytconv doctor
+```bash
+node --version
 ```
 
-Doctor harus menunjukkan:
+Install Node.js 18, 20, or 22, reopen the terminal, and reinstall YTConv.
 
-```text
-Subtitle          ON
-SponsorBlock      mark
-Archive yt-dlp    path file
-Archive gallery   path file
-```
+## FFmpeg or ffprobe is missing
 
-Bila masih memakai versi lama:
-
-```sh
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@beta --force
-```
-
-## Subtitle aktif tetapi tidak ada file subtitle
-
-Tidak semua video mempunyai subtitle manual atau otomatis. Periksa:
-
-```sh
-ytconv subtitles "LINK"
-ytconv download "LINK" --subtitle-only --subtitle-langs "id,en"
-```
-
-Live chat dikecualikan secara default. Ketiadaan subtitle tidak seharusnya menggagalkan download media utama.
-
-Matikan subtitle untuk satu proses:
-
-```sh
-ytconv download "LINK" --no-subtitles
-```
-
-## SponsorBlock tidak menandai apa pun
-
-Default `mark` hanya bekerja bila data segmen tersedia. SponsorBlock terutama tersedia untuk YouTube.
-
-```sh
-ytconv download "LINK" --sponsorblock mark
-```
-
-Hapus segmen secara eksplisit:
-
-```sh
-ytconv download "LINK" --sponsorblock remove
-```
-
-Matikan:
-
-```sh
-ytconv download "LINK" --no-sponsorblock
-```
-
-Mode default `mark` tidak memotong media.
-
-## Download langsung dilewati karena archive
-
-Media dengan profil output yang sama sudah tercatat. Lihat archive melalui:
-
-```sh
-ytconv doctor
-```
-
-Archive otomatis berada di:
-
-```text
-~/.ytconv/archives
-```
-
-Unduh tanpa archive untuk satu proses:
-
-```sh
-ytconv download "LINK" --no-archive
-```
-
-Gunakan archive khusus:
-
-```sh
-ytconv download "LINK" --archive downloaded.txt
-```
-
-YTConv membuat `downloaded.txt.gallery.sqlite3` untuk gallery-dl karena format archive gallery-dl berbeda dari file teks yt-dlp.
-
-## `ytconv clean` menghapus archive
-
-Pada beta yang benar, ini tidak boleh terjadi. Perbarui:
-
-```sh
-npm install -g ytconv@beta --force
-```
-
-Lalu jalankan test:
-
-```sh
-ytconv --self-test
-ytconv clean
-```
-
-Archive di `~/.ytconv/archives` harus tetap ada.
-
-## FFmpeg atau ffprobe tidak ditemukan
-
-```sh
+```bash
 ytconv --shell-info
 ytconv repair
 ytconv doctor
 ```
 
-Doctor menampilkan command package manager untuk distro. ffprobe opsional untuk sebagian diagnosis, sedangkan FFmpeg diperlukan untuk konversi/merge.
+FFmpeg is required for merging, conversion, embedded cover art, clipping, and some subtitle operations. ffprobe is optional for part of the diagnostics.
 
-## Alpine: binary FFmpeg tidak dapat dijalankan
+## Alpine reports that FFmpeg cannot execute
 
-Alpine memakai musl. Instal FFmpeg sistem:
+Alpine uses musl. Install system FFmpeg and omit the optional bundled binary:
 
 ```sh
 apk add --no-cache ffmpeg
+npm install -g ytconv@latest --omit=optional --force
 ```
 
-YTConv memvalidasi binary bundled dan dapat memakai FFmpeg sistem bila binary glibc tidak kompatibel.
+## The URL works in a browser but fails in YTConv
 
-## Link bisa dibuka di browser tetapi gagal
+Possible causes:
 
-Kemungkinan:
+- login is required
+- cookies expired or are locked by the browser
+- private or deleted media
+- regional restriction
+- extractor changes
+- DRM or a paywall
+- HTTP 429 rate limiting
 
-- media meminta login;
-- cookies kedaluwarsa;
-- post privat atau dihapus;
-- region lock;
-- extractor situs berubah;
-- DRM/paywall;
-- browser masih mengunci database cookies.
+Try:
 
-Coba:
-
-```sh
-ytconv info "LINK"
-ytconv download "LINK" --cookies-from-browser chrome
-ytconv download "LINK" --cookies cookies.txt
+```bash
+ytconv info "URL"
+ytconv download "URL" --cookies-from-browser chrome
+ytconv download "URL" --cookies cookies.txt
 ```
 
-Tutup browser sepenuhnya sebelum membaca cookies browser.
+Close the browser completely before reading browser cookies.
 
-## Cookies browser gagal dibaca
+## Browser cookies cannot be read
 
-Desktop:
+Desktop example:
 
-```sh
-ytconv download "LINK" --cookies-from-browser chrome
-ytconv download "LINK" --cookies-from-browser "firefox:default-release"
+```bash
+ytconv download "URL" --cookies-from-browser chrome
+ytconv download "URL" --cookies-from-browser "firefox:default-release"
 ```
 
-Bila tetap gagal, ekspor file Netscape secara sah dan gunakan `--cookies`. Termux/iSH tidak dapat mengambil database privat browser Android/iOS.
-
-Cookies adalah kredensial sensitif. Jangan kirim ke issue, chat publik, screenshot, atau orang lain.
+When browser extraction fails, export a Netscape-format cookie file legally and use `--cookies`. Termux and iSH cannot directly access private Android/iOS browser databases.
 
 ## HTTP 429 / Too Many Requests
 
-Kurangi paralelisme dan beri jeda:
+Reduce concurrency and wait before retrying:
 
-```sh
-ytconv download "LINK" --concurrent-fragments 1 --retry-sleep "linear=2:20:3"
+```bash
+ytconv download "URL" --concurrent-fragments 1 --retry-sleep "linear=2:20:3"
 ytconv batch links.txt --jobs 1 --continue-on-error
 ```
 
-Tunggu sebelum mencoba ulang. Retry agresif dapat memperpanjang pembatasan.
+Aggressive retries can extend the restriction.
 
-## Timeout, DNS, proxy, atau sertifikat
+## Timeout, DNS, certificate, or proxy error
 
-```sh
+```bash
 ytconv doctor
 ytconv --shell-info
 ```
 
-Format proxy:
+Verify the system clock, CA certificates, DNS, and proxy URL. Supported forms include:
 
 ```text
 http://host:port
 socks5://host:port
 ```
 
-Periksa waktu perangkat dan sertifikat CA, terutama di iSH/Alpine.
-
 ## Requested format is not available
 
-```sh
-ytconv formats "LINK"
-ytconv formats "LINK" --json
-ytconv download "LINK" --video-format auto --resolution 720
+Inspect real source formats:
+
+```bash
+ytconv formats "URL"
+ytconv formats "URL" --json
 ```
 
-## MP3 320 kbps terdengar sama
+Then lower the resolution or use automatic/MKV output:
 
-Normal. 320 kbps adalah target encoder, bukan peningkatan kualitas sumber. Periksa bitrate original melalui:
-
-```sh
-ytconv formats "LINK"
+```bash
+ytconv download "URL" --video-format auto --resolution 720
 ```
 
-## Metadata manual tidak muncul
+## MP3 320 kbps sounds unchanged
 
-```sh
-ytconv download "LINK" --format mp3 --artist "Artis" --title "Judul" --album "Album"
+That is expected. 320 kbps is an encoder target, not a source-quality upgrade. Inspect the original streams with:
+
+```bash
+ytconv formats "URL"
 ```
 
-Sebagian player tidak menampilkan seluruh field walaupun file menyimpannya.
+## Metadata is missing in the player
 
-## Thumbnail atau cover gagal
+```bash
+ytconv download "URL" --audio-format mp3 --artist "Artist" --title "Title" --album "Album"
+```
 
-```sh
+Some players hide fields even when the file contains them.
+
+## Thumbnail or cover art failed
+
+```bash
 ytconv doctor
 ytconv repair
 ```
 
-WAV tidak mendapat embedded cover melalui jalur ini. MP3 mencoba cover tertanam dan JPG terpisah.
+WAV does not use the same embedded-cover path. MP3 attempts both a separate JPG and embedded artwork.
 
-## YouTube Music cover tidak persegi
+## YouTube Music artwork is not square
 
-URL harus berasal dari `music.youtube.com`, dan FFmpeg harus tersedia. URL YouTube biasa sengaja tidak dicrop.
+Use a `music.youtube.com` URL and ensure FFmpeg is available. Standard YouTube URLs are intentionally not always cropped.
 
-## Potongan durasi tidak tepat satu frame
+## Subtitles are missing
 
-Clipping bergantung pada keyframe dan codec. Pergeseran kecil tetap mungkin.
+```bash
+ytconv subtitles "URL"
+ytconv download "URL" --subtitle-only --subtitle-langs "en,id"
+```
 
-## Batch berhenti terlalu cepat
+Not every video has manual or automatic subtitles. Live chat is excluded by default.
 
-```sh
+## SponsorBlock did not mark or remove anything
+
+```bash
+ytconv download "URL" --sponsorblock mark
+```
+
+Community segment data may not exist. SponsorBlock is mainly useful on YouTube.
+
+## Batch stops too early
+
+```bash
 ytconv batch links.txt --continue-on-error --jobs 2 --result-json report.json
 ```
 
-Subcommand `batch` otomatis mengaktifkan continue-on-error. Exit code tetap nonzero bila ada kegagalan.
+The final exit code remains nonzero when one or more items fail.
 
-## File `.part` tertinggal
+## A `.part` file remains
 
-Resume aktif secara default:
+Resume is enabled by default:
 
-```sh
-ytconv download "LINK" --resume
+```bash
+ytconv download "URL" --resume
 ```
 
-Bersihkan file sementara baru setelah gagal:
+To remove newly created partial files after a failure:
 
-```sh
-ytconv download "LINK" --cleanup-part
+```bash
+ytconv download "URL" --cleanup-part
 ```
 
-Cleanup dinonaktifkan saat batch paralel agar worker tidak menghapus file worker lain.
+Cleanup is disabled during parallel batch work so one worker cannot delete another worker's files.
 
-## Output template ditolak
+## Output template is rejected
 
-Template harus relatif, tidak mengandung `..`, dan wajib memuat `%(ext)s`:
+Templates must be relative, must not contain `..`, and must include `%(ext)s`:
 
-```sh
-ytconv download "LINK" --output-template "%(uploader)s/%(title)s.%(ext)s"
+```bash
+ytconv download "URL" --output-template "%(uploader)s/%(title)s.%(ext)s"
 ```
 
-## iSH lambat atau kehabisan memori
+## iSH is slow or runs out of memory
 
-Gunakan resolusi lebih kecil dan batch berurutan:
+Use a smaller preset and one batch worker:
 
 ```sh
-ytconv download "LINK" --preset mobile
+ytconv download "URL" --preset mobile
 ytconv batch links.txt --jobs 1 --continue-on-error
 ```
 
-## Exit code
+## Exit codes
 
-- `0`: berhasil
-- `1`: proses gagal
-- `2`: URL/opsi salah
-- `3`: dependency hilang
-- `4`: autentikasi diperlukan
-- `5`: gangguan sementara
-- `130`: dibatalkan
-
-## Log
-
-```sh
-ytconv download "LINK" --log-file ytconv.log
+```text
+0    Success
+1    Processing failed
+2    Invalid URL or option
+3    Missing dependency
+4    Authentication required
+5    Temporary failure
+130  Cancelled
 ```
 
-Sebelum membagikan log, hapus link privat, path sensitif, username, proxy, dan informasi akun. Jangan pernah memasukkan isi cookies.
+## Logs
+
+```bash
+ytconv download "URL" --log-file ytconv.log
+```
+
+Before sharing logs, remove private URLs, usernames, sensitive paths, proxy details, and account information. Never include cookie contents.
