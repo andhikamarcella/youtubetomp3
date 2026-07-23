@@ -1,0 +1,43 @@
+name: YTConv Unit Test Diagnostics
+
+on:
+  push:
+    branches:
+      - release/ytconv-1.4.0
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/ytconv-tests.yml"
+
+jobs:
+  test-file:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - test/beta-defaults.test.js
+          - test/cli-options.test.js
+          - test/cli.test.js
+          - test/commands.test.js
+          - test/gallery-beta.test.js
+          - test/gallery.test.js
+          - test/headless.test.js
+          - test/linux-distro.test.js
+          - test/media-controller.test.js
+          - test/process-exit.test.js
+          - test/release-1.3.test.js
+          - test/system-actions.test.js
+          - test/system-tools.test.js
+          - test/terminal-input.test.js
+          - test/update.test.js
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --ignore-scripts --omit=optional
+      - run: node --test "${{ matrix.file }}"
