@@ -2,6 +2,41 @@
 
 Perubahan penting YTConv CLI mengikuti Semantic Versioning.
 
+## 1.5.0-beta.1 — always-on safety and convenience defaults
+
+### Default baru
+
+- Subtitle aktif otomatis untuk mode video.
+- SponsorBlock aktif otomatis dengan mode aman `mark`.
+- Archive anti-duplikat aktif otomatis untuk yt-dlp dan gallery-dl.
+- Archive dipisahkan berdasarkan mode/format agar audio dan video dari media yang sama tidak saling menghalangi.
+- Archive yt-dlp dan gallery-dl memakai file terpisah karena format penyimpanannya berbeda.
+
+### Ditambahkan
+
+- `--no-subtitles` dan alias `--subtitles-off`.
+- `--no-sponsorblock` dan alias `--sponsorblock-off`.
+- `--no-archive`.
+- Folder archive otomatis `~/.ytconv/archives`.
+- Pasangan archive gallery-dl otomatis untuk `--archive FILE`.
+- Frontend native iSH beta dengan default dan opt-out yang sama.
+- Dokumentasi beta, checklist pengujian, dan petunjuk instalasi `ytconv@beta`.
+- Update checker prerelease memakai npm dist-tag `beta`, bukan `latest`.
+- Perbandingan versi prerelease membedakan `beta.1`, `beta.2`, dan rilis stabil.
+
+### Perilaku SponsorBlock
+
+- Default `mark` hanya menambahkan chapter/penanda bila data SponsorBlock tersedia.
+- Default tidak memotong media.
+- Penghapusan segmen tetap tersedia dengan `--sponsorblock remove`.
+- SponsorBlock dapat dimatikan dengan `--no-sponsorblock` atau `--sponsorblock off`.
+
+### Publikasi npm
+
+- Versi paket: `1.5.0-beta.1`.
+- `publishConfig.tag` diatur ke `beta` untuk mencegah prerelease menggantikan tag `latest` secara tidak sengaja.
+- Instalasi beta: `npm install -g ytconv@beta --force`.
+
 ## 1.3.0 — playlist, transparency, automation, and Linux distro release
 
 ### Ditambahkan
