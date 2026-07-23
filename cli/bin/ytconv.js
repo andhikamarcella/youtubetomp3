@@ -26,6 +26,12 @@ import {
 } from '../src/system-tools.js';
 import { runApp } from '../src/ui.js';
 import { checkForUpdate, runSelfUpdate, updateCommand } from '../src/update.js';
+import {
+  appendHistory,
+  handleUserDataCommand,
+  resolveUserArguments,
+  userDataHelpText,
+} from '../src/user-data.js';
 import { CLI_VERSION } from '../src/version.js';
 
 function defaultOutputDirectory() {
@@ -45,7 +51,7 @@ function updateStatusText(updateInfo) {
   return `unable to check${updateInfo.error ? `: ${updateInfo.error}` : ''}`;
 }
 
-async function printDiagnostics(platformHint = 'auto') {
+async function printDiagnostics(platformHint = 'auto', profile = '') {
   const [dependencies, updateInfo] = await Promise.all([
     inspectDependencies({ repair: false }),
     checkForUpdate({ currentVersion: CLI_VERSION, force: true }),
@@ -60,6 +66,7 @@ async function printDiagnostics(platformHint = 'auto') {
     ['Distribution', distro?.name || '-'],
     ['Package manager', distro?.manager || '-'],
     ['TTY', `stdin=${Boolean(process.stdin.isTTY)} stdout=${Boolean(process.stdout.isTTY)}`],
+    ['Saved profile', profile || 'none'],
     ['Preset', process.env.YTCONV_PRESET || 'balanced'],
     ['Platform', socialPlatformLabel(platformHint)],
     ['yt-dlp', dependencies.ytDlp.installed ? dependencies.ytDlp.version : 'not found'],
@@ -140,15 +147,27 @@ function showUpdateNotice(updateInfo) {
 }
 
 function fullHelpText() {
-  return `${commandSummaryText()}${betaDefaultsHelpText()}${helpText()}\n${systemHelpText()}`;
+  return `${commandSummaryText()}${betaDefaultsHelpText()}${userDataHelpText()}${helpText()}\n${systemHelpText()}`;
 }
 
 async function main() {
+  const rawArgs = process.argv.slice(2);
+  try {
+    const admin = await handleUserDataCommand(rawArgs);
+    if (admin.handled) return admin.exitCode;
+  } catch (error) {
+    console.error(`YTConv: ${explainError(error)}`);
+    return exitCodeForError(error);
+  }
+
   let system;
   let cleanArgs;
   let options;
+  let selectedProfile = '';
   try {
-    const normalizedArgs = normalizeCommandArgs(process.argv.slice(2));
+    const resolved = await resolveUserArguments(rawArgs);
+    selectedProfile = resolved.profile;
+    const normalizedArgs = normalizeCommandArgs(resolved.args);
     const toggles = extractBetaToggles(normalizedArgs);
     ({ system, cleanArgs } = extractSystemOptions(toggles.cleanArgs));
     options = parseCliOptions(cleanArgs);
@@ -175,10 +194,7 @@ async function main() {
 
   const outputDirectory = defaultOutputDirectory();
 
-  if (options.help) {
-    console.log(fullHelpText());
-    return EXIT_CODES.SUCCESS;
-  }
+  if (options.help) { console.log(fullHelpText()); return EXIT_CODES.SUCCESS; }
   if (options.version) { console.log(CLI_VERSION); return EXIT_CODES.SUCCESS; }
   if (system.examples) { console.log(examplesText()); return EXIT_CODES.SUCCESS; }
   if (system.shellInfo) return printShellInfo({ outputDirectory });
@@ -191,7 +207,7 @@ async function main() {
   }
   if (options.checkUpdate) return printUpdateCheck();
   if (options.update) return performUpdate();
-  if (options.diagnose) return printDiagnostics(options.initialPlatform);
+  if (options.diagnose) return printDiagnostics(options.initialPlatform, selectedProfile);
 
   if (isDirectCommand(options)) {
     try {
@@ -205,13 +221,10 @@ async function main() {
   const headless = system.headless || system.stdin || Boolean(system.batchFile)
     || (!process.stdin.isTTY || !process.stdout.isTTY);
   if (headless) {
+    let urls = [];
     try {
-      const urls = await collectUrls({
-        initialUrl: options.initialUrl,
-        batchFile: system.batchFile,
-        readStdin: system.stdin,
-      });
-      return await runHeadlessDownloads({
+      urls = await collectUrls({ initialUrl: options.initialUrl, batchFile: system.batchFile, readStdin: system.stdin });
+      const exitCode = await runHeadlessDownloads({
         options,
         outputDirectory,
         urls,
@@ -220,9 +233,31 @@ async function main() {
         jobs: system.jobs,
         resultJson: system.resultJson,
       });
+      await appendHistory({
+        version: CLI_VERSION,
+        command: rawArgs[0] || 'download',
+        urls,
+        preset: options.preset,
+        mode: options.initialMode,
+        outputDirectory,
+        profile: selectedProfile,
+        exitCode,
+      }).catch(() => {});
+      return exitCode;
     } catch (error) {
+      const exitCode = exitCodeForError(error);
+      await appendHistory({
+        version: CLI_VERSION,
+        command: rawArgs[0] || 'download',
+        urls,
+        preset: options.preset,
+        mode: options.initialMode,
+        outputDirectory,
+        profile: selectedProfile,
+        exitCode,
+      }).catch(() => {});
       console.error(`YTConv headless:\n${explainError(error)}`);
-      return exitCodeForError(error);
+      return exitCode;
     }
   }
 
