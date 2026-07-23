@@ -13,58 +13,25 @@ export const PRESET_DESCRIPTIONS = {
 
 const PRESETS = {
   balanced: {},
-  music: {
-    initialMode: 'audio',
-    audioFormat: 'mp3',
-    audioQuality: '320',
-    writeThumbnail: true,
-  },
-  lossless: {
-    initialMode: 'audio',
-    audioFormat: 'flac',
-    audioQuality: 'best',
-    writeThumbnail: true,
-  },
-  mobile: {
-    initialMode: 'video',
-    forceVideo: true,
-    videoFormat: 'mp4',
-    resolution: '720',
-  },
-  hd: {
-    initialMode: 'video',
-    forceVideo: true,
-    videoFormat: 'mp4',
-    resolution: '1080',
-  },
+  music: { initialMode: 'audio', audioFormat: 'mp3', audioQuality: '320', writeThumbnail: true },
+  lossless: { initialMode: 'audio', audioFormat: 'flac', audioQuality: 'best', writeThumbnail: true },
+  mobile: { initialMode: 'video', forceVideo: true, videoFormat: 'mp4', resolution: '720' },
+  hd: { initialMode: 'video', forceVideo: true, videoFormat: 'mp4', resolution: '1080' },
   archive: {
-    initialMode: 'auto',
-    initialPlaylist: true,
-    videoFormat: 'mkv',
-    resolution: 'best',
-    subtitles: true,
-    subtitleLanguages: 'all,-live_chat',
-    writeInfoJson: true,
-    writeDescription: true,
-    writeThumbnail: true,
-    restrictFilenames: true,
+    initialMode: 'auto', initialPlaylist: true, videoFormat: 'mkv', resolution: 'best',
+    subtitles: true, subtitleLanguages: 'all,-live_chat', writeInfoJson: true,
+    writeDescription: true, writeThumbnail: true, restrictFilenames: true,
   },
 };
 
 export function applyPreset(options, name, { cwd = process.cwd() } = {}) {
   const preset = PRESETS[name];
-  if (!preset) {
-    throw new Error(`Unknown preset "${name}". Choose: ${PRESET_NAMES.join(', ')}.`);
-  }
+  if (!preset) throw new Error(`--preset must be one of: ${PRESET_NAMES.join(', ')}.`);
   Object.assign(options, preset, { preset: name });
-  if (name === 'archive' && !options.archivePath) {
-    options.archivePath = path.resolve(cwd, 'ytconv-archive.txt');
-  }
+  if (name === 'archive' && !options.archivePath) options.archivePath = path.resolve(cwd, 'ytconv-archive.txt');
   return options;
 }
 
 export function presetText() {
-  return PRESET_NAMES
-    .map((name) => `${name.padEnd(10)} ${PRESET_DESCRIPTIONS[name]}`)
-    .join('\n');
+  return PRESET_NAMES.map((name) => `${name.padEnd(10)} ${PRESET_DESCRIPTIONS[name]}`).join('\n');
 }
