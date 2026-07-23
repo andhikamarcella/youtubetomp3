@@ -5,65 +5,49 @@ RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/a
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 BIN_FILE="/usr/local/bin/ytconv"
+TMP_FILE="/tmp/ytconv-ish.py.$$"
 
-say() {
-  printf '%s\n' "$*"
-}
+say() { printf '%s\n' "$*"; }
+fail() { printf 'YTConv iSH: %s\n' "$*" >&2; exit 1; }
 
-fail() {
-  printf 'YTConv iSH: %s\n' "$*" >&2
-  exit 1
-}
-
-[ "$(id -u)" = "0" ] || fail "jalankan installer sebagai root di iSH."
+[ "$(id -u)" = "0" ] || fail "jalankan sebagai root di iSH."
 [ -f /etc/alpine-release ] || fail "installer ini khusus iSH/Alpine Linux."
 
-say "YTConv iSH installer"
-say "Menyiapkan Python, FFmpeg, yt-dlp, dan gallery-dl..."
-
-# Bersihkan instalasi npm yang gagal/tertinggal. iSH memakai frontend Python native,
-# bukan Ink/Node, karena Node bawaan iSH lama sering gagal mengekstrak dependency npm.
-rm -rf /usr/local/lib/node_modules/ytconv 2>/dev/null || true
-rm -rf /usr/local/lib/node_modules/.ytconv-* 2>/dev/null || true
-rm -f /usr/local/bin/ytconv 2>/dev/null || true
+say "YTConv iSH 1.2.3 installer"
+say "Menyiapkan Python, FFmpeg, yt-dlp, gallery-dl, curl, dan sertifikat..."
 
 apk update
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
 update-ca-certificates >/dev/null 2>&1 || true
 
 pip_install() {
-  if python3 -m pip install --upgrade --no-cache-dir --break-system-packages "$@"; then
-    return 0
-  fi
-  python3 -m pip install --upgrade --no-cache-dir "$@"
+  python3 -m pip install -U --no-cache-dir --break-system-packages "$@" 2>/dev/null \
+    || python3 -m pip install -U --no-cache-dir "$@"
 }
 
-# pip memilih rilis yt-dlp terbaru yang masih kompatibel dengan versi Python
-# iSH. Python 3.10+ mendapat yt-dlp terbaru; Python 3.9 mendapat rilis kompatibel
-# terakhir dan akan diberi catatan oleh diagnostics.
 pip_install yt-dlp gallery-dl
-
 mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
-curl -fL --retry 3 --connect-timeout 20 \
-  "$RAW_BASE/ish/ytconv.py" \
-  -o "$APP_FILE"
+
+rm -f "$TMP_FILE"
+curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 \
+  "$RAW_BASE/ish/ytconv.py" -o "$TMP_FILE"
+python3 -m py_compile "$TMP_FILE" || fail "frontend yang terunduh tidak valid."
+mv "$TMP_FILE" "$APP_FILE"
 chmod 755 "$APP_FILE"
 
-cat > "$BIN_FILE" <<'EOF'
+cat > "$BIN_FILE" <<'SH'
 #!/bin/sh
 exec python3 /usr/local/lib/ytconv-ish/ytconv.py "$@"
-EOF
+SH
 chmod 755 "$BIN_FILE"
-
 hash -r 2>/dev/null || true
 
 say ""
 say "YTConv iSH berhasil dipasang."
 "$BIN_FILE" --version
+"$BIN_FILE" --diagnose || true
 say ""
-say "Jalankan:"
-say "  ytconv"
-say "  ytconv --diagnose"
-say ""
-say "Hasil tersimpan di: $HOME/Downloads/YTConv"
-say "Buka melalui app Files > iSH > root > Downloads > YTConv."
+say "Jalankan: ytconv"
+say "Batch: ytconv --batch-file links.txt --continue-on-error"
+say "Repair: ytconv --repair"
+say "Hasil: $HOME/Downloads/YTConv"
