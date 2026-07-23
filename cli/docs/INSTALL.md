@@ -1,167 +1,164 @@
-# Instalasi lengkap YTConv 1.2.3
+# Instalasi lengkap YTConv 1.3.0
 
-## Syarat umum
+## Persyaratan
 
 - Node.js 18 atau lebih baru untuk paket npm.
-- Internet untuk instalasi dan update engine.
-- Ruang penyimpanan untuk media hasil.
-- FFmpeg diperlukan untuk merge video, ekstraksi audio, cover, thumbnail, subtitle, dan konversi.
+- npm.
+- FFmpeg untuk merge, konversi, cover, subtitle, dan clipping.
+- Python 3 disarankan sebagai fallback yt-dlp/gallery-dl.
+- Koneksi HTTPS dan sertifikat CA yang benar.
+
+Periksa:
+
+```sh
+node --version
+npm --version
+ffmpeg -version
+```
 
 ## Windows CMD
 
-1. Pasang Node.js LTS.
-2. Tutup CMD lama dan buka CMD baru.
-3. Jalankan:
+Instalasi publik:
 
 ```cmd
-node --version
-npm.cmd --version
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@1.2.3 --force
+npm.cmd install -g ytconv@1.3.0 --force
+where ytconv
 ytconv.cmd --version
-ytconv.cmd --repair
 ytconv.cmd --self-test
+ytconv.cmd doctor
 ```
 
-4. Buka aplikasi:
+Installer repository:
 
 ```cmd
-ytconv.cmd
-```
-
-Installer dari repository:
-
-```cmd
-cd C:\Users\andhi\youtubetomp3\cli
-scripts\install-windows.cmd
+cd C:\path\ke\youtubetomp3\cli
+scripts\install-windows.cmd --local
 ```
 
 ## Windows PowerShell
 
 ```powershell
-node --version
-npm.cmd --version
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@1.2.3 --force
+npm.cmd install -g ytconv@1.3.0 --force
+Get-Command ytconv -All
 ytconv.cmd --version
-ytconv.cmd --repair
 ytconv.cmd --self-test
+ytconv.cmd doctor
 ```
 
 Installer repository:
 
 ```powershell
-cd C:\Users\andhi\youtubetomp3\cli
-powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1
+cd C:\path\ke\youtubetomp3\cli
+powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1 -Local
 ```
 
-PowerShell error `running scripts is disabled`:
+Gunakan `ytconv.cmd` bila PowerShell menolak shim `ytconv.ps1`. Opsi permanen untuk akun sendiri:
 
 ```powershell
-ytconv.cmd --version
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-Periksa semua shim:
+## Linux universal
 
-```powershell
-Get-Command ytconv -All
-Get-Command npm -All
+```sh
+sh ./scripts/install-unix.sh
 ```
 
-## Termux
+Lihat rencana tanpa perubahan:
 
-Gunakan Termux dari F-Droid atau GitHub Releases.
+```sh
+sh ./scripts/install-unix.sh --print-plan
+```
+
+Installer mendukung keluarga apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, dan Homebrew. Dependency OS mungkin meminta sudo, tetapi npm dipasang ke `~/.local` tanpa `sudo npm install -g`.
+
+Setelah selesai:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+ytconv --version
+ytconv --self-test
+ytconv doctor
+```
+
+Panduan per distro: [LINUX.md](LINUX.md).
+
+## macOS
+
+```sh
+brew install node python ffmpeg
+sh ./scripts/install-unix.sh
+```
+
+## Android Termux
+
+Gunakan Termux dari sumber yang masih dipelihara.
 
 ```sh
 pkg update
-pkg upgrade -y
 pkg install -y nodejs python ffmpeg
 termux-setup-storage
 python -m pip install -U --no-cache-dir yt-dlp gallery-dl
-npm uninstall -g ytconv || true
-npm install -g ytconv@1.2.3 --omit=optional --force
-ytconv --repair
+npm uninstall -g ytconv
+npm install -g ytconv@1.3.0 --omit=optional --force
+ytconv repair
 ytconv --self-test
-ytconv --diagnose
-```
-
-Installer repository:
-
-```sh
-sh scripts/install-termux.sh
 ```
 
 Hasil default:
 
 ```text
-/storage/emulated/0/Download/YTConv
+~/storage/downloads/YTConv
 ```
 
-## Linux/macOS/SSH
+Jika izin penyimpanan belum muncul, setujui dialog Android lalu jalankan ulang `termux-setup-storage`.
 
-```sh
-node --version
-npm --version
-npm install -g ytconv@1.2.3 --force
-ytconv --repair
-ytconv --self-test
-```
+## iPhone/iPad dengan iSH
 
-Installer repository:
-
-```sh
-sh scripts/install-unix.sh
-```
-
-Untuk server tanpa tampilan:
-
-```sh
-ytconv --headless "LINK"
-```
-
-Bila global npm tidak dapat ditulis, jangan langsung memakai `sudo npm`. Gunakan npx:
-
-```sh
-npx -y ytconv@1.2.3 --headless "LINK"
-```
-
-Atau atur prefix akun:
-
-```sh
-mkdir -p "$HOME/.npm-global"
-npm config set prefix "$HOME/.npm-global"
-printf '\nexport PATH="$HOME/.npm-global/bin:$PATH"\n' >> "$HOME/.profile"
-. "$HOME/.profile"
-npm install -g ytconv@1.2.3
-```
-
-## iSH iPhone/iPad
-
-iSH memakai frontend Python native, bukan paket npm/Ink.
+iSH menggunakan frontend Python native agar tidak tergantung TUI Node modern.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
+```
+
+Periksa:
+
+```sh
 ytconv --version
-ytconv --repair
-ytconv --diagnose
+ytconv doctor
+ytconv repair
 ```
 
-Hasil:
+Hasil berada di `~/Downloads/YTConv` dan dapat dibuka lewat Files → iSH.
 
-```text
-Files → iSH → root → Downloads → YTConv
+## SSH/server tanpa TUI
+
+```sh
+npm install -g ytconv@1.3.0 --force
+ytconv --headless "LINK"
 ```
 
-## Instalasi dari branch GitHub sebelum publish
+Batch:
 
-CMD:
+```sh
+ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
+```
 
-```cmd
-cd C:\Users\andhi\youtubetomp3
+## npx
+
+```sh
+npx -y ytconv@1.3.0 --help
+npx -y ytconv@1.3.0 download "LINK"
+```
+
+## Instalasi source lokal sebelum publish
+
+```sh
 git switch codex/add-ytconv-cli
 git pull --ff-only origin codex/add-ytconv-cli
 cd cli
@@ -169,7 +166,66 @@ npm install
 npm run check
 npm test
 npm install -g . --force
+ytconv --version
+```
+
+PowerShell:
+
+```powershell
+npm.cmd install
+npm.cmd run check
+npm.cmd test
+npm.cmd install -g . --force
 ytconv.cmd --version
 ```
 
-PowerShell memakai perintah yang sama, tetapi panggil `npm.cmd` dan `ytconv.cmd` bila shim `.ps1` diblokir.
+## Update
+
+```sh
+npm install -g ytconv@latest --force
+```
+
+Atau:
+
+```sh
+ytconv update
+```
+
+Update yang gagal tidak menghapus versi lama dan tidak memblokir aplikasi.
+
+## Uninstall
+
+CMD/PowerShell:
+
+```cmd
+npm.cmd uninstall -g ytconv
+where ytconv
+```
+
+Linux/macOS/Termux:
+
+```sh
+npm uninstall -g ytconv
+command -v ytconv || true
+```
+
+iSH native:
+
+```sh
+rm -f /usr/local/bin/ytconv
+rm -rf /usr/local/lib/ytconv-ish
+```
+
+Hasil download tidak dihapus saat uninstall.
+
+## Verifikasi akhir
+
+```sh
+ytconv --version
+ytconv --self-test
+ytconv doctor
+ytconv --shell-info
+ytconv --examples
+```
+
+Tidak semua kombinasi distro, arsitektur, browser, dan situs dapat dijamin. Gunakan doctor dan shell-info ketika lingkungan berbeda dari matriks CI.
