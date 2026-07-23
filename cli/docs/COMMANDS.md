@@ -1,4 +1,4 @@
-# YTConv 1.4.0 Command Reference
+# YTConv 1.5.0-beta.2 Command Reference
 
 ## General syntax
 
@@ -12,23 +12,112 @@ The legacy form remains valid:
 ytconv URL [OPTIONS]
 ```
 
-## Commands
+## Media and system commands
 
 ```text
 download URL                 Download one media item
-playlist URL                 Enable playlist/collection processing
+playlist URL                 Enable playlist or collection processing
 batch FILE                   Read one URL per line from a UTF-8 file
 info URL                     Inspect metadata without downloading
 formats URL                  List source formats
 subtitles URL                List available subtitle tracks
 doctor                       Diagnose the installation
 repair                       Repair yt-dlp, gallery-dl, and FFmpeg
-clean                        Clear update/error caches
+clean                        Clear update and old error caches
 update                       Update the active npm channel
 examples                     Show common examples
+quickstart                   Show a five-step beginner setup
 ```
 
 Aliases include `dl`, `get`, `pl`, `subs`, `inspect`, and `setup`.
+
+## Persistent configuration
+
+```text
+ytconv config list
+ytconv config path
+ytconv config get KEY
+ytconv config set KEY VALUE
+ytconv config unset KEY
+ytconv config reset
+```
+
+Configuration is stored at `~/.ytconv/config.json`. Allowed settings:
+
+```text
+preset
+output
+audioFormat
+audioQuality
+videoFormat
+resolution
+subtitleLanguages
+subtitles
+sponsorBlock
+archive
+concurrentFragments
+rateLimit
+restrictFilenames
+normalizeAudio
+retries
+fragmentRetries
+```
+
+The command validates every value before saving it. It does not accept cookie contents, tokens, or browser sessions.
+
+Ignore saved settings for one execution:
+
+```text
+--no-config
+```
+
+## Named profiles
+
+```text
+ytconv profile list
+ytconv profile show NAME
+ytconv profile set NAME key=value [key=value ...]
+ytconv profile use NAME
+ytconv profile clear
+ytconv profile delete NAME
+```
+
+Use one profile without changing the active profile:
+
+```text
+--profile NAME
+```
+
+Example:
+
+```bash
+ytconv profile set music preset=music audioQuality=320
+ytconv --profile music download "URL"
+```
+
+Explicit command-line values are intended to override saved defaults and profile values.
+
+## History
+
+```text
+ytconv history
+ytconv history --json
+ytconv history --limit N
+ytconv history clear
+```
+
+Headless and batch history is stored at `~/.ytconv/history.jsonl` and capped at 500 records. Cookie contents, tokens, and browser session data are excluded.
+
+## Shell completion
+
+```text
+ytconv completion bash
+ytconv completion zsh
+ytconv completion fish
+ytconv completion powershell
+```
+
+Copy the generated script into the matching shell profile.
 
 ## Presets
 
@@ -36,8 +125,6 @@ Aliases include `dl`, `get`, `pl`, `subs`, `inspect`, and `setup`.
 --preset balanced|music|lossless|mobile|hd|archive
 --list-presets
 ```
-
-Explicit command-line options override preset values.
 
 ## Mode
 
@@ -63,7 +150,7 @@ A forced mode is never silently replaced. AUTO may fall back between yt-dlp and 
 --keep-video
 ```
 
-`--bitrate` is an alias for `--audio-quality`. Converting a lossy source to FLAC/ALAC/WAV does not restore lost source detail.
+MP3 320 kbps is an encoder target and cannot add detail missing from the source.
 
 ## Video
 
@@ -79,12 +166,14 @@ Resolution is a maximum limit. YTConv selects the closest available source forma
 
 ```text
 --subtitles
+--no-subtitles
+--subtitles-off
 --subtitle-only
 --subtitle-langs "en,id"
 --list-subs
 ```
 
-Manual and automatic subtitles are attempted, live chat is excluded by default, and subtitles can be converted to SRT and embedded when the container supports it.
+Beta.2 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -93,9 +182,11 @@ Manual and automatic subtitles are attempted, live chat is excluded by default, 
 --sponsorblock-mode off|mark|remove
 --remove-sponsors
 --sponsorblock-categories "sponsor,selfpromo"
+--no-sponsorblock
+--sponsorblock-off
 ```
 
-`mark` creates chapters. `remove` cuts matching segments. Segment data is not available for every video or site.
+Beta.2 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -144,17 +235,18 @@ The `batch` command automatically enables continue-on-error. The final exit code
 ## Retry, resume, and archive
 
 ```text
---retries N
---fragment-retries N
---file-access-retries N
+--retries N|infinite
+--fragment-retries N|infinite
+--file-access-retries N|infinite
 --retry-sleep "linear=1:10:2"
 --resume
 --no-resume
 --cleanup-part
 --archive FILE
+--no-archive
 ```
 
-Resume is enabled by default. The archive prevents previously recorded media from being downloaded again.
+Resume is enabled by default. Beta.2 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
 ## Network and performance
 
@@ -189,7 +281,7 @@ Output templates must be relative, must not contain `..`, and must include `%(ex
 --cookies-from-browser "firefox:default-release"
 ```
 
-Supported browser specifications depend on yt-dlp. Typical browsers include Chrome, Chromium, Edge, Firefox, Brave, Opera, Vivaldi, Safari, and Whale.
+Typical desktop browsers include Chrome, Chromium, Edge, Firefox, Brave, Opera, Vivaldi, Safari, and Whale. Cookie data is sensitive and must never be shared.
 
 ## Inspection, JSON, and automation
 
@@ -205,7 +297,7 @@ Supported browser specifications depend on yt-dlp. Typical browsers include Chro
 --yes
 ```
 
-JSON output is intended for scripts, bots, websites, and other programs. Avoid printing unrelated text to stdout when consuming JSON.
+JSON output is intended for scripts, bots, websites, and other programs.
 
 ## Diagnostics and updates
 
@@ -222,25 +314,25 @@ JSON output is intended for scripts, bots, websites, and other programs. Avoid p
 --help
 ```
 
-Stable 1.4.0 updates through:
+Beta.2 updates through:
 
 ```bash
-npm install -g ytconv@latest
+npm install -g ytconv@beta --force
 ```
 
-## Stable defaults
+Return to stable:
+
+```bash
+npm install -g ytconv@latest --force
+```
+
+## Beta defaults
 
 ```text
-Subtitles        OFF
-SponsorBlock     OFF
-Download archive OFF
+Subtitles        ON
+SponsorBlock     ON in mark mode
+Download archive ON per output profile
 Resume           ON
-```
-
-Enable optional features explicitly:
-
-```bash
-ytconv download "URL" --subtitles --sponsorblock mark --archive downloaded.txt
 ```
 
 ## Exit codes
@@ -251,6 +343,6 @@ ytconv download "URL" --subtitles --sponsorblock mark --archive downloaded.txt
 2    Invalid URL or invalid option
 3    Required dependency missing
 4    Authentication required
-5    Temporary network/site failure
+5    Temporary network or site failure
 130  Cancelled by the user
 ```
