@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.5.0-beta.1"
-CHANNEL="beta"
+VERSION="1.4.0"
+CHANNEL="latest"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
 [ "${1:-}" = "--print-plan" ] && PRINT_PLAN=1
@@ -35,66 +35,66 @@ elif has brew || [ "$(uname -s 2>/dev/null || true)" = "Darwin" ]; then MANAGER=
 fi
 
 case "$MANAGER" in
-  apt) PLAN='apt-get update && apt-get install -y nodejs npm python3 python3-pip ffmpeg' ;;
-  dnf) PLAN='dnf install -y nodejs npm python3 python3-pip ffmpeg' ;;
-  pacman) PLAN='pacman -Syu --needed --noconfirm nodejs npm python python-pip ffmpeg' ;;
-  zypper) PLAN='zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg' ;;
-  apk) PLAN='apk add --no-cache nodejs npm python3 py3-pip ffmpeg' ;;
-  xbps) PLAN='xbps-install -Sy nodejs npm python3 python3-pip ffmpeg' ;;
-  emerge) PLAN='emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg' ;;
+  apt) PLAN='apt-get update && apt-get install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl' ;;
+  dnf) PLAN='dnf install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl' ;;
+  pacman) PLAN='pacman -Syu --needed --noconfirm nodejs npm python python-pip ffmpeg ca-certificates curl' ;;
+  zypper) PLAN='zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg ca-certificates curl' ;;
+  apk) PLAN='apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl' ;;
+  xbps) PLAN='xbps-install -Sy nodejs npm python3 python3-pip ffmpeg ca-certificates curl' ;;
+  emerge) PLAN='emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates' ;;
   nix) PLAN='nix profile install nixpkgs#nodejs_22 nixpkgs#python3 nixpkgs#ffmpeg' ;;
   brew) PLAN='brew install node python ffmpeg' ;;
-  *) PLAN='pasang Node.js 18+, npm, Python 3, dan FFmpeg melalui package manager sistem' ;;
+  *) PLAN='install Node.js 18+, npm, Python 3, FFmpeg, curl, and CA certificates with the system package manager' ;;
 esac
 
 say "YTConv $VERSION installer"
 say "Channel         : $CHANNEL"
-say "Sistem          : $OS_NAME"
+say "System          : $OS_NAME"
 say "Package manager : $MANAGER"
-say "Rencana paket   : $PLAN"
+say "Package plan    : $PLAN"
 
 [ "$PRINT_PLAN" = "1" ] && exit 0
 
 run_root() {
   if [ "$(id -u)" = "0" ]; then "$@"
   elif has sudo; then sudo "$@"
-  else fail "hak administrator diperlukan untuk dependency OS. Jalankan manual: $PLAN"
+  else fail "administrator privileges are required for OS packages. Run manually: $PLAN"
   fi
 }
 
 install_prerequisites() {
   case "$MANAGER" in
-    apt) run_root apt-get update; run_root apt-get install -y nodejs npm python3 python3-pip ffmpeg ;;
-    dnf) run_root dnf install -y nodejs npm python3 python3-pip ffmpeg ;;
-    pacman) run_root pacman -Syu --needed --noconfirm nodejs npm python python-pip ffmpeg ;;
-    zypper) run_root zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg ;;
-    apk) run_root apk add --no-cache nodejs npm python3 py3-pip ffmpeg ;;
-    xbps) run_root xbps-install -Sy nodejs npm python3 python3-pip ffmpeg ;;
-    emerge) run_root emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg ;;
+    apt) run_root apt-get update; run_root apt-get install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl ;;
+    dnf) run_root dnf install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl ;;
+    pacman) run_root pacman -Syu --needed --noconfirm nodejs npm python python-pip ffmpeg ca-certificates curl ;;
+    zypper) run_root zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg ca-certificates curl ;;
+    apk) run_root apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl ;;
+    xbps) run_root xbps-install -Sy nodejs npm python3 python3-pip ffmpeg ca-certificates curl ;;
+    emerge) run_root emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates ;;
     nix) sh -c "$PLAN" ;;
     brew) sh -c "$PLAN" ;;
-    *) fail "package manager belum dikenali. $PLAN" ;;
+    *) fail "the package manager is not recognized. $PLAN" ;;
   esac
 }
 
 if ! has node || ! has npm || ! has python3 || ! has ffmpeg; then
-  say "Dependency belum lengkap; memasang melalui $MANAGER..."
+  say "Some dependencies are missing; installing them with $MANAGER..."
   install_prerequisites
 fi
 
-has node || fail "Node.js tidak ditemukan setelah setup."
-has npm || fail "npm tidak ditemukan setelah setup."
+has node || fail "Node.js was not found after setup."
+has npm || fail "npm was not found after setup."
 major=$(node -p 'process.versions.node.split(".")[0]')
-[ "$major" -ge 18 ] || fail "Node.js $(node --version) terlalu lama. Gunakan Node.js 18 atau lebih baru."
+[ "$major" -ge 18 ] || fail "Node.js $(node --version) is too old. Use Node.js 18 or newer."
 
 if has python3; then
   python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl 2>/dev/null \
     || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl 2>/dev/null \
-    || say "Catatan: pip engine tidak terpasang; YTConv masih akan mencoba engine bundled/PATH."
+    || say "Note: pip fallback engines were not installed; YTConv will still try bundled/PATH engines."
 fi
 
 NPM_PREFIX="${NPM_CONFIG_PREFIX:-$HOME/.local}"
-mkdir -p "$NPM_PREFIX/bin" "$HOME/.ytconv/archives"
+mkdir -p "$NPM_PREFIX/bin"
 npm config set prefix "$NPM_PREFIX"
 PATH="$NPM_PREFIX/bin:$PATH"
 export PATH
@@ -112,14 +112,12 @@ npm cache verify
 npm install -g "ytconv@$CHANNEL" --force
 hash -r 2>/dev/null || true
 
-command -v ytconv >/dev/null 2>&1 || fail "ytconv belum terlihat di PATH. Jalankan: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
+command -v ytconv >/dev/null 2>&1 || fail "ytconv is not in PATH. Run: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
 installed=$(ytconv --version)
-[ "$installed" = "$VERSION" ] || fail "versi terpasang $installed, seharusnya $VERSION"
+[ "$installed" = "$VERSION" ] || fail "installed version is $installed; expected $VERSION"
 ytconv --self-test
 ytconv --shell-info || true
 ytconv doctor || true
 say ""
-say "Default beta: subtitle ON, SponsorBlock mark ON, archive ON."
-say "Matikan: --no-subtitles --no-sponsorblock --no-archive"
-say "Selesai tanpa sudo npm. Buka terminal baru atau jalankan: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
-say "SSH/non-TTY: ytconv --headless \"LINK\""
+say "Installation completed without sudo npm. Open a new terminal or run: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
+say "SSH/non-TTY: ytconv --headless \"URL\""
