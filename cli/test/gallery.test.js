@@ -8,17 +8,19 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv multi-device release is version 1.3.0', () => {
-  assert.equal(manifest.version, '1.3.0');
+test('YTConv beta release is version 1.5.0-beta.1', () => {
+  assert.equal(manifest.version, '1.5.0-beta.1');
+  assert.equal(manifest.publishConfig.tag, 'beta');
 });
 
-test('release package includes complete docs, installers, and native iSH frontend', () => {
+test('beta package includes defaults, gallery archive wrapper, docs, installers, and iSH frontend', () => {
   const required = [
-    'ish/ytconv.py', 'ish/VERSION', 'scripts/install-ish.sh',
+    'src/beta-defaults.js', 'src/gallery-beta.js',
+    'ish/ytconv-beta.py', 'ish/VERSION', 'scripts/install-ish.sh',
     'scripts/install-windows.ps1', 'scripts/install-windows.cmd',
     'scripts/install-termux.sh', 'scripts/install-unix.sh',
-    'CHANGELOG.md', 'docs/COMMANDS.md', 'docs/TROUBLESHOOTING.md',
-    'docs/INSTALL.md', 'docs/SHELLS.md', 'docs/LINUX.md',
+    'CHANGELOG.md', 'docs/BETA.md', 'docs/COMMANDS.md',
+    'docs/TROUBLESHOOTING.md', 'docs/INSTALL.md', 'docs/SHELLS.md', 'docs/LINUX.md',
   ];
   for (const item of required) assert.equal(fs.existsSync(path.join(packageRoot, item)), true, item);
   assert.ok(manifest.files.includes('ish'));
