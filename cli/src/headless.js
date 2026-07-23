@@ -30,7 +30,7 @@ function parseLines(value) {
 export async function collectUrls({ initialUrl = '', batchFile = '', readStdin = false } = {}) {
   const values = [];
   if (initialUrl) values.push(initialUrl);
-  if (batchFile) values.push(...parseLines(await fs.readFile(path.resolve(batchFile), 'utf8'));
+  if (batchFile) values.push(...parseLines(await fs.readFile(path.resolve(batchFile), 'utf8')));
   if (readStdin || (!process.stdin.isTTY && !initialUrl && !batchFile)) values.push(...parseLines(await stdinText()));
   const unique = [...new Set(values)];
   const invalid = unique.filter((value) => !validUrl(value));
@@ -159,7 +159,7 @@ export async function runHeadlessDownloads({
 
   const workerCount = Math.max(1, Math.min(Number(jobs) || 1, 8, urls.length));
   if (options.cleanupPart && workerCount > 1) {
-    console.log('Note: --cleanup-part is disabled when --jobs is greater than 1 so one worker cannot delete another worker\'s files.');
+    console.log("Note: --cleanup-part is disabled when --jobs is greater than 1 so one worker cannot delete another worker's files.");
   }
   const results = new Array(urls.length);
   let cursor = 0;
