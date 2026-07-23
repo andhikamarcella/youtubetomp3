@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
-VERSION="1.4.0"
-CHANNEL="latest"
+VERSION="1.5.0-beta.2"
+CHANNEL="beta"
 printf '%s\n' "YTConv $VERSION installer for Termux"
 
 command -v pkg >/dev/null 2>&1 || { printf '%s\n' 'Run this installer inside the Termux app.' >&2; exit 1; }
@@ -30,5 +30,6 @@ ytconv repair || true
 ytconv --self-test
 ytconv --shell-info || true
 ytconv doctor || true
-printf '%s\n' 'Installation completed. Default output: ~/storage/downloads/YTConv'
-printf '%s\n' 'Batch example: ytconv batch links.txt --continue-on-error'
+ytconv quickstart || true
+printf '%s\n' 'Beta installation completed. Default output: ~/storage/downloads/YTConv'
+printf '%s\n' 'Return to stable: npm install -g ytconv@latest --omit=optional --force'
