@@ -30,11 +30,11 @@ function parseLines(value) {
 export async function collectUrls({ initialUrl = '', batchFile = '', readStdin = false } = {}) {
   const values = [];
   if (initialUrl) values.push(initialUrl);
-  if (batchFile) values.push(...parseLines(await fs.readFile(path.resolve(batchFile), 'utf8')));
+  if (batchFile) values.push(...parseLines(await fs.readFile(path.resolve(batchFile), 'utf8'));
   if (readStdin || (!process.stdin.isTTY && !initialUrl && !batchFile)) values.push(...parseLines(await stdinText()));
   const unique = [...new Set(values)];
   const invalid = unique.filter((value) => !validUrl(value));
-  if (invalid.length) throw new Error(`Link tidak valid: ${invalid.slice(0, 3).join(', ')}`);
+  if (invalid.length) throw new Error(`Invalid URL: ${invalid.slice(0, 3).join(', ')}`);
   return unique;
 }
 
@@ -87,7 +87,7 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
 
   for (const cookieConfig of cookieConfigs) {
     try {
-      console.log(`\n[${index}/${total}] Memeriksa ${url}`);
+      console.log(`\n[${index}/${total}] Inspecting ${url}`);
       const media = await inspectMedia({
         ytDlpPath: dependencies.ytDlp.path,
         url,
@@ -97,9 +97,9 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
         platformHint: options.initialPlatform,
         options,
       });
-      console.log(`Judul   : ${media.title}`);
+      console.log(`Title   : ${media.title}`);
       console.log(`Platform: ${media.platform || '-'} · engine ${media.engine || 'auto'}`);
-      console.log(`Akses   : ${cookieConfig.label}`);
+      console.log(`Access  : ${cookieConfig.label}`);
 
       const result = await downloadMedia({
         ytDlpPath: dependencies.ytDlp.path,
@@ -116,12 +116,12 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
         },
         onProgress: progressPrinter(index, total),
         onLog: (line, isError) => {
-          if (isError || /tersimpan|fallback|engine|merger|extractaudio|videoremuxer/iu.test(line)) {
+          if (isError || /saved|fallback|engine|merger|extractaudio|videoremuxer|tersimpan/iu.test(line)) {
             console.log(`[${index}/${total}] ${isError ? '!' : '>'} ${line}`);
           }
         },
       });
-      console.log(`Selesai  : ${result.outputPath || outputDirectory}`);
+      console.log(`Completed: ${result.outputPath || outputDirectory}`);
       return { ok: true, url, title: media.title, ...result };
     } catch (error) {
       lastError = error;
@@ -130,9 +130,9 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
 
   if (options.cleanupPart && allowCleanup) {
     const count = await cleanupPartials(outputDirectory, startedAt);
-    if (count) console.log(`[${index}/${total}] Membersihkan ${count} file sementara.`);
+    if (count) console.log(`[${index}/${total}] Removed ${count} temporary file(s).`);
   }
-  throw lastError || new Error('Semua metode akses gagal.');
+  throw lastError || new Error('Every available access method failed.');
 }
 
 async function writeResultJson(target, payload) {
@@ -140,7 +140,7 @@ async function writeResultJson(target, payload) {
   const resolved = path.resolve(target);
   await fs.mkdir(path.dirname(resolved), { recursive: true });
   await fs.writeFile(resolved, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-  console.log(`Laporan JSON: ${resolved}`);
+  console.log(`JSON report: ${resolved}`);
 }
 
 export async function runHeadlessDownloads({
@@ -152,14 +152,14 @@ export async function runHeadlessDownloads({
   jobs = 1,
   resultJson = '',
 } = {}) {
-  if (!urls?.length) throw new Error('Tidak ada link. Berikan LINK, --batch-file FILE, atau --stdin.');
+  if (!urls?.length) throw new Error('No URL was provided. Pass a URL, --batch-file FILE, or --stdin.');
   await fs.mkdir(outputDirectory, { recursive: true });
   const dependencies = await inspectDependencies({ repair: false });
-  if (!dependencies.ready) throw new Error(`Dependency belum lengkap: ${dependencies.missing.join(', ')}. Jalankan ytconv repair.`);
+  if (!dependencies.ready) throw new Error(`Missing dependencies: ${dependencies.missing.join(', ')}. Run ytconv repair.`);
 
   const workerCount = Math.max(1, Math.min(Number(jobs) || 1, 8, urls.length));
   if (options.cleanupPart && workerCount > 1) {
-    console.log('Catatan: --cleanup-part dinonaktifkan saat --jobs > 1 agar tidak menghapus file worker lain.');
+    console.log('Note: --cleanup-part is disabled when --jobs is greater than 1 so one worker cannot delete another worker\'s files.');
   }
   const results = new Array(urls.length);
   let cursor = 0;
@@ -178,7 +178,7 @@ export async function runHeadlessDownloads({
         });
       } catch (error) {
         const code = exitCodeForError(error);
-        console.error(`\nGagal [${index + 1}/${urls.length}] ${url}`);
+        console.error(`\nFailed [${index + 1}/${urls.length}] ${url}`);
         console.error(explainError(error));
         results[index] = { ok: false, url, exitCode: code, error: error instanceof Error ? error.message : String(error) };
         if (!continueOnError) stop = true;
@@ -201,7 +201,7 @@ export async function runHeadlessDownloads({
     outputDirectory,
     results: completed,
   };
-  console.log(`\nRingkasan: ${success} berhasil, ${failed} gagal. Output: ${outputDirectory}`);
+  console.log(`\nSummary: ${success} succeeded, ${failed} failed. Output: ${outputDirectory}`);
   await writeResultJson(resultJson, report);
   if (openOutput && success) await openOutputLocation({ directory: outputDirectory });
   if (!failed) return 0;
