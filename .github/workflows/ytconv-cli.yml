@@ -1,7 +1,9 @@
-name: YTConv CLI
+name: YTConv CLI Stable
 
 on:
   push:
+    branches:
+      - release/ytconv-1.4.0
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -32,14 +34,13 @@ jobs:
         run: |
           npm run check
           npm test
-      - name: Beta command and defaults smoke tests
+      - name: Stable version and English help
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0-beta.1"
-          node ./bin/ytconv.js --help | grep -q -- "--no-subtitles"
-          node ./bin/ytconv.js --help | grep -q -- "--no-sponsorblock"
-          node ./bin/ytconv.js --help | grep -q -- "--no-archive"
-          node ./bin/ytconv.js --help | grep -q "SponsorBlock.*ON mode mark"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.0-beta.1') !== 'beta') process.exitCode=1; if (!updateCommand('1.5.0-beta.1').includes('@beta')) process.exitCode=1; })"
+          test "$(node ./bin/ytconv.js --version)" = "1.4.0"
+          node ./bin/ytconv.js --help | grep -q "Usage:"
+          node ./bin/ytconv.js --help | grep -q "Subtitles.*OFF"
+          node ./bin/ytconv.js --help | grep -q "SponsorBlock.*OFF"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.4.0') !== 'latest') process.exitCode=1; if (!updateCommand('1.4.0').includes('@latest')) process.exitCode=1; })"
 
   linux-full:
     runs-on: ubuntu-latest
@@ -57,29 +58,27 @@ jobs:
         run: |
           npm run check
           npm test
-      - name: Check iSH beta and shell installers
+      - name: Check native iSH compatibility and shell installers
         run: |
           npm run check:ish
-          npm run test:ish
-          test "$(cat ish/VERSION)" = "1.5.0-beta.1"
-          test "$(python3 ish/ytconv-beta.py --version)" = "1.5.0-beta.1"
-          python3 ish/ytconv-beta.py --help | grep -q -- "--no-subtitles"
-          python3 ish/ytconv-beta.py --help | grep -q -- "--no-sponsorblock"
-          python3 ish/ytconv-beta.py --help | grep -q -- "--no-archive"
-      - name: Linux and SSH/headless support smoke test
+          test "$(cat ish/VERSION)" = "1.4.0"
+          mkdir -p /tmp/ytconv-ish
+          cp ish/ytconv.py /tmp/ytconv-ish/ytconv.py
+          cp ish/ytconv-beta.py /tmp/ytconv-ish/ytconv-core.py
+          test "$(python3 /tmp/ytconv-ish/ytconv.py --version)" = "1.4.0"
+      - name: Linux and SSH/headless smoke tests
         run: |
           node ./bin/ytconv.js --shell-info
           node ./bin/ytconv.js --self-test
           node ./bin/ytconv.js --examples
           printf '# comments are ignored\nhttps://example.com/a\nhttps://example.com/a\n' > /tmp/ytconv-links.txt
-          node -e "import('./src/headless.js').then(async ({collectUrls}) => { const u = await collectUrls({batchFile:'/tmp/ytconv-links.txt'}); if (u.length !== 1) process.exitCode = 1; console.log(u); })"
-      - name: Verify beta defaults and gallery archive arguments
+          node -e "import('./src/headless.js').then(async ({collectUrls}) => { const u = await collectUrls({batchFile:'/tmp/ytconv-links.txt'}); if (u.length !== 1) process.exitCode=1; console.log(u); })"
+      - name: Verify stable defaults
         run: |
-          node -e "import('./src/beta-defaults.js').then(({extractBetaToggles,applyBetaDefaults}) => import('./src/cli-options.js').then(({parseCliOptions}) => { const t=extractBetaToggles([]); const o=parseCliOptions(t.cleanArgs); applyBetaDefaults(o,t,{homeDirectory:'/tmp/ytconv-home'}); console.log(o); if(!o.subtitles || o.sponsorBlockMode!=='mark' || !o.archivePath || !o.galleryArchivePath) process.exitCode=1; }))"
-          grep -q -- "--download-archive" src/gallery-beta.js
-      - name: Verify deterministic Void Linux xbps detection
+          node -e "import('./src/beta-defaults.js').then(({extractBetaToggles,applyBetaDefaults}) => import('./src/cli-options.js').then(({parseCliOptions}) => { const t=extractBetaToggles([]); const o=parseCliOptions(t.cleanArgs); applyBetaDefaults(o,t); console.log(o); if(o.subtitles || o.sponsorBlockMode!=='off' || o.archivePath) process.exitCode=1; }))"
+      - name: Verify deterministic Void Linux detection
         run: |
-          node -e "import('./src/linux-distro.js').then(({packageManagerFor, installPlanFor}) => { const m = packageManagerFor({id:'void'}); const p = installPlanFor(m); console.log({manager:m, plan:p}); if (m !== 'xbps' || !p.includes('xbps-install')) process.exitCode = 1; })"
+          node -e "import('./src/linux-distro.js').then(({packageManagerFor, installPlanFor}) => { const m = packageManagerFor({id:'void'}); const p = installPlanFor(m); console.log({manager:m, plan:p}); if (m !== 'xbps' || !p.includes('xbps-install')) process.exitCode=1; })"
       - name: Verify media engines
         run: |
           test -x vendor/yt-dlp
@@ -87,26 +86,27 @@ jobs:
           test -x node_modules/ffmpeg-static/ffmpeg
           ./vendor/yt-dlp --version
           ./vendor/gallery-dl --version
-          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies({repair:false}); console.log(d); if (!d.ready) process.exitCode = 1; })"
-      - name: Preview npm beta package and docs
+          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies({repair:false}); console.log(d); if (!d.ready) process.exitCode=1; })"
+      - name: Preview npm stable package and English docs
         run: |
           npm pack --dry-run
           npm pack --json > package-preview.json
-          grep -q '"version": "1.5.0-beta.1"' package.json
-          grep -q '"tag": "beta"' package.json
-          grep -q 'src/beta-defaults.js' package-preview.json
-          grep -q 'src/gallery-beta.js' package-preview.json
-          grep -q 'ish/ytconv-beta.py' package-preview.json
-          grep -q 'scripts/install-ish.sh' package-preview.json
-          grep -q 'docs/BETA.md' package-preview.json
-      - name: Simulate Termux npm beta install
+          grep -q '"version": "1.4.0"' package.json
+          grep -q '"tag": "latest"' package.json
+          grep -q 'docs/LINUX.md' package-preview.json
+          grep -q 'Installing YTConv 1.4.0 on Linux' docs/LINUX.md
+          grep -q 'Complete YTConv 1.4.0 Installation Guide' docs/INSTALL.md
+          if grep -R -n -E 'Instalasi|Jalankan|Perbaikan|tidak ditemukan|berhasil dipasang' README.md docs scripts/install-*.sh scripts/install-windows.*; then
+            echo "Non-English release documentation or installer text was found."
+            exit 1
+          fi
+      - name: Simulate Termux npm stable install
         run: |
           TARBALL=$(npm pack --silent)
           rm -rf /tmp/ytconv-termux-sim
           mkdir -p /tmp/ytconv-termux-sim
           npm install --prefix /tmp/ytconv-termux-sim "$PWD/$TARBALL" --omit=optional --ignore-scripts
-          test "$(node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.0-beta.1"
-          node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --help | grep -q -- "--no-archive"
+          test "$(node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --version)" = "1.4.0"
 
   windows-cmd-powershell:
     runs-on: windows-latest
@@ -126,12 +126,11 @@ jobs:
         run: |
           npm run check
           npm test
-      - name: Verify beta updater avoids direct npm.cmd spawn
+      - name: Verify stable updater avoids direct npm.cmd spawn
         shell: pwsh
         run: |
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({currentVersion:'1.5.0-beta.1',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); console.log(i); if (i.command !== 'node.exe' || i.strategy !== 'node-npm-cli' || !i.args.includes('ytconv@beta')) process.exitCode = 1; })"
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({currentVersion:'1.5.0-beta.1',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:''}); console.log(i); if (i.command !== 'cmd.exe' || i.strategy !== 'windows-cmd-fallback' || !i.args.join(' ').includes('ytconv@beta')) process.exitCode = 1; })"
-      - name: CMD beta user flow
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({currentVersion:'1.4.0',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); console.log(i); if (i.command !== 'node.exe' || i.strategy !== 'node-npm-cli' || !i.args.includes('ytconv@latest')) process.exitCode = 1; })"
+      - name: CMD stable user flow
         shell: cmd
         run: |
           node .\bin\ytconv.js --version
@@ -139,14 +138,12 @@ jobs:
           node .\bin\ytconv.js --shell-info
           node .\bin\ytconv.js --self-test
           node .\bin\ytconv.js doctor
-      - name: PowerShell beta user flow
+      - name: PowerShell stable user flow
         shell: pwsh
         run: |
           $version = node .\bin\ytconv.js --version
-          if ($version -ne '1.5.0-beta.1') { throw "Wrong version: $version" }
-          node .\bin\ytconv.js --help | Select-String -SimpleMatch '--no-subtitles'
-          node .\bin\ytconv.js --help | Select-String -SimpleMatch '--no-sponsorblock'
-          node .\bin\ytconv.js --help | Select-String -SimpleMatch '--no-archive'
+          if ($version -ne '1.4.0') { throw "Wrong version: $version" }
+          node .\bin\ytconv.js --help | Select-String -SimpleMatch 'Usage:'
           Get-Content .\scripts\install-windows.ps1 | Select-String -SimpleMatch 'ytconv.cmd'
       - name: Verify Windows media engines
         shell: pwsh
@@ -167,15 +164,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install, check, and test beta
+      - name: Install, check, and test stable package
         run: |
           npm install
           npm run check
           npm test
-      - name: macOS beta smoke tests
+      - name: macOS stable smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0-beta.1"
-          node ./bin/ytconv.js --help | grep -q -- "--no-sponsorblock"
+          test "$(node ./bin/ytconv.js --version)" = "1.4.0"
           node ./bin/ytconv.js --shell-info
           sh ./scripts/install-unix.sh --print-plan | grep -q 'brew'
 
@@ -193,13 +189,11 @@ jobs:
         run: python3 -m pip install --break-system-packages --no-cache-dir yt-dlp gallery-dl
       - name: Install JS package without glibc static FFmpeg
         run: npm install --ignore-scripts --omit=optional
-      - name: Check Alpine beta syntax and defaults
+      - name: Check Alpine stable package
         run: |
           npm run check
           npm test
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0-beta.1"
-          test "$(python3 ish/ytconv-beta.py --version)" = "1.5.0-beta.1"
-          node ./bin/ytconv.js --help | grep -q -- "--no-archive"
+          test "$(node ./bin/ytconv.js --version)" = "1.4.0"
 
   distro-installer-plans:
     runs-on: ubuntu-latest
@@ -217,7 +211,7 @@ jobs:
           - nixos/nix:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Detect distro and print safe install plan
+      - name: Detect distribution and print safe install plan
         run: |
           docker run --rm \
             -e YTCONV_INSTALL_DRY_RUN=1 \
