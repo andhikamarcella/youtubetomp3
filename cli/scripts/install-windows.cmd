@@ -1,6 +1,7 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.4.0"
+set "VERSION=1.5.0-beta.2"
+set "CHANNEL=beta"
 echo YTConv %VERSION% installer for CMD
 where node.exe >nul 2>nul || (echo Node.js 18 or newer is not installed.& exit /b 1)
 where npm.cmd >nul 2>nul || (echo npm.cmd was not found.& exit /b 1)
@@ -10,7 +11,7 @@ if %NODE_MAJOR% LSS 18 (echo Node.js is too old. Version 18 or newer is required
 if /I "%~1"=="--local" goto LOCAL
 call npm.cmd uninstall -g ytconv >nul 2>nul
 call npm.cmd cache verify || exit /b 1
-call npm.cmd install -g ytconv@%VERSION% --force || exit /b 1
+call npm.cmd install -g ytconv@%CHANNEL% --force || exit /b 1
 goto VERIFY
 
 :LOCAL
@@ -26,6 +27,8 @@ if /I not "%INSTALLED%"=="%VERSION%" (echo Installed version is %INSTALLED%; exp
 call ytconv.cmd --self-test || exit /b 1
 call ytconv.cmd --shell-info
 call ytconv.cmd doctor
+call ytconv.cmd quickstart
 echo.
-echo Installation completed. Run: ytconv.cmd or ytconv
+echo Beta installation completed. Run: ytconv.cmd or ytconv
+echo Return to stable: npm.cmd install -g ytconv@latest --force
 endlocal
