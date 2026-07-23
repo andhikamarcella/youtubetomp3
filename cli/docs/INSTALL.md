@@ -1,39 +1,22 @@
-# Instalasi lengkap YTConv 1.5.0 Beta
+# Complete YTConv 1.4.0 Installation Guide
 
-Versi npm: `1.5.0-beta.1`
+YTConv 1.4.0 is the stable release published on the npm `latest` tag.
 
-Gunakan dist-tag `beta`. Jangan memakai `@latest` untuk memasang prerelease ini.
+## Requirements
 
-## Persyaratan
+- Node.js 18 or newer
+- npm
+- FFmpeg for merge, conversion, cover art, subtitles, and clipping
+- Python 3 recommended for yt-dlp/gallery-dl fallback engines
+- Working HTTPS CA certificates
 
-- Node.js 18 atau lebih baru untuk paket npm.
-- npm.
-- FFmpeg untuk merge, konversi, cover, subtitle, dan clipping.
-- Python 3 disarankan sebagai fallback yt-dlp/gallery-dl.
-- Koneksi HTTPS dan sertifikat CA yang benar.
+Verify:
 
-Periksa:
-
-```sh
+```bash
 node --version
 npm --version
+python3 --version
 ffmpeg -version
-```
-
-## Default beta
-
-Setelah instalasi:
-
-```text
-subtitle       ON untuk video
-SponsorBlock   ON mode mark
-archive        ON per profil
-```
-
-Matikan per proses dengan:
-
-```text
---no-subtitles --no-sponsorblock --no-archive
 ```
 
 ## Windows CMD
@@ -41,167 +24,19 @@ Matikan per proses dengan:
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 where ytconv
 ytconv.cmd --version
 ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-Installer repository:
+The version must be `1.4.0`.
+
+Local repository installation:
 
 ```cmd
-cd C:\path\ke\youtubetomp3\cli
-scripts\install-windows.cmd --local
-```
-
-## Windows PowerShell
-
-```powershell
-npm.cmd uninstall -g ytconv
-npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
-Get-Command ytconv -All
-ytconv.cmd --version
-ytconv.cmd --self-test
-ytconv.cmd doctor
-```
-
-Installer repository:
-
-```powershell
-cd C:\path\ke\youtubetomp3\cli
-powershell -ExecutionPolicy Bypass -File .\scripts\install-windows.ps1 -Local
-```
-
-Gunakan `ytconv.cmd` bila PowerShell menolak shim `ytconv.ps1`. Opsi permanen untuk akun sendiri:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-## Linux universal
-
-Dari source repository:
-
-```sh
-sh ./scripts/install-unix.sh
-```
-
-Lihat rencana tanpa perubahan:
-
-```sh
-sh ./scripts/install-unix.sh --print-plan
-```
-
-Installer mendukung keluarga apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, dan Homebrew. Dependency OS mungkin meminta sudo, tetapi npm dipasang ke `~/.local` tanpa `sudo npm install -g`.
-
-Instalasi langsung dari npm:
-
-```sh
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@beta --force
-ytconv --version
-ytconv --self-test
-ytconv doctor
-```
-
-Panduan per distro: [LINUX.md](LINUX.md).
-
-## macOS
-
-```sh
-brew install node python ffmpeg
-npm install -g ytconv@beta --force
-ytconv doctor
-```
-
-Atau jalankan `sh ./scripts/install-unix.sh` dari source.
-
-## Android Termux
-
-Gunakan Termux dari sumber yang masih dipelihara.
-
-```sh
-pkg update
-pkg install -y nodejs python ffmpeg
-termux-setup-storage
-python -m pip install -U --no-cache-dir yt-dlp gallery-dl
-npm uninstall -g ytconv
-npm install -g ytconv@beta --omit=optional --force
-ytconv repair
-ytconv --self-test
-ytconv doctor
-```
-
-Installer source:
-
-```sh
-sh ./scripts/install-termux.sh
-```
-
-Hasil default:
-
-```text
-~/storage/downloads/YTConv
-```
-
-## iPhone/iPad dengan iSH
-
-iSH menggunakan frontend Python native beta agar tidak tergantung TUI Node modern.
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
-sh /tmp/ytconv-ish.sh
-```
-
-Periksa:
-
-```sh
-ytconv --version
-ytconv doctor
-ytconv repair
-```
-
-Hasil berada di `~/Downloads/YTConv` dan dapat dibuka melalui Files → iSH.
-
-## SSH/server tanpa TUI
-
-```sh
-npm install -g ytconv@beta --force
-ytconv --headless "LINK"
-```
-
-Batch:
-
-```sh
-ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
-```
-
-## npx
-
-```sh
-npx -y ytconv@beta --help
-npx -y ytconv@beta download "LINK"
-```
-
-## Instalasi source lokal sebelum publish
-
-```sh
-git switch codex/add-ytconv-cli
-git pull --ff-only origin codex/add-ytconv-cli
-cd cli
-npm install
-npm run check
-npm test
-npm install -g . --force
-ytconv --version
-```
-
-PowerShell:
-
-```powershell
+cd C:\path\to\youtubetomp3\cli
 npm.cmd install
 npm.cmd run check
 npm.cmd test
@@ -209,55 +44,167 @@ npm.cmd install -g . --force
 ytconv.cmd --version
 ```
 
-## Update beta
+## Windows PowerShell
 
-```sh
-npm install -g ytconv@beta --force
-```
+Use `npm.cmd` and `ytconv.cmd` for maximum compatibility with execution policy:
 
-Atau:
-
-```sh
-ytconv update
-```
-
-Updater prerelease mengikuti channel `beta`. Update yang gagal tidak menghapus versi lama dan tidak memblokir aplikasi.
-
-## Pindah kembali ke stabil
-
-```sh
-npm uninstall -g ytconv
-npm install -g ytconv@latest --force
-```
-
-## Uninstall
-
-CMD/PowerShell:
-
-```cmd
+```powershell
 npm.cmd uninstall -g ytconv
-where ytconv
+npm.cmd cache verify
+npm.cmd install -g ytconv@latest --force
+Get-Command ytconv.cmd -All
+ytconv.cmd --version
+ytconv.cmd --self-test
+ytconv.cmd doctor
 ```
 
-Linux/macOS/Termux:
+When you intentionally want PowerShell scripts enabled for the current user:
 
-```sh
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+## Linux universal installer
+
+From the repository:
+
+```bash
+cd /path/to/youtubetomp3/cli
+sh ./scripts/install-unix.sh --print-plan
+sh ./scripts/install-unix.sh
+```
+
+The installer recognizes apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, and Homebrew. It may request administrator access for operating-system packages but installs the npm package with a user prefix under `~/.local`.
+
+Open a new shell or run:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Then verify:
+
+```bash
+ytconv --version
+ytconv --self-test
+ytconv doctor
+ytconv --shell-info
+```
+
+The complete distribution-by-distribution procedure is in [LINUX.md](LINUX.md).
+
+## Direct Linux/macOS npm installation
+
+After Node.js, npm, Python, and FFmpeg are installed:
+
+```bash
+python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+
+npm config set prefix "$HOME/.local"
+mkdir -p "$HOME/.local/bin"
+export PATH="$HOME/.local/bin:$PATH"
+npm install -g ytconv@latest --force
+
+ytconv --version
+ytconv --self-test
+ytconv doctor
+```
+
+## macOS with Homebrew
+
+```bash
+brew update
+brew install node python ffmpeg
+python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl
+npm config set prefix "$HOME/.local"
+export PATH="$HOME/.local/bin:$PATH"
+npm install -g ytconv@latest --force
+ytconv doctor
+```
+
+## Android Termux
+
+Use a maintained Termux build.
+
+```bash
+pkg update
+pkg upgrade -y
+pkg install -y nodejs python ffmpeg curl ca-certificates
+termux-setup-storage
+python -m pip install -U --no-cache-dir yt-dlp gallery-dl
 npm uninstall -g ytconv
-command -v ytconv || true
+npm cache verify
+npm install -g ytconv@latest --omit=optional --force
+ytconv repair
+ytconv --self-test
+ytconv doctor
 ```
 
-iSH native:
+Accept the Android storage permission dialog. Default output:
 
-```sh
-rm -f /usr/local/bin/ytconv
-rm -rf /usr/local/lib/ytconv-ish
+```text
+~/storage/downloads/YTConv
 ```
 
-Hasil download dan archive tidak dihapus otomatis saat uninstall.
+Repository installer:
 
-## Verifikasi akhir
+```bash
+sh ./scripts/install-termux.sh
+```
+
+## iPhone and iPad through iSH
+
+The iSH frontend is native Python because modern Node.js TUI dependencies are not a good match for iSH.
 
 ```sh
+apk update
+apk add python3 py3-pip ffmpeg curl ca-certificates
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.4.0/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+sh /tmp/ytconv-ish.sh
+ytconv --version
+ytconv doctor
+```
+
+Default output:
+
+```text
+~/Downloads/YTConv
+```
+
+The folder is visible through Files → iSH.
+
+## SSH and servers without a TUI
+
+```bash
+npm install -g ytconv@latest --force
+ytconv --headless "URL"
+```
+
+Batch:
+
+```bash
+ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
+```
+
+Pipe URLs through standard input:
+
+```bash
+printf '%s\n' "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error
+```
+
+## Run without global installation
+
+```bash
+npx -y ytconv@latest --help
+npx -y ytconv@latest download "URL"
+```
+
+## Final verification
+
+Run every command below:
+
+```bash
 ytconv --version
 ytconv --self-test
 ytconv doctor
@@ -265,6 +212,55 @@ ytconv --shell-info
 ytconv --examples
 ```
 
-Versi harus `1.5.0-beta.1`. Doctor harus menunjukkan subtitle ON, SponsorBlock mark, serta archive yt-dlp dan gallery-dl.
+Expected:
 
-Tidak semua kombinasi distro, arsitektur, browser, dan situs dapat dijamin. Gunakan doctor dan shell-info ketika lingkungan berbeda dari matriks CI.
+- version `1.4.0`
+- Node.js 18 or newer
+- yt-dlp ready
+- gallery-dl ready
+- FFmpeg ready
+- writable output directory
+- stable update channel
+
+Metadata-only test:
+
+```bash
+ytconv info "PUBLIC_TEST_URL" --json
+```
+
+Legal test download:
+
+```bash
+ytconv download "PUBLIC_TEST_URL" --preset mobile
+```
+
+## Update
+
+```bash
+npm cache verify
+npm install -g ytconv@latest --force
+ytconv --version
+```
+
+Or:
+
+```bash
+ytconv update
+```
+
+A failed update does not delete the previous installation or downloaded files.
+
+## Uninstall
+
+```bash
+npm uninstall -g ytconv
+```
+
+Optional iSH removal:
+
+```sh
+rm -f /usr/local/bin/ytconv
+rm -rf /usr/local/lib/ytconv-ish
+```
+
+Downloaded files and archives remain until the user removes them.
