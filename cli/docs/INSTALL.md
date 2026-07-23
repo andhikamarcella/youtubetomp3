@@ -1,4 +1,8 @@
-# Instalasi lengkap YTConv 1.3.0
+# Instalasi lengkap YTConv 1.5.0 Beta
+
+Versi npm: `1.5.0-beta.1`
+
+Gunakan dist-tag `beta`. Jangan memakai `@latest` untuk memasang prerelease ini.
 
 ## Persyaratan
 
@@ -16,14 +20,28 @@ npm --version
 ffmpeg -version
 ```
 
-## Windows CMD
+## Default beta
 
-Instalasi publik:
+Setelah instalasi:
+
+```text
+subtitle       ON untuk video
+SponsorBlock   ON mode mark
+archive        ON per profil
+```
+
+Matikan per proses dengan:
+
+```text
+--no-subtitles --no-sponsorblock --no-archive
+```
+
+## Windows CMD
 
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@1.3.0 --force
+npm.cmd install -g ytconv@beta --force
 where ytconv
 ytconv.cmd --version
 ytconv.cmd --self-test
@@ -42,7 +60,7 @@ scripts\install-windows.cmd --local
 ```powershell
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@1.3.0 --force
+npm.cmd install -g ytconv@beta --force
 Get-Command ytconv -All
 ytconv.cmd --version
 ytconv.cmd --self-test
@@ -64,6 +82,8 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ## Linux universal
 
+Dari source repository:
+
 ```sh
 sh ./scripts/install-unix.sh
 ```
@@ -76,10 +96,12 @@ sh ./scripts/install-unix.sh --print-plan
 
 Installer mendukung keluarga apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, dan Homebrew. Dependency OS mungkin meminta sudo, tetapi npm dipasang ke `~/.local` tanpa `sudo npm install -g`.
 
-Setelah selesai:
+Instalasi langsung dari npm:
 
 ```sh
-export PATH="$HOME/.local/bin:$PATH"
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@beta --force
 ytconv --version
 ytconv --self-test
 ytconv doctor
@@ -91,8 +113,11 @@ Panduan per distro: [LINUX.md](LINUX.md).
 
 ```sh
 brew install node python ffmpeg
-sh ./scripts/install-unix.sh
+npm install -g ytconv@beta --force
+ytconv doctor
 ```
+
+Atau jalankan `sh ./scripts/install-unix.sh` dari source.
 
 ## Android Termux
 
@@ -104,9 +129,16 @@ pkg install -y nodejs python ffmpeg
 termux-setup-storage
 python -m pip install -U --no-cache-dir yt-dlp gallery-dl
 npm uninstall -g ytconv
-npm install -g ytconv@1.3.0 --omit=optional --force
+npm install -g ytconv@beta --omit=optional --force
 ytconv repair
 ytconv --self-test
+ytconv doctor
+```
+
+Installer source:
+
+```sh
+sh ./scripts/install-termux.sh
 ```
 
 Hasil default:
@@ -115,11 +147,9 @@ Hasil default:
 ~/storage/downloads/YTConv
 ```
 
-Jika izin penyimpanan belum muncul, setujui dialog Android lalu jalankan ulang `termux-setup-storage`.
-
 ## iPhone/iPad dengan iSH
 
-iSH menggunakan frontend Python native agar tidak tergantung TUI Node modern.
+iSH menggunakan frontend Python native beta agar tidak tergantung TUI Node modern.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
@@ -134,12 +164,12 @@ ytconv doctor
 ytconv repair
 ```
 
-Hasil berada di `~/Downloads/YTConv` dan dapat dibuka lewat Files → iSH.
+Hasil berada di `~/Downloads/YTConv` dan dapat dibuka melalui Files → iSH.
 
 ## SSH/server tanpa TUI
 
 ```sh
-npm install -g ytconv@1.3.0 --force
+npm install -g ytconv@beta --force
 ytconv --headless "LINK"
 ```
 
@@ -152,8 +182,8 @@ ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
 ## npx
 
 ```sh
-npx -y ytconv@1.3.0 --help
-npx -y ytconv@1.3.0 download "LINK"
+npx -y ytconv@beta --help
+npx -y ytconv@beta download "LINK"
 ```
 
 ## Instalasi source lokal sebelum publish
@@ -179,10 +209,10 @@ npm.cmd install -g . --force
 ytconv.cmd --version
 ```
 
-## Update
+## Update beta
 
 ```sh
-npm install -g ytconv@latest --force
+npm install -g ytconv@beta --force
 ```
 
 Atau:
@@ -191,7 +221,14 @@ Atau:
 ytconv update
 ```
 
-Update yang gagal tidak menghapus versi lama dan tidak memblokir aplikasi.
+Updater prerelease mengikuti channel `beta`. Update yang gagal tidak menghapus versi lama dan tidak memblokir aplikasi.
+
+## Pindah kembali ke stabil
+
+```sh
+npm uninstall -g ytconv
+npm install -g ytconv@latest --force
+```
 
 ## Uninstall
 
@@ -216,7 +253,7 @@ rm -f /usr/local/bin/ytconv
 rm -rf /usr/local/lib/ytconv-ish
 ```
 
-Hasil download tidak dihapus saat uninstall.
+Hasil download dan archive tidak dihapus otomatis saat uninstall.
 
 ## Verifikasi akhir
 
@@ -227,5 +264,7 @@ ytconv doctor
 ytconv --shell-info
 ytconv --examples
 ```
+
+Versi harus `1.5.0-beta.1`. Doctor harus menunjukkan subtitle ON, SponsorBlock mark, serta archive yt-dlp dan gallery-dl.
 
 Tidak semua kombinasi distro, arsitektur, browser, dan situs dapat dijamin. Gunakan doctor dan shell-info ketika lingkungan berbeda dari matriks CI.
