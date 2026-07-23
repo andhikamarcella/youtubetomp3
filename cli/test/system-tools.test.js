@@ -15,6 +15,11 @@ test('extracts beginner and headless flags before normal CLI parsing', () => {
   assert.deepEqual(result.cleanArgs, ['--preset', 'music', 'https://example.com/a']);
 });
 
+test('doctor alias is translated before the normal parser', () => {
+  const result = extractSystemOptions(['--doctor']);
+  assert.deepEqual(result.cleanArgs, ['--diagnose']);
+});
+
 test('system help documents repair, PowerShell/SSH headless, and batch features', () => {
   const value = systemHelpText();
   assert.match(value, /--repair/u);
