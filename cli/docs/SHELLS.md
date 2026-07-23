@@ -1,59 +1,37 @@
-# Panduan shell YTConv 1.5.0 Beta
-
-Versi npm: `1.5.0-beta.1`
-
-Default di semua shell: subtitle ON untuk video, SponsorBlock `mark` ON, dan archive ON. Matikan per proses dengan `--no-subtitles --no-sponsorblock --no-archive`.
+# YTConv 1.4.0 Shell Guide
 
 ## Windows CMD
 
-Instalasi beta:
-
 ```cmd
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd doctor
-```
-
-Gunakan shim `.cmd` untuk hasil paling konsisten:
-
-```cmd
-ytconv.cmd download "LINK"
-ytconv.cmd playlist "LINK"
+ytconv.cmd download "URL" --audio-format mp3 --audio-quality 192
+ytconv.cmd playlist "URL" --archive downloaded.txt
 ytconv.cmd batch links.txt --jobs 2 --result-json report.json
-ytconv.cmd download "LINK" --no-subtitles --no-sponsorblock --no-archive
 ```
 
-Cari instalasi aktif:
+Find the active installation:
 
 ```cmd
 where ytconv
 where node
 where npm
-```
-
-Tes source lokal:
-
-```cmd
-cd C:\path\ke\youtubetomp3\cli
-npm.cmd install
-npm.cmd run check
-npm.cmd test
-npm.cmd install -g . --force
-ytconv.cmd --version
+npm.cmd prefix -g
 ```
 
 ## Windows PowerShell
 
-PowerShell dapat memilih shim `ytconv.ps1`. Bila Execution Policy memblokirnya, gunakan `ytconv.cmd`:
+Prefer the `.cmd` shims:
 
 ```powershell
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd doctor
-ytconv.cmd download "LINK"
+ytconv.cmd download "URL"
 ```
 
-Cari semua command:
+Find every matching command:
 
 ```powershell
 Get-Command ytconv -All
@@ -62,133 +40,122 @@ Get-Command node -All
 Get-Command npm.cmd -All
 ```
 
-Mengizinkan script npm untuk akun sendiri:
+PowerShell line continuation uses a backtick:
+
+```powershell
+ytconv.cmd download "URL" `
+  --artist "Artist" `
+  --title "Title"
+```
+
+If `ytconv.ps1` is blocked, continue using `ytconv.cmd`, or deliberately allow signed/local scripts for the current user:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-PowerShell quoting:
+## Bash and Zsh
 
-```powershell
-ytconv.cmd download "LINK" --output "$HOME\Downloads\YTConv"
-ytconv.cmd download "LINK" --output-template "%(uploader)s/%(title)s.%(ext)s"
-```
+```bash
+npm config set prefix "$HOME/.local"
+export PATH="$HOME/.local/bin:$PATH"
+npm install -g ytconv@latest --force
 
-Untuk command multiline gunakan backtick:
-
-```powershell
-ytconv.cmd download "LINK" `
-  --artist "Artis" `
-  --title "Judul"
-```
-
-## Bash, Zsh, Fish, dan terminal Linux/macOS
-
-```sh
-npm install -g ytconv@beta --force
 ytconv --version
 ytconv doctor
-ytconv download "LINK" --preset music
-ytconv playlist "LINK" --playlist-items "1-10"
+ytconv download "URL" --preset music
+ytconv playlist "URL" --playlist-items "1-10" --archive downloaded.txt
 ```
 
-Bila command belum ada di PATH:
+Persist PATH in `~/.profile`, `~/.bashrc`, or `~/.zshrc`:
 
-```sh
+```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Fish:
+## Fish
 
 ```fish
+npm config set prefix $HOME/.local
 fish_add_path $HOME/.local/bin
+npm install -g ytconv@latest --force
+ytconv --version
 ```
 
-Lihat distro dan package manager:
+## SSH and non-TTY terminals
 
-```sh
-ytconv --shell-info
-```
+YTConv automatically selects headless mode when stdin or stdout is not a TTY. It can also be forced:
 
-## SSH dan terminal non-TTY
-
-YTConv otomatis memilih headless ketika stdin atau stdout bukan TTY. Bisa dipaksa:
-
-```sh
-ytconv --headless "LINK"
+```bash
+ytconv --headless "URL"
+ytconv --headless --preset music "URL"
 ```
 
 Batch:
 
-```sh
+```bash
 ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
 ```
 
 Pipe:
 
-```sh
-printf '%s\n' "LINK1" "LINK2" | ytconv --stdin --jobs 2 --continue-on-error
+```bash
+printf '%s\n' "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error
 ```
 
-Cron sebaiknya memakai path lengkap:
+Cron should use absolute paths:
 
 ```cron
-0 2 * * * /home/user/.local/bin/ytconv --headless --output /home/user/downloads "LINK" >>/home/user/ytconv.log 2>&1
+0 2 * * * /home/user/.local/bin/ytconv --headless --output /home/user/Downloads/YTConv "URL" >>/home/user/ytconv.log 2>&1
 ```
-
-Archive otomatis berguna untuk cron agar item lama dilewati. Gunakan `--no-archive` hanya ketika pengunduhan ulang memang dimaksudkan.
 
 ## Android Termux
 
-```sh
-npm install -g ytconv@beta --omit=optional --force
+```bash
 ytconv --version
 ytconv doctor
 ytconv repair
-ytconv download "LINK" --preset mobile
+ytconv download "URL" --preset mobile
 ytconv batch links.txt --continue-on-error
 ```
 
-Folder shared storage:
+Shared output directory:
 
 ```text
 ~/storage/downloads/YTConv
 ```
 
-Termux tidak dapat membaca database privat Chrome Android. Gunakan file cookies Netscape yang diekspor secara sah:
+Termux cannot directly read the private Chrome Android cookie database. Use a legally exported Netscape cookie file:
 
-```sh
-ytconv download "LINK" --cookies ~/storage/downloads/cookies.txt
+```bash
+ytconv download "URL" --cookies ~/storage/downloads/cookies.txt
 ```
 
 ## iPhone/iPad iSH
-
-Frontend iSH adalah Python native beta dan memakai command yang sama untuk fitur inti:
 
 ```sh
 ytconv --version
 ytconv doctor
 ytconv repair
-ytconv download "LINK" --preset music
-ytconv playlist "LINK"
+ytconv download "URL" --preset music
+ytconv playlist "URL" --archive downloaded.txt
 ytconv batch links.txt --continue-on-error --result-json report.json
 ```
 
-Default subtitle, SponsorBlock mark, dan archive tersedia juga pada frontend iSH. Untuk menjaga memori, batch diproses berurutan.
-
-Folder hasil:
+Default output:
 
 ```text
 ~/Downloads/YTConv
 ```
 
-## File batch lintas shell
+The iSH frontend processes batch items sequentially to reduce memory pressure.
 
-Gunakan UTF-8, satu link per baris:
+## Cross-platform batch files
+
+Use UTF-8, one URL per line:
 
 ```text
-# komentar
+# comments are ignored
 https://example.com/1
 https://example.com/2
 ```
@@ -207,30 +174,30 @@ ytconv.cmd batch .\links.txt --jobs 2
 
 Linux/macOS/Termux/iSH:
 
-```sh
+```bash
 ytconv batch ./links.txt --jobs 2
 ```
 
-## JSON untuk script
+## JSON output
 
 CMD:
 
 ```cmd
-ytconv.cmd info "LINK" --json > info.json
+ytconv.cmd info "URL" --json > info.json
 ```
 
 PowerShell:
 
 ```powershell
-ytconv.cmd info "LINK" --json | Set-Content -Encoding utf8 info.json
+ytconv.cmd info "URL" --json | Set-Content -Encoding utf8 info.json
 ```
 
 Linux/macOS:
 
-```sh
-ytconv info "LINK" --json > info.json
+```bash
+ytconv info "URL" --json > info.json
 ```
 
-## Membatalkan dengan aman
+## Safe cancellation
 
-Tekan `Ctrl+C`. YTConv meneruskan pembatalan ke engine dan mengembalikan exit code 130 saat dapat dikenali. File `.part` dapat dilanjutkan pada eksekusi berikutnya karena resume aktif secara default.
+Press `Ctrl+C`. YTConv forwards cancellation to the media engine and returns exit code 130 when detected. Partial `.part` files can normally resume on the next run.
