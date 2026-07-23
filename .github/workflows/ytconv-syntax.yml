@@ -1,0 +1,54 @@
+name: YTConv Syntax Diagnostics
+
+on:
+  push:
+    branches:
+      - release/ytconv-1.4.0
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/ytconv-syntax.yml"
+
+jobs:
+  syntax-file:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - bin/ytconv.js
+          - src/ui.js
+          - src/direct.js
+          - src/presets.js
+          - src/media-controller.js
+          - src/social-platforms.js
+          - src/system-actions.js
+          - src/system-tools.js
+          - src/headless.js
+          - src/error-help.js
+          - src/english-help.js
+          - src/commands.js
+          - src/exit-codes.js
+          - src/linux-distro.js
+          - src/beta-defaults.js
+          - src/cli-options.js
+          - src/update.js
+          - src/version.js
+          - src/gallery.js
+          - src/gallery-beta.js
+          - src/terminal-input.js
+          - src/cookies.js
+          - src/platform.js
+          - src/binaries.js
+          - src/dependencies.js
+          - src/downloader.js
+          - scripts/postinstall.js
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --check "${{ matrix.file }}"
