@@ -1,0 +1,56 @@
+name: Publish YTConv to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versi yang akan dipublish; wajib sama dengan cli/package.json"
+        required: true
+        default: "1.3.0"
+      confirm:
+        description: "Ketik PUBLISH untuk melanjutkan"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+environment: npm
+
+jobs:
+  publish:
+    if: ${{ inputs.confirm == 'PUBLISH' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Verify requested and package versions
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          test "$PACKAGE_VERSION" = "${{ inputs.version }}"
+          test "$PACKAGE_VERSION" = "1.3.0"
+          if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "ytconv@$PACKAGE_VERSION sudah terbit; publish dibatalkan."
+            exit 1
+          fi
+      - name: Install and test clean package
+        run: |
+          npm install
+          npm run check
+          npm test
+          npm run check:ish
+          npm publish --dry-run
+      - name: Publish public package with provenance
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Verify npm registry
+        run: |
+          test "$(npm view ytconv version --prefer-online)" = "${{ inputs.version }}"
+          npm view "ytconv@${{ inputs.version }}" dist.integrity
