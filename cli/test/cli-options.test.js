@@ -166,13 +166,18 @@ test('rejects invalid values and unsafe output templates', () => {
   assert.throws(() => parseCliOptions(['--playlist-items', 'one-two']), /angka/u);
 });
 
-test('help documents final 1.2 command surface', () => {
+test('help documents the YTConv 1.3 command surface', () => {
   const text = helpText();
-  assert.match(text, /--preset/u);
+  assert.match(text, /ytconv playlist/u);
+  assert.match(text, /ytconv batch/u);
+  assert.match(text, /--retries/u);
+  assert.match(text, /--resume/u);
+  assert.match(text, /--cookies-from-browser/u);
+  assert.match(text, /--subtitle-only/u);
+  assert.match(text, /--formats-json/u);
   assert.match(text, /--normalize-audio/u);
   assert.match(text, /--sponsorblock/u);
   assert.match(text, /--output-template/u);
-  assert.match(text, /--dry-run/u);
-  assert.match(text, /--list-formats/u);
   assert.match(text, /--log-file/u);
+  assert.match(text, /MP3 320 kbps/u);
 });
