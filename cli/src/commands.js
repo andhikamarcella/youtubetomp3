@@ -48,17 +48,17 @@ export function normalizeCommandArgs(argv = []) {
 
 export function commandSummaryText() {
   return [
-    'Command cepat:',
-    '  ytconv download LINK        Download satu media',
-    '  ytconv playlist LINK        Download playlist/kumpulan post',
-    '  ytconv batch links.txt      Batch dari file; lanjut bila satu gagal',
-    '  ytconv info LINK --json     Metadata dan format sumber',
-    '  ytconv formats LINK         Tabel format asli dari sumber',
-    '  ytconv formats LINK --json  Format asli sebagai JSON',
-    '  ytconv subtitles LINK       Daftar subtitle',
-    '  ytconv doctor               Diagnosis sistem',
-    '  ytconv repair               Perbaiki dependency',
-    '  ytconv clean                Bersihkan cache YTConv',
+    'Quick commands:',
+    '  ytconv download URL         Download one media item',
+    '  ytconv playlist URL         Download a playlist or post collection',
+    '  ytconv batch links.txt      Download URLs from a file and continue after errors',
+    '  ytconv info URL --json      Print source metadata and output plan',
+    '  ytconv formats URL          List source formats',
+    '  ytconv formats URL --json   List source formats as JSON',
+    '  ytconv subtitles URL        List available subtitles',
+    '  ytconv doctor               Diagnose the installation',
+    '  ytconv repair               Repair media dependencies',
+    '  ytconv clean                Clear YTConv caches',
     '',
   ].join('\n');
 }
