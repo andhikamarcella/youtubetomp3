@@ -4,43 +4,43 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.5.0-beta.1"
-Write-Host "YTConv $Version installer untuk PowerShell" -ForegroundColor Cyan
+$Version = "1.4.0"
+Write-Host "YTConv $Version installer for PowerShell" -ForegroundColor Cyan
 
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
-  throw "Node.js 18+ belum terpasang. Pasang Node.js LTS, tutup PowerShell, lalu jalankan installer lagi."
+  throw "Node.js 18 or newer is not installed. Install Node.js LTS, reopen PowerShell, and run this installer again."
 }
 if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) {
-  throw "npm.cmd tidak ditemukan. Instalasi Node.js kemungkinan tidak lengkap."
+  throw "npm.cmd was not found. The Node.js installation may be incomplete."
 }
 
 $major = [int]((node.exe --version).TrimStart('v').Split('.')[0])
-if ($major -lt 18) { throw "Node.js terlalu lama. YTConv memerlukan Node.js 18 atau lebih baru." }
+if ($major -lt 18) { throw "Node.js is too old. YTConv requires Node.js 18 or newer." }
 
 if ($Local) {
-  if (-not (Test-Path .\package.json)) { throw "Gunakan -Local dari folder cli repository YTConv." }
+  if (-not (Test-Path .\package.json)) { throw "Run -Local from the YTConv cli directory." }
   if (-not $SkipTests) {
     & npm.cmd install
+    if ($LASTEXITCODE -ne 0) { throw "npm install failed." }
     & npm.cmd run check
+    if ($LASTEXITCODE -ne 0) { throw "Syntax checks failed." }
     & npm.cmd test
-    if ($LASTEXITCODE -ne 0) { throw "Pemeriksaan repository gagal; instalasi global dibatalkan." }
+    if ($LASTEXITCODE -ne 0) { throw "Unit tests failed; global installation was cancelled." }
   }
   & npm.cmd install -g . --force
 } else {
   & npm.cmd uninstall -g ytconv 2>$null
   & npm.cmd cache verify
-  & npm.cmd install -g "ytconv@beta" --force
+  & npm.cmd install -g "ytconv@$Version" --force
 }
-if ($LASTEXITCODE -ne 0) { throw "npm gagal memasang YTConv beta." }
+if ($LASTEXITCODE -ne 0) { throw "npm could not install YTConv." }
 
-Write-Host "`nVerifikasi:" -ForegroundColor Cyan
+Write-Host "`nVerification:" -ForegroundColor Cyan
 $installed = (& ytconv.cmd --version).Trim()
-if ($installed -ne $Version) { throw "Versi terpasang $installed, seharusnya $Version." }
+if ($installed -ne $Version) { throw "Installed version is $installed; expected $Version." }
 & ytconv.cmd --self-test
 & ytconv.cmd --shell-info
 & ytconv.cmd doctor
-Write-Host "`nDefault beta: subtitle ON, SponsorBlock mark ON, archive ON." -ForegroundColor Yellow
-Write-Host "Matikan per proses: --no-subtitles --no-sponsorblock --no-archive" -ForegroundColor Yellow
-Write-Host "Selesai. Jalankan: ytconv.cmd atau ytconv" -ForegroundColor Green
-Write-Host "Bila PowerShell memblokir ytconv.ps1, gunakan ytconv.cmd. Untuk mengizinkannya:" -ForegroundColor Yellow
+Write-Host "`nInstallation completed. Run: ytconv.cmd or ytconv" -ForegroundColor Green
+Write-Host "If PowerShell blocks ytconv.ps1, keep using ytconv.cmd. Optional current-user policy:" -ForegroundColor Yellow
 Write-Host "Set-ExecutionPolicy -Scope CurrentUser RemoteSigned"
