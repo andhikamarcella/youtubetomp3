@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { applyExplicitPrecedence } from '../src/argument-precedence.js';
 import { applyBetaDefaults, betaDefaultsHelpText, extractBetaToggles } from '../src/beta-defaults.js';
 import { applyCliEnvironment, helpText, isDirectCommand, parseCliOptions } from '../src/cli-options.js';
 import { commandSummaryText, normalizeCommandArgs } from '../src/commands.js';
@@ -165,10 +166,11 @@ async function main() {
   let options;
   let selectedProfile = '';
   try {
-    const resolved = await resolveUserArguments(rawArgs);
+    const explicitArgs = normalizeCommandArgs(rawArgs);
+    const resolved = await resolveUserArguments(explicitArgs);
     selectedProfile = resolved.profile;
-    const normalizedArgs = normalizeCommandArgs(resolved.args);
-    const toggles = extractBetaToggles(normalizedArgs);
+    const effectiveArgs = applyExplicitPrecedence(resolved.args, explicitArgs);
+    const toggles = extractBetaToggles(effectiveArgs);
     ({ system, cleanArgs } = extractSystemOptions(toggles.cleanArgs));
     options = parseCliOptions(cleanArgs);
     applyBetaDefaults(options, toggles);
