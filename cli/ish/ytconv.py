@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.2.3 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.3.0 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,11 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.2.3"
-RAW_BASE = (
-    "https://raw.githubusercontent.com/andhikamarcella/"
-    "youtubetomp3/codex/add-ytconv-cli/cli"
-)
+VERSION = "1.3.0"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 GALLERY_HOSTS = {
@@ -83,19 +80,25 @@ def remote_version():
 
 def perform_update():
     print("Mengunduh installer YTConv iSH terbaru...")
+    target = None
     try:
         data = fetch_text(INSTALLER_URL, timeout=20)
         with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as handle:
             handle.write(data + "\n")
             target = handle.name
         result = subprocess.run(["sh", target], check=False)
-        os.unlink(target)
         if result.returncode:
             raise RuntimeError("installer exit %s" % result.returncode)
     except (OSError, RuntimeError, urllib.error.URLError) as error:
         eprint("Update gagal: %s" % error)
         eprint("Jalankan manual: curl -fsSL %s -o /tmp/ytconv-ish.sh && sh /tmp/ytconv-ish.sh" % INSTALLER_URL)
         return 1
+    finally:
+        if target:
+            try:
+                os.unlink(target)
+            except OSError:
+                pass
     print("Update selesai. Jalankan kembali: ytconv --version")
     return 0
 
@@ -115,6 +118,7 @@ def tools():
         "yt-dlp": command_runner(["yt-dlp"], "yt_dlp"),
         "gallery-dl": command_runner(["gallery-dl"], "gallery_dl"),
         "ffmpeg": command_runner(["ffmpeg"]),
+        "ffprobe": command_runner(["ffprobe"]),
     }
 
 
@@ -152,10 +156,10 @@ def repair():
     if not pip_install("yt-dlp", "gallery-dl"):
         eprint("pip gagal memasang yt-dlp/gallery-dl. Periksa internet dan waktu perangkat.")
     available = tools()
-    missing = [name for name, runner in available.items() if not runner]
+    missing = [name for name in ("yt-dlp", "gallery-dl", "ffmpeg") if not available[name]]
     if missing:
         eprint("Masih kurang: %s" % ", ".join(missing))
-        return 1
+        return 3
     print("Semua dependency siap.")
     return 0
 
@@ -175,6 +179,11 @@ def cookie_args(path_value):
 
 
 def output_template(options, output):
+    if options.output_template:
+        template = options.output_template
+        if Path(template).is_absolute() or ".." in Path(template).parts or "%(ext)s" not in template:
+            raise RuntimeError("--output-template harus relatif, tidak boleh '..', dan wajib memuat %(ext)s")
+        return str(output / template)
     filename = "%(title).180B [%(id)s].%(ext)s"
     if options.playlist:
         return str(output / "%(playlist_title).120B" / ("%(playlist_index)03d - " + filename))
@@ -182,21 +191,43 @@ def output_template(options, output):
 
 
 def video_selector(resolution, container):
-    limit = "" if resolution == "best" else "[height<=%s]" % resolution
+    limit_value = "" if resolution == "best" else "[height<=%s]" % resolution
     if container == "webm":
-        return "bv*%s[ext=webm]+ba[ext=webm]/b%s[ext=webm]/bv*%s+ba/b%s" % (limit, limit, limit, limit)
-    return "bv*%s[ext=mp4]+ba[ext=m4a]/b%s[ext=mp4]/bv*%s+ba/b%s" % (limit, limit, limit, limit)
+        return "bv*%s[ext=webm]+ba[ext=webm]/b%s[ext=webm]/bv*%s+ba/b%s" % (
+            limit_value, limit_value, limit_value, limit_value,
+        )
+    return "bv*%s[ext=mp4]+ba[ext=m4a]/b%s[ext=mp4]/bv*%s+ba/b%s" % (
+        limit_value, limit_value, limit_value, limit_value,
+    )
+
+
+def metadata_args(options):
+    values = [
+        (options.artist, "meta_artist"), (options.title, "meta_title"),
+        (options.album, "meta_album"), (options.track, "meta_track"),
+        (options.year, "meta_date"), (options.genre, "meta_genre"),
+    ]
+    args = []
+    for value, target in values:
+        if value:
+            args += ["--parse-metadata", "%s:%%(%s)s" % (value.replace("%", "%%"), target)]
+    return args
 
 
 def common_args(options, output):
     args = [
-        "--ignore-config", "--newline", "--continue", "--retries", "10",
-        "--fragment-retries", "10", "--extractor-retries", "5",
-        "--socket-timeout", "30", "--output", output_template(options, output),
+        "--ignore-config", "--newline", "--socket-timeout", "30",
+        "--retries", options.retries, "--fragment-retries", options.fragment_retries,
+        "--file-access-retries", options.file_access_retries,
+        "--retry-sleep", "http:%s" % options.retry_sleep,
+        "--retry-sleep", "fragment:%s" % options.retry_sleep,
+        "--output", output_template(options, output),
         "--force-overwrites" if options.overwrite else "--no-overwrites",
+        "--continue" if options.resume else "--no-continue",
         "--yes-playlist" if options.playlist else "--no-playlist",
     ]
     args += cookie_args(options.cookies)
+    args += metadata_args(options)
     if options.proxy:
         args += ["--proxy", options.proxy]
     if options.rate_limit:
@@ -205,6 +236,16 @@ def common_args(options, output):
         args += ["--restrict-filenames"]
     if options.metadata_files:
         args += ["--write-info-json", "--write-description"]
+    if options.archive:
+        args += ["--download-archive", str(Path(options.archive).expanduser().resolve())]
+    if options.playlist_items:
+        args += ["--playlist-items", options.playlist_items]
+    if options.max_downloads:
+        args += ["--max-downloads", str(options.max_downloads)]
+    if options.skip_playlist_after_errors:
+        args += ["--skip-playlist-after-errors", str(options.skip_playlist_after_errors)]
+    if options.start or options.end:
+        args += ["--download-sections", "*%s-%s" % (options.start or "0", options.end or "inf"), "--force-keyframes-at-cuts"]
     return args
 
 
@@ -213,7 +254,12 @@ def yt_dlp_args(options, output):
     thumbnail = options.thumbnail or (options.mode == "audio" and options.audio_format == "mp3")
     if thumbnail:
         args += ["--write-thumbnail", "--convert-thumbnails", "jpg"]
-    if options.mode == "audio":
+    if options.subtitle_only:
+        args += [
+            "--write-subs", "--write-auto-subs", "--sub-langs", options.subtitle_langs,
+            "--sub-format", "best", "--convert-subs", "srt", "--skip-download",
+        ]
+    elif options.mode == "audio":
         quality = "0" if options.audio_quality == "best" else options.audio_quality + "K"
         args += [
             "-f", "ba/b", "-x", "--audio-format", options.audio_format,
@@ -223,6 +269,8 @@ def yt_dlp_args(options, output):
             args += ["--embed-thumbnail"]
         if thumbnail and host_for(options.url) == "music.youtube.com":
             args += ["--ppa", "ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih"]
+        if options.normalize_audio:
+            args += ["--ppa", "ExtractAudio+ffmpeg_o:-af loudnorm=I=-16:LRA=11:TP=-1.5"]
     else:
         args += ["-f", video_selector(options.resolution, options.video_format), "--embed-metadata", "--embed-chapters"]
         args += ["--merge-output-format", "mp4/mkv" if options.video_format == "auto" else options.video_format]
@@ -240,7 +288,7 @@ def yt_dlp_args(options, output):
 
 def gallery_args(options, output):
     args = [
-        "--config-ignore", "--no-colors", "--no-input", "--retries", "10",
+        "--config-ignore", "--no-colors", "--no-input", "--retries", int(options.retries) if options.retries.isdigit() else 10,
         "--http-timeout", "30", "--destination", str(output),
         "--option", "extractor.instagram.videos=true",
         "--option", "extractor.pinterest.videos=true",
@@ -252,7 +300,7 @@ def gallery_args(options, output):
 
 def run_tool(label, runner, args, capture=False):
     if not runner:
-        raise RuntimeError("%s belum tersedia. Jalankan ytconv --repair" % label)
+        raise RuntimeError("%s belum tersedia. Jalankan ytconv repair" % label)
     command = runner + args
     if not capture:
         print("\nYTConv %s menggunakan %s" % (VERSION, label))
@@ -272,6 +320,32 @@ def gallery_preferred(url):
     return any(host == item or host.endswith("." + item) for item in GALLERY_HOSTS)
 
 
+def format_items(data):
+    results = []
+    for item in data.get("formats") or []:
+        has_video = item.get("vcodec") not in (None, "none")
+        has_audio = item.get("acodec") not in (None, "none")
+        if not has_video and not has_audio:
+            continue
+        results.append({
+            "id": item.get("format_id"), "ext": item.get("ext"),
+            "type": "video+audio" if has_video and has_audio else "video" if has_video else "audio",
+            "resolution": item.get("resolution"), "height": item.get("height"),
+            "fps": item.get("fps"), "videoCodec": item.get("vcodec") if has_video else None,
+            "audioCodec": item.get("acodec") if has_audio else None,
+            "audioBitrateKbps": item.get("abr"), "totalBitrateKbps": item.get("tbr"),
+            "sizeBytes": item.get("filesize") or item.get("filesize_approx"), "source": "original",
+        })
+    return results
+
+
+def inspect_json(options):
+    raw = run_tool("yt-dlp", tools()["yt-dlp"], [
+        "--ignore-config", "--dump-single-json", "--skip-download", "--no-warnings",
+    ] + cookie_args(options.cookies) + [options.url], capture=True)
+    return json.loads(raw)
+
+
 def execute_one(options):
     available = tools()
     output = Path(options.output).expanduser().resolve() if options.output else default_output()
@@ -282,37 +356,43 @@ def execute_one(options):
         args += ["--list-formats"] if options.list_formats else ["--list-subs"]
         args.append(options.url)
         run_tool("yt-dlp", available["yt-dlp"], args)
-        return 0
+        return {"ok": True, "url": options.url, "mode": "utility"}
 
-    if options.dry_run or options.json:
-        raw = run_tool("yt-dlp", available["yt-dlp"], [
-            "--ignore-config", "--dump-single-json", "--skip-download", "--no-warnings", options.url,
-        ], capture=True)
-        data = json.loads(raw)
-        summary = {"ytconvVersion": VERSION, "title": data.get("title"), "uploader": data.get("uploader"), "url": options.url}
-        print(json.dumps(summary, indent=2, ensure_ascii=False) if options.json else "Judul: %s\nUploader: %s" % (summary["title"], summary["uploader"] or "-"))
-        return 0
+    if options.dry_run or options.json or options.formats_json:
+        data = inspect_json(options)
+        formats = format_items(data)
+        if options.formats_json:
+            print(json.dumps({"schemaVersion": 1, "ytconvVersion": VERSION, "url": options.url, "formats": formats}, indent=2, ensure_ascii=False))
+        else:
+            summary = {
+                "schemaVersion": 2, "ytconvVersion": VERSION, "title": data.get("title"),
+                "uploader": data.get("uploader") or data.get("channel"), "url": options.url,
+                "duration": data.get("duration"), "formats": formats,
+                "qualityNote": "Target MP3 320 kbps tidak meningkatkan detail di atas sumber.",
+            }
+            print(json.dumps(summary, indent=2, ensure_ascii=False) if options.json else "Judul: %s\nUploader: %s\nFormat sumber: %s" % (summary["title"], summary["uploader"] or "-", len(formats)))
+        return {"ok": True, "url": options.url, "mode": "inspect"}
 
     force_gallery = options.mode == "image"
-    force_video = options.mode in ("video", "audio")
+    force_video = options.mode in ("video", "audio") or options.subtitle_only
     first_gallery = force_gallery or (not force_video and gallery_preferred(options.url))
     if first_gallery:
         try:
             run_tool("gallery-dl", available["gallery-dl"], gallery_args(options, output))
-            return 0
+            return {"ok": True, "url": options.url, "engine": "gallery-dl"}
         except RuntimeError:
             if force_gallery:
                 raise
             eprint("gallery-dl gagal; mencoba yt-dlp...")
     try:
         run_tool("yt-dlp", available["yt-dlp"], yt_dlp_args(options, output))
-        return 0
+        return {"ok": True, "url": options.url, "engine": "yt-dlp"}
     except RuntimeError:
         if force_video:
             raise
         eprint("yt-dlp gagal; mencoba gallery-dl...")
         run_tool("gallery-dl", available["gallery-dl"], gallery_args(options, output))
-        return 0
+        return {"ok": True, "url": options.url, "engine": "gallery-dl"}
 
 
 def diagnostics():
@@ -323,17 +403,45 @@ def diagnostics():
         ("TTY", "%s/%s" % (sys.stdin.isatty(), sys.stdout.isatty())),
         ("yt-dlp", tool_version(available["yt-dlp"])),
         ("gallery-dl", tool_version(available["gallery-dl"])),
-        ("FFmpeg", tool_version(available["ffmpeg"])), ("Output", str(default_output())),
-        ("Update", latest or "offline"),
+        ("FFmpeg", tool_version(available["ffmpeg"])),
+        ("ffprobe", tool_version(available["ffprobe"])),
+        ("Output", str(default_output())), ("Update", latest or "offline"),
     ]
-    print("YTConv iSH diagnostics\n")
+    print("YTConv iSH doctor\n")
     for label, value in rows:
         print("%-14s %s" % (label, value))
-    missing = [name for name, runner in available.items() if not runner]
+    missing = [name for name in ("yt-dlp", "gallery-dl", "ffmpeg") if not available[name]]
     if missing:
-        print("\nBelum tersedia: %s\nJalankan: ytconv --repair" % ", ".join(missing))
-        return 1
+        print("\nBelum tersedia: %s\nJalankan: ytconv repair" % ", ".join(missing))
+        return 3
     return 0
+
+
+def normalize_commands(argv):
+    if not argv or argv[0].startswith("-") or valid_url(argv[0]):
+        return argv
+    command, rest = argv[0].lower(), argv[1:]
+    if command in ("download", "dl", "get"):
+        return rest
+    if command in ("playlist", "pl"):
+        return ["--playlist"] + rest
+    if command == "batch":
+        return (["--batch-file", rest[0], "--continue-on-error"] + rest[1:]) if rest else ["--batch-file"]
+    if command in ("info", "inspect"):
+        return ["--dry-run"] + rest
+    if command == "formats":
+        if "--json" in rest:
+            return ["--formats-json"] + [value for value in rest if value != "--json"]
+        return ["--list-formats"] + rest
+    if command in ("subtitles", "subs"):
+        return ["--list-subs"] + rest
+    if command == "doctor":
+        return ["--doctor"] + rest
+    if command in ("repair", "setup"):
+        return ["--repair"] + rest
+    if command == "update":
+        return ["--update"] + rest
+    return argv
 
 
 def selected_preset(argv):
@@ -347,7 +455,7 @@ def selected_preset(argv):
 def parser(argv):
     preset = selected_preset(argv)
     defaults = dict(PRESETS.get(preset, {}))
-    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.2.3 untuk iSH/Alpine.")
+    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.3.0 untuk iSH/Alpine.")
     value.set_defaults(**defaults)
     value.add_argument("url", nargs="?")
     value.add_argument("--version", action="store_true")
@@ -368,22 +476,47 @@ def parser(argv):
     value.add_argument("--video-format", choices=["auto", "mp4", "mkv", "webm"], default=defaults.get("video_format", "auto"))
     value.add_argument("--resolution", choices=["best", "2160", "1440", "1080", "720", "480", "360", "240", "144"], default=defaults.get("resolution", "best"))
     value.add_argument("--subtitles", action="store_true", default=defaults.get("subtitles", False))
+    value.add_argument("--subtitle-only", action="store_true")
     value.add_argument("--subtitle-langs", default="all,-live_chat")
     value.add_argument("--thumbnail", action="store_true", default=defaults.get("thumbnail", False))
     value.add_argument("--metadata-files", action="store_true", default=defaults.get("metadata_files", False))
+    value.add_argument("--artist")
+    value.add_argument("--title")
+    value.add_argument("--album")
+    value.add_argument("--track")
+    value.add_argument("--year")
+    value.add_argument("--genre")
     value.add_argument("--playlist", action="store_true", default=defaults.get("playlist", False))
+    value.add_argument("--playlist-items")
+    value.add_argument("--max-downloads", type=int)
+    value.add_argument("--skip-playlist-after-errors", type=int)
+    value.add_argument("--archive")
+    value.add_argument("--retries", default="10")
+    value.add_argument("--fragment-retries", default="10")
+    value.add_argument("--file-access-retries", default="3")
+    value.add_argument("--retry-sleep", default="linear=1::2")
+    value.add_argument("--resume", dest="resume", action="store_true", default=True)
+    value.add_argument("--no-resume", dest="resume", action="store_false")
+    value.add_argument("--cleanup-part", action="store_true")
+    value.add_argument("--start", "--from", dest="start")
+    value.add_argument("--end", "--to", dest="end")
+    value.add_argument("--normalize-audio", action="store_true")
     value.add_argument("--overwrite", action="store_true")
     value.add_argument("--restrict-filenames", action="store_true", default=defaults.get("restrict_filenames", False))
     value.add_argument("--proxy")
     value.add_argument("--rate-limit")
     value.add_argument("--cookies")
+    value.add_argument("--output-template")
     value.add_argument("--output", "-o")
     value.add_argument("--dry-run", action="store_true")
     value.add_argument("--json", action="store_true")
+    value.add_argument("--formats-json", action="store_true")
     value.add_argument("--list-formats", action="store_true")
     value.add_argument("--list-subs", action="store_true")
     value.add_argument("--batch-file")
     value.add_argument("--continue-on-error", action="store_true")
+    value.add_argument("--result-json")
+    value.add_argument("--jobs", type=int, default=1)
     return value
 
 
@@ -405,9 +538,26 @@ def batch_urls(options):
     return unique
 
 
+def cleanup_parts(output, started_at):
+    count = 0
+    for target in output.rglob("*"):
+        try:
+            if target.is_file() and target.suffix.lower() in (".part", ".ytdl", ".tmp", ".temp") and target.stat().st_mtime >= started_at:
+                target.unlink()
+                count += 1
+        except OSError:
+            pass
+    return count
+
+
 def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
+    argv = normalize_commands(list(sys.argv[1:] if argv is None else argv))
     options = parser(argv).parse_args(argv)
+    if options.jobs < 1 or options.jobs > 2:
+        eprint("iSH membatasi --jobs ke 1–2 untuk menjaga memori.")
+        return 2
+    if options.jobs > 1:
+        print("Catatan: frontend iSH memproses batch berurutan agar perangkat tetap stabil.")
     if options.version:
         print(VERSION)
         return 0
@@ -421,13 +571,13 @@ def main(argv=None):
     if options.check_update:
         latest = remote_version()
         print("tersedia %s" % latest if latest and version_tuple(latest) > version_tuple(VERSION) else "sudah terbaru (%s)" % VERSION)
-        return 0 if latest else 1
+        return 0 if latest else 5
     if options.update:
         return perform_update()
 
     latest = remote_version()
     if latest and version_tuple(latest) > version_tuple(VERSION):
-        print("Update tersedia %s; aplikasi tetap dapat dipakai. Jalankan: ytconv --update" % latest)
+        print("Update tersedia %s; aplikasi tetap dapat dipakai. Jalankan: ytconv update" % latest)
 
     try:
         urls = batch_urls(options)
@@ -435,23 +585,41 @@ def main(argv=None):
             candidate = input("Paste link media: ").strip()
             urls = [candidate] if candidate else []
         if not urls:
-            raise RuntimeError("Tidak ada link. Berikan LINK, --batch-file, atau pipe melalui stdin.")
-        failed = 0
+            raise RuntimeError("Tidak ada link. Berikan LINK, batch file, atau pipe melalui stdin.")
+        output = Path(options.output).expanduser().resolve() if options.output else default_output()
+        output.mkdir(parents=True, exist_ok=True)
+        results = []
         for index, url in enumerate(urls, 1):
             options.url = url
             print("\n[%s/%s] %s" % (index, len(urls), url))
+            started_at = __import__("time").time()
             try:
-                execute_one(options)
+                results.append(execute_one(options))
             except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
-                failed += 1
                 eprint("Gagal: %s" % error)
+                if options.cleanup_part:
+                    removed = cleanup_parts(output, started_at)
+                    if removed:
+                        print("Membersihkan %s file sementara." % removed)
+                results.append({"ok": False, "url": url, "error": str(error)})
                 if not options.continue_on_error:
                     break
-        print("\nRingkasan: %s berhasil, %s gagal." % (len(urls) - failed, failed))
+        success = len([item for item in results if item.get("ok")])
+        failed = len(results) - success
+        report = {
+            "schemaVersion": 1, "ytconvVersion": VERSION, "success": success,
+            "failed": failed, "outputDirectory": str(output), "results": results,
+        }
+        if options.result_json:
+            target = Path(options.result_json).expanduser().resolve()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            print("Laporan JSON: %s" % target)
+        print("\nRingkasan: %s berhasil, %s gagal." % (success, failed))
         return 1 if failed else 0
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
         eprint("YTConv: %s" % error)
-        eprint("Jalankan ytconv --diagnose dan ytconv --repair.")
+        eprint("Jalankan ytconv doctor dan ytconv repair.")
         return 1
 
 
