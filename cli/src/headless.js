@@ -4,16 +4,16 @@ import process from 'node:process';
 import { resolveCookieConfigs } from './cookies.js';
 import { inspectDependencies } from './dependencies.js';
 import { explainError } from './error-help.js';
+import { exitCodeForError } from './exit-codes.js';
 import { downloadMedia, inspectMedia } from './media-controller.js';
 import { openOutputLocation } from './system-actions.js';
+import { CLI_VERSION } from './version.js';
 
 function validUrl(value) {
   try {
     const parsed = new URL(value);
     return ['http:', 'https:'].includes(parsed.protocol);
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 async function stdinText() {
@@ -23,22 +23,15 @@ async function stdinText() {
 }
 
 function parseLines(value) {
-  return String(value || '')
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
+  return String(value || '').split(/\r?\n/u).map((line) => line.trim())
     .filter((line) => line && !line.startsWith('#'));
 }
 
 export async function collectUrls({ initialUrl = '', batchFile = '', readStdin = false } = {}) {
   const values = [];
   if (initialUrl) values.push(initialUrl);
-  if (batchFile) {
-    const content = await fs.readFile(path.resolve(batchFile), 'utf8');
-    values.push(...parseLines(content));
-  }
-  if (readStdin || (!process.stdin.isTTY && !initialUrl && !batchFile)) {
-    values.push(...parseLines(await stdinText()));
-  }
+  if (batchFile) values.push(...parseLines(await fs.readFile(path.resolve(batchFile), 'utf8')));
+  if (readStdin || (!process.stdin.isTTY && !initialUrl && !batchFile)) values.push(...parseLines(await stdinText()));
   const unique = [...new Set(values)];
   const invalid = unique.filter((value) => !validUrl(value));
   if (invalid.length) throw new Error(`Link tidak valid: ${invalid.slice(0, 3).join(', ')}`);
@@ -47,18 +40,50 @@ export async function collectUrls({ initialUrl = '', batchFile = '', readStdin =
 
 function progressPrinter(index, total) {
   let previous = '';
-  return ({ percent = '', speed = '', eta = '' } = {}) => {
-    const message = `[${index}/${total}] ${percent || '...'} ${speed || ''} ${eta ? `ETA ${eta}` : ''}`.trim();
+  return ({ percent = '', speed = '', eta = '', total: totalSize = '' } = {}) => {
+    const message = `[${index}/${total}] ${percent || '...'} ${totalSize || ''} ${speed || ''} ${eta ? `ETA ${eta}` : ''}`.trim();
     if (message === previous) return;
     previous = message;
     console.log(message);
   };
 }
 
-async function downloadOne({ options, url, outputDirectory, dependencies, index, total }) {
-  const cookieSource = options.cookiesPath ? 'file' : 'auto';
-  const cookieConfigs = await resolveCookieConfigs({ source: cookieSource, outputDirectory });
+function explicitBrowserConfig(spec) {
+  return { kind: 'browser', spec, browser: spec.split(/[+:]/u)[0], label: `browser:${spec}` };
+}
+
+async function partialFiles(directory, since) {
+  const results = [];
+  async function walk(current) {
+    let entries = [];
+    try { entries = await fs.readdir(current, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const target = path.join(current, entry.name);
+      if (entry.isDirectory()) await walk(target);
+      else if (/\.(?:part|ytdl|temp|tmp)$/iu.test(entry.name)) {
+        try {
+          const stats = await fs.stat(target);
+          if (stats.mtimeMs >= since - 1000) results.push(target);
+        } catch { /* file disappeared */ }
+      }
+    }
+  }
+  await walk(directory);
+  return results;
+}
+
+async function cleanupPartials(directory, since) {
+  const files = await partialFiles(directory, since);
+  await Promise.all(files.map((target) => fs.rm(target, { force: true }).catch(() => {})));
+  return files.length;
+}
+
+async function downloadOne({ options, url, outputDirectory, dependencies, index, total, allowCleanup }) {
+  const cookieConfigs = options.cookiesBrowser
+    ? [explicitBrowserConfig(options.cookiesBrowser)]
+    : await resolveCookieConfigs({ source: options.cookiesPath ? 'file' : 'auto', outputDirectory });
   let lastError;
+  const startedAt = Date.now();
 
   for (const cookieConfig of cookieConfigs) {
     try {
@@ -70,6 +95,7 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
         playlist: options.initialPlaylist,
         mode: options.initialMode,
         platformHint: options.initialPlatform,
+        options,
       });
       console.log(`Judul   : ${media.title}`);
       console.log(`Platform: ${media.platform || '-'} · engine ${media.engine || 'auto'}`);
@@ -78,17 +104,11 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
       const result = await downloadMedia({
         ytDlpPath: dependencies.ytDlp.path,
         options: {
+          ...options,
           url,
           mode: options.initialMode,
           platformHint: options.initialPlatform,
-          resolution: options.resolution,
-          videoFormat: options.videoFormat,
-          audioFormat: options.audioFormat,
-          audioQuality: options.audioQuality,
           imageFormat: options.initialImageFormat,
-          subtitles: options.subtitles,
-          subtitleLanguages: options.subtitleLanguages,
-          writeThumbnail: options.writeThumbnail,
           cookieConfig,
           playlist: options.initialPlaylist,
           outputDirectory,
@@ -97,18 +117,30 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
         onProgress: progressPrinter(index, total),
         onLog: (line, isError) => {
           if (isError || /tersimpan|fallback|engine|merger|extractaudio|videoremuxer/iu.test(line)) {
-            console.log(`${isError ? '!' : '>'} ${line}`);
+            console.log(`[${index}/${total}] ${isError ? '!' : '>'} ${line}`);
           }
         },
       });
       console.log(`Selesai  : ${result.outputPath || outputDirectory}`);
-      return { ok: true, url, ...result };
+      return { ok: true, url, title: media.title, ...result };
     } catch (error) {
       lastError = error;
     }
   }
 
+  if (options.cleanupPart && allowCleanup) {
+    const count = await cleanupPartials(outputDirectory, startedAt);
+    if (count) console.log(`[${index}/${total}] Membersihkan ${count} file sementara.`);
+  }
   throw lastError || new Error('Semua metode akses gagal.');
+}
+
+async function writeResultJson(target, payload) {
+  if (!target) return;
+  const resolved = path.resolve(target);
+  await fs.mkdir(path.dirname(resolved), { recursive: true });
+  await fs.writeFile(resolved, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  console.log(`Laporan JSON: ${resolved}`);
 }
 
 export async function runHeadlessDownloads({
@@ -117,35 +149,61 @@ export async function runHeadlessDownloads({
   urls,
   continueOnError = false,
   openOutput = false,
+  jobs = 1,
+  resultJson = '',
 } = {}) {
-  if (!urls?.length) {
-    throw new Error('Tidak ada link. Berikan LINK, --batch-file FILE, atau --stdin.');
-  }
-
+  if (!urls?.length) throw new Error('Tidak ada link. Berikan LINK, --batch-file FILE, atau --stdin.');
   await fs.mkdir(outputDirectory, { recursive: true });
-  const dependencies = await inspectDependencies();
-  if (!dependencies.ready) {
-    throw new Error(`Dependency belum lengkap: ${dependencies.missing.join(', ')}. Jalankan ytconv --repair.`);
-  }
+  const dependencies = await inspectDependencies({ repair: false });
+  if (!dependencies.ready) throw new Error(`Dependency belum lengkap: ${dependencies.missing.join(', ')}. Jalankan ytconv repair.`);
 
-  const results = [];
-  for (let index = 0; index < urls.length; index += 1) {
-    const url = urls[index];
-    try {
-      results.push(await downloadOne({
-        options, url, outputDirectory, dependencies, index: index + 1, total: urls.length,
-      }));
-    } catch (error) {
-      console.error(`\nGagal [${index + 1}/${urls.length}] ${url}`);
-      console.error(explainError(error));
-      results.push({ ok: false, url, error: error instanceof Error ? error.message : String(error) });
-      if (!continueOnError) break;
+  const workerCount = Math.max(1, Math.min(Number(jobs) || 1, 8, urls.length));
+  if (options.cleanupPart && workerCount > 1) {
+    console.log('Catatan: --cleanup-part dinonaktifkan saat --jobs > 1 agar tidak menghapus file worker lain.');
+  }
+  const results = new Array(urls.length);
+  let cursor = 0;
+  let stop = false;
+
+  async function worker() {
+    while (!stop) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= urls.length) return;
+      const url = urls[index];
+      try {
+        results[index] = await downloadOne({
+          options, url, outputDirectory, dependencies, index: index + 1, total: urls.length,
+          allowCleanup: workerCount === 1,
+        });
+      } catch (error) {
+        const code = exitCodeForError(error);
+        console.error(`\nGagal [${index + 1}/${urls.length}] ${url}`);
+        console.error(explainError(error));
+        results[index] = { ok: false, url, exitCode: code, error: error instanceof Error ? error.message : String(error) };
+        if (!continueOnError) stop = true;
+      }
     }
   }
 
-  const success = results.filter((item) => item.ok).length;
-  const failed = results.length - success;
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  const completed = results.filter(Boolean);
+  const success = completed.filter((item) => item.ok).length;
+  const failed = completed.length - success;
+  const report = {
+    schemaVersion: 1,
+    ytconvVersion: CLI_VERSION,
+    startedUrls: completed.length,
+    requestedUrls: urls.length,
+    jobs: workerCount,
+    success,
+    failed,
+    outputDirectory,
+    results: completed,
+  };
   console.log(`\nRingkasan: ${success} berhasil, ${failed} gagal. Output: ${outputDirectory}`);
+  await writeResultJson(resultJson, report);
   if (openOutput && success) await openOutputLocation({ directory: outputDirectory });
-  return failed ? 1 : 0;
+  if (!failed) return 0;
+  return Math.max(...completed.filter((item) => !item.ok).map((item) => item.exitCode || 1));
 }
