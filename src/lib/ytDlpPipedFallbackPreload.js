@@ -10,35 +10,70 @@ const require = createRequire(import.meta.url);
 const childProcess = require("node:child_process");
 const previousSpawn = childProcess.spawn.bind(childProcess);
 
+const DEFAULT_INSTANCE_LIST_URL = "https://raw.githubusercontent.com/wiki/TeamPiped/Piped/Instances.md";
 const DEFAULT_PIPED_INSTANCES = [
   "https://pipedapi.kavin.rocks",
-  "https://pipedapi.tokhmi.xyz",
-  "https://pipedapi.moomoo.me",
-  "https://pipedapi.syncpundit.io",
-  "https://api-piped.mha.fi",
-  "https://piped-api.garudalinux.org",
+  "https://pipedapi-libre.kavin.rocks",
+  "https://api.piped.projectsegfau.lt",
+  "https://pipedapi.in.projectsegfau.lt",
+  "https://pipedapi.us.projectsegfau.lt",
+  "https://api.piped.privacydev.net",
+  "https://piped-api.hostux.net",
+  "https://pdapi.vern.cc",
+  "https://api.piped.yt",
+  "https://pipedapi.qdi.fi",
+  "https://pipedapi.simpleprivacy.fr",
+  "https://pipedapi.osphost.fi",
+  "https://piapi.ggtyler.dev",
+  "https://pipedapi.12a.app",
+  "https://pipedapi.ngn.tf",
+  "https://pipedapi.ducks.party",
 ];
 
 const attemptedJobs = new Map();
 let instanceCursor = 0;
+let discoveryCache = { instances: [], expiresAt: 0 };
 
 const disabled = (value = "") => /^(0|false|off|no|none)$/i.test(String(value || "").trim());
+const uniqueStrings = (values = []) => [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+
+const normalizeInstanceBase = (value = "") => {
+  try {
+    const url = new URL(String(value || "").trim());
+    if (url.protocol !== "https:" || url.username || url.password) return "";
+    url.hash = "";
+    url.search = "";
+    url.pathname = url.pathname.replace(/\/+$/, "");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+};
 
 const getPipedConfig = (env = process.env) => {
-  const configuredInstances = String(env.YTDLP_PIPED_INSTANCES || "")
+  const configuredInstances = uniqueStrings(String(env.YTDLP_PIPED_INSTANCES || "")
     .split(/[\n,;]+/)
-    .map((value) => value.trim().replace(/\/$/, ""))
-    .filter(Boolean);
-  const instances = [...new Set(configuredInstances.length ? configuredInstances : DEFAULT_PIPED_INSTANCES)];
-  const requestTimeoutMs = Math.max(2_000, Number(env.YTDLP_PIPED_REQUEST_TIMEOUT_MS || 12_000));
+    .map(normalizeInstanceBase)
+    .filter(Boolean));
+  const requestTimeoutMs = Math.max(2_000, Number(env.YTDLP_PIPED_REQUEST_TIMEOUT_MS || 8_000));
   const downloadTimeoutMs = Math.max(10_000, Number(env.YTDLP_PIPED_DOWNLOAD_TIMEOUT_MS || 180_000));
+  const discoveryTimeoutMs = Math.max(2_000, Number(env.YTDLP_PIPED_DISCOVERY_TIMEOUT_MS || 8_000));
+  const discoveryTtlMs = Math.max(60_000, Number(env.YTDLP_PIPED_DISCOVERY_TTL_MS || 30 * 60_000));
   const maxBytes = Math.max(5 * 1024 * 1024, Number(env.YTDLP_PIPED_MAX_MB || 800) * 1024 * 1024);
+  const instanceBatchSize = Math.max(1, Math.min(10, Number(env.YTDLP_PIPED_BATCH_SIZE || 5)));
+  const maxJobAttempts = Math.max(1, Math.min(4, Number(env.YTDLP_PIPED_JOB_ATTEMPTS || 2)));
   return {
     enabled: !disabled(env.YTDLP_PIPED_FALLBACK ?? "true"),
-    instances,
+    explicitInstances: configuredInstances.length > 0,
+    instances: configuredInstances.length ? configuredInstances : DEFAULT_PIPED_INSTANCES,
+    instanceListUrl: disabled(env.YTDLP_PIPED_INSTANCE_LIST_URL) ? "" : String(env.YTDLP_PIPED_INSTANCE_LIST_URL || DEFAULT_INSTANCE_LIST_URL).trim(),
     requestTimeoutMs,
     downloadTimeoutMs,
+    discoveryTimeoutMs,
+    discoveryTtlMs,
     maxBytes,
+    instanceBatchSize,
+    maxJobAttempts,
   };
 };
 
@@ -128,6 +163,27 @@ const isSafeRemoteUrl = (value = "") => {
   }
 };
 
+const parsePipedInstanceList = (markdown = "") => {
+  const instances = [];
+  for (const line of String(markdown || "").split(/\r?\n/)) {
+    if (!line.includes("|")) continue;
+    const urls = line.match(/https:\/\/[^\s|<>()]+/gi) || [];
+    for (const rawUrl of urls) {
+      const normalized = normalizeInstanceBase(rawUrl.replace(/[),.;]+$/, ""));
+      if (!normalized || !isSafeRemoteUrl(normalized)) continue;
+      try {
+        const host = new URL(normalized).hostname.toLowerCase();
+        if (host.includes("github") || host === "piped.video" || host.endsWith(".piped.video")) continue;
+      } catch {
+        continue;
+      }
+      instances.push(normalized);
+      break;
+    }
+  }
+  return uniqueStrings(instances);
+};
+
 const requestedAudioFormat = (args = []) => String(getArgValue(args, ["--audio-format"]) || "").toLowerCase();
 
 const streamExtension = (stream = {}) => {
@@ -182,6 +238,32 @@ const fetchWithTimeout = async (fetchImpl, url, options = {}, timeoutMs = 12_000
   }
 };
 
+const resolvePipedInstances = async ({ fetchImpl = globalThis.fetch, config = getPipedConfig() } = {}) => {
+  if (config.explicitInstances || !config.instanceListUrl || typeof fetchImpl !== "function") {
+    return uniqueStrings(config.instances.map(normalizeInstanceBase).filter(Boolean));
+  }
+  const now = Date.now();
+  if (discoveryCache.expiresAt > now && discoveryCache.instances.length) return [...discoveryCache.instances];
+  let discovered = [];
+  try {
+    if (!isSafeRemoteUrl(config.instanceListUrl)) throw new Error("unsafe instance-list URL");
+    const response = await fetchWithTimeout(fetchImpl, config.instanceListUrl, {
+      headers: { Accept: "text/plain,text/markdown;q=0.9,*/*;q=0.5", "User-Agent": "YTConv/1.0 Piped instance discovery" },
+      redirect: "follow",
+    }, config.discoveryTimeoutMs);
+    if (!response.ok) throw new Error(`instance list HTTP ${response.status}`);
+    discovered = parsePipedInstanceList(await response.text());
+  } catch {
+    discovered = [];
+  }
+  const instances = uniqueStrings([...discovered, ...config.instances]
+    .map(normalizeInstanceBase)
+    .filter((value) => value && isSafeRemoteUrl(value)))
+    .slice(0, 48);
+  discoveryCache = { instances, expiresAt: now + config.discoveryTtlMs };
+  return instances;
+};
+
 const downloadResponseToFile = async ({ response, outputPath, maxBytes }) => {
   if (!response?.ok || !response.body) throw new Error(`stream HTTP ${response?.status || "unknown"}`);
   const contentLength = Number(response.headers?.get?.("content-length") || 0);
@@ -211,13 +293,22 @@ const downloadResponseToFile = async ({ response, outputPath, maxBytes }) => {
 
 const pruneAttemptedJobs = (now = Date.now()) => {
   const ttl = 10 * 60 * 1000;
-  for (const [key, timestamp] of attemptedJobs) {
-    if (now - timestamp > ttl) attemptedJobs.delete(key);
+  for (const [key, entry] of attemptedJobs) {
+    const timestamp = typeof entry === "object" ? entry.timestamp : Number(entry);
+    if (!Number.isFinite(timestamp) || now - timestamp > ttl) attemptedJobs.delete(key);
   }
   if (attemptedJobs.size > 1_000) {
     const oldest = attemptedJobs.keys().next().value;
     if (oldest) attemptedJobs.delete(oldest);
   }
+};
+
+const claimJobAttempt = (jobKey, maxAttempts = 2) => {
+  pruneAttemptedJobs();
+  const current = attemptedJobs.get(jobKey) || { count: 0, timestamp: Date.now() };
+  if (current.count >= maxAttempts) return false;
+  attemptedJobs.set(jobKey, { count: current.count + 1, timestamp: Date.now() });
+  return true;
 };
 
 const shouldAttemptPipedFallback = ({ command, args = [], code, stderr = "", config = getPipedConfig() } = {}) => {
@@ -228,6 +319,21 @@ const shouldAttemptPipedFallback = ({ command, args = [], code, stderr = "", con
   return Boolean(extractYoutubeVideoId(target) && resolveYtDlpOutputTemplate(args));
 };
 
+const fetchPipedMetadata = async ({ base, videoId, preferredFormat, fetchImpl, config }) => {
+  const apiUrl = new URL(`/streams/${videoId}`, `${base}/`).toString();
+  const metadataResponse = await fetchWithTimeout(fetchImpl, apiUrl, {
+    headers: { Accept: "application/json", "User-Agent": "YTConv/1.0 Piped fallback" },
+    redirect: "follow",
+  }, config.requestTimeoutMs);
+  if (!metadataResponse.ok) throw new Error(`metadata HTTP ${metadataResponse.status}`);
+  const contentType = String(metadataResponse.headers?.get?.("content-type") || "").toLowerCase();
+  if (contentType && !contentType.includes("json")) throw new Error(`metadata content-type ${contentType}`);
+  const metadata = await metadataResponse.json();
+  const candidates = rankPipedAudioStreams(metadata?.audioStreams, preferredFormat).slice(0, 4);
+  if (!candidates.length) throw new Error("no usable audio streams");
+  return { base, candidates };
+};
+
 const runPipedAudioFallback = async ({ args = [], fetchImpl = globalThis.fetch, config = getPipedConfig() } = {}) => {
   if (typeof fetchImpl !== "function") throw new Error("fetch is unavailable");
   const target = findYoutubeTarget(args);
@@ -236,29 +342,32 @@ const runPipedAudioFallback = async ({ args = [], fetchImpl = globalThis.fetch, 
   if (!videoId || !outputTemplate) throw new Error("missing YouTube video ID or output template");
 
   const jobKey = `${videoId}:${outputTemplate}`;
-  pruneAttemptedJobs();
-  if (attemptedJobs.has(jobKey)) throw new Error("Piped fallback already attempted for this job");
-  attemptedJobs.set(jobKey, Date.now());
+  if (!claimJobAttempt(jobKey, config.maxJobAttempts)) throw new Error("Piped fallback attempt limit reached for this job");
 
   const preferredFormat = requestedAudioFormat(args);
-  const instances = [...config.instances];
+  const instances = await resolvePipedInstances({ fetchImpl, config });
   const start = instances.length ? instanceCursor++ % instances.length : 0;
   const orderedInstances = instances.length ? [...instances.slice(start), ...instances.slice(0, start)] : [];
   const errors = [];
 
-  for (const base of orderedInstances) {
-    try {
-      const apiUrl = new URL(`/streams/${videoId}`, `${base}/`).toString();
-      const metadataResponse = await fetchWithTimeout(fetchImpl, apiUrl, {
-        headers: { Accept: "application/json", "User-Agent": "YTConv/1.0 Piped fallback" },
-        redirect: "follow",
-      }, config.requestTimeoutMs);
-      if (!metadataResponse.ok) throw new Error(`metadata HTTP ${metadataResponse.status}`);
-      const metadata = await metadataResponse.json();
-      const candidates = rankPipedAudioStreams(metadata?.audioStreams, preferredFormat).slice(0, 4);
-      if (!candidates.length) throw new Error("no usable audio streams");
+  for (let index = 0; index < orderedInstances.length; index += config.instanceBatchSize) {
+    const batch = orderedInstances.slice(index, index + config.instanceBatchSize);
+    const metadataResults = await Promise.allSettled(batch.map((base) => fetchPipedMetadata({
+      base,
+      videoId,
+      preferredFormat,
+      fetchImpl,
+      config,
+    })));
 
-      for (const candidate of candidates) {
+    for (let resultIndex = 0; resultIndex < metadataResults.length; resultIndex += 1) {
+      const metadataResult = metadataResults[resultIndex];
+      const base = batch[resultIndex];
+      if (metadataResult.status !== "fulfilled") {
+        errors.push(`${base}: ${metadataResult.reason?.message || metadataResult.reason}`);
+        continue;
+      }
+      for (const candidate of metadataResult.value.candidates) {
         const outputPath = outputPathForTemplate(outputTemplate, candidate._ext);
         try {
           const streamResponse = await fetchWithTimeout(fetchImpl, candidate.url, {
@@ -266,17 +375,15 @@ const runPipedAudioFallback = async ({ args = [], fetchImpl = globalThis.fetch, 
             redirect: "follow",
           }, config.downloadTimeoutMs);
           const bytes = await downloadResponseToFile({ response: streamResponse, outputPath, maxBytes: config.maxBytes });
-          return { outputPath, bytes, instance: base, videoId, extension: candidate._ext };
+          return { outputPath, bytes, instance: metadataResult.value.base, videoId, extension: candidate._ext };
         } catch (streamError) {
-          errors.push(`${base} stream: ${streamError?.message || streamError}`);
+          errors.push(`${metadataResult.value.base} stream: ${streamError?.message || streamError}`);
         }
       }
-    } catch (error) {
-      errors.push(`${base}: ${error?.message || error}`);
     }
   }
 
-  throw new Error(`all Piped instances failed: ${errors.slice(-8).join(" | ")}`);
+  throw new Error(`all Piped instances failed: ${errors.slice(-12).join(" | ")}`);
 };
 
 const createPipedFallbackSpawn = (spawnImpl = previousSpawn, { fetchImpl = globalThis.fetch, env = process.env } = {}) => function pipedFallbackSpawn(command, args, options) {
@@ -333,7 +440,7 @@ const createPipedFallbackSpawn = (spawnImpl = previousSpawn, { fetchImpl = globa
     if (settled) return;
     if (shouldAttemptPipedFallback({ command, args: sourceArgs, code, stderr: stderrText, config })) {
       try {
-        stderr.write("\n[ytconv:piped] Render IP bot-check detected; trying external audio stream fallback...\n");
+        stderr.write("\n[ytconv:piped] Render IP bot-check detected; discovering working Piped instances...\n");
         const result = await runPipedAudioFallback({ args: sourceArgs, fetchImpl, config });
         stderr.write(`[ytconv:piped] fallback succeeded via ${result.instance} (${result.extension}, ${result.bytes} bytes)\n`);
         finish(0, null);
@@ -358,7 +465,9 @@ export {
   isAudioDownloadInvocation,
   isBotCheckText,
   outputPathForTemplate,
+  parsePipedInstanceList,
   rankPipedAudioStreams,
+  resolvePipedInstances,
   resolveYtDlpOutputTemplate,
   runPipedAudioFallback,
   selectPipedAudioStream,
