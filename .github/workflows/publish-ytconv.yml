@@ -1,14 +1,14 @@
-name: Publish YTConv to npm
+name: Publish YTConv Beta to npm
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Versi yang akan dipublish; wajib sama dengan cli/package.json"
+        description: "Versi beta; wajib sama dengan cli/package.json"
         required: true
-        default: "1.3.0"
+        default: "1.5.0-beta.1"
       confirm:
-        description: "Ketik PUBLISH untuk melanjutkan"
+        description: "Ketik PUBLISH-BETA untuk melanjutkan"
         required: true
 
 permissions:
@@ -19,7 +19,7 @@ environment: npm
 
 jobs:
   publish:
-    if: ${{ inputs.confirm == 'PUBLISH' }}
+    if: ${{ inputs.confirm == 'PUBLISH-BETA' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,27 +30,41 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
-      - name: Verify requested and package versions
+      - name: Verify requested version and beta package settings
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
           test "$PACKAGE_VERSION" = "${{ inputs.version }}"
-          test "$PACKAGE_VERSION" = "1.3.0"
+          test "$PACKAGE_VERSION" = "1.5.0-beta.1"
+          test "$PACKAGE_TAG" = "beta"
+          case "$PACKAGE_VERSION" in
+            *-beta.*) ;;
+            *) echo "Versi bukan prerelease beta."; exit 1 ;;
+          esac
           if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
             echo "ytconv@$PACKAGE_VERSION sudah terbit; publish dibatalkan."
             exit 1
           fi
-      - name: Install and test clean package
+          npm view ytconv dist-tags --json > /tmp/dist-tags-before.json || printf '{}\n' > /tmp/dist-tags-before.json
+          cat /tmp/dist-tags-before.json
+      - name: Install and test clean beta package
         run: |
           npm install
           npm run check
           npm test
           npm run check:ish
-          npm publish --dry-run
-      - name: Publish public package with provenance
-        run: npm publish --access public --provenance
+          npm run test:ish
+          npm publish --dry-run --tag beta
+      - name: Publish beta package with provenance
+        run: npm publish --tag beta --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Verify npm registry
+      - name: Verify beta registry and stable tag safety
         run: |
-          test "$(npm view ytconv version --prefer-online)" = "${{ inputs.version }}"
+          test "$(npm view ytconv@beta version --prefer-online)" = "${{ inputs.version }}"
           npm view "ytconv@${{ inputs.version }}" dist.integrity
+          npm view ytconv dist-tags --json > /tmp/dist-tags-after.json
+          BEFORE_LATEST=$(node -e "const f=require('fs');const x=JSON.parse(f.readFileSync('/tmp/dist-tags-before.json','utf8'));process.stdout.write(x.latest||'')")
+          AFTER_LATEST=$(node -e "const f=require('fs');const x=JSON.parse(f.readFileSync('/tmp/dist-tags-after.json','utf8'));process.stdout.write(x.latest||'')")
+          test "$BEFORE_LATEST" = "$AFTER_LATEST"
+          echo "beta=${{ inputs.version }} latest=$AFTER_LATEST"
