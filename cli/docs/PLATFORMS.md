@@ -1,34 +1,34 @@
-# Platform dan engine
+# Platforms and Media Engines
 
-YTConv bukan daftar extractor terpisah; dukungan aktual mengikuti yt-dlp dan gallery-dl yang terpasang.
+YTConv does not maintain a separate extractor catalog. Actual site support follows the installed versions of yt-dlp and gallery-dl.
 
-## Routing utama
+## Main routing
 
-- **yt-dlp:** video, audio, live stream, format, subtitle, metadata, SponsorBlock.
-- **gallery-dl:** gambar, carousel, story, profil, dan posting campuran tertentu.
-- **FFmpeg:** merge, remux, audio extraction, thumbnail conversion, crop, subtitle, normalisasi, dan potong durasi.
+- **yt-dlp:** video, audio, live streams, format inspection, subtitles, metadata, and SponsorBlock.
+- **gallery-dl:** images, carousels, Stories, profiles, and some mixed-media posts.
+- **FFmpeg:** merge, remux, audio extraction, thumbnail conversion, cropping, subtitles, normalization, and clipping.
 
-## Platform yang dikenali langsung
+## Recognized platforms
 
-YouTube, YouTube Music, Instagram, Facebook, TikTok, X/Twitter, Pinterest, Reddit, Threads, Twitch, Snapchat, SoundCloud, Bandcamp, Mixcloud, Vimeo, Dailymotion, Bilibili, Tumblr, Telegram, LinkedIn, Bluesky, Imgur, Flickr, DeviantArt, Pixiv, Weibo, VK, Mastodon, Kick, Rumble, Streamable, Odysee, dan 9GAG.
+YTConv includes routing hints for YouTube, YouTube Music, Instagram, Facebook, TikTok, X/Twitter, Pinterest, Reddit, Threads, Twitch, Snapchat, SoundCloud, Bandcamp, Mixcloud, Vimeo, Dailymotion, Bilibili, Tumblr, Telegram, LinkedIn, Bluesky, Imgur, Flickr, DeviantArt, Pixiv, Weibo, VK, Mastodon, Kick, Rumble, Streamable, Odysee, and 9GAG.
 
-Situs lain tetap dapat bekerja bila salah satu engine memiliki extractor yang sesuai.
+Other sites may work when yt-dlp or gallery-dl provides a suitable extractor.
 
 ## YouTube Music
 
-- AUTO diarahkan ke audio.
-- MP3 menyimpan thumbnail JPG, embed cover, metadata, dan chapter.
-- Thumbnail dicrop dari tengah menjadi persegi 1:1.
+- AUTO routing prefers audio.
+- MP3 can keep a separate JPG thumbnail and embed cover art, metadata, and chapters.
+- Artwork is cropped from the center to a square when FFmpeg is available.
 
-## Instagram/TikTok/X/Reddit
+## Instagram, TikTok, X, and Reddit
 
-Posting dapat berisi gambar, video, atau campuran. AUTO memilih engine berdasarkan bentuk URL dan mencoba fallback. Story, akun privat, dan konten login-only membutuhkan cookies akun yang memiliki akses.
+A post can contain images, video, or both. AUTO selects an engine based on the URL and may try the other engine as a fallback. Stories, private accounts, and login-only media require valid cookies from an account that has access.
 
-## Batasan
+## Limitations
 
-- DRM dan paywall tidak dilewati.
-- Media privat tidak dapat dibuka tanpa akses akun yang sah.
-- Region lock tetap mengikuti lokasi/proxy dan aturan situs.
-- Post terhapus atau URL kedaluwarsa tidak dapat dipulihkan.
-- Perubahan API situs dapat memerlukan update yt-dlp/gallery-dl.
-- iSH dengan Python lama mungkin memakai yt-dlp kompatibel yang tidak paling baru.
+- DRM and paywalls are not bypassed.
+- Private media cannot be accessed without legitimate account access.
+- Regional restrictions still follow the site, location, and proxy rules.
+- Deleted posts and expired URLs cannot be restored.
+- Site API changes may require updated yt-dlp or gallery-dl releases.
+- Older iSH/Python environments may require a compatible engine version rather than the newest engine release.
