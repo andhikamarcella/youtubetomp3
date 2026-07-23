@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""YTConv 1.4.0 stable compatibility frontend for iSH and Alpine."""
+"""YTConv 1.5.0-beta.2 compatibility frontend for iSH and Alpine."""
 
 from pathlib import Path
-import sys
 
-VERSION = "1.4.0"
+VERSION = "1.5.0-beta.2"
 TARGET = Path(__file__).with_name("ytconv-core.py")
 
 if not TARGET.is_file():
@@ -12,22 +11,18 @@ if not TARGET.is_file():
 
 source = TARGET.read_text(encoding="utf-8")
 replacements = {
-    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.4.0"',
-    'codex/add-ytconv-cli': 'release/ytconv-1.4.0',
-    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.4.0 stable frontend for iSH/Alpine and Python-only shells.',
-    'description="YTConv 1.5.0 Beta untuk iSH/Alpine."': 'description="YTConv 1.4.0 stable for iSH/Alpine."',
-    'action="store_true", default=True)': 'action="store_true", default=False)',
-    'choices=["off", "mark", "remove"], default="mark")': 'choices=["off", "mark", "remove"], default="off")',
-    'if options.no_archive:\n        return (None, None)': 'if options.no_archive or not options.archive:\n        return (None, None)',
-    '("Subtitle", "ON"), ("SponsorBlock", "ON (mark)"), ("Archive", "ON per profil")': '("Subtitles", "OFF"), ("SponsorBlock", "OFF"), ("Archive", "OFF")',
-    'YTConv iSH Beta doctor': 'YTConv iSH stable doctor',
-    'Mengunduh installer YTConv iSH beta terbaru...': 'Downloading the latest stable YTConv iSH installer...',
+    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.5.0-beta.2"',
+    'codex/add-ytconv-cli': 'release/ytconv-1.5.0-beta.2',
+    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.5.0-beta.2 native frontend for iSH/Alpine and Python-only shells.',
+    'description="YTConv 1.5.0 Beta untuk iSH/Alpine."': 'description="YTConv 1.5.0-beta.2 for iSH/Alpine."',
+    'YTConv iSH Beta doctor': 'YTConv iSH beta doctor',
+    'Mengunduh installer YTConv iSH beta terbaru...': 'Downloading the latest YTConv iSH beta installer...',
     'Update gagal: %s': 'Update failed: %s',
     'Jalankan manual:': 'Run manually:',
     'Update selesai. Jalankan kembali: ytconv --version': 'Update completed. Run again: ytconv --version',
     'tidak ditemukan': 'not found',
     'gagal dijalankan': 'failed to run',
-    'YTConv iSH beta repair': 'YTConv iSH stable repair',
+    'YTConv iSH beta repair': 'YTConv iSH beta repair',
     'pip gagal memasang yt-dlp/gallery-dl. Periksa internet dan waktu perangkat.': 'pip could not install yt-dlp/gallery-dl. Check the internet connection and device clock.',
     'Masih kurang: %s': 'Still missing: %s',
     'Semua dependency siap.': 'All dependencies are ready.',
@@ -49,6 +44,7 @@ replacements = {
     'Laporan JSON: %s': 'JSON report: %s',
     'Ringkasan: %s berhasil, %s gagal.': 'Summary: %s succeeded, %s failed.',
     'Jalankan ytconv doctor dan ytconv repair.': 'Run ytconv doctor and ytconv repair.',
+    'per profil': 'per profile',
 }
 
 for old, new in replacements.items():
