@@ -8,8 +8,8 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv cross-shell release is version 1.2.3', () => {
-  assert.equal(manifest.version, '1.2.3');
+test('YTConv multi-device release is version 1.3.0', () => {
+  assert.equal(manifest.version, '1.3.0');
 });
 
 test('release package includes complete docs, installers, and native iSH frontend', () => {
@@ -18,7 +18,7 @@ test('release package includes complete docs, installers, and native iSH fronten
     'scripts/install-windows.ps1', 'scripts/install-windows.cmd',
     'scripts/install-termux.sh', 'scripts/install-unix.sh',
     'CHANGELOG.md', 'docs/COMMANDS.md', 'docs/TROUBLESHOOTING.md',
-    'docs/INSTALL.md', 'docs/SHELLS.md',
+    'docs/INSTALL.md', 'docs/SHELLS.md', 'docs/LINUX.md',
   ];
   for (const item of required) assert.equal(fs.existsSync(path.join(packageRoot, item)), true, item);
   assert.ok(manifest.files.includes('ish'));
