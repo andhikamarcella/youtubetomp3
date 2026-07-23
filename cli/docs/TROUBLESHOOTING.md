@@ -1,4 +1,6 @@
-# Troubleshooting YTConv 1.3.0
+# Troubleshooting YTConv 1.5.0 Beta
+
+Versi npm: `1.5.0-beta.1`
 
 ## Urutan pemeriksaan aman
 
@@ -10,31 +12,50 @@ ytconv doctor
 ytconv --shell-info
 ```
 
+`ytconv clean` hanya menghapus cache update/error. Archive download di `~/.ytconv/archives` tetap dipertahankan.
+
 Saat melaporkan bug, sertakan hasil command tersebut tanpa cookies, token, atau kredensial proxy.
 
-## Versi npm yang salah saat publish
+## Versi salah saat publish atau install
 
-Periksa folder dan branch:
+Periksa folder, branch, versi, dan tag:
 
 ```cmd
 cd C:\Users\andhi\youtubetomp3\cli
 node -p "require('./package.json').version"
+node -p "require('./package.json').publishConfig.tag"
 git branch --show-current
 git status --short
 ```
 
-Versi harus `1.3.0` dan branch harus `codex/add-ytconv-cli`. npm tidak mengizinkan versi yang sudah pernah dipublikasikan untuk ditimpa.
+Hasil harus:
+
+```text
+1.5.0-beta.1
+beta
+codex/add-ytconv-cli
+```
+
+npm tidak mengizinkan versi yang pernah dipublikasikan untuk ditimpa.
+
+Instal beta dengan:
+
+```cmd
+npm.cmd install -g ytconv@beta --force
+```
+
+Bukan `ytconv@latest`.
 
 ## `spawnSync npm.cmd EINVAL`
 
-Penyebab: updater lama menjalankan file `.cmd` langsung. YTConv baru menjalankan npm CLI melalui Node, dengan fallback `cmd.exe`.
+Updater baru tidak menjalankan `npm.cmd` secara langsung. Ia memakai npm CLI melalui Node, dengan fallback `cmd.exe`.
 
-CMD:
+Pemulihan CMD:
 
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@1.3.0 --force
+npm.cmd install -g ytconv@beta --force
 ytconv.cmd --version
 ```
 
@@ -79,8 +100,119 @@ Jangan memakai `sudo npm install -g`. Gunakan prefix pengguna:
 ```sh
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@1.3.0 --force
+npm install -g ytconv@beta --force
 ```
+
+## Default beta tidak aktif
+
+Periksa:
+
+```sh
+ytconv --version
+ytconv --self-test
+ytconv doctor
+```
+
+Doctor harus menunjukkan:
+
+```text
+Subtitle          ON
+SponsorBlock      mark
+Archive yt-dlp    path file
+Archive gallery   path file
+```
+
+Bila masih memakai versi lama:
+
+```sh
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@beta --force
+```
+
+## Subtitle aktif tetapi tidak ada file subtitle
+
+Tidak semua video mempunyai subtitle manual atau otomatis. Periksa:
+
+```sh
+ytconv subtitles "LINK"
+ytconv download "LINK" --subtitle-only --subtitle-langs "id,en"
+```
+
+Live chat dikecualikan secara default. Ketiadaan subtitle tidak seharusnya menggagalkan download media utama.
+
+Matikan subtitle untuk satu proses:
+
+```sh
+ytconv download "LINK" --no-subtitles
+```
+
+## SponsorBlock tidak menandai apa pun
+
+Default `mark` hanya bekerja bila data segmen tersedia. SponsorBlock terutama tersedia untuk YouTube.
+
+```sh
+ytconv download "LINK" --sponsorblock mark
+```
+
+Hapus segmen secara eksplisit:
+
+```sh
+ytconv download "LINK" --sponsorblock remove
+```
+
+Matikan:
+
+```sh
+ytconv download "LINK" --no-sponsorblock
+```
+
+Mode default `mark` tidak memotong media.
+
+## Download langsung dilewati karena archive
+
+Media dengan profil output yang sama sudah tercatat. Lihat archive melalui:
+
+```sh
+ytconv doctor
+```
+
+Archive otomatis berada di:
+
+```text
+~/.ytconv/archives
+```
+
+Unduh tanpa archive untuk satu proses:
+
+```sh
+ytconv download "LINK" --no-archive
+```
+
+Gunakan archive khusus:
+
+```sh
+ytconv download "LINK" --archive downloaded.txt
+```
+
+YTConv membuat `downloaded.txt.gallery.sqlite3` untuk gallery-dl karena format archive gallery-dl berbeda dari file teks yt-dlp.
+
+## `ytconv clean` menghapus archive
+
+Pada beta yang benar, ini tidak boleh terjadi. Perbarui:
+
+```sh
+npm install -g ytconv@beta --force
+```
+
+Lalu jalankan test:
+
+```sh
+ytconv --self-test
+ytconv clean
+```
+
+Archive di `~/.ytconv/archives` harus tetap ada.
 
 ## FFmpeg atau ffprobe tidak ditemukan
 
@@ -90,7 +222,7 @@ ytconv repair
 ytconv doctor
 ```
 
-Doctor menampilkan command package manager untuk distro. ffprobe bersifat opsional untuk sebagian fitur diagnosis, sedangkan FFmpeg diperlukan untuk konversi/merge.
+Doctor menampilkan command package manager untuk distro. ffprobe opsional untuk sebagian diagnosis, sedangkan FFmpeg diperlukan untuk konversi/merge.
 
 ## Alpine: binary FFmpeg tidak dapat dijalankan
 
@@ -100,9 +232,9 @@ Alpine memakai musl. Instal FFmpeg sistem:
 apk add --no-cache ffmpeg
 ```
 
-YTConv 1.3.0 memvalidasi binary bundled dan memakai FFmpeg sistem bila binary bundled tidak kompatibel.
+YTConv memvalidasi binary bundled dan dapat memakai FFmpeg sistem bila binary glibc tidak kompatibel.
 
-## Link bisa dibuka di browser tetapi gagal di YTConv
+## Link bisa dibuka di browser tetapi gagal
 
 Kemungkinan:
 
@@ -126,7 +258,7 @@ Tutup browser sepenuhnya sebelum membaca cookies browser.
 
 ## Cookies browser gagal dibaca
 
-Windows/macOS/Linux desktop:
+Desktop:
 
 ```sh
 ytconv download "LINK" --cookies-from-browser chrome
@@ -155,7 +287,7 @@ ytconv doctor
 ytconv --shell-info
 ```
 
-Matikan proxy untuk pengujian atau pastikan format URL benar:
+Format proxy:
 
 ```text
 http://host:port
@@ -166,30 +298,21 @@ Periksa waktu perangkat dan sertifikat CA, terutama di iSH/Alpine.
 
 ## Requested format is not available
 
-Lihat format original:
-
 ```sh
 ytconv formats "LINK"
 ytconv formats "LINK" --json
-```
-
-Turunkan resolusi atau gunakan container AUTO/MKV:
-
-```sh
 ytconv download "LINK" --video-format auto --resolution 720
 ```
 
 ## MP3 320 kbps terdengar sama
 
-Normal. 320 kbps adalah target hasil encoder, bukan peningkatan kualitas sumber. Periksa bitrate audio original melalui:
+Normal. 320 kbps adalah target encoder, bukan peningkatan kualitas sumber. Periksa bitrate original melalui:
 
 ```sh
 ytconv formats "LINK"
 ```
 
 ## Metadata manual tidak muncul
-
-Pastikan format mendukung field tersebut dan metadata ditanam:
 
 ```sh
 ytconv download "LINK" --format mp3 --artist "Artis" --title "Judul" --album "Album"
@@ -198,8 +321,6 @@ ytconv download "LINK" --format mp3 --artist "Artis" --title "Judul" --album "Al
 Sebagian player tidak menampilkan seluruh field walaupun file menyimpannya.
 
 ## Thumbnail atau cover gagal
-
-Pastikan FFmpeg siap:
 
 ```sh
 ytconv doctor
@@ -212,32 +333,11 @@ WAV tidak mendapat embedded cover melalui jalur ini. MP3 mencoba cover tertanam 
 
 URL harus berasal dari `music.youtube.com`, dan FFmpeg harus tersedia. URL YouTube biasa sengaja tidak dicrop.
 
-## Subtitle tidak ditemukan
-
-```sh
-ytconv subtitles "LINK"
-ytconv download "LINK" --subtitle-only --subtitle-langs "id,en"
-```
-
-Tidak semua video mempunyai subtitle manual/otomatis. Live chat dikecualikan secara default.
-
 ## Potongan durasi tidak tepat satu frame
 
-Clipping bergantung pada keyframe dan codec. YTConv meminta keyframe pada titik potong, tetapi pergeseran kecil tetap mungkin.
-
-## SponsorBlock tidak bekerja
-
-Segmen mungkin tidak tersedia. Coba mark:
-
-```sh
-ytconv download "LINK" --sponsorblock mark
-```
-
-SponsorBlock umumnya tidak tersedia di luar video yang mempunyai data komunitas.
+Clipping bergantung pada keyframe dan codec. Pergeseran kecil tetap mungkin.
 
 ## Batch berhenti terlalu cepat
-
-Gunakan:
 
 ```sh
 ytconv batch links.txt --continue-on-error --jobs 2 --result-json report.json
@@ -253,7 +353,7 @@ Resume aktif secara default:
 ytconv download "LINK" --resume
 ```
 
-Untuk membersihkan file sementara baru setelah gagal:
+Bersihkan file sementara baru setelah gagal:
 
 ```sh
 ytconv download "LINK" --cleanup-part
@@ -263,24 +363,22 @@ Cleanup dinonaktifkan saat batch paralel agar worker tidak menghapus file worker
 
 ## Output template ditolak
 
-Template harus relatif, tidak mengandung segmen `..`, dan wajib memuat `%(ext)s`:
+Template harus relatif, tidak mengandung `..`, dan wajib memuat `%(ext)s`:
 
 ```sh
 ytconv download "LINK" --output-template "%(uploader)s/%(title)s.%(ext)s"
 ```
 
-## iSH kehabisan memori atau lambat
+## iSH lambat atau kehabisan memori
 
-Gunakan satu pekerjaan, resolusi lebih kecil, dan hindari konversi berat:
+Gunakan resolusi lebih kecil dan batch berurutan:
 
 ```sh
 ytconv download "LINK" --preset mobile
 ytconv batch links.txt --jobs 1 --continue-on-error
 ```
 
-Frontend iSH sengaja memproses batch secara berurutan.
-
-## Exit code untuk script
+## Exit code
 
 - `0`: berhasil
 - `1`: proses gagal
