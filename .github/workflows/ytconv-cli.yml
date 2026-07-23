@@ -21,125 +21,124 @@ jobs:
       run:
         working-directory: cli
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: Install JavaScript dependencies without bundled binaries
+      - name: Install without bundled binaries
         run: npm install --ignore-scripts --omit=optional
-      - name: Check syntax and unit tests
+      - name: Syntax and unit tests
         run: |
           npm run check
           npm test
+      - name: Cross-shell command parser smoke test
+        run: |
+          test "$(node ./bin/ytconv.js --version)" = "1.2.3"
+          node ./bin/ytconv.js --examples | grep -q "PowerShell"
+          node ./bin/ytconv.js --help | grep -q -- "--headless"
+          node ./bin/ytconv.js --help | grep -q -- "--repair"
 
-  check:
+  linux-full:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: cli
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install bundled CLI dependencies
+      - name: Install full package
         run: npm install
-      - name: Check JavaScript syntax
-        run: npm run check
-      - name: Check native iSH frontend
+      - name: Check JavaScript and tests
+        run: |
+          npm run check
+          npm test
+      - name: Check iSH and shell installers
         run: |
           npm run check:ish
           npm run test:ish
-          test "$(cat ish/VERSION)" = "1.2.0"
-      - name: Run CLI unit tests
+          test "$(cat ish/VERSION)" = "1.2.3"
+          test "$(python3 ish/ytconv.py --version)" = "1.2.3"
+      - name: Linux and SSH/headless support smoke test
         run: |
-          set -o pipefail
-          npm test 2>&1 | tee test-output.txt
-      - name: Smoke test commands
-        run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.2.1"
-          node ./bin/ytconv.js --help | grep -q -- "--preset"
-          node ./bin/ytconv.js --list-presets | grep -q "archive"
-      - name: Upload CLI test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ytconv-test-output
-          path: cli/test-output.txt
-      - name: Verify included tools and dependency inspection
+          node ./bin/ytconv.js --shell-info
+          node ./bin/ytconv.js --self-test
+          node ./bin/ytconv.js --examples
+          printf '# comments are ignored\nhttps://example.com/a\nhttps://example.com/a\n' > /tmp/ytconv-links.txt
+          node -e "import('./src/headless.js').then(async ({collectUrls}) => { const u = await collectUrls({batchFile:'/tmp/ytconv-links.txt'}); if (u.length !== 1) process.exitCode = 1; console.log(u); })"
+      - name: Verify media engines
         run: |
           test -x vendor/yt-dlp
           test -x vendor/gallery-dl
           test -x node_modules/ffmpeg-static/ffmpeg
           ./vendor/yt-dlp --version
           ./vendor/gallery-dl --version
-          node -e "import('ffmpeg-static').then(({default:p}) => console.log(p))"
-          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies(); console.log(d); if (!d.ready) process.exitCode = 1; })"
-      - name: Preview npm package and documentation
+          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies({repair:false}); console.log(d); if (!d.ready) process.exitCode = 1; })"
+      - name: Preview npm package and docs
         run: |
           npm pack --dry-run
           npm pack --json > package-preview.json
+          grep -q 'scripts/install-windows.ps1' package-preview.json
+          grep -q 'scripts/install-windows.cmd' package-preview.json
+          grep -q 'scripts/install-termux.sh' package-preview.json
+          grep -q 'scripts/install-unix.sh' package-preview.json
           grep -q 'ish/ytconv.py' package-preview.json
-          grep -q 'scripts/install-ish.sh' package-preview.json
-          grep -q 'CHANGELOG.md' package-preview.json
-          grep -q 'docs/COMMANDS.md' package-preview.json
+          grep -q 'docs/INSTALL.md' package-preview.json
+          grep -q 'docs/SHELLS.md' package-preview.json
           grep -q 'docs/TROUBLESHOOTING.md' package-preview.json
-      - name: Simulate Termux npm install without desktop optional dependencies
+      - name: Simulate Termux npm install
         run: |
           TARBALL=$(npm pack --silent)
           rm -rf /tmp/ytconv-termux-sim
           mkdir -p /tmp/ytconv-termux-sim
           npm install --prefix /tmp/ytconv-termux-sim "$PWD/$TARBALL" --omit=optional --ignore-scripts
           node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --version
-          node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --list-presets
+          node /tmp/ytconv-termux-sim/node_modules/ytconv/bin/ytconv.js --examples
 
-  windows-update-check:
+  windows-cmd-powershell:
     runs-on: windows-latest
     defaults:
       run:
         working-directory: cli
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Install CLI dependencies
+        shell: pwsh
         run: npm install
-      - name: Check JavaScript syntax
-        run: npm run check
-      - name: Run Windows CLI unit tests
+      - name: Run Windows unit tests
         shell: pwsh
         run: |
-          npm test 2>&1 | Tee-Object -FilePath windows-test-output.txt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Upload Windows test output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ytconv-windows-test-output
-          path: cli/windows-test-output.txt
-      - name: Verify Windows-safe npm updater invocation
+          npm run check
+          npm test
+      - name: Verify updater avoids direct npm.cmd spawn
         shell: pwsh
         run: |
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({platform:'win32', env:{ComSpec:'cmd.exe'}}); console.log(i); if (i.command !== 'cmd.exe' || i.args.join(' ') !== '/d /s /c npm install -g ytconv@latest') process.exitCode = 1; })"
-      - name: Verify Windows media engines and dependency inspection
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({platform:'win32', env:{ComSpec:'cmd.exe'}, execPath:'node.exe', npmCliPath:'npm-cli.js'}); console.log(i); if (i.command !== 'node.exe' || i.strategy !== 'node-npm-cli') process.exitCode = 1; })"
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i = selfUpdateInvocation({platform:'win32', env:{ComSpec:'cmd.exe'}, execPath:'node.exe', npmCliPath:''}); console.log(i); if (i.command !== 'cmd.exe' || i.strategy !== 'windows-cmd-fallback') process.exitCode = 1; })"
+      - name: CMD user flow
+        shell: cmd
+        run: |
+          node .\bin\ytconv.js --version
+          node .\bin\ytconv.js --examples
+          node .\bin\ytconv.js --shell-info
+          node .\bin\ytconv.js --self-test
+      - name: PowerShell user flow
         shell: pwsh
         run: |
-          if (-not (Test-Path "vendor/yt-dlp.exe")) { throw "yt-dlp.exe was not bundled" }
-          if (-not (Test-Path "vendor/gallery-dl.exe")) { throw "gallery-dl.exe was not bundled" }
-          if (-not (Test-Path "node_modules/ffmpeg-static/ffmpeg.exe")) { throw "ffmpeg-static was not installed" }
+          node .\bin\ytconv.js --version
+          node .\bin\ytconv.js --examples
+          node .\bin\ytconv.js --shell-info
+          node .\bin\ytconv.js --self-test
+          Get-Content .\scripts\install-windows.ps1 | Select-String 'ytconv.cmd'
+      - name: Verify Windows media engines
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "vendor/yt-dlp.exe")) { throw "yt-dlp.exe missing" }
+          if (-not (Test-Path "vendor/gallery-dl.exe")) { throw "gallery-dl.exe missing" }
+          if (-not (Test-Path "node_modules/ffmpeg-static/ffmpeg.exe")) { throw "ffmpeg.exe missing" }
           & "./vendor/yt-dlp.exe" --version
           & "./vendor/gallery-dl.exe" --version
-          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d = await inspectDependencies(); console.log(d); if (!d.ready) process.exitCode = 1; })"
-      - name: Smoke test Windows commands
-        run: |
-          node ./bin/ytconv.js --version
-          node ./bin/ytconv.js --help
-          node ./bin/ytconv.js --list-presets
-          node ./bin/ytconv.js --check-update
