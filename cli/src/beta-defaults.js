@@ -1,7 +1,3 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-
 const NEGATIVE_FLAGS = new Map([
   ['--no-subtitles', 'subtitles'],
   ['--subtitles-off', 'subtitles'],
@@ -14,34 +10,9 @@ function includesAny(argv, names) {
   return argv.some((value) => names.includes(value));
 }
 
-function safeProfilePart(value, fallback = 'default') {
-  const normalized = String(value || fallback)
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/gu, '-')
-    .replace(/^-+|-+$/gu, '');
-  return normalized || fallback;
-}
-
-function profileName(options = {}) {
-  if (options.initialMode === 'audio') {
-    return `audio-${safeProfilePart(options.audioFormat, 'mp3')}-${safeProfilePart(options.audioQuality, 'best')}`;
-  }
-  if (options.initialMode === 'video') {
-    return `video-${safeProfilePart(options.videoFormat, 'auto')}-${safeProfilePart(options.resolution, 'best')}`;
-  }
-  if (options.initialMode === 'image') {
-    return `image-${safeProfilePart(options.initialImageFormat, 'original')}`;
-  }
-  return `auto-${safeProfilePart(options.preset, 'balanced')}`;
-}
-
 export function extractBetaToggles(argv = []) {
   const cleanArgs = [];
-  const disabled = {
-    subtitles: false,
-    sponsorBlock: false,
-    archive: false,
-  };
+  const disabled = { subtitles: false, sponsorBlock: false, archive: false };
 
   for (const argument of argv) {
     const target = NEGATIVE_FLAGS.get(argument);
@@ -60,47 +31,28 @@ export function extractBetaToggles(argv = []) {
   };
 }
 
-export function applyBetaDefaults(options = {}, toggles = {}, {
-  homeDirectory = os.homedir(),
-  mkdirSync = fs.mkdirSync,
-} = {}) {
+export function applyBetaDefaults(options = {}, toggles = {}) {
   const disabled = toggles.disabled || {};
-  const explicit = toggles.explicit || {};
 
+  // Stable 1.4.0 keeps potentially surprising behavior opt-in.
   if (disabled.subtitles) options.subtitles = false;
-  else if (!explicit.subtitles) options.subtitles = true;
-
   if (disabled.sponsorBlock) options.sponsorBlockMode = 'off';
-  else if (!explicit.sponsorBlock) options.sponsorBlockMode = 'mark';
-
   if (disabled.archive) {
     options.archivePath = '';
     options.galleryArchivePath = '';
-    return options;
+  } else if (options.archivePath) {
+    options.galleryArchivePath = `${options.archivePath}.gallery.sqlite3`;
   }
-
-  const archiveDirectory = path.join(homeDirectory, '.ytconv', 'archives');
-  mkdirSync(archiveDirectory, { recursive: true });
-  const profile = profileName(options);
-
-  if (!options.archivePath) {
-    options.archivePath = path.join(archiveDirectory, `yt-dlp-${profile}.txt`);
-  }
-
-  options.galleryArchivePath = explicit.archive
-    ? `${options.archivePath}.gallery.sqlite3`
-    : path.join(archiveDirectory, `gallery-dl-${profile}.sqlite3`);
 
   return options;
 }
 
 export function betaDefaultsHelpText() {
   return [
-    'Default YTConv 1.5 Beta:',
-    '  subtitle        ON untuk video; matikan dengan --no-subtitles',
-    '  SponsorBlock    ON mode mark; matikan dengan --no-sponsorblock',
-    '  archive         ON per profil; matikan dengan --no-archive',
-    '  SponsorBlock mark hanya memberi chapter/penanda dan tidak memotong media.',
+    'YTConv 1.4.0 stable defaults:',
+    '  subtitles       OFF by default; enable with --subtitles',
+    '  SponsorBlock    OFF by default; enable with --sponsorblock mark or remove',
+    '  download archive OFF by default; enable with --archive FILE',
     '',
   ].join('\n');
 }
