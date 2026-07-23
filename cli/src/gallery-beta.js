@@ -55,9 +55,8 @@ function readableError(stderr, fallback) {
   return useful.at(-1)?.replace(/^\[[^\]]+\]\s*/u, '') || fallback;
 }
 
-function buildArgs({ url, cookieConfig, outputDirectory }) {
+export function buildGalleryDownloadArgs({ url, cookieConfig, outputDirectory, archivePath = process.env.YTCONV_GALLERY_ARCHIVE?.trim() } = {}) {
   const include = process.env.YTCONV_GALLERY_INCLUDE?.trim();
-  const archive = process.env.YTCONV_GALLERY_ARCHIVE?.trim();
   const args = [
     '--config-ignore', '--no-colors', '--no-input', '--retries', '10',
     '--http-timeout', '30', '--windows-filenames', '--destination', outputDirectory,
@@ -69,8 +68,8 @@ function buildArgs({ url, cookieConfig, outputDirectory }) {
     ...cookieArgs(cookieConfig),
   ];
   if (include) args.push('--option', `extractor.instagram.include=${include}`);
-  if (archive) args.push('--download-archive', archive);
-  args.push('--Print', 'file:ytconv-file:{_path}', url);
+  if (archivePath) args.push('--download-archive', archivePath);
+  args.push('--print', 'file:ytconv-file:{_path}', url);
   return args;
 }
 
@@ -90,7 +89,7 @@ export async function downloadGallery({
   const archive = process.env.YTCONV_GALLERY_ARCHIVE?.trim();
   if (archive) await fs.mkdir(path.dirname(archive), { recursive: true });
   const before = await listFiles(outputDirectory);
-  const args = buildArgs({ url, cookieConfig, outputDirectory });
+  const args = buildGalleryDownloadArgs({ url, cookieConfig, outputDirectory, archivePath: archive });
 
   return new Promise((resolve, reject) => {
     const child = spawn(runner.command, [...runner.prefixArgs, ...args], {
