@@ -16,20 +16,20 @@ const RETRY_SLEEP_PREFIX = /^(?:http|fragment|file_access|extractor):/iu;
 
 function takeValue(args, index, flag) {
   const value = args[index + 1];
-  if (!value || value.startsWith('-')) throw new Error(`${flag} membutuhkan nilai.`);
+  if (!value || value.startsWith('-')) throw new Error(`${flag} requires a value.`);
   return value;
 }
 
 function validateChoice(value, allowed, flag) {
   const normalized = String(value).toLowerCase();
-  if (!allowed.has(normalized)) throw new Error(`${flag} harus salah satu dari: ${[...allowed].join(', ')}.`);
+  if (!allowed.has(normalized)) throw new Error(`${flag} must be one of: ${[...allowed].join(', ')}.`);
   return normalized;
 }
 
 function validateText(value, flag, max = 500) {
   const normalized = String(value).trim();
   if (!normalized || normalized.length > max || /[\0\r\n]/u.test(normalized)) {
-    throw new Error(`${flag} tidak valid atau terlalu panjang.`);
+    throw new Error(`${flag} is invalid or too long.`);
   }
   return normalized;
 }
@@ -37,7 +37,7 @@ function validateText(value, flag, max = 500) {
 function validateTime(value, flag) {
   const normalized = String(value).trim();
   if (!/^\d+(?::[0-5]\d){0,2}(?:\.\d+)?$/u.test(normalized)) {
-    throw new Error(`${flag} harus berupa detik, MM:SS, atau HH:MM:SS.`);
+    throw new Error(`${flag} must be seconds, MM:SS, or HH:MM:SS.`);
   }
   return normalized;
 }
@@ -45,7 +45,7 @@ function validateTime(value, flag) {
 function validateInteger(value, flag, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) {
   const number = Number.parseInt(String(value), 10);
   if (!Number.isSafeInteger(number) || String(number) !== String(value) || number < min || number > max) {
-    throw new Error(`${flag} harus angka bulat ${min}–${max}.`);
+    throw new Error(`${flag} must be an integer from ${min} to ${max}.`);
   }
   return number;
 }
@@ -59,21 +59,21 @@ function validateRetries(value, flag) {
 function validateRetrySleep(value, flag) {
   const normalized = validateText(value, flag, 120).replace(RETRY_SLEEP_PREFIX, '');
   if (!/^(?:\d+(?:\.\d+)?|linear=\d+(?::\d*)?(?::\d*)?|exp=\d+(?::\d*)?(?::\d*)?)$/iu.test(normalized)) {
-    throw new Error(`${flag} harus angka, linear=START:END:STEP, atau exp=START:END:BASE.`);
+    throw new Error(`${flag} must be a number, linear=START:END:STEP, or exp=START:END:BASE.`);
   }
   return `http:${normalized}`;
 }
 
 function validateRate(value, flag) {
   const normalized = String(value).trim().toUpperCase();
-  if (!/^\d+(?:\.\d+)?[KMG]?$/u.test(normalized)) throw new Error(`${flag} harus seperti 500K, 2M, atau 1.5G.`);
+  if (!/^\d+(?:\.\d+)?[KMG]?$/u.test(normalized)) throw new Error(`${flag} must look like 500K, 2M, or 1.5G.`);
   return normalized;
 }
 
 function validateProxy(value, flag) {
   const normalized = String(value).trim();
   if (!/^(?:https?|socks4a?|socks5h?):\/\//iu.test(normalized)) {
-    throw new Error(`${flag} harus URL proxy http(s), socks4, atau socks5.`);
+    throw new Error(`${flag} must be an HTTP(S), SOCKS4, or SOCKS5 proxy URL.`);
   }
   return normalized;
 }
@@ -81,16 +81,16 @@ function validateProxy(value, flag) {
 function validateTemplate(value, flag) {
   const normalized = validateText(value, flag);
   if (path.isAbsolute(normalized) || normalized.split(/[\\/]+/u).includes('..')) {
-    throw new Error(`${flag} harus template relatif di dalam folder output.`);
+    throw new Error(`${flag} must be a relative template inside the output directory.`);
   }
-  if (!normalized.includes('%(ext)s')) throw new Error(`${flag} wajib memuat %(ext)s agar ekstensi hasil benar.`);
+  if (!normalized.includes('%(ext)s')) throw new Error(`${flag} must contain %(ext)s so the output extension is correct.`);
   return normalized;
 }
 
 function validatePlaylistItems(value, flag) {
   const normalized = String(value).trim();
   if (!/^[0-9,:-]+$/u.test(normalized)) {
-    throw new Error(`${flag} hanya menerima angka, koma, titik dua, dan tanda hubung.`);
+    throw new Error(`${flag} accepts only numbers, commas, colons, and hyphens.`);
   }
   return normalized;
 }
@@ -98,7 +98,7 @@ function validatePlaylistItems(value, flag) {
 function validateBrowserSpec(value, flag) {
   const normalized = validateText(value, flag, 250).toLowerCase();
   const browser = normalized.split(/[+:]/u)[0];
-  if (!BROWSERS.has(browser)) throw new Error(`${flag} browser harus salah satu dari: ${[...BROWSERS].join(', ')}.`);
+  if (!BROWSERS.has(browser)) throw new Error(`${flag} browser must be one of: ${[...BROWSERS].join(', ')}.`);
   return normalized;
 }
 
@@ -192,7 +192,7 @@ function applyGenericFormat(options, value, flag) {
     options.forceVideo = true;
     return;
   }
-  throw new Error(`${flag} harus format audio atau video yang didukung.`);
+  throw new Error(`${flag} must be a supported audio or video format.`);
 }
 
 function applyGenericQuality(options, value, flag) {
@@ -208,7 +208,7 @@ function applyGenericQuality(options, value, flag) {
     options.forceVideo = true;
     return;
   }
-  throw new Error(`${flag} harus bitrate audio atau resolusi video yang didukung.`);
+  throw new Error(`${flag} must be a supported audio bitrate or video resolution.`);
 }
 
 export function parseCliOptions(argv = []) {
@@ -247,7 +247,7 @@ export function parseCliOptions(argv = []) {
       case '--social': {
         const platform = takeValue(argv, index, argument).toLowerCase();
         if (!SOCIAL_PLATFORM_KEYS.includes(platform)) {
-          throw new Error(`Platform "${platform}" tidak dikenali. Pilih: ${SOCIAL_PLATFORM_KEYS.join(', ')}`);
+          throw new Error(`Platform "${platform}" is not recognized. Choose: ${SOCIAL_PLATFORM_KEYS.join(', ')}`);
         }
         options.initialPlatform = platform;
         index += 1; break;
@@ -346,7 +346,7 @@ export function parseCliOptions(argv = []) {
       case '-o': options.outputDirectory = path.resolve(takeValue(argv, index, argument)); index += 1; break;
       case '--cookies': options.cookiesPath = path.resolve(takeValue(argv, index, argument)); options.cookiesBrowser = ''; index += 1; break;
       case '--cookies-from-browser': options.cookiesBrowser = validateBrowserSpec(takeValue(argv, index, argument), argument); options.cookiesPath = ''; index += 1; break;
-      default: throw new Error(`Opsi tidak dikenal: ${argument}`);
+      default: throw new Error(`Unknown option: ${argument}`);
     }
   }
 
@@ -413,45 +413,45 @@ export function applyCliEnvironment(options = {}) {
 
 export function helpText() {
   return `YTConv CLI v${CLI_VERSION}\n\n`
-    + 'Pemakaian:\n'
-    + '  ytconv download LINK [OPSI]\n'
-    + '  ytconv playlist LINK [OPSI]\n'
-    + '  ytconv batch links.txt [OPSI]\n'
-    + '  ytconv info LINK --json\n'
-    + '  ytconv formats LINK [--json]\n'
-    + '  ytconv [LINK] [OPSI]  (tetap kompatibel)\n\n'
-    + 'Playlist, batch, dan koneksi:\n'
+    + 'Usage:\n'
+    + '  ytconv download URL [OPTIONS]\n'
+    + '  ytconv playlist URL [OPTIONS]\n'
+    + '  ytconv batch links.txt [OPTIONS]\n'
+    + '  ytconv info URL --json\n'
+    + '  ytconv formats URL [--json]\n'
+    + '  ytconv [URL] [OPTIONS]  (legacy-compatible)\n\n'
+    + 'Playlist, batch, and reliability:\n'
     + '  --playlist / --playlist-items ITEMS / --max-downloads N\n'
     + '  --archive FILE / --skip-playlist-after-errors N\n'
     + '  --retries N|infinite / --fragment-retries N|infinite\n'
     + '  --file-access-retries N / --retry-sleep EXPR\n'
     + '  --resume / --no-resume / --cleanup-part\n\n'
-    + 'Format dan kualitas:\n'
-    + '  --format FMT           Format audio/video umum\n'
-    + '  --quality VALUE        Bitrate audio atau resolusi video\n'
-    + '  --audio-format FMT     mp3, m4a, aac, opus, vorbis, flac, alac, wav\n'
+    + 'Formats and quality:\n'
+    + '  --format FORMAT        Generic audio/video format\n'
+    + '  --quality VALUE        Audio bitrate or video resolution\n'
+    + '  --audio-format FORMAT  mp3, m4a, aac, opus, vorbis, flac, alac, wav\n'
     + '  --audio-quality RATE   best, 320, 256, 192, 128, 96\n'
-    + '  --video-format FMT     auto, mp4, mkv, webm\n'
-    + '  --resolution SIZE      best sampai 144p\n\n'
-    + 'Metadata, cover, dan subtitle:\n'
+    + '  --video-format FORMAT  auto, mp4, mkv, webm\n'
+    + '  --resolution SIZE      best through 144p\n\n'
+    + 'Metadata, cover art, and subtitles:\n'
     + '  --metadata --thumbnail --metadata-files\n'
     + '  --artist/--title/--album/--track/--year/--genre VALUE\n'
-    + '  --subtitles / --subtitle-only / --subtitle-langs LANG\n'
-    + '  --start/--end TIME     Alias: --from/--to\n'
+    + '  --subtitles / --subtitle-only / --subtitle-langs LANGS\n'
+    + '  --start/--end TIME     Aliases: --from/--to\n'
     + '  --sponsorblock MODE / --normalize-audio\n\n'
-    + 'Cookies dan autentikasi:\n'
+    + 'Cookies and authentication:\n'
     + '  --cookies FILE\n'
     + '  --cookies-from-browser chrome|chromium|edge|firefox|brave[:PROFILE]\n\n'
-    + 'File dan performa:\n'
+    + 'Files and performance:\n'
     + '  --concurrent-fragments N / --rate-limit RATE / --proxy URL\n'
-    + '  --output-template TPL / --restrict-filenames / --overwrite\n'
+    + '  --output-template TEMPLATE / --restrict-filenames / --overwrite\n'
     + '  -o, --output PATH / --log-file FILE\n\n'
-    + 'Pemeriksaan tanpa download:\n'
+    + 'Inspection without downloading:\n'
     + '  --dry-run / --json / --list-formats / --formats-json / --list-subs\n\n'
-    + 'Sistem:\n'
+    + 'System:\n'
     + '  --diagnose / --check-update / --update / --no-update-check\n'
     + '  -h, --help / -v, --version / -y, --yes\n\n'
-    + 'Catatan kualitas: MP3 320 kbps adalah target konversi dan tidak menambah detail yang tidak ada pada sumber.\n\n'
-    + 'Preset:\n'
+    + 'Quality note: MP3 320 kbps is an encoder target and cannot add detail missing from the source.\n\n'
+    + 'Presets:\n'
     + `${presetText()}\n`;
 }
