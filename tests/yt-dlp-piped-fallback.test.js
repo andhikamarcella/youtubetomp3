@@ -13,11 +13,27 @@ test("Piped fallback parses YouTube IDs and selects audio", async () => {
   const module = await import(`${moduleUrl}?helpers=${Date.now()}`);
   assert.equal(module.extractYoutubeVideoId("https://youtu.be/dQw4w9WgXcQ?t=1"), "dQw4w9WgXcQ");
   assert.equal(module.extractYoutubeVideoId("https://www.youtube.com/shorts/dQw4w9WgXcQ"), "dQw4w9WgXcQ");
+  assert.equal(module.extractYoutubeVideoId("https://music.youtube.com/watch?v=KaNI9VIlRAA"), "KaNI9VIlRAA");
   const selected = module.selectPipedAudioStream([
     { url: "https://media.example/a.webm", mimeType: "audio/webm", bitrate: 160000 },
     { url: "https://media.example/a.m4a", mimeType: "audio/mp4", bitrate: 128000 },
   ], "m4a");
   assert.equal(selected?._ext, "m4a");
+});
+
+test("Piped instance discovery parses API URLs and ignores image links", async () => {
+  const module = await import(`${moduleUrl}?discovery=${Date.now()}`);
+  const markdown = [
+    "| Instance | API URL | Users |",
+    "| --- | --- | --- |",
+    "| alpha | https://pipedapi.alpha.example | ![users](https://img.shields.io/example) |",
+    "| beta | https://api.piped.beta.example/ | [image](https://github.com/example.png) |",
+    "| invalid | http://127.0.0.1:3000 | no |",
+  ].join("\n");
+  assert.deepEqual(module.parsePipedInstanceList(markdown), [
+    "https://pipedapi.alpha.example",
+    "https://api.piped.beta.example",
+  ]);
 });
 
 test("yt-dlp bot-check becomes a successful output through Piped", async () => {
