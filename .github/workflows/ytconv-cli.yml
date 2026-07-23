@@ -68,6 +68,9 @@ jobs:
           node ./bin/ytconv.js --examples
           printf '# comments are ignored\nhttps://example.com/a\nhttps://example.com/a\n' > /tmp/ytconv-links.txt
           node -e "import('./src/headless.js').then(async ({collectUrls}) => { const u = await collectUrls({batchFile:'/tmp/ytconv-links.txt'}); if (u.length !== 1) process.exitCode = 1; console.log(u); })"
+      - name: Verify deterministic Void Linux xbps detection
+        run: |
+          node -e "import('./src/linux-distro.js').then(({packageManagerFor, installPlanFor}) => { const m = packageManagerFor({id:'void'}); const p = installPlanFor(m); console.log({manager:m, plan:p}); if (m !== 'xbps' || !p.includes('xbps-install')) process.exitCode = 1; })"
       - name: Verify media engines
         run: |
           test -x vendor/yt-dlp
@@ -202,7 +205,6 @@ jobs:
           - archlinux:base
           - opensuse/tumbleweed
           - alpine:3.20
-          - voidlinux/voidlinux:latest-full-x86_64
           - gentoo/stage3:latest
           - nixos/nix:latest
     steps:
