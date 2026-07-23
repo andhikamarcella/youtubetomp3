@@ -1,40 +1,39 @@
-# Checklist rilis YTConv 1.5.0 Beta
+# YTConv 1.4.0 Stable Release Checklist
 
-Versi npm: `1.5.0-beta.1`
+## 1. Synchronize the release branch
 
-## 1. Sinkronkan branch
-
-```sh
-git switch codex/add-ytconv-cli
-git pull --ff-only origin codex/add-ytconv-cli
+```bash
+git switch release/ytconv-1.4.0
+git pull --ff-only origin release/ytconv-1.4.0
 cd cli
 git status --short
 ```
 
-Simpan perubahan lokal dengan stash sebelum pull bila diperlukan.
+The working tree must be clean.
 
-## 2. Verifikasi versi dan dist-tag
+## 2. Verify release identity
 
-```sh
+```bash
 node -p "require('./package.json').version"
 node -p "require('./package.json').publishConfig.tag"
 node ./bin/ytconv.js --version
-python3 ./ish/ytconv-beta.py --version
+python3 ./ish/ytconv.py --version
 cat ish/VERSION
 ```
 
-Hasil wajib:
+Expected:
 
 ```text
-1.5.0-beta.1
-beta
+1.4.0
+latest
+1.4.0
+1.4.0
+1.4.0
 ```
 
-`publishConfig.tag` harus `beta` agar prerelease tidak menggantikan `latest`.
+## 3. Install and test
 
-## 3. Instal dan test
-
-```sh
+```bash
 npm install
 npm run check
 npm test
@@ -42,199 +41,127 @@ npm run check:ish
 npm run test:ish
 ```
 
-## 4. Verifikasi default beta
+## 4. Smoke-test commands
 
-```sh
+```bash
 node ./bin/ytconv.js --help
+node ./bin/ytconv.js --examples
+node ./bin/ytconv.js --list-presets
+node ./bin/ytconv.js --shell-info
 node ./bin/ytconv.js --self-test
 node ./bin/ytconv.js doctor
 ```
 
-Pastikan help/doctor menunjukkan:
+Stable help must state that subtitles, SponsorBlock, and download archives are opt-in.
 
-```text
-subtitle ON
-SponsorBlock ON mode mark
-archive ON
+## 5. Test inspection without downloading
+
+Use a legal public test URL:
+
+```bash
+node ./bin/ytconv.js info "TEST_URL" --json
+node ./bin/ytconv.js formats "TEST_URL" --json
+node ./bin/ytconv.js subtitles "TEST_URL"
 ```
 
-Pastikan opt-out tersedia:
+JSON stdout must remain valid and must not contain update notices.
 
-```text
---no-subtitles
---no-sponsorblock
---no-archive
-```
+## 6. Test real media operations
 
-## 5. Uji cache tanpa menghapus archive
+Use media that you own or are allowed to download:
 
-Buat satu archive uji di `~/.ytconv/archives`, jalankan:
-
-```sh
-node ./bin/ytconv.js clean
-```
-
-File archive harus tetap ada. Hanya cache update/error yang boleh dihapus.
-
-## 6. Smoke test command
-
-```sh
-node ./bin/ytconv.js --examples
-node ./bin/ytconv.js --list-presets
-node ./bin/ytconv.js --shell-info
-node ./bin/ytconv.js info "LINK_YANG_SAH" --json
-node ./bin/ytconv.js formats "LINK_YANG_SAH" --json
-node ./bin/ytconv.js subtitles "LINK_YANG_SAH"
-```
-
-## 7. Uji fitur media nyata
-
-Gunakan media milik sendiri atau media yang diizinkan.
-
-### Subtitle default
-
-```sh
-node ./bin/ytconv.js download "LINK_VIDEO"
-node ./bin/ytconv.js download "LINK_VIDEO" --no-subtitles
-```
-
-Periksa video dengan subtitle manual, subtitle otomatis, dan tanpa subtitle.
-
-### SponsorBlock
-
-```sh
-node ./bin/ytconv.js download "LINK_YOUTUBE"
-node ./bin/ytconv.js download "LINK_YOUTUBE" --sponsorblock remove
-node ./bin/ytconv.js download "LINK_YOUTUBE" --no-sponsorblock
-```
-
-Default `mark` tidak boleh memotong media. Situs tanpa data SponsorBlock harus tetap dapat diproses.
-
-### Archive
-
-```sh
-node ./bin/ytconv.js download "LINK" --preset music
-node ./bin/ytconv.js download "LINK" --preset music
-node ./bin/ytconv.js download "LINK" --video-format mp4 --resolution 1080
-node ./bin/ytconv.js download "LINK" --no-archive
-```
-
-Periksa:
-
-- download kedua dengan profil yang sama dilewati;
-- audio dan video memakai archive berbeda;
-- archive yt-dlp berbentuk file teks;
-- archive gallery-dl memakai file terpisah;
-- `--no-archive` benar-benar mengizinkan proses tanpa pencatatan archive.
-
-### Playlist dan batch
-
-```sh
-node ./bin/ytconv.js playlist "LINK_PLAYLIST" --playlist-items "1-2"
+```bash
+node ./bin/ytconv.js download "VIDEO_URL" --preset mobile
+node ./bin/ytconv.js download "MUSIC_URL" --preset music
+node ./bin/ytconv.js playlist "PLAYLIST_URL" --playlist-items "1-2" --archive downloaded.txt
 node ./bin/ytconv.js batch links.txt --jobs 2 --continue-on-error --result-json report.json
+node ./bin/ytconv.js download "VIDEO_URL" --subtitles --subtitle-langs "en,id"
 ```
 
-## 8. CI wajib hijau
+Verify progress, resume, archive behavior, metadata, cover art, square YouTube Music artwork, valid JSON, batch reporting, and exit codes.
 
-GitHub Actions harus berhasil untuk:
+## 7. Required CI coverage
 
-- Node 18, 20, dan 22;
-- Windows CMD;
-- Windows PowerShell;
-- Ubuntu/Linux penuh;
-- macOS;
-- Alpine/musl;
-- SSH/headless;
-- Termux package simulation;
-- frontend native iSH beta;
-- installer plan Debian/Ubuntu, Fedora, Arch/CachyOS-family, openSUSE, Alpine, Void, Gentoo, dan NixOS;
-- npm package preview dan dokumentasi beta.
+The workflow must pass for:
 
-## 9. Preview paket npm
+- Node.js 18, 20, and 22
+- Windows CMD
+- Windows PowerShell
+- Ubuntu/Linux full installation
+- macOS
+- Alpine/musl with system FFmpeg
+- SSH/headless
+- Termux package simulation
+- native iSH frontend
+- installer plans for Debian/Ubuntu, Fedora, Arch/CachyOS family, openSUSE, Alpine, Void, Gentoo, and NixOS
+- npm package preview and English documentation checks
 
-```sh
+## 8. Preview npm contents
+
+```bash
 npm publish --dry-run
 npm pack --json > package-preview.json
 ```
 
-Preview wajib menunjukkan:
+Confirm:
 
 ```text
 name: ytconv
-version: 1.5.0-beta.1
-tag: beta
+version: 1.4.0
 ```
 
-Paket harus memuat:
+The package must include `bin`, `src`, `scripts`, `ish`, `docs`, README, changelog, and license. It must not include cookies, `.env`, personal logs, downloaded media, tokens, or secrets.
 
-```text
-src/beta-defaults.js
-src/gallery-beta.js
-ish/ytconv-beta.py
-docs/BETA.md
-```
+## 9. Confirm the version is unused
 
-Paket tidak boleh memuat cookies, `.env`, log pribadi, hasil download, token, atau file rahasia.
-
-## 10. Pastikan versi belum terbit
-
-```sh
+```bash
 npm view ytconv versions --json
 npm view ytconv dist-tags --json
-npm view ytconv@beta version --prefer-online
 ```
 
-`1.5.0-beta.1` tidak boleh sudah ada. npm tidak mengizinkan versi terbit ditimpa.
+`1.4.0` must not already exist. npm does not allow overwriting a published version.
 
-Catat nilai dist-tag `latest` sebelum publish; nilainya tidak boleh berubah setelah publish beta.
+## 10. Verify npm ownership
 
-## 11. Login dan ownership
-
-```sh
+```bash
 npm whoami
 npm owner ls ytconv
 ```
 
-## 12. Publish beta manual
+## 11. Publish stable
 
-CMD/PowerShell:
+Manual:
 
-```cmd
-npm.cmd publish --tag beta --access public
+```bash
+npm publish --tag latest --access public
 ```
 
-Dengan OTP:
+With OTP:
 
-```cmd
-npm.cmd publish --tag beta --access public --otp=123456
+```bash
+npm publish --tag latest --access public --otp=123456
 ```
 
-Linux/macOS:
+The workflow-based publisher may use npm provenance after trusted publishing or `NPM_TOKEN` is configured.
 
-```sh
-npm publish --tag beta --access public
-```
+## 12. Verify the registry
 
-Jangan publish prerelease ini dengan tag `latest`.
-
-## 13. Verifikasi registry
-
-```sh
-npm view ytconv@beta version --prefer-online
-npm view ytconv@1.5.0-beta.1 dist.integrity
+```bash
+npm view ytconv version --prefer-online
+npm view ytconv@1.4.0 dist.integrity
 npm view ytconv dist-tags --json
 ```
 
-Hasil beta harus `1.5.0-beta.1`. Dist-tag `latest` harus tetap menunjuk rilis stabil sebelumnya.
+The `latest` tag must point to `1.4.0`.
 
-## 14. Tes paket publik bersih
+## 13. Test a clean public installation
 
 Windows:
 
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd --self-test
 ytconv.cmd doctor
@@ -242,10 +169,10 @@ ytconv.cmd doctor
 
 Linux/macOS:
 
-```sh
+```bash
 npm uninstall -g ytconv
 npm cache verify
-npm install -g ytconv@beta --force
+npm install -g ytconv@latest --force
 ytconv --version
 ytconv --self-test
 ytconv doctor
@@ -253,16 +180,15 @@ ytconv doctor
 
 Termux:
 
-```sh
-npm install -g ytconv@beta --omit=optional --force
+```bash
+npm install -g ytconv@latest --omit=optional --force
 ytconv --self-test
 ytconv doctor
 ```
 
-## 15. Setelah publish
+## 14. After publishing
 
-- Jangan mencoba memublikasikan ulang `1.5.0-beta.1`.
-- Perbaikan beta berikutnya memakai `1.5.0-beta.2`.
-- Rilis stabil berikutnya hanya boleh memakai `1.5.0` setelah pengujian beta selesai.
-- Jangan merge PR #145 sampai paket publik diuji dan pengguna secara eksplisit meminta merge.
-- DRM, paywall, akses privat tanpa izin, region lock, post terhapus, dan perubahan situs tetap merupakan batasan eksternal.
+- Never republish or overwrite `1.4.0`.
+- A stable bug fix must use `1.4.1` or another unused version.
+- Do not merge a release PR until the public package has been tested and the user explicitly requests the merge.
+- Do not claim that every site, URL, device, architecture, or distribution is guaranteed forever.
