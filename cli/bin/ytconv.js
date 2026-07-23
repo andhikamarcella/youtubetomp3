@@ -39,10 +39,10 @@ function defaultOutputDirectory() {
 }
 
 function updateStatusText(updateInfo) {
-  if (updateInfo.available) return `tersedia ${updateInfo.latestVersion} (terpasang ${CLI_VERSION})`;
-  if (updateInfo.checked) return `sudah terbaru (${CLI_VERSION})`;
-  if (updateInfo.disabled) return 'pengecekan dimatikan';
-  return `tidak dapat diperiksa${updateInfo.error ? `: ${updateInfo.error}` : ''}`;
+  if (updateInfo.available) return `${updateInfo.latestVersion} available (installed ${CLI_VERSION})`;
+  if (updateInfo.checked) return `up to date (${CLI_VERSION})`;
+  if (updateInfo.disabled) return 'update check disabled';
+  return `unable to check${updateInfo.error ? `: ${updateInfo.error}` : ''}`;
 }
 
 async function printDiagnostics(platformHint = 'auto') {
@@ -57,85 +57,85 @@ async function printDiagnostics(platformHint = 'auto') {
     ['Update', updateStatusText(updateInfo)],
     ['Node.js', process.version],
     ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
-    ['Distro', distro?.name || '-'],
+    ['Distribution', distro?.name || '-'],
     ['Package manager', distro?.manager || '-'],
     ['TTY', `stdin=${Boolean(process.stdin.isTTY)} stdout=${Boolean(process.stdout.isTTY)}`],
     ['Preset', process.env.YTCONV_PRESET || 'balanced'],
-    ['Sosmed', socialPlatformLabel(platformHint)],
-    ['yt-dlp', dependencies.ytDlp.installed ? dependencies.ytDlp.version : 'tidak ditemukan'],
+    ['Platform', socialPlatformLabel(platformHint)],
+    ['yt-dlp', dependencies.ytDlp.installed ? dependencies.ytDlp.version : 'not found'],
     ['yt-dlp runner', dependencies.ytDlp.displayPath || dependencies.ytDlp.path || '-'],
-    ['gallery-dl', dependencies.galleryDl?.installed ? dependencies.galleryDl.version : 'tidak ditemukan'],
+    ['gallery-dl', dependencies.galleryDl?.installed ? dependencies.galleryDl.version : 'not found'],
     ['gallery runner', dependencies.galleryDl?.displayPath || '-'],
-    ['FFmpeg', dependencies.ffmpeg.installed ? dependencies.ffmpeg.version : 'tidak ditemukan'],
+    ['FFmpeg', dependencies.ffmpeg.installed ? dependencies.ffmpeg.version : 'not found'],
     ['FFmpeg path', dependencies.ffmpeg.path || '-'],
-    ['ffprobe', dependencies.ffprobe?.installed ? dependencies.ffprobe.version : 'opsional/tidak ditemukan'],
+    ['ffprobe', dependencies.ffprobe?.installed ? dependencies.ffprobe.version : 'optional/not found'],
     ['Output', outputDirectory],
     ['Template', process.env.YTCONV_OUTPUT_TEMPLATE || 'default'],
     ['Audio', `${process.env.YTCONV_AUDIO_FORMAT || 'mp3'} / ${process.env.YTCONV_AUDIO_QUALITY || 'best'}`],
     ['Video', `${process.env.YTCONV_VIDEO_FORMAT || 'auto'} / ${process.env.YTCONV_RESOLUTION || 'best'}`],
-    ['Subtitle', process.env.YTCONV_SUBTITLES === '1' ? process.env.YTCONV_SUBTITLE_LANGS : 'off'],
+    ['Subtitles', process.env.YTCONV_SUBTITLES === '1' ? process.env.YTCONV_SUBTITLE_LANGS : 'off'],
     ['SponsorBlock', process.env.YTCONV_SPONSORBLOCK_MODE || 'off'],
-    ['Archive yt-dlp', process.env.YTCONV_ARCHIVE || 'off'],
-    ['Archive gallery', process.env.YTCONV_GALLERY_ARCHIVE || 'off'],
+    ['yt-dlp archive', process.env.YTCONV_ARCHIVE || 'off'],
+    ['gallery archive', process.env.YTCONV_GALLERY_ARCHIVE || 'off'],
     ['Resume', process.env.YTCONV_RESUME === '0' ? 'off' : 'on'],
     ['Retries', process.env.YTCONV_RETRIES || '10'],
     ['Cookies', process.env.YTCONV_BROWSER_COOKIE_SPEC
       ? `browser:${process.env.YTCONV_BROWSER_COOKIE_SPEC}`
-      : process.env.YTCONV_COOKIES || 'AUTO: publik, file, lalu browser'],
+      : process.env.YTCONV_COOKIES || 'AUTO: public, file, then browser'],
   ];
 
   console.log('YTConv doctor\n');
-  for (const [label, value] of rows) console.log(`${label.padEnd(17)} ${value}`);
-  if (updateInfo.available) console.log(`\nUpdate tersedia: ${updateCommand()}`);
+  for (const [label, value] of rows) console.log(`${label.padEnd(18)} ${value}`);
+  if (updateInfo.available) console.log(`\nUpdate available: ${updateCommand()}`);
 
   if (!dependencies.ready) {
-    console.log(`\nBelum siap: ${dependencies.missing.join(', ')}`);
-    console.log('Perbaikan otomatis: ytconv repair');
-    if (dependencies.platform?.setupCommand) console.log(`Setup distro       : ${dependencies.platform.setupCommand}`);
+    console.log(`\nMissing requirements: ${dependencies.missing.join(', ')}`);
+    console.log('Automatic repair: ytconv repair');
+    if (dependencies.platform?.setupCommand) console.log(`Distribution setup: ${dependencies.platform.setupCommand}`);
     return EXIT_CODES.DEPENDENCY_MISSING;
   }
-  console.log('\nStatus: siap digunakan.');
+  console.log('\nStatus: ready to use.');
   return EXIT_CODES.SUCCESS;
 }
 
 async function printUpdateCheck() {
-  console.log('Memeriksa update YTConv...');
+  console.log('Checking for YTConv updates...');
   const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION, force: true });
   console.log(updateStatusText(updateInfo));
-  if (updateInfo.available) console.log(`Update dengan: ${updateCommand()}`);
+  if (updateInfo.available) console.log(`Update with: ${updateCommand()}`);
   return !updateInfo.checked && !updateInfo.disabled ? EXIT_CODES.TEMPORARY_FAILURE : EXIT_CODES.SUCCESS;
 }
 
 async function performUpdate() {
   const updateInfo = await checkForUpdate({ currentVersion: CLI_VERSION, force: true });
   if (updateInfo.checked && !updateInfo.available) {
-    console.log(`YTConv ${CLI_VERSION} sudah versi terbaru.`);
+    console.log(`YTConv ${CLI_VERSION} is already up to date.`);
     return EXIT_CODES.SUCCESS;
   }
 
   console.log(updateInfo.available
-    ? `Mengupdate YTConv ${CLI_VERSION} → ${updateInfo.latestVersion}...\n`
-    : 'Registry tidak dapat diperiksa. Mencoba memasang channel YTConv aktif...\n');
+    ? `Updating YTConv ${CLI_VERSION} → ${updateInfo.latestVersion}...\n`
+    : 'The registry could not be checked. Trying the active YTConv channel...\n');
 
   const result = runSelfUpdate({ currentVersion: CLI_VERSION });
   if (!result.ok) {
-    console.error(`\nUpdate otomatis gagal (${result.strategy}): ${result.error.message}`);
-    console.error(`Jalankan manual: ${result.command}`);
-    console.error('YTConv tidak menghapus instalasi lama dan tidak merusak file hasil.');
+    console.error(`\nAutomatic update failed (${result.strategy}): ${result.error.message}`);
+    console.error(`Run manually: ${result.command}`);
+    console.error('The previous installation and downloaded files were not removed.');
     return exitCodeForError(result.error);
   }
 
-  console.log(`\nUpdate selesai melalui ${result.strategy}.`);
-  console.log('Tutup terminal, buka kembali, lalu jalankan: ytconv --version');
+  console.log(`\nUpdate completed using ${result.strategy}.`);
+  console.log('Close the terminal, open it again, then run: ytconv --version');
   return EXIT_CODES.SUCCESS;
 }
 
 function showUpdateNotice(updateInfo) {
   if (!updateInfo.available) return;
   console.log('\n┌────────────────────────────────────────────────────────────┐');
-  console.log(`│ UPDATE YTConv TERSEDIA: ${CLI_VERSION} → ${updateInfo.latestVersion}`.padEnd(61, ' ') + '│');
-  console.log('│ Aplikasi tetap dapat dipakai; update tidak lagi memblokir. │');
-  console.log(`│ Jalankan: ${updateCommand(CLI_VERSION)}`.padEnd(61, ' ') + '│');
+  console.log(`│ YTConv UPDATE AVAILABLE: ${CLI_VERSION} → ${updateInfo.latestVersion}`.padEnd(61, ' ') + '│');
+  console.log('│ YTConv remains usable; updates never block normal use.     │');
+  console.log(`│ Run: ${updateCommand(CLI_VERSION)}`.padEnd(61, ' ') + '│');
   console.log('└────────────────────────────────────────────────────────────┘\n');
 }
 
@@ -149,10 +149,10 @@ async function main() {
   let options;
   try {
     const normalizedArgs = normalizeCommandArgs(process.argv.slice(2));
-    const betaToggles = extractBetaToggles(normalizedArgs);
-    ({ system, cleanArgs } = extractSystemOptions(betaToggles.cleanArgs));
+    const toggles = extractBetaToggles(normalizedArgs);
+    ({ system, cleanArgs } = extractSystemOptions(toggles.cleanArgs));
     options = parseCliOptions(cleanArgs);
-    applyBetaDefaults(options, betaToggles);
+    applyBetaDefaults(options, toggles);
   } catch (error) {
     console.error(`YTConv: ${explainError(error)}\n`);
     console.error(fullHelpText());
@@ -245,7 +245,7 @@ async function main() {
     return EXIT_CODES.SUCCESS;
   } catch (error) {
     process.stdout.write('\n');
-    console.error(`YTConv berhenti:\n${explainError(error)}`);
+    console.error(`YTConv stopped:\n${explainError(error)}`);
     return exitCodeForError(error);
   }
 }
