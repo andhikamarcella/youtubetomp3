@@ -5,44 +5,61 @@ import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 
-const REGISTRY_URL = 'https://registry.npmjs.org/ytconv/latest';
+const REGISTRY_BASE = 'https://registry.npmjs.org/ytconv';
 const DEFAULT_TTL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 4_000;
-const UPDATE_ARGUMENTS = ['install', '-g', 'ytconv@latest', '--force'];
 
-function numericParts(version) {
-  return String(version ?? '')
-    .trim()
-    .replace(/^v/iu, '')
-    .split('-')[0]
-    .split('.')
-    .map((part) => Number.parseInt(part, 10) || 0)
-    .slice(0, 3);
+function parseVersion(version) {
+  const normalized = String(version ?? '').trim().replace(/^v/iu, '');
+  const [core, prerelease = ''] = normalized.split('-', 2);
+  const numbers = core.split('.').map((part) => Number.parseInt(part, 10) || 0).slice(0, 3);
+  while (numbers.length < 3) numbers.push(0);
+  const pre = prerelease ? prerelease.split('.').map((part) => (/^\d+$/u.test(part) ? Number(part) : part)) : [];
+  return { numbers, pre };
 }
 
 export function compareVersions(left, right) {
-  const a = numericParts(left);
-  const b = numericParts(right);
+  const a = parseVersion(left);
+  const b = parseVersion(right);
   for (let index = 0; index < 3; index += 1) {
-    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    const difference = a.numbers[index] - b.numbers[index];
     if (difference !== 0) return difference > 0 ? 1 : -1;
+  }
+  if (!a.pre.length && !b.pre.length) return 0;
+  if (!a.pre.length) return 1;
+  if (!b.pre.length) return -1;
+  const count = Math.max(a.pre.length, b.pre.length);
+  for (let index = 0; index < count; index += 1) {
+    const leftPart = a.pre[index];
+    const rightPart = b.pre[index];
+    if (leftPart === undefined) return -1;
+    if (rightPart === undefined) return 1;
+    if (leftPart === rightPart) continue;
+    if (typeof leftPart === 'number' && typeof rightPart === 'number') return leftPart > rightPart ? 1 : -1;
+    if (typeof leftPart === 'number') return -1;
+    if (typeof rightPart === 'number') return 1;
+    return String(leftPart).localeCompare(String(rightPart)) > 0 ? 1 : -1;
   }
   return 0;
 }
 
-export function defaultCacheFile() {
-  return path.join(os.homedir(), '.ytconv', 'update-check.json');
+export function releaseChannel(currentVersion = '') {
+  return String(currentVersion).includes('-') ? 'beta' : 'latest';
 }
 
-export async function clearUpdateCache(cacheFile = defaultCacheFile()) {
-  await fsp.rm(cacheFile, { force: true }).catch(() => {});
+export function defaultCacheFile(currentVersion = '') {
+  return path.join(os.homedir(), '.ytconv', `update-check-${releaseChannel(currentVersion)}.json`);
+}
+
+export async function clearUpdateCache(cacheFile = path.join(os.homedir(), '.ytconv')) {
+  await fsp.rm(cacheFile, { recursive: true, force: true }).catch(() => {});
   return cacheFile;
 }
 
-async function readCache(cacheFile, ttlMs) {
+async function readCache(cacheFile, ttlMs, channel) {
   try {
     const payload = JSON.parse(await fsp.readFile(cacheFile, 'utf8'));
-    if (!payload?.latestVersion || !payload?.checkedAt) return null;
+    if (!payload?.latestVersion || !payload?.checkedAt || payload.channel !== channel) return null;
     if (Date.now() - Number(payload.checkedAt) > ttlMs) return null;
     return payload;
   } catch {
@@ -59,11 +76,11 @@ async function writeCache(cacheFile, payload) {
   }
 }
 
-async function fetchLatestVersion({ fetchImpl, timeoutMs }) {
+async function fetchLatestVersion({ fetchImpl, timeoutMs, channel }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(REGISTRY_URL, {
+    const response = await fetchImpl(`${REGISTRY_BASE}/${channel}`, {
       signal: controller.signal,
       headers: { accept: 'application/json', 'user-agent': 'ytconv-update-check' },
     });
@@ -80,7 +97,7 @@ export async function checkForUpdate({
   currentVersion,
   force = false,
   fetchImpl = globalThis.fetch,
-  cacheFile = defaultCacheFile(),
+  cacheFile = defaultCacheFile(currentVersion),
   ttlMs = DEFAULT_TTL_MS,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
@@ -88,12 +105,14 @@ export async function checkForUpdate({
     return { checked: false, disabled: true, currentVersion, latestVersion: currentVersion, available: false };
   }
 
+  const channel = releaseChannel(currentVersion);
   if (!force) {
-    const cached = await readCache(cacheFile, ttlMs);
+    const cached = await readCache(cacheFile, ttlMs, channel);
     if (cached) {
       return {
         checked: true,
         cached: true,
+        channel,
         currentVersion,
         latestVersion: cached.latestVersion,
         available: compareVersions(cached.latestVersion, currentVersion) > 0,
@@ -102,15 +121,16 @@ export async function checkForUpdate({
   }
 
   if (typeof fetchImpl !== 'function') {
-    return { checked: false, currentVersion, latestVersion: currentVersion, available: false, error: 'Fetch API tidak tersedia.' };
+    return { checked: false, channel, currentVersion, latestVersion: currentVersion, available: false, error: 'Fetch API tidak tersedia.' };
   }
 
   try {
-    const latestVersion = await fetchLatestVersion({ fetchImpl, timeoutMs });
-    await writeCache(cacheFile, { latestVersion, checkedAt: Date.now() });
+    const latestVersion = await fetchLatestVersion({ fetchImpl, timeoutMs, channel });
+    await writeCache(cacheFile, { latestVersion, checkedAt: Date.now(), channel });
     return {
       checked: true,
       cached: false,
+      channel,
       currentVersion,
       latestVersion,
       available: compareVersions(latestVersion, currentVersion) > 0,
@@ -118,6 +138,7 @@ export async function checkForUpdate({
   } catch (error) {
     return {
       checked: false,
+      channel,
       currentVersion,
       latestVersion: currentVersion,
       available: false,
@@ -126,8 +147,12 @@ export async function checkForUpdate({
   }
 }
 
-export function updateCommand(version = 'latest') {
-  return `npm install -g ytconv@${version} --force`;
+export function updateCommand(currentVersion = '') {
+  return `npm install -g ytconv@${releaseChannel(currentVersion)} --force`;
+}
+
+function updateArguments(currentVersion = '') {
+  return ['install', '-g', `ytconv@${releaseChannel(currentVersion)}`, '--force'];
 }
 
 function npmCliCandidates({ env = process.env, execPath = process.execPath } = {}) {
@@ -153,15 +178,17 @@ export function findNpmCli(options = {}) {
 }
 
 export function selfUpdateInvocation({
+  currentVersion = '',
   platform = process.platform,
   env = process.env,
   execPath = process.execPath,
   npmCliPath = findNpmCli({ env, execPath }),
 } = {}) {
+  const args = updateArguments(currentVersion);
   if (npmCliPath) {
     return {
       command: execPath,
-      args: [npmCliPath, ...UPDATE_ARGUMENTS],
+      args: [npmCliPath, ...args],
       strategy: 'node-npm-cli',
     };
   }
@@ -169,22 +196,23 @@ export function selfUpdateInvocation({
   if (platform === 'win32') {
     return {
       command: env.ComSpec || env.COMSPEC || 'cmd.exe',
-      args: ['/d', '/s', '/c', updateCommand()],
+      args: ['/d', '/s', '/c', updateCommand(currentVersion)],
       strategy: 'windows-cmd-fallback',
     };
   }
 
-  return { command: 'npm', args: [...UPDATE_ARGUMENTS], strategy: 'npm-path-fallback' };
+  return { command: 'npm', args, strategy: 'npm-path-fallback' };
 }
 
 export function runSelfUpdate({
+  currentVersion = '',
   platform = process.platform,
   env = process.env,
   execPath = process.execPath,
   npmCliPath,
   spawnSyncImpl = spawnSync,
 } = {}) {
-  const invocation = selfUpdateInvocation({ platform, env, execPath, npmCliPath });
+  const invocation = selfUpdateInvocation({ currentVersion, platform, env, execPath, npmCliPath });
   const result = spawnSyncImpl(invocation.command, invocation.args, {
     stdio: 'inherit',
     windowsHide: true,
@@ -193,8 +221,8 @@ export function runSelfUpdate({
 
   if (result.error || result.status !== 0) {
     const detail = result.error?.message || `exit code ${result.status ?? 'unknown'}`;
-    return { ok: false, command: updateCommand(), strategy: invocation.strategy, error: new Error(detail) };
+    return { ok: false, command: updateCommand(currentVersion), strategy: invocation.strategy, error: new Error(detail) };
   }
 
-  return { ok: true, command: updateCommand(), strategy: invocation.strategy };
+  return { ok: true, command: updateCommand(currentVersion), strategy: invocation.strategy };
 }
