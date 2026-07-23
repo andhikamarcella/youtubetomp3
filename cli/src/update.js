@@ -48,13 +48,24 @@ export function releaseChannel(currentVersion = MANIFEST_VERSION) {
   return String(currentVersion).includes('-') ? 'beta' : 'latest';
 }
 
-export function defaultCacheFile(currentVersion = MANIFEST_VERSION) {
-  return path.join(os.homedir(), '.ytconv', `update-check-${releaseChannel(currentVersion)}.json`);
+export function defaultCacheFile(currentVersion = MANIFEST_VERSION, homeDirectory = os.homedir()) {
+  return path.join(homeDirectory, '.ytconv', `update-check-${releaseChannel(currentVersion)}.json`);
 }
 
-export async function clearUpdateCache(cacheFile = path.join(os.homedir(), '.ytconv')) {
-  await fsp.rm(cacheFile, { recursive: true, force: true }).catch(() => {});
-  return cacheFile;
+export async function clearUpdateCache(cacheFile = '', { homeDirectory = os.homedir() } = {}) {
+  if (cacheFile) {
+    await fsp.rm(cacheFile, { force: true }).catch(() => {});
+    return cacheFile;
+  }
+
+  const directory = path.join(homeDirectory, '.ytconv');
+  const targets = [
+    path.join(directory, 'update-check.json'),
+    path.join(directory, 'update-check-latest.json'),
+    path.join(directory, 'update-check-beta.json'),
+  ];
+  await Promise.all(targets.map((target) => fsp.rm(target, { force: true }).catch(() => {})));
+  return targets.join(', ');
 }
 
 async function readCache(cacheFile, ttlMs, channel) {
