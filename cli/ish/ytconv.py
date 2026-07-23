@@ -4,7 +4,10 @@
 from pathlib import Path
 
 VERSION = "1.5.0-beta.2"
-TARGET = Path(__file__).with_name("ytconv-core.py")
+DIRECTORY = Path(__file__).resolve().parent
+TARGET = DIRECTORY / "ytconv-core.py"
+if not TARGET.is_file():
+    TARGET = DIRECTORY / "ytconv-beta.py"
 
 if not TARGET.is_file():
     raise SystemExit("YTConv core frontend is missing: %s" % TARGET)
@@ -22,7 +25,6 @@ replacements = {
     'Update selesai. Jalankan kembali: ytconv --version': 'Update completed. Run again: ytconv --version',
     'tidak ditemukan': 'not found',
     'gagal dijalankan': 'failed to run',
-    'YTConv iSH beta repair': 'YTConv iSH beta repair',
     'pip gagal memasang yt-dlp/gallery-dl. Periksa internet dan waktu perangkat.': 'pip could not install yt-dlp/gallery-dl. Check the internet connection and device clock.',
     'Masih kurang: %s': 'Still missing: %s',
     'Semua dependency siap.': 'All dependencies are ready.',
