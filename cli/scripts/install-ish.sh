@@ -13,7 +13,7 @@ fail() { printf 'YTConv iSH: %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = "0" ] || fail "jalankan sebagai root di iSH."
 [ -f /etc/alpine-release ] || fail "installer ini khusus iSH/Alpine Linux."
 
-say "YTConv iSH 1.3.0 installer"
+say "YTConv iSH 1.5.0 Beta installer"
 say "Menyiapkan Python, FFmpeg, yt-dlp, gallery-dl, curl, dan sertifikat..."
 
 apk update
@@ -26,14 +26,14 @@ pip_install() {
 }
 
 pip_install yt-dlp gallery-dl
-mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
+mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" "$HOME/.ytconv/archives" /usr/local/bin
 
 rm -f "$TMP_FILE"
 trap 'rm -f "$TMP_FILE"' EXIT HUP INT TERM
 curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 \
-  "$RAW_BASE/ish/ytconv.py" -o "$TMP_FILE"
+  "$RAW_BASE/ish/ytconv-beta.py" -o "$TMP_FILE"
 python3 -m py_compile "$TMP_FILE" || fail "frontend yang terunduh tidak valid."
-python3 "$TMP_FILE" --version | grep -qx '1.3.0' || fail "versi frontend yang terunduh bukan 1.3.0."
+python3 "$TMP_FILE" --version | grep -qx '1.5.0-beta.1' || fail "versi frontend yang terunduh bukan 1.5.0-beta.1."
 mv "$TMP_FILE" "$APP_FILE"
 trap - EXIT HUP INT TERM
 chmod 755 "$APP_FILE"
@@ -46,12 +46,14 @@ chmod 755 "$BIN_FILE"
 hash -r 2>/dev/null || true
 
 say ""
-say "YTConv iSH berhasil dipasang."
+say "YTConv iSH Beta berhasil dipasang."
 "$BIN_FILE" --version
 "$BIN_FILE" --diagnose || true
 say ""
+say "Default: subtitle ON, SponsorBlock mark ON, archive ON."
+say "Matikan: --no-subtitles --no-sponsorblock --no-archive"
 say "Jalankan: ytconv"
-say "Playlist: ytconv playlist LINK --archive downloaded.txt"
+say "Playlist: ytconv playlist LINK"
 say "Batch: ytconv batch links.txt --continue-on-error"
 say "Repair: ytconv repair"
 say "Hasil: $HOME/Downloads/YTConv"
