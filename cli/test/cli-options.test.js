@@ -9,24 +9,17 @@ import {
 } from '../src/cli-options.js';
 
 const ENV_KEYS = [
-  'YTCONV_PRESET',
-  'YTCONV_AUDIO_FORMAT',
-  'YTCONV_AUDIO_QUALITY',
-  'YTCONV_VIDEO_FORMAT',
-  'YTCONV_RESOLUTION',
-  'YTCONV_SUBTITLES',
-  'YTCONV_SPONSORBLOCK_MODE',
-  'YTCONV_RATE_LIMIT',
-  'YTCONV_CONCURRENT_FRAGMENTS',
-  'YTCONV_OUTPUT_TEMPLATE',
+  'YTCONV_PRESET', 'YTCONV_AUDIO_FORMAT', 'YTCONV_AUDIO_QUALITY',
+  'YTCONV_VIDEO_FORMAT', 'YTCONV_RESOLUTION', 'YTCONV_SUBTITLES',
+  'YTCONV_SPONSORBLOCK_MODE', 'YTCONV_RATE_LIMIT',
+  'YTCONV_CONCURRENT_FRAGMENTS', 'YTCONV_OUTPUT_TEMPLATE',
 ];
 
 function withCleanEnvironment(callback) {
   const previous = Object.fromEntries(ENV_KEYS.map((name) => [name, process.env[name]]));
   for (const name of ENV_KEYS) delete process.env[name];
-  try {
-    return callback();
-  } finally {
+  try { return callback(); }
+  finally {
     for (const name of ENV_KEYS) {
       if (previous[name] === undefined) delete process.env[name];
       else process.env[name] = previous[name];
@@ -34,13 +27,10 @@ function withCleanEnvironment(callback) {
   }
 }
 
-test('parses URL, platform, playlist, output and cookies options', () => {
+test('parses URL, platform, playlist, output, and cookies options', () => {
   const options = parseCliOptions([
-    '--platform', 'facebook',
-    '--playlist',
-    '--output', './downloads',
-    '--cookies', './cookies.txt',
-    'https://www.facebook.com/reel/example',
+    '--platform', 'facebook', '--playlist', '--output', './downloads',
+    '--cookies', './cookies.txt', 'https://www.facebook.com/reel/example',
   ]);
   assert.equal(options.initialPlatform, 'facebook');
   assert.equal(options.initialPlaylist, true);
@@ -66,18 +56,11 @@ test('presets apply before explicit options regardless of argument order', () =>
 
 test('parses mature audio, video, network, and file settings', () => {
   const options = parseCliOptions([
-    '--audio-format', 'alac',
-    '--audio-quality', '256',
-    '--normalize-audio',
-    '--keep-video',
-    '--sponsorblock', 'remove',
-    '--rate-limit', '2m',
-    '--concurrent-fragments', '8',
-    '--proxy', 'socks5://127.0.0.1:1080',
+    '--audio-format', 'alac', '--audio-quality', '256', '--normalize-audio',
+    '--keep-video', '--sponsorblock', 'remove', '--rate-limit', '2m',
+    '--concurrent-fragments', '8', '--proxy', 'socks5://127.0.0.1:1080',
     '--output-template', '%(uploader)s/%(title)s.%(ext)s',
-    '--restrict-filenames',
-    '--overwrite',
-    '--log-file', './ytconv.log',
+    '--restrict-filenames', '--overwrite', '--log-file', './ytconv.log',
   ]);
   assert.equal(options.audioFormat, 'alac');
   assert.equal(options.audioQuality, '256');
@@ -93,26 +76,18 @@ test('parses mature audio, video, network, and file settings', () => {
   assert.equal(options.logFile, path.resolve('./ytconv.log'));
 });
 
-test('parses subtitle, sidecar, clipping, live and playlist ranges', () => {
+test('parses subtitle, sidecar, clipping, live, and playlist ranges', () => {
   const options = parseCliOptions([
-    '--video-format', 'webm',
-    '--resolution', '1080',
-    '--subtitles',
-    '--subtitle-langs', 'id,en',
-    '--metadata-files',
-    '--thumbnail',
-    '--start', '01:02',
-    '--end', '01:05:30',
-    '--archive', './downloaded.txt',
-    '--playlist-items', '1,3,5-10',
-    '--max-downloads', '25',
-    '--live-from-start',
+    '--video-format', 'webm', '--resolution', '1080', '--subtitles',
+    '--subtitle-langs', 'en,id', '--metadata-files', '--thumbnail',
+    '--start', '01:02', '--end', '01:05:30', '--archive', './downloaded.txt',
+    '--playlist-items', '1,3,5-10', '--max-downloads', '25', '--live-from-start',
   ]);
   assert.equal(options.initialMode, 'video');
   assert.equal(options.videoFormat, 'webm');
   assert.equal(options.resolution, '1080');
   assert.equal(options.subtitles, true);
-  assert.equal(options.subtitleLanguages, 'id,en');
+  assert.equal(options.subtitleLanguages, 'en,id');
   assert.equal(options.writeInfoJson, true);
   assert.equal(options.writeDescription, true);
   assert.equal(options.writeThumbnail, true);
@@ -134,11 +109,8 @@ test('direct commands are detected and JSON implies dry run', () => {
 
 test('environment mapping is deterministic', () => withCleanEnvironment(() => {
   const options = parseCliOptions([
-    '--preset', 'hd',
-    '--subtitles',
-    '--sponsorblock', 'mark',
-    '--rate-limit', '1M',
-    '--concurrent-fragments', '6',
+    '--preset', 'hd', '--subtitles', '--sponsorblock', 'mark',
+    '--rate-limit', '1M', '--concurrent-fragments', '6',
     '--output-template', '%(title)s.%(ext)s',
   ]);
   applyCliEnvironment(options);
@@ -152,22 +124,23 @@ test('environment mapping is deterministic', () => withCleanEnvironment(() => {
   assert.equal(process.env.YTCONV_OUTPUT_TEMPLATE, '%(title)s.%(ext)s');
 }));
 
-test('rejects invalid values and unsafe output templates', () => {
-  assert.throws(() => parseCliOptions(['--unknown']), /Opsi tidak dikenal/u);
-  assert.throws(() => parseCliOptions(['--preset', 'cinema']), /tidak dikenal/u);
+test('rejects invalid values and unsafe output templates in English', () => {
+  assert.throws(() => parseCliOptions(['--unknown']), /Unknown option/u);
+  assert.throws(() => parseCliOptions(['--preset', 'cinema']), /must be one of/u);
   assert.throws(() => parseCliOptions(['--audio-format', 'wma']), /mp3, m4a, aac/u);
   assert.throws(() => parseCliOptions(['--video-format', 'avi']), /auto, mp4, mkv, webm/u);
-  assert.throws(() => parseCliOptions(['--start', 'abc']), /detik, MM:SS, atau HH:MM:SS/u);
+  assert.throws(() => parseCliOptions(['--start', 'abc']), /seconds, MM:SS, or HH:MM:SS/u);
   assert.throws(() => parseCliOptions(['--rate-limit', 'fast']), /500K/u);
-  assert.throws(() => parseCliOptions(['--concurrent-fragments', '99']), /1–16/u);
-  assert.throws(() => parseCliOptions(['--proxy', 'file:///tmp/proxy']), /proxy http/u);
-  assert.throws(() => parseCliOptions(['--output-template', '../x.%(ext)s']), /di dalam folder output/u);
+  assert.throws(() => parseCliOptions(['--concurrent-fragments', '99']), /1 to 16/u);
+  assert.throws(() => parseCliOptions(['--proxy', 'file:///tmp/proxy']), /proxy URL/u);
+  assert.throws(() => parseCliOptions(['--output-template', '../x.%(ext)s']), /inside the output directory/u);
   assert.throws(() => parseCliOptions(['--output-template', '%(title)s']), /%\(ext\)s/u);
-  assert.throws(() => parseCliOptions(['--playlist-items', 'one-two']), /angka/u);
+  assert.throws(() => parseCliOptions(['--playlist-items', 'one-two']), /numbers/u);
 });
 
-test('help documents the YTConv 1.3 command surface', () => {
+test('help documents the stable command surface in English', () => {
   const text = helpText();
+  assert.match(text, /Usage:/u);
   assert.match(text, /ytconv playlist/u);
   assert.match(text, /ytconv batch/u);
   assert.match(text, /--retries/u);
