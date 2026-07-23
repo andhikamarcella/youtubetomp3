@@ -1,5 +1,11 @@
+import { CLI_VERSION } from './version.js';
+
 function text(error) {
   return error instanceof Error ? error.message : String(error ?? 'Unknown error.');
+}
+
+function updateChannel() {
+  return CLI_VERSION.includes('-') ? 'beta' : 'latest';
 }
 
 export function explainError(error, { platform = process.platform } = {}) {
@@ -9,7 +15,7 @@ export function explainError(error, { platform = process.platform } = {}) {
 
   if (/spawn(sync)? .*einval|npm\.cmd.*einval/u.test(value)) {
     lines.push('Cause: an older Windows updater attempted to spawn npm.cmd directly.');
-    lines.push('Fix: npm uninstall -g ytconv && npm install -g ytconv@latest --force');
+    lines.push(`Fix: npm uninstall -g ytconv && npm install -g ytconv@${updateChannel()} --force`);
   } else if (/execution policy|running scripts is disabled|cannot be loaded because running scripts/u.test(value)) {
     lines.push('PowerShell blocked the npm .ps1 shim.');
     lines.push('Use: ytconv.cmd');
