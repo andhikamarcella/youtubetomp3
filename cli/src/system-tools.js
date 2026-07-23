@@ -129,7 +129,7 @@ export async function clearCaches() {
   const updateCache = await clearUpdateCache();
   const tempFiles = [path.join(os.tmpdir(), 'ytconv-update.json'), path.join(os.homedir(), '.ytconv', 'last-error.txt')];
   await Promise.all(tempFiles.map((target) => fs.rm(target, { force: true }).catch(() => {})));
-  console.log(`Cache YTConv dibersihkan.\n- ${updateCache}\n- file sementara/error lama`);
+  console.log(`Cache YTConv dibersihkan.\n- ${updateCache}\n- file sementara/error lama\nArchive download tetap dipertahankan.`);
   return 0;
 }
 
@@ -146,11 +146,15 @@ async function writableDirectory(directory) {
 export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Downloads', 'YTConv') } = {}) {
   const dependencies = await inspectDependencies({ repair: false });
   const checks = [
-    ['YTConv version', CLI_VERSION === '1.3.0'],
+    ['YTConv version', CLI_VERSION === '1.5.0-beta.1'],
     ['Node >=18', Number(process.versions.node.split('.')[0]) >= 18],
     ['Home tersedia', Boolean(os.homedir())],
     ['Folder output dapat ditulis', await writableDirectory(outputDirectory)],
-    ['Updater punya strategi', Boolean(selfUpdateInvocation().strategy)],
+    ['Updater memakai beta channel', selfUpdateInvocation().args.some((value) => String(value).includes('ytconv@beta'))],
+    ['Subtitle default tersedia', process.env.YTCONV_SUBTITLES === '1'],
+    ['SponsorBlock default mark', process.env.YTCONV_SPONSORBLOCK_MODE === 'mark'],
+    ['Archive yt-dlp aktif', Boolean(process.env.YTCONV_ARCHIVE)],
+    ['Archive gallery aktif', Boolean(process.env.YTCONV_GALLERY_ARCHIVE)],
     ['yt-dlp', dependencies.ytDlp.installed],
     ['gallery-dl', dependencies.galleryDl?.installed],
     ['FFmpeg', dependencies.ffmpeg.installed],
@@ -168,8 +172,8 @@ export function systemHelpText() {
     'Fitur sistem, batch, dan automasi:',
     '  --repair, --setup       Perbaiki/siapkan yt-dlp, gallery-dl, dan FFmpeg',
     '  --shell-info, --where   Tampilkan distro, package manager, PATH, Node, dan npm',
-    '  --self-test             Tes dependency dan folder output tanpa download',
-    '  --clear-cache           Hapus cache update dan error lama',
+    '  --self-test             Tes dependency, default beta, dan folder output',
+    '  --clear-cache           Hapus cache update/error tanpa menghapus archive',
     '  --headless              Download tanpa TUI (SSH/CI/script)',
     '  --stdin                 Baca link dari stdin',
     '  --batch-file FILE       Baca link per baris dari file teks',
@@ -183,11 +187,14 @@ export function systemHelpText() {
 }
 
 export function examplesText() {
-  return `Contoh YTConv 1.3.0\n\n`
-    + 'CMD:\n  ytconv.cmd download "LINK" --format mp3 --quality 192\n  ytconv.cmd playlist "LINK" --archive downloaded.txt\n\n'
+  return `Contoh YTConv ${CLI_VERSION}\n\n`
+    + 'Default beta: subtitle ON, SponsorBlock mark ON, archive ON.\n'
+    + 'Matikan: --no-subtitles --no-sponsorblock --no-archive\n\n'
+    + 'CMD:\n  ytconv.cmd download "LINK" --format mp3 --quality 192\n  ytconv.cmd playlist "LINK"\n\n'
     + 'PowerShell:\n  ytconv.cmd batch links.txt --jobs 2 --result-json report.json\n  ytconv.cmd doctor\n\n'
     + 'Linux/macOS:\n  ytconv download "LINK" --preset music\n  ytconv formats "LINK" --json\n\n'
     + 'Termux:\n  ytconv --headless --preset mobile "LINK"\n\n'
     + 'SSH:\n  printf "%s\\n" "LINK1" "LINK2" | ytconv --stdin --jobs 2 --continue-on-error\n\n'
+    + 'Opt-out satu sesi:\n  ytconv download "LINK" --no-subtitles --no-sponsorblock --no-archive\n\n'
     + 'Cookies browser desktop:\n  ytconv download "LINK" --cookies-from-browser chrome\n';
 }
