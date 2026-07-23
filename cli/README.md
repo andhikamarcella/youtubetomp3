@@ -1,250 +1,309 @@
-# YTConv CLI 1.2.3
+# YTConv CLI 1.3.0
 
-YTConv adalah downloader dan converter media sosial untuk pengguna awam maupun terminal automation. Rilis 1.2.3 berfokus pada kestabilan **CMD, PowerShell, SSH/Linux non-TTY, Termux, dan iSH**.
+YTConv adalah downloader dan converter media sosial yang ramah pengguna awam, tetapi tetap nyaman untuk script, bot, SSH, dan automasi. YTConv memakai **yt-dlp**, **gallery-dl**, dan **FFmpeg**, dengan routing dan fallback untuk video, audio, gambar, carousel, Story, Reel, post campuran, serta playlist.
 
-YTConv memakai yt-dlp, gallery-dl, dan FFmpeg. Dukungan situs mengikuti kemampuan engine tersebut. YTConv tidak melewati DRM, paywall, akun privat tanpa akses, atau pembatasan hak cipta.
+> Gunakan hanya untuk media milik sendiri, berlisensi bebas, atau yang memang diizinkan untuk diunduh. YTConv tidak melewati DRM, paywall, akun privat tanpa akses, region lock, atau pembatasan hak cipta.
 
-## Hal baru di 1.2.3
+## Hal baru di 1.3.0
 
-- Update tidak lagi memblokir aplikasi saat update otomatis gagal.
-- Updater memilih `npm-cli.js` dan menjalankannya melalui Node, sehingga tidak bergantung pada `npm.cmd`/PowerShell shim bila jalur npm tersedia.
-- Fallback Windows masih memakai `cmd.exe`, bukan spawn langsung ke file `.cmd`.
-- Mode headless untuk SSH, CI, pipe, dan script.
-- Batch URL dari file atau stdin.
-- `--repair`, `--shell-info`, `--self-test`, dan `--clear-cache`.
-- Pesan error menjelaskan penyebab dan langkah yang bisa langsung disalin.
-- Installer khusus PowerShell, CMD, Termux, Linux/SSH, dan iSH.
-- iSH native frontend diperbarui ke 1.2.3 dan mendapat repair, batch, stdin, serta update nonblokir.
-- CI menguji CMD, PowerShell, Linux headless, Node 18/20/22, Termux simulation, dan iSH.
+- Command sederhana: `download`, `playlist`, `batch`, `info`, `formats`, `subtitles`, `doctor`, `repair`, dan `clean`.
+- Batch dari file atau stdin dengan `--jobs 1–8`, `--continue-on-error`, dan laporan `--result-json`.
+- Retry, fragment retry, file-access retry, retry sleep, resume `.part`, archive anti-duplikat, serta cleanup file sementara yang aman.
+- Format sumber tampil sebagai **original**, lengkap dengan codec, bitrate, FPS, resolusi, dan perkiraan ukuran bila tersedia.
+- Target hasil ditandai sebagai converted/remux. MP3 320 kbps tidak diklaim meningkatkan kualitas sumber.
+- Metadata musik otomatis plus override `artist`, `title`, `album`, `track`, `year`, dan `genre`.
+- Cookies file serta cookies browser Chrome, Chromium, Edge, Firefox, Brave, Opera, Vivaldi, Safari, dan Whale pada desktop.
+- Subtitle-only, subtitle SRT, embed subtitle, potong durasi, SponsorBlock, normalisasi audio, metadata sidecar, dan thumbnail/cover.
+- Exit code stabil untuk script.
+- Doctor dan shell-info menampilkan distro, package manager, dependency, PATH, updater, serta folder output.
+- Installer user-level untuk Windows, macOS, distro Linux utama, Termux, dan frontend native iSH.
+- CI untuk Node 18/20/22, Windows CMD, PowerShell, Ubuntu/Linux, macOS, Alpine/musl, SSH/headless, Termux simulation, dan iSH.
 
 ## Instalasi cepat
 
 ### Windows CMD
 
 ```cmd
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@1.2.3 --force
+npm.cmd install -g ytconv@1.3.0 --force
 ytconv.cmd --version
 ytconv.cmd --self-test
+ytconv.cmd doctor
 ```
 
 ### Windows PowerShell
 
+Gunakan `.cmd` agar tidak terganggu Execution Policy:
+
 ```powershell
-npm.cmd uninstall -g ytconv
-npm.cmd cache verify
-npm.cmd install -g ytconv@1.2.3 --force
+npm.cmd install -g ytconv@1.3.0 --force
 ytconv.cmd --version
 ytconv.cmd --self-test
+ytconv.cmd doctor
 ```
 
-PowerShell dapat memblokir shim `ytconv.ps1`. Cara paling aman adalah menjalankan `ytconv.cmd`. Untuk mengizinkan script npm bagi akun sendiri:
+### Linux dan macOS
 
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Dari source repository:
+
+```sh
+sh ./scripts/install-unix.sh
 ```
 
-### Termux
+Installer mendeteksi apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, atau Homebrew. Paket npm dipasang ke `~/.local`, bukan memakai `sudo npm install -g`.
+
+Lihat [panduan seluruh distro Linux](docs/LINUX.md).
+
+### Android Termux
 
 ```sh
 pkg update
 pkg install -y nodejs python ffmpeg
 termux-setup-storage
 python -m pip install -U yt-dlp gallery-dl
-npm install -g ytconv@1.2.3 --omit=optional --force
-ytconv --repair
+npm install -g ytconv@1.3.0 --omit=optional --force
+ytconv repair
 ytconv --self-test
 ```
 
-### Linux/macOS/SSH
+Hasil default: `~/storage/downloads/YTConv`.
 
-```sh
-npm install -g ytconv@1.2.3 --force
-ytconv --self-test
-ytconv --headless "LINK"
-```
+### iPhone/iPad melalui iSH
 
-### iSH iPhone/iPad
+Gunakan frontend Python native, bukan paket npm Ink:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
-ytconv --diagnose
 ```
 
-Tutorial terpisah: [INSTALL.md](docs/INSTALL.md) dan [SHELLS.md](docs/SHELLS.md).
+Hasil default: `~/Downloads/YTConv`, dapat dibuka melalui aplikasi Files → iSH.
 
-## Penggunaan paling mudah
-
-Buka terminal lalu:
-
-```text
-ytconv
-```
-
-Paste link, pilih pengaturan, lalu convert.
-
-Preset cepat:
+### Tanpa instalasi global
 
 ```sh
-ytconv --preset music "LINK"
-ytconv --preset mobile "LINK"
-ytconv --preset hd "LINK"
-ytconv --preset archive --playlist "LINK_PLAYLIST"
+npx -y ytconv@1.3.0 --help
+npx -y ytconv@1.3.0 download "LINK"
 ```
 
-## Mode headless untuk SSH dan script
+## Command dasar
+
+```sh
+ytconv download "LINK"
+ytconv playlist "LINK_PLAYLIST"
+ytconv batch links.txt
+ytconv info "LINK"
+ytconv formats "LINK"
+ytconv formats "LINK" --json
+ytconv subtitles "LINK"
+ytconv doctor
+ytconv repair
+ytconv clean
+```
+
+Sintaks lama tetap didukung:
+
+```sh
+ytconv "LINK" --preset music
+```
+
+## Playlist dan batch
+
+Seluruh playlist dengan archive anti-duplikat:
+
+```sh
+ytconv playlist "LINK" --archive downloaded.txt
+```
+
+Item tertentu:
+
+```sh
+ytconv playlist "LINK" --playlist-items "1-10"
+ytconv playlist "LINK" --playlist-items "1,3,5-10"
+```
+
+Batasi jumlah dan lanjut bila beberapa item gagal:
+
+```sh
+ytconv playlist "LINK" --max-downloads 25 --skip-playlist-after-errors 5
+```
+
+`links.txt`:
+
+```text
+# komentar diabaikan
+https://example.com/media-1
+https://example.com/media-2
+```
+
+Jalankan dua pekerjaan sekaligus dan simpan laporan:
+
+```sh
+ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
+```
+
+`--jobs` dibatasi 1–8. Nilai kecil lebih aman untuk laptop lama, ponsel, server kecil, dan situs yang mudah memberi HTTP 429.
+
+## Retry, resume, dan cleanup
+
+```sh
+ytconv download "LINK" \
+  --retries 20 \
+  --fragment-retries 30 \
+  --file-access-retries 5 \
+  --retry-sleep "linear=1:10:2" \
+  --resume
+```
+
+Resume aktif secara default. Matikan dengan:
+
+```sh
+ytconv download "LINK" --no-resume
+```
+
+Bersihkan file `.part` baru bila proses gagal:
+
+```sh
+ytconv download "LINK" --cleanup-part
+```
+
+Saat batch paralel memakai `--jobs > 1`, cleanup part otomatis dinonaktifkan agar worker tidak menghapus file worker lain.
+
+## Format dan kualitas yang jujur
+
+Lihat format original:
+
+```sh
+ytconv formats "LINK"
+ytconv formats "LINK" --json
+```
+
+Info lengkap beserta rencana output:
+
+```sh
+ytconv info "LINK"
+ytconv info "LINK" --json
+```
+
+Contoh konversi:
+
+```sh
+ytconv download "LINK" --format mp3 --quality 192
+ytconv download "LINK" --format mp4 --quality 1080p
+ytconv download "LINK" --audio-format flac
+ytconv download "LINK" --video-format webm --resolution 720
+```
+
+Label `original` berarti stream berasal dari sumber. MP3, FLAC dari sumber lossy, normalisasi, dan remux tertentu adalah proses output. Memilih MP3 320 kbps hanya menentukan target encoder dan **tidak mengembalikan detail yang sudah hilang dari sumber**.
+
+## Metadata musik dan cover
+
+Metadata otomatis ditanam bila tersedia. MP3 menyimpan thumbnail JPG terpisah dan menanamnya sebagai cover. YouTube Music memakai crop persegi 1:1.
+
+```sh
+ytconv download "LINK" --preset music
+ytconv download "LINK" --metadata --thumbnail --metadata-files
+```
+
+Override manual:
+
+```sh
+ytconv download "LINK" --format mp3 \
+  --artist "Nama Artis" \
+  --title "Judul Lagu" \
+  --album "Nama Album" \
+  --track 3 \
+  --year 2026 \
+  --genre "Pop"
+```
+
+URL sumber tetap masuk ke metadata bawaan engine pada format yang mendukungnya.
+
+## Cookies dan login
+
+File Netscape:
+
+```sh
+ytconv download "LINK" --cookies cookies.txt
+```
+
+Browser desktop:
+
+```sh
+ytconv download "LINK" --cookies-from-browser chrome
+ytconv download "LINK" --cookies-from-browser "firefox:default-release"
+ytconv download "LINK" --cookies-from-browser "brave:Default"
+```
+
+Tutup browser sepenuhnya bila database cookies sedang terkunci. Cookies adalah kredensial sensitif: jangan dikirim ke orang lain, issue publik, screenshot, atau log. Termux dan iSH tidak dapat membaca database privat browser Android/iOS secara langsung; gunakan file cookies yang diekspor secara sah.
+
+## Subtitle dan potong durasi
+
+```sh
+ytconv download "LINK" --subtitles --subtitle-langs "id,en"
+ytconv download "LINK" --subtitle-only --subtitle-langs "id,en"
+ytconv download "LINK" --from 00:01:20 --to 00:03:45
+```
+
+## Preset
+
+```sh
+ytconv --list-presets
+ytconv download "LINK" --preset music
+ytconv download "LINK" --preset mobile
+ytconv playlist "LINK" --preset archive --archive downloaded.txt
+```
+
+Preset tersedia: `balanced`, `music`, `lossless`, `mobile`, `hd`, dan `archive`. Opsi eksplisit mengalahkan nilai preset.
+
+## SSH, pipe, bot, dan automasi
 
 ```sh
 ytconv --headless "LINK"
-ytconv --headless --preset music "LINK"
-ytconv --headless --output "$HOME/downloads" "LINK"
+printf '%s\n' "LINK1" "LINK2" | ytconv --stdin --jobs 2 --continue-on-error
 ```
 
-Saat stdin atau stdout bukan TTY, YTConv otomatis memakai mode headless.
-
-## Batch download
-
-Buat `links.txt`:
-
-```text
-# Komentar boleh
-https://example.com/link-1
-https://example.com/link-2
-```
-
-Jalankan:
+JSON metadata:
 
 ```sh
-ytconv --batch-file links.txt --continue-on-error
+ytconv info "LINK" --json
 ```
 
-Atau melalui pipe:
+Exit code:
+
+| Kode | Arti |
+|---:|---|
+| 0 | Berhasil |
+| 1 | Download/proses gagal |
+| 2 | URL atau opsi tidak valid |
+| 3 | Dependency belum tersedia |
+| 4 | Login/cookies diperlukan |
+| 5 | Gangguan sementara: jaringan, proxy, timeout, atau HTTP 429 |
+| 130 | Dibatalkan |
+
+## Diagnosis
 
 ```sh
-printf "%s\n" "LINK1" "LINK2" | ytconv --stdin --continue-on-error
-```
-
-PowerShell:
-
-```powershell
-Get-Content .\links.txt | ytconv.cmd --stdin --continue-on-error
-```
-
-CMD:
-
-```cmd
-type links.txt | ytconv.cmd --stdin --continue-on-error
-```
-
-## Perbaikan otomatis
-
-```sh
-ytconv --repair
-ytconv --diagnose
-ytconv --shell-info
+ytconv doctor
+ytconv repair
 ytconv --self-test
-```
-
-`--repair` menyiapkan atau memperbarui yt-dlp, gallery-dl, dan FFmpeg sesuai platform. `--shell-info` menunjukkan shell, PATH, Node, npm, lokasi YTConv, TTY, dan strategi updater.
-
-## Update
-
-```sh
-ytconv --check-update
-ytconv --update
-```
-
-Update yang tersedia hanya memberi peringatan. YTConv tetap dapat digunakan walaupun registry offline atau update gagal.
-
-Update manual 1.2.3:
-
-```sh
-npm install -g ytconv@1.2.3 --force
-```
-
-## Audio
-
-```sh
-ytconv --audio --audio-format mp3 --audio-quality 320 "LINK"
-ytconv --preset music "LINK"
-ytconv --audio-format flac --thumbnail "LINK"
-ytconv --normalize-audio --audio "LINK"
-```
-
-MP3 otomatis menyimpan thumbnail JPG, cover tertanam, metadata, dan chapter bila tersedia. Link `music.youtube.com` mendapat crop cover 1:1.
-
-## Video dan subtitle
-
-```sh
-ytconv --video-format mp4 --resolution 1080 "LINK"
-ytconv --video-format mkv --subtitles --subtitle-langs "id,en" "LINK"
-```
-
-## Gambar, carousel, dan post campuran
-
-```sh
-ytconv --image "LINK"
-ytconv --image-format jpg "LINK"
-ytconv --stories "LINK_INSTAGRAM"
-ytconv --all-media "LINK_INSTAGRAM"
-```
-
-AUTO mencoba engine yang paling cocok dan dapat berpindah antara yt-dlp dan gallery-dl. Mode yang dipaksa pengguna tidak diam-diam diubah.
-
-## Pemeriksaan tanpa download
-
-```sh
-ytconv --dry-run "LINK"
-ytconv --json "LINK"
-ytconv --list-formats "LINK"
-ytconv --list-subs "LINK"
-```
-
-## Cookies
-
-```sh
-ytconv --cookies "PATH/cookies.txt" "LINK"
-```
-
-Gunakan cookies Netscape dari akun yang sah dan memang memiliki akses. Jangan mengunggah atau membagikan file cookies.
-
-## Lokasi hasil
-
-```sh
-ytconv --output "D:\Media\YTConv" "LINK"
-ytconv --output "$HOME/Downloads/YTConv" "LINK"
-ytconv --open-output --headless "LINK"
-```
-
-Default desktop: folder Downloads. Default Termux: `~/storage/downloads/YTConv`. Default iSH: `~/Downloads/YTConv`.
-
-## Troubleshooting paling cepat
-
-```sh
-ytconv --clear-cache
-ytconv --repair
-ytconv --diagnose
 ytconv --shell-info
+ytconv clean
 ```
-
-Dokumentasi error lengkap: [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Dokumentasi
 
-- [Instalasi lengkap semua platform](docs/INSTALL.md)
+- [Instalasi lengkap](docs/INSTALL.md)
+- [Linux dan macOS](docs/LINUX.md)
 - [CMD, PowerShell, SSH, Termux, dan iSH](docs/SHELLS.md)
-- [Semua command](docs/COMMANDS.md)
-- [Platform dan batasan](docs/PLATFORMS.md)
+- [Seluruh command](docs/COMMANDS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Checklist publish](docs/RELEASE.md)
+- [Checklist rilis](docs/RELEASE.md)
 - [Changelog](CHANGELOG.md)
 
-## Batasan nyata
+## Dukungan dan batasan
 
-Tidak mungkin menjamin setiap link semua situs selalu berhasil. Situs dapat mengubah API, meminta login, membatasi region, memberi HTTP 429, menghapus post, atau memakai DRM. YTConv 1.2.3 memperkuat diagnosis, fallback, repair, dan penjelasan error, tetapi tidak menjanjikan akses yang secara teknis atau hukum tidak tersedia.
+Tidak ada downloader yang dapat menjamin semua link, distro, arsitektur, dan perangkat selalu berhasil. Situs dapat mengubah API, meminta login, memblokir wilayah, menghapus post, memberi HTTP 429, atau memakai DRM. YTConv memperkuat fallback, retry, repair, diagnosis, dan pesan error, tetapi tidak menerobos akses yang tidak tersedia secara teknis atau hukum.
 
 ## Lisensi
 
-MIT. Engine pihak ketiga memiliki lisensinya masing-masing.
+MIT. yt-dlp, gallery-dl, FFmpeg, dan dependency lain memiliki lisensi masing-masing.
