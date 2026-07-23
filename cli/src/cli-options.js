@@ -12,6 +12,7 @@ const RESOLUTIONS = new Set(['best', '2160', '1440', '1080', '720', '480', '360'
 const SPONSORBLOCK_MODES = new Set(['off', 'mark', 'remove']);
 const BROWSERS = new Set(['chrome', 'chromium', 'edge', 'firefox', 'brave', 'opera', 'vivaldi', 'safari', 'whale']);
 const DEFAULT_SPONSORBLOCK_CATEGORIES = 'sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic';
+const RETRY_SLEEP_PREFIX = /^(?:http|fragment|file_access|extractor):/iu;
 
 function takeValue(args, index, flag) {
   const value = args[index + 1];
@@ -56,11 +57,11 @@ function validateRetries(value, flag) {
 }
 
 function validateRetrySleep(value, flag) {
-  const normalized = validateText(value, flag, 120);
-  if (!/^(?:(?:http|fragment|file_access|extractor):)?(?:\d+(?:\.\d+)?|linear=\d+(?::\d*)?(?::\d*)?|exp=\d+(?::\d*)?(?::\d*)?)$/iu.test(normalized)) {
+  const normalized = validateText(value, flag, 120).replace(RETRY_SLEEP_PREFIX, '');
+  if (!/^(?:\d+(?:\.\d+)?|linear=\d+(?::\d*)?(?::\d*)?|exp=\d+(?::\d*)?(?::\d*)?)$/iu.test(normalized)) {
     throw new Error(`${flag} harus angka, linear=START:END:STEP, atau exp=START:END:BASE.`);
   }
-  return normalized;
+  return `http:${normalized}`;
 }
 
 function validateRate(value, flag) {
@@ -158,7 +159,7 @@ function defaultOptions() {
     retries: '10',
     fragmentRetries: '10',
     fileAccessRetries: '3',
-    retrySleep: 'linear=1::2',
+    retrySleep: 'http:linear=1::2',
     resume: true,
     cleanupPart: false,
     metadataArtist: '',
