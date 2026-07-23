@@ -1,4 +1,28 @@
-# Referensi command YTConv 1.3.0
+# Referensi command YTConv 1.5.0 Beta
+
+Versi npm: `1.5.0-beta.1`
+
+## Default beta
+
+Tiga fitur aktif tanpa perlu opsi tambahan:
+
+```text
+subtitle       ON untuk video
+SponsorBlock   ON mode mark
+archive        ON per profil
+```
+
+Mode SponsorBlock `mark` menambahkan chapter/penanda dan tidak memotong media.
+
+Opt-out:
+
+```text
+--no-subtitles, --subtitles-off
+--no-sponsorblock, --sponsorblock-off
+--no-archive
+```
+
+Archive otomatis berada di `~/.ytconv/archives`. yt-dlp memakai file teks, sedangkan gallery-dl memakai database archive terpisah.
 
 ## Bentuk command
 
@@ -31,10 +55,10 @@ ytconv [LINK] [OPSI]
 | `formats` | Daftar format original |
 | `formats LINK --json` | Format original sebagai JSON |
 | `subtitles`, `subs` | Daftar subtitle |
-| `doctor` | Diagnosis sistem |
+| `doctor` | Diagnosis sistem dan default beta |
 | `repair`, `setup` | Perbaiki dependency |
-| `clean` | Bersihkan cache YTConv |
-| `update` | Update paket |
+| `clean` | Bersihkan cache update/error; archive tidak dihapus |
+| `update` | Update melalui npm channel beta |
 
 ## Preset
 
@@ -43,7 +67,7 @@ ytconv [LINK] [OPSI]
 --list-presets
 ```
 
-Opsi eksplisit mengalahkan preset.
+Opsi eksplisit dan opt-out mengalahkan preset.
 
 ## Mode
 
@@ -57,9 +81,9 @@ Opsi eksplisit mengalahkan preset.
 --platform PLATFORM
 ```
 
-Mode paksa tidak diam-diam diganti fallback. AUTO dapat mencoba yt-dlp lalu gallery-dl atau sebaliknya.
+Mode paksa tidak diam-diam diganti fallback. AUTO dapat mencoba yt-dlp dan gallery-dl.
 
-## Playlist dan batch
+## Playlist, batch, dan archive
 
 ```text
 --playlist
@@ -68,12 +92,15 @@ Mode paksa tidak diam-diam diganti fallback. AUTO dapat mencoba yt-dlp lalu gall
 --max-downloads 25
 --skip-playlist-after-errors 5
 --archive downloaded.txt
+--no-archive
 --batch-file links.txt
 --stdin
 --jobs 1..8
 --continue-on-error
 --result-json report.json
 ```
+
+Archive aktif otomatis. `--archive downloaded.txt` memakai file tersebut untuk yt-dlp dan membuat pasangan `downloaded.txt.gallery.sqlite3` untuk gallery-dl. `--no-archive` mematikan keduanya pada satu proses.
 
 `batch FILE` otomatis menambahkan `--continue-on-error`. URL duplikat, komentar `#`, dan baris kosong diabaikan.
 
@@ -106,7 +133,9 @@ Resume aktif secara default. Cleanup hanya menghapus file sementara baru dari pr
 --keep-video
 ```
 
-`--format` dan `--quality` adalah alias sederhana. MP3 320 kbps adalah target encoder, bukan bukti bahwa sumber mempunyai kualitas 320 kbps.
+MP3 320 kbps adalah target encoder, bukan bukti bahwa sumber mempunyai kualitas 320 kbps.
+
+Subtitle default tidak diterapkan pada hasil audio-only, tetapi SponsorBlock mark dan archive tetap dapat dipakai oleh engine bila sesuai.
 
 ## Video
 
@@ -134,7 +163,7 @@ ytconv formats LINK --json
 --formats-json
 ```
 
-JSON info memakai schemaVersion 2. Format memuat ID, container, jenis, resolusi, FPS, codec, bitrate, ukuran perkiraan, protokol, dan `source: original` bila data tersedia.
+JSON info memakai `schemaVersion: 2`. Format dapat memuat ID, container, jenis, resolusi, FPS, codec, bitrate, ukuran perkiraan, protokol, dan `source: original`.
 
 ## Metadata dan cover
 
@@ -152,18 +181,22 @@ JSON info memakai schemaVersion 2. Format memuat ID, container, jenis, resolusi,
 --genre Pop
 ```
 
-Metadata otomatis dan URL sumber ditanam pada format yang mendukung. MP3 selalu mencoba cover tertanam dan thumbnail JPG terpisah. WAV tidak mendukung embedded cover melalui jalur ini.
+Metadata otomatis dan URL sumber ditanam pada format yang mendukung. MP3 mencoba embedded cover dan thumbnail JPG terpisah. WAV tidak memakai embedded cover melalui jalur ini.
 
 ## Subtitle
 
+Default: **aktif untuk video**.
+
 ```text
 --subtitles
+--no-subtitles
+--subtitles-off
 --subtitle-only
 --subtitle-langs "id,en"
 --list-subs
 ```
 
-YTConv mencoba subtitle manual dan otomatis, mengubah ke SRT, lalu embed bila media ikut diunduh dan container mendukung.
+YTConv mencoba subtitle manual dan otomatis, mengubah ke SRT, lalu embed bila media ikut diunduh dan container mendukung. Tidak semua video mempunyai subtitle; ketiadaan subtitle tidak seharusnya menggagalkan media utama.
 
 ## Potong durasi
 
@@ -178,14 +211,18 @@ Waktu menerima detik, `MM:SS`, atau `HH:MM:SS`. Titik potong dapat sedikit berge
 
 ## SponsorBlock
 
+Default: **`mark`**.
+
 ```text
 --sponsorblock off|mark|remove
 --sponsorblock-mode off|mark|remove
+--no-sponsorblock
+--sponsorblock-off
 --remove-sponsors
 --sponsorblock-categories "sponsor,selfpromo"
 ```
 
-Data SponsorBlock tidak tersedia untuk semua video/situs.
+`mark` menambahkan chapter/penanda. `remove` memotong segmen secara eksplisit. SponsorBlock terutama tersedia untuk YouTube dan tidak memiliki data untuk semua video/situs.
 
 ## Cookies dan autentikasi
 
@@ -211,7 +248,7 @@ Browser desktop yang dikenali: Chrome, Chromium, Edge, Firefox, Brave, Opera, Vi
 --live-from-start
 ```
 
-`--jobs` mengontrol jumlah link batch yang diproses bersamaan. `--concurrent-fragments` mengontrol fragmen satu media. Keduanya berbeda dan sebaiknya tidak dinaikkan berlebihan.
+`--jobs` mengontrol jumlah link batch yang diproses bersamaan. `--concurrent-fragments` mengontrol fragmen satu media.
 
 ## File
 
@@ -245,6 +282,8 @@ Template wajib relatif, tidak boleh mengandung segmen `..`, dan wajib memuat `%(
 -v, --version
 ```
 
+Pada prerelease ini, `--check-update` dan `--update` menggunakan dist-tag npm `beta`. `--clear-cache` tidak menghapus archive download.
+
 ## Exit code
 
 | Kode | Makna |
@@ -257,14 +296,14 @@ Template wajib relatif, tidak boleh mengandung segmen `..`, dan wajib memuat `%(
 | 5 | Gangguan sementara: jaringan, proxy, timeout, DNS, sertifikat, atau HTTP 429 |
 | 130 | Dibatalkan |
 
-## Contoh
+## Contoh beta
 
-```sh
-ytconv playlist "LINK" --playlist-items "1-10" --archive downloaded.txt
-ytconv batch links.txt --jobs 2 --result-json report.json
-ytconv download "LINK" --format mp3 --quality 192 --thumbnail
-ytconv download "LINK" --artist "Artis" --title "Judul"
-ytconv download "LINK" --cookies-from-browser chrome
-ytconv download "LINK" --subtitle-only --subtitle-langs "id,en"
-ytconv info "LINK" --json
+```bash
+ytconv download "LINK"
+ytconv download "LINK" --subtitle-langs "id,en"
+ytconv download "LINK" --sponsorblock remove
+ytconv download "LINK" --no-subtitles --no-sponsorblock --no-archive
+ytconv playlist "LINK" --playlist-items "1-10"
+ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
+ytconv doctor
 ```
