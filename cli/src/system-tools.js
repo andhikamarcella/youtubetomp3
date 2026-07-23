@@ -18,19 +18,9 @@ function takeValue(argv, index, flag) {
 export function extractSystemOptions(argv = []) {
   const cleanArgs = [];
   const system = {
-    repair: false,
-    shellInfo: false,
-    clearCache: false,
-    selfTest: false,
-    examples: false,
-    headless: false,
-    stdin: false,
-    batchFile: '',
-    continueOnError: false,
-    openOutput: false,
-    noColor: false,
-    jobs: 1,
-    resultJson: '',
+    repair: false, shellInfo: false, clearCache: false, selfTest: false,
+    examples: false, headless: false, stdin: false, batchFile: '',
+    continueOnError: false, openOutput: false, noColor: false, jobs: 1, resultJson: '',
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -47,19 +37,15 @@ export function extractSystemOptions(argv = []) {
     else if (arg === '--open-output') system.openOutput = true;
     else if (arg === '--no-color') system.noColor = true;
     else if (arg === '--batch-file') {
-      system.batchFile = takeValue(argv, index, arg);
-      index += 1;
+      system.batchFile = takeValue(argv, index, arg); index += 1;
     } else if (arg === '--jobs') {
       const number = Number.parseInt(takeValue(argv, index, arg), 10);
       if (!Number.isInteger(number) || number < 1 || number > 8) throw new Error('--jobs must be an integer from 1 to 8.');
-      system.jobs = number;
-      index += 1;
+      system.jobs = number; index += 1;
     } else if (arg === '--result-json') {
-      system.resultJson = path.resolve(takeValue(argv, index, arg));
-      index += 1;
+      system.resultJson = path.resolve(takeValue(argv, index, arg)); index += 1;
     } else cleanArgs.push(arg);
   }
-
   return { system, cleanArgs };
 }
 
@@ -85,19 +71,14 @@ async function availableManagers() {
 export async function printShellInfo({ outputDirectory = '' } = {}) {
   const distro = await detectLinuxDistro({ available: await availableManagers() });
   const rows = [
-    ['Shell', shellName()],
-    ['Platform', `${process.platform} ${process.arch}`],
-    ['Distribution', distro.name],
-    ['Package manager', distro.manager],
+    ['Shell', shellName()], ['Platform', `${process.platform} ${process.arch}`],
+    ['Distribution', distro.name], ['Package manager', distro.manager],
     ['Node', `${process.version} (${process.execPath})`],
     ['npm', await commandPath(process.platform === 'win32' ? 'npm.cmd' : 'npm')],
     ['ytconv', await commandPath(process.platform === 'win32' ? 'ytconv.cmd' : 'ytconv')],
     ['TTY stdin/out', `${Boolean(process.stdin.isTTY)} / ${Boolean(process.stdout.isTTY)}`],
-    ['Working directory', process.cwd()],
-    ['Home', os.homedir()],
-    ['Output', outputDirectory || '-'],
-    ['npm prefix', process.env.npm_config_prefix || '-'],
-    ['npm exec path', process.env.npm_execpath || '-'],
+    ['Working directory', process.cwd()], ['Home', os.homedir()], ['Output', outputDirectory || '-'],
+    ['npm prefix', process.env.npm_config_prefix || '-'], ['npm exec path', process.env.npm_execpath || '-'],
     ['Updater', selfUpdateInvocation({ currentVersion: CLI_VERSION }).strategy],
   ];
   console.log('YTConv shell information\n');
@@ -132,7 +113,7 @@ export async function clearCaches() {
   const updateCache = await clearUpdateCache();
   const tempFiles = [path.join(os.tmpdir(), 'ytconv-update.json'), path.join(os.homedir(), '.ytconv', 'last-error.txt')];
   await Promise.all(tempFiles.map((target) => fs.rm(target, { force: true }).catch(() => {})));
-  console.log(`YTConv caches cleared.\n- ${updateCache}\n- old temporary/error files\nDownload archives were preserved.`);
+  console.log(`YTConv caches cleared.\n- ${updateCache}\n- old temporary/error files\nConfiguration, profiles, history, and download archives were preserved.`);
   return 0;
 }
 
@@ -150,11 +131,15 @@ export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Down
   const dependencies = await inspectDependencies({ repair: false });
   const updater = selfUpdateInvocation({ currentVersion: CLI_VERSION });
   const checks = [
-    ['YTConv version is 1.4.0', CLI_VERSION === '1.4.0'],
+    ['YTConv version is 1.5.0-beta.2', CLI_VERSION === '1.5.0-beta.2'],
     ['Node.js is version 18 or newer', Number(process.versions.node.split('.')[0]) >= 18],
     ['Home directory is available', Boolean(os.homedir())],
     ['Output directory is writable', await writableDirectory(outputDirectory)],
-    ['Updater uses the stable channel', updater.args.some((value) => String(value).includes('ytconv@latest'))],
+    ['Updater uses the beta channel', updater.args.some((value) => String(value).includes('ytconv@beta'))],
+    ['Subtitles are enabled by the beta default', process.env.YTCONV_SUBTITLES === '1'],
+    ['SponsorBlock beta default is mark', process.env.YTCONV_SPONSORBLOCK_MODE === 'mark'],
+    ['yt-dlp archive is enabled', Boolean(process.env.YTCONV_ARCHIVE)],
+    ['gallery-dl archive is enabled', Boolean(process.env.YTCONV_GALLERY_ARCHIVE)],
     ['yt-dlp is available', dependencies.ytDlp.installed],
     ['gallery-dl is available', dependencies.galleryDl?.installed],
     ['FFmpeg is available', dependencies.ffmpeg.installed],
@@ -172,8 +157,8 @@ export function systemHelpText() {
     'System, batch, and automation options:',
     '  --repair, --setup       Repair or install yt-dlp, gallery-dl, and FFmpeg',
     '  --shell-info, --where   Show distribution, package manager, PATH, Node.js, and npm',
-    '  --self-test             Test dependencies and output directory without downloading',
-    '  --clear-cache           Clear update and old error caches',
+    '  --self-test             Test dependencies, beta defaults, and the output directory',
+    '  --clear-cache           Clear update and old error caches without deleting user data',
     '  --headless              Run without the TUI for SSH, CI, cron, or scripts',
     '  --stdin                 Read URLs from standard input',
     '  --batch-file FILE       Read one URL per line from a UTF-8 text file',
@@ -187,11 +172,12 @@ export function systemHelpText() {
 }
 
 export function examplesText() {
-  return `YTConv 1.4.0 examples\n\n`
-    + 'CMD:\n  ytconv.cmd download "URL" --format mp3 --quality 192\n  ytconv.cmd playlist "URL" --archive downloaded.txt\n\n'
-    + 'PowerShell:\n  ytconv.cmd batch links.txt --jobs 2 --result-json report.json\n  ytconv.cmd doctor\n\n'
-    + 'Linux/macOS:\n  ytconv download "URL" --preset music\n  ytconv formats "URL" --json\n\n'
+  return `YTConv 1.5.0-beta.2 examples\n\n`
+    + 'Quick start:\n  ytconv quickstart\n  ytconv config set output ~/Downloads/YTConv\n\n'
+    + 'Profiles:\n  ytconv profile set music preset=music audioQuality=320\n  ytconv --profile music download "URL"\n\n'
+    + 'CMD:\n  ytconv.cmd download "URL" --format mp3 --quality 192\n\n'
+    + 'PowerShell:\n  ytconv.cmd batch links.txt --jobs 2 --result-json report.json\n\n'
+    + 'Linux/macOS:\n  ytconv download "URL" --preset music\n  ytconv completion bash\n\n'
     + 'Termux:\n  ytconv --headless --preset mobile "URL"\n\n'
-    + 'SSH:\n  printf "%s\\n" "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error\n\n'
-    + 'Desktop browser cookies:\n  ytconv download "URL" --cookies-from-browser chrome\n';
+    + 'SSH:\n  printf "%s\\n" "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error\n';
 }
