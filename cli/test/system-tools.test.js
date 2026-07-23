@@ -20,15 +20,18 @@ test('doctor alias is translated before the normal parser', () => {
   assert.deepEqual(result.cleanArgs, ['--diagnose']);
 });
 
-test('system help documents repair, PowerShell/SSH headless, and batch features', () => {
+test('system help documents repair, headless, batch jobs, and JSON reports', () => {
   const value = systemHelpText();
   assert.match(value, /--repair/u);
   assert.match(value, /--shell-info/u);
   assert.match(value, /--headless/u);
   assert.match(value, /--batch-file/u);
+  assert.match(value, /--jobs/u);
+  assert.match(value, /--result-json/u);
 });
 
-test('error explanation gives actionable PowerShell and update guidance', () => {
-  assert.match(explainError(new Error('spawnSync npm.cmd EINVAL')), /1\.2\.3/u);
+test('error explanation gives actionable PowerShell, cookie, and update guidance', () => {
+  assert.match(explainError(new Error('spawnSync npm.cmd EINVAL')), /1\.3\.0/u);
   assert.match(explainError(new Error('running scripts is disabled on this system')), /ytconv\.cmd/u);
+  assert.match(explainError(new Error('cookie database is locked')), /cookies-from-browser/u);
 });
