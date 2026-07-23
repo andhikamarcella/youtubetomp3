@@ -11,7 +11,7 @@ import { CLI_VERSION } from './version.js';
 
 function takeValue(argv, index, flag) {
   const value = argv[index + 1];
-  if (!value || value.startsWith('-')) throw new Error(`${flag} membutuhkan nilai.`);
+  if (!value || value.startsWith('-')) throw new Error(`${flag} requires a value.`);
   return value;
 }
 
@@ -51,7 +51,7 @@ export function extractSystemOptions(argv = []) {
       index += 1;
     } else if (arg === '--jobs') {
       const number = Number.parseInt(takeValue(argv, index, arg), 10);
-      if (!Number.isInteger(number) || number < 1 || number > 8) throw new Error('--jobs harus angka 1–8.');
+      if (!Number.isInteger(number) || number < 1 || number > 8) throw new Error('--jobs must be an integer from 1 to 8.');
       system.jobs = number;
       index += 1;
     } else if (arg === '--result-json') {
@@ -87,24 +87,27 @@ export async function printShellInfo({ outputDirectory = '' } = {}) {
   const rows = [
     ['Shell', shellName()],
     ['Platform', `${process.platform} ${process.arch}`],
-    ['Distro', distro.name],
-    ['Pkg manager', distro.manager],
+    ['Distribution', distro.name],
+    ['Package manager', distro.manager],
     ['Node', `${process.version} (${process.execPath})`],
     ['npm', await commandPath(process.platform === 'win32' ? 'npm.cmd' : 'npm')],
     ['ytconv', await commandPath(process.platform === 'win32' ? 'ytconv.cmd' : 'ytconv')],
     ['TTY stdin/out', `${Boolean(process.stdin.isTTY)} / ${Boolean(process.stdout.isTTY)}`],
-    ['CWD', process.cwd()], ['HOME', os.homedir()], ['Output', outputDirectory || '-'],
-    ['npm prefix', process.env.npm_config_prefix || '-'], ['npm execpath', process.env.npm_execpath || '-'],
-    ['Updater', selfUpdateInvocation().strategy],
+    ['Working directory', process.cwd()],
+    ['Home', os.homedir()],
+    ['Output', outputDirectory || '-'],
+    ['npm prefix', process.env.npm_config_prefix || '-'],
+    ['npm exec path', process.env.npm_execpath || '-'],
+    ['Updater', selfUpdateInvocation({ currentVersion: CLI_VERSION }).strategy],
   ];
-  console.log('YTConv shell info\n');
-  for (const [label, value] of rows) console.log(`${label.padEnd(14)} ${value}`);
+  console.log('YTConv shell information\n');
+  for (const [label, value] of rows) console.log(`${label.padEnd(18)} ${value}`);
   if (process.platform === 'win32') {
     console.log('\nPowerShell: Get-Command ytconv -All');
     console.log('CMD       : where ytconv');
   } else {
     console.log('\nShell     : command -v ytconv && type -a ytconv');
-    console.log(`Setup OS  : ${distro.installPlan}`);
+    console.log(`OS setup  : ${distro.installPlan}`);
   }
   return 0;
 }
@@ -112,14 +115,14 @@ export async function printShellInfo({ outputDirectory = '' } = {}) {
 export async function repairInstallation() {
   console.log('YTConv repair\n');
   const before = await inspectDependencies({ repair: false });
-  console.log(`Sebelum repair: ${before.ready ? 'sudah lengkap' : `kurang ${before.missing.join(', ')}`}`);
+  console.log(`Before repair: ${before.ready ? 'all required tools are available' : `missing ${before.missing.join(', ')}`}`);
   let result;
   if (isTermux()) result = await prepareTermuxDependencies();
   else result = await prepareDesktopDependencies({ silent: false });
   const after = await inspectDependencies({ repair: false });
-  console.log(`\nSesudah repair: ${after.ready ? 'semua dependency siap' : `masih kurang ${after.missing.join(', ')}`}`);
+  console.log(`\nAfter repair: ${after.ready ? 'all required tools are ready' : `still missing ${after.missing.join(', ')}`}`);
   if (!after.ready) {
-    console.log('Jalankan ytconv doctor dan ytconv --shell-info, lalu ikuti command Setup OS yang ditampilkan.');
+    console.log('Run ytconv doctor and ytconv --shell-info, then follow the displayed OS setup command.');
     return 3;
   }
   return result?.prepared === false && !after.ready ? 3 : 0;
@@ -129,7 +132,7 @@ export async function clearCaches() {
   const updateCache = await clearUpdateCache();
   const tempFiles = [path.join(os.tmpdir(), 'ytconv-update.json'), path.join(os.homedir(), '.ytconv', 'last-error.txt')];
   await Promise.all(tempFiles.map((target) => fs.rm(target, { force: true }).catch(() => {})));
-  console.log(`Cache YTConv dibersihkan.\n- ${updateCache}\n- file sementara/error lama\nArchive download tetap dipertahankan.`);
+  console.log(`YTConv caches cleared.\n- ${updateCache}\n- old temporary/error files\nDownload archives were preserved.`);
   return 0;
 }
 
@@ -145,56 +148,50 @@ async function writableDirectory(directory) {
 
 export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Downloads', 'YTConv') } = {}) {
   const dependencies = await inspectDependencies({ repair: false });
+  const updater = selfUpdateInvocation({ currentVersion: CLI_VERSION });
   const checks = [
-    ['YTConv version', CLI_VERSION === '1.5.0-beta.1'],
-    ['Node >=18', Number(process.versions.node.split('.')[0]) >= 18],
-    ['Home tersedia', Boolean(os.homedir())],
-    ['Folder output dapat ditulis', await writableDirectory(outputDirectory)],
-    ['Updater memakai beta channel', selfUpdateInvocation().args.some((value) => String(value).includes('ytconv@beta'))],
-    ['Subtitle default tersedia', process.env.YTCONV_SUBTITLES === '1'],
-    ['SponsorBlock default mark', process.env.YTCONV_SPONSORBLOCK_MODE === 'mark'],
-    ['Archive yt-dlp aktif', Boolean(process.env.YTCONV_ARCHIVE)],
-    ['Archive gallery aktif', Boolean(process.env.YTCONV_GALLERY_ARCHIVE)],
-    ['yt-dlp', dependencies.ytDlp.installed],
-    ['gallery-dl', dependencies.galleryDl?.installed],
-    ['FFmpeg', dependencies.ffmpeg.installed],
-    ['ffprobe (opsional)', dependencies.ffprobe?.installed !== false],
+    ['YTConv version is 1.4.0', CLI_VERSION === '1.4.0'],
+    ['Node.js is version 18 or newer', Number(process.versions.node.split('.')[0]) >= 18],
+    ['Home directory is available', Boolean(os.homedir())],
+    ['Output directory is writable', await writableDirectory(outputDirectory)],
+    ['Updater uses the stable channel', updater.args.some((value) => String(value).includes('ytconv@latest'))],
+    ['yt-dlp is available', dependencies.ytDlp.installed],
+    ['gallery-dl is available', dependencies.galleryDl?.installed],
+    ['FFmpeg is available', dependencies.ffmpeg.installed],
+    ['ffprobe is available (optional)', dependencies.ffprobe?.installed !== false],
   ];
   console.log('YTConv self-test\n');
-  for (const [label, ok] of checks) console.log(`${ok ? 'OK ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([label, ok]) => !ok && !label.includes('opsional'));
-  if (failed.length) console.log('\nJalankan ytconv repair lalu ytconv doctor.');
+  for (const [label, ok] of checks) console.log(`${ok ? 'OK  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([label, ok]) => !ok && !label.includes('optional'));
+  if (failed.length) console.log('\nRun ytconv repair, followed by ytconv doctor.');
   return failed.length ? 3 : 0;
 }
 
 export function systemHelpText() {
   return [
-    'Fitur sistem, batch, dan automasi:',
-    '  --repair, --setup       Perbaiki/siapkan yt-dlp, gallery-dl, dan FFmpeg',
-    '  --shell-info, --where   Tampilkan distro, package manager, PATH, Node, dan npm',
-    '  --self-test             Tes dependency, default beta, dan folder output',
-    '  --clear-cache           Hapus cache update/error tanpa menghapus archive',
-    '  --headless              Download tanpa TUI (SSH/CI/script)',
-    '  --stdin                 Baca link dari stdin',
-    '  --batch-file FILE       Baca link per baris dari file teks',
-    '  --jobs N                Maksimal 1–8 download batch bersamaan',
-    '  --continue-on-error     Batch tetap lanjut bila satu link gagal',
-    '  --result-json FILE      Simpan ringkasan batch untuk bot/script',
-    '  --open-output           Buka folder hasil setelah selesai',
-    '  --examples              Contoh CMD, PowerShell, Linux, Termux, iSH, dan SSH',
+    'System, batch, and automation options:',
+    '  --repair, --setup       Repair or install yt-dlp, gallery-dl, and FFmpeg',
+    '  --shell-info, --where   Show distribution, package manager, PATH, Node.js, and npm',
+    '  --self-test             Test dependencies and output directory without downloading',
+    '  --clear-cache           Clear update and old error caches',
+    '  --headless              Run without the TUI for SSH, CI, cron, or scripts',
+    '  --stdin                 Read URLs from standard input',
+    '  --batch-file FILE       Read one URL per line from a UTF-8 text file',
+    '  --jobs N                Run 1–8 batch workers',
+    '  --continue-on-error     Continue the batch after an item fails',
+    '  --result-json FILE      Write a machine-readable batch report',
+    '  --open-output           Open the output directory after completion',
+    '  --examples              Show examples for CMD, PowerShell, Linux, Termux, iSH, and SSH',
     '',
   ].join('\n');
 }
 
 export function examplesText() {
-  return `Contoh YTConv ${CLI_VERSION}\n\n`
-    + 'Default beta: subtitle ON, SponsorBlock mark ON, archive ON.\n'
-    + 'Matikan: --no-subtitles --no-sponsorblock --no-archive\n\n'
-    + 'CMD:\n  ytconv.cmd download "LINK" --format mp3 --quality 192\n  ytconv.cmd playlist "LINK"\n\n'
+  return `YTConv 1.4.0 examples\n\n`
+    + 'CMD:\n  ytconv.cmd download "URL" --format mp3 --quality 192\n  ytconv.cmd playlist "URL" --archive downloaded.txt\n\n'
     + 'PowerShell:\n  ytconv.cmd batch links.txt --jobs 2 --result-json report.json\n  ytconv.cmd doctor\n\n'
-    + 'Linux/macOS:\n  ytconv download "LINK" --preset music\n  ytconv formats "LINK" --json\n\n'
-    + 'Termux:\n  ytconv --headless --preset mobile "LINK"\n\n'
-    + 'SSH:\n  printf "%s\\n" "LINK1" "LINK2" | ytconv --stdin --jobs 2 --continue-on-error\n\n'
-    + 'Opt-out satu sesi:\n  ytconv download "LINK" --no-subtitles --no-sponsorblock --no-archive\n\n'
-    + 'Cookies browser desktop:\n  ytconv download "LINK" --cookies-from-browser chrome\n';
+    + 'Linux/macOS:\n  ytconv download "URL" --preset music\n  ytconv formats "URL" --json\n\n'
+    + 'Termux:\n  ytconv --headless --preset mobile "URL"\n\n'
+    + 'SSH:\n  printf "%s\\n" "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error\n\n'
+    + 'Desktop browser cookies:\n  ytconv download "URL" --cookies-from-browser chrome\n';
 }
