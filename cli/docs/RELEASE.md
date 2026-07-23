@@ -1,17 +1,17 @@
-# YTConv 1.4.0 Stable Release Checklist
+# YTConv 1.5.0-beta.2 Release Checklist
 
-## 1. Synchronize the release branch
+## 1. Synchronize the beta branch
 
 ```bash
-git switch release/ytconv-1.4.0
-git pull --ff-only origin release/ytconv-1.4.0
+git switch release/ytconv-1.5.0-beta.2
+git pull --ff-only origin release/ytconv-1.5.0-beta.2
 cd cli
 git status --short
 ```
 
 The working tree must be clean.
 
-## 2. Verify release identity
+## 2. Verify beta identity
 
 ```bash
 node -p "require('./package.json').version"
@@ -24,11 +24,11 @@ cat ish/VERSION
 Expected:
 
 ```text
-1.4.0
-latest
-1.4.0
-1.4.0
-1.4.0
+1.5.0-beta.2
+beta
+1.5.0-beta.2
+1.5.0-beta.2
+1.5.0-beta.2
 ```
 
 ## 3. Install and test
@@ -41,20 +41,72 @@ npm run check:ish
 npm run test:ish
 ```
 
-## 4. Smoke-test commands
+## 4. Test beta defaults and opt-out flags
 
 ```bash
 node ./bin/ytconv.js --help
-node ./bin/ytconv.js --examples
-node ./bin/ytconv.js --list-presets
-node ./bin/ytconv.js --shell-info
 node ./bin/ytconv.js --self-test
-node ./bin/ytconv.js doctor
 ```
 
-Stable help must state that subtitles, SponsorBlock, and download archives are opt-in.
+Help and self-test must confirm:
 
-## 5. Test inspection without downloading
+```text
+Subtitles        ON
+SponsorBlock     ON in mark mode
+Download archive ON per output profile
+```
+
+Verify opt-out parsing:
+
+```bash
+node ./bin/ytconv.js --no-subtitles --no-sponsorblock --no-archive --help
+```
+
+## 5. Test persistent configuration
+
+Use a temporary home directory so release tests never touch real user data:
+
+```bash
+TEST_HOME=$(mktemp -d)
+HOME="$TEST_HOME" node ./bin/ytconv.js config set output "$TEST_HOME/output"
+HOME="$TEST_HOME" node ./bin/ytconv.js config set audioQuality 192
+HOME="$TEST_HOME" node ./bin/ytconv.js config list
+HOME="$TEST_HOME" node ./bin/ytconv.js config path
+HOME="$TEST_HOME" node ./bin/ytconv.js config reset
+rm -rf "$TEST_HOME"
+```
+
+## 6. Test profiles and explicit precedence
+
+```bash
+TEST_HOME=$(mktemp -d)
+HOME="$TEST_HOME" node ./bin/ytconv.js profile set phone preset=mobile resolution=720
+HOME="$TEST_HOME" node ./bin/ytconv.js profile use phone
+HOME="$TEST_HOME" node ./bin/ytconv.js profile list
+HOME="$TEST_HOME" node ./bin/ytconv.js --profile phone --resolution 1080 --help
+HOME="$TEST_HOME" node ./bin/ytconv.js --no-config --help
+rm -rf "$TEST_HOME"
+```
+
+Unit tests must verify that explicit options remove conflicting saved settings while preserving unrelated saved values such as the output directory.
+
+## 7. Test history and completion
+
+```bash
+TEST_HOME=$(mktemp -d)
+HOME="$TEST_HOME" node ./bin/ytconv.js history
+HOME="$TEST_HOME" node ./bin/ytconv.js history --json
+HOME="$TEST_HOME" node ./bin/ytconv.js history clear
+node ./bin/ytconv.js completion bash
+node ./bin/ytconv.js completion zsh
+node ./bin/ytconv.js completion fish
+node ./bin/ytconv.js completion powershell
+rm -rf "$TEST_HOME"
+```
+
+History must exclude cookies, tokens, proxy credentials, and browser sessions and remain capped at 500 entries.
+
+## 8. Test media inspection without downloading
 
 Use a legal public test URL:
 
@@ -66,27 +118,26 @@ node ./bin/ytconv.js subtitles "TEST_URL"
 
 JSON stdout must remain valid and must not contain update notices.
 
-## 6. Test real media operations
+## 9. Test real media operations
 
 Use media that you own or are allowed to download:
 
 ```bash
 node ./bin/ytconv.js download "VIDEO_URL" --preset mobile
 node ./bin/ytconv.js download "MUSIC_URL" --preset music
-node ./bin/ytconv.js playlist "PLAYLIST_URL" --playlist-items "1-2" --archive downloaded.txt
+node ./bin/ytconv.js playlist "PLAYLIST_URL" --playlist-items "1-2"
 node ./bin/ytconv.js batch links.txt --jobs 2 --continue-on-error --result-json report.json
-node ./bin/ytconv.js download "VIDEO_URL" --subtitles --subtitle-langs "en,id"
+node ./bin/ytconv.js download "VIDEO_URL" --sponsorblock remove
 ```
 
-Verify progress, resume, archive behavior, metadata, cover art, square YouTube Music artwork, valid JSON, batch reporting, and exit codes.
+Verify subtitles, safe SponsorBlock marking, explicit removal, separate archives, resume, metadata, cover art, square YouTube Music artwork, batch reporting, and exit codes.
 
-## 7. Required CI coverage
+## 10. Required CI coverage
 
 The workflow must pass for:
 
 - Node.js 18, 20, and 22
-- Windows CMD
-- Windows PowerShell
+- Windows CMD and PowerShell
 - Ubuntu/Linux full installation
 - macOS
 - Alpine/musl with system FFmpeg
@@ -94,12 +145,14 @@ The workflow must pass for:
 - Termux package simulation
 - native iSH frontend
 - installer plans for Debian/Ubuntu, Fedora, Arch/CachyOS family, openSUSE, Alpine, Void, Gentoo, and NixOS
-- npm package preview and English documentation checks
+- persistent config/profile/history/completion tests
+- beta defaults and opt-out tests
+- npm package preview and English documentation audit
 
-## 8. Preview npm contents
+## 11. Preview npm contents
 
 ```bash
-npm publish --dry-run
+npm publish --dry-run --tag beta
 npm pack --json > package-preview.json
 ```
 
@@ -107,64 +160,70 @@ Confirm:
 
 ```text
 name: ytconv
-version: 1.4.0
+version: 1.5.0-beta.2
 ```
 
-The package must include `bin`, `src`, `scripts`, `ish`, `docs`, README, changelog, and license. It must not include cookies, `.env`, personal logs, downloaded media, tokens, or secrets.
+The package must include `bin`, `src`, `scripts`, `ish`, `docs`, README, changelog, and license. It must not include real config files, history, cookies, `.env`, personal logs, downloads, tokens, or secrets.
 
-## 9. Confirm the version is unused
+## 12. Confirm the version is unused
 
 ```bash
 npm view ytconv versions --json
 npm view ytconv dist-tags --json
 ```
 
-`1.4.0` must not already exist. npm does not allow overwriting a published version.
+`1.5.0-beta.2` must not already exist. npm does not allow overwriting a published version.
 
-## 10. Verify npm ownership
+## 13. Verify npm ownership
 
 ```bash
 npm whoami
 npm owner ls ytconv
 ```
 
-## 11. Publish stable
+## 14. Publish beta
 
-Manual:
+Capture the stable tag first:
 
 ```bash
-npm publish --tag latest --access public
+LATEST_BEFORE=$(npm view ytconv@latest version --prefer-online)
+```
+
+Publish:
+
+```bash
+npm publish --tag beta --access public
 ```
 
 With OTP:
 
 ```bash
-npm publish --tag latest --access public --otp=123456
+npm publish --tag beta --access public --otp=123456
 ```
 
-The workflow-based publisher may use npm provenance after trusted publishing or `NPM_TOKEN` is configured.
-
-## 12. Verify the registry
+## 15. Verify registry tags
 
 ```bash
-npm view ytconv version --prefer-online
-npm view ytconv@1.4.0 dist.integrity
+npm view ytconv@beta version --prefer-online
+npm view ytconv@1.5.0-beta.2 dist.integrity
 npm view ytconv dist-tags --json
+test "$(npm view ytconv@latest version --prefer-online)" = "$LATEST_BEFORE"
 ```
 
-The `latest` tag must point to `1.4.0`.
+The `beta` tag must point to `1.5.0-beta.2`. The `latest` tag must remain unchanged.
 
-## 13. Test a clean public installation
+## 16. Test a clean public beta installation
 
 Windows:
 
 ```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@latest --force
+npm.cmd install -g ytconv@beta --force
 ytconv.cmd --version
 ytconv.cmd --self-test
 ytconv.cmd doctor
+ytconv.cmd quickstart
 ```
 
 Linux/macOS:
@@ -172,23 +231,33 @@ Linux/macOS:
 ```bash
 npm uninstall -g ytconv
 npm cache verify
-npm install -g ytconv@latest --force
+npm install -g ytconv@beta --force
 ytconv --version
 ytconv --self-test
 ytconv doctor
+ytconv quickstart
 ```
 
 Termux:
 
 ```bash
-npm install -g ytconv@latest --omit=optional --force
+npm install -g ytconv@beta --omit=optional --force
 ytconv --self-test
 ytconv doctor
 ```
 
-## 14. After publishing
+## 17. Return to stable during rollback testing
 
-- Never republish or overwrite `1.4.0`.
-- A stable bug fix must use `1.4.1` or another unused version.
+```bash
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@latest --force
+ytconv --version
+```
+
+## 18. After publishing
+
+- Never republish or overwrite `1.5.0-beta.2`.
+- The next beta fix must use a new prerelease number.
 - Do not merge a release PR until the public package has been tested and the user explicitly requests the merge.
 - Do not claim that every site, URL, device, architecture, or distribution is guaranteed forever.
