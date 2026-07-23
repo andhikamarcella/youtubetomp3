@@ -30,15 +30,15 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Install without bundled binaries
         run: npm install --ignore-scripts --omit=optional
-      - name: Syntax and unit tests
-        run: |
-          npm run check
-          npm test
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run unit tests
+        run: npm test
       - name: Stable version and English help
         run: |
           test "$(node ./bin/ytconv.js --version)" = "1.4.0"
           node ./bin/ytconv.js --help | grep -q "Usage:"
-          node ./bin/ytconv.js --help | grep -q "Subtitles.*OFF"
+          node ./bin/ytconv.js --help | grep -q "subtitles.*OFF"
           node ./bin/ytconv.js --help | grep -q "SponsorBlock.*OFF"
           node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.4.0') !== 'latest') process.exitCode=1; if (!updateCommand('1.4.0').includes('@latest')) process.exitCode=1; })"
 
@@ -54,10 +54,10 @@ jobs:
           node-version: 20
       - name: Install full package
         run: npm install
-      - name: Check JavaScript and tests
-        run: |
-          npm run check
-          npm test
+      - name: Check JavaScript syntax
+        run: npm run check
+      - name: Run unit tests
+        run: npm test
       - name: Check native iSH compatibility and shell installers
         run: |
           npm run check:ish
@@ -121,11 +121,12 @@ jobs:
       - name: Install CLI dependencies
         shell: pwsh
         run: npm install
+      - name: Check JavaScript syntax on Windows
+        shell: pwsh
+        run: npm run check
       - name: Run Windows unit tests
         shell: pwsh
-        run: |
-          npm run check
-          npm test
+        run: npm test
       - name: Verify stable updater avoids direct npm.cmd spawn
         shell: pwsh
         run: |
@@ -164,11 +165,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install, check, and test stable package
-        run: |
-          npm install
-          npm run check
-          npm test
+      - name: Install stable package
+        run: npm install
+      - name: Check JavaScript syntax on macOS
+        run: npm run check
+      - name: Run macOS unit tests
+        run: npm test
       - name: macOS stable smoke tests
         run: |
           test "$(node ./bin/ytconv.js --version)" = "1.4.0"
@@ -189,11 +191,12 @@ jobs:
         run: python3 -m pip install --break-system-packages --no-cache-dir yt-dlp gallery-dl
       - name: Install JS package without glibc static FFmpeg
         run: npm install --ignore-scripts --omit=optional
-      - name: Check Alpine stable package
-        run: |
-          npm run check
-          npm test
-          test "$(node ./bin/ytconv.js --version)" = "1.4.0"
+      - name: Check Alpine JavaScript syntax
+        run: npm run check
+      - name: Run Alpine unit tests
+        run: npm test
+      - name: Verify Alpine stable version
+        run: test "$(node ./bin/ytconv.js --version)" = "1.4.0"
 
   distro-installer-plans:
     runs-on: ubuntu-latest
