@@ -53,9 +53,7 @@ const PRESETS = {
 
 export function applyPreset(options, name, { cwd = process.cwd() } = {}) {
   const preset = PRESETS[name];
-  if (!preset) {
-    throw new Error(`Unknown preset "${name}". Choose: ${PRESET_NAMES.join(', ')}.`);
-  }
+  if (!preset) throw new Error(`--preset must be one of: ${PRESET_NAMES.join(', ')}.`);
   Object.assign(options, preset, { preset: name });
   if (name === 'archive' && !options.archivePath) {
     options.archivePath = path.resolve(cwd, 'ytconv-archive.txt');
