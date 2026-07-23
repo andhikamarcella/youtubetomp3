@@ -1,0 +1,46 @@
+name: yt-dlp fallback verification
+
+on:
+  push:
+    branches:
+      - codex/fix-mobile-menu-button-and-sign-in-issue-n4mh59
+  pull_request:
+    paths:
+      - "src/lib/ytDlp*"
+      - "src/lib/maintenance.js"
+      - "tests/yt-dlp*"
+      - "package.json"
+      - "Dockerfile"
+      - ".github/workflows/yt-dlp-fallback.yml"
+
+jobs:
+  verify-fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_ENV: test
+      OUTPUT_DIR: /tmp/ytconv/outputs
+      TEMP_DIR: /tmp/ytconv/jobs
+      CACHE_DIR: /tmp/ytconv/cache
+      COOKIES_PATH: /tmp/ytconv/cookies.txt
+      COOKIE_STORE_PATH: /tmp/ytconv/cookie-store.json
+      YTDLP_PIPED_FALLBACK: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - name: Check runtime syntax
+        run: |
+          node --check src/lib/ytDlpCookiesPreload.js
+          node --check src/lib/ytDlpPipedFallbackPreload.js
+          node --check src/lib/ytDlpRuntimePreload.js
+          node --check src/lib/maintenance.js
+      - name: Test BOT_CHECK fallback
+        run: node --test tests/yt-dlp-piped-fallback.test.js tests/yt-dlp-preload.test.js
+      - name: Production build
+        run: npm run build
+      - name: Build Render image
+        run: docker build --pull -t ytconv-render-fallback .
