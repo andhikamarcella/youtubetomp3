@@ -28,10 +28,11 @@ test('system help documents repair, headless, batch jobs, and JSON reports', () 
   assert.match(value, /--batch-file/u);
   assert.match(value, /--jobs/u);
   assert.match(value, /--result-json/u);
+  assert.match(value, /System, batch, and automation/u);
 });
 
-test('error explanation gives actionable PowerShell, cookie, and update guidance', () => {
-  assert.match(explainError(new Error('spawnSync npm.cmd EINVAL')), /1\.3\.0/u);
+test('error explanation gives actionable PowerShell, cookie, and stable-update guidance', () => {
+  assert.match(explainError(new Error('spawnSync npm.cmd EINVAL')), /ytconv@latest/u);
   assert.match(explainError(new Error('running scripts is disabled on this system')), /ytconv\.cmd/u);
   assert.match(explainError(new Error('cookie database is locked')), /cookies-from-browser/u);
 });
