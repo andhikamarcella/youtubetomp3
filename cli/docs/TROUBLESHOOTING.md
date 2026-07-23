@@ -1,160 +1,209 @@
-# Troubleshooting YTConv 1.2.1
+# Troubleshooting YTConv 1.2.3
 
-## Mulai dari diagnostics
+## Urutan perbaikan aman
 
-```bash
-ytconv --version
+```sh
+ytconv --clear-cache
+ytconv --repair
+ytconv --self-test
 ytconv --diagnose
+ytconv --shell-info
 ```
 
-Pastikan yt-dlp, gallery-dl, dan FFmpeg ditemukan.
+## `spawnSync npm.cmd EINVAL`
 
-## `spawnSync npm.cmd EINVAL` saat update Windows
+Penyebab: updater lama menjalankan `npm.cmd` langsung.
 
-Error ini berasal dari updater lama yang mencoba menjalankan `npm.cmd` secara langsung. Instalasi global 1.1.5 atau 1.2.0 yang sudah mengalami error tersebut tidak dapat memperbaiki dirinya sendiri.
-
-Dari CMD jalankan:
+CMD:
 
 ```cmd
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@1.2.1 --force
+npm.cmd uninstall -g ytconv
+npm.cmd cache verify
+npm.cmd install -g ytconv@1.2.3 --force
+ytconv.cmd --version
+```
+
+PowerShell:
+
+```powershell
+npm.cmd uninstall -g ytconv
+npm.cmd cache verify
+npm.cmd install -g ytconv@1.2.3 --force
+ytconv.cmd --version
+```
+
+1.2.3 lebih dahulu mencoba `npm-cli.js` melalui Node. Bila tidak ditemukan, Windows memakai `cmd.exe` fallback.
+
+## PowerShell `running scripts is disabled`
+
+Gunakan shim CMD:
+
+```powershell
+ytconv.cmd --version
+```
+
+Atau ubah policy untuk akun sendiri:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Lihat command yang dipilih:
+
+```powershell
+Get-Command ytconv -All
+```
+
+## `ytconv is not recognized` / command not found
+
+CMD:
+
+```cmd
+where node
+where npm
 where ytconv
-ytconv --version
+npm.cmd config get prefix
 ```
 
-Versi harus menampilkan `1.2.1`. YTConv 1.2.1 menjalankan npm melalui `cmd.exe`, sehingga tidak lagi memakai pemanggilan `npm.cmd` yang menghasilkan `EINVAL`.
+PowerShell:
 
-Untuk menguji branch GitHub sebelum 1.2.1 dipublikasikan:
-
-```cmd
-cd C:\Users\andhi\youtubetomp3
-git switch codex/add-ytconv-cli
-git pull --ff-only origin codex/add-ytconv-cli
-cd cli
-npm install
-npm run check
-npm test
-npm install -g . --force
-ytconv --version
+```powershell
+Get-Command node -All
+Get-Command npm -All
+Get-Command ytconv -All
 ```
 
-Perintah `node .\bin\ytconv.js --version` menguji kode lokal. Perintah `ytconv --version` menguji instalasi global.
+Unix:
 
-## Update bersih npm
-
-### Windows CMD
-
-```cmd
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@1.2.1 --force
-ytconv --version
+```sh
+command -v node
+command -v npm
+command -v ytconv
+npm config get prefix
 ```
 
-### Termux
+Tutup terminal setelah instalasi global dan buka terminal baru.
 
-```bash
+## SSH/CI berhenti atau tampilan TUI rusak
+
+Gunakan mode headless:
+
+```sh
+ytconv --headless "LINK"
+```
+
+Untuk pipe:
+
+```sh
+cat links.txt | ytconv --stdin --continue-on-error
+```
+
+## Termux tidak dapat menulis ke Download
+
+```sh
+termux-setup-storage
+ls -la ~/storage/downloads
+ytconv --repair
+```
+
+Bila Android menolak izin, buka Settings → Apps → Termux → Files and media.
+
+## Termux `pip` gagal
+
+```sh
 pkg update
-pkg install -y nodejs python ffmpeg
-python -m pip install -U yt-dlp gallery-dl
-npm uninstall -g ytconv
-npm install -g ytconv@1.2.1 --omit=optional
+pkg install -y python ffmpeg
+python -m pip install -U --no-cache-dir yt-dlp gallery-dl
+```
+
+YTConv juga mencoba paket `python-yt-dlp` bila tersedia.
+
+## iSH dependency hilang
+
+```sh
+ytconv --repair
 ytconv --diagnose
 ```
 
-Frontend native iSH tetap 1.2.0 karena hotfix 1.2.1 hanya memperbaiki self-update npm pada Windows.
+Instal ulang frontend:
 
-## Link gagal tetapi bisa dibuka di browser
-
-1. Coba tanpa cookies.
-2. Coba `--cookies cookies.txt` dengan format Netscape.
-3. Tutup browser bila memakai pembacaan cookies desktop.
-4. Update YTConv/yt-dlp/gallery-dl.
-5. Simpan log:
-
-```bash
-ytconv --log-file ytconv.log "LINK"
+```sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+sh /tmp/ytconv-ish.sh
 ```
 
-## HTTP 429 / terlalu banyak permintaan
+## Cookies/login/private
 
-Tunggu beberapa menit, kurangi fragmen, dan beri rate limit:
+Gunakan cookies Netscape dari akun yang memang memiliki akses:
 
-```bash
+```sh
+ytconv --cookies cookies.txt "LINK"
+```
+
+Tutup browser desktop bila database cookies terkunci. Jangan bagikan cookies.
+
+## HTTP 429
+
+Tunggu beberapa menit. Jangan retry agresif.
+
+```sh
 ytconv --concurrent-fragments 1 --rate-limit 1M "LINK"
 ```
 
-Jangan melakukan retry agresif terus-menerus.
-
 ## Requested format is not available
 
-Lihat format sumber:
-
-```bash
+```sh
 ytconv --list-formats "LINK"
+ytconv --resolution best --video-format auto "LINK"
 ```
 
-Turunkan resolusi atau gunakan container AUTO/MKV.
+## FFmpeg/thumbnail/subtitle gagal
 
-## Subtitle tidak muncul
-
-```bash
-ytconv --list-subs "LINK"
-ytconv --subtitles --subtitle-langs "id,en" "LINK"
+```sh
+ytconv --repair
+ytconv --diagnose
 ```
 
-Tidak semua video memiliki subtitle. Sebagian container/player juga tidak menampilkan embedded subtitle secara default.
+WAV tidak mendukung embedded cover. Tidak semua sumber memiliki subtitle atau chapter.
 
-## Thumbnail/cover gagal
+## Link unsupported
 
-Pastikan FFmpeg tersedia. WAV tidak mendapat embedded thumbnail. Thumbnail terpisah tetap dapat diminta dengan `--thumbnail`.
+Update engine:
 
-## YouTube Music cover tidak persegi
-
-Pastikan URL berasal dari `music.youtube.com`, bukan `youtube.com`, dan FFmpeg terdeteksi oleh `--diagnose`.
-
-## SponsorBlock tidak mengubah video
-
-Data segmen mungkin tidak tersedia. Coba mode mark untuk melihat chapter:
-
-```bash
-ytconv --sponsorblock mark "LINK"
+```sh
+ytconv --repair
 ```
 
-## Potongan tidak tepat satu frame
+Situs dapat mengubah API. Sertakan output diagnosis saat melaporkan bug.
 
-Pemotongan bergantung pada keyframe dan codec. YTConv meminta keyframe pada titik potong, tetapi sumber tertentu tetap dapat bergeser sedikit.
+## Global dan lokal berbeda versi
 
-## Proxy gagal
+Kode repository:
 
-Gunakan URL lengkap:
-
-```text
-http://host:port
-socks5://host:port
+```cmd
+node .\bin\ytconv.js --version
 ```
 
-Jangan menaruh password proxy dalam screenshot atau log publik.
+Instalasi global:
 
-## Nama file terlalu panjang/aneh
-
-```bash
-ytconv --restrict-filenames --output-template "%(id)s.%(ext)s" "LINK"
+```cmd
+ytconv.cmd --version
+where ytconv
 ```
 
-## Data lama tidak boleh tertimpa
+PowerShell:
 
-Default YTConv tidak menimpa hasil. Gunakan `--overwrite` hanya ketika benar-benar diperlukan.
+```powershell
+Get-Command ytconv -All
+```
 
-## Melaporkan bug
+## Data yang perlu dilampirkan saat laporan
 
-Sertakan:
+```sh
+ytconv --version
+ytconv --self-test
+ytconv --diagnose
+ytconv --shell-info
+```
 
-- `ytconv --version`
-- keluaran `ytconv --diagnose`
-- hasil `where ytconv` pada Windows
-- sistem operasi
-- platform/link yang sudah disensor bila privat
-- log dari `--log-file`
-- command yang dipakai tanpa isi cookies atau kredensial proxy
+Tambahkan sistem operasi, shell, command yang dipakai, dan pesan error. Jangan kirim cookies, token, password proxy, atau link privat tanpa sensor.
