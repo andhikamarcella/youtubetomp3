@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
   checkForUpdate,
+  clearUpdateCache,
   compareVersions,
   releaseChannel,
   runSelfUpdate,
@@ -42,6 +44,26 @@ test('reports an available beta registry update', async () => {
   assert.equal(result.available, true);
   assert.equal(result.latestVersion, '1.5.0-beta.2');
   assert.equal(result.channel, 'beta');
+});
+
+test('clearing update cache preserves archive files', async () => {
+  const homeDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-cache-test-'));
+  const appDirectory = path.join(homeDirectory, '.ytconv');
+  const archiveDirectory = path.join(appDirectory, 'archives');
+  const archiveFile = path.join(archiveDirectory, 'yt-dlp-audio-mp3-320.txt');
+  await fs.mkdir(archiveDirectory, { recursive: true });
+  await fs.writeFile(archiveFile, 'youtube abc123\n', 'utf8');
+  for (const name of ['update-check.json', 'update-check-latest.json', 'update-check-beta.json']) {
+    await fs.writeFile(path.join(appDirectory, name), '{}\n', 'utf8');
+  }
+
+  await clearUpdateCache('', { homeDirectory });
+
+  await assert.doesNotReject(() => fs.access(archiveFile));
+  for (const name of ['update-check.json', 'update-check-latest.json', 'update-check-beta.json']) {
+    await assert.rejects(() => fs.access(path.join(appDirectory, name)));
+  }
+  await fs.rm(homeDirectory, { recursive: true, force: true });
 });
 
 test('preferred beta updater runs npm-cli.js through current Node', () => {
