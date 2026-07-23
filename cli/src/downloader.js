@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { cookieArgs } from './cookies.js';
-import { downloadGallery, inspectGallery, isGalleryPreferredUrl } from './gallery.js';
+import { downloadGallery, inspectGallery, isGalleryPreferredUrl } from './gallery-beta.js';
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
 
