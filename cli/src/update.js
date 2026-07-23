@@ -84,7 +84,7 @@ async function writeCache(cacheFile, payload) {
     await fsp.mkdir(path.dirname(cacheFile), { recursive: true });
     await fsp.writeFile(cacheFile, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   } catch {
-    // Cache failure must never stop YTConv.
+    // Cache failures must never stop YTConv.
   }
 }
 
@@ -98,7 +98,7 @@ async function fetchLatestVersion({ fetchImpl, timeoutMs, channel }) {
     });
     if (!response.ok) throw new Error(`npm registry HTTP ${response.status}`);
     const payload = await response.json();
-    if (!payload?.version) throw new Error('npm registry tidak mengirim versi terbaru.');
+    if (!payload?.version) throw new Error('The npm registry did not return a version.');
     return String(payload.version);
   } finally {
     clearTimeout(timer);
@@ -133,7 +133,7 @@ export async function checkForUpdate({
   }
 
   if (typeof fetchImpl !== 'function') {
-    return { checked: false, channel, currentVersion, latestVersion: currentVersion, available: false, error: 'Fetch API tidak tersedia.' };
+    return { checked: false, channel, currentVersion, latestVersion: currentVersion, available: false, error: 'The Fetch API is not available.' };
   }
 
   try {
