@@ -34,7 +34,7 @@ function formatBytes(value) {
 
 function outputPlan(options, media) {
   if (options.subtitleOnly) {
-    return { type: 'subtitle-only', format: 'srt', source: 'original/automatic subtitle when available' };
+    return { type: 'subtitle-only', format: 'srt', source: 'manual or automatic subtitles when available' };
   }
   if (options.initialMode === 'audio') {
     const converted = ['mp3', 'flac', 'alac', 'wav', 'aac'].includes(options.audioFormat);
@@ -44,8 +44,8 @@ function outputPlan(options, media) {
       targetBitrateKbps: options.audioQuality === 'best' ? null : Number(options.audioQuality),
       processing: converted ? 'converted' : 'remux-or-convert',
       warning: options.audioQuality === '320'
-        ? '320 kbps adalah target hasil; tidak meningkatkan detail di atas sumber.'
-        : 'Kualitas hasil dibatasi oleh kualitas sumber.',
+        ? '320 kbps is an output target and cannot add detail missing from the source.'
+        : 'Output quality is limited by the source quality.',
       bestSourceAudioKbps: Math.max(0, ...(media.formats || []).map((item) => Number(item.audioBitrateKbps) || 0)) || null,
     };
   }
@@ -53,7 +53,7 @@ function outputPlan(options, media) {
     type: options.initialMode === 'image' ? 'image/gallery' : 'video',
     targetContainer: options.videoFormat,
     maximumResolution: options.resolution,
-    processing: 'download original streams, then merge/remux when required',
+    processing: 'download original streams, then merge or remux when required',
   };
 }
 
@@ -66,7 +66,7 @@ function printFormats(formats = [], limit = 12) {
     .sort((a, b) => (b.height || 0) - (a.height || 0) || (b.totalBitrateKbps || 0) - (a.totalBitrateKbps || 0))
     .slice(0, Math.floor(limit / 2));
 
-  console.log('\nFormat sumber teratas (original):');
+  console.log('\nTop source formats (original):');
   for (const item of [...audio, ...video]) {
     const detail = [item.id, item.ext, item.type, item.resolution, item.fps ? `${item.fps}fps` : '',
       item.videoCodec, item.audioCodec, item.audioBitrateKbps ? `${Math.round(item.audioBitrateKbps)}kbps` : '',
@@ -88,7 +88,7 @@ function printSummary(media, options) {
   console.log(`URL        ${media.originalUrl || options.initialUrl}`);
   printFormats(media.formats);
   const plan = outputPlan(options, media);
-  console.log('\nRencana output:');
+  console.log('\nOutput plan:');
   for (const [key, value] of Object.entries(plan)) if (value !== null && value !== '') console.log(`${key.padEnd(20)} ${value}`);
 }
 
@@ -113,9 +113,9 @@ function explicitBrowserConfig(spec) {
 }
 
 export async function runDirectCommand({ options, outputDirectory }) {
-  if (!validateUrl(options.initialUrl)) throw new Error('Mode langsung membutuhkan LINK http/https yang valid.');
+  if (!validateUrl(options.initialUrl)) throw new Error('A direct command requires a valid HTTP or HTTPS URL.');
   const dependencies = await inspectDependencies({ repair: false });
-  if (!dependencies.ytDlp.installed) throw new Error('yt-dlp belum tersedia. Jalankan ytconv doctor lalu ytconv repair.');
+  if (!dependencies.ytDlp.installed) throw new Error('yt-dlp is not available. Run ytconv doctor, followed by ytconv repair.');
 
   await fs.mkdir(outputDirectory, { recursive: true });
   const cookieConfigs = options.cookiesBrowser
@@ -159,5 +159,5 @@ export async function runDirectCommand({ options, outputDirectory }) {
     }
   }
 
-  throw lastError || new Error('Tidak ada sumber cookies/engine yang berhasil memeriksa link.');
+  throw lastError || new Error('No cookie source or media engine could inspect the URL.');
 }
