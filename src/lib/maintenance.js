@@ -1,3 +1,5 @@
+import "./ytDlpRuntimePreload.js";
+
 const parseJson = (raw, fallback) => {
   const value = typeof raw === "string" ? raw.trim() : "";
   if (!value) return fallback;
