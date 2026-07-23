@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.3.0"
+VERSION="1.5.0-beta.1"
+CHANNEL="beta"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
 [ "${1:-}" = "--print-plan" ] && PRINT_PLAN=1
@@ -47,6 +48,7 @@ case "$MANAGER" in
 esac
 
 say "YTConv $VERSION installer"
+say "Channel         : $CHANNEL"
 say "Sistem          : $OS_NAME"
 say "Package manager : $MANAGER"
 say "Rencana paket   : $PLAN"
@@ -92,7 +94,7 @@ if has python3; then
 fi
 
 NPM_PREFIX="${NPM_CONFIG_PREFIX:-$HOME/.local}"
-mkdir -p "$NPM_PREFIX/bin"
+mkdir -p "$NPM_PREFIX/bin" "$HOME/.ytconv/archives"
 npm config set prefix "$NPM_PREFIX"
 PATH="$NPM_PREFIX/bin:$PATH"
 export PATH
@@ -107,13 +109,17 @@ fi
 
 npm uninstall -g ytconv >/dev/null 2>&1 || true
 npm cache verify
-npm install -g "ytconv@$VERSION" --force
+npm install -g "ytconv@$CHANNEL" --force
 hash -r 2>/dev/null || true
 
 command -v ytconv >/dev/null 2>&1 || fail "ytconv belum terlihat di PATH. Jalankan: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
-ytconv --version
-ytconv --self-test || true
+installed=$(ytconv --version)
+[ "$installed" = "$VERSION" ] || fail "versi terpasang $installed, seharusnya $VERSION"
+ytconv --self-test
 ytconv --shell-info || true
+ytconv doctor || true
 say ""
+say "Default beta: subtitle ON, SponsorBlock mark ON, archive ON."
+say "Matikan: --no-subtitles --no-sponsorblock --no-archive"
 say "Selesai tanpa sudo npm. Buka terminal baru atau jalankan: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
 say "SSH/non-TTY: ytconv --headless \"LINK\""
