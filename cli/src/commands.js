@@ -13,36 +13,24 @@ export function normalizeCommandArgs(argv = []) {
   switch (command) {
     case 'download':
     case 'dl':
-    case 'get':
-      return rest;
+    case 'get': return rest;
     case 'playlist':
-    case 'pl':
-      return ['--playlist', ...rest];
-    case 'batch':
-      return rest.length ? ['--batch-file', rest[0], '--continue-on-error', ...rest.slice(1)] : ['--batch-file'];
+    case 'pl': return ['--playlist', ...rest];
+    case 'batch': return rest.length ? ['--batch-file', rest[0], '--continue-on-error', ...rest.slice(1)] : ['--batch-file'];
     case 'info':
-    case 'inspect':
-      return ['--dry-run', ...rest];
-    case 'formats':
-      return rest.includes('--json')
-        ? ['--formats-json', ...withoutFlag(rest, '--json')]
-        : ['--list-formats', ...rest];
+    case 'inspect': return ['--dry-run', ...rest];
+    case 'formats': return rest.includes('--json')
+      ? ['--formats-json', ...withoutFlag(rest, '--json')]
+      : ['--list-formats', ...rest];
     case 'subtitles':
-    case 'subs':
-      return ['--list-subs', ...rest];
-    case 'doctor':
-      return ['--doctor', ...rest];
+    case 'subs': return ['--list-subs', ...rest];
+    case 'doctor': return ['--doctor', ...rest];
     case 'repair':
-    case 'setup':
-      return ['--repair', ...rest];
-    case 'clean':
-      return ['--clear-cache', ...rest];
-    case 'examples':
-      return ['--examples', ...rest];
-    case 'update':
-      return ['--update', ...rest];
-    default:
-      return [...argv];
+    case 'setup': return ['--repair', ...rest];
+    case 'clean': return ['--clear-cache', ...rest];
+    case 'examples': return ['--examples', ...rest];
+    case 'update': return ['--update', ...rest];
+    default: return [...argv];
   }
 }
 
@@ -54,8 +42,12 @@ export function commandSummaryText() {
     '  ytconv batch links.txt      Download URLs from a file and continue after errors',
     '  ytconv info URL --json      Print source metadata and output plan',
     '  ytconv formats URL          List source formats',
-    '  ytconv formats URL --json   List source formats as JSON',
     '  ytconv subtitles URL        List available subtitles',
+    '  ytconv config list          Show persistent defaults',
+    '  ytconv profile list         Show named profiles',
+    '  ytconv history              Show recent headless/batch runs',
+    '  ytconv completion SHELL     Generate shell completion',
+    '  ytconv quickstart           Show a beginner setup',
     '  ytconv doctor               Diagnose the installation',
     '  ytconv repair               Repair media dependencies',
     '  ytconv clean                Clear YTConv caches',
