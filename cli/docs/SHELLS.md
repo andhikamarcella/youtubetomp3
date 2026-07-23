@@ -1,15 +1,26 @@
-# Panduan shell YTConv 1.3.0
+# Panduan shell YTConv 1.5.0 Beta
+
+Versi npm: `1.5.0-beta.1`
+
+Default di semua shell: subtitle ON untuk video, SponsorBlock `mark` ON, dan archive ON. Matikan per proses dengan `--no-subtitles --no-sponsorblock --no-archive`.
 
 ## Windows CMD
+
+Instalasi beta:
+
+```cmd
+npm.cmd install -g ytconv@beta --force
+ytconv.cmd --version
+ytconv.cmd doctor
+```
 
 Gunakan shim `.cmd` untuk hasil paling konsisten:
 
 ```cmd
-ytconv.cmd --version
-ytconv.cmd doctor
-ytconv.cmd download "LINK" --format mp3 --quality 192
-ytconv.cmd playlist "LINK" --archive downloaded.txt
+ytconv.cmd download "LINK"
+ytconv.cmd playlist "LINK"
 ytconv.cmd batch links.txt --jobs 2 --result-json report.json
+ytconv.cmd download "LINK" --no-subtitles --no-sponsorblock --no-archive
 ```
 
 Cari instalasi aktif:
@@ -36,6 +47,7 @@ ytconv.cmd --version
 PowerShell dapat memilih shim `ytconv.ps1`. Bila Execution Policy memblokirnya, gunakan `ytconv.cmd`:
 
 ```powershell
+npm.cmd install -g ytconv@beta --force
 ytconv.cmd --version
 ytconv.cmd doctor
 ytconv.cmd download "LINK"
@@ -63,7 +75,7 @@ ytconv.cmd download "LINK" --output "$HOME\Downloads\YTConv"
 ytconv.cmd download "LINK" --output-template "%(uploader)s/%(title)s.%(ext)s"
 ```
 
-Jangan memakai backslash akhir ala Bash untuk memecah command. Gunakan backtick PowerShell:
+Untuk command multiline gunakan backtick:
 
 ```powershell
 ytconv.cmd download "LINK" `
@@ -74,10 +86,11 @@ ytconv.cmd download "LINK" `
 ## Bash, Zsh, Fish, dan terminal Linux/macOS
 
 ```sh
+npm install -g ytconv@beta --force
 ytconv --version
 ytconv doctor
 ytconv download "LINK" --preset music
-ytconv playlist "LINK" --playlist-items "1-10" --archive downloaded.txt
+ytconv playlist "LINK" --playlist-items "1-10"
 ```
 
 Bila command belum ada di PATH:
@@ -124,9 +137,12 @@ Cron sebaiknya memakai path lengkap:
 0 2 * * * /home/user/.local/bin/ytconv --headless --output /home/user/downloads "LINK" >>/home/user/ytconv.log 2>&1
 ```
 
+Archive otomatis berguna untuk cron agar item lama dilewati. Gunakan `--no-archive` hanya ketika pengunduhan ulang memang dimaksudkan.
+
 ## Android Termux
 
 ```sh
+npm install -g ytconv@beta --omit=optional --force
 ytconv --version
 ytconv doctor
 ytconv repair
@@ -148,18 +164,18 @@ ytconv download "LINK" --cookies ~/storage/downloads/cookies.txt
 
 ## iPhone/iPad iSH
 
-Frontend iSH adalah Python native dan memakai command yang sama untuk fitur inti:
+Frontend iSH adalah Python native beta dan memakai command yang sama untuk fitur inti:
 
 ```sh
 ytconv --version
 ytconv doctor
 ytconv repair
 ytconv download "LINK" --preset music
-ytconv playlist "LINK" --archive downloaded.txt
+ytconv playlist "LINK"
 ytconv batch links.txt --continue-on-error --result-json report.json
 ```
 
-Untuk menjaga memori, frontend iSH menerima `--jobs 1–2` tetapi memproses batch berurutan.
+Default subtitle, SponsorBlock mark, dan archive tersedia juga pada frontend iSH. Untuk menjaga memori, batch diproses berurutan.
 
 Folder hasil:
 
