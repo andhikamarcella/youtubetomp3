@@ -1,0 +1,64 @@
+name: Publish YTConv Stable to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable version; must match cli/package.json"
+        required: true
+        default: "1.5.0"
+      confirm:
+        description: "Type PUBLISH-STABLE to continue"
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+environment: npm
+
+jobs:
+  publish:
+    if: ${{ inputs.confirm == 'PUBLISH-STABLE' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Verify stable package identity
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
+          test "$PACKAGE_VERSION" = "${{ inputs.version }}"
+          test "$PACKAGE_VERSION" = "1.5.0"
+          test "$PACKAGE_TAG" = "latest"
+          case "$PACKAGE_VERSION" in
+            *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
+            *) ;;
+          esac
+          if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "ytconv@$PACKAGE_VERSION is already published; refusing to overwrite it."
+            exit 1
+          fi
+      - name: Install and test clean package
+        run: |
+          npm install
+          npm run check
+          npm test
+          npm run check:ish
+          npm run test:ish
+          npm publish --dry-run --tag latest
+      - name: Publish stable package with provenance
+        run: npm publish --tag latest --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Verify registry
+        run: |
+          test "$(npm view ytconv@latest version --prefer-online)" = "${{ inputs.version }}"
+          npm view "ytconv@${{ inputs.version }}" dist.integrity
+          npm view ytconv dist-tags --json
