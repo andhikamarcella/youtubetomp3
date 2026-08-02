@@ -336,7 +336,7 @@ async function handleHistory(args, options) {
 }
 
 function completionScript(shell) {
-  const commands = 'download playlist batch info formats subtitles doctor repair clean update config profile history completion quickstart';
+  const commands = 'download playlist batch info formats subtitles login logout social doctor repair clean update config profile history completion quickstart';
   if (shell === 'bash') return `# Add to ~/.bashrc\ncomplete -W "${commands}" ytconv`;
   if (shell === 'zsh') return `# Add to ~/.zshrc\ncompdef '_arguments "1:command:(${commands})"' ytconv`;
   if (shell === 'fish') return commands.split(' ').map((name) => `complete -c ytconv -f -a ${name}`).join('\n');
@@ -357,11 +357,11 @@ export async function handleUserDataCommand(argv = [], { homeDirectory = os.home
   if (command === 'quickstart') {
     console.log([
       'YTConv quick start:',
-      '  1. ytconv doctor',
-      '  2. ytconv config set output ~/Downloads/YTConv',
-      '  3. ytconv profile set music preset=music audioQuality=320',
-      '  4. ytconv --profile music download "URL"',
-      '  5. ytconv history',
+      '  1. ytconv doctor                         # engine dipasang otomatis',
+      '  2. ytconv login instagram                # hanya jika link perlu akun',
+      '  3. ytconv config set output ~/Downloads/YTConv',
+      '  4. ytconv profile set music preset=music audioQuality=320',
+      '  5. ytconv --profile music download "URL"',
       '',
       'Run ytconv --help for every media option.',
     ].join('\n'));

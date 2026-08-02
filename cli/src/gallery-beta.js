@@ -63,7 +63,7 @@ function readableError(stderr, fallback) {
   const text = String(stderr || '');
   if (/429|too many requests/iu.test(text)) return 'Situs membatasi permintaan (429). Tunggu lalu coba lagi.';
   if (/login|cookies?|authentication|private|not authorized/iu.test(text)) {
-    return 'Media memerlukan login/cookies. Gunakan cookies browser atau cookies.txt yang masih aktif.';
+    return 'Media memerlukan akun yang sudah login. Jalankan `ytconv login PROVIDER`, lalu coba lagi.';
   }
   const useful = text.split(/\r?\n/u).map((line) => line.trim()).filter((line) => /error|warning|failed|unsupported|login|cookie|private|429/iu.test(line));
   return useful.at(-1)?.replace(/^\[[^\]]+\]\s*/u, '') || fallback;
@@ -80,7 +80,7 @@ export function classifyEmptyGalleryResult({ archivePath = '', inspectedItemCoun
     skipped: false,
     reason: readableError(
       diagnostic,
-      'gallery-dl tidak mengembalikan file dari link tersebut. Konten publik akan dicoba melalui yt-dlp; konten login-only memerlukan cookies aktif.',
+      'gallery-dl tidak mengembalikan file dari link tersebut. Akses publik akan dicoba melalui yt-dlp; jika akun diperlukan, jalankan `ytconv login PROVIDER`.',
     ),
   };
 }

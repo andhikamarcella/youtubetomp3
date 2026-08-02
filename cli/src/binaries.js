@@ -50,22 +50,28 @@ async function downloadLatest(asset, destination, { silent }) {
   const url = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${asset}`;
   if (!silent) console.log(`YTConv: downloading ${asset}...`);
 
-  const response = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'user-agent': 'ytconv-npm-installer',
-      accept: 'application/octet-stream',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Gagal mengunduh yt-dlp (${response.status} ${response.statusText}).`);
+  let data = null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        redirect: 'follow',
+        headers: {
+          'user-agent': 'ytconv-npm-installer',
+          accept: 'application/octet-stream',
+        },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      const candidate = Buffer.from(await response.arrayBuffer());
+      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('file tidak lengkap');
+      data = candidate;
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+    }
   }
-
-  const data = Buffer.from(await response.arrayBuffer());
-  if (data.length < MINIMUM_BINARY_SIZE) {
-    throw new Error('File yt-dlp yang diterima tidak valid atau tidak lengkap.');
-  }
+  if (!data) throw new Error(`Gagal mengunduh yt-dlp setelah 3 percobaan (${lastError?.message || 'unknown error'}).`);
 
   await fs.writeFile(temporary, data);
   if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);

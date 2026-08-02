@@ -114,13 +114,17 @@ function explicitBrowserConfig(spec) {
 
 export async function runDirectCommand({ options, outputDirectory }) {
   if (!validateUrl(options.initialUrl)) throw new Error('A direct command requires a valid HTTP or HTTPS URL.');
-  const dependencies = await inspectDependencies({ repair: false });
-  if (!dependencies.ytDlp.installed) throw new Error('yt-dlp is not available. Run ytconv doctor, followed by ytconv repair.');
+  const dependencies = await inspectDependencies({ repair: true });
+  if (!dependencies.ytDlp.installed) throw new Error('yt-dlp belum siap setelah perbaikan otomatis. Jalankan `ytconv repair`, lalu `ytconv doctor`.');
 
   await fs.mkdir(outputDirectory, { recursive: true });
   const cookieConfigs = options.cookiesBrowser
     ? [explicitBrowserConfig(options.cookiesBrowser)]
-    : await resolveCookieConfigs({ source: options.cookiesPath ? 'file' : 'auto', outputDirectory });
+    : await resolveCookieConfigs({
+      source: options.cookiesPath ? 'file' : 'auto',
+      outputDirectory,
+      url: options.initialUrl,
+    });
   let lastError = null;
 
   for (const cookieConfig of cookieConfigs) {
@@ -159,5 +163,7 @@ export async function runDirectCommand({ options, outputDirectory }) {
     }
   }
 
-  throw lastError || new Error('No cookie source or media engine could inspect the URL.');
+  const error = lastError || new Error('Tidak ada engine atau sesi akun yang dapat membaca link tersebut.');
+  error.ytconvUrl = options.initialUrl;
+  throw error;
 }

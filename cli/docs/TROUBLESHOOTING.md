@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.4.0
+# Troubleshooting YTConv 1.5.6
 
 Start with this safe sequence:
 
@@ -26,12 +26,48 @@ git status --short
 For the stable release, expected values are:
 
 ```text
-1.4.0
+1.5.6
 latest
-release/ytconv-1.4.0
+release/ytconv-1.5.6-cli-only-final
 ```
 
 npm never allows a published version number to be overwritten.
+
+## Layar berhenti di `setup incomplete`
+
+Mulai dari v1.5.6, FFmpeg adalah dependency wajib dan yt-dlp/gallery-dl disiapkan otomatis. Jalankan:
+
+```powershell
+ytconv.cmd repair
+ytconv.cmd doctor
+ytconv.cmd --self-test
+```
+
+Jika masih gagal, instal ulang paket beserta script instalasinya:
+
+```powershell
+npm.cmd uninstall -g ytconv
+npm.cmd cache verify
+npm.cmd install -g ytconv@latest --force
+ytconv.cmd doctor
+```
+
+Jangan memakai `--ignore-scripts` atau `--omit=optional` pada Windows/macOS/Linux desktop karena opsi tersebut melewatkan bootstrap engine. Node.js/npm tetap harus terpasang lebih dulu karena YTConv didistribusikan melalui npm.
+
+## Instagram/Facebook/X meminta cookies atau login
+
+Tidak perlu mengunduh `cookies.txt`. Tautkan browser melalui halaman resmi:
+
+```powershell
+ytconv.cmd login instagram
+ytconv.cmd login facebook --browser edge
+ytconv.cmd login x --browser firefox
+ytconv.cmd social status
+```
+
+Setelah login selesai, ulangi link. YTConv mencoba akses publik terlebih dahulu, lalu sesi browser yang cocok. Password, OTP, dan cookie mentah tidak pernah disimpan YTConv.
+
+Jika muncul kegagalan dekripsi/locked database, tutup seluruh browser dan proses background-nya. Jika Chrome/Edge tetap menolak karena App-Bound Encryption atau kebijakan perangkat, login ulang melalui Firefox; YTConv tidak membypass perlindungan browser/OS.
 
 ## `spawnSync npm.cmd EINVAL` on Windows
 
@@ -149,11 +185,12 @@ Close the browser completely before reading browser cookies.
 Desktop example:
 
 ```bash
+ytconv login instagram --browser firefox
 ytconv download "URL" --cookies-from-browser chrome
 ytconv download "URL" --cookies-from-browser "firefox:default-release"
 ```
 
-When browser extraction fails, export a Netscape-format cookie file legally and use `--cookies`. Termux and iSH cannot directly access private Android/iOS browser databases.
+Tutup browser sepenuhnya sebelum mencoba ulang. File `cookies.txt` hanya fallback kompatibilitas lama dan bukan alur yang direkomendasikan v1.5.6. Termux dan iSH tidak dapat mengakses database privat browser Android/iOS secara langsung.
 
 ## HTTP 429 / Too Many Requests
 

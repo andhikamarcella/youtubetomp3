@@ -7,6 +7,8 @@ import {
   checkForUpdate,
   clearUpdateCache,
   compareVersions,
+  automaticUpdateEnabled,
+  maybeAutoUpdate,
   releaseChannel,
   runSelfUpdate,
   selfUpdateInvocation,
@@ -106,4 +108,29 @@ test('self-update returns strategy and success', () => {
   assert.equal(result.command, 'npm install -g ytconv@beta --force');
   assert.equal(captured.command, 'node.exe');
   assert.equal(captured.options.stdio, 'inherit');
+});
+
+test('automatic updates run only for interactive user sessions', () => {
+  assert.equal(automaticUpdateEnabled({ argv: [], env: {}, interactive: true }), true);
+  assert.equal(automaticUpdateEnabled({ argv: [], env: {}, interactive: false }), false);
+  assert.equal(automaticUpdateEnabled({ argv: ['--no-update-check'], env: {}, interactive: true }), false);
+  assert.equal(automaticUpdateEnabled({ argv: [], env: { CI: '1' }, interactive: true }), false);
+  assert.equal(automaticUpdateEnabled({ argv: [], env: { YTCONV_AUTO_UPDATE: '0' }, interactive: true }), false);
+});
+
+test('automatic update installs an available stable version', async () => {
+  let installed = false;
+  const result = await maybeAutoUpdate({
+    currentVersion: '1.5.6',
+    argv: [],
+    env: {},
+    interactive: true,
+    checkImpl: async () => ({ checked: true, available: true, latestVersion: '1.5.7' }),
+    runImpl: ({ currentVersion }) => {
+      installed = currentVersion === '1.5.6';
+      return { ok: true, strategy: 'test', command: 'npm install -g ytconv@latest --force' };
+    },
+  });
+  assert.equal(result.updated, true);
+  assert.equal(installed, true);
 });

@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.5.5"
+set "VERSION=1.5.6"
 set "CHANNEL=latest"
 echo YTConv %VERSION% installer for CMD
 where node.exe >nul 2>nul || (echo Node.js 18 or newer is not installed.& exit /b 1)
@@ -30,5 +30,5 @@ call ytconv.cmd doctor
 call ytconv.cmd quickstart
 echo.
 echo Stable installation completed. Run: ytconv.cmd or ytconv
-echo Sign in once before downloading: ytconv.cmd login
+echo Public links are ready. If a site asks for login: ytconv.cmd login instagram
 endlocal

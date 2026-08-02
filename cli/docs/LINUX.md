@@ -1,4 +1,4 @@
-# Installing YTConv 1.4.0 on Linux
+# Installing YTConv 1.5.6 on Linux
 
 This guide starts from a clean Linux installation and ends with a verified YTConv download. It covers desktop Linux, servers, SSH sessions, and the major package-manager families.
 
@@ -55,7 +55,7 @@ ytconv doctor
 ytconv --shell-info
 ```
 
-The version must be `1.4.0`.
+The version must be `1.5.6`.
 
 ## Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon
 
@@ -273,7 +273,7 @@ ytconv --shell-info
 
 Expected result:
 
-- YTConv version is `1.4.0`
+- YTConv version is `1.5.6`
 - Node.js is 18 or newer
 - yt-dlp is available
 - gallery-dl is available

@@ -146,15 +146,16 @@ export function applyAuthEnvironment(session, env = process.env) {
 export function authHelpText() {
   return [
     '',
-    'Account commands:',
-    '  ytconv login              Sign in, then return to the CLI automatically',
-    '  ytconv login --local      Use a private profile stored only on this device',
-    '  ytconv login --cloud-only Require cloud login; disable local fallback',
-    '  ytconv auth status        Show the active account and device',
-    '  ytconv logout             Revoke the current device session',
+    'Optional YTConv account commands:',
+    '  ytconv account login              Sign in, then return to the CLI automatically',
+    '  ytconv account login --local      Use a private profile stored only on this device',
+    '  ytconv account login --cloud-only Require cloud login; disable local fallback',
+    '  ytconv auth status                Show the active account and device',
+    '  ytconv account logout             Revoke the current device session',
     '',
     `Account server: ${apiBase()}`,
-    'If the account server is unavailable, interactive login safely falls back to a local CLI profile.',
+    'The account is optional. Public downloads and linked social-browser sessions work without it.',
+    'Social login: ytconv login instagram (or run ytconv social help).',
   ].join('\n');
 }
 

@@ -6,6 +6,7 @@ cookies.txt
 next-app/.next/
 next-app/node_modules/
 cli/node_modules/
+cli/vendor/
 **/__pycache__/
 *.py[cod]
 .env

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.5.5"
+VERSION="1.5.6"
 CHANNEL="latest"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
@@ -121,4 +121,4 @@ ytconv doctor || true
 ytconv quickstart || true
 say ""
 say "Stable installation completed without sudo npm. Open a new terminal or run: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
-say "Sign in once before downloading: ytconv login"
+say "Public links are ready. If a site asks for login: ytconv login instagram"

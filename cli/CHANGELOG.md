@@ -2,6 +2,30 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.6 — automatic setup, updates, and official social login
+
+### Added
+
+- `ytconv login instagram`, `facebook`, `x`, `tiktok`, `youtube`, `pinterest`, `reddit`, `threads`, `twitch`, and other supported providers.
+- Official login pages open in a locally detected browser; saved provider bindings are selected automatically for matching links.
+- `ytconv social status`, `ytconv logout PROVIDER`, and `ytconv social logout --all` for local account-binding management.
+- Automatic stable-channel update checks and installation for interactive sessions, with a safe one-time relaunch after success.
+- Human-readable login hints derived from the failed media URL.
+
+### Changed
+
+- FFmpeg is now a required npm dependency instead of an optional dependency, preventing incomplete Windows installs when optional packages are omitted.
+- Direct, headless, and interactive downloads all attempt dependency repair automatically before reporting a missing-engine error.
+- A YTConv cloud profile is optional; the CLI can download public media or use linked browser sessions without a web account server.
+- The setup screen names the exact missing engines and provides a direct repair command.
+
+### Security and privacy
+
+- Passwords, OTP codes, OAuth secrets, access tokens, and raw cookies are never collected or uploaded by YTConv.
+- Site sessions remain in the official browser database and are protected by the browser/operating-system encryption.
+- `~/.ytconv/social-sessions.json` stores only the provider name and browser/profile reference and uses user-only permissions on Unix-like systems.
+- Social login does not bypass private-account permissions, DRM, paywalls, or source-site access controls.
+
 ## 1.5.5 — reliable login fallback and complete package metadata
 
 ### Added

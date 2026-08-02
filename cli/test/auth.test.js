@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   applyAuthEnvironment,
@@ -51,12 +53,23 @@ test('validateAuthSession refreshes account metadata from the server', async (t)
   assert.equal(result.session.tokenId, 'token-id');
 });
 
-test('media commands cannot continue without login', async (t) => {
+test('legacy explicit account requirement still reports a clear login command', async (t) => {
   const homeDirectory = await temporaryHome(t);
   await assert.rejects(
     requireAuthenticatedSession({ homeDirectory }),
     /A YTConv profile is required before downloading or converting media/u,
   );
+});
+
+test('CLI wrapper no longer blocks public commands behind the cloud account server', async (t) => {
+  const homeDirectory = await temporaryHome(t);
+  const entry = fileURLToPath(new URL('../bin/ytconv-auth.js', import.meta.url));
+  const result = spawnSync(process.execPath, [entry, '--version'], {
+    encoding: 'utf8',
+    env: { ...process.env, HOME: homeDirectory, USERPROFILE: homeDirectory, YTCONV_NO_UPDATE_CHECK: '1' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '1.5.6');
 });
 
 test('local fallback profile validates without a cloud request', async (t) => {
@@ -65,7 +78,7 @@ test('local fallback profile validates without a cloud request', async (t) => {
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async () => { throw new Error('cloud request must not run'); };
   const result = await loginLocally({
-    version: '1.5.5',
+    version: '1.5.6',
     homeDirectory,
     localName: 'Local Tester',
   });
@@ -82,7 +95,7 @@ test('login falls back locally when the cloud endpoint is not deployed', async (
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async () => new Response('Not Found', { status: 404 });
   const result = await login({
-    version: '1.5.5',
+    version: '1.5.6',
     homeDirectory,
     localName: 'Fallback Tester',
   });

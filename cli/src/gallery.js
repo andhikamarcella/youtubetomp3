@@ -134,19 +134,28 @@ async function downloadFile(url, destination, { silent = false } = {}) {
   await fs.rm(temporary, { force: true });
 
   if (!silent) console.log('YTConv: downloading gallery-dl image engine...');
-  const response = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      accept: 'application/octet-stream',
-      'user-agent': 'ytconv-gallery-installer',
-    },
-  });
-  if (!response.ok) throw new Error(`gallery-dl download HTTP ${response.status}`);
-
-  const data = Buffer.from(await response.arrayBuffer());
-  if (data.length < MINIMUM_BINARY_SIZE) {
-    throw new Error('File gallery-dl yang diterima tidak valid atau tidak lengkap.');
+  let data = null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        redirect: 'follow',
+        headers: {
+          accept: 'application/octet-stream',
+          'user-agent': 'ytconv-gallery-installer',
+        },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      const candidate = Buffer.from(await response.arrayBuffer());
+      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('file tidak lengkap');
+      data = candidate;
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+    }
   }
+  if (!data) throw new Error(`gallery-dl gagal setelah 3 percobaan (${lastError?.message || 'unknown error'})`);
 
   await fs.writeFile(temporary, data);
   if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);
@@ -168,20 +177,33 @@ export async function ensureBundledGalleryDl({ force = false, silent = false } =
   const existing = await fileStatus(destination);
   if (!force && existing.valid && existing.fresh) return destination;
 
+  const errors = [];
   try {
     const asset = await latestStandaloneAsset();
-    if (asset) return await downloadFile(asset.browser_download_url, destination, { silent });
+    if (asset) {
+      try {
+        return await downloadFile(asset.browser_download_url, destination, { silent });
+      } catch (error) {
+        errors.push(`aset GitHub API: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  } catch (error) {
+    errors.push(`GitHub Release API: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
-    const fallbackName = process.platform === 'win32' ? 'gallery-dl.exe' : 'gallery-dl.bin';
-    const fallbackUrl = `https://github.com/gdl-org/builds/releases/latest/download/${fallbackName}`;
+  const fallbackName = process.platform === 'win32' ? 'gallery-dl.exe' : 'gallery-dl.bin';
+  const fallbackUrl = `https://github.com/gdl-org/builds/releases/latest/download/${fallbackName}`;
+  try {
     return await downloadFile(fallbackUrl, destination, { silent });
   } catch (error) {
-    if (existing.valid) {
-      if (!silent) console.warn(`YTConv: memakai gallery-dl lama karena update gagal. ${error.message}`);
-      return destination;
-    }
-    throw error;
+    errors.push(`URL release langsung: ${error instanceof Error ? error.message : String(error)}`);
   }
+
+  if (existing.valid) {
+    if (!silent) console.warn(`YTConv: memakai gallery-dl lama karena update gagal. ${errors.join('; ')}`);
+    return destination;
+  }
+  throw new Error(`gallery-dl tidak dapat diunduh. ${errors.join('; ')}`);
 }
 
 async function resolvePythonModuleRunner() {
@@ -358,10 +380,10 @@ function commonGalleryArgs({ cookieConfig, outputDirectory, simulate = false } =
 function galleryError(stderr, fallback) {
   const text = String(stderr || '');
   if (/429|too many requests/iu.test(text)) {
-    return 'Situs membatasi terlalu banyak permintaan (429). Tunggu beberapa menit, gunakan cookies terbaru, lalu coba lagi.';
+    return 'Situs membatasi terlalu banyak permintaan (429). Tunggu beberapa menit, kurangi concurrency, lalu coba lagi dengan sesi akun resmi bila diperlukan.';
   }
   if (/login|cookies?|authentication|private|not authorized/iu.test(text)) {
-    return 'Media memerlukan login/cookies. Pilih cookies browser atau cookies.txt yang masih aktif melalui Ctrl+B.';
+    return 'Media memerlukan akun yang sudah login. Jalankan `ytconv login PROVIDER`, lalu ulangi link.';
   }
   if (/unsupported|no suitable extractor|not found/iu.test(text)) {
     return 'Link gambar/gallery belum didukung atau posting sudah tidak tersedia.';

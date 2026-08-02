@@ -1,33 +1,16 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
+import { spawnSync } from 'node:child_process';
 import {
   applyAuthEnvironment,
   authHelpText,
   handleAuthCommand,
-  login,
-  requireAuthenticatedSession,
+  validateAuthSession,
 } from '../src/auth.js';
+import { handleSocialAuthCommand } from '../src/social-auth.js';
+import { maybeAutoUpdate } from '../src/update.js';
 import { CLI_VERSION } from '../src/version.js';
-
-const SAFE_COMMANDS = new Set([
-  'help', 'doctor', 'diagnose', 'repair', 'setup', 'update', 'config', 'profile',
-  'history', 'completion', 'quickstart', 'clean', 'clear-cache', 'shell-info',
-  'self-test', 'examples', 'presets',
-]);
-
-const SAFE_FLAGS = new Set([
-  '--help', '-h', '--version', '-v', '--diagnose', '--doctor', '--repair', '--setup',
-  '--check-update', '--update', '--list-presets', '--examples', '--shell-info',
-  '--clear-cache', '--self-test',
-]);
-
-function canRunWithoutLogin(argv) {
-  if (!argv.length) return false;
-  const first = String(argv[0] || '').toLowerCase();
-  if (SAFE_COMMANDS.has(first) || SAFE_FLAGS.has(first)) return true;
-  return argv.some((value) => SAFE_FLAGS.has(String(value).toLowerCase()));
-}
 
 function isInteractiveTerminal() {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);
@@ -45,6 +28,28 @@ async function launchCli(session) {
 async function boot() {
   const argv = process.argv.slice(2);
   try {
+    const automaticUpdate = await maybeAutoUpdate({ currentVersion: CLI_VERSION, argv });
+    if (automaticUpdate.updated) {
+      console.log('Pembaruan selesai. YTConv dibuka ulang dengan versi terbaru.\n');
+      const relaunched = spawnSync(process.execPath, [process.argv[1], ...argv], {
+        stdio: 'inherit',
+        windowsHide: true,
+        env: { ...process.env, YTCONV_SKIP_AUTO_UPDATE_ONCE: '1' },
+      });
+      process.exitCode = relaunched.status ?? (relaunched.error ? 1 : 0);
+      return;
+    }
+    if (automaticUpdate.reason === 'failed') {
+      console.warn(`Pembaruan otomatis belum berhasil: ${automaticUpdate.result.error.message}`);
+      console.warn(`YTConv ${CLI_VERSION} tetap dibuka. Perbaiki nanti dengan: ytconv update\n`);
+    }
+
+    const social = await handleSocialAuthCommand(argv);
+    if (social.handled) {
+      process.exitCode = social.exitCode;
+      return;
+    }
+
     const auth = await handleAuthCommand(argv, { version: CLI_VERSION });
     if (auth.handled) {
       if (auth.action === 'login' && auth.exitCode === 0 && shouldReturnToCli(argv)) {
@@ -56,23 +61,17 @@ async function boot() {
       return;
     }
 
-    let session = null;
-    if (!canRunWithoutLogin(argv)) {
-      try {
-        session = await requireAuthenticatedSession();
-      } catch (error) {
-        if (argv.length || !isInteractiveTerminal()) throw error;
-        console.log(`YTConv ${CLI_VERSION} needs a profile before the first download.`);
-        const result = await login({ version: CLI_VERSION });
-        session = result.session;
-      }
-    }
+    const validation = await validateAuthSession({ quiet: true });
+    const session = validation.ok ? validation.session : null;
 
     await launchCli(session);
   } catch (error) {
-    console.error(`YTConv account:\n${error instanceof Error ? error.message : String(error)}`);
-    if (!canRunWithoutLogin(argv)) console.error(authHelpText());
-    process.exitCode = Number(error?.status) === 429 ? 5 : 4;
+    console.error(`YTConv:\n${error instanceof Error ? error.message : String(error)}`);
+    const first = String(argv[0] || '').toLowerCase();
+    if (['auth', 'account'].includes(first) || (first === 'login' && argv.includes('--cloud-only'))) {
+      console.error(authHelpText());
+    }
+    process.exitCode = Number(error?.status) === 429 ? 5 : 1;
   }
 }
 

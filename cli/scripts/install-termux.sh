@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
-VERSION="1.5.5"
+VERSION="1.5.6"
 CHANNEL="latest"
 printf '%s\n' "YTConv $VERSION installer for Termux"
 
@@ -32,4 +32,4 @@ ytconv --shell-info || true
 ytconv doctor || true
 ytconv quickstart || true
 printf '%s\n' 'Stable installation completed. Default output: ~/storage/downloads/YTConv'
-printf '%s\n' 'Sign in once before downloading: ytconv login'
+printf '%s\n' 'Public links are ready. Android browser sessions remain sandboxed from Termux.'

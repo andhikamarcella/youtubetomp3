@@ -8,14 +8,15 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv stable is version 1.5.5 on the latest tag', () => {
-  assert.equal(manifest.version, '1.5.5');
+test('YTConv stable is version 1.5.6 on the latest tag', () => {
+  assert.equal(manifest.version, '1.5.6');
   assert.equal(manifest.publishConfig.tag, 'latest');
 });
 
-test('stable package includes account features, installers, and the iSH runtime', () => {
+test('stable package includes social login, installers, and the iSH runtime', () => {
   const required = [
-    'bin/ytconv-auth.js', 'src/auth.js', 'src/beta-defaults.js', 'src/gallery-beta.js', 'src/user-data.js',
+    'bin/ytconv-auth.js', 'src/auth.js', 'src/social-auth.js', 'src/social-sessions.js',
+    'src/beta-defaults.js', 'src/gallery-beta.js', 'src/user-data.js',
     'ish/ytconv.py', 'ish/ytconv-beta.py', 'ish/VERSION', 'scripts/install-ish.sh',
     'scripts/install-windows.ps1', 'scripts/install-windows.cmd',
     'scripts/install-termux.sh', 'scripts/install-unix.sh',
