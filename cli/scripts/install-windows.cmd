@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.5.0"
-set "CHANNEL=latest"
+set "VERSION=1.6.0-beta.1"
+set "CHANNEL=beta"
 echo YTConv %VERSION% installer for CMD
 where node.exe >nul 2>nul || (echo Node.js 18 or newer is not installed.& exit /b 1)
 where npm.cmd >nul 2>nul || (echo npm.cmd was not found.& exit /b 1)
@@ -29,6 +29,8 @@ call ytconv.cmd --shell-info
 call ytconv.cmd doctor
 call ytconv.cmd quickstart
 echo.
-echo Stable installation completed. Run: ytconv.cmd or ytconv
+echo Beta installation completed. Run: ytconv.cmd or ytconv
 echo Sign in once before downloading: ytconv.cmd login
+echo Manage signed-in devices: ytconv.cmd auth devices
+echo Return to stable: npm.cmd install -g ytconv@latest --force
 endlocal
