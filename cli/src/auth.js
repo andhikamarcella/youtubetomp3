@@ -92,6 +92,7 @@ function openBrowser(url) {
   for (const [command, args] of candidates) {
     try {
       const child = spawn(command, args, { detached: true, stdio: 'ignore', windowsHide: true });
+      child.once('error', () => {});
       child.unref();
       return true;
     } catch {
