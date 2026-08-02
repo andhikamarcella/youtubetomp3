@@ -62,6 +62,7 @@ test('login command opens the official provider page and saves the selected brow
       homeDirectory,
       interactive: false,
       detectBrowsersImpl: async () => ['edge', 'firefox'],
+      detectBrowserProfilesImpl: async () => [],
       openLoginImpl: async (value) => {
         opened = value;
         return { opened: true, url: 'https://www.instagram.com/accounts/login/' };
