@@ -1,0 +1,53 @@
+name: YTConv Account Server
+
+on:
+  push:
+    branches:
+      - release/ytconv-1.5.0
+      - release/ytconv-1.6.0-beta
+    paths:
+      - "next-app/**"
+      - "sql/**"
+      - ".github/workflows/ytconv-auth.yml"
+  pull_request:
+    paths:
+      - "next-app/**"
+      - "sql/**"
+      - ".github/workflows/ytconv-auth.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: next-app
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ytconv
+      GOOGLE_CLIENT_ID: test-client.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: test-google-secret
+      NEXTAUTH_SECRET: test-nextauth-secret-with-at-least-32-characters
+      NEXTAUTH_URL: http://localhost:3000
+      CLI_AUTH_ENCRYPTION_KEY: test-cli-auth-encryption-key-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: next-app/package.json
+      - run: npm install --ignore-scripts
+      - run: npx tsc --noEmit
+      - run: npm run build
+      - name: Verify account routes and schema are present
+        working-directory: .
+        run: |
+          test -f next-app/pages/cli-login.tsx
+          test -f next-app/pages/api/auth/'[...nextauth].ts'
+          test -f next-app/pages/api/cli-auth/device.ts
+          test -f next-app/pages/api/cli-auth/approve.ts
+          test -f next-app/pages/api/cli-auth/token.ts
+          test -f next-app/pages/api/cli-auth/me.ts
+          test -f next-app/pages/api/cli-auth/logout.ts
+          grep -q 'CREATE TABLE IF NOT EXISTS cli_access_tokens' sql/schema.sql
+          grep -q 'CREATE TABLE IF NOT EXISTS cli_device_codes' sql/schema.sql
