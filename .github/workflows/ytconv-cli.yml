@@ -1,9 +1,9 @@
-name: YTConv CLI 1.5 Stable
+name: YTConv CLI 1.6 Beta
 
 on:
   push:
     branches:
-      - release/ytconv-1.5.0
+      - release/ytconv-1.6.0-beta
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -31,13 +31,13 @@ jobs:
       - run: npm install --ignore-scripts --omit=optional
       - run: npm run check
       - run: npm test
-      - name: Stable identity and command smoke tests
+      - name: Beta identity and command smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.0-beta.1"
           node ./bin/ytconv.js --help | grep -q "Persistent beta features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.0') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.0').includes('@latest')) process.exitCode=1; })"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'beta') process.exitCode=1; if (!updateCommand('1.6.0-beta.1').includes('@beta')) process.exitCode=1; })"
 
   linux-full:
     runs-on: ubuntu-latest
@@ -52,18 +52,24 @@ jobs:
       - run: npm install
       - run: npm run check
       - run: npm test
-      - name: Check native iSH stable frontend and installers
+      - name: Check native iSH beta frontend and installers
         run: |
           npm run check:ish
           npm run test:ish
-          test "$(cat ish/VERSION)" = "1.5.0"
+          test "$(cat ish/VERSION)" = "1.6.0-beta.1"
           sh -n scripts/install-ish.sh
           sh -n scripts/install-termux.sh
           sh -n scripts/install-unix.sh
-      - name: Verify persistent defaults and explicit precedence
+      - name: Verify beta defaults and explicit precedence
         run: |
-          node -e "import('./src/beta-defaults.js').then(({extractBetaToggles,applyBetaDefaults}) => import('./src/cli-options.js').then(({parseCliOptions}) => { const t=extractBetaToggles([]); const o=parseCliOptions(t.cleanArgs); applyBetaDefaults(o,t,{homeDirectory:'/tmp/ytconv-stable',mkdirSync(){}}); if(!o.subtitles || o.sponsorBlockMode!=='mark' || !o.archivePath || !o.galleryArchivePath) process.exitCode=1; }))"
+          node -e "import('./src/beta-defaults.js').then(({extractBetaToggles,applyBetaDefaults}) => import('./src/cli-options.js').then(({parseCliOptions}) => { const t=extractBetaToggles([]); const o=parseCliOptions(t.cleanArgs); applyBetaDefaults(o,t,{homeDirectory:'/tmp/ytconv-beta',mkdirSync(){}}); if(!o.subtitles || o.sponsorBlockMode!=='mark' || !o.archivePath || !o.galleryArchivePath) process.exitCode=1; }))"
           node -e "import('./src/argument-precedence.js').then(({applyExplicitPrecedence}) => { const e=['--preset','hd','https://example.com/a']; const r=['--preset','mobile','--resolution','720',...e]; const v=applyExplicitPrecedence(r,e); if(v.join(' ') !== e.join(' ')) process.exitCode=1; })"
+      - name: Test account command parsing without live credentials
+        run: |
+          node ./bin/ytconv-auth.js auth help | grep -q "auth devices"
+          TEST_HOME=$(mktemp -d)
+          HOME="$TEST_HOME" node ./bin/ytconv-auth.js auth status --json | grep -q '"signedIn": false'
+          rm -rf "$TEST_HOME"
       - name: Test config profile history and completion with isolated home
         run: |
           TEST_HOME=$(mktemp -d)
@@ -86,22 +92,22 @@ jobs:
           ./vendor/yt-dlp --version
           ./vendor/gallery-dl --version
           node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d=await inspectDependencies({repair:false}); if(!d.ready) process.exitCode=1; })"
-      - name: Preview stable package and documentation
+      - name: Preview beta package and documentation
         run: |
           npm pack --dry-run
           npm pack --json > package-preview.json
-          grep -q '"version": "1.5.0"' package.json
-          grep -q '"tag": "latest"' package.json
+          grep -q '"version": "1.6.0-beta.1"' package.json
+          grep -q '"tag": "beta"' package.json
           grep -q 'src/auth.js' package-preview.json
           grep -q 'bin/ytconv-auth.js' package-preview.json
-          grep -q 'docs/AUTH.md' package-preview.json
+          grep -q 'docs/BETA-1.6.md' package-preview.json
       - name: Simulate portable npm install
         run: |
           TARBALL=$(npm pack --silent)
           rm -rf /tmp/ytconv-portable
           mkdir -p /tmp/ytconv-portable
           npm install --prefix /tmp/ytconv-portable "$PWD/$TARBALL" --omit=optional --ignore-scripts
-          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.0"
+          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.6.0-beta.1"
 
   windows-cmd-powershell:
     runs-on: windows-latest
@@ -119,19 +125,19 @@ jobs:
         run: npm run check
       - shell: pwsh
         run: npm test
-      - name: CMD stable user flow
+      - name: CMD beta user flow
         shell: cmd
         run: |
           node .\bin\ytconv.js --version
           node .\bin\ytconv.js --help
-          node .\bin\ytconv.js quickstart
+          node .\bin\ytconv-auth.js auth help
           node .\bin\ytconv.js completion powershell
-      - name: PowerShell stable identity
+      - name: PowerShell beta identity
         shell: pwsh
         run: |
           $version = node .\bin\ytconv.js --version
-          if ($version -ne '1.5.0') { throw "Wrong version: $version" }
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.0',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
+          if ($version -ne '1.6.0-beta.1') { throw "Wrong version: $version" }
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.6.0-beta.1',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@beta')) process.exitCode=1; })"
 
   macos:
     runs-on: macos-latest
@@ -147,7 +153,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.0-beta.1"
           node ./bin/ytconv.js completion zsh
           sh ./scripts/install-unix.sh --print-plan | grep -q 'brew'
 
@@ -164,7 +170,7 @@ jobs:
       - run: npm install --ignore-scripts --omit=optional
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.0"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.0-beta.1"
 
   distro-installer-plans:
     runs-on: ubuntu-latest
@@ -182,6 +188,6 @@ jobs:
           - nixos/nix:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Detect distribution and print install plan
+      - name: Detect distribution and print beta install plan
         run: |
           docker run --rm -e YTCONV_INSTALL_DRY_RUN=1 -v "$PWD/cli:/work:ro" "${{ matrix.image }}" sh /work/scripts/install-unix.sh --print-plan
