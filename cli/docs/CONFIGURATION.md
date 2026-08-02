@@ -1,6 +1,6 @@
 # YTConv Configuration, Profiles, History, and Completion
 
-This document applies to YTConv `1.5.5`.
+This document applies to YTConv `1.5.6`.
 
 ## Storage locations
 
@@ -17,6 +17,7 @@ config.json            Persistent defaults and named profiles
 history.jsonl          Privacy-limited headless/batch history
 archives/              yt-dlp text archives and gallery-dl SQLite archives
 update-check-beta.json Beta-channel update cache
+social-sessions.json   Provider + browser/profile references (never raw cookies)
 ```
 
 On Windows, `~` resolves to the current account home directory, normally `%USERPROFILE%`.
@@ -26,7 +27,7 @@ On Windows, `~` resolves to the current account home directory, normally `%USERP
 The config command accepts only a documented allowlist of non-secret settings. It does not store:
 
 - cookie contents
-- browser sessions
+- raw browser sessions or cookie values
 - authentication tokens
 - npm credentials
 - proxy passwords
@@ -35,6 +36,20 @@ The config command accepts only a documented allowlist of non-secret settings. I
 History records only the execution time, YTConv version, command, URLs, mode, preset, profile, output directory, and exit code. History is capped at 500 entries.
 
 Config writes use a temporary file, user-only permissions when supported, and an atomic rename.
+
+## Automatic updates
+
+Stable updates are checked from npm and installed automatically only in an interactive terminal. CI, pipes, cron, SSH/headless automation, and JSON output are not changed automatically. Disable the check for one run with:
+
+```sh
+ytconv --no-update-check
+```
+
+Disable automatic updates through the environment while retaining manual `ytconv update`:
+
+```sh
+YTCONV_AUTO_UPDATE=0 ytconv
+```
 
 ## List configuration
 

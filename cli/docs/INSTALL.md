@@ -1,23 +1,22 @@
-# Complete YTConv 1.4.0 Installation Guide
+# Complete YTConv 1.5.6 Installation Guide
 
-YTConv 1.4.0 is the stable release published on the npm `latest` tag.
+YTConv 1.5.6 is the stable release published on the npm `latest` tag.
 
-## Requirements
+## Syarat awal
 
-- Node.js 18 or newer
-- npm
-- FFmpeg for merge, conversion, cover art, subtitles, and clipping
-- Python 3 recommended for yt-dlp/gallery-dl fallback engines
-- Working HTTPS CA certificates
+- Node.js 18 atau lebih baru dan npm. Dua komponen ini diperlukan untuk menjalankan perintah `npm install` itu sendiri.
+- Koneksi HTTPS dan sertifikat sistem yang berfungsi.
 
-Verify:
+FFmpeg, yt-dlp, gallery-dl, Ink, React, dan dependency runtime lain disiapkan otomatis oleh instalasi npm. Python 3 tidak diwajibkan pada Windows desktop karena YTConv memakai binary mandiri; Python tetap menjadi fallback pada platform tertentu.
+
+Periksa syarat awal:
 
 ```bash
 node --version
 npm --version
-python3 --version
-ffmpeg -version
 ```
+
+Setelah instalasi, `ytconv doctor` memeriksa seluruh engine dan `ytconv repair` mengunduh ulang komponen yang gagal.
 
 ## Windows CMD
 
@@ -31,7 +30,9 @@ ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-The version must be `1.4.0`.
+Jangan memasang FFmpeg, yt-dlp, gallery-dl, atau Python secara manual terlebih dahulu. Coba instalasi otomatis di atas; gunakan `ytconv.cmd repair` hanya bila pemeriksaan masih merah.
+
+The version must be `1.5.6`.
 
 Local repository installation:
 
@@ -160,7 +161,7 @@ The iSH frontend is native Python because modern Node.js TUI dependencies are no
 ```sh
 apk update
 apk add python3 py3-pip ffmpeg curl ca-certificates
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.4.0/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.6-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
@@ -214,7 +215,7 @@ ytconv --examples
 
 Expected:
 
-- version `1.4.0`
+- version `1.5.6`
 - Node.js 18 or newer
 - yt-dlp ready
 - gallery-dl ready

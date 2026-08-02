@@ -96,10 +96,10 @@ function isYouTubeMusicUrl(value) {
 
 function cookieFailureMessage(stderr) {
   if (/could not copy.*cookie|cookie database|decrypt.*cookie|dpapi|keyring/iu.test(stderr)) {
-    return 'Gagal membaca cookies browser. Tutup browser sepenuhnya lalu coba lagi, atau gunakan cookies.txt.';
+    return 'Gagal membaca sesi browser. Tutup browser sepenuhnya, lalu tautkan ulang dengan `ytconv login PROVIDER`.';
   }
   if (/cookies?.*(expired|invalid)|sign in|login required|authentication/iu.test(stderr)) {
-    return 'Situs meminta login atau cookies aktif. Gunakan --cookies FILE atau --cookies-from-browser BROWSER.';
+    return 'Situs meminta akun yang sudah login. Jalankan `ytconv login PROVIDER`; YTConv akan memakai sesi browser lokal secara otomatis.';
   }
   return null;
 }

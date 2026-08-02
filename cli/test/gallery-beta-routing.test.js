@@ -48,5 +48,5 @@ test('zero files are successful only when inspection proves archived media exist
     diagnostic: 'authentication failed: cookies required',
   });
   assert.equal(loginOnly.skipped, false);
-  assert.match(loginOnly.reason, /login\/cookies/u);
+  assert.match(loginOnly.reason, /ytconv login PROVIDER/u);
 });

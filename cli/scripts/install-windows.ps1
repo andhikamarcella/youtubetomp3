@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.5.5"
+$Version = "1.5.6"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell" -ForegroundColor Cyan
 
@@ -44,4 +44,4 @@ if ($installed -ne $Version) { throw "Installed version is $installed; expected 
 & ytconv.cmd doctor
 & ytconv.cmd quickstart
 Write-Host "`nStable installation completed. Run: ytconv.cmd or ytconv" -ForegroundColor Green
-Write-Host "Sign in once before downloading: ytconv.cmd login" -ForegroundColor Yellow
+Write-Host "Public links are ready. If a site asks for login: ytconv.cmd login instagram" -ForegroundColor Yellow

@@ -6,7 +6,7 @@ Panduan ini khusus maintainer YTConv. Jangan pernah menaruh token npm di source 
 
 | Channel | Branch | Version | npm tag | Workflow |
 | --- | --- | --- | --- | --- |
-| Stable | `release/ytconv-1.5.5` | `1.5.5` | `latest` | `Publish YTConv Stable to npm` |
+| Stable | `release/ytconv-1.5.6-cli-only-final` | `1.5.6` | `latest` | `Publish YTConv Stable to npm` |
 | Beta | `release/ytconv-1.6.0-beta` | `1.6.0-beta.1` | `beta` | `Publish YTConv Beta to npm` |
 
 Beta tidak boleh dipublikasikan menggunakan tag `latest`.
@@ -29,13 +29,15 @@ Workflow sudah memakai environment `npm`, `id-token: write`, dry-run, test lengk
 
 ## Pre-publish checklist
 
-Pastikan login server produksi sudah aktif dan pengujian berikut berhasil:
+Pastikan CLI-only, bootstrap dependency, dan login browser lokal berhasil. Account server/web tidak menjadi syarat rilis ini:
 
 ```sh
-ytconv login
-ytconv auth status
+ytconv doctor
+ytconv --self-test
+ytconv social status
+ytconv login instagram --browser firefox
 ytconv "AUTHORIZED_MEDIA_URL"
-ytconv logout
+ytconv logout instagram
 ```
 
 Periksa identitas package:
@@ -59,17 +61,17 @@ npm run test:ish
 npm pack --dry-run
 ```
 
-## Publish stable 1.5.5 through GitHub Actions
+## Publish stable 1.5.6 through GitHub Actions
 
-1. Pastikan semua perubahan stable sudah berada di branch `release/ytconv-1.5.5`.
+1. Pastikan semua perubahan stable sudah berada di branch `release/ytconv-1.5.6-cli-only-final`.
 2. Buka tab **Actions** di repository.
 3. Pilih workflow **Publish YTConv Stable to npm**.
 4. Tekan **Run workflow**.
-5. Pilih branch `release/ytconv-1.5.5`.
+5. Pilih branch `release/ytconv-1.5.6-cli-only-final`.
 6. Isi:
 
    ```text
-   version: 1.5.5
+   version: 1.5.6
    confirm: PUBLISH-STABLE
    ```
 
@@ -86,14 +88,14 @@ Verifikasi hasil:
 
 ```sh
 npm view ytconv@latest version
-npm view ytconv@1.5.5 dist.integrity
+npm view ytconv@1.5.6 dist.integrity
 npm view ytconv dist-tags --json
 ```
 
 Expected:
 
 ```text
-latest = 1.5.5
+latest = 1.5.6
 ```
 
 ## Publish beta 1.6.0-beta.1 through GitHub Actions
@@ -133,7 +135,7 @@ Expected:
 
 ```text
 beta   = 1.6.0-beta.1
-latest = 1.5.5
+latest = 1.5.6
 ```
 
 ## Manual local fallback
@@ -196,7 +198,7 @@ Versi npm yang sudah dipublikasikan tidak dapat ditimpa. Ubah `package.json`, lo
 Memperbaiki dist-tag tanpa menerbitkan ulang package:
 
 ```sh
-npm dist-tag add ytconv@1.5.5 latest
+npm dist-tag add ytconv@1.5.6 latest
 npm dist-tag add ytconv@1.6.0-beta.1 beta
 npm view ytconv dist-tags --json
 ```
@@ -225,7 +227,7 @@ Version tersebut sudah pernah dipublikasikan. Naikkan nomor version; jangan menc
 Pulihkan tag:
 
 ```sh
-npm dist-tag add ytconv@1.5.5 latest
+npm dist-tag add ytconv@1.5.6 latest
 npm dist-tag add ytconv@1.6.0-beta.1 beta
 ```
 

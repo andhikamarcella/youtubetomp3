@@ -3,18 +3,18 @@ name: Publish YTConv Stable to npm
 on:
   push:
     branches:
-      - release/ytconv-1.5.5-cli-only-final
+      - release/ytconv-1.5.6-cli-only-final
     paths:
       - ".github/workflows/publish-ytconv-stable.yml"
       - "cli/**"
-      - "release-metadata/ytconv-1.5.5.json"
+      - "release-metadata/ytconv-1.5.6.json"
       - "scripts/ytconv-release-metadata.mjs"
   workflow_dispatch:
     inputs:
       version:
         description: "Stable version; must match cli/package.json"
         required: true
-        default: "1.5.5"
+        default: "1.5.6"
       confirm:
         description: "Type PUBLISH-STABLE to continue"
         required: true
@@ -29,7 +29,7 @@ jobs:
     environment: npm
     runs-on: ubuntu-latest
     env:
-      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.5.5' }}
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.5.6' }}
     defaults:
       run:
         working-directory: cli
@@ -39,6 +39,8 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+      - name: Pin npm for reproducible release tarball
+        run: npm install -g npm@11.9.0
       - name: Verify stable package identity
         id: identity
         run: |
@@ -46,12 +48,12 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
           test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
-          test "$PACKAGE_VERSION" = "1.5.5"
+          test "$PACKAGE_VERSION" = "1.5.6"
           test "$PACKAGE_TAG" = "latest"
           test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
           test "$(node -p "require('./package.json').license")" = "MIT"
-          test "$(node -p "require('./package.json').releaseDate")" = "2026-08-02"
-          node -e "const p=require('./package.json'); if(!p.author||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!Object.keys(p.dependencies||{}).length) process.exitCode=1"
+          test "$(node -p "require('./package.json').releaseDate")" = "2026-08-03"
+          node -e "const p=require('./package.json'); if(!p.author||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!p.dependencies?.['ffmpeg-static']||p.optionalDependencies) process.exitCode=1"
           case "$PACKAGE_VERSION" in
             *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
             *) ;;

@@ -81,7 +81,11 @@ async function cleanupPartials(directory, since) {
 async function downloadOne({ options, url, outputDirectory, dependencies, index, total, allowCleanup }) {
   const cookieConfigs = options.cookiesBrowser
     ? [explicitBrowserConfig(options.cookiesBrowser)]
-    : await resolveCookieConfigs({ source: options.cookiesPath ? 'file' : 'auto', outputDirectory });
+    : await resolveCookieConfigs({
+      source: options.cookiesPath ? 'file' : 'auto',
+      outputDirectory,
+      url,
+    });
   let lastError;
   const startedAt = Date.now();
 
@@ -132,7 +136,9 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
     const count = await cleanupPartials(outputDirectory, startedAt);
     if (count) console.log(`[${index}/${total}] Removed ${count} temporary file(s).`);
   }
-  throw lastError || new Error('Every available access method failed.');
+  const error = lastError || new Error('Semua metode akses yang tersedia gagal.');
+  error.ytconvUrl = url;
+  throw error;
 }
 
 async function writeResultJson(target, payload) {
@@ -154,8 +160,10 @@ export async function runHeadlessDownloads({
 } = {}) {
   if (!urls?.length) throw new Error('No URL was provided. Pass a URL, --batch-file FILE, or --stdin.');
   await fs.mkdir(outputDirectory, { recursive: true });
-  const dependencies = await inspectDependencies({ repair: false });
-  if (!dependencies.ready) throw new Error(`Missing dependencies: ${dependencies.missing.join(', ')}. Run ytconv repair.`);
+  const dependencies = await inspectDependencies({ repair: true });
+  if (!dependencies.ready) {
+    throw new Error(`Perbaikan otomatis belum berhasil menyiapkan: ${dependencies.missing.join(', ')}. Jalankan ytconv repair lalu ytconv doctor.`);
+  }
 
   const workerCount = Math.max(1, Math.min(Number(jobs) || 1, 8, urls.length));
   if (options.cleanupPart && workerCount > 1) {
@@ -179,7 +187,7 @@ export async function runHeadlessDownloads({
       } catch (error) {
         const code = exitCodeForError(error);
         console.error(`\nFailed [${index + 1}/${urls.length}] ${url}`);
-        console.error(explainError(error));
+        console.error(explainError(error, { url }));
         results[index] = { ok: false, url, exitCode: code, error: error instanceof Error ? error.message : String(error) };
         if (!continueOnError) stop = true;
       }

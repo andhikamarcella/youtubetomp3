@@ -24,6 +24,7 @@ import {
   socialPlatformLabel,
   socialPlatformSummary,
 } from './social-platforms.js';
+import { socialLoginHint } from './social-sessions.js';
 import { copyText, openOutputFile, openOutputLocation } from './system-actions.js';
 import { createTerminalInputDecoder, readClipboardText } from './terminal-input.js';
 import { CLI_VERSION } from './version.js';
@@ -119,7 +120,7 @@ function Logo({ compact, account, authMode }) {
     h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + lainnya'),
     h(Box, { marginTop: 1 },
       h(Text, { color: 'green', bold: true }, `● ${account || 'local user'}`),
-      h(Text, { dimColor: true }, ` · ${authMode === 'local' ? 'local CLI' : 'cloud'} · v${CLI_VERSION}`)),
+      h(Text, { dimColor: true }, ` · ${authMode === 'cloud' ? 'cloud' : 'local device'} · v${CLI_VERSION}`)),
   );
 }
 
@@ -193,10 +194,10 @@ function HomeScreen(props) {
         + ` · subs:${subtitles ? 'on' : 'off'} · thumb:${writeThumbnail ? 'on' : 'auto'}`),
     ),
     h(Text, { dimColor: true },
-      `cookies:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`),
+      `akses:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`),
     h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T container · Ctrl+Q kualitas'),
     h(Text, { dimColor: true }, 'Ctrl+S subtitle · Ctrl+N thumbnail · Ctrl+F gambar · Ctrl+G sosmed'),
-    h(Text, { dimColor: true }, 'Ctrl+B cookies · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H bantuan'),
+    h(Text, { dimColor: true }, 'Ctrl+B akses akun · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H bantuan'),
   );
 }
 
@@ -244,7 +245,8 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMess
   );
 }
 
-function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage }) {
+function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage, url }) {
+  const loginHint = socialLoginHint(url);
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
@@ -252,11 +254,12 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage }) 
     h(Box, { marginTop: 1, borderStyle: 'double', borderColor: 'red', width: panelWidth, paddingX: 1, flexDirection: 'column' },
       h(Text, { bold: true, color: 'red' }, '× conversion failed'),
       h(Text, { color: 'red', wrap: 'wrap' }, error),
-      h(Text, { dimColor: true }, `cookies: ${cookieSourceLabel(cookieSource)}`),
+      h(Text, { dimColor: true }, `akses: ${cookieSourceLabel(cookieSource)}`),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
     h(Text, { dimColor: true }, 'R coba lagi · E edit link · Ctrl+B cookies · D diagnostics · Q/Esc keluar'),
-    h(Text, { dimColor: true }, 'Konten publik dicoba tanpa cookies. Konten login-only membutuhkan akses akun yang sah.'),
+    loginHint ? h(Text, { color: 'yellow' }, loginHint) : null,
+    h(Text, { dimColor: true }, 'Sesi akun tetap berada di browser dan dilindungi enkripsi browser/OS.'),
   );
 }
 
@@ -267,7 +270,7 @@ function HelpScreen({ panelWidth, termux }) {
     ['Ctrl+Q / Ctrl+F', 'resolusi video / format gambar'],
     ['Ctrl+S / Ctrl+N', 'subtitle / thumbnail terpisah'],
     ['Ctrl+G', 'pilih nama sosmed / AUTO semua sosmed'],
-    ['Ctrl+B', 'AUTO cookies / off / cookies.txt / browser'],
+    ['Ctrl+B', 'akses AUTO / publik / file lama / browser'],
     ['Ctrl+P / Ctrl+O', 'playlist / buka hasil otomatis'],
     ['Enter/click', 'convert link'],
     ['O / F / C', 'buka folder / file / copy lokasi'],
@@ -280,8 +283,8 @@ function HelpScreen({ panelWidth, termux }) {
       h(Box, { width: 18 }, h(Text, { bold: true }, key)),
       h(Text, { dimColor: true }, description))),
     h(Text, { dimColor: true }, termux
-      ? 'Termux otomatis mencari cookies.txt di Download dan Download/YTConv. Database privat browser Android tidak dapat dibaca langsung.'
-      : 'AUTO mencoba tanpa cookies dulu, lalu cookies.txt atau browser yang terdeteksi bila situs meminta login.'),
+      ? 'Termux tidak dapat membaca sesi privat browser Android. Link publik tetap dapat diunduh.'
+      : 'AUTO mencoba akses publik lalu akun browser yang ditautkan lewat ytconv login PROVIDER.'),
     h(Text, null, 'B kembali · Q/Esc keluar'),
   );
 }
@@ -311,7 +314,7 @@ function DiagnosticsScreen({
     ['gallery-dl', dependencies.galleryDl?.version || 'not found'],
     ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
     ['Output', outputDirectory],
-    ['Cookies', cookieSourceLabel(cookieSource)],
+    ['Akses akun', cookieSourceLabel(cookieSource)],
   ];
   return h(
     Box,
@@ -325,12 +328,16 @@ function DiagnosticsScreen({
 }
 
 function MissingDependencies({ dependencies, panelWidth }) {
+  const missing = dependencies.missing?.length ? dependencies.missing.join(', ') : 'engine media';
+  const errors = (dependencies.errors || []).slice(0, 2);
   return h(
     Box,
     { width: panelWidth, borderStyle: 'double', borderColor: 'yellow', paddingX: 1, flexDirection: 'column' },
-    h(Text, { bold: true, color: 'yellow' }, '! setup incomplete'),
-    h(Text, { color: 'yellow' }, dependencies.ytDlp.error || 'yt-dlp, gallery-dl, atau FFmpeg belum siap.'),
-    h(Text, { dimColor: true }, dependencies.platform?.setupCommand || 'Jalankan npm rebuild ytconv.'),
+    h(Text, { bold: true, color: 'yellow' }, '! Persiapan otomatis belum selesai'),
+    h(Text, { color: 'yellow' }, `Belum siap: ${missing}`),
+    ...errors.map((item) => h(Text, { key: item, dimColor: true, wrap: 'wrap' }, `• ${item}`)),
+    h(Text, { color: 'cyan' }, 'Jalankan: ytconv repair'),
+    h(Text, { dimColor: true, wrap: 'wrap' }, dependencies.platform?.setupCommand || 'Jika masih gagal, jalankan ytconv doctor lalu ikuti solusi yang ditampilkan.'),
     h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C keluar'),
   );
 }
@@ -497,7 +504,7 @@ function App({
     let cookieConfigs;
     try {
       await fs.mkdir(outputDirectory, { recursive: true });
-      cookieConfigs = await resolveCookieConfigs({ source: cookieSource, outputDirectory });
+      cookieConfigs = await resolveCookieConfigs({ source: cookieSource, outputDirectory, url: value });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setStage('error');
@@ -735,7 +742,7 @@ function App({
   else if (stage === 'done') content = h(DoneScreen, {
     media, panelWidth, outputDirectory, outputPath, actionMessage,
   });
-  else content = h(ErrorScreen, { error, media, panelWidth, cookieSource, actionMessage });
+  else content = h(ErrorScreen, { error, media, panelWidth, cookieSource, actionMessage, url });
 
   return h(Box, {
     width: '100%',

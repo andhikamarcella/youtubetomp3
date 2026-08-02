@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.5.5 compatibility and account frontend for iSH/Alpine."""
+"""YTConv 1.5.6 compatibility and account frontend for iSH/Alpine."""
 
 import json
 import os
@@ -12,7 +12,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-VERSION = "1.5.5"
+VERSION = "1.5.6"
 API_BASE = os.environ.get("YTCONV_API_BASE", "https://ytconv.onrender.com").rstrip("/")
 DIRECTORY = Path(__file__).resolve().parent
 TARGET = DIRECTORY / "ytconv-core.py"
@@ -313,20 +313,13 @@ def run_account_frontend(argv):
     if command == "help":
         auth_help()
         return 0
-    if safe_without_login(argv):
-        return None
-    session = validate_auth()
-    if not session:
-        if not argv and sys.stdin.isatty() and sys.stdout.isatty():
-            login()
-            session = validate_auth()
-        if not session:
-            raise RuntimeError("A YTConv profile is required before downloading or converting media.\nRun: ytconv login\nLocal fallback: ytconv login --local")
-    os.environ["YTCONV_AUTH_TOKEN"] = session["accessToken"]
-    os.environ["YTCONV_AUTH_MODE"] = session.get("mode", "cloud")
-    os.environ["YTCONV_USER_ID"] = (session.get("user") or {}).get("id", "")
-    os.environ["YTCONV_USER_EMAIL"] = (session.get("user") or {}).get("email", "")
-    os.environ["YTCONV_ACCOUNT_LABEL"] = account_label(session.get("user") or {})
+    session = validate_auth(quiet=True)
+    if session:
+        os.environ["YTCONV_AUTH_TOKEN"] = session["accessToken"]
+        os.environ["YTCONV_AUTH_MODE"] = session.get("mode", "cloud")
+        os.environ["YTCONV_USER_ID"] = (session.get("user") or {}).get("id", "")
+        os.environ["YTCONV_USER_EMAIL"] = (session.get("user") or {}).get("email", "")
+        os.environ["YTCONV_ACCOUNT_LABEL"] = account_label(session.get("user") or {})
     return None
 
 
@@ -344,10 +337,10 @@ if not TARGET.is_file():
 
 source = TARGET.read_text(encoding="utf-8")
 replacements = {
-    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.5.5"',
-    'codex/add-ytconv-cli': 'release/ytconv-1.5.5',
-    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.5.5 native frontend for iSH/Alpine and Python-only shells.',
-    'description="YTConv 1.5.0 Beta untuk iSH/Alpine."': 'description="YTConv 1.5.5 for iSH/Alpine."',
+    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.5.6"',
+    'codex/add-ytconv-cli': 'release/ytconv-1.5.6-cli-only-final',
+    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.5.6 native frontend for iSH/Alpine and Python-only shells.',
+    'description="YTConv 1.5.0 Beta untuk iSH/Alpine."': 'description="YTConv 1.5.6 for iSH/Alpine."',
     'YTConv iSH Beta doctor': 'YTConv iSH doctor',
     'Mengunduh installer YTConv iSH beta terbaru...': 'Downloading the latest YTConv iSH installer...',
     'Update gagal: %s': 'Update failed: %s',

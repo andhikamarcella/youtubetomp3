@@ -7,6 +7,7 @@ import {
   isTermux,
   termuxSharedDownloadsDirectory,
 } from './platform.js';
+import { socialSessionForUrl } from './social-sessions.js';
 
 const DESKTOP_BROWSERS = [
   'chrome',
@@ -55,7 +56,7 @@ export function cookieSourcesForPlatform(termux = isTermux()) {
 
 export function cookieSourceLabel(source) {
   if (!source || source === 'none') return 'off';
-  if (source === 'auto') return 'auto-system';
+  if (source === 'auto') return 'AUTO publik + akun browser';
   if (source === 'file') return 'cookies.txt';
   return source;
 }
@@ -161,6 +162,18 @@ function browserConfig(source) {
   };
 }
 
+function linkedBrowserConfig(session) {
+  const spec = session.browserSpec;
+  return {
+    kind: 'browser',
+    browser: spec.split(':', 1)[0],
+    spec,
+    provider: session.provider,
+    linked: true,
+    label: `akun ${session.label || session.provider} · ${spec}`,
+  };
+}
+
 async function firstCookieFile({ outputDirectory } = {}) {
   for (const candidate of cookieFileCandidates({ outputDirectory })) {
     if (await fileExists(candidate)) {
@@ -174,17 +187,20 @@ async function firstCookieFile({ outputDirectory } = {}) {
   return null;
 }
 
-export async function resolveCookieConfigs({ source = 'auto', outputDirectory } = {}) {
-  if (!source || source === 'none') return [{ kind: 'none', label: 'tanpa cookies' }];
+export async function resolveCookieConfigs({ source = 'auto', outputDirectory, url = '', homeDirectory } = {}) {
+  if (!source || source === 'none') return [{ kind: 'none', label: 'akses publik' }];
 
   if (source === 'auto') {
-    const configs = [{ kind: 'none', label: 'tanpa cookies' }];
+    const configs = [{ kind: 'none', label: 'akses publik' }];
+    const linked = url ? await socialSessionForUrl(url, { homeDirectory }) : null;
+    if (linked) configs.push(linkedBrowserConfig(linked));
     const file = await firstCookieFile({ outputDirectory });
     if (file) configs.push(file);
 
     if (!isTermux()) {
       const browsers = await detectSystemBrowsers();
-      configs.push(...browsers.slice(0, 4).map(browserConfig));
+      const existingSpecs = new Set(configs.filter((item) => item.kind === 'browser').map((item) => item.spec));
+      configs.push(...browsers.slice(0, 4).map(browserConfig).filter((item) => !existingSpecs.has(item.spec)));
     }
 
     return configs;

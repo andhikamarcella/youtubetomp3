@@ -1,23 +1,20 @@
-# YTConv CLI 1.5.5
+# YTConv CLI 1.5.6
 
 YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
 > Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-## What is new in 1.5.5
+## Yang baru di 1.5.6
 
-- Cloud device sign-in remains available when the YTConv account service is online.
-- If cloud sign-in is unavailable, `ytconv login` creates a private local CLI profile so downloads are never trapped behind a broken web endpoint.
-- After interactive login, YTConv returns directly to the polished terminal interface; use `--no-launch` when only a session should be created.
-- `ytconv login`, `ytconv auth status`, `ytconv whoami`, and `ytconv logout`.
-- `ytconv login --local` skips cloud sign-in, while `ytconv login --cloud-only` disables fallback.
-- The terminal interface now has clearer account state, focus borders, progress, completion, error, and setup states.
-- Stable self-tests, updater-channel checks, version output, installer identities, and package metadata are corrected for 1.5.5.
-- The npm tarball is CLI-only: no HTML, CSS, React web app, Next.js page, or other web frontend asset is published.
-- Public X/Twitter posts try yt-dlp before gallery-dl, and an empty gallery result is no longer reported as a successful conversion.
-- Persistent config, named profiles, privacy-limited history, shell completion, playlist/batch, retry/resume, subtitles, SponsorBlock mark mode, and separate archives remain available.
+- FFmpeg, Ink, React, dan library Node lain dipasang otomatis oleh npm; yt-dlp dan gallery-dl disiapkan ketika paket dipasang dan diperiksa lagi saat pertama kali digunakan.
+- `ytconv login instagram`, `facebook`, `x`, `tiktok`, `youtube`, `pinterest`, `reddit`, `threads`, `twitch`, dan provider lain membuka halaman login resmi di browser.
+- Link yang memerlukan akun otomatis memakai sesi browser yang sudah ditautkan, tanpa ekspor atau unduh `cookies.txt`.
+- Password, OTP, dan cookie mentah tetap berada di browser; YTConv hanya menyimpan nama browser/profil dengan izin file khusus pengguna.
+- Akun cloud YTConv tidak lagi diwajibkan untuk download. Paket ini benar-benar CLI-only dan tidak bergantung pada deployment web/server.
+- Update stable diperiksa dan dipasang otomatis pada terminal interaktif. Script, CI, dan headless tidak diubah diam-diam.
+- Pesan error sekarang memberikan penyebab dan perintah solusi yang sesuai dengan platform/link.
 
-## Install stable 1.5.5
+## Instal stable 1.5.6
 
 ### Windows
 
@@ -26,7 +23,7 @@ npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
-ytconv.cmd login
+ytconv.cmd doctor
 ```
 
 Use `ytconv.cmd` when PowerShell execution policy blocks the generated `ytconv.ps1` shim.
@@ -38,7 +35,7 @@ npm uninstall -g ytconv
 npm cache verify
 npm install -g ytconv@latest --force
 ytconv --version
-ytconv login
+ytconv doctor
 ```
 
 The included `scripts/install-unix.sh` can install the operating-system dependencies on supported package managers without using `sudo npm install -g`.
@@ -52,7 +49,7 @@ termux-setup-storage
 python -m pip install -U --no-cache-dir yt-dlp gallery-dl
 npm install -g ytconv@latest --omit=optional --force
 ytconv repair
-ytconv login
+ytconv doctor
 ```
 
 Default output: `~/storage/downloads/YTConv`.
@@ -60,30 +57,37 @@ Default output: `~/storage/downloads/YTConv`.
 ### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.5/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.6-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
-ytconv login
+ytconv doctor
 ```
 
 The browser can be opened on the same device or another device. Enter the eight-character code shown in the terminal and approve the CLI session.
 
-## Account and fallback commands
+## Login resmi Instagram/Facebook/X dan media sosial lain
 
 ```sh
-ytconv login
-ytconv login --local
-ytconv login --cloud-only
-ytconv auth status
-ytconv whoami
-ytconv logout
+ytconv login instagram
+ytconv login facebook --browser edge
+ytconv login x --browser "chrome:Profile 1"
+ytconv social status
+ytconv logout instagram
 ```
 
-Cloud login opens a device-approval page when the configured account endpoint is available. If that endpoint is missing, offline, or unhealthy, YTConv automatically creates a local-only profile and continues into the CLI. A local profile never claims to be a verified cloud identity.
+Alurnya sederhana:
 
-The profile is stored in `~/.ytconv/auth.json`. On Unix-like systems it is written with user-only permissions. Never share that file, browser cookies, access tokens, or device codes.
+1. YTConv mendeteksi browser yang tersedia dan meminta kamu memilih salah satunya.
+2. Halaman login resmi media sosial dibuka. Masukkan password dan OTP hanya di halaman resmi tersebut.
+3. Setelah login selesai, kembali ke terminal lalu tekan Enter.
+4. YTConv menyimpan provider + browser/profil di `~/.ytconv/social-sessions.json`.
+5. Saat link publik gagal karena login diperlukan, sesi browser itu dicoba otomatis.
 
-Help, version, diagnostics, repair, update, configuration, profile, and history commands remain available before login. Media downloads and conversions do not.
+Cookie sesi tetap berada di database browser dan dilindungi oleh enkripsi browser/OS (misalnya DPAPI di Windows atau Keychain di macOS). YTConv tidak menyimpan password, OTP, access token, maupun nilai cookie mentah, dan tidak mengirim sesi media sosial ke server YTConv.
+
+Jika pembacaan sesi gagal, tutup browser sepenuhnya lalu coba lagi. Firefox sering menjadi pilihan paling kompatibel untuk pembacaan sesi lokal. Termux/iSH tidak boleh mengakses database privat browser Android/iOS; gunakan link publik atau metode resmi yang tersedia di perangkat tersebut.
+
+Akun YTConv cloud bersifat opsional dan tetap tersedia melalui `ytconv account login`.
 
 ## Media commands
 
@@ -137,7 +141,8 @@ ytconv download "URL" --audio-format flac
 ytconv download "URL" --video-format mp4 --resolution 1080
 ytconv download "URL" --preset music
 ytconv download "URL" --metadata --thumbnail --metadata-files
-ytconv download "URL" --cookies cookies.txt
+ytconv login instagram
+ytconv download "URL_INSTAGRAM"
 ytconv download "URL" --cookies-from-browser chrome
 ytconv doctor
 ytconv repair
@@ -165,7 +170,7 @@ History is capped and excludes cookies, tokens, proxy credentials, and browser s
 ## Release channels
 
 ```text
-Stable: 1.5.5          npm install -g ytconv@latest
+Stable: 1.5.6          npm install -g ytconv@latest
 Beta:   1.6.0-beta.1   npm install -g ytconv@beta
 ```
 

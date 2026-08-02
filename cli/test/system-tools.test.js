@@ -31,8 +31,11 @@ test('system help documents repair headless CLI defaults and JSON reports', () =
   assert.match(value, /CLI defaults/u);
 });
 
-test('error explanation gives actionable PowerShell cookie and stable-update guidance', () => {
+test('error explanation gives actionable PowerShell social-login and stable-update guidance', () => {
   assert.match(explainError(new Error('spawnSync npm.cmd EINVAL')), /ytconv@latest/u);
   assert.match(explainError(new Error('running scripts is disabled on this system')), /ytconv\.cmd/u);
-  assert.match(explainError(new Error('cookie database is locked')), /cookies-from-browser/u);
+  assert.match(
+    explainError(new Error('cookie database is locked'), { url: 'https://instagram.com/p/example/' }),
+    /ytconv login instagram/u,
+  );
 });

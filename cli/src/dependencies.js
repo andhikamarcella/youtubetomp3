@@ -155,6 +155,7 @@ async function availableManagers() {
 
 export async function inspectDependencies({ repair = true } = {}) {
   const termux = isTermux();
+  const repairErrors = [];
   let bundledYtDlp = null;
   let ytDlpInstallError = null;
   if (!termux) {
@@ -171,8 +172,17 @@ export async function inspectDependencies({ repair = true } = {}) {
   if (!ffmpegVersion) { ffmpegPath = null; bundledFfmpeg = null; }
 
   if (repair && (!ytDlpRunner || !galleryDlRunner || !ffmpegPath)) {
-    if (termux) await prepareTermuxDependencies().catch(() => {});
-    else await prepareDesktopDependencies({ silent: true });
+    if (termux) {
+      await prepareTermuxDependencies().catch((error) => {
+        repairErrors.push(error instanceof Error ? error.message : String(error));
+      });
+    } else {
+      const repairResult = await prepareDesktopDependencies({ silent: true }).catch((error) => ({
+        prepared: false,
+        errors: [error instanceof Error ? error.message : String(error)],
+      }));
+      repairErrors.push(...(repairResult.errors || []));
+    }
     ytDlpRunner = await resolveYtDlpRunner({ bundledYtDlp: bundledYtDlp || await ensureBundledYtDlp({ silent: true }).catch(() => null) });
     galleryDlRunner = await resolveGalleryDlRunner({ install: false });
     bundledFfmpeg = await resolveBundledFfmpeg();
@@ -198,6 +208,7 @@ export async function inspectDependencies({ repair = true } = {}) {
     },
     ready: missing.length === 0,
     missing,
+    errors: [...new Set([ytDlpInstallError, ...repairErrors].filter(Boolean))],
     ytDlp: {
       command: ytDlpRunner?.command ?? null,
       prefixArgs: ytDlpRunner?.prefixArgs ?? [],

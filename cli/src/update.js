@@ -238,3 +238,46 @@ export function runSelfUpdate({
 
   return { ok: true, command: updateCommand(currentVersion), strategy: invocation.strategy };
 }
+
+export function automaticUpdateEnabled({
+  argv = process.argv.slice(2),
+  env = process.env,
+  interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY),
+} = {}) {
+  if (!interactive || env.CI || env.YTCONV_SKIP_AUTO_UPDATE_ONCE === '1') return false;
+  if (env.YTCONV_AUTO_UPDATE === '0' || env.YTCONV_NO_UPDATE_CHECK === '1') return false;
+  if (argv.includes('--no-update-check')) return false;
+  const first = String(argv[0] || '').toLowerCase();
+  if (first === 'update' || argv.includes('--update')) return false;
+  return true;
+}
+
+export async function maybeAutoUpdate({
+  currentVersion = MANIFEST_VERSION,
+  argv = process.argv.slice(2),
+  env = process.env,
+  interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY),
+  checkImpl = checkForUpdate,
+  runImpl = runSelfUpdate,
+} = {}) {
+  if (!automaticUpdateEnabled({ argv, env, interactive })) {
+    return { attempted: false, updated: false, reason: 'disabled' };
+  }
+
+  const updateInfo = await checkImpl({ currentVersion });
+  if (!updateInfo.available) {
+    return {
+      attempted: false,
+      updated: false,
+      reason: updateInfo.checked ? 'current' : 'offline',
+      updateInfo,
+    };
+  }
+
+  console.log(`YTConv ${currentVersion} → ${updateInfo.latestVersion}: memperbarui otomatis...`);
+  const result = runImpl({ currentVersion, env });
+  if (!result.ok) {
+    return { attempted: true, updated: false, reason: 'failed', updateInfo, result };
+  }
+  return { attempted: true, updated: true, reason: 'updated', updateInfo, result };
+}

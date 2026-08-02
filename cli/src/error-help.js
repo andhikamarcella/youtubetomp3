@@ -1,4 +1,5 @@
 import { CLI_VERSION } from './version.js';
+import { socialLoginHint } from './social-sessions.js';
 
 function text(error) {
   return error instanceof Error ? error.message : String(error ?? 'Unknown error.');
@@ -8,7 +9,7 @@ function updateChannel() {
   return CLI_VERSION.includes('-') ? 'beta' : 'latest';
 }
 
-export function explainError(error, { platform = process.platform } = {}) {
+export function explainError(error, { platform = process.platform, url = error?.ytconvUrl || '' } = {}) {
   const original = text(error).trim();
   const value = original.toLowerCase();
   const lines = [original];
@@ -32,12 +33,16 @@ export function explainError(error, { platform = process.platform } = {}) {
       ? 'Use a directory owned by the current account and check npm config get prefix.'
       : 'Do not use sudo npm. Set a user prefix: npm config set prefix "$HOME/.local"');
   } else if (/cookie database|decrypt.*cookie|dpapi|keyring/u.test(value)) {
-    lines.push('The browser may still be locking its cookie database, or the system keyring cannot be read.');
-    lines.push('Close the browser completely, retry --cookies-from-browser BROWSER, or use a Netscape cookies.txt file.');
+    lines.push('Browser masih mengunci database sesi, atau kunci enkripsi sistem belum dapat dibaca.');
+    lines.push('Tutup browser sepenuhnya, lalu coba lagi. Firefox biasanya paling mudah dibaca lintas perangkat.');
+    const hint = socialLoginHint(url);
+    if (hint) lines.push(hint);
   } else if (/cookie|login|sign in|private|authentication|members.only|age.restricted/u.test(value)) {
-    lines.push('The media requires authentication or the cookies are expired.');
-    lines.push('Desktop: --cookies-from-browser chrome. Every platform: --cookies "PATH".');
-    lines.push('Never share cookies because they can contain an active account session.');
+    lines.push('Media ini memerlukan akun yang sudah login, atau sesi browsernya kedaluwarsa.');
+    const hint = socialLoginHint(url);
+    if (hint) lines.push(hint);
+    else lines.push('Login resmi: ytconv social help');
+    lines.push('YTConv memakai sesi browser lokal; password dan cookie mentah tidak disimpan atau dikirim ke server.');
   } else if (/429|too many requests/u.test(value)) {
     lines.push('The site is rate limiting requests. Avoid aggressive retries.');
     lines.push('Wait, then retry with --jobs 1 --concurrent-fragments 1 --retry-sleep "linear=2:20:3".');
@@ -55,6 +60,6 @@ export function explainError(error, { platform = process.platform } = {}) {
     lines.push('Try without a proxy/VPN, check the device clock, and retry.');
   }
 
-  lines.push('Diagnostics: ytconv doctor and ytconv --shell-info');
+  lines.push('Pemeriksaan: ytconv doctor lalu ytconv --shell-info');
   return [...new Set(lines.filter(Boolean))].join('\n');
 }

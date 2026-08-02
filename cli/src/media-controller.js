@@ -11,6 +11,7 @@ import {
   socialRouteMode,
   validatePlatformHint,
 } from './social-platforms.js';
+import { socialLoginHint } from './social-sessions.js';
 
 const STATIC_IMAGE_EXTENSIONS = new Set([
   '.avif',
@@ -244,9 +245,10 @@ async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
 
 function accessHint({ url, cookieConfig, originalError }) {
   const platform = socialPlatformLabel(detectSocialPlatform(url));
+  const officialLogin = socialLoginHint(url);
   const browserHint = cookieConfig?.kind === 'browser'
-    ? 'Cookies browser terdeteksi tetapi belum dapat dibaca. Tutup browser sepenuhnya atau gunakan cookies.txt Netscape.'
-    : 'Konten publik dicoba tanpa cookies terlebih dahulu. Untuk konten login-only, gunakan cookies browser atau cookies.txt yang masih aktif.';
+    ? `Sesi browser terdeteksi tetapi belum dapat dibaca. Tutup browser sepenuhnya lalu coba lagi.${officialLogin ? ` Tautkan ulang: ${officialLogin}` : ''}`
+    : `Akses publik sudah dicoba.${officialLogin ? ` ${officialLogin}` : ' Gunakan ytconv social help untuk login resmi.'}`;
   return `${originalError} ${platform}: ${browserHint}`;
 }
 
