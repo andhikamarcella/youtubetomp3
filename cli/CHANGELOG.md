@@ -2,6 +2,30 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.6.0-beta.1 — multi-device account beta
+
+### Added
+
+- `ytconv auth devices` to list every CLI session signed in to the same account.
+- `ytconv auth revoke TOKEN_ID` to remotely revoke a lost or unused device.
+- `ytconv auth revoke all` to revoke every other CLI device while keeping the current terminal active.
+- `ytconv auth refresh` to rotate the current device token immediately.
+- Automatic token rotation when a validated token has seven days or less remaining.
+- JSON output for `ytconv auth status --json` and `ytconv auth devices --json`.
+- Device-management parity in the native iSH/Python frontend.
+- New server endpoints for device listing, remote revocation, and secure token rotation.
+
+### Improved
+
+- More readable cross-platform account tables and login feedback.
+- Installers now point directly to the `beta` npm channel and verify `1.6.0-beta.1`.
+- A guarded beta publishing workflow preserves the stable npm `latest` tag.
+
+### Beta status
+
+- Token rotation and remote device management are intentionally beta features.
+- The stable 1.5.0 login requirement, X/Twitter fallback fix, persistent profiles, history, playlist, batch, cookies, subtitles, SponsorBlock, and archives remain included.
+
 ## 1.5.0 — account-protected stable release
 
 ### Added
