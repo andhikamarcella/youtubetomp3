@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.5.0 compatibility and account frontend for iSH/Alpine."""
+"""YTConv 1.6.0-beta.1 account frontend for iSH/Alpine."""
 
 import json
 import os
@@ -12,7 +12,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-VERSION = "1.5.0"
+VERSION = "1.6.0-beta.1"
 API_BASE = os.environ.get("YTCONV_API_BASE", "https://ytconv.onrender.com").rstrip("/")
 DIRECTORY = Path(__file__).resolve().parent
 TARGET = DIRECTORY / "ytconv-core.py"
@@ -88,7 +88,11 @@ def account_label(user):
 def auth_help():
     print("\nAccount commands:")
     print("  ytconv login")
-    print("  ytconv auth status")
+    print("  ytconv auth status [--json]")
+    print("  ytconv auth devices [--json]")
+    print("  ytconv auth revoke TOKEN_ID")
+    print("  ytconv auth revoke all")
+    print("  ytconv auth refresh")
     print("  ytconv logout")
     print("\nDownloads and conversions require an active YTConv account.")
     print("Account server: %s" % API_BASE)
@@ -130,7 +134,7 @@ def login():
                 raise RuntimeError("Login was approved without an access token.")
             saved_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             session = {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
                 "accessToken": token,
                 "tokenId": result.get("tokenId") or "",
                 "user": result.get("user") or {},
@@ -138,6 +142,7 @@ def login():
                 "apiBase": API_BASE,
                 "savedAt": saved_at,
                 "lastValidatedAt": saved_at,
+                "lastRotatedAt": saved_at,
                 "expiresAt": result.get("expiresAt"),
             }
             save_auth(session)
@@ -161,6 +166,7 @@ def validate_auth(quiet=False):
         return None
     try:
         current = request_json("/api/cli-auth/me", token=session["accessToken"])
+        session["schemaVersion"] = 2
         session["user"] = current.get("user") or session.get("user") or {}
         session["tokenId"] = current.get("tokenId") or session.get("tokenId") or ""
         session["expiresAt"] = current.get("expiresAt") or session.get("expiresAt")
@@ -176,11 +182,33 @@ def validate_auth(quiet=False):
         raise
 
 
-def auth_status():
+def require_auth():
+    session = validate_auth()
+    if not session:
+        raise RuntimeError("Login is required. Run: ytconv login")
+    return session
+
+
+def auth_status(as_json=False):
     session = validate_auth(quiet=True)
     if not session:
-        print("Not signed in. Run: ytconv login")
+        if as_json:
+            print(json.dumps({"signedIn": False}, indent=2))
+        else:
+            print("Not signed in. Run: ytconv login")
         return 1
+    if as_json:
+        print(json.dumps({
+            "signedIn": True,
+            "user": session.get("user") or {},
+            "deviceName": session.get("deviceName"),
+            "tokenId": session.get("tokenId"),
+            "apiBase": session.get("apiBase", API_BASE),
+            "expiresAt": session.get("expiresAt"),
+            "lastValidatedAt": session.get("lastValidatedAt"),
+            "lastRotatedAt": session.get("lastRotatedAt"),
+        }, indent=2, ensure_ascii=False))
+        return 0
     user = session.get("user") or {}
     print("YTConv account")
     print("Status      signed in")
@@ -192,6 +220,64 @@ def auth_status():
     print("Device      %s" % session.get("deviceName", "-"))
     print("Token       %s" % session.get("tokenId", "-"))
     print("API         %s" % session.get("apiBase", API_BASE))
+    if session.get("expiresAt"):
+        print("Expires     %s" % session["expiresAt"])
+    return 0
+
+
+def auth_devices(as_json=False):
+    session = require_auth()
+    payload = request_json("/api/cli-auth/devices", token=session["accessToken"])
+    devices = payload.get("devices") or []
+    if as_json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    if not devices:
+        print("No CLI devices were found for this account.")
+        return 0
+    print("YTConv signed-in devices\n")
+    print("%-8s %-24s %-10s %-13s %s" % ("STATE", "DEVICE", "PLATFORM", "VERSION", "TOKEN ID"))
+    print("-" * 90)
+    for device in devices:
+        state = "CURRENT" if device.get("current") else "ACTIVE" if device.get("active") else "REVOKED" if device.get("revokedAt") else "EXPIRED"
+        name = str(device.get("deviceName") or "-")[:24]
+        print("%-8s %-24s %-10s %-13s %s" % (
+            state, name, str(device.get("platform") or "-")[:10],
+            str(device.get("cliVersion") or "-")[:13], device.get("tokenId") or "-",
+        ))
+    print("\nRevoke another device: ytconv auth revoke TOKEN_ID")
+    print("Revoke every other device: ytconv auth revoke all")
+    return 0
+
+
+def auth_revoke(target):
+    session = require_auth()
+    value = str(target or "").strip()
+    if not value:
+        raise RuntimeError("auth revoke requires TOKEN_ID or all")
+    payload = {"all": True} if value.lower() == "all" else {"tokenId": value}
+    result = request_json("/api/cli-auth/revoke", method="POST", token=session["accessToken"], payload=payload)
+    count = len(result.get("revoked") or [])
+    print("Revoked %s YTConv device session%s." % (count, "" if count == 1 else "s"))
+    return 0
+
+
+def auth_refresh():
+    session = require_auth()
+    result = request_json("/api/cli-auth/refresh", method="POST", token=session["accessToken"])
+    token = result.get("accessToken")
+    if not token:
+        raise RuntimeError("The account server did not return a refreshed token.")
+    session["schemaVersion"] = 2
+    session["accessToken"] = token
+    session["tokenId"] = result.get("tokenId") or session.get("tokenId") or ""
+    session["expiresAt"] = result.get("expiresAt") or session.get("expiresAt")
+    session["user"] = result.get("user") or session.get("user") or {}
+    session["lastRotatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    session["lastValidatedAt"] = session["lastRotatedAt"]
+    save_auth(session)
+    print("YTConv device token rotated successfully.")
+    print("New token ID: %s" % session.get("tokenId", "-"))
     return 0
 
 
@@ -215,6 +301,8 @@ def auth_command(argv):
         return "logout"
     if first == "whoami":
         return "status"
+    if first == "devices":
+        return "devices"
     if first not in ("auth", "account"):
         return None
     action = (argv[1] if len(argv) > 1 else "status").lower()
@@ -224,6 +312,12 @@ def auth_command(argv):
         return "logout"
     if action in ("status", "whoami"):
         return "status"
+    if action in ("devices", "sessions"):
+        return "devices"
+    if action == "revoke":
+        return "revoke"
+    if action in ("refresh", "rotate"):
+        return "refresh"
     return "help"
 
 
@@ -241,7 +335,13 @@ def run_account_frontend(argv):
     if command == "logout":
         return logout()
     if command == "status":
-        return auth_status()
+        return auth_status("--json" in argv)
+    if command == "devices":
+        return auth_devices("--json" in argv)
+    if command == "revoke":
+        return auth_revoke(argv[2] if len(argv) > 2 else None)
+    if command == "refresh":
+        return auth_refresh()
     if command == "help":
         auth_help()
         return 0
@@ -270,12 +370,12 @@ if not TARGET.is_file():
 
 source = TARGET.read_text(encoding="utf-8")
 replacements = {
-    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.5.0"',
-    'codex/add-ytconv-cli': 'release/ytconv-1.5.0',
-    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.5.0 native frontend for iSH/Alpine and Python-only shells.',
-    'description="YTConv 1.5.0 Beta untuk iSH/Alpine."': 'description="YTConv 1.5.0 for iSH/Alpine."',
-    'YTConv iSH Beta doctor': 'YTConv iSH doctor',
-    'Mengunduh installer YTConv iSH beta terbaru...': 'Downloading the latest YTConv iSH installer...',
+    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.6.0-beta.1"',
+    'codex/add-ytconv-cli': 'release/ytconv-1.6.0-beta',
+    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.6.0-beta.1 native frontend for iSH/Alpine and Python-only shells.',
+    'description="YTConv 1.5.0 Beta untuk iSH/Alpine."': 'description="YTConv 1.6.0-beta.1 for iSH/Alpine."',
+    'YTConv iSH Beta doctor': 'YTConv iSH beta doctor',
+    'Mengunduh installer YTConv iSH beta terbaru...': 'Downloading the latest YTConv iSH beta installer...',
     'Update gagal: %s': 'Update failed: %s',
     'Jalankan manual:': 'Run manually:',
     'Update selesai. Jalankan kembali: ytconv --version': 'Update completed. Run again: ytconv --version',
