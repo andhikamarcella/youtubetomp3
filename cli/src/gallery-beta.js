@@ -4,13 +4,27 @@ import process from 'node:process';
 import { spawn } from 'node:child_process';
 import {
   inspectGallery,
-  isGalleryPreferredUrl,
+  isGalleryPreferredUrl as baseIsGalleryPreferredUrl,
   resolveGalleryDlRunner,
 } from './gallery.js';
 
-export { inspectGallery, isGalleryPreferredUrl };
+export { inspectGallery };
 
 const MAX_OUTPUT_BYTES = 12 * 1024 * 1024;
+
+export function isGalleryPreferredUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./u, '');
+    // Public X/Twitter posts are usually handled more reliably by yt-dlp.
+    // gallery-dl remains available as the automatic fallback and for forced gallery mode.
+    if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com' || host.endsWith('.twitter.com')) {
+      return false;
+    }
+  } catch {
+    // Let the shared detector decide how to handle invalid values.
+  }
+  return baseIsGalleryPreferredUrl(url);
+}
 
 function cookieArgs(config) {
   if (!config || config.kind === 'none') return [];
@@ -156,6 +170,11 @@ export async function downloadGallery({
       const created = [...after].filter((filePath) => !before.has(filePath));
       if (!outputPath && created.length) outputPath = created.at(-1);
       const count = Math.max(downloadedCount, created.length);
+      if (!count && !archive) {
+        const reason = readableError(stderrAll, 'gallery-dl tidak mengembalikan file dari link tersebut. Konten publik akan dicoba melalui yt-dlp; konten login-only memerlukan cookies aktif.');
+        finish(() => reject(new Error(reason)));
+        return;
+      }
       onProgress?.({ percent: '100%', speed: `${count} file baru`, eta: '' });
       if (!count && archive) onLog?.('Media sudah tercatat di archive gallery-dl; download dilewati.', false);
       finish(() => resolve({ outputPath: outputPath || outputDirectory, fileCount: count, engine: 'gallery-dl' }));
