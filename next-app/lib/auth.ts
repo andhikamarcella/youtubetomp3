@@ -62,11 +62,9 @@ export async function ensureUserRecord(session: SessionUser) {
   const result = await pool.query<DbUserProfile>(
     `INSERT INTO users (id, email, display_name, avatar_url, role)
      VALUES ($1, $2, $3, $4, COALESCE($5, 'user'))
-     ON CONFLICT (id) DO UPDATE SET
-       email = EXCLUDED.email,
+     ON CONFLICT (email) DO UPDATE SET
        display_name = COALESCE(EXCLUDED.display_name, users.display_name),
-       avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
-       role = COALESCE(users.role, EXCLUDED.role)
+       avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url)
      RETURNING id, email, display_name, avatar_url, role, current_xp, created_at`,
     [session.id, session.email, session.displayName ?? null, session.avatarUrl ?? null, session.role ?? 'user']
   );
