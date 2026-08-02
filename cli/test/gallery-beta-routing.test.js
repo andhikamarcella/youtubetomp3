@@ -40,7 +40,7 @@ test('zero files are successful only when inspection proves archived media exist
     inspectedItemCount: 0,
   });
   assert.equal(unexplained.skipped, false);
-  assert.match(unexplained.reason, /tidak mengembalikan file/u);
+  assert.match(unexplained.reason, /returned no file/u);
 
   const loginOnly = classifyEmptyGalleryResult({
     archivePath: '/tmp/gallery.sqlite3',

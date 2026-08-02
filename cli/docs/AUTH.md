@@ -1,25 +1,25 @@
-# Login akun media sosial di YTConv 1.5.6
+# Social-media account login in YTConv 1.5.7
 
-YTConv dapat memakai sesi akun yang sudah login di browser desktop tanpa meminta pengguna mengekspor `cookies.txt`. Fitur ini tersedia untuk Instagram, Facebook, X/Twitter, TikTok, YouTube/Google, Pinterest, Reddit, Threads, Twitch, SoundCloud, Vimeo, Tumblr, Flickr, dan Pixiv.
+YTConv can use an account session that is already signed in through a desktop browser without asking the user to export `cookies.txt`. This is available for Instagram, Facebook, X/Twitter, TikTok, YouTube/Google, Pinterest, Reddit, Threads, Twitch, SoundCloud, Vimeo, Tumblr, Flickr, and Pixiv.
 
-Download publik tidak memerlukan akun YTConv. Login hanya diperlukan ketika situs sumber memang membatasi media ke akun yang memiliki izin.
+Public downloads do not require a YTConv account. Sign-in is required only when the source site restricts media to an account that has permission to access it.
 
-## Login pertama
+## First login
 
 ```sh
 ytconv login instagram
 ```
 
-YTConv akan:
+YTConv will:
 
-1. mendeteksi browser lokal;
-2. meminta pengguna memilih browser bila ada lebih dari satu;
-3. membuka `instagram.com/accounts/login` di browser tersebut;
-4. menunggu pengguna menyelesaikan password dan 2FA pada halaman resmi Instagram;
-5. menyimpan hanya pasangan `instagram → browser/profil`;
-6. memakai sesi itu otomatis ketika link Instagram tidak dapat dibaca secara publik.
+1. detect local browsers;
+2. ask the user to choose one when multiple browsers are available;
+3. open `instagram.com/accounts/login` in that browser;
+4. wait for the user to complete password and 2FA entry on Instagram's official page;
+5. store only the `instagram → browser/profile` association;
+6. use that session automatically when an Instagram URL cannot be read publicly.
 
-Contoh provider lain:
+Other provider examples:
 
 ```sh
 ytconv login facebook --browser edge
@@ -29,13 +29,13 @@ ytconv login tiktok
 ytconv login pinterest
 ```
 
-Gunakan nama profil browser bila akun yang benar tidak berada di profil default:
+Specify a browser profile when the correct account is not in the default profile:
 
 ```powershell
 ytconv.cmd login instagram --browser edge --profile "Profile 2"
 ```
 
-## Status dan logout
+## Status and logout
 
 ```sh
 ytconv social status
@@ -43,45 +43,45 @@ ytconv logout instagram
 ytconv social logout --all
 ```
 
-`logout PROVIDER` hanya melepaskan hubungan provider dari YTConv. Perintah itu tidak menghapus sesi atau akun dari browser. Untuk benar-benar logout dari situs, gunakan menu logout pada situs resmi di browser.
+`logout PROVIDER` only removes the provider association from YTConv. It does not delete the browser session or account. To sign out from the site, use the site's official logout control in the browser.
 
-## Cara penyimpanan yang aman
+## Safe storage model
 
-YTConv tidak menyimpan:
+YTConv does not store:
 
-- password;
-- kode OTP atau 2FA;
-- access token atau refresh token media sosial;
-- nilai cookie mentah;
-- salinan database cookie browser.
+- passwords;
+- OTP or 2FA codes;
+- social-media access or refresh tokens;
+- raw cookie values;
+- copies of browser cookie databases.
 
-Cookie tetap berada di browser dan dilindungi oleh mekanisme browser/OS, seperti DPAPI pada Windows, Keychain pada macOS, atau keyring desktop pada Linux. YTConv hanya menyimpan provider, nama browser/profil, dan waktu penautan di:
+Cookies remain in the browser and are protected by browser/OS mechanisms such as DPAPI on Windows, Keychain on macOS, or a desktop keyring on Linux. YTConv stores only the provider, browser/profile name, and link timestamp in:
 
 ```text
 ~/.ytconv/social-sessions.json
 ```
 
-Pada Unix-like, file referensi tersebut ditulis dengan mode `0600`. File itu bukan salinan sesi dan tidak cukup untuk masuk ke akun tanpa database browser asli.
+On Unix-like systems, this reference file is written with mode `0600`. It is not a session copy and cannot sign in to an account without the original browser database.
 
-## Jika sesi browser tidak dapat dibaca
+## If a browser session cannot be read
 
-1. Tutup seluruh jendela browser dan pastikan proses browser tidak berjalan di background.
-2. Jalankan kembali download.
-3. Jika masih gagal, tautkan ulang dengan browser lain:
+1. Close every browser window and ensure that no browser process remains in the background.
+2. Retry the download.
+3. If it still fails, link a different browser:
 
 ```sh
 ytconv login instagram --browser firefox
 ```
 
-Firefox sering lebih mudah dibaca oleh tool CLI karena database sesi tidak memakai mekanisme penguncian Chromium yang sama. Pada Chrome/Edge modern, enkripsi App-Bound atau kebijakan perangkat dapat melarang proses CLI membaca cookie; YTConv tidak mencoba menerobos perlindungan tersebut.
+Firefox is often easier for CLI tools to read because its session database does not use the same Chromium locking mechanism. On modern Chrome or Edge, App-Bound Encryption or device policy may prevent a CLI process from reading cookies; YTConv does not bypass those protections.
 
-## Batasan Android Termux dan iPhone/iSH
+## Android Termux and iPhone/iSH limitations
 
-Android dan iOS memisahkan data privat browser dari aplikasi terminal. Karena itu Termux/iSH tidak bisa membaca database browser Chrome/Safari secara langsung. YTConv tidak akan mencoba membypass sandbox perangkat. Gunakan media publik atau metode autentikasi resmi yang tersedia untuk platform/perangkat tersebut.
+Android and iOS isolate private browser data from terminal applications. Termux and iSH therefore cannot read Chrome or Safari databases directly. YTConv does not bypass the device sandbox. Use public media or an official authentication method available for that platform or device.
 
-## Akun cloud YTConv (opsional)
+## Optional legacy YTConv cloud account
 
-Akun YTConv lama tidak diwajibkan untuk download. Jika tetap ingin digunakan:
+The legacy YTConv account is not required for downloads. To use it anyway:
 
 ```sh
 ytconv account login
@@ -89,8 +89,8 @@ ytconv auth status
 ytconv account logout
 ```
 
-Jika account endpoint tidak tersedia, gunakan `ytconv account login --local`. Kegagalan server akun tidak memblokir fungsi downloader CLI.
+If the account endpoint is unavailable, use `ytconv account login --local`. An account-server failure does not block CLI downloading.
 
-## Aturan penggunaan
+## Acceptable use
 
-Gunakan hanya akun milik sendiri dan hanya unduh media yang dimiliki, berlisensi terbuka, atau telah mendapat izin. Login tidak mengubah hak akses akun dan tidak membypass DRM, paywall, akun privat yang tidak diikuti, pembatasan wilayah, atau kontrol hak cipta.
+Use only your own accounts and download only media you own, that is openly licensed, or that you are authorized to save. Login does not change account permissions and does not bypass DRM, paywalls, private accounts you cannot access, regional restrictions, or copyright controls.

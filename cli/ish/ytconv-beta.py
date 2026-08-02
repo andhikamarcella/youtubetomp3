@@ -87,7 +87,7 @@ def remote_version():
 
 
 def perform_update():
-    print("Mengunduh installer YTConv iSH beta terbaru...")
+    print("Downloading the latest YTConv iSH beta installer...")
     target = None
     try:
         data = fetch_text(INSTALLER_URL, timeout=20)
@@ -98,8 +98,8 @@ def perform_update():
         if result.returncode:
             raise RuntimeError("installer exit %s" % result.returncode)
     except (OSError, RuntimeError, urllib.error.URLError) as error:
-        eprint("Update gagal: %s" % error)
-        eprint("Jalankan manual: curl -fsSL %s -o /tmp/ytconv-ish.sh && sh /tmp/ytconv-ish.sh" % INSTALLER_URL)
+        eprint("Update failed: %s" % error)
+        eprint("Run manually: curl -fsSL %s -o /tmp/ytconv-ish.sh && sh /tmp/ytconv-ish.sh" % INSTALLER_URL)
         return 1
     finally:
         if target:
@@ -107,7 +107,7 @@ def perform_update():
                 os.unlink(target)
             except OSError:
                 pass
-    print("Update selesai. Jalankan kembali: ytconv --version")
+    print("Update complete. Run again: ytconv --version")
     return 0
 
 
@@ -132,13 +132,13 @@ def tools():
 
 def tool_version(runner):
     if not runner:
-        return "tidak ditemukan"
+        return "not found"
     try:
         result = subprocess.run(runner + ["--version"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=20, check=False)
         rows = (result.stdout or "").strip().splitlines()
-        return rows[0] if result.returncode == 0 and rows else "gagal dijalankan"
+        return rows[0] if result.returncode == 0 and rows else "failed to run"
     except (OSError, subprocess.SubprocessError):
-        return "gagal dijalankan"
+        return "failed to run"
 
 
 def pip_install(*packages):
@@ -155,13 +155,13 @@ def repair():
         subprocess.run(["apk", "update"], check=False)
         subprocess.run(["apk", "add", "--no-cache", "python3", "py3-pip", "ffmpeg", "curl", "ca-certificates"], check=False)
     if not pip_install("yt-dlp", "gallery-dl"):
-        eprint("pip gagal memasang yt-dlp/gallery-dl. Periksa internet dan waktu perangkat.")
+        eprint("pip could not install yt-dlp/gallery-dl. Check the internet connection and device clock.")
     available = tools()
     missing = [name for name in ("yt-dlp", "gallery-dl", "ffmpeg") if not available[name]]
     if missing:
-        eprint("Masih kurang: %s" % ", ".join(missing))
+        eprint("Still missing: %s" % ", ".join(missing))
         return 3
-    print("Semua dependency siap.")
+    print("All dependencies are ready.")
     return 0
 
 
@@ -200,7 +200,7 @@ def cookie_args(path_value):
         return []
     target = Path(path_value).expanduser().resolve()
     if not target.is_file():
-        raise RuntimeError("cookies.txt tidak ditemukan: %s" % target)
+        raise RuntimeError("cookies.txt was not found: %s" % target)
     return ["--cookies", str(target)]
 
 
@@ -208,7 +208,7 @@ def output_template(options, output):
     if options.output_template:
         template = options.output_template
         if Path(template).is_absolute() or ".." in Path(template).parts or "%(ext)s" not in template:
-            raise RuntimeError("--output-template harus relatif, tidak boleh '..', dan wajib memuat %(ext)s")
+            raise RuntimeError("--output-template must be relative, must not contain '..', and must include %(ext)s")
         return str(output / template)
     filename = "%(title).180B [%(id)s].%(ext)s"
     if options.playlist:
@@ -317,18 +317,18 @@ def gallery_args(options, output, gallery_archive):
 
 def run_tool(label, runner, args, capture=False):
     if not runner:
-        raise RuntimeError("%s belum tersedia. Jalankan ytconv repair" % label)
+        raise RuntimeError("%s is not available. Run ytconv repair" % label)
     command = runner + args
     if not capture:
-        print("\nYTConv %s menggunakan %s" % (VERSION, label))
+        print("\nYTConv %s is using %s" % (VERSION, label))
         result = subprocess.run(command, check=False)
         if result.returncode:
-            raise RuntimeError("%s gagal dengan kode %s" % (label, result.returncode))
+            raise RuntimeError("%s failed with exit code %s" % (label, result.returncode))
         return ""
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
     if result.returncode:
         rows = (result.stderr or result.stdout or "").strip().splitlines()
-        raise RuntimeError(rows[-1] if rows else "%s gagal" % label)
+        raise RuntimeError(rows[-1] if rows else "%s failed" % label)
     return result.stdout
 
 
@@ -354,7 +354,7 @@ def execute_one(options):
         raw = run_tool("yt-dlp", available["yt-dlp"], ["--ignore-config", "--dump-single-json", "--skip-download", "--no-warnings"] + cookie_args(options.cookies) + [options.url], capture=True)
         data = json.loads(raw)
         summary = {"schemaVersion": 2, "ytconvVersion": VERSION, "title": data.get("title"), "uploader": data.get("uploader") or data.get("channel"), "url": options.url}
-        print(json.dumps(summary, indent=2, ensure_ascii=False) if options.json else "Judul: %s\nUploader: %s" % (summary["title"], summary["uploader"] or "-"))
+        print(json.dumps(summary, indent=2, ensure_ascii=False) if options.json else "Title: %s\nUploader: %s" % (summary["title"], summary["uploader"] or "-"))
         return {"ok": True, "url": options.url, "mode": "inspect"}
 
     force_gallery = options.mode == "image"
@@ -367,14 +367,14 @@ def execute_one(options):
         except RuntimeError:
             if force_gallery:
                 raise
-            eprint("gallery-dl gagal; mencoba yt-dlp...")
+            eprint("gallery-dl failed; trying yt-dlp...")
     try:
         run_tool("yt-dlp", available["yt-dlp"], yt_dlp_args(options, output, yt_archive))
         return {"ok": True, "url": options.url, "engine": "yt-dlp"}
     except RuntimeError:
         if force_video:
             raise
-        eprint("yt-dlp gagal; mencoba gallery-dl...")
+        eprint("yt-dlp failed; trying gallery-dl...")
         run_tool("gallery-dl", available["gallery-dl"], gallery_args(options, output, gallery_archive))
         return {"ok": True, "url": options.url, "engine": "gallery-dl"}
 
@@ -388,14 +388,14 @@ def diagnostics():
         ("gallery-dl", tool_version(available["gallery-dl"])),
         ("FFmpeg", tool_version(available["ffmpeg"])),
         ("Output", str(default_output())), ("Update", latest or "offline"),
-        ("Subtitle", "ON"), ("SponsorBlock", "ON (mark)"), ("Archive", "ON per profil"),
+        ("Subtitle", "ON"), ("SponsorBlock", "ON (mark)"), ("Archive", "ON per profile"),
     ]
     print("YTConv iSH Beta doctor\n")
     for label, value in rows:
         print("%-14s %s" % (label, value))
     missing = [name for name in ("yt-dlp", "gallery-dl", "ffmpeg") if not available[name]]
     if missing:
-        print("\nBelum tersedia: %s\nJalankan: ytconv repair" % ", ".join(missing))
+        print("\nMissing: %s\nRun: ytconv repair" % ", ".join(missing))
         return 3
     return 0
 
@@ -431,7 +431,7 @@ def selected_preset(argv):
 def parser(argv):
     preset = selected_preset(argv)
     defaults = dict(PRESETS.get(preset, {}))
-    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.5.0 Beta untuk iSH/Alpine.")
+    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.5.0 Beta for iSH/Alpine.")
     value.set_defaults(**defaults)
     value.add_argument("url", nargs="?")
     value.add_argument("--version", action="store_true")
@@ -497,7 +497,7 @@ def batch_urls(options):
     unique = list(dict.fromkeys(values))
     invalid = [url for url in unique if not valid_url(url)]
     if invalid:
-        raise RuntimeError("Link tidak valid: %s" % invalid[0])
+        raise RuntimeError("Invalid URL: %s" % invalid[0])
     return unique
 
 
@@ -514,7 +514,7 @@ def main(argv=None):
         return repair()
     if options.check_update:
         latest = remote_version()
-        print("tersedia %s" % latest if latest and version_tuple(latest) > version_tuple(VERSION) else "sudah terbaru (%s)" % VERSION)
+        print("%s available" % latest if latest and version_tuple(latest) > version_tuple(VERSION) else "up to date (%s)" % VERSION)
         return 0 if latest else 5
     if options.update:
         return perform_update()
@@ -525,7 +525,7 @@ def main(argv=None):
             candidate = input("Paste link media: ").strip()
             urls = [candidate] if candidate else []
         if not urls:
-            raise RuntimeError("Tidak ada link. Berikan LINK, batch file, atau pipe melalui stdin.")
+            raise RuntimeError("No URL was provided. Pass a URL, batch file, or pipe URLs through stdin.")
         results = []
         for index, url in enumerate(urls, 1):
             options.url = url
@@ -533,7 +533,7 @@ def main(argv=None):
             try:
                 results.append(execute_one(options))
             except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
-                eprint("Gagal: %s" % error)
+                eprint("Failed: %s" % error)
                 results.append({"ok": False, "url": url, "error": str(error)})
                 if not options.continue_on_error:
                     break
@@ -544,12 +544,12 @@ def main(argv=None):
             target = Path(options.result_json).expanduser().resolve()
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-            print("Laporan JSON: %s" % target)
-        print("\nRingkasan: %s berhasil, %s gagal." % (success, failed))
+            print("JSON report: %s" % target)
+        print("\nSummary: %s succeeded, %s failed." % (success, failed))
         return 1 if failed else 0
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
         eprint("YTConv: %s" % error)
-        eprint("Jalankan ytconv doctor dan ytconv repair.")
+        eprint("Run ytconv doctor and ytconv repair.")
         return 1
 
 

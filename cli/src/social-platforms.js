@@ -14,7 +14,7 @@ const PLATFORMS = [
   { key: 'threads', label: 'Threads', hosts: ['threads.com', 'threads.net'] },
   { key: 'twitch', label: 'Twitch', hosts: ['twitch.tv'] },
   { key: 'snapchat', label: 'Snapchat', hosts: ['snapchat.com'] },
-  { key: 'other', label: 'Sosmed lainnya', hosts: [] },
+  { key: 'other', label: 'Other social platform', hosts: [] },
 ];
 
 const EXTRA_PLATFORM_HOSTS = [
@@ -64,7 +64,7 @@ function hostMatches(host, candidate) {
 export function socialPlatformLabel(key) {
   return PLATFORMS.find((item) => item.key === key)?.label
     || EXTRA_PLATFORM_HOSTS.find(([candidate]) => candidate === key)?.[1]
-    || 'Sosmed lainnya';
+    || 'Other social platform';
 }
 
 export function detectSocialPlatform(value) {
@@ -151,5 +151,5 @@ export function socialRouteMode({ url, requestedMode = 'auto', platformHint = 'a
 export function socialPlatformSummary({ selected = 'auto', url = '' } = {}) {
   const detected = url ? detectSocialPlatform(url) : 'other';
   if (selected && selected !== 'auto') return socialPlatformLabel(selected);
-  return detected === 'other' ? 'AUTO semua sosmed' : `${socialPlatformLabel(detected)} terdeteksi`;
+  return detected === 'other' ? 'AUTO all social platforms' : `${socialPlatformLabel(detected)} detected`;
 }

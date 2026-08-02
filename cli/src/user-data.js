@@ -357,8 +357,8 @@ export async function handleUserDataCommand(argv = [], { homeDirectory = os.home
   if (command === 'quickstart') {
     console.log([
       'YTConv quick start:',
-      '  1. ytconv doctor                         # engine dipasang otomatis',
-      '  2. ytconv login instagram                # hanya jika link perlu akun',
+      '  1. ytconv doctor                         # install engines automatically',
+      '  2. ytconv login instagram                # only when the URL needs an account',
       '  3. ytconv config set output ~/Downloads/YTConv',
       '  4. ytconv profile set music preset=music audioQuality=320',
       '  5. ytconv --profile music download "URL"',

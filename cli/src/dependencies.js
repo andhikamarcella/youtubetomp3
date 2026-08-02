@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { execFile, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { promisify } from 'node:util';
 import which from 'which';
 import { ensureBundledYtDlp } from './binaries.js';
@@ -9,6 +11,7 @@ import { detectLinuxDistro } from './linux-distro.js';
 import { isTermux } from './platform.js';
 
 const execFileAsync = promisify(execFile);
+const require = createRequire(import.meta.url);
 
 async function fileExists(filePath) {
   if (!filePath) return false;
@@ -42,12 +45,93 @@ async function resolveBundledFfmpeg() {
   } catch { return null; }
 }
 
+function ffmpegStaticDetails() {
+  const packageJsonPath = require.resolve('ffmpeg-static/package.json');
+  return {
+    binaryPath: require('ffmpeg-static'),
+    installerPath: path.join(path.dirname(packageJsonPath), 'install.js'),
+    packageDirectory: path.dirname(packageJsonPath),
+  };
+}
+
+export function ffmpegInstallerInvocation({
+  execPath = process.execPath,
+  packageJsonPath = require.resolve('ffmpeg-static/package.json'),
+} = {}) {
+  const pathApi = packageJsonPath.includes('\\') ? path.win32 : path;
+  const packageDirectory = pathApi.dirname(packageJsonPath);
+  return {
+    command: execPath,
+    args: [pathApi.join(packageDirectory, 'install.js')],
+    cwd: packageDirectory,
+  };
+}
+
+export async function repairBundledFfmpeg({ silent = false, runInstaller = spawnSync } = {}) {
+  const current = await resolveBundledFfmpeg();
+  if (current) return { installed: true, path: current, repaired: false, error: '' };
+
+  let details;
+  try {
+    details = ffmpegStaticDetails();
+  } catch (error) {
+    return {
+      installed: false,
+      path: null,
+      repaired: false,
+      error: `The ffmpeg-static package is unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+
+  if (!details.binaryPath || !await fileExists(details.installerPath)) {
+    return {
+      installed: false,
+      path: null,
+      repaired: false,
+      error: 'The ffmpeg-static installer is unavailable. Reinstall YTConv with npm install -g ytconv@latest --force.',
+    };
+  }
+
+  try {
+    // The installer exits early when a broken or truncated binary still exists.
+    // Remove only that package-owned binary after it has failed the version check.
+    await fs.rm(details.binaryPath, { force: true });
+    if (!silent) console.log('YTConv: downloading and repairing the bundled FFmpeg engine...');
+    const invocation = ffmpegInstallerInvocation({
+      execPath: process.execPath,
+      packageJsonPath: path.join(details.packageDirectory, 'package.json'),
+    });
+    const result = runInstaller(invocation.command, invocation.args, {
+      cwd: invocation.cwd,
+      env: process.env,
+      windowsHide: true,
+      timeout: 180_000,
+      stdio: silent ? 'pipe' : 'inherit',
+    });
+    if (result.error || result.status !== 0) {
+      const detail = result.error?.message || `${result.stderr || ''}`.trim() || `exit code ${result.status ?? 'unknown'}`;
+      throw new Error(detail);
+    }
+    const repaired = await resolveBundledFfmpeg();
+    if (!repaired) throw new Error('the downloaded FFmpeg binary did not pass the version check');
+    if (!silent) console.log('YTConv: FFmpeg is ready.');
+    return { installed: true, path: repaired, repaired: true, error: '' };
+  } catch (error) {
+    return {
+      installed: false,
+      path: null,
+      repaired: false,
+      error: `FFmpeg automatic repair failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
 function runVisible(command, args, { optional = false } = {}) {
   const result = spawnSync(command, args, { stdio: 'inherit', windowsHide: true, env: process.env });
   if (result.error || result.status !== 0) {
     if (optional) return false;
     const detail = result.error?.message || `exit code ${result.status ?? 'unknown'}`;
-    throw new Error(`${command} gagal: ${detail}`);
+    throw new Error(`${command} failed: ${detail}`);
   }
   return true;
 }
@@ -58,7 +142,7 @@ async function resolvePython() {
 
 async function installPythonEngines({ visible = true } = {}) {
   const python = await resolvePython();
-  if (!python) return { installed: false, error: 'Python 3 tidak ditemukan.' };
+  if (!python) return { installed: false, error: 'Python 3 was not found.' };
   const args = python.toLowerCase().endsWith('py.exe')
     ? ['-3', '-m', 'pip', 'install', '--user', '--upgrade', '--no-cache-dir', 'yt-dlp', 'gallery-dl']
     : ['-m', 'pip', 'install', '--user', '--upgrade', '--no-cache-dir', 'yt-dlp', 'gallery-dl'];
@@ -98,15 +182,15 @@ export async function prepareTermuxDependencies() {
   runVisible('pkg', ['install', '-y', 'python', 'ffmpeg']);
   const installedFromRepository = runVisible('pkg', ['install', '-y', 'python-yt-dlp'], { optional: true });
   const python = await resolvePython();
-  if (!python) throw new Error('Python tidak ditemukan setelah instalasi Termux.');
+  if (!python) throw new Error('Python was not found after the Termux installation.');
   let ytDlpVersion = await readVersion(python, ['-m', 'yt_dlp', '--version']);
   if (!ytDlpVersion) {
     runVisible(python, ['-m', 'pip', 'install', '--upgrade', '--no-cache-dir', 'yt-dlp']);
     ytDlpVersion = await readVersion(python, ['-m', 'yt_dlp', '--version']);
   }
-  if (!ytDlpVersion) throw new Error('Modul Python yt_dlp tetap tidak dapat dijalankan.');
+  if (!ytDlpVersion) throw new Error('The Python yt_dlp module still cannot run.');
   const galleryRunner = await installGalleryDlPython({ visible: true });
-  if (!galleryRunner) throw new Error('Modul gallery_dl tidak dapat dipasang di Termux.');
+  if (!galleryRunner) throw new Error('The gallery_dl module could not be installed in Termux.');
   runVisible('pkg', ['install', '-y', 'yt-dlp-ejs'], { optional: true });
   return { prepared: true, termux: true, installedFromRepository, ytDlpVersion, galleryDlVersion: galleryRunner.version };
 }
@@ -131,10 +215,18 @@ export async function prepareDesktopDependencies({ silent = false } = {}) {
     galleryRunner = galleryRunner || await resolveGalleryDlRunner({ install: false });
   }
 
-  const bundledFfmpeg = await resolveBundledFfmpeg();
+  let bundledFfmpeg = await resolveBundledFfmpeg();
   const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
-  const ffmpegPath = bundledFfmpeg || (await readVersion(systemFfmpeg, ['-version']) ? systemFfmpeg : null);
-  if (!ffmpegPath) errors.push('FFmpeg tidak tersedia. Jalankan ytconv --shell-info untuk command package manager distro.');
+  const usableSystemFfmpeg = await readVersion(systemFfmpeg, ['-version']) ? systemFfmpeg : null;
+  if (!bundledFfmpeg && !usableSystemFfmpeg) {
+    const ffmpegRepair = await repairBundledFfmpeg({ silent });
+    bundledFfmpeg = ffmpegRepair.path;
+    if (!ffmpegRepair.installed) errors.push(ffmpegRepair.error);
+  }
+  const ffmpegPath = bundledFfmpeg || usableSystemFfmpeg;
+  if (!ffmpegPath) {
+    errors.push('FFmpeg is unavailable after automatic repair. Run ytconv doctor for the exact failure and platform-specific setup help.');
+  }
 
   return {
     prepared: Boolean(ytDlpRunner && galleryRunner && ffmpegPath),

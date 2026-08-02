@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.5.6
+# Troubleshooting YTConv 1.5.7
 
 Start with this safe sequence:
 
@@ -26,16 +26,16 @@ git status --short
 For the stable release, expected values are:
 
 ```text
-1.5.6
+1.5.7
 latest
-release/ytconv-1.5.6-cli-only-final
+release/ytconv-1.5.7-cli-only-final
 ```
 
 npm never allows a published version number to be overwritten.
 
-## Layar berhenti di `setup incomplete`
+## The screen stops at `setup incomplete`
 
-Mulai dari v1.5.6, FFmpeg adalah dependency wajib dan yt-dlp/gallery-dl disiapkan otomatis. Jalankan:
+YTConv 1.5.7 automatically repairs yt-dlp, gallery-dl, and the bundled FFmpeg executable. Run:
 
 ```powershell
 ytconv.cmd repair
@@ -43,7 +43,7 @@ ytconv.cmd doctor
 ytconv.cmd --self-test
 ```
 
-Jika masih gagal, instal ulang paket beserta script instalasinya:
+If repair still fails, reinstall the package with its install scripts enabled:
 
 ```powershell
 npm.cmd uninstall -g ytconv
@@ -52,11 +52,11 @@ npm.cmd install -g ytconv@latest --force
 ytconv.cmd doctor
 ```
 
-Jangan memakai `--ignore-scripts` atau `--omit=optional` pada Windows/macOS/Linux desktop karena opsi tersebut melewatkan bootstrap engine. Node.js/npm tetap harus terpasang lebih dulu karena YTConv didistribusikan melalui npm.
+Do not use `--ignore-scripts` on Windows, macOS, or desktop Linux because it skips media-engine bootstrap. Node.js and npm must already be installed because YTConv is distributed through npm.
 
-## Instagram/Facebook/X meminta cookies atau login
+## Instagram, Facebook, or X asks for cookies or login
 
-Tidak perlu mengunduh `cookies.txt`. Tautkan browser melalui halaman resmi:
+You do not need to download `cookies.txt`. Link a browser through the provider's official login page:
 
 ```powershell
 ytconv.cmd login instagram
@@ -65,9 +65,9 @@ ytconv.cmd login x --browser firefox
 ytconv.cmd social status
 ```
 
-Setelah login selesai, ulangi link. YTConv mencoba akses publik terlebih dahulu, lalu sesi browser yang cocok. Password, OTP, dan cookie mentah tidak pernah disimpan YTConv.
+After sign-in, retry the URL. YTConv tries public access first, followed by a matching browser session. YTConv never stores passwords, OTP codes, or raw cookies.
 
-Jika muncul kegagalan dekripsi/locked database, tutup seluruh browser dan proses background-nya. Jika Chrome/Edge tetap menolak karena App-Bound Encryption atau kebijakan perangkat, login ulang melalui Firefox; YTConv tidak membypass perlindungan browser/OS.
+If decryption fails or the database is locked, close every browser window and background process. If Chrome or Edge still refuses access because of App-Bound Encryption or device policy, sign in through Firefox; YTConv does not bypass browser/OS protections.
 
 ## `spawnSync npm.cmd EINVAL` on Windows
 
@@ -190,7 +190,7 @@ ytconv download "URL" --cookies-from-browser chrome
 ytconv download "URL" --cookies-from-browser "firefox:default-release"
 ```
 
-Tutup browser sepenuhnya sebelum mencoba ulang. File `cookies.txt` hanya fallback kompatibilitas lama dan bukan alur yang direkomendasikan v1.5.6. Termux dan iSH tidak dapat mengakses database privat browser Android/iOS secara langsung.
+Close the browser completely before retrying. `cookies.txt` is only a legacy compatibility fallback and is not the recommended YTConv 1.5.7 flow. Termux and iSH cannot directly access private Android/iOS browser databases.
 
 ## HTTP 429 / Too Many Requests
 

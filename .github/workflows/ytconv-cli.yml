@@ -1,9 +1,9 @@
-name: YTConv CLI 1.5.6 Stable
+name: YTConv CLI 1.5.7 Stable
 
 on:
   push:
     branches:
-      - "release/ytconv-1.5.6*"
+      - "release/ytconv-1.5.7*"
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -33,12 +33,12 @@ jobs:
       - run: npm test
       - name: Stable identity and command smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.6"
+          test "$(node ./bin/ytconv.js --version)" = "1.5.7"
           node ./bin/ytconv.js --help | grep -q "Persistent CLI features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
-          HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "Belum ada akun"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.6') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.6').includes('@latest')) process.exitCode=1; })"
+          HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "No accounts are linked yet"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.7') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.7').includes('@latest')) process.exitCode=1; })"
 
   linux-full:
     runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
         run: |
           npm run check:ish
           npm run test:ish
-          test "$(cat ish/VERSION)" = "1.5.6"
+          test "$(cat ish/VERSION)" = "1.5.7"
           sh -n scripts/install-ish.sh
           sh -n scripts/install-termux.sh
           sh -n scripts/install-unix.sh
@@ -92,7 +92,7 @@ jobs:
           test ! -f ../.github/workflows/ytconv-auth.yml
           npm pack --dry-run
           npm pack --json > package-preview.json
-          grep -q '"version": "1.5.6"' package.json
+          grep -q '"version": "1.5.7"' package.json
           grep -q '"tag": "latest"' package.json
           grep -q 'src/auth.js' package-preview.json
           grep -q 'bin/ytconv-auth.js' package-preview.json
@@ -109,7 +109,7 @@ jobs:
           rm -rf /tmp/ytconv-portable
           mkdir -p /tmp/ytconv-portable
           npm install --prefix /tmp/ytconv-portable "$PWD/$TARBALL" --omit=optional --ignore-scripts
-          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.6"
+          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.7"
 
   windows-cmd-powershell:
     runs-on: windows-latest
@@ -127,6 +127,25 @@ jobs:
         run: npm run check
       - shell: pwsh
         run: npm test
+      - name: Prove automatic FFmpeg repair on Windows
+        shell: pwsh
+        run: |
+          $ffmpeg = node -e "import('ffmpeg-static').then(m => process.stdout.write(m.default))"
+          if (-not (Test-Path $ffmpeg)) { throw "FFmpeg was not installed before the repair test: $ffmpeg" }
+          $backup = "$ffmpeg.ytconv-ci-backup"
+          Move-Item -LiteralPath $ffmpeg -Destination $backup -Force
+          try {
+            node -e "import('./src/dependencies.js').then(async ({repairBundledFfmpeg}) => { const r=await repairBundledFfmpeg({silent:false}); if(!r.installed||!r.path||!r.repaired){console.error(r);process.exit(1)} })"
+            if ($LASTEXITCODE -ne 0) { throw "YTConv automatic FFmpeg repair failed" }
+            & $ffmpeg -version
+            if ($LASTEXITCODE -ne 0) { throw "The repaired FFmpeg executable failed its version check" }
+          } finally {
+            if (-not (Test-Path $ffmpeg) -and (Test-Path $backup)) {
+              Move-Item -LiteralPath $backup -Destination $ffmpeg -Force
+            } elseif (Test-Path $backup) {
+              Remove-Item -LiteralPath $backup -Force
+            }
+          }
       - name: CMD stable user flow
         shell: cmd
         run: |
@@ -138,8 +157,8 @@ jobs:
         shell: pwsh
         run: |
           $version = node .\bin\ytconv.js --version
-          if ($version -ne '1.5.6') { throw "Wrong version: $version" }
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.6',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
+          if ($version -ne '1.5.7') { throw "Wrong version: $version" }
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.7',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
 
   macos:
     runs-on: macos-latest
@@ -155,7 +174,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.6"
+          test "$(node ./bin/ytconv.js --version)" = "1.5.7"
           node ./bin/ytconv.js completion zsh
           sh ./scripts/install-unix.sh --print-plan | grep -q 'brew'
 
@@ -172,7 +191,7 @@ jobs:
       - run: npm install --ignore-scripts --omit=optional
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.6"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.7"
 
   distro-installer-plans:
     runs-on: ubuntu-latest

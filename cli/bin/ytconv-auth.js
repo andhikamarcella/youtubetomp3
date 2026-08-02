@@ -30,7 +30,7 @@ async function boot() {
   try {
     const automaticUpdate = await maybeAutoUpdate({ currentVersion: CLI_VERSION, argv });
     if (automaticUpdate.updated) {
-      console.log('Pembaruan selesai. YTConv dibuka ulang dengan versi terbaru.\n');
+      console.log('Update complete. Restarting YTConv with the latest version.\n');
       const relaunched = spawnSync(process.execPath, [process.argv[1], ...argv], {
         stdio: 'inherit',
         windowsHide: true,
@@ -40,8 +40,8 @@ async function boot() {
       return;
     }
     if (automaticUpdate.reason === 'failed') {
-      console.warn(`Pembaruan otomatis belum berhasil: ${automaticUpdate.result.error.message}`);
-      console.warn(`YTConv ${CLI_VERSION} tetap dibuka. Perbaiki nanti dengan: ytconv update\n`);
+      console.warn(`Automatic update did not complete: ${automaticUpdate.result.error.message}`);
+      console.warn(`YTConv ${CLI_VERSION} will continue. Retry later with: ytconv update\n`);
     }
 
     const social = await handleSocialAuthCommand(argv);

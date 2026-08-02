@@ -2,6 +2,26 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.7 — reliable FFmpeg repair and English documentation
+
+### Fixed
+
+- `ytconv repair` now reruns the package-owned `ffmpeg-static` installer when the executable is missing, truncated, or fails its version check.
+- Windows repair invokes the installer through Node.js, avoiding PowerShell execution-policy and `.cmd` spawning problems.
+- Repair verifies the restored FFmpeg executable before reporting that setup is complete.
+- Post-install and first-run setup retry the same verified repair path automatically.
+
+### Changed
+
+- All CLI runtime messages, setup prompts, social-login guidance, errors, and documentation are written in English.
+- Troubleshooting now explains automatic repair first and provides a precise reinstall fallback only when automatic recovery fails.
+- Stable release CI removes the installed Windows FFmpeg binary and proves that YTConv downloads and restores it.
+
+### Packaging
+
+- The npm tarball remains CLI-only and contains no HTML, CSS, JSX, TSX, web application, API server, or deployment asset.
+- Stable remains on the npm `latest` tag; `1.6.0-beta.1` remains on `beta`.
+
 ## 1.5.6 — automatic setup, updates, and official social login
 
 ### Added

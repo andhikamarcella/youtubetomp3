@@ -35,7 +35,7 @@ function cookieArgs(config) {
 
 function normalizeRunner(value) {
   const command = value?.command || value?.path;
-  if (!command) throw new Error('gallery-dl belum tersedia.');
+  if (!command) throw new Error('gallery-dl is not available yet.');
   return {
     command,
     prefixArgs: Array.isArray(value.prefixArgs) ? value.prefixArgs : [],
@@ -61,9 +61,9 @@ async function listFiles(directory) {
 
 function readableError(stderr, fallback) {
   const text = String(stderr || '');
-  if (/429|too many requests/iu.test(text)) return 'Situs membatasi permintaan (429). Tunggu lalu coba lagi.';
+  if (/429|too many requests/iu.test(text)) return 'The site is rate limiting requests (429). Wait, then try again.';
   if (/login|cookies?|authentication|private|not authorized/iu.test(text)) {
-    return 'Media memerlukan akun yang sudah login. Jalankan `ytconv login PROVIDER`, lalu coba lagi.';
+    return 'This media requires a signed-in account. Run `ytconv login PROVIDER`, then try again.';
   }
   const useful = text.split(/\r?\n/u).map((line) => line.trim()).filter((line) => /error|warning|failed|unsupported|login|cookie|private|429/iu.test(line));
   return useful.at(-1)?.replace(/^\[[^\]]+\]\s*/u, '') || fallback;
@@ -73,14 +73,14 @@ export function classifyEmptyGalleryResult({ archivePath = '', inspectedItemCoun
   if (String(archivePath || '').trim() && Number(inspectedItemCount) > 0) {
     return {
       skipped: true,
-      reason: `${inspectedItemCount} item ditemukan tetapi semuanya sudah tercatat di archive gallery-dl.`,
+      reason: `${inspectedItemCount} item(s) were found, but all are already recorded in the gallery-dl archive.`,
     };
   }
   return {
     skipped: false,
     reason: readableError(
       diagnostic,
-      'gallery-dl tidak mengembalikan file dari link tersebut. Akses publik akan dicoba melalui yt-dlp; jika akun diperlukan, jalankan `ytconv login PROVIDER`.',
+      'gallery-dl returned no file for this URL. Public access will be attempted with yt-dlp; if an account is required, run `ytconv login PROVIDER`.',
     ),
   };
 }
@@ -112,7 +112,7 @@ export async function downloadGallery({
   signal,
 } = {}) {
   const runnerValue = await resolveGalleryDlRunner({ install: true, silent: false });
-  if (!runnerValue) throw new Error('Engine gambar gallery-dl tidak dapat disiapkan pada perangkat ini.');
+  if (!runnerValue) throw new Error('The gallery-dl image engine could not be prepared on this device.');
   const runner = normalizeRunner(runnerValue);
 
   await fs.mkdir(outputDirectory, { recursive: true });
@@ -143,7 +143,7 @@ export async function downloadGallery({
     };
     const abort = () => {
       child.kill('SIGTERM');
-      finish(() => reject(new Error('Unduhan dibatalkan.')));
+      finish(() => reject(new Error('The download was cancelled.')));
     };
     if (signal?.aborted) { abort(); return; }
     signal?.addEventListener('abort', abort, { once: true });
@@ -173,13 +173,13 @@ export async function downloadGallery({
 
     child.stdout.on('data', (chunk) => consume(chunk, false));
     child.stderr.on('data', (chunk) => consume(chunk, true));
-    child.on('error', (error) => finish(() => reject(new Error(`Gagal menjalankan gallery-dl (${runner.displayPath}): ${error.message}`))));
+    child.on('error', (error) => finish(() => reject(new Error(`Could not start gallery-dl (${runner.displayPath}): ${error.message}`))));
     child.on('close', async (code) => {
       if (settled) return;
       processLine(stdoutBuffer, false);
       processLine(stderrBuffer, true);
       if (code !== 0) {
-        finish(() => reject(new Error(readableError(stderrAll, `gallery-dl selesai dengan kode ${code}.`))));
+        finish(() => reject(new Error(readableError(stderrAll, `gallery-dl exited with code ${code}.`))));
         return;
       }
       const after = await listFiles(outputDirectory);
@@ -207,7 +207,7 @@ export async function downloadGallery({
           finish(() => reject(new Error(outcome.reason)));
           return;
         }
-        onProgress?.({ percent: '100%', speed: '0 file baru', eta: '' });
+        onProgress?.({ percent: '100%', speed: '0 new files', eta: '' });
         onLog?.(outcome.reason, false);
         finish(() => resolve({
           outputPath: outputDirectory,
@@ -219,7 +219,7 @@ export async function downloadGallery({
         return;
       }
 
-      onProgress?.({ percent: '100%', speed: `${count} file baru`, eta: '' });
+      onProgress?.({ percent: '100%', speed: `${count} new files`, eta: '' });
       finish(() => resolve({ outputPath: outputPath || outputDirectory, fileCount: count, skipped: false, engine: 'gallery-dl' }));
     });
   });
