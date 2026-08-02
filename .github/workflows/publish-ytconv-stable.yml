@@ -40,6 +40,7 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
       - name: Verify stable package identity
+        id: identity
         run: |
           test ! -f ../.github/workflows/ytconv-auth.yml
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
@@ -56,8 +57,10 @@ jobs:
             *) ;;
           esac
           if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "ytconv@$PACKAGE_VERSION is already published; refusing to overwrite it."
-            exit 1
+            echo "ytconv@$PACKAGE_VERSION is already published; continuing with registry verification."
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Install and test clean package
         run: |
@@ -84,15 +87,28 @@ jobs:
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           echo "unpacked_size=$UNPACKED_SIZE" >> "$GITHUB_OUTPUT"
       - name: Publish stable package with provenance
+        if: ${{ steps.identity.outputs.already_published != 'true' }}
         run: npm publish --tag latest --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Verify registry metadata and tarball
         id: registry
         run: |
-          test "$(npm view ytconv@latest version --prefer-online)" = "$RELEASE_VERSION"
-          npm view "ytconv@$RELEASE_VERSION" --json > "$RUNNER_TEMP/ytconv-registry.json"
-          node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); if(!p.author||!p.license||!p.time?.['$RELEASE_VERSION']||!p.dist?.tarball||!p.dist?.integrity||!p.dist?.unpackedSize||!p.maintainers?.length||!Object.keys(p.dependencies||{}).length||!p.releaseNotes) process.exitCode=1"
+          REGISTRY_READY=false
+          for ATTEMPT in $(seq 1 12); do
+            LATEST_VERSION=$(npm view ytconv@latest version --prefer-online 2>/dev/null || true)
+            PUBLISHED_VERSION=$(npm view "ytconv@$RELEASE_VERSION" version --prefer-online 2>/dev/null || true)
+            if [ "$LATEST_VERSION" = "$RELEASE_VERSION" ] && [ "$PUBLISHED_VERSION" = "$RELEASE_VERSION" ]; then
+              npm view "ytconv@$RELEASE_VERSION" --json --prefer-online > "$RUNNER_TEMP/ytconv-registry.json"
+              if node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); if(!p.author||!p.license||!p.time?.['$RELEASE_VERSION']||!p.dist?.tarball||!p.dist?.integrity||!p.dist?.unpackedSize||!p.maintainers?.length||!Object.keys(p.dependencies||{}).length||!p.releaseNotes) process.exitCode=1"; then
+                REGISTRY_READY=true
+                break
+              fi
+            fi
+            echo "Registry metadata is still propagating (attempt $ATTEMPT/12)."
+            sleep 5
+          done
+          test "$REGISTRY_READY" = "true"
           TARBALL_URL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(p.dist.tarball)")
           curl --fail --location --retry 5 "$TARBALL_URL" --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz"
           UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(String(p.dist.unpackedSize))")
