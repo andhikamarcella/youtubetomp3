@@ -53,6 +53,28 @@ test('linked Instagram browser is tried automatically after public access', asyn
   assert.match(configs[1].label, /Instagram/u);
 });
 
+test('verified managed login is prepared only after public access fails', async (t) => {
+  const homeDirectory = await temporaryHome(t);
+  await linkSocialSession({
+    provider: 'instagram',
+    browserSpec: 'chrome:YTConv Managed',
+    sessionMode: 'managed-browser',
+    verified: true,
+    homeDirectory,
+  });
+  const configs = await resolveCookieConfigs({
+    source: 'auto',
+    url: 'https://www.instagram.com/p/example/',
+    homeDirectory,
+    outputDirectory: path.join(homeDirectory, 'output'),
+  });
+  assert.equal(configs[0].kind, 'none');
+  assert.equal(configs[1].kind, 'managed-browser');
+  assert.equal(configs[1].provider, 'instagram');
+  assert.equal(configs[1].verified, true);
+  assert.match(configs[1].label, /private YTConv browser/u);
+});
+
 test('login command opens the official provider page and saves the selected browser', async (t) => {
   const homeDirectory = await temporaryHome(t);
   let opened;
@@ -63,17 +85,21 @@ test('login command opens the official provider page and saves the selected brow
       interactive: false,
       detectBrowsersImpl: async () => ['edge', 'firefox'],
       detectBrowserProfilesImpl: async () => [],
-      openLoginImpl: async (value) => {
+      openManagedLoginImpl: async (value) => {
         opened = value;
-        return { opened: true, url: 'https://www.instagram.com/accounts/login/' };
+        return { opened: true, url: 'https://www.instagram.com/accounts/login/', session: { connected: true } };
       },
+      prepareManagedCookieImpl: async () => ({ kind: 'file', path: 'temporary', temporary: false }),
+      disposePreparedCookieImpl: async () => {},
     },
   );
   assert.equal(result.handled, true);
   assert.equal(result.exitCode, 0);
-  assert.deepEqual(opened, { provider: 'instagram', browserSpec: 'edge' });
+  assert.deepEqual(opened, { provider: 'instagram', browserSpec: 'edge', homeDirectory });
   const store = await readSocialSessions({ homeDirectory });
-  assert.equal(store.providers.instagram.browserSpec, 'edge');
+  assert.equal(store.providers.instagram.browserSpec, 'edge:YTConv Managed');
+  assert.equal(store.providers.instagram.sessionMode, 'managed-browser');
+  assert.ok(store.providers.instagram.verifiedAt);
 });
 
 test('official login opener never receives a user-supplied URL', async () => {
@@ -118,19 +144,26 @@ test('official browser handoff is not persisted until the exact retry succeeds',
     homeDirectory,
     detectBrowsersImpl: async () => ['chrome'],
     detectBrowserProfilesImpl: async () => ['chrome:Profile 2', 'chrome:Default'],
-    openLoginImpl: async (value) => {
+    openManagedLoginImpl: async (value) => {
       opened.push(value);
-      return { opened: true, url: 'https://www.instagram.com/accounts/login/' };
+      return { opened: true, url: 'https://www.instagram.com/accounts/login/', session: { connected: true } };
     },
   });
 
   assert.equal(handoff.browserSpec, 'chrome:Profile 2');
+  assert.equal(handoff.browserDisplay, 'chrome · private YTConv profile');
+  assert.equal(handoff.sessionBrowserSpec, 'chrome:YTConv Managed');
+  assert.equal(handoff.sessionMode, 'managed-browser');
+  assert.equal(handoff.cookieConfig.kind, 'managed-browser');
   assert.equal(handoff.cookieConfig.spec, 'chrome:Profile 2');
-  assert.deepEqual(opened, [{ provider: 'instagram', browserSpec: 'chrome:Profile 2' }]);
+  assert.deepEqual(opened, [{ provider: 'instagram', browserSpec: 'chrome:Profile 2', homeDirectory }]);
   assert.equal((await readSocialSessions({ homeDirectory })).providers.instagram, undefined);
 
   await confirmSocialLoginHandoff(handoff, { homeDirectory });
-  assert.equal((await readSocialSessions({ homeDirectory })).providers.instagram.browserSpec, 'chrome:Profile 2');
+  const linked = (await readSocialSessions({ homeDirectory })).providers.instagram;
+  assert.equal(linked.browserSpec, 'chrome:YTConv Managed');
+  assert.equal(linked.sessionMode, 'managed-browser');
+  assert.ok(linked.verifiedAt);
 });
 
 test('new account handoff prefers Firefox when Chromium cookie encryption may block extraction', async (t) => {
@@ -201,7 +234,7 @@ test('failed verification never saves an unproven browser session', async (t) =>
     waitForConfirmationImpl: async () => {},
     detectBrowsersImpl: async () => ['edge'],
     detectBrowserProfilesImpl: async () => ['edge:Default'],
-    openLoginImpl: async () => ({ opened: true, url: 'https://www.instagram.com/accounts/login/' }),
+    openManagedLoginImpl: async () => ({ opened: true, url: 'https://www.instagram.com/accounts/login/', session: {} }),
     retry: async () => { throw new Error('Browser session could not be decrypted'); },
   }), /could not be decrypted/u);
   assert.equal((await readSocialSessions({ homeDirectory })).providers.instagram, undefined);

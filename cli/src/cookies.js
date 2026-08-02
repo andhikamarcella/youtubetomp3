@@ -235,13 +235,24 @@ function browserConfig(source) {
 
 function linkedBrowserConfig(session) {
   const spec = session.browserSpec;
+  if (session.sessionMode === 'managed-browser') {
+    return {
+      kind: 'managed-browser',
+      browser: spec.split(':', 1)[0],
+      spec,
+      provider: session.provider,
+      linked: true,
+      verified: Boolean(session.verifiedAt),
+      label: `verified ${session.label || session.provider} login · private YTConv browser`,
+    };
+  }
   return {
     kind: 'browser',
     browser: spec.split(':', 1)[0],
     spec,
     provider: session.provider,
     linked: true,
-    label: `account ${session.label || session.provider} · ${spec}`,
+    label: `${session.verifiedAt ? 'verified' : 'saved'} ${session.label || session.provider} browser reference · ${spec}`,
   };
 }
 

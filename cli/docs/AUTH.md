@@ -1,4 +1,4 @@
-# Social-media account login in YTConv 1.5.8
+# Social-media account login in YTConv 1.5.9
 
 YTConv can use an account session that is already signed in through a desktop browser without asking the user to export `cookies.txt`. This is available for Instagram, Facebook, X/Twitter, TikTok, YouTube/Google, Pinterest, Reddit, Threads, Twitch, SoundCloud, Vimeo, Tumblr, Flickr, and Pixiv.
 
@@ -14,11 +14,12 @@ YTConv will:
 
 1. detect local browsers;
 2. ask the user to choose one when multiple browsers are available;
-3. open `instagram.com/accounts/login` in that browser;
+3. open `instagram.com/accounts/login` in a private YTConv Chromium profile when Chrome-family encryption prevents regular profile access;
 4. wait for the user to complete password and 2FA entry on Instagram's official page;
-5. retry the exact failed media URL with that browser profile;
-6. store only the `instagram → browser/profile` association after the retry succeeds;
-7. use that verified session automatically for later matching URLs.
+5. copy only Instagram-domain cookies through a loopback-only local browser connection into a user-only temporary file;
+6. retry the exact failed media URL and delete that temporary file after the attempt;
+7. store only the `instagram → verified YTConv browser` association after the retry succeeds;
+8. use that verified session automatically for later matching URLs.
 
 If verification fails, no account link is saved. Press `B` in the login or error screen to open the official page in another detected profile.
 
@@ -50,33 +51,34 @@ ytconv social logout --all
 
 ## Safe storage model
 
-YTConv does not store:
+YTConv never reads or stores:
 
 - passwords;
 - OTP or 2FA codes;
 - social-media access or refresh tokens;
-- raw cookie values;
 - copies of browser cookie databases.
 
-Cookies remain in the browser and are protected by browser/OS mechanisms such as DPAPI on Windows, Keychain on macOS, or a desktop keyring on Linux. YTConv stores only the provider, browser/profile name, and link timestamp in:
+Persistent cookies remain in the private browser profile and are protected by browser/OS mechanisms such as DPAPI on Windows, Keychain on macOS, or a desktop keyring on Linux. For a download, the browser supplies only the selected provider's cookies through `127.0.0.1`; YTConv writes them to a random user-only temporary file and removes the entire temporary directory after the attempt. Nothing is uploaded.
+
+YTConv stores only the provider, browser name, verification state, and link timestamp in:
 
 ```text
 ~/.ytconv/social-sessions.json
 ```
 
-On Unix-like systems, this reference file is written with mode `0600`. It is not a session copy and cannot sign in to an account without the original browser database.
+On Unix-like systems, this reference file is written with mode `0600`. It is not a session copy and cannot sign in to an account without the private browser profile.
 
 ## If a browser session cannot be read
 
-1. Close every browser window and ensure that no browser process remains in the background.
-2. Retry the download.
-3. If it still fails, link a different browser:
+1. Run the login command again and finish sign-in in the window labeled as the private YTConv profile.
+2. Return to the terminal only after the official site shows the signed-in account.
+3. If it still fails, press `B` or link a different browser:
 
 ```sh
 ytconv login instagram --browser firefox
 ```
 
-Firefox is often easier for CLI tools to read because its session database does not use the same Chromium locking mechanism. On modern Chrome or Edge, App-Bound Encryption or device policy may prevent a CLI process from reading cookies; YTConv does not bypass those protections.
+Firefox is often easier for CLI tools to read because its session database does not use the same Chromium locking mechanism. On modern Chrome or Edge, App-Bound Encryption prevents direct CLI decryption; YTConv respects that boundary by using a separate browser profile and the browser's own loopback DevTools interface instead of decrypting the regular profile.
 
 ## Android Termux and iPhone/iSH limitations
 

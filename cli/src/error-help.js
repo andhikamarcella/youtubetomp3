@@ -34,7 +34,7 @@ export function explainError(error, { platform = process.platform, url = error?.
       : 'Do not use sudo npm. Set a user prefix: npm config set prefix "$HOME/.local"');
   } else if (/cookie database|decrypt.*cookie|dpapi|keyring/u.test(value)) {
     lines.push('The browser is still locking its session database, or the OS encryption key could not be read.');
-    lines.push('Close the browser completely and retry. In the interactive login screen, press B to try Firefox or another profile.');
+    lines.push('Run `ytconv login PROVIDER` and finish sign-in in the private YTConv browser window. Press B to try Firefox or another browser.');
     const hint = socialLoginHint(url);
     if (hint) lines.push(hint);
   } else if (/cookie|login|sign in|private|authentication|members.only|age.restricted/u.test(value)) {
@@ -42,7 +42,7 @@ export function explainError(error, { platform = process.platform, url = error?.
     const hint = socialLoginHint(url);
     if (hint) lines.push(hint);
     else lines.push('Official login help: ytconv social help');
-    lines.push('YTConv uses a local browser session; passwords and raw cookies are neither stored nor sent to a server.');
+    lines.push('Passwords and OTP codes never enter YTConv. Provider-scoped temporary cookies stay local and are deleted after the attempt.');
   } else if (/429|too many requests/u.test(value)) {
     lines.push('The site is rate limiting requests. Avoid aggressive retries.');
     lines.push('Wait, then retry with --jobs 1 --concurrent-fragments 1 --retry-sleep "linear=2:20:3".');

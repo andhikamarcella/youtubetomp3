@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.5.8 compatibility and account frontend for iSH/Alpine."""
+"""YTConv 1.5.9 compatibility and account frontend for iSH/Alpine."""
 
 import json
 import os
@@ -12,7 +12,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-VERSION = "1.5.8"
+VERSION = "1.5.9"
 API_BASE = os.environ.get("YTCONV_API_BASE", "https://ytconv.onrender.com").rstrip("/")
 DIRECTORY = Path(__file__).resolve().parent
 TARGET = DIRECTORY / "ytconv-core.py"
@@ -337,10 +337,10 @@ if not TARGET.is_file():
 
 source = TARGET.read_text(encoding="utf-8")
 replacements = {
-    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.5.8"',
-    'codex/add-ytconv-cli': 'release/ytconv-1.5.8-cli-only-final',
-    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.5.8 native frontend for iSH/Alpine and Python-only shells.',
-    'description="YTConv 1.5.0 Beta for iSH/Alpine."': 'description="YTConv 1.5.8 for iSH/Alpine."',
+    'VERSION = "1.5.0-beta.1"': 'VERSION = "1.5.9"',
+    'codex/add-ytconv-cli': 'release/ytconv-1.5.9-cli-only-final',
+    'YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells.': 'YTConv 1.5.9 native frontend for iSH/Alpine and Python-only shells.',
+    'description="YTConv 1.5.0 Beta for iSH/Alpine."': 'description="YTConv 1.5.9 for iSH/Alpine."',
     'YTConv iSH Beta doctor': 'YTConv iSH doctor',
 }
 

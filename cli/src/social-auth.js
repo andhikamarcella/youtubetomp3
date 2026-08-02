@@ -2,6 +2,13 @@ import process from 'node:process';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 import { detectBrowserProfileSpecs, detectSystemBrowsers } from './cookies.js';
+import {
+  disposePreparedCookieConfig,
+  launchManagedBrowserSession,
+  managedBrowserReference,
+  prepareManagedCookieConfig,
+  supportsManagedBrowser,
+} from './managed-browser.js';
 import { detectSocialPlatform } from './social-platforms.js';
 import {
   SOCIAL_LOGIN_PROVIDERS,
@@ -130,6 +137,23 @@ export async function openOfficialSocialLogin({
   return { opened: false, url: details.loginUrl, command: '' };
 }
 
+export async function openManagedSocialLogin({
+  provider,
+  browserSpec,
+  homeDirectory,
+  launchImpl = launchManagedBrowserSession,
+} = {}) {
+  const details = socialProviderDetails(provider);
+  if (!details) throw new Error(`Unknown social provider: ${provider || '-'}.`);
+  const session = await launchImpl({
+    provider: details.key,
+    browserSpec,
+    url: details.loginUrl,
+    homeDirectory,
+  });
+  return { opened: true, url: details.loginUrl, session };
+}
+
 async function chooseBrowser({ argv, detected, interactive }) {
   const requested = optionValue(argv, '--browser');
   const profile = optionValue(argv, '--profile');
@@ -178,8 +202,8 @@ function socialHelpText() {
     '',
     `Supported: ${SOCIAL_LOGIN_PROVIDERS.join(', ')}`,
     '',
-    'YTConv does not store passwords or raw cookies. Sessions remain in the browser',
-    'under browser/OS encryption; YTConv stores only the browser/profile reference.',
+    'YTConv never reads passwords or OTP codes. Persistent sessions remain encrypted in',
+    'the browser; provider-scoped temporary cookies are deleted after each local attempt.',
   ].join('\n');
 }
 
@@ -191,6 +215,9 @@ async function completeSocialLogin({
   detectBrowsersImpl = detectSystemBrowsers,
   detectBrowserProfilesImpl = detectBrowserProfileSpecs,
   openLoginImpl = openOfficialSocialLogin,
+  openManagedLoginImpl = openManagedSocialLogin,
+  prepareManagedCookieImpl = prepareManagedCookieConfig,
+  disposePreparedCookieImpl = disposePreparedCookieConfig,
 } = {}) {
   const details = socialProviderDetails(provider);
   if (!details) throw new Error(`Unknown social provider. Choose: ${SOCIAL_LOGIN_PROVIDERS.join(', ')}`);
@@ -202,13 +229,16 @@ async function completeSocialLogin({
   const detectedProfiles = await detectBrowserProfilesImpl({ browsers: detectedBrowsers });
   const detected = detectedProfiles.length ? detectedProfiles : detectedBrowsers;
   const browserSpec = await chooseBrowser({ argv, detected, interactive });
+  const managed = supportsManagedBrowser(browserSpec);
   const opened = argv.includes('--no-open')
     ? { opened: false, url: details.loginUrl }
-    : await openLoginImpl({ provider: details.key, browserSpec });
+    : managed
+      ? await openManagedLoginImpl({ provider: details.key, browserSpec, homeDirectory })
+      : await openLoginImpl({ provider: details.key, browserSpec });
 
   console.log(`\nThe official ${details.label} login page is open:`);
   console.log(opened.url);
-  console.log(`Browser YTConv will use: ${browserSpec}`);
+  console.log(`Browser YTConv will use: ${managed ? `${splitBrowserSpec(browserSpec).browser} · private YTConv profile` : browserSpec}`);
   console.log('Complete sign-in, including OTP/2FA if the site requests it.');
 
   if (interactive && !argv.includes('--no-wait')) {
@@ -220,9 +250,31 @@ async function completeSocialLogin({
     }
   }
 
-  const linked = await linkSocialSession({ provider: details.key, browserSpec, homeDirectory });
-  console.log(`\n✓ ${details.label} is linked to YTConv on this device.`);
-  console.log('Cookies remain in the browser and are not sent to a YTConv server.');
+  let verified = false;
+  if (managed && opened.session) {
+    let prepared;
+    try {
+      prepared = await prepareManagedCookieImpl({
+        kind: 'managed-browser',
+        provider: details.key,
+        browser: splitBrowserSpec(browserSpec).browser,
+        spec: browserSpec,
+      }, { homeDirectory });
+      verified = true;
+    } finally {
+      await disposePreparedCookieImpl(prepared);
+    }
+  }
+
+  const linked = await linkSocialSession({
+    provider: details.key,
+    browserSpec: managed ? managedBrowserReference(browserSpec) : browserSpec,
+    sessionMode: managed ? 'managed-browser' : 'browser-profile',
+    verified,
+    homeDirectory,
+  });
+  console.log(`\n✓ ${details.label} ${verified ? 'sign-in was verified and linked' : 'browser reference was saved'} on this device.`);
+  console.log('The persistent session remains encrypted in the browser. Temporary download cookies are deleted after each attempt.');
   console.log(`Saved reference: ${linked.target}`);
   console.log(`Try a download: ytconv download "${details.key.toUpperCase()}_URL"`);
   return { exitCode: 0, ...linked };
@@ -251,6 +303,7 @@ export async function beginSocialLoginHandoff({
   detectBrowsersImpl = detectSystemBrowsers,
   detectBrowserProfilesImpl = detectBrowserProfileSpecs,
   openLoginImpl = openOfficialSocialLogin,
+  openManagedLoginImpl = openManagedSocialLogin,
 } = {}) {
   const details = socialProviderDetails(provider || detectSocialPlatform(url));
   if (!details) return null;
@@ -276,7 +329,10 @@ export async function beginSocialLoginHandoff({
     throw new Error('No supported desktop browser profile was detected. Install or open Chrome, Edge, Firefox, Brave, or another supported browser first.');
   }
 
-  const opened = await openLoginImpl({ provider: details.key, browserSpec: selected });
+  const managed = supportsManagedBrowser(selected);
+  const opened = managed
+    ? await openManagedLoginImpl({ provider: details.key, browserSpec: selected, homeDirectory })
+    : await openLoginImpl({ provider: details.key, browserSpec: selected });
   if (!opened.opened) {
     throw new Error(`YTConv could not open the official ${details.label} login page. Open ${details.loginUrl} manually, then retry.`);
   }
@@ -286,14 +342,18 @@ export async function beginSocialLoginHandoff({
     label: details.label,
     loginUrl: details.loginUrl,
     browserSpec: selected,
+    browserDisplay: managed ? `${splitBrowserSpec(selected).browser} · private YTConv profile` : selected,
+    sessionBrowserSpec: managed ? managedBrowserReference(selected) : selected,
+    sessionMode: managed ? 'managed-browser' : 'browser-profile',
     alternatives,
     cookieConfig: {
-      kind: 'browser',
+      kind: managed ? 'managed-browser' : 'browser',
       browser: splitBrowserSpec(selected).browser,
       spec: selected,
       provider: details.key,
       linked: false,
-      label: `official ${details.label} login · ${selected}`,
+      loginUrl: details.loginUrl,
+      label: `official ${details.label} login · ${managed ? 'private YTConv browser' : selected}`,
     },
   };
 }
@@ -302,7 +362,9 @@ export async function confirmSocialLoginHandoff(handoff, { homeDirectory } = {})
   if (!handoff?.provider || !handoff?.browserSpec) throw new Error('No social-login handoff is waiting for confirmation.');
   return linkSocialSession({
     provider: handoff.provider,
-    browserSpec: handoff.browserSpec,
+    browserSpec: handoff.sessionBrowserSpec || handoff.browserSpec,
+    sessionMode: handoff.sessionMode || 'browser-profile',
+    verified: true,
     homeDirectory,
   });
 }
@@ -321,7 +383,7 @@ export async function recoverSocialLoginInTerminal({
   if (!handoff) return null;
 
   console.log(`\n${handoff.label} needs a signed-in account for this URL.`);
-  console.log(`YTConv opened the official login page in ${handoff.browserSpec}.`);
+  console.log(`YTConv opened the official login page in ${handoff.browserDisplay || handoff.browserSpec}.`);
   console.log('Finish sign-in and any OTP/2FA in the browser. Passwords and OTP codes never enter YTConv.');
   if (waitForConfirmationImpl) await waitForConfirmationImpl();
   else {
@@ -335,7 +397,7 @@ export async function recoverSocialLoginInTerminal({
 
   const result = await retry(handoff.cookieConfig);
   await confirmSocialLoginHandoff(handoff, { homeDirectory });
-  console.log(`✓ ${handoff.label} session verified. Future matching links will use ${handoff.browserSpec} automatically.`);
+  console.log(`✓ ${handoff.label} session verified. Future matching links will use ${handoff.browserDisplay || handoff.browserSpec} automatically.`);
   return { handoff, result };
 }
 
@@ -348,9 +410,11 @@ async function printSocialStatus({ homeDirectory } = {}) {
     return 0;
   }
   for (const session of sessions.sort((a, b) => a.provider.localeCompare(b.provider))) {
-    console.log(`${String(session.label || session.provider).padEnd(22)} ${session.browserSpec} · browser/OS encrypted`);
+    const state = session.verifiedAt ? 'verified' : 'saved reference only';
+    const location = session.sessionMode === 'managed-browser' ? 'private YTConv browser' : session.browserSpec;
+    console.log(`${String(session.label || session.provider).padEnd(22)} ${location} · ${state} · browser/OS encrypted`);
   }
-  console.log('\nYTConv does not store passwords, OTP codes, access tokens, or raw cookies.');
+  console.log('\nYTConv never reads passwords or OTP codes. Temporary provider cookies stay local and are deleted after each attempt.');
   return 0;
 }
 

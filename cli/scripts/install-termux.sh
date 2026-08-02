@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
-VERSION="1.5.8"
+VERSION="1.5.9"
 CHANNEL="latest"
 printf '%s\n' "YTConv $VERSION installer for Termux"
 

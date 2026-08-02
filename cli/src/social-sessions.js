@@ -96,6 +96,8 @@ function normalizeBrowserSpec(browserSpec = '') {
 export async function linkSocialSession({
   provider,
   browserSpec,
+  sessionMode = 'browser-profile',
+  verified = false,
   homeDirectory = os.homedir(),
 } = {}) {
   const details = socialProviderDetails(provider);
@@ -107,6 +109,8 @@ export async function linkSocialSession({
     label: details.label,
     browserSpec: spec,
     linkedAt: new Date().toISOString(),
+    sessionMode,
+    verifiedAt: verified ? new Date().toISOString() : null,
     storage: 'browser-os-encrypted',
   };
   const target = await writeSocialSessions(store, { homeDirectory });
