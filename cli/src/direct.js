@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { resolveCookieConfigs } from './cookies.js';
 import { inspectDependencies } from './dependencies.js';
+import { disposePreparedCookieConfig, prepareManagedCookieConfig } from './managed-browser.js';
 import { runYtDlpUtility } from './downloader.js';
 import { inspectMedia } from './media-controller.js';
 import { recoverSocialLoginInTerminal } from './social-auth.js';
@@ -128,35 +129,41 @@ export async function runDirectCommand({ options, outputDirectory }) {
     });
   let lastError = null;
 
-  const attempt = async (cookieConfig) => {
-    await appendLog(`direct command: ${options.initialUrl} (${cookieConfig.label})`);
-    if (options.listFormats || options.listSubs) {
-      await runYtDlpUtility({
+  const attempt = async (configuredCookie) => {
+    let cookieConfig = configuredCookie;
+    try {
+      cookieConfig = await prepareManagedCookieConfig(configuredCookie);
+      await appendLog(`direct command: ${options.initialUrl} (${configuredCookie.label})`);
+      if (options.listFormats || options.listSubs) {
+        await runYtDlpUtility({
+          ytDlpPath: dependencies.ytDlp.path,
+          url: options.initialUrl,
+          cookieConfig,
+          playlist: options.initialPlaylist,
+          kind: options.listFormats ? 'formats' : 'subs',
+          options,
+        });
+        return 0;
+      }
+
+      const media = await inspectMedia({
         ytDlpPath: dependencies.ytDlp.path,
         url: options.initialUrl,
         cookieConfig,
         playlist: options.initialPlaylist,
-        kind: options.listFormats ? 'formats' : 'subs',
+        mode: options.initialMode,
+        platformHint: options.initialPlatform,
         options,
       });
+      if (options.formatsJson) {
+        console.log(JSON.stringify({ schemaVersion: 1, ytconvVersion: CLI_VERSION, url: options.initialUrl, formats: media.formats || [] }, null, 2));
+      } else if (options.json) console.log(JSON.stringify(jsonSummary(media, options), null, 2));
+      else printSummary(media, options);
+      await appendLog(`direct command success: ${media.title || options.initialUrl}`);
       return 0;
+    } finally {
+      await disposePreparedCookieConfig(cookieConfig);
     }
-
-    const media = await inspectMedia({
-      ytDlpPath: dependencies.ytDlp.path,
-      url: options.initialUrl,
-      cookieConfig,
-      playlist: options.initialPlaylist,
-      mode: options.initialMode,
-      platformHint: options.initialPlatform,
-      options,
-    });
-    if (options.formatsJson) {
-      console.log(JSON.stringify({ schemaVersion: 1, ytconvVersion: CLI_VERSION, url: options.initialUrl, formats: media.formats || [] }, null, 2));
-    } else if (options.json) console.log(JSON.stringify(jsonSummary(media, options), null, 2));
-    else printSummary(media, options);
-    await appendLog(`direct command success: ${media.title || options.initialUrl}`);
-    return 0;
   };
 
   for (const cookieConfig of cookieConfigs) {

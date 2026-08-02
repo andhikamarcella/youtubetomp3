@@ -250,8 +250,10 @@ async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
 function accessHint({ url, cookieConfig, originalError }) {
   const platform = socialPlatformLabel(detectSocialPlatform(url));
   const officialLogin = socialLoginHint(url);
-  const browserHint = cookieConfig?.kind === 'browser'
-    ? `A browser session was detected but could not be read. Close the browser completely and retry.${officialLogin ? ` Link it again: ${officialLogin}` : ''}`
+  const browserHint = cookieConfig?.managedBrowser
+    ? `The private YTConv browser session was read, but this URL still was not accessible.${officialLogin ? ` Reopen the official login: ${officialLogin}` : ''}`
+    : cookieConfig?.kind === 'browser'
+      ? `A regular browser session was detected but could not be decrypted. Use the private YTConv login window instead.${officialLogin ? ` Open it with: ${officialLogin}` : ''}`
     : `Public access was attempted.${officialLogin ? ` ${officialLogin}` : ' Run ytconv social help for official login instructions.'}`;
   return `${originalError} ${platform}: ${browserHint}`;
 }

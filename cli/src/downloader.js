@@ -99,7 +99,7 @@ function cookieFailureMessage(stderr) {
     return 'The browser security layer would not release this session. In the interactive screen, press B to try Firefox or another profile.';
   }
   if (/could not copy.*cookie|cookie database|decrypt.*cookie|dpapi|keyring/iu.test(stderr)) {
-    return 'Could not read the browser session. Close the browser completely, then link it again with `ytconv login PROVIDER`.';
+    return 'The regular browser session could not be decrypted. Run `ytconv login PROVIDER` to use the private YTConv browser window.';
   }
   if (/cookies?.*(expired|invalid)|sign in|login required|authentication/iu.test(stderr)) {
     return 'The site requires a signed-in account. Run `ytconv login PROVIDER`; YTConv will use the local browser session automatically.';

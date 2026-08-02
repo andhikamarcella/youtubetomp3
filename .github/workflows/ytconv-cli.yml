@@ -1,9 +1,9 @@
-name: YTConv CLI 1.5.8 Stable
+name: YTConv CLI 1.5.9 Stable
 
 on:
   push:
     branches:
-      - "release/ytconv-1.5.8*"
+      - "release/ytconv-1.5.9*"
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -33,12 +33,12 @@ jobs:
       - run: npm test
       - name: Stable identity and command smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.8"
+          test "$(node ./bin/ytconv.js --version)" = "1.5.9"
           node ./bin/ytconv.js --help | grep -q "Persistent CLI features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
           HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "No accounts are linked yet"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.8') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.8').includes('@latest')) process.exitCode=1; })"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.9') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.9').includes('@latest')) process.exitCode=1; })"
 
   linux-full:
     runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
         run: |
           npm run check:ish
           npm run test:ish
-          test "$(cat ish/VERSION)" = "1.5.8"
+          test "$(cat ish/VERSION)" = "1.5.9"
           sh -n scripts/install-ish.sh
           sh -n scripts/install-termux.sh
           sh -n scripts/install-unix.sh
@@ -92,7 +92,7 @@ jobs:
           test ! -f ../.github/workflows/ytconv-auth.yml
           npm pack --dry-run
           npm pack --json > package-preview.json
-          grep -q '"version": "1.5.8"' package.json
+          grep -q '"version": "1.5.9"' package.json
           grep -q '"tag": "latest"' package.json
           grep -q 'src/auth.js' package-preview.json
           grep -q 'bin/ytconv-auth.js' package-preview.json
@@ -109,7 +109,7 @@ jobs:
           rm -rf /tmp/ytconv-portable
           mkdir -p /tmp/ytconv-portable
           npm install --prefix /tmp/ytconv-portable "$PWD/$TARBALL" --omit=optional --ignore-scripts
-          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.8"
+          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.9"
 
   windows-cmd-powershell:
     runs-on: windows-latest
@@ -127,6 +127,19 @@ jobs:
         run: npm run check
       - shell: pwsh
         run: npm test
+      - name: Prove the real managed-browser cookie bridge on Windows
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+            "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+            "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
+            "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+          )
+          $browser = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $browser) { throw "Chrome or Edge is required for the managed-browser smoke test." }
+          $env:YTCONV_TEST_BROWSER = $browser
+          npm run test:browser
       - name: Prove automatic FFmpeg repair on Windows
         shell: pwsh
         run: |
@@ -157,8 +170,8 @@ jobs:
         shell: pwsh
         run: |
           $version = node .\bin\ytconv.js --version
-          if ($version -ne '1.5.8') { throw "Wrong version: $version" }
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.8',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
+          if ($version -ne '1.5.9') { throw "Wrong version: $version" }
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.9',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
 
   macos:
     runs-on: macos-latest
@@ -174,7 +187,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.8"
+          test "$(node ./bin/ytconv.js --version)" = "1.5.9"
           node ./bin/ytconv.js completion zsh
           sh ./scripts/install-unix.sh --print-plan | grep -q 'brew'
 
@@ -191,7 +204,7 @@ jobs:
       - run: npm install --ignore-scripts --omit=optional
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.8"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.9"
 
   distro-installer-plans:
     runs-on: ubuntu-latest

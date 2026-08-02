@@ -2,6 +2,29 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.9 — secure browser bridge for Chromium login
+
+### Fixed
+
+- Instagram and other account-protected downloads no longer loop on a saved Chrome or Edge profile that the media engines cannot decrypt.
+- When a regular Chromium session fails, YTConv opens the provider's official login page in a private YTConv browser profile and verifies the sign-in before retrying the same URL.
+- The status screen now distinguishes a verified login from an unverified browser reference.
+- A failed or incomplete login is never labeled as linked.
+
+### Security and privacy
+
+- Passwords and OTP/2FA codes are entered only on the provider's official page and are never visible to YTConv.
+- The persistent login remains encrypted in the private browser profile under `~/.ytconv/browser-profiles`.
+- Only cookies for the selected provider are copied through the browser's loopback-only DevTools connection into a user-only temporary Netscape file.
+- The temporary cookie file is deleted after every success or failure and is never uploaded to a YTConv server.
+- The user's regular Chrome/Edge/Brave profile is not modified, unlocked, or decrypted.
+
+### Verification
+
+- Unit tests cover provider-domain filtering, required authentication cookies, `0600` temporary-file permissions, and guaranteed cleanup.
+- Windows CI launches a real installed Chromium browser, creates a test cookie, exports it through the same bridge, and proves that the temporary file is removed.
+- Native Firefox browser sessions remain supported as a fallback on desktop systems.
+
 ## 1.5.8 — verified browser login and automatic retry
 
 ### Added

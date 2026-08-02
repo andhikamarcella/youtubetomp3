@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.5.8"
+VERSION="1.5.9"
 CHANNEL="latest"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1

@@ -12,6 +12,7 @@ import {
   resolveCookieConfigs,
 } from './cookies.js';
 import { inspectDependencies, prepareTermuxDependencies } from './dependencies.js';
+import { disposePreparedCookieConfig, prepareManagedCookieConfig } from './managed-browser.js';
 import { downloadMedia, inspectMedia } from './media-controller.js';
 import {
   beginSocialLoginHandoff,
@@ -275,13 +276,13 @@ function SocialLoginScreen({ handoff, panelWidth, actionMessage }) {
     h(Box, { borderStyle: 'double', borderColor: 'yellow', width: panelWidth, paddingX: 1, flexDirection: 'column' },
       h(Text, { bold: true, color: 'yellow' }, `${handoff.label} sign-in required`),
       h(Text, { wrap: 'wrap' }, 'The official login page is open in your browser. Finish sign-in and any OTP/2FA there.'),
-      h(Text, { color: 'cyan' }, `Browser profile: ${handoff.browserSpec}`),
+      h(Text, { color: 'cyan' }, `Browser: ${handoff.browserDisplay || handoff.browserSpec}`),
       h(Text, { dimColor: true, wrap: 'wrap' }, handoff.loginUrl),
       h(Text, { dimColor: true, wrap: 'wrap' }, 'YTConv will verify this exact media URL before saving the browser/profile link.'),
     ),
     actionMessage ? h(Text, { color: 'cyan', wrap: 'wrap' }, actionMessage) : null,
     h(Text, { bold: true }, 'Enter verify session and retry · B another browser · Q/Esc exit'),
-    h(Text, { dimColor: true }, 'Passwords, OTP codes, and raw cookies never enter YTConv or a YTConv server.'),
+    h(Text, { dimColor: true }, 'Passwords and OTP codes never enter YTConv. Temporary provider cookies stay local and are deleted after the attempt.'),
   );
 }
 
@@ -546,12 +547,14 @@ function App({
 
     try {
       for (let index = 0; index < cookieConfigs.length; index += 1) {
-        const cookieConfig = cookieConfigs[index];
+        const configuredCookie = cookieConfigs[index];
+        let cookieConfig = configuredCookie;
         const platformKey = platformHint === 'auto' ? detectSocialPlatform(value) : platformHint;
         setStage('probing');
-        setStatusText(`${socialPlatformLabel(platformKey)} · trying ${cookieConfig.label}`);
+        setStatusText(`${socialPlatformLabel(platformKey)} · trying ${configuredCookie.label}`);
 
         try {
+          cookieConfig = await prepareManagedCookieConfig(configuredCookie);
           const inspected = await inspectMedia({
             ytDlpPath: dependencies.ytDlp.path,
             url: value,
@@ -619,6 +622,8 @@ function App({
             setStatusText(`public access failed · trying cookies from ${next.label}`);
             continue;
           }
+        } finally {
+          await disposePreparedCookieConfig(cookieConfig);
         }
       }
 

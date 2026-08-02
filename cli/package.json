@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "CLI-only media downloader with automatic setup and updates, official browser-session login, profiles, batch downloads, and multi-platform support.",
   "type": "module",
   "bin": {
@@ -23,9 +23,10 @@
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv-auth.js",
-    "check": "node --check ./bin/ytconv-auth.js && node --check ./bin/ytconv.js && node --check ./src/auth.js && node --check ./src/argument-precedence.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/social-sessions.js && node --check ./src/social-auth.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/english-help.js && node --check ./src/commands.js && node --check ./src/user-data.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/gallery-beta.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js && node --check ./scripts/test-cli.js",
+    "check": "node --check ./bin/ytconv-auth.js && node --check ./bin/ytconv.js && node --check ./src/auth.js && node --check ./src/argument-precedence.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/social-sessions.js && node --check ./src/social-auth.js && node --check ./src/managed-browser.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/english-help.js && node --check ./src/commands.js && node --check ./src/user-data.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/gallery-beta.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js && node --check ./scripts/test-cli.js && node --check ./scripts/test-managed-browser.js",
     "check:ish": "python3 -m py_compile ./ish/ytconv.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node ./scripts/test-cli.js",
+    "test:browser": "node ./scripts/test-managed-browser.js",
     "test:ish": "python3 ./ish/ytconv.py --version"
   },
   "keywords": [
@@ -37,24 +38,24 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "MIT",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.8-cli-only-final/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.9-cli-only-final/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.5.8-cli-only-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.5.9-cli-only-final/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "releaseDate": "2026-08-03",
-  "releaseNotes": "YTConv 1.5.8 automatically opens the official social login page when account access is required, detects the active browser profile, verifies the failed media URL before saving the link, retries the download immediately, and falls back between video and gallery engines for mixed social posts.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.8-cli-only-final/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.5.9 fixes Chromium login loops with a private official-login browser profile, a loopback-only provider-cookie bridge, verified retry of the exact media URL, user-only temporary files, and guaranteed cleanup after every attempt.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.9-cli-only-final/cli/CHANGELOG.md",
   "installer": {
     "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.8.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.8/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.8/ytconv-1.5.8.metadata.json"
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.9.tgz",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.9/SHA256SUMS.txt",
+    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.9/ytconv-1.5.9.metadata.json"
   },
   "engines": {
     "node": ">=18",
@@ -65,7 +66,8 @@
     "ffmpeg-static": "5.3.0",
     "ink": "^5.2.1",
     "react": "^18.3.1",
-    "which": "^5.0.0"
+    "which": "^5.0.0",
+    "ws": "^8.18.3"
   },
   "publishConfig": {
     "access": "public",
