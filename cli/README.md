@@ -1,44 +1,45 @@
-# YTConv CLI 1.5.0
+# YTConv CLI 1.6.0-beta.1
 
 YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
 > Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-## What is new in 1.5.0
+## What is new in 1.6.0-beta.1
 
-- An active YTConv account is required before every download or conversion.
-- Secure browser device login works from Windows, Linux, macOS, Termux, SSH, and iSH.
-- `ytconv login`, `ytconv auth status`, `ytconv whoami`, and `ytconv logout`.
-- Device codes expire after ten minutes and CLI access tokens expire after ninety days.
-- Long-lived tokens are stored as hashes by the server; the temporary device exchange is encrypted and one-time.
-- Public X/Twitter posts try yt-dlp before gallery-dl, and an empty gallery result is no longer reported as a successful conversion.
-- All 1.5.0-beta.2 features remain: persistent config, named profiles, privacy-limited history, shell completion, playlist/batch, retry/resume, subtitles, SponsorBlock mark mode, and separate archives.
+This beta includes everything from the account-protected 1.5.0 release, plus:
 
-## Install stable 1.5.0
+- `ytconv auth devices` to list signed-in CLI devices.
+- `ytconv auth devices --json` for scripts and automation.
+- `ytconv auth revoke TOKEN_ID` to revoke a lost or unused device.
+- `ytconv auth revoke all` to revoke every other device while keeping the current terminal active.
+- `ytconv auth refresh` to rotate the current device token immediately.
+- Automatic token rotation when seven days or less remain.
+- Device-management parity for the native iSH/Python frontend.
+- A clearer account table and improved browser-login feedback.
+
+The stable foundation still requires account login before downloads/conversions, keeps the X/Twitter yt-dlp-first fallback, and includes persistent config, profiles, history, shell completion, playlist/batch, retry/resume, subtitles, SponsorBlock mark mode, and separate archives.
+
+## Install the beta
 
 ### Windows
 
 ```powershell
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
-npm.cmd install -g ytconv@latest --force
+npm.cmd install -g ytconv@beta --force
 ytconv.cmd --version
 ytconv.cmd login
 ```
-
-Use `ytconv.cmd` when PowerShell execution policy blocks the generated `ytconv.ps1` shim.
 
 ### Linux, macOS, or SSH
 
 ```sh
 npm uninstall -g ytconv
 npm cache verify
-npm install -g ytconv@latest --force
+npm install -g ytconv@beta --force
 ytconv --version
 ytconv login
 ```
-
-The included `scripts/install-unix.sh` can install the operating-system dependencies on supported package managers without using `sudo npm install -g`.
 
 ### Android Termux
 
@@ -47,36 +48,41 @@ pkg update
 pkg install -y nodejs python ffmpeg curl ca-certificates
 termux-setup-storage
 python -m pip install -U --no-cache-dir yt-dlp gallery-dl
-npm install -g ytconv@latest --omit=optional --force
+npm install -g ytconv@beta --omit=optional --force
 ytconv repair
 ytconv login
 ```
 
-Default output: `~/storage/downloads/YTConv`.
-
 ### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.0/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
-sh /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-beta/cli/scripts/install-ish.sh -o /tmp/ytconv-ish-beta.sh
+sh /tmp/ytconv-ish-beta.sh
 ytconv --version
 ytconv login
 ```
 
-The browser can be opened on the same device or another device. Enter the eight-character code shown in the terminal and approve the CLI session.
+Expected version:
 
-## Account commands
+```text
+1.6.0-beta.1
+```
+
+## Login and device management
 
 ```sh
 ytconv login
 ytconv auth status
-ytconv whoami
+ytconv auth status --json
+ytconv auth devices
+ytconv auth devices --json
+ytconv auth revoke TOKEN_ID
+ytconv auth revoke all
+ytconv auth refresh
 ytconv logout
 ```
 
-The local device token is stored in `~/.ytconv/auth.json`. On Unix-like systems it is written with user-only permissions. Never share that file, browser cookies, access tokens, or device codes.
-
-Help, version, diagnostics, repair, update, configuration, profile, and history commands remain available before login. Media downloads and conversions do not.
+The local token is stored in `~/.ytconv/auth.json` with user-only permissions on Unix-like systems. Never share that file, device codes, cookies, or browser sessions.
 
 ## Media commands
 
@@ -89,7 +95,7 @@ ytconv formats "URL"
 ytconv subtitles "URL"
 ```
 
-## Persistent configuration and profiles
+## Configuration, profiles, and history
 
 ```sh
 ytconv config list
@@ -99,9 +105,12 @@ ytconv profile set music preset=music audioQuality=320
 ytconv profile set phone preset=mobile resolution=720
 ytconv profile use phone
 ytconv --profile music download "URL"
+ytconv history
+ytconv history --json
+ytconv history clear
 ```
 
-Explicit command-line options override saved defaults. Use `--no-config` for a clean one-run session.
+Explicit command-line options override saved defaults. `--no-config` ignores saved settings for one run.
 
 ## Default media behavior
 
@@ -112,7 +121,7 @@ Download archives enabled per output profile
 Resume            enabled
 ```
 
-One-run opt-outs:
+Opt out for one run:
 
 ```sh
 ytconv download "URL" --no-subtitles
@@ -120,16 +129,13 @@ ytconv download "URL" --no-sponsorblock
 ytconv download "URL" --no-archive
 ```
 
-SponsorBlock `mark` adds chapter markers; it does not cut the media. Cutting requires the explicit `--sponsorblock remove` option.
-
-## Formats, metadata, cookies, and diagnostics
+## Formats, cookies, and diagnostics
 
 ```sh
 ytconv download "URL" --audio-format mp3 --audio-quality 320
 ytconv download "URL" --audio-format flac
 ytconv download "URL" --video-format mp4 --resolution 1080
 ytconv download "URL" --preset music
-ytconv download "URL" --metadata --thumbnail --metadata-files
 ytconv download "URL" --cookies cookies.txt
 ytconv download "URL" --cookies-from-browser chrome
 ytconv doctor
@@ -138,22 +144,16 @@ ytconv --self-test
 ytconv --shell-info
 ```
 
-Cookies are account credentials. Use them only for media you are authorized to access and never include them in screenshots, logs, issues, or chat messages.
+Cookies are account credentials. Use them only for media you are authorized to access and never publish them in logs, screenshots, issues, or chat messages.
 
-## History and shell completion
+## Shell completion
 
 ```sh
-ytconv history
-ytconv history --json
-ytconv history --limit 50
-ytconv history clear
 ytconv completion bash
 ytconv completion zsh
 ytconv completion fish
 ytconv completion powershell
 ```
-
-History is capped and excludes cookies, tokens, proxy credentials, and browser session data.
 
 ## Account-server deployment
 
@@ -168,7 +168,18 @@ NEXTAUTH_URL
 CLI_AUTH_ENCRYPTION_KEY (recommended)
 ```
 
-The CLI auth tables are included in `sql/schema.sql` and are also created by the API when the database is ready. See [docs/AUTH.md](docs/AUTH.md).
+See [docs/AUTH.md](docs/AUTH.md) and [docs/BETA-1.6.md](docs/BETA-1.6.md).
+
+## Return to stable
+
+```sh
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@latest --force
+ytconv --version
+```
+
+For iSH, rerun the installer from `release/ytconv-1.5.0`.
 
 ## Release channels
 
@@ -177,10 +188,11 @@ Stable: 1.5.0          npm install -g ytconv@latest
 Beta:   1.6.0-beta.1   npm install -g ytconv@beta
 ```
 
-The guarded beta workflow preserves the stable npm `latest` tag.
+The beta publishing workflow verifies that npm `latest` is not changed.
 
 ## Documentation
 
+- [1.6 beta guide](docs/BETA-1.6.md)
 - [Account login and deployment](docs/AUTH.md)
 - [Complete installation guide](docs/INSTALL.md)
 - [Linux distribution guide](docs/LINUX.md)
