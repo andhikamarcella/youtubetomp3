@@ -69,6 +69,22 @@ function readableError(stderr, fallback) {
   return useful.at(-1)?.replace(/^\[[^\]]+\]\s*/u, '') || fallback;
 }
 
+export function classifyEmptyGalleryResult({ archivePath = '', inspectedItemCount = 0, diagnostic = '' } = {}) {
+  if (String(archivePath || '').trim() && Number(inspectedItemCount) > 0) {
+    return {
+      skipped: true,
+      reason: `${inspectedItemCount} item ditemukan tetapi semuanya sudah tercatat di archive gallery-dl.`,
+    };
+  }
+  return {
+    skipped: false,
+    reason: readableError(
+      diagnostic,
+      'gallery-dl tidak mengembalikan file dari link tersebut. Konten publik akan dicoba melalui yt-dlp; konten login-only memerlukan cookies aktif.',
+    ),
+  };
+}
+
 export function buildGalleryDownloadArgs({ url, cookieConfig, outputDirectory, archivePath = process.env.YTCONV_GALLERY_ARCHIVE?.trim() } = {}) {
   const include = process.env.YTCONV_GALLERY_INCLUDE?.trim();
   const args = [
@@ -170,14 +186,41 @@ export async function downloadGallery({
       const created = [...after].filter((filePath) => !before.has(filePath));
       if (!outputPath && created.length) outputPath = created.at(-1);
       const count = Math.max(downloadedCount, created.length);
-      if (!count && !archive) {
-        const reason = readableError(stderrAll, 'gallery-dl tidak mengembalikan file dari link tersebut. Konten publik akan dicoba melalui yt-dlp; konten login-only memerlukan cookies aktif.');
-        finish(() => reject(new Error(reason)));
+
+      if (!count) {
+        let inspectedItemCount = 0;
+        let inspectionDiagnostic = '';
+        if (archive) {
+          try {
+            const inspection = await inspectGallery({ url, cookieConfig, outputDirectory, signal });
+            inspectedItemCount = Math.max(0, Number(inspection?.itemCount) || 0);
+          } catch (error) {
+            inspectionDiagnostic = error instanceof Error ? error.message : String(error);
+          }
+        }
+        const outcome = classifyEmptyGalleryResult({
+          archivePath: archive,
+          inspectedItemCount,
+          diagnostic: [stderrAll, inspectionDiagnostic].filter(Boolean).join('\n'),
+        });
+        if (!outcome.skipped) {
+          finish(() => reject(new Error(outcome.reason)));
+          return;
+        }
+        onProgress?.({ percent: '100%', speed: '0 file baru', eta: '' });
+        onLog?.(outcome.reason, false);
+        finish(() => resolve({
+          outputPath: outputDirectory,
+          fileCount: 0,
+          inspectedItemCount,
+          skipped: true,
+          engine: 'gallery-dl',
+        }));
         return;
       }
+
       onProgress?.({ percent: '100%', speed: `${count} file baru`, eta: '' });
-      if (!count && archive) onLog?.('Media sudah tercatat di archive gallery-dl; download dilewati.', false);
-      finish(() => resolve({ outputPath: outputPath || outputDirectory, fileCount: count, engine: 'gallery-dl' }));
+      finish(() => resolve({ outputPath: outputPath || outputDirectory, fileCount: count, skipped: false, engine: 'gallery-dl' }));
     });
   });
 }
