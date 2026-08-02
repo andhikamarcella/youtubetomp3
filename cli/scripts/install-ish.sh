@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.0/cli"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-beta/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
 TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
 TMP_CORE="/tmp/ytconv-ish-core.py.$$"
-VERSION="1.5.0"
+VERSION="1.6.0-beta.1"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
@@ -59,8 +59,8 @@ say "YTConv iSH $VERSION was installed successfully."
 "$BIN_FILE" --diagnose || true
 say ""
 say "First login: ytconv login"
+say "Manage devices: ytconv auth devices"
 say "Then download: ytconv URL"
 say "Playlist: ytconv playlist URL"
 say "Batch: ytconv batch links.txt --continue-on-error"
-say "Opt out: --no-subtitles --no-sponsorblock --no-archive"
 say "Output: $HOME/Downloads/YTConv"
