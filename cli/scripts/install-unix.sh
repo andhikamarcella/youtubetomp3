@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.5.0"
-CHANNEL="latest"
+VERSION="1.6.0-beta.1"
+CHANNEL="beta"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
 [ "${1:-}" = "--print-plan" ] && PRINT_PLAN=1
@@ -120,5 +120,7 @@ ytconv --shell-info || true
 ytconv doctor || true
 ytconv quickstart || true
 say ""
-say "Stable installation completed without sudo npm. Open a new terminal or run: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
+say "Beta installation completed without sudo npm. Open a new terminal or run: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
 say "Sign in once before downloading: ytconv login"
+say "Manage signed-in devices: ytconv auth devices"
+say "Return to stable: npm install -g ytconv@latest --force"
