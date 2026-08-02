@@ -7,6 +7,7 @@ import {
   authPaths,
   clearAuthSession,
   readAuthSession,
+  refreshAuthSession,
   requireAuthenticatedSession,
   validateAuthSession,
   writeAuthSession,
@@ -46,6 +47,33 @@ test('validateAuthSession refreshes account metadata from the server', async (t)
   assert.equal(result.ok, true);
   assert.equal(result.session.user.email, 'user@example.com');
   assert.equal(result.session.tokenId, 'token-id');
+});
+
+test('refreshAuthSession rotates and persists the device token', async (t) => {
+  const homeDirectory = await temporaryHome(t);
+  await writeAuthSession({
+    accessToken: 'old-token',
+    tokenId: 'old-id',
+    user: { id: 'user-id', email: 'user@example.com' },
+  }, { homeDirectory });
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async (url, options) => {
+    assert.match(String(url), /\/api\/cli-auth\/refresh$/u);
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers.authorization, 'Bearer old-token');
+    return new Response(JSON.stringify({
+      accessToken: 'new-token',
+      tokenId: 'new-id',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      user: { id: 'user-id', email: 'user@example.com', role: 'user' },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  assert.equal(await refreshAuthSession({ homeDirectory }), 0);
+  const saved = await readAuthSession({ homeDirectory });
+  assert.equal(saved.accessToken, 'new-token');
+  assert.equal(saved.tokenId, 'new-id');
+  assert.ok(saved.lastRotatedAt);
 });
 
 test('media commands cannot continue without login', async (t) => {
