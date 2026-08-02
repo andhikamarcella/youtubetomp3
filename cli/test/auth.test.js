@@ -4,8 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  applyAuthEnvironment,
   authPaths,
   clearAuthSession,
+  login,
+  loginLocally,
   readAuthSession,
   requireAuthenticatedSession,
   validateAuthSession,
@@ -52,6 +55,49 @@ test('media commands cannot continue without login', async (t) => {
   const homeDirectory = await temporaryHome(t);
   await assert.rejects(
     requireAuthenticatedSession({ homeDirectory }),
-    /Login is required before downloading or converting media/u,
+    /A YTConv profile is required before downloading or converting media/u,
   );
+});
+
+test('local fallback profile validates without a cloud request', async (t) => {
+  const homeDirectory = await temporaryHome(t);
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => { throw new Error('cloud request must not run'); };
+  const result = await loginLocally({
+    version: '1.5.5',
+    homeDirectory,
+    localName: 'Local Tester',
+  });
+  assert.equal(result.session.mode, 'local');
+  assert.equal(result.session.user.displayName, 'Local Tester');
+  const validated = await validateAuthSession({ homeDirectory });
+  assert.equal(validated.ok, true);
+  assert.equal(validated.offline, true);
+});
+
+test('login falls back locally when the cloud endpoint is not deployed', async (t) => {
+  const homeDirectory = await temporaryHome(t);
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => new Response('Not Found', { status: 404 });
+  const result = await login({
+    version: '1.5.5',
+    homeDirectory,
+    localName: 'Fallback Tester',
+  });
+  assert.equal(result.mode, 'local');
+  assert.equal(result.session.user.displayName, 'Fallback Tester');
+});
+
+test('auth environment exposes account label and mode without leaking through arguments', () => {
+  const env = {};
+  applyAuthEnvironment({
+    mode: 'local',
+    accessToken: 'local:test',
+    user: { id: 'local-user', displayName: 'Dhika' },
+  }, env);
+  assert.equal(env.YTCONV_AUTH_MODE, 'local');
+  assert.equal(env.YTCONV_ACCOUNT_LABEL, 'Dhika');
+  assert.equal(env.YTCONV_USER_ID, 'local-user');
 });

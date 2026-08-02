@@ -1,6 +1,6 @@
-# YTConv CLI account login
+# YTConv CLI login and local fallback
 
-YTConv 1.5.0 requires an active YTConv account before a media download or conversion starts. The same browser-based device flow is used by Windows, Linux, macOS, Termux, SSH terminals, and the native Python frontend for iSH.
+YTConv 1.5.5 requires a profile before a media download or conversion starts. It prefers cloud device sign-in when the configured account service is available and automatically falls back to a private profile stored only on the current device when that service is unavailable.
 
 ## First login
 
@@ -12,43 +12,33 @@ YTConv prints an eight-character code and a secure browser link. Sign in with Go
 
 The browser may be on a different device. This is useful for iSH, SSH, headless Linux, and terminals that cannot open a browser themselves.
 
+If the account endpoint is missing or offline, YTConv clearly reports the problem, creates a local profile, and returns to the CLI. This prevents a web deployment problem from disabling the downloader.
+
 ## Account commands
 
 ```sh
 ytconv auth status
 ytconv logout
 ytconv login
+ytconv login --local
+ytconv login --cloud-only
+ytconv login --no-launch
 ```
 
 `logout` revokes the current device token on the server and removes the local token file.
 
+- `--local` skips the cloud request and creates a private local profile immediately.
+- `--cloud-only` fails instead of using local fallback when cloud login is unavailable.
+- `--no-launch` completes login without opening the interactive downloader afterward.
+
 ## Local token storage
 
-The CLI stores only the issued device token and basic account metadata:
+The CLI stores the issued cloud device token or local profile identifier plus basic account metadata:
 
 - Node.js CLI: `~/.ytconv/auth.json`
 - iSH frontend: `~/.ytconv/auth.json`
 
-On Unix-like systems the file is written with mode `0600`. Cookie files, Google passwords, OAuth client secrets, and browser sessions are never copied into this file.
-
-## Server configuration
-
-The CLI uses `https://ytconv.onrender.com` by default. A self-hosted deployment can override it:
-
-```sh
-export YTCONV_API_BASE="https://ytconv.example.com"
-```
-
-The Next.js deployment needs:
-
-- `DATABASE_URL`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
-- `CLI_AUTH_ENCRYPTION_KEY` (recommended; otherwise `NEXTAUTH_SECRET` is used)
-
-The CLI device tables are created automatically by the API and are also included in `sql/schema.sql`.
+On Unix-like systems the file is written with mode `0600`. Cookie files, Google passwords, OAuth client secrets, and browser sessions are never copied into this file. A local fallback profile is not a verified online identity and is never advertised as one.
 
 ## Security behavior
 
@@ -56,5 +46,5 @@ The CLI device tables are created automatically by the API and are also included
 - CLI access tokens expire after ninety days.
 - The database stores access-token hashes, not raw long-lived tokens.
 - The temporary device response token is encrypted with AES-256-GCM.
-- Every conversion validates that the token is active and not revoked.
+- Cloud sessions are validated before conversion; local fallback sessions are validated on-device.
 - Help, version, diagnostics, repair, update, configuration, and history commands remain available before login.

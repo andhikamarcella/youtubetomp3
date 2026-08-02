@@ -173,7 +173,10 @@ async function main() {
     const toggles = extractBetaToggles(effectiveArgs);
     ({ system, cleanArgs } = extractSystemOptions(toggles.cleanArgs));
     options = parseCliOptions(cleanArgs);
-    applyBetaDefaults(options, toggles);
+    const informationalOnly = options.help || options.version || system.examples || system.shellInfo
+      || system.clearCache || system.repair || options.listPresets || options.checkUpdate
+      || options.update || options.diagnose;
+    if (!informationalOnly || system.selfTest) applyBetaDefaults(options, toggles);
   } catch (error) {
     console.error(`YTConv: ${explainError(error)}\n`);
     console.error(fullHelpText());

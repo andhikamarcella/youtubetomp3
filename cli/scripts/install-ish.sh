@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.0/cli"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.5/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
 TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
 TMP_CORE="/tmp/ytconv-ish-core.py.$$"
-VERSION="1.5.0"
+VERSION="1.5.5"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
