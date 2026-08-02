@@ -120,7 +120,7 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
         },
         onProgress: progressPrinter(index, total),
         onLog: (line, isError) => {
-          if (isError || /saved|fallback|engine|merger|extractaudio|videoremuxer|tersimpan/iu.test(line)) {
+          if (isError || /saved|fallback|engine|merger|extractaudio|videoremuxer/iu.test(line)) {
             console.log(`[${index}/${total}] ${isError ? '!' : '>'} ${line}`);
           }
         },

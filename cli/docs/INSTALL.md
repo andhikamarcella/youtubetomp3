@@ -1,6 +1,6 @@
-# Complete YTConv 1.5.7 Installation Guide
+# Complete YTConv 1.5.8 Installation Guide
 
-YTConv 1.5.7 is the stable release published on the npm `latest` tag.
+YTConv 1.5.8 is the stable release published on the npm `latest` tag.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ ytconv.cmd doctor
 
 Do not install FFmpeg, yt-dlp, gallery-dl, or Python manually first. Try the automatic installation above; use `ytconv.cmd repair` only when diagnostics are still failing.
 
-The version must be `1.5.7`.
+The version must be `1.5.8`.
 
 Local repository installation:
 
@@ -161,7 +161,7 @@ The iSH frontend is native Python because modern Node.js TUI dependencies are no
 ```sh
 apk update
 apk add python3 py3-pip ffmpeg curl ca-certificates
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.7-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.8-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
@@ -215,7 +215,7 @@ ytconv --examples
 
 Expected:
 
-- version `1.5.7`
+- version `1.5.8`
 - Node.js 18 or newer
 - yt-dlp ready
 - gallery-dl ready

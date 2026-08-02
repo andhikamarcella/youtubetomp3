@@ -155,7 +155,7 @@ export async function downloadGallery({
         outputPath = clean.slice('ytconv-file:'.length).trim();
         downloadedCount += 1;
         onProgress?.({ percent: `${Math.min(95, 5 + downloadedCount * 7)}%`, speed: `${downloadedCount} file`, eta: '' });
-        onLog?.(`Tersimpan: ${outputPath}`, false);
+        onLog?.(`Saved: ${outputPath}`, false);
         return;
       }
       onLog?.(clean, isError);

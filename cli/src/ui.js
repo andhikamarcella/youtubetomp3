@@ -14,6 +14,11 @@ import {
 import { inspectDependencies, prepareTermuxDependencies } from './dependencies.js';
 import { downloadMedia, inspectMedia } from './media-controller.js';
 import {
+  beginSocialLoginHandoff,
+  confirmSocialLoginHandoff,
+  isSocialAuthenticationFailure,
+} from './social-auth.js';
+import {
   desktopDownloadsDirectory,
   isTermux,
   termuxSharedDownloadsDirectory,
@@ -117,7 +122,7 @@ function Logo({ compact, account, authMode }) {
     { flexDirection: 'column', alignItems: 'center' },
     h(Text, { bold: true, color: 'cyan' }, compact ? LOGO_COMPACT : LOGO_WIDE),
     h(Text, { bold: true }, 'paste a social link. convert. done.'),
-    h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + lainnya'),
+    h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + more'),
     h(Box, { marginTop: 1 },
       h(Text, { color: 'green', bold: true }, `● ${account || 'local user'}`),
       h(Text, { dimColor: true }, ` · ${authMode === 'cloud' ? 'cloud' : 'local device'} · v${CLI_VERSION}`)),
@@ -257,9 +262,26 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage, ur
       h(Text, { dimColor: true }, `access: ${cookieSourceLabel(cookieSource)}`),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
-    h(Text, { dimColor: true }, 'R retry · E edit URL · Ctrl+B cookies · D diagnostics · Q/Esc exit'),
+    h(Text, { dimColor: true }, 'L official login · B another browser · R retry · E edit URL · D diagnostics · Q/Esc exit'),
     loginHint ? h(Text, { color: 'yellow' }, loginHint) : null,
     h(Text, { dimColor: true }, 'Account sessions remain in the browser under browser/OS encryption.'),
+  );
+}
+
+function SocialLoginScreen({ handoff, panelWidth, actionMessage }) {
+  return h(
+    Box,
+    { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
+    h(Box, { borderStyle: 'double', borderColor: 'yellow', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, color: 'yellow' }, `${handoff.label} sign-in required`),
+      h(Text, { wrap: 'wrap' }, 'The official login page is open in your browser. Finish sign-in and any OTP/2FA there.'),
+      h(Text, { color: 'cyan' }, `Browser profile: ${handoff.browserSpec}`),
+      h(Text, { dimColor: true, wrap: 'wrap' }, handoff.loginUrl),
+      h(Text, { dimColor: true, wrap: 'wrap' }, 'YTConv will verify this exact media URL before saving the browser/profile link.'),
+    ),
+    actionMessage ? h(Text, { color: 'cyan', wrap: 'wrap' }, actionMessage) : null,
+    h(Text, { bold: true }, 'Enter verify session and retry · B another browser · Q/Esc exit'),
+    h(Text, { dimColor: true }, 'Passwords, OTP codes, and raw cookies never enter YTConv or a YTConv server.'),
   );
 }
 
@@ -418,6 +440,7 @@ function App({
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
   const [outputPath, setOutputPath] = useState('');
+  const [loginHandoff, setLoginHandoff] = useState(null);
 
   const columns = process.stdout.columns || 80;
   const rows = process.stdout.rows || 24;
@@ -465,6 +488,7 @@ function App({
     setStatusText('');
     setError('');
     setOutputPath('');
+    setLoginHandoff(null);
   };
 
   const openFolder = async () => {
@@ -483,11 +507,15 @@ function App({
     setActionMessage(copyText(target, { termux }) ? 'output path copied' : `copy failed: ${target}`);
   };
 
-  const startDownload = async (candidate = url) => {
+  const startDownload = async (candidate = url, {
+    cookieConfigsOverride = null,
+    allowLoginRecovery = true,
+    pendingHandoff = null,
+  } = {}) => {
     const value = candidate.trim();
     if (EXIT_COMMANDS.has(value.toLowerCase())) return quit();
     if (!isValidUrl(value)) {
-      setInputError('Paste link http/https yang valid.');
+      setInputError('Paste a valid HTTP or HTTPS link.');
       setActiveControl('input');
       return;
     }
@@ -504,7 +532,8 @@ function App({
     let cookieConfigs;
     try {
       await fs.mkdir(outputDirectory, { recursive: true });
-      cookieConfigs = await resolveCookieConfigs({ source: cookieSource, outputDirectory, url: value });
+      cookieConfigs = cookieConfigsOverride
+        || await resolveCookieConfigs({ source: cookieSource, outputDirectory, url: value });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setStage('error');
@@ -568,6 +597,15 @@ function App({
           setOutputPath(finalPath);
           setProgress((current) => ({ ...current, percent: '100%' }));
           setStatusText(`${result.fileCount || 1} file · ${result.engine || 'done'}`);
+          if (pendingHandoff) {
+            try {
+              await confirmSocialLoginHandoff(pendingHandoff);
+              setLoginHandoff(null);
+              setActionMessage(`${pendingHandoff.label} session verified and linked on this device.`);
+            } catch (linkError) {
+              setActionMessage(`Download succeeded, but the verified browser link could not be saved: ${linkError instanceof Error ? linkError.message : String(linkError)}`);
+            }
+          }
           setStage('done');
           await appendSessionLog(`DONE ${finalPath}`);
           if (autoOpen) await openOutputLocation({ directory: outputDirectory, filePath: finalPath });
@@ -587,10 +625,55 @@ function App({
       throw lastError || new Error('No media engine could process this URL.');
     } catch (caught) {
       if (controller.signal.aborted) return;
+      if (allowLoginRecovery && cookieSource === 'auto' && isSocialAuthenticationFailure(caught)) {
+        try {
+          const handoff = await beginSocialLoginHandoff({ url: value });
+          if (handoff) {
+            setLoginHandoff(handoff);
+            setActionMessage('Finish the official browser sign-in, then press Enter here.');
+            setStage('login');
+            return;
+          }
+        } catch (loginError) {
+          const reason = loginError instanceof Error ? loginError.message : String(loginError);
+          void appendSessionLog(`LOGIN HANDOFF FAILED ${reason}`, 'error');
+          setActionMessage(reason);
+        }
+      }
       setError(caught instanceof Error ? caught.message : String(caught));
       setStage('error');
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null;
+    }
+  };
+
+  const verifySocialLogin = () => {
+    if (!loginHandoff) return;
+    setActionMessage(`verifying ${loginHandoff.label} session and retrying the same URL...`);
+    void startDownload(url, {
+      cookieConfigsOverride: [loginHandoff.cookieConfig],
+      allowLoginRecovery: false,
+      pendingHandoff: loginHandoff,
+    });
+  };
+
+  const openSocialLogin = async ({ nextBrowser = false } = {}) => {
+    try {
+      const alternatives = loginHandoff?.alternatives || [];
+      const currentIndex = alternatives.indexOf(loginHandoff?.browserSpec);
+      const browserSpec = nextBrowser && alternatives.length > 1
+        ? alternatives[(Math.max(0, currentIndex) + 1) % alternatives.length]
+        : loginHandoff?.browserSpec;
+      const handoff = await beginSocialLoginHandoff({ url, browserSpec });
+      if (!handoff) return;
+      setLoginHandoff(handoff);
+      setActionMessage(nextBrowser
+        ? `Switched to ${handoff.browserSpec}. Finish sign-in, then press Enter.`
+        : 'Finish the official browser sign-in, then press Enter here.');
+      setStage('login');
+    } catch (caught) {
+      setActionMessage(caught instanceof Error ? caught.message : String(caught));
+      setStage('error');
     }
   };
 
@@ -637,6 +720,12 @@ function App({
     if (!hasDependencies) return;
     if (key.ctrl && lower === 'v') return pasteClipboard();
 
+    if (stage === 'login') {
+      if (key.return) verifySocialLogin();
+      else if (lower === 'b') void openSocialLogin({ nextBrowser: true });
+      return;
+    }
+
     const configurable = stage === 'home' || stage === 'error';
     if (configurable && key.ctrl && lower === 'm') return setMode((current) => cycle(MODES, current));
     if (configurable && key.ctrl && lower === 'a') {
@@ -682,6 +771,8 @@ function App({
 
     if (stage === 'error') {
       if (lower === 'r') void startDownload(url);
+      else if (lower === 'l') void openSocialLogin();
+      else if (lower === 'b' && loginHandoff) void openSocialLogin({ nextBrowser: true });
       else if (lower === 'e') {
         setStage('home');
         setActiveControl('input');
@@ -741,6 +832,9 @@ function App({
   });
   else if (stage === 'done') content = h(DoneScreen, {
     media, panelWidth, outputDirectory, outputPath, actionMessage,
+  });
+  else if (stage === 'login' && loginHandoff) content = h(SocialLoginScreen, {
+    handoff: loginHandoff, panelWidth, actionMessage,
   });
   else content = h(ErrorScreen, { error, media, panelWidth, cookieSource, actionMessage, url });
 

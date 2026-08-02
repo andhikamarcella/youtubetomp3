@@ -1,8 +1,8 @@
-# Social-media account login in YTConv 1.5.7
+# Social-media account login in YTConv 1.5.8
 
 YTConv can use an account session that is already signed in through a desktop browser without asking the user to export `cookies.txt`. This is available for Instagram, Facebook, X/Twitter, TikTok, YouTube/Google, Pinterest, Reddit, Threads, Twitch, SoundCloud, Vimeo, Tumblr, Flickr, and Pixiv.
 
-Public downloads do not require a YTConv account. Sign-in is required only when the source site restricts media to an account that has permission to access it.
+Public downloads do not require a YTConv account. Sign-in is required only when the source site restricts media to an account that has permission to access it. In the interactive CLI, an authentication failure automatically opens the official login page and offers an immediate verified retry.
 
 ## First login
 
@@ -16,8 +16,11 @@ YTConv will:
 2. ask the user to choose one when multiple browsers are available;
 3. open `instagram.com/accounts/login` in that browser;
 4. wait for the user to complete password and 2FA entry on Instagram's official page;
-5. store only the `instagram → browser/profile` association;
-6. use that session automatically when an Instagram URL cannot be read publicly.
+5. retry the exact failed media URL with that browser profile;
+6. store only the `instagram → browser/profile` association after the retry succeeds;
+7. use that verified session automatically for later matching URLs.
+
+If verification fails, no account link is saved. Press `B` in the login or error screen to open the official page in another detected profile.
 
 Other provider examples:
 

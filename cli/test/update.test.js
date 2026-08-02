@@ -125,7 +125,7 @@ test('automatic update installs an available stable version', async () => {
     argv: [],
     env: {},
     interactive: true,
-    checkImpl: async () => ({ checked: true, available: true, latestVersion: '1.5.7' }),
+    checkImpl: async () => ({ checked: true, available: true, latestVersion: '1.5.8' }),
     runImpl: ({ currentVersion }) => {
       installed = currentVersion === '1.5.6';
       return { ok: true, strategy: 'test', command: 'npm install -g ytconv@latest --force' };

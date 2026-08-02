@@ -34,7 +34,7 @@ export function explainError(error, { platform = process.platform, url = error?.
       : 'Do not use sudo npm. Set a user prefix: npm config set prefix "$HOME/.local"');
   } else if (/cookie database|decrypt.*cookie|dpapi|keyring/u.test(value)) {
     lines.push('The browser is still locking its session database, or the OS encryption key could not be read.');
-    lines.push('Close the browser completely and retry. Firefox is usually the most compatible option.');
+    lines.push('Close the browser completely and retry. In the interactive login screen, press B to try Firefox or another profile.');
     const hint = socialLoginHint(url);
     if (hint) lines.push(hint);
   } else if (/cookie|login|sign in|private|authentication|members.only|age.restricted/u.test(value)) {

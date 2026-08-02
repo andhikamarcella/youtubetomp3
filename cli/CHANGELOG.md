@@ -2,6 +2,29 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.8 — verified browser login and automatic retry
+
+### Added
+
+- Interactive downloads now open the provider's official login page automatically when a social URL cannot be read without an account.
+- YTConv detects the browser's last-used profile, including Chromium profile directories such as `Default` and `Profile 2`.
+- The login screen retries the exact failed media URL when the user returns from the browser.
+- `B` can switch to another detected browser profile when browser encryption or profile selection prevents session access.
+
+### Fixed
+
+- A social account is no longer marked as linked merely because the login page was opened or Enter was pressed.
+- Browser/profile references are saved only after the original media URL succeeds with that session.
+- Failed session verification leaves no unproven account link behind.
+- Instagram posts and other mixed social media can fall back between the video and gallery engines even when the initial media mode was selected explicitly.
+- Automatic access no longer probes every unrelated browser profile; it uses public access, an explicitly linked account, or a legacy cookie file in that order.
+
+### Compatibility and privacy
+
+- Automatic browser-session handoff is supported on Windows, macOS, and desktop Linux/BSD.
+- Android and iOS browser sandboxes do not expose private browser databases to Termux or iSH; YTConv reports that platform limitation instead of claiming that login succeeded.
+- Passwords, OTP/2FA codes, raw cookies, and browser databases are never copied to a YTConv server.
+
 ## 1.5.7 — reliable FFmpeg repair and English documentation
 
 ### Fixed

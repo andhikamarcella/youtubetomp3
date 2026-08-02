@@ -151,6 +151,77 @@ export async function detectSystemBrowsers() {
   return detected;
 }
 
+async function firstExistingDirectory(directories = []) {
+  for (const directory of directories.filter(Boolean)) {
+    if (await directoryExists(directory)) return directory;
+  }
+  return '';
+}
+
+async function chromiumProfileNames(root) {
+  let localState = {};
+  try {
+    localState = JSON.parse(await fs.readFile(path.join(root, 'Local State'), 'utf8'));
+  } catch {
+    // A browser can still have a usable Default profile without Local State.
+  }
+
+  const lastUsed = String(localState?.profile?.last_used || '').trim();
+  const cached = Object.keys(localState?.profile?.info_cache || {});
+  let entries = [];
+  try {
+    entries = (await fs.readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && /^(?:Default|Profile \d+)$/u.test(entry.name))
+      .map((entry) => entry.name);
+  } catch {
+    // The root disappeared between detection and profile discovery.
+  }
+  return unique([lastUsed, ...cached, ...entries, 'Default'])
+    .filter((profile) => /^(?:Default|Profile \d+)$/u.test(profile));
+}
+
+async function firefoxProfileNames(root) {
+  let entries = [];
+  try {
+    entries = (await fs.readdir(root, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => !name.startsWith('.'));
+  } catch {
+    return [];
+  }
+
+  return entries.sort((left, right) => {
+    const leftDefault = /default(?:-release)?$/iu.test(left) ? 1 : 0;
+    const rightDefault = /default(?:-release)?$/iu.test(right) ? 1 : 0;
+    return rightDefault - leftDefault || left.localeCompare(right);
+  });
+}
+
+export async function detectBrowserProfileSpecs({ browsers, browserRoots } = {}) {
+  if (isTermux()) return [];
+  const detected = browsers || await detectSystemBrowsers();
+  const candidates = browserRoots || browserDataCandidates();
+  const specs = [];
+
+  for (const browser of detected) {
+    const root = await firstExistingDirectory(candidates[browser]);
+    if (!root || browser === 'safari') {
+      if (browser === 'safari') specs.push('safari');
+      continue;
+    }
+
+    const profiles = browser === 'firefox'
+      ? await firefoxProfileNames(root)
+      : await chromiumProfileNames(root);
+    if (!profiles.length) specs.push(browser);
+    else if (browser === 'firefox') specs.push(...profiles.map((profile) => `${browser}:${path.join(root, profile)}`));
+    else specs.push(...profiles.map((profile) => `${browser}:${profile}`));
+  }
+
+  return unique(specs);
+}
+
 function browserConfig(source) {
   const profile = process.env.YTCONV_BROWSER_PROFILE?.trim();
   const spec = profile ? `${source}:${profile}` : source;
@@ -196,12 +267,6 @@ export async function resolveCookieConfigs({ source = 'auto', outputDirectory, u
     if (linked) configs.push(linkedBrowserConfig(linked));
     const file = await firstCookieFile({ outputDirectory });
     if (file) configs.push(file);
-
-    if (!isTermux()) {
-      const browsers = await detectSystemBrowsers();
-      const existingSpecs = new Set(configs.filter((item) => item.kind === 'browser').map((item) => item.spec));
-      configs.push(...browsers.slice(0, 4).map(browserConfig).filter((item) => !existingSpecs.has(item.spec)));
-    }
 
     return configs;
   }

@@ -1,4 +1,4 @@
-# YTConv 1.5.7 Command Reference
+# YTConv 1.5.8 Command Reference
 
 ## General syntax
 
@@ -173,7 +173,7 @@ Resolution is a maximum limit. YTConv selects the closest available source forma
 --list-subs
 ```
 
-YTConv 1.5.7 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
+YTConv 1.5.8 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -186,7 +186,7 @@ YTConv 1.5.7 enables subtitles by default for video unless explicitly disabled. 
 --sponsorblock-off
 ```
 
-YTConv 1.5.7 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.5.8 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -246,7 +246,7 @@ The `batch` command automatically enables continue-on-error. The final exit code
 --no-archive
 ```
 
-Resume is enabled by default. YTConv 1.5.7 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
+Resume is enabled by default. YTConv 1.5.8 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
 ## Network and performance
 
@@ -284,7 +284,7 @@ ytconv logout instagram
 ytconv social logout --all
 ```
 
-YTConv opens the provider's official page and links the provider to a local browser/profile. YTConv does not store passwords, OTP codes, or raw cookies. URLs from that provider automatically try the browser session after public access fails.
+YTConv opens the provider's official page and detects the last-used local browser profile. In the interactive CLI this handoff starts automatically after an authentication failure. The exact failed URL is retried, and the provider link is saved only after that retry succeeds. YTConv does not store passwords, OTP codes, or raw cookies.
 
 ## Advanced and compatibility cookie options
 
@@ -327,7 +327,7 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.5.7 updates through:
+Stable 1.5.8 updates through:
 
 ```bash
 npm install -g ytconv@latest --force

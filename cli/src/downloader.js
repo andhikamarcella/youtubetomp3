@@ -71,7 +71,7 @@ function platformFromInfo(info, url) {
     ['streamable', 'Streamable'], ['rumble', 'Rumble'], ['kick', 'Kick'], ['bandcamp', 'Bandcamp'],
     ['mixcloud', 'Mixcloud'], ['imgur', 'Imgur'], ['odysee', 'Odysee'], ['9gag', '9GAG'],
   ];
-  return platforms.find(([needle]) => value.includes(needle))?.[1] ?? info?.extractor_key ?? info?.extractor ?? 'Situs media';
+  return platforms.find(([needle]) => value.includes(needle))?.[1] ?? info?.extractor_key ?? info?.extractor ?? 'Media site';
 }
 
 export function formatVideoSelector(resolution = 'best', container = 'auto') {
@@ -95,6 +95,9 @@ function isYouTubeMusicUrl(value) {
 }
 
 function cookieFailureMessage(stderr) {
+  if (/app[- ]bound|dpapi|failed to decrypt/iu.test(stderr)) {
+    return 'The browser security layer would not release this session. In the interactive screen, press B to try Firefox or another profile.';
+  }
   if (/could not copy.*cookie|cookie database|decrypt.*cookie|dpapi|keyring/iu.test(stderr)) {
     return 'Could not read the browser session. Close the browser completely, then link it again with `ytconv login PROVIDER`.';
   }
@@ -355,7 +358,7 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
       }
       if (cleanLine.startsWith('ytconv-file:')) {
         outputPath = cleanLine.slice('ytconv-file:'.length).trim();
-        onLog?.(`Tersimpan: ${outputPath}`, false);
+        onLog?.(`Saved: ${outputPath}`, false);
         return;
       }
       onLog?.(cleanLine, isError);

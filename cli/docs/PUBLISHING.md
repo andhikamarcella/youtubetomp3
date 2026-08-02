@@ -6,7 +6,7 @@ This guide is for YTConv maintainers. Never put an npm token in source code, an 
 
 | Channel | Branch | Version | npm tag | Workflow |
 | --- | --- | --- | --- | --- |
-| Stable | `release/ytconv-1.5.7-cli-only-final` | `1.5.7` | `latest` | `Publish YTConv Stable to npm` |
+| Stable | `release/ytconv-1.5.8-cli-only-final` | `1.5.8` | `latest` | `Publish YTConv Stable to npm` |
 | Beta | `release/ytconv-1.6.0-beta` | `1.6.0-beta.1` | `beta` | `Publish YTConv Beta to npm` |
 
 Beta must never be published with the `latest` tag.
@@ -61,17 +61,17 @@ npm run test:ish
 npm pack --dry-run
 ```
 
-## Publish stable 1.5.7 through GitHub Actions
+## Publish stable 1.5.8 through GitHub Actions
 
-1. Confirm that every stable change is on `release/ytconv-1.5.7-cli-only-final`.
+1. Confirm that every stable change is on `release/ytconv-1.5.8-cli-only-final`.
 2. Open the repository's **Actions** tab.
 3. Select **Publish YTConv Stable to npm**.
 4. Choose **Run workflow**.
-5. Select `release/ytconv-1.5.7-cli-only-final`.
+5. Select `release/ytconv-1.5.8-cli-only-final`.
 6. Enter:
 
    ```text
-   version: 1.5.7
+   version: 1.5.8
    confirm: PUBLISH-STABLE
    ```
 
@@ -88,14 +88,14 @@ Verify the result:
 
 ```sh
 npm view ytconv@latest version
-npm view ytconv@1.5.7 dist.integrity
+npm view ytconv@1.5.8 dist.integrity
 npm view ytconv dist-tags --json
 ```
 
 Expected:
 
 ```text
-latest = 1.5.7
+latest = 1.5.8
 ```
 
 ## Publish beta 1.6.0-beta.1 through GitHub Actions
@@ -135,7 +135,7 @@ Expected:
 
 ```text
 beta   = 1.6.0-beta.1
-latest = 1.5.7
+latest = 1.5.8
 ```
 
 ## Manual local fallback
@@ -198,7 +198,7 @@ An npm version cannot be overwritten after publication. Update `package.json`, t
 Repair dist-tags without republishing the package:
 
 ```sh
-npm dist-tag add ytconv@1.5.7 latest
+npm dist-tag add ytconv@1.5.8 latest
 npm dist-tag add ytconv@1.6.0-beta.1 beta
 npm view ytconv dist-tags --json
 ```
@@ -227,7 +227,7 @@ That version has already been published. Increase the version number; do not att
 Restore the tags:
 
 ```sh
-npm dist-tag add ytconv@1.5.7 latest
+npm dist-tag add ytconv@1.5.8 latest
 npm dist-tag add ytconv@1.6.0-beta.1 beta
 ```
 
