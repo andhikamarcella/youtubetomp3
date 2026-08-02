@@ -1,6 +1,14 @@
 name: Publish YTConv Stable to npm
 
 on:
+  push:
+    branches:
+      - release/ytconv-1.5.5-cli-only-final
+    paths:
+      - ".github/workflows/publish-ytconv-stable.yml"
+      - "cli/**"
+      - "release-metadata/ytconv-1.5.5.json"
+      - "scripts/ytconv-release-metadata.mjs"
   workflow_dispatch:
     inputs:
       version:
@@ -15,12 +23,13 @@ permissions:
   contents: write
   id-token: write
 
-environment: npm
-
 jobs:
   publish:
-    if: ${{ inputs.confirm == 'PUBLISH-STABLE' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-STABLE' }}
+    environment: npm
     runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.5.5' }}
     defaults:
       run:
         working-directory: cli
@@ -35,7 +44,7 @@ jobs:
           test ! -f ../.github/workflows/ytconv-auth.yml
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
-          test "$PACKAGE_VERSION" = "${{ inputs.version }}"
+          test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
           test "$PACKAGE_VERSION" = "1.5.5"
           test "$PACKAGE_TAG" = "latest"
           test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
@@ -68,11 +77,10 @@ jobs:
             --package package.json \
             --tarball "$TARBALL" \
             --unpacked-size "$UNPACKED_SIZE" \
-            --output "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
-            --verify "../release-metadata/ytconv-${{ inputs.version }}.json"
-          if node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web)(?:\/|$)/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"; then
-            echo "CLI-only package validation passed."
-          fi
+            --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
+            --verify "../release-metadata/ytconv-$RELEASE_VERSION.json"
+          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path)||/(?:^|\/)(?:index|server)\.js$/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"
+          echo "CLI-only package validation passed."
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           echo "unpacked_size=$UNPACKED_SIZE" >> "$GITHUB_OUTPUT"
       - name: Publish stable package with provenance
@@ -82,38 +90,38 @@ jobs:
       - name: Verify registry metadata and tarball
         id: registry
         run: |
-          test "$(npm view ytconv@latest version --prefer-online)" = "${{ inputs.version }}"
-          npm view "ytconv@${{ inputs.version }}" --json > "$RUNNER_TEMP/ytconv-registry.json"
-          node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); if(!p.author||!p.license||!p.time?.['${{ inputs.version }}']||!p.dist?.tarball||!p.dist?.integrity||!p.dist?.unpackedSize||!p.maintainers?.length||!Object.keys(p.dependencies||{}).length||!p.releaseNotes) process.exitCode=1"
+          test "$(npm view ytconv@latest version --prefer-online)" = "$RELEASE_VERSION"
+          npm view "ytconv@$RELEASE_VERSION" --json > "$RUNNER_TEMP/ytconv-registry.json"
+          node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); if(!p.author||!p.license||!p.time?.['$RELEASE_VERSION']||!p.dist?.tarball||!p.dist?.integrity||!p.dist?.unpackedSize||!p.maintainers?.length||!Object.keys(p.dependencies||{}).length||!p.releaseNotes) process.exitCode=1"
           TARBALL_URL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(p.dist.tarball)")
-          curl --fail --location --retry 5 "$TARBALL_URL" --output "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz"
+          curl --fail --location --retry 5 "$TARBALL_URL" --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz"
           UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(String(p.dist.unpackedSize))")
           node ../scripts/ytconv-release-metadata.mjs \
             --package package.json \
-            --tarball "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" \
+            --tarball "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" \
             --unpacked-size "$UNPACKED_SIZE" \
-            --output "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
-            --verify "../release-metadata/ytconv-${{ inputs.version }}.json"
-          SHA256=$(sha256sum "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" | cut -d ' ' -f 1)
-          printf '%s  %s\n' "$SHA256" "ytconv-${{ inputs.version }}.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
+            --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
+            --verify "../release-metadata/ytconv-$RELEASE_VERSION.json"
+          SHA256=$(sha256sum "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" | cut -d ' ' -f 1)
+          printf '%s  %s\n' "$SHA256" "ytconv-$RELEASE_VERSION.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
           npm view ytconv dist-tags --json
       - name: Create GitHub release with installer metadata
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="ytconv-v${{ inputs.version }}"
+          TAG="ytconv-v$RELEASE_VERSION"
           NOTES=$(node -p "require('./package.json').releaseNotes")
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" \
-              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" \
-              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
+              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" \
+              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
               "$RUNNER_TEMP/SHA256SUMS.txt" --clobber
           else
             gh release create "$TAG" \
-              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" \
-              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
+              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" \
+              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
               "$RUNNER_TEMP/SHA256SUMS.txt" \
               --target "$GITHUB_SHA" \
-              --title "YTConv CLI ${{ inputs.version }}" \
+              --title "YTConv CLI $RELEASE_VERSION" \
               --notes "$NOTES"
           fi
