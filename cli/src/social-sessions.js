@@ -86,7 +86,7 @@ export async function writeSocialSessions(value, { homeDirectory = os.homedir() 
 function normalizeBrowserSpec(browserSpec = '') {
   const spec = String(browserSpec).trim();
   if (!/^[a-z0-9-]+(?::[^,\r\n]{1,160})?$/iu.test(spec)) {
-    throw new Error('Browser harus berbentuk chrome, edge, firefox, atau browser:profil.');
+    throw new Error('Browser must be chrome, edge, firefox, or browser:profile.');
   }
   const separator = spec.indexOf(':');
   if (separator < 0) return spec.toLowerCase();
@@ -99,7 +99,7 @@ export async function linkSocialSession({
   homeDirectory = os.homedir(),
 } = {}) {
   const details = socialProviderDetails(provider);
-  if (!details) throw new Error(`Media sosial tidak dikenali: ${provider || '-'}.`);
+  if (!details) throw new Error(`Unknown social provider: ${provider || '-'}.`);
   const spec = normalizeBrowserSpec(browserSpec);
   const store = await readSocialSessions({ homeDirectory });
   store.providers[details.key] = {
@@ -122,7 +122,7 @@ export async function unlinkSocialSession({
   if (all) store.providers = {};
   else {
     const normalized = normalizeSocialProvider(provider);
-    if (!normalized) throw new Error('Sebutkan media sosial yang ingin dilepas, misalnya: ytconv logout instagram');
+    if (!normalized) throw new Error('Specify the social provider to unlink, for example: ytconv logout instagram');
     delete store.providers[normalized];
   }
   await writeSocialSessions(store, { homeDirectory });
@@ -147,5 +147,5 @@ export async function socialSessionForProvider(provider, options = {}) {
 export function socialLoginHint(value = '') {
   const provider = normalizeSocialProvider(value) || detectSocialPlatform(value);
   if (!(provider in PROVIDERS)) return '';
-  return `Login resmi ${socialPlatformLabel(provider)}: ytconv login ${provider}`;
+  return `Official ${socialPlatformLabel(provider)} login: ytconv login ${provider}`;
 }

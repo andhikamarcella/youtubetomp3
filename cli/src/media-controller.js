@@ -102,8 +102,8 @@ function assertPlatformSelection(url, platformHint) {
   const result = validatePlatformHint({ url, platformHint });
   if (result.valid) return result.detected;
   throw new Error(
-    `Link terdeteksi sebagai ${socialPlatformLabel(result.detected)}, bukan `
-    + `${socialPlatformLabel(platformHint)}. Pilih AUTO atau platform yang sesuai.`,
+    `The URL was detected as ${socialPlatformLabel(result.detected)}, not `
+    + `${socialPlatformLabel(platformHint)}. Choose AUTO or the matching platform.`,
   );
 }
 
@@ -212,7 +212,7 @@ async function availableTarget(source, format) {
 
 async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
   if (!format || format === 'original') return files;
-  if (!ffmpegPath) throw new Error('FFmpeg diperlukan untuk mengubah format gambar.');
+  if (!ffmpegPath) throw new Error('FFmpeg is required to convert image formats.');
 
   const imageFiles = files.filter((file) => STATIC_IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase()));
   if (!imageFiles.length) return files;
@@ -226,7 +226,7 @@ async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
       continue;
     }
 
-    onLog?.(`Mengubah gambar ${index + 1}/${imageFiles.length} ke ${format.toUpperCase()}...`, false);
+    onLog?.(`Converting image ${index + 1}/${imageFiles.length} to ${format.toUpperCase()}...`, false);
     const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', source, '-frames:v', '1'];
     if (format === 'jpg') args.push('-q:v', '2');
     args.push(target);
@@ -235,7 +235,7 @@ async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
     replacements.set(source, target);
     onProgress?.({
       percent: `${Math.min(99, 90 + Math.round(((index + 1) / imageFiles.length) * 9))}%`,
-      speed: `${index + 1}/${imageFiles.length} gambar`,
+      speed: `${index + 1}/${imageFiles.length} images`,
       eta: '',
     });
   }
@@ -247,8 +247,8 @@ function accessHint({ url, cookieConfig, originalError }) {
   const platform = socialPlatformLabel(detectSocialPlatform(url));
   const officialLogin = socialLoginHint(url);
   const browserHint = cookieConfig?.kind === 'browser'
-    ? `Sesi browser terdeteksi tetapi belum dapat dibaca. Tutup browser sepenuhnya lalu coba lagi.${officialLogin ? ` Tautkan ulang: ${officialLogin}` : ''}`
-    : `Akses publik sudah dicoba.${officialLogin ? ` ${officialLogin}` : ' Gunakan ytconv social help untuk login resmi.'}`;
+    ? `A browser session was detected but could not be read. Close the browser completely and retry.${officialLogin ? ` Link it again: ${officialLogin}` : ''}`
+    : `Public access was attempted.${officialLogin ? ` ${officialLogin}` : ' Run ytconv social help for official login instructions.'}`;
   return `${originalError} ${platform}: ${browserHint}`;
 }
 
@@ -289,7 +289,7 @@ export async function downloadMedia({ options, ...rest }) {
     }
 
     rest.onLog?.(
-      `Engine ${mode === 'image' ? 'gallery-dl' : 'yt-dlp'} gagal; mencoba `
+      `${mode === 'image' ? 'gallery-dl' : 'yt-dlp'} failed; trying `
       + `${fallbackMode === 'image' ? 'gallery-dl' : 'yt-dlp'}...`,
       true,
     );
@@ -313,7 +313,7 @@ export async function downloadMedia({ options, ...rest }) {
     throw new Error(accessHint({
       url,
       cookieConfig: options.cookieConfig,
-      originalError: `${socialPlatformLabel(detectSocialPlatform(url))} tidak mengembalikan file dari link tersebut.`,
+      originalError: `${socialPlatformLabel(detectSocialPlatform(url))} returned no file for this URL.`,
     }));
   }
 

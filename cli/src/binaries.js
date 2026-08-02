@@ -63,7 +63,7 @@ async function downloadLatest(asset, destination, { silent }) {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
       const candidate = Buffer.from(await response.arrayBuffer());
-      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('file tidak lengkap');
+      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('incomplete file');
       data = candidate;
       break;
     } catch (error) {
@@ -71,7 +71,7 @@ async function downloadLatest(asset, destination, { silent }) {
       if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
     }
   }
-  if (!data) throw new Error(`Gagal mengunduh yt-dlp setelah 3 percobaan (${lastError?.message || 'unknown error'}).`);
+  if (!data) throw new Error(`Could not download yt-dlp after 3 attempts (${lastError?.message || 'unknown error'}).`);
 
   await fs.writeFile(temporary, data);
   if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);
@@ -82,12 +82,12 @@ async function downloadLatest(asset, destination, { silent }) {
 
 export async function ensureBundledYtDlp({ force = false, silent = false } = {}) {
   if (isTermux()) {
-    throw new Error('Termux memakai paket native python-yt-dlp agar kompatibel dengan Android.');
+    throw new Error('Termux uses the native python-yt-dlp package for Android compatibility.');
   }
 
   const asset = releaseAsset();
   if (!asset) {
-    throw new Error(`Platform ${process.platform}/${process.arch} belum didukung oleh paket YTConv.`);
+    throw new Error(`YTConv does not yet support ${process.platform}/${process.arch}.`);
   }
 
   const destination = bundledYtDlpPath();
@@ -100,7 +100,7 @@ export async function ensureBundledYtDlp({ force = false, silent = false } = {})
   } catch (error) {
     if (existing.valid) {
       if (!silent) {
-        console.warn(`YTConv: pembaruan yt-dlp gagal, memakai versi yang sudah ada. ${error.message}`);
+        console.warn(`YTConv: the yt-dlp update failed; using the existing version. ${error.message}`);
       }
       return destination;
     }

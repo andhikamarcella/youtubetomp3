@@ -1,20 +1,20 @@
-# YTConv CLI 1.5.6
+# YTConv CLI 1.5.7
 
 YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
 > Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-## Yang baru di 1.5.6
+## What's new in 1.5.7
 
-- FFmpeg, Ink, React, dan library Node lain dipasang otomatis oleh npm; yt-dlp dan gallery-dl disiapkan ketika paket dipasang dan diperiksa lagi saat pertama kali digunakan.
-- `ytconv login instagram`, `facebook`, `x`, `tiktok`, `youtube`, `pinterest`, `reddit`, `threads`, `twitch`, dan provider lain membuka halaman login resmi di browser.
-- Link yang memerlukan akun otomatis memakai sesi browser yang sudah ditautkan, tanpa ekspor atau unduh `cookies.txt`.
-- Password, OTP, dan cookie mentah tetap berada di browser; YTConv hanya menyimpan nama browser/profil dengan izin file khusus pengguna.
-- Akun cloud YTConv tidak lagi diwajibkan untuk download. Paket ini benar-benar CLI-only dan tidak bergantung pada deployment web/server.
-- Update stable diperiksa dan dipasang otomatis pada terminal interaktif. Script, CI, dan headless tidak diubah diam-diam.
-- Pesan error sekarang memberikan penyebab dan perintah solusi yang sesuai dengan platform/link.
+- `ytconv repair` now reruns the bundled `ffmpeg-static` installer and verifies the downloaded executable before reporting success.
+- A clean Windows CI test removes FFmpeg and proves that YTConv restores it automatically.
+- Runtime messages, setup screens, social-login guidance, errors, and documentation are now consistently written in English.
+- yt-dlp and gallery-dl still bootstrap automatically, and interactive stable updates remain enabled.
+- Official browser login remains available for Instagram, Facebook, X, TikTok, YouTube, Pinterest, Reddit, Threads, Twitch, and other supported providers.
+- Passwords, OTP codes, and raw cookies remain in the browser; YTConv stores only a browser/profile reference.
+- The npm package remains CLI-only and does not depend on a website or account-server deployment.
 
-## Instal stable 1.5.6
+## Install stable 1.5.7
 
 ### Windows
 
@@ -57,7 +57,7 @@ Default output: `~/storage/downloads/YTConv`.
 ### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.6-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.7-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
@@ -65,7 +65,7 @@ ytconv doctor
 
 The browser can be opened on the same device or another device. Enter the eight-character code shown in the terminal and approve the CLI session.
 
-## Login resmi Instagram/Facebook/X dan media sosial lain
+## Official Instagram, Facebook, X, and social-media login
 
 ```sh
 ytconv login instagram
@@ -75,19 +75,19 @@ ytconv social status
 ytconv logout instagram
 ```
 
-Alurnya sederhana:
+The flow is intentionally simple:
 
-1. YTConv mendeteksi browser yang tersedia dan meminta kamu memilih salah satunya.
-2. Halaman login resmi media sosial dibuka. Masukkan password dan OTP hanya di halaman resmi tersebut.
-3. Setelah login selesai, kembali ke terminal lalu tekan Enter.
-4. YTConv menyimpan provider + browser/profil di `~/.ytconv/social-sessions.json`.
-5. Saat link publik gagal karena login diperlukan, sesi browser itu dicoba otomatis.
+1. YTConv detects available browsers and asks you to choose one when needed.
+2. The provider's official login page opens. Enter passwords and OTP codes only on that official page.
+3. After sign-in, return to the terminal and press Enter.
+4. YTConv stores the provider and browser/profile reference in `~/.ytconv/social-sessions.json`.
+5. When public access fails because login is required, the linked browser session is tried automatically.
 
-Cookie sesi tetap berada di database browser dan dilindungi oleh enkripsi browser/OS (misalnya DPAPI di Windows atau Keychain di macOS). YTConv tidak menyimpan password, OTP, access token, maupun nilai cookie mentah, dan tidak mengirim sesi media sosial ke server YTConv.
+Session cookies remain in the browser database under browser/OS encryption, such as DPAPI on Windows or Keychain on macOS. YTConv does not store passwords, OTP codes, access tokens, or raw cookie values, and it does not send social sessions to a YTConv server.
 
-Jika pembacaan sesi gagal, tutup browser sepenuhnya lalu coba lagi. Firefox sering menjadi pilihan paling kompatibel untuk pembacaan sesi lokal. Termux/iSH tidak boleh mengakses database privat browser Android/iOS; gunakan link publik atau metode resmi yang tersedia di perangkat tersebut.
+If a session cannot be read, close the browser completely and retry. Firefox is often the most compatible option for local session access. Termux and iSH cannot access private Android/iOS browser databases; use public media or an official authentication method available on the device.
 
-Akun YTConv cloud bersifat opsional dan tetap tersedia melalui `ytconv account login`.
+The legacy YTConv cloud account is optional and remains available through `ytconv account login`.
 
 ## Media commands
 
@@ -170,7 +170,7 @@ History is capped and excludes cookies, tokens, proxy credentials, and browser s
 ## Release channels
 
 ```text
-Stable: 1.5.6          npm install -g ytconv@latest
+Stable: 1.5.7          npm install -g ytconv@latest
 Beta:   1.6.0-beta.1   npm install -g ytconv@beta
 ```
 

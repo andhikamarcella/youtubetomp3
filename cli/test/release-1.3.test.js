@@ -94,9 +94,9 @@ test('extracts batch jobs and JSON report for automation', () => {
 });
 
 test('maps stable automation exit codes', () => {
-  assert.equal(exitCodeForError(new Error('Link tidak valid')), EXIT_CODES.INVALID_USAGE);
-  assert.equal(exitCodeForError(new Error('FFmpeg tidak ditemukan')), EXIT_CODES.DEPENDENCY_MISSING);
+  assert.equal(exitCodeForError(new Error('Invalid URL')), EXIT_CODES.INVALID_USAGE);
+  assert.equal(exitCodeForError(new Error('FFmpeg was not found')), EXIT_CODES.DEPENDENCY_MISSING);
   assert.equal(exitCodeForError(new Error('Login required')), EXIT_CODES.AUTH_REQUIRED);
   assert.equal(exitCodeForError(new Error('HTTP 429 Too Many Requests')), EXIT_CODES.TEMPORARY_FAILURE);
-  assert.equal(exitCodeForError(new Error('Unduhan dibatalkan')), EXIT_CODES.CANCELLED);
+  assert.equal(exitCodeForError(new Error('The download was cancelled')), EXIT_CODES.CANCELLED);
 });

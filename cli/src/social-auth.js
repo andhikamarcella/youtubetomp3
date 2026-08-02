@@ -27,7 +27,7 @@ function optionValue(argv, name) {
   const index = argv.indexOf(name);
   if (index < 0) return '';
   const value = argv[index + 1];
-  if (!value || value.startsWith('-')) throw new Error(`${name} memerlukan nilai.`);
+  if (!value || value.startsWith('-')) throw new Error(`${name} requires a value.`);
   return value;
 }
 
@@ -88,7 +88,7 @@ function spawnDetached(command, args) {
 
 export async function openOfficialSocialLogin({ provider, browser, spawnImpl = spawnDetached } = {}) {
   const details = socialProviderDetails(provider);
-  if (!details) throw new Error(`Media sosial tidak dikenali: ${provider || '-'}.`);
+  if (!details) throw new Error(`Unknown social provider: ${provider || '-'}.`);
   for (const [command, args] of browserCommandCandidates(browser, details.loginUrl)) {
     if (await spawnImpl(command, args)) return { opened: true, url: details.loginUrl, command };
   }
@@ -102,22 +102,22 @@ async function chooseBrowser({ argv, detected, interactive }) {
   if (requested) {
     const base = requested.split(':', 1)[0].toLowerCase();
     if (!detected.includes(base)) {
-      console.warn(`${BROWSER_LABELS[base] || base} belum terdeteksi dari profil lokal; YTConv tetap mencoba membukanya.`);
+      console.warn(`${BROWSER_LABELS[base] || base} was not detected in local profiles; YTConv will still try to open it.`);
     }
     return withProfile(requested);
   }
   if (!detected.length) {
-    throw new Error('Browser desktop tidak terdeteksi. Pasang Chrome, Edge, Firefox, Brave, atau browser yang didukung.');
+    throw new Error('No desktop browser was detected. Install Chrome, Edge, Firefox, Brave, or another supported browser.');
   }
   if (!interactive || detected.length === 1) return withProfile(detected[0]);
 
-  console.log('\nPilih browser tempat akun akan login:');
+  console.log('\nChoose the browser where the account will sign in:');
   detected.forEach((browser, index) => console.log(`  ${index + 1}. ${BROWSER_LABELS[browser] || browser}`));
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const answer = (await prompt.question(`Pilihan [1]: `)).trim();
+    const answer = (await prompt.question('Choice [1]: ')).trim();
     const index = answer ? Number.parseInt(answer, 10) - 1 : 0;
-    if (!Number.isInteger(index) || !detected[index]) throw new Error('Pilihan browser tidak valid.');
+    if (!Number.isInteger(index) || !detected[index]) throw new Error('Invalid browser choice.');
     return withProfile(detected[index]);
   } finally {
     prompt.close();
@@ -126,7 +126,7 @@ async function chooseBrowser({ argv, detected, interactive }) {
 
 function socialHelpText() {
   return [
-    'Login resmi media sosial:',
+    'Official social-media login:',
     '  ytconv login instagram',
     '  ytconv login facebook --browser edge',
     '  ytconv login x --browser "chrome:Profile 1"',
@@ -134,10 +134,10 @@ function socialHelpText() {
     '  ytconv logout instagram',
     '  ytconv social logout --all',
     '',
-    `Didukung: ${SOCIAL_LOGIN_PROVIDERS.join(', ')}`,
+    `Supported: ${SOCIAL_LOGIN_PROVIDERS.join(', ')}`,
     '',
-    'Password dan cookie mentah tidak disimpan YTConv. Sesi tetap berada di browser',
-    'dan dilindungi enkripsi browser/OS; YTConv hanya menyimpan nama browser/profil.',
+    'YTConv does not store passwords or raw cookies. Sessions remain in the browser',
+    'under browser/OS encryption; YTConv stores only the browser/profile reference.',
   ].join('\n');
 }
 
@@ -150,9 +150,9 @@ async function completeSocialLogin({
   openLoginImpl = openOfficialSocialLogin,
 } = {}) {
   const details = socialProviderDetails(provider);
-  if (!details) throw new Error(`Media sosial tidak dikenali. Pilih: ${SOCIAL_LOGIN_PROVIDERS.join(', ')}`);
+  if (!details) throw new Error(`Unknown social provider. Choose: ${SOCIAL_LOGIN_PROVIDERS.join(', ')}`);
   if (process.env.TERMUX_VERSION) {
-    throw new Error('Android melindungi database browser dari Termux. Login browser otomatis tersedia pada Windows, macOS, dan Linux desktop.');
+    throw new Error('Android isolates browser databases from Termux. Automatic browser login is available on Windows, macOS, and desktop Linux.');
   }
 
   const detected = await detectBrowsersImpl();
@@ -162,40 +162,40 @@ async function completeSocialLogin({
     ? { opened: false, url: details.loginUrl }
     : await openLoginImpl({ provider: details.key, browser });
 
-  console.log(`\nLogin ${details.label} dibuka melalui halaman resmi:`);
+  console.log(`\nThe official ${details.label} login page is open:`);
   console.log(opened.url);
-  console.log(`Browser yang akan dipakai YTConv: ${browserSpec}`);
-  console.log('Selesaikan login, termasuk kode OTP/2FA bila diminta oleh situs.');
+  console.log(`Browser YTConv will use: ${browserSpec}`);
+  console.log('Complete sign-in, including OTP/2FA if the site requests it.');
 
   if (interactive && !argv.includes('--no-wait')) {
     const prompt = createInterface({ input: process.stdin, output: process.stdout });
     try {
-      await prompt.question('Setelah akun berhasil terbuka di browser, kembali ke sini lalu tekan Enter... ');
+      await prompt.question('After the account is signed in, return here and press Enter... ');
     } finally {
       prompt.close();
     }
   }
 
   const linked = await linkSocialSession({ provider: details.key, browserSpec, homeDirectory });
-  console.log(`\n✓ ${details.label} tersambung ke YTConv pada perangkat ini.`);
-  console.log('Cookie tetap berada di browser dan tidak dikirim ke server YTConv.');
-  console.log(`Referensi aman: ${linked.target}`);
-  console.log(`Coba unduh: ytconv download "LINK_${details.key.toUpperCase()}"`);
+  console.log(`\n✓ ${details.label} is linked to YTConv on this device.`);
+  console.log('Cookies remain in the browser and are not sent to a YTConv server.');
+  console.log(`Saved reference: ${linked.target}`);
+  console.log(`Try a download: ytconv download "${details.key.toUpperCase()}_URL"`);
   return { exitCode: 0, ...linked };
 }
 
 async function printSocialStatus({ homeDirectory } = {}) {
   const store = await readSocialSessions({ homeDirectory });
   const sessions = Object.values(store.providers).filter((item) => item?.browserSpec);
-  console.log('Akun media sosial di perangkat ini');
+  console.log('Social accounts linked on this device');
   if (!sessions.length) {
-    console.log('Belum ada akun tersambung. Contoh: ytconv login instagram');
+    console.log('No accounts are linked yet. Example: ytconv login instagram');
     return 0;
   }
   for (const session of sessions.sort((a, b) => a.provider.localeCompare(b.provider))) {
     console.log(`${String(session.label || session.provider).padEnd(22)} ${session.browserSpec} · browser/OS encrypted`);
   }
-  console.log('\nYTConv tidak menyimpan password, OTP, access token, atau cookie mentah.');
+  console.log('\nYTConv does not store passwords, OTP codes, access tokens, or raw cookies.');
   return 0;
 }
 
@@ -232,8 +232,8 @@ export async function handleSocialAuthCommand(argv = [], options = {}) {
   if (command.action === 'logout') {
     const all = command.provider === '--all' || argv.includes('--all');
     await unlinkSocialSession({ ...options, provider: command.provider, all });
-    console.log(all ? 'Semua hubungan akun media sosial dilepas dari YTConv.' : `${socialProviderDetails(command.provider)?.label || command.provider} dilepas dari YTConv.`);
-    console.log('Sesi browser tidak dihapus. Logout dari situs dilakukan langsung melalui browser.');
+    console.log(all ? 'All social-account links were removed from YTConv.' : `${socialProviderDetails(command.provider)?.label || command.provider} was unlinked from YTConv.`);
+    console.log('The browser session was not deleted. Sign out from the site directly in the browser.');
     return { handled: true, action: 'logout', exitCode: 0 };
   }
   console.error(socialHelpText());

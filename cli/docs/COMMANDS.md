@@ -1,4 +1,4 @@
-# YTConv 1.5.6 Command Reference
+# YTConv 1.5.7 Command Reference
 
 ## General syntax
 
@@ -173,7 +173,7 @@ Resolution is a maximum limit. YTConv selects the closest available source forma
 --list-subs
 ```
 
-YTConv 1.5.6 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
+YTConv 1.5.7 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -186,7 +186,7 @@ YTConv 1.5.6 enables subtitles by default for video unless explicitly disabled. 
 --sponsorblock-off
 ```
 
-YTConv 1.5.6 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.5.7 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -246,7 +246,7 @@ The `batch` command automatically enables continue-on-error. The final exit code
 --no-archive
 ```
 
-Resume is enabled by default. YTConv 1.5.6 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
+Resume is enabled by default. YTConv 1.5.7 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
 ## Network and performance
 
@@ -273,7 +273,7 @@ Proxy credentials can be visible in terminal history. Do not share them in logs 
 
 Output templates must be relative, must not contain `..`, and must include `%(ext)s`.
 
-## Login resmi media sosial
+## Official social-media login
 
 ```text
 ytconv login instagram
@@ -284,9 +284,9 @@ ytconv logout instagram
 ytconv social logout --all
 ```
 
-YTConv membuka halaman resmi provider dan menghubungkan provider ke browser/profil lokal. Password, OTP, dan cookie mentah tidak disimpan YTConv. Link dari provider itu otomatis mencoba sesi browser setelah akses publik gagal.
+YTConv opens the provider's official page and links the provider to a local browser/profile. YTConv does not store passwords, OTP codes, or raw cookies. URLs from that provider automatically try the browser session after public access fails.
 
-## Opsi cookies lanjutan/kompatibilitas
+## Advanced and compatibility cookie options
 
 ```text
 --cookies FILE
@@ -294,7 +294,7 @@ YTConv membuka halaman resmi provider dan menghubungkan provider ke browser/prof
 --cookies-from-browser "firefox:default-release"
 ```
 
-Typical desktop browsers include Chrome, Chromium, Edge, Firefox, Brave, Opera, Vivaldi, Safari, and Whale. Gunakan opsi ini hanya untuk override manual; alur yang disarankan adalah `ytconv login PROVIDER`. Cookie data is sensitive and must never be shared.
+Typical desktop browsers include Chrome, Chromium, Edge, Firefox, Brave, Opera, Vivaldi, Safari, and Whale. Use these options only as manual overrides; the recommended flow is `ytconv login PROVIDER`. Cookie data is sensitive and must never be shared.
 
 ## Inspection, JSON, and automation
 
@@ -327,7 +327,7 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.5.6 updates through:
+Stable 1.5.7 updates through:
 
 ```bash
 npm install -g ytconv@latest --force

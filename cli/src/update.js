@@ -274,7 +274,7 @@ export async function maybeAutoUpdate({
     };
   }
 
-  console.log(`YTConv ${currentVersion} → ${updateInfo.latestVersion}: memperbarui otomatis...`);
+  console.log(`YTConv ${currentVersion} → ${updateInfo.latestVersion}: updating automatically...`);
   const result = runImpl({ currentVersion, env });
   if (!result.ok) {
     return { attempted: true, updated: false, reason: 'failed', updateInfo, result };

@@ -136,7 +136,7 @@ async function downloadOne({ options, url, outputDirectory, dependencies, index,
     const count = await cleanupPartials(outputDirectory, startedAt);
     if (count) console.log(`[${index}/${total}] Removed ${count} temporary file(s).`);
   }
-  const error = lastError || new Error('Semua metode akses yang tersedia gagal.');
+  const error = lastError || new Error('All available access methods failed.');
   error.ytconvUrl = url;
   throw error;
 }
@@ -162,7 +162,7 @@ export async function runHeadlessDownloads({
   await fs.mkdir(outputDirectory, { recursive: true });
   const dependencies = await inspectDependencies({ repair: true });
   if (!dependencies.ready) {
-    throw new Error(`Perbaikan otomatis belum berhasil menyiapkan: ${dependencies.missing.join(', ')}. Jalankan ytconv repair lalu ytconv doctor.`);
+    throw new Error(`Automatic repair could not prepare: ${dependencies.missing.join(', ')}. Run ytconv repair, followed by ytconv doctor.`);
   }
 
   const workerCount = Math.max(1, Math.min(Number(jobs) || 1, 8, urls.length));

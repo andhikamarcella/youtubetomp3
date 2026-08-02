@@ -115,7 +115,7 @@ function explicitBrowserConfig(spec) {
 export async function runDirectCommand({ options, outputDirectory }) {
   if (!validateUrl(options.initialUrl)) throw new Error('A direct command requires a valid HTTP or HTTPS URL.');
   const dependencies = await inspectDependencies({ repair: true });
-  if (!dependencies.ytDlp.installed) throw new Error('yt-dlp belum siap setelah perbaikan otomatis. Jalankan `ytconv repair`, lalu `ytconv doctor`.');
+  if (!dependencies.ytDlp.installed) throw new Error('yt-dlp is still unavailable after automatic repair. Run `ytconv repair`, followed by `ytconv doctor`.');
 
   await fs.mkdir(outputDirectory, { recursive: true });
   const cookieConfigs = options.cookiesBrowser
@@ -163,7 +163,7 @@ export async function runDirectCommand({ options, outputDirectory }) {
     }
   }
 
-  const error = lastError || new Error('Tidak ada engine atau sesi akun yang dapat membaca link tersebut.');
+  const error = lastError || new Error('No media engine or account session could read this URL.');
   error.ytconvUrl = options.initialUrl;
   throw error;
 }

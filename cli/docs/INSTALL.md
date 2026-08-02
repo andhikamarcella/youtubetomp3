@@ -1,22 +1,22 @@
-# Complete YTConv 1.5.6 Installation Guide
+# Complete YTConv 1.5.7 Installation Guide
 
-YTConv 1.5.6 is the stable release published on the npm `latest` tag.
+YTConv 1.5.7 is the stable release published on the npm `latest` tag.
 
-## Syarat awal
+## Requirements
 
-- Node.js 18 atau lebih baru dan npm. Dua komponen ini diperlukan untuk menjalankan perintah `npm install` itu sendiri.
-- Koneksi HTTPS dan sertifikat sistem yang berfungsi.
+- Node.js 18 or newer and npm. These are required to run `npm install` itself.
+- A working HTTPS connection and valid system certificates.
 
-FFmpeg, yt-dlp, gallery-dl, Ink, React, dan dependency runtime lain disiapkan otomatis oleh instalasi npm. Python 3 tidak diwajibkan pada Windows desktop karena YTConv memakai binary mandiri; Python tetap menjadi fallback pada platform tertentu.
+FFmpeg, yt-dlp, gallery-dl, Ink, React, and other runtime dependencies are prepared automatically by npm installation. Python 3 is not required on desktop Windows because YTConv uses standalone binaries; Python remains a fallback on selected platforms.
 
-Periksa syarat awal:
+Check the requirements:
 
 ```bash
 node --version
 npm --version
 ```
 
-Setelah instalasi, `ytconv doctor` memeriksa seluruh engine dan `ytconv repair` mengunduh ulang komponen yang gagal.
+After installation, `ytconv doctor` checks every engine and `ytconv repair` downloads any missing or broken component again.
 
 ## Windows CMD
 
@@ -30,9 +30,9 @@ ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-Jangan memasang FFmpeg, yt-dlp, gallery-dl, atau Python secara manual terlebih dahulu. Coba instalasi otomatis di atas; gunakan `ytconv.cmd repair` hanya bila pemeriksaan masih merah.
+Do not install FFmpeg, yt-dlp, gallery-dl, or Python manually first. Try the automatic installation above; use `ytconv.cmd repair` only when diagnostics are still failing.
 
-The version must be `1.5.6`.
+The version must be `1.5.7`.
 
 Local repository installation:
 
@@ -161,7 +161,7 @@ The iSH frontend is native Python because modern Node.js TUI dependencies are no
 ```sh
 apk update
 apk add python3 py3-pip ffmpeg curl ca-certificates
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.6-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.7-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
@@ -215,7 +215,7 @@ ytconv --examples
 
 Expected:
 
-- version `1.5.6`
+- version `1.5.7`
 - Node.js 18 or newer
 - yt-dlp ready
 - gallery-dl ready

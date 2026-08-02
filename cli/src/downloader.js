@@ -46,7 +46,7 @@ function commonExtractorArgs(options = {}) {
 function normalizeYtDlpRunner(value) {
   if (typeof value === 'string') return { command: value, prefixArgs: [], displayPath: value };
   const command = value?.command || value?.path;
-  if (!command) throw new Error('Executable yt-dlp belum tersedia.');
+  if (!command) throw new Error('The yt-dlp executable is not available yet.');
   return {
     command,
     prefixArgs: Array.isArray(value?.prefixArgs) ? value.prefixArgs : [],
@@ -96,10 +96,10 @@ function isYouTubeMusicUrl(value) {
 
 function cookieFailureMessage(stderr) {
   if (/could not copy.*cookie|cookie database|decrypt.*cookie|dpapi|keyring/iu.test(stderr)) {
-    return 'Gagal membaca sesi browser. Tutup browser sepenuhnya, lalu tautkan ulang dengan `ytconv login PROVIDER`.';
+    return 'Could not read the browser session. Close the browser completely, then link it again with `ytconv login PROVIDER`.';
   }
   if (/cookies?.*(expired|invalid)|sign in|login required|authentication/iu.test(stderr)) {
-    return 'Situs meminta akun yang sudah login. Jalankan `ytconv login PROVIDER`; YTConv akan memakai sesi browser lokal secara otomatis.';
+    return 'The site requires a signed-in account. Run `ytconv login PROVIDER`; YTConv will use the local browser session automatically.';
   }
   return null;
 }
@@ -123,25 +123,25 @@ function runBuffered(runnerValue, args, { signal, maxBytes = MAX_METADATA_BYTES 
     let stderr = '';
     let settled = false;
     const finish = (callback) => { if (settled) return; settled = true; signal?.removeEventListener('abort', abort); callback(); };
-    const abort = () => { child.kill('SIGTERM'); finish(() => reject(new Error('Proses dibatalkan.'))); };
+    const abort = () => { child.kill('SIGTERM'); finish(() => reject(new Error('The operation was cancelled.'))); };
     if (signal?.aborted) return abort();
     signal?.addEventListener('abort', abort, { once: true });
     child.stdout.on('data', (chunk) => {
       stdout += chunk.toString();
       if (Buffer.byteLength(stdout, 'utf8') > maxBytes) {
         child.kill('SIGTERM');
-        finish(() => reject(new Error('Metadata dari link terlalu besar untuk diproses.')));
+        finish(() => reject(new Error('The URL metadata is too large to process.')));
       }
     });
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
       if (Buffer.byteLength(stderr, 'utf8') > maxBytes) stderr = stderr.slice(-maxBytes);
     });
-    child.on('error', (error) => finish(() => reject(new Error(`Gagal menjalankan yt-dlp (${runner.displayPath}): ${error.message}`))));
+    child.on('error', (error) => finish(() => reject(new Error(`Could not start yt-dlp (${runner.displayPath}): ${error.message}`))));
     child.on('close', (code) => {
       if (settled) return;
       if (code === 0) return finish(() => resolve({ stdout, stderr }));
-      return finish(() => reject(new Error(readableError(stderr, `yt-dlp selesai dengan kode ${code ?? 'tidak diketahui'}.`))));
+      return finish(() => reject(new Error(readableError(stderr, `yt-dlp exited with code ${code ?? 'unknown'}.`))));
     });
   });
 }
@@ -178,11 +178,11 @@ async function inspectWithYtDlp({ ytDlp, ytDlpPath, url, cookieConfig, playlist,
   args.push(url);
   const { stdout } = await runBuffered(ytDlp || ytDlpPath, args, { signal });
   let info;
-  try { info = JSON.parse(stdout.trim()); } catch { throw new Error('YTConv tidak dapat membaca metadata dari link tersebut.'); }
+  try { info = JSON.parse(stdout.trim()); } catch { throw new Error('YTConv could not read metadata from this URL.'); }
   const firstEntry = Array.isArray(info.entries) ? info.entries.find(Boolean) : null;
   const representative = firstEntry ?? info;
   return {
-    title: info.title || representative?.title || 'Media tanpa judul',
+    title: info.title || representative?.title || 'Untitled media',
     uploader: info.uploader || info.channel || representative?.uploader || representative?.channel || '',
     channel: info.channel || representative?.channel || '',
     platform: platformFromInfo(info, url),
@@ -311,7 +311,7 @@ export function buildUtilityArgs({ url, cookieConfig, playlist = false, kind, op
   const args = [...commonExtractorArgs(options), ...cookieArgs(cookieConfig), playlist ? '--yes-playlist' : '--no-playlist'];
   if (kind === 'formats') args.push('--list-formats');
   else if (kind === 'subs') args.push('--list-subs');
-  else throw new Error(`Utility yt-dlp tidak dikenal: ${kind}`);
+  else throw new Error(`Unknown yt-dlp utility: ${kind}`);
   args.push(url);
   return args;
 }
@@ -322,8 +322,8 @@ export function runYtDlpUtility({ ytDlp, ytDlpPath, url, cookieConfig, playlist,
     try {
       spawned = spawnYtDlp(ytDlp || ytDlpPath, buildUtilityArgs({ url, cookieConfig, playlist, kind, options }), { windowsHide: true, stdio: 'inherit', env: process.env });
     } catch (error) { reject(error); return; }
-    spawned.child.once('error', (error) => reject(new Error(`Gagal menjalankan yt-dlp (${spawned.runner.displayPath}): ${error.message}`)));
-    spawned.child.once('close', (code) => code === 0 ? resolve(0) : reject(new Error(`yt-dlp selesai dengan kode ${code ?? 'tidak diketahui'}.`)));
+    spawned.child.once('error', (error) => reject(new Error(`Could not start yt-dlp (${spawned.runner.displayPath}): ${error.message}`)));
+    spawned.child.once('close', (code) => code === 0 ? resolve(0) : reject(new Error(`yt-dlp exited with code ${code ?? 'unknown'}.`)));
   });
 }
 
@@ -341,7 +341,7 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     let outputPath = '';
     let settled = false;
     const finish = (callback) => { if (settled) return; settled = true; signal?.removeEventListener('abort', abort); callback(); };
-    const abort = () => { child.kill('SIGTERM'); finish(() => reject(new Error('Unduhan dibatalkan.'))); };
+    const abort = () => { child.kill('SIGTERM'); finish(() => reject(new Error('The download was cancelled.'))); };
     if (signal?.aborted) return abort();
     signal?.addEventListener('abort', abort, { once: true });
 
@@ -371,12 +371,12 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     };
     child.stdout.on('data', (chunk) => consume(chunk, false));
     child.stderr.on('data', (chunk) => consume(chunk, true));
-    child.on('error', (error) => finish(() => reject(new Error(`Gagal menjalankan yt-dlp (${runner.displayPath}): ${error.message}`))));
+    child.on('error', (error) => finish(() => reject(new Error(`Could not start yt-dlp (${runner.displayPath}): ${error.message}`))));
     child.on('close', (code) => {
       if (settled) return;
       processLine(bufferedStdout, false); processLine(bufferedStderr, true);
       if (code === 0) return finish(() => resolve({ outputPath, engine: 'yt-dlp' }));
-      return finish(() => reject(new Error(readableError(allStderr, `yt-dlp selesai dengan kode ${code ?? 'tidak diketahui'}.`))));
+      return finish(() => reject(new Error(readableError(allStderr, `yt-dlp exited with code ${code ?? 'unknown'}.`))));
     });
   });
 }
@@ -386,14 +386,14 @@ export async function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onL
   const forceGallery = process.env.YTCONV_FORCE_GALLERY === '1';
   const mayUseGallery = options.mode !== 'audio' && !forceVideo;
   if (mayUseGallery && (forceGallery || isGalleryPreferredUrl(options.url))) {
-    onLog?.('Menggunakan gallery engine untuk gambar, carousel, story, Reel, dan post campuran.', false);
+    onLog?.('Using the gallery engine for images, carousels, Stories, Reels, and mixed posts.', false);
     return downloadGallery({ url: options.url, cookieConfig: options.cookieConfig, outputDirectory: options.outputDirectory, onProgress, onLog, signal });
   }
   try {
     return await downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signal });
   } catch (ytDlpError) {
     if (!mayUseGallery) throw ytDlpError;
-    onLog?.('yt-dlp tidak dapat menangani media ini; mencoba gallery engine...', true);
+    onLog?.('yt-dlp could not handle this media; trying the gallery engine...', true);
     try {
       return await downloadGallery({ url: options.url, cookieConfig: options.cookieConfig, outputDirectory: options.outputDirectory, onProgress, onLog, signal });
     } catch (galleryError) {

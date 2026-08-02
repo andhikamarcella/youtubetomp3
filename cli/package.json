@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "description": "CLI-only media downloader with automatic setup and updates, official browser-session login, profiles, batch downloads, and multi-platform support.",
   "type": "module",
   "bin": {
@@ -37,24 +37,24 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "MIT",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.6-cli-only-final/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.7-cli-only-final/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.5.6-cli-only-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.5.7-cli-only-final/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "releaseDate": "2026-08-03",
-  "releaseNotes": "YTConv 1.5.6 completes automatic first-run media-engine setup, makes FFmpeg a required npm dependency, adds automatic stable updates for interactive installs, and links Instagram, Facebook, X, TikTok, YouTube, Pinterest, Reddit, Threads, Twitch, and more through official browser login. Passwords and raw cookies remain inside the browser and are never uploaded to YTConv.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.6-cli-only-final/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.5.7 makes Windows repair reinstall and verify the bundled FFmpeg engine automatically, converts CLI messages and documentation to English, and adds release checks that reproduce and repair a missing FFmpeg binary before publication.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.7-cli-only-final/cli/CHANGELOG.md",
   "installer": {
     "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.6.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.6/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.6/ytconv-1.5.6.metadata.json"
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.7.tgz",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.7/SHA256SUMS.txt",
+    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.7/ytconv-1.5.7.metadata.json"
   },
   "engines": {
     "node": ">=18",

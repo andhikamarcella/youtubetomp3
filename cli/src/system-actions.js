@@ -154,11 +154,11 @@ async function runAttempts(attempts) {
   for (const attempt of attempts) {
     const result = await runDetached(attempt);
     if (result.ok) return result;
-    errors.push(result.error?.message || `${attempt.command} gagal`);
+    errors.push(result.error?.message || `${attempt.command} failed`);
   }
   return {
     ok: false,
-    error: new Error(errors.join(' · ') || 'Tidak ada aplikasi pembuka yang tersedia.'),
+    error: new Error(errors.join(' · ') || 'No application is available to open this item.'),
   };
 }
 
@@ -170,7 +170,7 @@ export async function openOutputLocation({ directory, filePath = '' } = {}) {
 
 export async function openOutputFile(filePath) {
   if (!await exists(filePath)) {
-    return { ok: false, error: new Error('File hasil belum ditemukan.') };
+    return { ok: false, error: new Error('The output file has not been found yet.') };
   }
   return runAttempts(fileOpenAttempts({ filePath }));
 }

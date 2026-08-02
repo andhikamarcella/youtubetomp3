@@ -147,7 +147,7 @@ async function downloadFile(url, destination, { silent = false } = {}) {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
       const candidate = Buffer.from(await response.arrayBuffer());
-      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('file tidak lengkap');
+      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('incomplete file');
       data = candidate;
       break;
     } catch (error) {
@@ -155,7 +155,7 @@ async function downloadFile(url, destination, { silent = false } = {}) {
       if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
     }
   }
-  if (!data) throw new Error(`gallery-dl gagal setelah 3 percobaan (${lastError?.message || 'unknown error'})`);
+  if (!data) throw new Error(`gallery-dl failed after 3 attempts (${lastError?.message || 'unknown error'})`);
 
   await fs.writeFile(temporary, data);
   if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);
@@ -170,7 +170,7 @@ export async function ensureBundledGalleryDl({ force = false, silent = false } =
     throw new Error('Termux menjalankan gallery-dl melalui modul Python.');
   }
   if (!['win32', 'linux'].includes(process.platform)) {
-    throw new Error('Standalone gallery-dl tersedia otomatis untuk Windows dan Linux.');
+    throw new Error('The standalone gallery-dl engine is available automatically on Windows and Linux.');
   }
 
   const destination = bundledGalleryDlPath();
@@ -200,10 +200,10 @@ export async function ensureBundledGalleryDl({ force = false, silent = false } =
   }
 
   if (existing.valid) {
-    if (!silent) console.warn(`YTConv: memakai gallery-dl lama karena update gagal. ${errors.join('; ')}`);
+    if (!silent) console.warn(`YTConv: using the existing gallery-dl because its update failed. ${errors.join('; ')}`);
     return destination;
   }
-  throw new Error(`gallery-dl tidak dapat diunduh. ${errors.join('; ')}`);
+  throw new Error(`gallery-dl could not be downloaded. ${errors.join('; ')}`);
 }
 
 async function resolvePythonModuleRunner() {
@@ -330,7 +330,7 @@ function galleryCookieArgs(config) {
 
 function normalizeRunner(value) {
   const command = value?.command || value?.path;
-  if (!command) throw new Error('gallery-dl belum tersedia.');
+  if (!command) throw new Error('gallery-dl is not available yet.');
   return {
     command,
     prefixArgs: Array.isArray(value.prefixArgs) ? value.prefixArgs : [],
@@ -380,13 +380,13 @@ function commonGalleryArgs({ cookieConfig, outputDirectory, simulate = false } =
 function galleryError(stderr, fallback) {
   const text = String(stderr || '');
   if (/429|too many requests/iu.test(text)) {
-    return 'Situs membatasi terlalu banyak permintaan (429). Tunggu beberapa menit, kurangi concurrency, lalu coba lagi dengan sesi akun resmi bila diperlukan.';
+    return 'The site is rate limiting requests (429). Wait a few minutes, reduce concurrency, and retry with an official account session if required.';
   }
   if (/login|cookies?|authentication|private|not authorized/iu.test(text)) {
-    return 'Media memerlukan akun yang sudah login. Jalankan `ytconv login PROVIDER`, lalu ulangi link.';
+    return 'This media requires a signed-in account. Run `ytconv login PROVIDER`, then retry the URL.';
   }
   if (/unsupported|no suitable extractor|not found/iu.test(text)) {
-    return 'Link gambar/gallery belum didukung atau posting sudah tidak tersedia.';
+    return 'This image/gallery URL is not supported yet, or the post is no longer available.';
   }
   const useful = text
     .split(/\r?\n/u)
@@ -414,7 +414,7 @@ function runBuffered(runnerValue, args, { signal } = {}) {
     };
     const abort = () => {
       child.kill('SIGTERM');
-      finish(() => reject(new Error('Proses dibatalkan.')));
+      finish(() => reject(new Error('The operation was cancelled.')));
     };
     if (signal?.aborted) {
       abort();
@@ -429,11 +429,11 @@ function runBuffered(runnerValue, args, { signal } = {}) {
       stderr = `${stderr}${chunk}`.slice(-MAX_OUTPUT_BYTES);
     });
     child.on('error', (error) => finish(() => reject(new Error(
-      `Gagal menjalankan gallery-dl (${runner.displayPath}): ${error.message}`,
+      `Could not start gallery-dl (${runner.displayPath}): ${error.message}`,
     ))));
     child.on('close', (code) => {
       if (code === 0) finish(() => resolve({ stdout, stderr }));
-      else finish(() => reject(new Error(galleryError(stderr, `gallery-dl selesai dengan kode ${code}.`))));
+      else finish(() => reject(new Error(galleryError(stderr, `gallery-dl exited with code ${code}.`))));
     });
   });
 }
@@ -458,12 +458,12 @@ function metadataFromJsonLines(stdout) {
 
 export async function inspectGallery({ url, cookieConfig, outputDirectory, signal } = {}) {
   const runner = await resolveGalleryDlRunner({ install: true, silent: true });
-  if (!runner) throw new Error('Engine gambar gallery-dl tidak dapat disiapkan pada perangkat ini.');
+  if (!runner) throw new Error('The gallery-dl image engine could not be prepared on this device.');
 
   const args = [...commonGalleryArgs({ cookieConfig, outputDirectory, simulate: true }), url];
   const { stdout } = await runBuffered(runner, args, { signal });
   const { rows, metadata } = metadataFromJsonLines(stdout);
-  if (!rows.length) throw new Error('Tidak ada gambar, video, story, atau media gallery yang ditemukan.');
+  if (!rows.length) throw new Error('No image, video, Story, or gallery media was found.');
 
   const title = metadata.title
     || metadata.description
@@ -511,7 +511,7 @@ export async function downloadGallery({
   signal,
 } = {}) {
   const runner = await resolveGalleryDlRunner({ install: true, silent: false });
-  if (!runner) throw new Error('Engine gambar gallery-dl tidak dapat disiapkan pada perangkat ini.');
+  if (!runner) throw new Error('The gallery-dl image engine could not be prepared on this device.');
 
   await fs.mkdir(outputDirectory, { recursive: true });
   const before = await listFiles(outputDirectory);
@@ -539,7 +539,7 @@ export async function downloadGallery({
     };
     const abort = () => {
       child.kill('SIGTERM');
-      finish(() => reject(new Error('Unduhan dibatalkan.')));
+      finish(() => reject(new Error('The download was cancelled.')));
     };
     if (signal?.aborted) {
       abort();
@@ -578,14 +578,14 @@ export async function downloadGallery({
     child.stdout.on('data', (chunk) => consume(chunk, false));
     child.stderr.on('data', (chunk) => consume(chunk, true));
     child.on('error', (error) => finish(() => reject(new Error(
-      `Gagal menjalankan gallery-dl (${normalized.displayPath}): ${error.message}`,
+      `Could not start gallery-dl (${normalized.displayPath}): ${error.message}`,
     ))));
     child.on('close', async (code) => {
       if (settled) return;
       processLine(stdoutBuffer, false);
       processLine(stderrBuffer, true);
       if (code !== 0) {
-        finish(() => reject(new Error(galleryError(stderrAll, `gallery-dl selesai dengan kode ${code}.`))));
+        finish(() => reject(new Error(galleryError(stderrAll, `gallery-dl exited with code ${code}.`))));
         return;
       }
 

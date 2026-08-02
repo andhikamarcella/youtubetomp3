@@ -150,13 +150,13 @@ function HomeScreen(props) {
   const mediaSetting = mode === 'audio'
     ? `audio:${audioFormat}/${audioQuality}`
     : mode === 'image'
-      ? `gambar:${imageFormat.toUpperCase()}`
+      ? `image:${imageFormat.toUpperCase()}`
       : `video:${videoFormat}/${resolution}`;
 
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, { bold: true, color: 'cyan' }, 'Paste link sosmed')),
+    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, { bold: true, color: 'cyan' }, 'Paste a social-media URL')),
     h(
       Box,
       { width: panelWidth, flexDirection: 'row' },
@@ -194,10 +194,10 @@ function HomeScreen(props) {
         + ` · subs:${subtitles ? 'on' : 'off'} · thumb:${writeThumbnail ? 'on' : 'auto'}`),
     ),
     h(Text, { dimColor: true },
-      `akses:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`),
-    h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T container · Ctrl+Q kualitas'),
-    h(Text, { dimColor: true }, 'Ctrl+S subtitle · Ctrl+N thumbnail · Ctrl+F gambar · Ctrl+G sosmed'),
-    h(Text, { dimColor: true }, 'Ctrl+B akses akun · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H bantuan'),
+      `access:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`),
+    h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T container · Ctrl+Q quality'),
+    h(Text, { dimColor: true }, 'Ctrl+S subtitles · Ctrl+N thumbnail · Ctrl+F images · Ctrl+G social'),
+    h(Text, { dimColor: true }, 'Ctrl+B account access · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H help'),
   );
 }
 
@@ -226,7 +226,7 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
         : [progress.percent || '0%', progress.speed, progress.eta ? `ETA ${progress.eta}` : ''].filter(Boolean).join(' · ')),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, statusText || 'please wait'),
     ),
-    h(Text, { dimColor: true }, 'Esc/Ctrl+C membatalkan dan menutup'),
+    h(Text, { dimColor: true }, 'Esc/Ctrl+C cancels and exits'),
   );
 }
 
@@ -240,8 +240,8 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMess
       h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
-    h(Text, { dimColor: true }, 'O buka folder · F buka file · C copy lokasi · R link lain'),
-    h(Text, { dimColor: true }, 'H bantuan · D diagnostics · Q/Esc keluar'),
+    h(Text, { dimColor: true }, 'O open folder · F open file · C copy path · R another URL'),
+    h(Text, { dimColor: true }, 'H help · D diagnostics · Q/Esc exit'),
   );
 }
 
@@ -254,26 +254,26 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage, ur
     h(Box, { marginTop: 1, borderStyle: 'double', borderColor: 'red', width: panelWidth, paddingX: 1, flexDirection: 'column' },
       h(Text, { bold: true, color: 'red' }, '× conversion failed'),
       h(Text, { color: 'red', wrap: 'wrap' }, error),
-      h(Text, { dimColor: true }, `akses: ${cookieSourceLabel(cookieSource)}`),
+      h(Text, { dimColor: true }, `access: ${cookieSourceLabel(cookieSource)}`),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
-    h(Text, { dimColor: true }, 'R coba lagi · E edit link · Ctrl+B cookies · D diagnostics · Q/Esc keluar'),
+    h(Text, { dimColor: true }, 'R retry · E edit URL · Ctrl+B cookies · D diagnostics · Q/Esc exit'),
     loginHint ? h(Text, { color: 'yellow' }, loginHint) : null,
-    h(Text, { dimColor: true }, 'Sesi akun tetap berada di browser dan dilindungi enkripsi browser/OS.'),
+    h(Text, { dimColor: true }, 'Account sessions remain in the browser under browser/OS encryption.'),
   );
 }
 
 function HelpScreen({ panelWidth, termux }) {
   const rows = [
     ['Ctrl+M', 'mode AUTO/VIDEO/AUDIO/IMAGE'],
-    ['Ctrl+A / Ctrl+T', 'format audio / container video'],
-    ['Ctrl+Q / Ctrl+F', 'resolusi video / format gambar'],
-    ['Ctrl+S / Ctrl+N', 'subtitle / thumbnail terpisah'],
-    ['Ctrl+G', 'pilih nama sosmed / AUTO semua sosmed'],
-    ['Ctrl+B', 'akses AUTO / publik / file lama / browser'],
-    ['Ctrl+P / Ctrl+O', 'playlist / buka hasil otomatis'],
-    ['Enter/click', 'convert link'],
-    ['O / F / C', 'buka folder / file / copy lokasi'],
+    ['Ctrl+A / Ctrl+T', 'audio format / video container'],
+    ['Ctrl+Q / Ctrl+F', 'video resolution / image format'],
+    ['Ctrl+S / Ctrl+N', 'subtitles / separate thumbnail'],
+    ['Ctrl+G', 'choose social platform / AUTO all platforms'],
+    ['Ctrl+B', 'AUTO / public / legacy file / browser access'],
+    ['Ctrl+P / Ctrl+O', 'playlist / open results automatically'],
+    ['Enter/click', 'convert URL'],
+    ['O / F / C', 'open folder / file / copy path'],
   ];
   return h(
     Box,
@@ -283,9 +283,9 @@ function HelpScreen({ panelWidth, termux }) {
       h(Box, { width: 18 }, h(Text, { bold: true }, key)),
       h(Text, { dimColor: true }, description))),
     h(Text, { dimColor: true }, termux
-      ? 'Termux tidak dapat membaca sesi privat browser Android. Link publik tetap dapat diunduh.'
-      : 'AUTO mencoba akses publik lalu akun browser yang ditautkan lewat ytconv login PROVIDER.'),
-    h(Text, null, 'B kembali · Q/Esc keluar'),
+      ? 'Termux cannot read private Android browser sessions. Public URLs can still be downloaded.'
+      : 'AUTO tries public access, followed by the browser account linked with ytconv login PROVIDER.'),
+    h(Text, null, 'B back · Q/Esc exit'),
   );
 }
 
@@ -305,7 +305,7 @@ function DiagnosticsScreen({
     ['YTConv', CLI_VERSION],
     ['Node.js', process.version],
     ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
-    ['Sosmed', socialPlatformLabel(platformHint)],
+    ['Social', socialPlatformLabel(platformHint)],
     ['Mode', mode],
     ['Audio', audioFormat],
     ['Video', `${videoFormat}/${resolution}`],
@@ -314,7 +314,7 @@ function DiagnosticsScreen({
     ['gallery-dl', dependencies.galleryDl?.version || 'not found'],
     ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
     ['Output', outputDirectory],
-    ['Akses akun', cookieSourceLabel(cookieSource)],
+    ['Account access', cookieSourceLabel(cookieSource)],
   ];
   return h(
     Box,
@@ -323,22 +323,22 @@ function DiagnosticsScreen({
     ...rows.map(([label, value]) => h(Box, { key: label, flexDirection: 'row' },
       h(Box, { width: 16 }, h(Text, { bold: true }, label)),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, String(value)))),
-    h(Text, null, 'B kembali · Q/Esc keluar'),
+    h(Text, null, 'B back · Q/Esc exit'),
   );
 }
 
 function MissingDependencies({ dependencies, panelWidth }) {
-  const missing = dependencies.missing?.length ? dependencies.missing.join(', ') : 'engine media';
+  const missing = dependencies.missing?.length ? dependencies.missing.join(', ') : 'media engines';
   const errors = (dependencies.errors || []).slice(0, 2);
   return h(
     Box,
     { width: panelWidth, borderStyle: 'double', borderColor: 'yellow', paddingX: 1, flexDirection: 'column' },
-    h(Text, { bold: true, color: 'yellow' }, '! Persiapan otomatis belum selesai'),
-    h(Text, { color: 'yellow' }, `Belum siap: ${missing}`),
+    h(Text, { bold: true, color: 'yellow' }, '! Automatic setup is incomplete'),
+    h(Text, { color: 'yellow' }, `Not ready: ${missing}`),
     ...errors.map((item) => h(Text, { key: item, dimColor: true, wrap: 'wrap' }, `• ${item}`)),
-    h(Text, { color: 'cyan' }, 'Jalankan: ytconv repair'),
-    h(Text, { dimColor: true, wrap: 'wrap' }, dependencies.platform?.setupCommand || 'Jika masih gagal, jalankan ytconv doctor lalu ikuti solusi yang ditampilkan.'),
-    h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C keluar'),
+    h(Text, { color: 'cyan' }, 'Run: ytconv repair'),
+    h(Text, { dimColor: true, wrap: 'wrap' }, dependencies.platform?.setupCommand || 'If repair still fails, run ytconv doctor and follow the displayed solution.'),
+    h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C exit'),
   );
 }
 
@@ -443,7 +443,7 @@ function App({
   const pasteClipboard = () => {
     const value = readClipboardText({ termux });
     if (!value) {
-      setInputError(termux ? 'Tekan lama Termux lalu pilih Paste.' : 'Clipboard tidak dapat dibaca.');
+      setInputError(termux ? 'Long-press in Termux and choose Paste.' : 'The clipboard could not be read.');
       return;
     }
     setUrl((current) => applyText(current, value));
@@ -520,7 +520,7 @@ function App({
         const cookieConfig = cookieConfigs[index];
         const platformKey = platformHint === 'auto' ? detectSocialPlatform(value) : platformHint;
         setStage('probing');
-        setStatusText(`${socialPlatformLabel(platformKey)} · mencoba ${cookieConfig.label}`);
+        setStatusText(`${socialPlatformLabel(platformKey)} · trying ${cookieConfig.label}`);
 
         try {
           const inspected = await inspectMedia({
@@ -559,8 +559,8 @@ function App({
             onProgress: setProgress,
             onLog: (line, isError) => {
               void appendSessionLog(line, isError ? 'error' : 'info');
-              if (/Tersimpan:/u.test(line)) setStatusText(line);
-              else if (/gallery|gambar|image|carousel|Merger|ExtractAudio|VideoRemuxer|SponsorBlock/iu.test(line)) setStatusText(line);
+              if (/Saved:/u.test(line)) setStatusText(line);
+              else if (/gallery|image|carousel|Merger|ExtractAudio|VideoRemuxer|SponsorBlock/iu.test(line)) setStatusText(line);
             },
           });
 
@@ -578,13 +578,13 @@ function App({
           void appendSessionLog(caught instanceof Error ? caught.message : String(caught), 'error');
           const next = cookieConfigs[index + 1];
           if (next) {
-            setStatusText(`akses publik gagal · mencoba cookies ${next.label}`);
+            setStatusText(`public access failed · trying cookies from ${next.label}`);
             continue;
           }
         }
       }
 
-      throw lastError || new Error('Tidak ada engine yang berhasil memproses link tersebut.');
+      throw lastError || new Error('No media engine could process this URL.');
     } catch (caught) {
       if (controller.signal.aborted) return;
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -653,13 +653,13 @@ function App({
     if (configurable && key.ctrl && lower === 'n') return setWriteThumbnail((current) => !current);
     if (configurable && key.ctrl && lower === 'g') {
       setPlatformHint((current) => cycle(SOCIAL_PLATFORM_KEYS, current));
-      setActionMessage('pilihan sosmed diubah');
+      setActionMessage('social-platform selection changed');
       return;
     }
     if (configurable && key.ctrl && lower === 'f') {
       setImageFormat((current) => cycle(IMAGE_FORMATS, current));
       setMode('image');
-      setActionMessage('format gambar diubah');
+      setActionMessage('image format changed');
       return;
     }
     if (configurable && key.ctrl && lower === 'q') {
@@ -797,7 +797,7 @@ export async function runApp({
     try {
       await prepareTermuxDependencies();
     } catch (error) {
-      console.error(`Setup gagal: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Setup failed: ${error instanceof Error ? error.message : String(error)}`);
       await sleep(1500);
     }
     dependencies = await inspectDependencies();

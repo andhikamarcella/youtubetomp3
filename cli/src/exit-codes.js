@@ -10,11 +10,11 @@ export const EXIT_CODES = Object.freeze({
 
 export function exitCodeForError(error) {
   const message = String(error?.message ?? error ?? '').toLowerCase();
-  if (/dibatalkan|cancelled|canceled|sigint/u.test(message)) return EXIT_CODES.CANCELLED;
-  if (/link tidak valid|url tidak valid|opsi tidak dikenal|membutuhkan nilai|harus salah satu/u.test(message)) {
+  if (/cancelled|canceled|sigint/u.test(message)) return EXIT_CODES.CANCELLED;
+  if (/invalid (?:link|url)|unknown option|requires a value|must be one of/u.test(message)) {
     return EXIT_CODES.INVALID_USAGE;
   }
-  if (/ffmpeg|ffprobe|yt-dlp belum|gallery-dl belum|dependency belum|executable.*tidak/u.test(message)) {
+  if (/ffmpeg|ffprobe|yt-dlp.*(?:unavailable|not available)|gallery-dl.*(?:unavailable|not available)|missing dependency|executable.*not/u.test(message)) {
     return EXIT_CODES.DEPENDENCY_MISSING;
   }
   if (/login|sign in|authentication|cookies?.*(expired|invalid)|private|members.only|age.restricted/u.test(message)) {

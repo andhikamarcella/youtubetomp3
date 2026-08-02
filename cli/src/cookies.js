@@ -56,7 +56,7 @@ export function cookieSourcesForPlatform(termux = isTermux()) {
 
 export function cookieSourceLabel(source) {
   if (!source || source === 'none') return 'off';
-  if (source === 'auto') return 'AUTO publik + akun browser';
+  if (source === 'auto') return 'AUTO public + linked browser account';
   if (source === 'file') return 'cookies.txt';
   return source;
 }
@@ -170,7 +170,7 @@ function linkedBrowserConfig(session) {
     spec,
     provider: session.provider,
     linked: true,
-    label: `akun ${session.label || session.provider} · ${spec}`,
+    label: `account ${session.label || session.provider} · ${spec}`,
   };
 }
 
@@ -188,10 +188,10 @@ async function firstCookieFile({ outputDirectory } = {}) {
 }
 
 export async function resolveCookieConfigs({ source = 'auto', outputDirectory, url = '', homeDirectory } = {}) {
-  if (!source || source === 'none') return [{ kind: 'none', label: 'akses publik' }];
+  if (!source || source === 'none') return [{ kind: 'none', label: 'public access' }];
 
   if (source === 'auto') {
-    const configs = [{ kind: 'none', label: 'akses publik' }];
+    const configs = [{ kind: 'none', label: 'public access' }];
     const linked = url ? await socialSessionForUrl(url, { homeDirectory }) : null;
     if (linked) configs.push(linkedBrowserConfig(linked));
     const file = await firstCookieFile({ outputDirectory });
@@ -215,20 +215,20 @@ export async function resolveCookieConfigs({ source = 'auto', outputDirectory, u
       : path.join(desktopDownloadsDirectory(), 'cookies.txt');
 
     throw new Error(
-      `cookies.txt tidak ditemukan. Simpan file Netscape cookies di "${suggested}" `
-      + 'atau set environment variable YTCONV_COOKIES ke lokasi file.',
+      `cookies.txt was not found. Save a Netscape cookie file at "${suggested}" `
+      + 'or set YTCONV_COOKIES to its path.',
     );
   }
 
   if (isTermux()) {
     throw new Error(
-      'Android memisahkan data browser dari Termux. YTConv dapat mendeteksi cookies.txt '
-      + 'di penyimpanan bersama, tetapi tidak dapat mengambil database privat Chrome Android secara langsung.',
+      'Android isolates browser data from Termux. YTConv can detect cookies.txt in shared storage, '
+      + 'but it cannot directly read the private Android Chrome database.',
     );
   }
 
   if (!DESKTOP_BROWSERS.includes(source)) {
-    throw new Error(`Browser cookies "${source}" tidak dikenali.`);
+    throw new Error(`Unknown browser cookie source: "${source}".`);
   }
 
   return [browserConfig(source)];

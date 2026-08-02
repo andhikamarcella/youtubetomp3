@@ -21,7 +21,7 @@ export function explainError(error, { platform = process.platform, url = error?.
     lines.push('PowerShell blocked the npm .ps1 shim.');
     lines.push('Use: ytconv.cmd');
     lines.push('Optional current-user fix: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned');
-  } else if (/not recognized|is not recognized|enoent|tidak ditemukan/u.test(value)) {
+  } else if (/not recognized|is not recognized|enoent|not found/u.test(value)) {
     lines.push('Cause: a command or dependency is not available through PATH.');
     lines.push(platform === 'win32'
       ? 'Try: where node && where npm && where ytconv'
@@ -33,16 +33,16 @@ export function explainError(error, { platform = process.platform, url = error?.
       ? 'Use a directory owned by the current account and check npm config get prefix.'
       : 'Do not use sudo npm. Set a user prefix: npm config set prefix "$HOME/.local"');
   } else if (/cookie database|decrypt.*cookie|dpapi|keyring/u.test(value)) {
-    lines.push('Browser masih mengunci database sesi, atau kunci enkripsi sistem belum dapat dibaca.');
-    lines.push('Tutup browser sepenuhnya, lalu coba lagi. Firefox biasanya paling mudah dibaca lintas perangkat.');
+    lines.push('The browser is still locking its session database, or the OS encryption key could not be read.');
+    lines.push('Close the browser completely and retry. Firefox is usually the most compatible option.');
     const hint = socialLoginHint(url);
     if (hint) lines.push(hint);
   } else if (/cookie|login|sign in|private|authentication|members.only|age.restricted/u.test(value)) {
-    lines.push('Media ini memerlukan akun yang sudah login, atau sesi browsernya kedaluwarsa.');
+    lines.push('This media requires a signed-in account, or the browser session has expired.');
     const hint = socialLoginHint(url);
     if (hint) lines.push(hint);
-    else lines.push('Login resmi: ytconv social help');
-    lines.push('YTConv memakai sesi browser lokal; password dan cookie mentah tidak disimpan atau dikirim ke server.');
+    else lines.push('Official login help: ytconv social help');
+    lines.push('YTConv uses a local browser session; passwords and raw cookies are neither stored nor sent to a server.');
   } else if (/429|too many requests/u.test(value)) {
     lines.push('The site is rate limiting requests. Avoid aggressive retries.');
     lines.push('Wait, then retry with --jobs 1 --concurrent-fragments 1 --retry-sleep "linear=2:20:3".');
@@ -60,6 +60,6 @@ export function explainError(error, { platform = process.platform, url = error?.
     lines.push('Try without a proxy/VPN, check the device clock, and retry.');
   }
 
-  lines.push('Pemeriksaan: ytconv doctor lalu ytconv --shell-info');
+  lines.push('Diagnostics: run ytconv doctor, followed by ytconv --shell-info');
   return [...new Set(lines.filter(Boolean))].join('\n');
 }
