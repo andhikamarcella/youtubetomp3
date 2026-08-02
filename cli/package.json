@@ -1,20 +1,20 @@
 {
   "name": "ytconv",
-  "version": "1.5.0-beta.2",
-  "description": "Beginner-friendly media downloader with persistent config, profiles, history, completion, playlist, batch, and multi-platform support.",
+  "version": "1.5.0",
+  "description": "Account-protected, beginner-friendly media downloader with persistent config, profiles, history, playlist, batch, and multi-platform support.",
   "type": "module",
-  "bin": "bin/ytconv.js",
+  "bin": "bin/ytconv-auth.js",
   "files": ["bin", "src", "scripts", "ish", "docs", "README.md", "CHANGELOG.md", "LICENSE"],
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
-    "start": "node ./bin/ytconv.js",
-    "check": "node --check ./bin/ytconv.js && node --check ./src/argument-precedence.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/english-help.js && node --check ./src/commands.js && node --check ./src/user-data.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/gallery-beta.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
+    "start": "node ./bin/ytconv-auth.js",
+    "check": "node --check ./bin/ytconv-auth.js && node --check ./bin/ytconv.js && node --check ./src/auth.js && node --check ./src/argument-precedence.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/english-help.js && node --check ./src/commands.js && node --check ./src/user-data.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/gallery-beta.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js",
     "check:ish": "python3 -m py_compile ./ish/ytconv.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node --test",
     "test:ish": "python3 ./ish/ytconv.py --version"
   },
   "keywords": [
-    "yt-dlp", "gallery-dl", "ffmpeg", "youtube", "youtube-music", "instagram", "facebook", "tiktok", "pinterest", "twitter", "reddit", "threads", "twitch", "soundcloud", "downloader", "converter", "playlist", "batch", "resume", "retry", "archive", "metadata", "cookies", "sponsorblock", "subtitles", "config", "profiles", "history", "completion", "termux", "ish", "ssh", "powershell", "cmd", "windows", "linux", "ubuntu", "debian", "fedora", "arch", "alpine", "macos", "automation", "json", "tui", "cli", "terminal"
+    "yt-dlp", "gallery-dl", "ffmpeg", "youtube", "youtube-music", "instagram", "facebook", "tiktok", "pinterest", "twitter", "reddit", "threads", "twitch", "soundcloud", "downloader", "converter", "playlist", "batch", "resume", "retry", "archive", "metadata", "cookies", "sponsorblock", "subtitles", "config", "profiles", "history", "completion", "login", "device-auth", "termux", "ish", "ssh", "powershell", "cmd", "windows", "linux", "ubuntu", "debian", "fedora", "arch", "alpine", "macos", "automation", "json", "tui", "cli", "terminal"
   ],
   "author": "Andhika Marcella Fernanda",
   "license": "MIT",
@@ -24,5 +24,5 @@
   "engines": {"node": ">=18"},
   "dependencies": {"figlet": "^1.8.2", "ink": "^5.2.1", "react": "^18.3.1", "which": "^5.0.0"},
   "optionalDependencies": {"ffmpeg-static": "5.3.0"},
-  "publishConfig": {"access": "public", "tag": "beta"}
+  "publishConfig": {"access": "public", "tag": "latest"}
 }
