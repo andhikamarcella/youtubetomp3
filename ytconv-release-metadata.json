@@ -9,10 +9,10 @@
   "installer": {
     "type": "Tarball",
     "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.9.tgz",
-    "sha256": "5c9e64ed5f010e899dd9987206239b88d8daa00d37d4a7c3e4ce4363d7ecb102",
-    "sha512Integrity": "sha512-uD+2kRFTpq1QmMf9YNLG3GDHJPE1mhCDwmIrdE9ZgkKyQHqgOxXF+OxtGQ5aO+BIalh5vTF6noCMC88cVX4aTQ==",
-    "packedSize": 120257,
-    "unpackedSize": 453249
+    "sha256": "69fd6036944edf2f0ea6d8036a178eef7dbee63c0f9be78d73634c1c753ea87a",
+    "sha512Integrity": "sha512-+jKKkogl3vMP8jcuXPtZ4aJ5DStj/4FXrdZjnOmR7BOdVPRR2tBPyXyA4xYEDYgmHdQFe0kt4EfCcvQggzq2lQ==",
+    "packedSize": 120306,
+    "unpackedSize": 453527
   },
   "dependencies": {
     "figlet": "^1.8.2",

@@ -68,5 +68,5 @@ try {
   await disposePreparedCookieConfig(prepared);
   await closeManagedBrowserSession(session);
   server.close();
-  await fs.rm(homeDirectory, { recursive: true, force: true });
+  await fs.rm(homeDirectory, { recursive: true, force: true, maxRetries: 25, retryDelay: 200 });
 }

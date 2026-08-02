@@ -458,4 +458,13 @@ export async function disposePreparedCookieConfig(config) {
 export async function closeManagedBrowserSession(session) {
   if (!session?.webSocketDebuggerUrl) return;
   await cdpCommand(session.webSocketDebuggerUrl, 'Browser.close', {}, { timeoutMs: 3_000 }).catch(() => {});
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    try {
+      await cdpCommand(session.webSocketDebuggerUrl, 'Browser.getVersion', {}, { timeoutMs: 500 });
+      await delay(100);
+    } catch {
+      return;
+    }
+  }
 }

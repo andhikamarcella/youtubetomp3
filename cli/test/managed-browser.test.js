@@ -54,11 +54,21 @@ test('Netscape export preserves secure session cookies and omits expired rows', 
 
 test('CDP bridge exports only provider cookies to a private temporary file and deletes it', async (t) => {
   const server = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  let browserClosed = false;
   await once(server, 'listening');
   t.after(() => server.close());
   server.on('connection', (socket) => {
     socket.once('message', (payload) => {
       const request = JSON.parse(payload.toString());
+      if (request.method === 'Browser.close') {
+        browserClosed = true;
+        socket.send(JSON.stringify({ id: request.id, result: {} }));
+        return;
+      }
+      if (browserClosed) {
+        socket.close();
+        return;
+      }
       socket.send(JSON.stringify({
         id: request.id,
         result: {
