@@ -6,7 +6,7 @@ on:
       version:
         description: "Beta version; must match cli/package.json"
         required: true
-        default: "1.5.0-beta.2"
+        default: "1.6.0-beta.1"
       confirm:
         description: "Type PUBLISH-BETA to continue"
         required: true
@@ -37,11 +37,11 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
           test "$PACKAGE_VERSION" = "${{ inputs.version }}"
-          test "$PACKAGE_VERSION" = "1.5.0-beta.2"
+          test "$PACKAGE_VERSION" = "1.6.0-beta.1"
           test "$PACKAGE_TAG" = "beta"
           case "$PACKAGE_VERSION" in
             *-beta.*) ;;
-            *) echo "The package is not a beta prerelease."; exit 1 ;;
+            *) echo "The package is not a numbered beta prerelease."; exit 1 ;;
           esac
           if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
             echo "ytconv@$PACKAGE_VERSION is already published; refusing to overwrite it."
