@@ -1,188 +1,92 @@
-# YTConv CLI 1.5.0 Beta 2
+# YTConv CLI 1.6.0-beta.1
 
-YTConv is a beginner-friendly media downloader and converter for Windows CMD, PowerShell, Linux distributions, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through the native iSH frontend. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
+YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
 > Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-## Release channels
+## What is new in 1.6.0-beta.1
 
-```text
-Stable: 1.4.0          npm install -g ytconv@latest
-Beta:   1.5.0-beta.2   npm install -g ytconv@beta
-```
+This beta includes everything from the account-protected 1.5.0 release, plus:
 
-Installing the beta must not replace the npm `latest` tag.
+- `ytconv auth devices` to list signed-in CLI devices.
+- `ytconv auth devices --json` for scripts and automation.
+- `ytconv auth revoke TOKEN_ID` to revoke a lost or unused device.
+- `ytconv auth revoke all` to revoke every other device while keeping the current terminal active.
+- `ytconv auth refresh` to rotate the current device token immediately.
+- Automatic token rotation when seven days or less remain.
+- Device-management parity for the native iSH/Python frontend.
+- A clearer account table and improved browser-login feedback.
 
-## Beta defaults
+The stable foundation still requires account login before downloads/conversions, keeps the X/Twitter yt-dlp-first fallback, and includes persistent config, profiles, history, shell completion, playlist/batch, retry/resume, subtitles, SponsorBlock mark mode, and separate archives.
 
-```text
-Subtitles        ON for video
-SponsorBlock     ON in safe mark mode
-Download archive ON with separate output profiles
-Resume           ON
-```
+## Install the beta
 
-Disable any beta default for one run:
-
-```bash
-ytconv download "URL" --no-subtitles
-ytconv download "URL" --no-sponsorblock
-ytconv download "URL" --no-archive
-```
-
-`SponsorBlock mark` adds chapter markers and does not cut media. Cutting still requires `--sponsorblock remove`.
-
-## New in beta.2
-
-### Persistent configuration
-
-```bash
-ytconv config list
-ytconv config path
-ytconv config set output "$HOME/Downloads/YTConv"
-ytconv config set audioQuality 192
-ytconv config get output
-ytconv config unset audioQuality
-ytconv config reset
-```
-
-Configuration is stored with user-only file permissions in:
-
-```text
-~/.ytconv/config.json
-```
-
-Supported saved settings are validated before writing. Cookie contents, tokens, and browser sessions are never stored by the config command.
-
-Ignore saved settings for one run:
-
-```bash
-ytconv --no-config download "URL"
-```
-
-### Named profiles
-
-```bash
-ytconv profile set music preset=music audioQuality=320
-ytconv profile set phone preset=mobile resolution=720
-ytconv profile list
-ytconv profile show music
-ytconv profile use phone
-ytconv download "URL"
-ytconv --profile music download "URL"
-ytconv profile clear
-ytconv profile delete phone
-```
-
-Explicit command-line options override saved defaults.
-
-### Download history
-
-Headless and batch runs write a small privacy-limited history entry:
-
-```bash
-ytconv history
-ytconv history --json
-ytconv history --limit 50
-ytconv history clear
-```
-
-History includes time, version, command, URLs, mode, preset, profile, output directory, and exit code. It excludes cookies, tokens, proxy credentials, and browser session data. The file is capped at 500 entries.
-
-### Shell completion
-
-```bash
-ytconv completion bash
-ytconv completion zsh
-ytconv completion fish
-ytconv completion powershell
-```
-
-Copy the generated line into the matching shell profile.
-
-### Beginner quick start
-
-```bash
-ytconv quickstart
-```
-
-## Install beta.2
-
-### Windows CMD
-
-```cmd
-npm.cmd uninstall -g ytconv
-npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
-ytconv.cmd --version
-ytconv.cmd --self-test
-ytconv.cmd doctor
-ytconv.cmd quickstart
-```
-
-### Windows PowerShell
+### Windows
 
 ```powershell
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@beta --force
 ytconv.cmd --version
-ytconv.cmd --self-test
-ytconv.cmd doctor
-ytconv.cmd quickstart
+ytconv.cmd login
 ```
 
-Use `ytconv.cmd` when PowerShell execution policy blocks `ytconv.ps1`.
+### Linux, macOS, or SSH
 
-### Linux, macOS, and SSH
-
-Install the operating-system requirements using [docs/LINUX.md](docs/LINUX.md). Replace `ytconv@latest` with `ytconv@beta` for the prerelease:
-
-```bash
+```sh
 npm uninstall -g ytconv
 npm cache verify
 npm install -g ytconv@beta --force
 ytconv --version
-ytconv --self-test
-ytconv doctor
-ytconv quickstart
-```
-
-Expected version:
-
-```text
-1.5.0-beta.2
+ytconv login
 ```
 
 ### Android Termux
 
-```bash
+```sh
 pkg update
 pkg install -y nodejs python ffmpeg curl ca-certificates
 termux-setup-storage
 python -m pip install -U --no-cache-dir yt-dlp gallery-dl
 npm install -g ytconv@beta --omit=optional --force
 ytconv repair
-ytconv --self-test
-ytconv doctor
+ytconv login
 ```
-
-Default output: `~/storage/downloads/YTConv`.
 
 ### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.0-beta.2/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
-sh /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-beta/cli/scripts/install-ish.sh -o /tmp/ytconv-ish-beta.sh
+sh /tmp/ytconv-ish-beta.sh
 ytconv --version
-ytconv doctor
+ytconv login
 ```
 
-The native iSH frontend provides the media workflow and beta defaults. The Node-specific config/profile/completion layer is documented separately when unavailable in the older iSH runtime.
+Expected version:
+
+```text
+1.6.0-beta.1
+```
+
+## Login and device management
+
+```sh
+ytconv login
+ytconv auth status
+ytconv auth status --json
+ytconv auth devices
+ytconv auth devices --json
+ytconv auth revoke TOKEN_ID
+ytconv auth revoke all
+ytconv auth refresh
+ytconv logout
+```
+
+The local token is stored in `~/.ytconv/auth.json` with user-only permissions on Unix-like systems. Never share that file, device codes, cookies, or browser sessions.
 
 ## Media commands
 
-```bash
+```sh
 ytconv download "URL"
 ytconv playlist "PLAYLIST_URL"
 ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
@@ -191,82 +95,107 @@ ytconv formats "URL"
 ytconv subtitles "URL"
 ```
 
-## Formats and quality
+## Configuration, profiles, and history
 
-```bash
-ytconv download "URL" --audio-format mp3 --audio-quality 192
+```sh
+ytconv config list
+ytconv config set output "$HOME/Downloads/YTConv"
+ytconv config set audioQuality 192
+ytconv profile set music preset=music audioQuality=320
+ytconv profile set phone preset=mobile resolution=720
+ytconv profile use phone
+ytconv --profile music download "URL"
+ytconv history
+ytconv history --json
+ytconv history clear
+```
+
+Explicit command-line options override saved defaults. `--no-config` ignores saved settings for one run.
+
+## Default media behavior
+
+```text
+Subtitles         enabled for video
+SponsorBlock      enabled in non-destructive mark mode
+Download archives enabled per output profile
+Resume            enabled
+```
+
+Opt out for one run:
+
+```sh
+ytconv download "URL" --no-subtitles
+ytconv download "URL" --no-sponsorblock
+ytconv download "URL" --no-archive
+```
+
+## Formats, cookies, and diagnostics
+
+```sh
+ytconv download "URL" --audio-format mp3 --audio-quality 320
 ytconv download "URL" --audio-format flac
 ytconv download "URL" --video-format mp4 --resolution 1080
-ytconv formats "URL" --json
-```
-
-MP3 at 320 kbps is an encoder target and cannot create detail that was absent from the source.
-
-## Metadata and cover art
-
-```bash
 ytconv download "URL" --preset music
-ytconv download "URL" --metadata --thumbnail --metadata-files
-ytconv download "URL" --artist "Artist" --title "Title" --album "Album" --track 3 --year 2026 --genre "Pop"
-```
-
-## Playlist, retry, resume, and archive
-
-```bash
-ytconv playlist "URL" --playlist-items "1-10"
-ytconv playlist "URL" --max-downloads 25 --skip-playlist-after-errors 5
-ytconv download "URL" --retries 20 --fragment-retries 30
-ytconv download "URL" --resume
-```
-
-The beta creates separate yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives` unless `--no-archive` is used.
-
-## Cookies
-
-```bash
 ytconv download "URL" --cookies cookies.txt
 ytconv download "URL" --cookies-from-browser chrome
-ytconv download "URL" --cookies-from-browser "firefox:default-release"
-```
-
-Cookies are sensitive credentials. Never include them in screenshots, logs, issues, or chat messages.
-
-## Diagnostics
-
-```bash
 ytconv doctor
 ytconv repair
 ytconv --self-test
 ytconv --shell-info
-ytconv clean
 ```
 
-`clean` preserves configuration, profiles, download history, and download archives.
+Cookies are account credentials. Use them only for media you are authorized to access and never publish them in logs, screenshots, issues, or chat messages.
+
+## Shell completion
+
+```sh
+ytconv completion bash
+ytconv completion zsh
+ytconv completion fish
+ytconv completion powershell
+```
+
+## Account-server deployment
+
+The Next.js account server needs:
+
+```text
+DATABASE_URL
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+NEXTAUTH_SECRET
+NEXTAUTH_URL
+CLI_AUTH_ENCRYPTION_KEY (recommended)
+```
+
+See [docs/AUTH.md](docs/AUTH.md) and [docs/BETA-1.6.md](docs/BETA-1.6.md).
 
 ## Return to stable
 
-```bash
+```sh
 npm uninstall -g ytconv
 npm cache verify
 npm install -g ytconv@latest --force
 ytconv --version
 ```
 
+For iSH, rerun the installer from `release/ytconv-1.5.0`.
+
+## Release channels
+
+```text
+Stable: 1.5.0          npm install -g ytconv@latest
+Beta:   1.6.0-beta.1   npm install -g ytconv@beta
+```
+
+The beta publishing workflow verifies that npm `latest` is not changed.
+
 ## Documentation
 
-- [Complete stable installation guide](docs/INSTALL.md)
+- [1.6 beta guide](docs/BETA-1.6.md)
+- [Account login and deployment](docs/AUTH.md)
+- [Complete installation guide](docs/INSTALL.md)
 - [Linux distribution guide](docs/LINUX.md)
-- [Beta channel and test guide](docs/BETA.md)
-- [Shell guide](docs/SHELLS.md)
 - [Command reference](docs/COMMANDS.md)
+- [Shell guide](docs/SHELLS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Release checklist](docs/RELEASE.md)
-- [Changelog](CHANGELOG.md)
-
-## Limitations
-
-No downloader can guarantee every URL, site, device, architecture, and distribution forever. Sites can change APIs, require login, remove posts, return HTTP 429, restrict regions, or use DRM. YTConv provides fallback engines, retries, repair tools, diagnostics, and actionable errors, but it cannot create access that is technically or legally unavailable.
-
-## License
-
-MIT. yt-dlp, gallery-dl, FFmpeg, and other dependencies keep their own licenses.
