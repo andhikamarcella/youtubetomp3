@@ -153,17 +153,17 @@ test('environment mapping is deterministic', () => withCleanEnvironment(() => {
 }));
 
 test('rejects invalid values and unsafe output templates', () => {
-  assert.throws(() => parseCliOptions(['--unknown']), /Opsi tidak dikenal/u);
-  assert.throws(() => parseCliOptions(['--preset', 'cinema']), /tidak dikenal/u);
+  assert.throws(() => parseCliOptions(['--unknown']), /Unknown option/u);
+  assert.throws(() => parseCliOptions(['--preset', 'cinema']), /must be one of/u);
   assert.throws(() => parseCliOptions(['--audio-format', 'wma']), /mp3, m4a, aac/u);
   assert.throws(() => parseCliOptions(['--video-format', 'avi']), /auto, mp4, mkv, webm/u);
-  assert.throws(() => parseCliOptions(['--start', 'abc']), /detik, MM:SS, atau HH:MM:SS/u);
+  assert.throws(() => parseCliOptions(['--start', 'abc']), /seconds, MM:SS, or HH:MM:SS/u);
   assert.throws(() => parseCliOptions(['--rate-limit', 'fast']), /500K/u);
-  assert.throws(() => parseCliOptions(['--concurrent-fragments', '99']), /1–16/u);
-  assert.throws(() => parseCliOptions(['--proxy', 'file:///tmp/proxy']), /proxy http/u);
-  assert.throws(() => parseCliOptions(['--output-template', '../x.%(ext)s']), /di dalam folder output/u);
+  assert.throws(() => parseCliOptions(['--concurrent-fragments', '99']), /1 to 16/u);
+  assert.throws(() => parseCliOptions(['--proxy', 'file:///tmp/proxy']), /HTTP\(S\), SOCKS4, or SOCKS5/u);
+  assert.throws(() => parseCliOptions(['--output-template', '../x.%(ext)s']), /inside the output directory/u);
   assert.throws(() => parseCliOptions(['--output-template', '%(title)s']), /%\(ext\)s/u);
-  assert.throws(() => parseCliOptions(['--playlist-items', 'one-two']), /angka/u);
+  assert.throws(() => parseCliOptions(['--playlist-items', 'one-two']), /numbers, commas, colons, and hyphens/u);
 });
 
 test('help documents the YTConv 1.3 command surface', () => {
