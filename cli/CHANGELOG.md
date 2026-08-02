@@ -2,6 +2,36 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.5 — reliable login fallback and complete package metadata
+
+### Added
+
+- A private local CLI profile fallback when the configured cloud account endpoint is unavailable or not deployed.
+- `ytconv login --local` to select local mode immediately and `ytconv login --cloud-only` to require remote authentication.
+- Automatic return to the interactive YTConv interface after a successful terminal login; `--no-launch` keeps command-only behavior.
+- Account and authentication mode badges in the TUI.
+- Explicit publisher, author, license, release date, release notes, installer URL, checksum location, artifact metadata location, engine requirements, and dependency metadata.
+- A release artifact record containing the packed tarball URL, SHA-256, SHA-512 integrity, packed size, unpacked size, dependency list, and release notes.
+
+### Changed
+
+- Refreshed terminal focus, progress, success, error, setup, help, and diagnostics styling.
+- npm homepage and documentation now point to the CLI release instead of the web converter.
+- The published package is explicitly CLI-only and is validated to contain no HTML, CSS, JSX, TSX, or web frontend assets.
+- Account documentation now covers CLI behavior only.
+
+### Fixed
+
+- Stable self-test incorrectly expected `1.5.0-beta.2` and the npm `beta` update channel.
+- Stable examples and help still used beta labels and hard-coded beta version text.
+- A missing `/api/cli-auth/device` deployment previously prevented every new user from entering the CLI.
+- Login previously exited to the shell instead of returning to the TUI.
+
+### Preserved
+
+- Cloud device-code authentication remains supported when a valid account API is configured.
+- Existing downloads, conversion engines, profiles, history, playlists, batch mode, retry/resume, metadata, cookies, subtitles, SponsorBlock, and cross-platform installers remain intact.
+
 ## 1.5.0 — account-protected stable release
 
 ### Added

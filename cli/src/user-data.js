@@ -372,7 +372,7 @@ export async function handleUserDataCommand(argv = [], { homeDirectory = os.home
 
 export function userDataHelpText() {
   return [
-    'Persistent beta features:',
+    'Persistent CLI features:',
     '  ytconv config ...          Save validated defaults in ~/.ytconv/config.json',
     '  ytconv profile ...         Create and activate named setting profiles',
     '  ytconv history [--json]    Show the local download history',

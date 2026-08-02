@@ -1,0 +1,11 @@
+**/__pycache__/**
+**/*.py[cod]
+**/*.html
+**/*.css
+**/*.jsx
+**/*.tsx
+node_modules/
+test/
+next-app/
+public-ui/
+web/

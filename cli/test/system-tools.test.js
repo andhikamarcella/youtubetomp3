@@ -20,7 +20,7 @@ test('doctor alias is translated before the normal parser', () => {
   assert.deepEqual(result.cleanArgs, ['--diagnose']);
 });
 
-test('system help documents repair headless beta defaults and JSON reports', () => {
+test('system help documents repair headless CLI defaults and JSON reports', () => {
   const value = systemHelpText();
   assert.match(value, /--repair/u);
   assert.match(value, /--shell-info/u);
@@ -28,7 +28,7 @@ test('system help documents repair headless beta defaults and JSON reports', () 
   assert.match(value, /--batch-file/u);
   assert.match(value, /--jobs/u);
   assert.match(value, /--result-json/u);
-  assert.match(value, /beta defaults/u);
+  assert.match(value, /CLI defaults/u);
 });
 
 test('error explanation gives actionable PowerShell cookie and stable-update guidance', () => {

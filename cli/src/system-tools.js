@@ -130,14 +130,15 @@ async function writableDirectory(directory) {
 export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Downloads', 'YTConv') } = {}) {
   const dependencies = await inspectDependencies({ repair: false });
   const updater = selfUpdateInvocation({ currentVersion: CLI_VERSION });
+  const updateChannel = CLI_VERSION.includes('-') ? 'beta' : 'latest';
   const checks = [
-    ['YTConv version is 1.5.0-beta.2', CLI_VERSION === '1.5.0-beta.2'],
+    [`YTConv version is ${CLI_VERSION}`, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(CLI_VERSION)],
     ['Node.js is version 18 or newer', Number(process.versions.node.split('.')[0]) >= 18],
     ['Home directory is available', Boolean(os.homedir())],
     ['Output directory is writable', await writableDirectory(outputDirectory)],
-    ['Updater uses the beta channel', updater.args.some((value) => String(value).includes('ytconv@beta'))],
-    ['Subtitles are enabled by the beta default', process.env.YTCONV_SUBTITLES === '1'],
-    ['SponsorBlock beta default is mark', process.env.YTCONV_SPONSORBLOCK_MODE === 'mark'],
+    [`Updater uses the ${updateChannel} channel`, updater.args.some((value) => String(value).includes(`ytconv@${updateChannel}`))],
+    ['Subtitles are enabled by default', process.env.YTCONV_SUBTITLES === '1'],
+    ['SponsorBlock default is non-destructive mark mode', process.env.YTCONV_SPONSORBLOCK_MODE === 'mark'],
     ['yt-dlp archive is enabled', Boolean(process.env.YTCONV_ARCHIVE)],
     ['gallery-dl archive is enabled', Boolean(process.env.YTCONV_GALLERY_ARCHIVE)],
     ['yt-dlp is available', dependencies.ytDlp.installed],
@@ -157,7 +158,7 @@ export function systemHelpText() {
     'System, batch, and automation options:',
     '  --repair, --setup       Repair or install yt-dlp, gallery-dl, and FFmpeg',
     '  --shell-info, --where   Show distribution, package manager, PATH, Node.js, and npm',
-    '  --self-test             Test dependencies, beta defaults, and the output directory',
+    '  --self-test             Test dependencies, CLI defaults, and the output directory',
     '  --clear-cache           Clear update and old error caches without deleting user data',
     '  --headless              Run without the TUI for SSH, CI, cron, or scripts',
     '  --stdin                 Read URLs from standard input',
@@ -172,7 +173,7 @@ export function systemHelpText() {
 }
 
 export function examplesText() {
-  return `YTConv 1.5.0-beta.2 examples\n\n`
+  return `YTConv ${CLI_VERSION} examples\n\n`
     + 'Quick start:\n  ytconv quickstart\n  ytconv config set output ~/Downloads/YTConv\n\n'
     + 'Profiles:\n  ytconv profile set music preset=music audioQuality=320\n  ytconv --profile music download "URL"\n\n'
     + 'CMD:\n  ytconv.cmd download "URL" --format mp3 --quality 192\n\n'

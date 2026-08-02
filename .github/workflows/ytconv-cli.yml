@@ -1,9 +1,9 @@
-name: YTConv CLI 1.5 Stable
+name: YTConv CLI 1.5.5 Stable
 
 on:
   push:
     branches:
-      - release/ytconv-1.5.0
+      - "release/ytconv-1.5.5*"
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -33,11 +33,11 @@ jobs:
       - run: npm test
       - name: Stable identity and command smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0"
-          node ./bin/ytconv.js --help | grep -q "Persistent beta features"
+          test "$(node ./bin/ytconv.js --version)" = "1.5.5"
+          node ./bin/ytconv.js --help | grep -q "Persistent CLI features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.0') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.0').includes('@latest')) process.exitCode=1; })"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.5') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.5').includes('@latest')) process.exitCode=1; })"
 
   linux-full:
     runs-on: ubuntu-latest
@@ -56,7 +56,7 @@ jobs:
         run: |
           npm run check:ish
           npm run test:ish
-          test "$(cat ish/VERSION)" = "1.5.0"
+          test "$(cat ish/VERSION)" = "1.5.5"
           sh -n scripts/install-ish.sh
           sh -n scripts/install-termux.sh
           sh -n scripts/install-unix.sh
@@ -88,20 +88,25 @@ jobs:
           node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d=await inspectDependencies({repair:false}); if(!d.ready) process.exitCode=1; })"
       - name: Preview stable package and documentation
         run: |
+          test ! -f ../.github/workflows/ytconv-auth.yml
           npm pack --dry-run
           npm pack --json > package-preview.json
-          grep -q '"version": "1.5.0"' package.json
+          grep -q '"version": "1.5.5"' package.json
           grep -q '"tag": "latest"' package.json
           grep -q 'src/auth.js' package-preview.json
           grep -q 'bin/ytconv-auth.js' package-preview.json
           grep -q 'docs/AUTH.md' package-preview.json
+          if grep -Eiq '\.(html|css|jsx|tsx)"|(^|/)(next-app|public-ui|web|server)(/|\")' package-preview.json; then
+            echo "Web/server asset found in CLI tarball."
+            exit 1
+          fi
       - name: Simulate portable npm install
         run: |
           TARBALL=$(npm pack --silent)
           rm -rf /tmp/ytconv-portable
           mkdir -p /tmp/ytconv-portable
           npm install --prefix /tmp/ytconv-portable "$PWD/$TARBALL" --omit=optional --ignore-scripts
-          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.0"
+          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.5"
 
   windows-cmd-powershell:
     runs-on: windows-latest
@@ -130,8 +135,8 @@ jobs:
         shell: pwsh
         run: |
           $version = node .\bin\ytconv.js --version
-          if ($version -ne '1.5.0') { throw "Wrong version: $version" }
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.0',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
+          if ($version -ne '1.5.5') { throw "Wrong version: $version" }
+          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.5',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
 
   macos:
     runs-on: macos-latest
@@ -147,7 +152,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.0"
+          test "$(node ./bin/ytconv.js --version)" = "1.5.5"
           node ./bin/ytconv.js completion zsh
           sh ./scripts/install-unix.sh --print-plan | grep -q 'brew'
 
@@ -164,7 +169,7 @@ jobs:
       - run: npm install --ignore-scripts --omit=optional
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.0"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.5"
 
   distro-installer-plans:
     runs-on: ubuntu-latest

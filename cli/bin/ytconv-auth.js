@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
-import { authHelpText, handleAuthCommand, requireAuthenticatedSession } from '../src/auth.js';
+import {
+  applyAuthEnvironment,
+  authHelpText,
+  handleAuthCommand,
+  login,
+  requireAuthenticatedSession,
+} from '../src/auth.js';
 import { CLI_VERSION } from '../src/version.js';
 
 const SAFE_COMMANDS = new Set([
@@ -23,23 +29,46 @@ function canRunWithoutLogin(argv) {
   return argv.some((value) => SAFE_FLAGS.has(String(value).toLowerCase()));
 }
 
+function isInteractiveTerminal() {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY);
+}
+
+function shouldReturnToCli(argv) {
+  return isInteractiveTerminal() && !argv.includes('--no-launch');
+}
+
+async function launchCli(session) {
+  if (session) applyAuthEnvironment(session);
+  await import('./ytconv.js');
+}
+
 async function boot() {
   const argv = process.argv.slice(2);
   try {
     const auth = await handleAuthCommand(argv, { version: CLI_VERSION });
     if (auth.handled) {
+      if (auth.action === 'login' && auth.exitCode === 0 && shouldReturnToCli(argv)) {
+        process.argv = [process.argv[0], process.argv[1]];
+        await launchCli(auth.session);
+        return;
+      }
       process.exitCode = auth.exitCode;
       return;
     }
 
+    let session = null;
     if (!canRunWithoutLogin(argv)) {
-      const session = await requireAuthenticatedSession();
-      process.env.YTCONV_AUTH_TOKEN = session.accessToken;
-      process.env.YTCONV_USER_ID = session.user?.id || '';
-      process.env.YTCONV_USER_EMAIL = session.user?.email || '';
+      try {
+        session = await requireAuthenticatedSession();
+      } catch (error) {
+        if (argv.length || !isInteractiveTerminal()) throw error;
+        console.log(`YTConv ${CLI_VERSION} needs a profile before the first download.`);
+        const result = await login({ version: CLI_VERSION });
+        session = result.session;
+      }
     }
 
-    await import('./ytconv.js');
+    await launchCli(session);
   } catch (error) {
     console.error(`YTConv account:\n${error instanceof Error ? error.message : String(error)}`);
     if (!canRunWithoutLogin(argv)) console.error(authHelpText());

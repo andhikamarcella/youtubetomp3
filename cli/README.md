@@ -1,20 +1,23 @@
-# YTConv CLI 1.5.0
+# YTConv CLI 1.5.5
 
 YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
 > Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-## What is new in 1.5.0
+## What is new in 1.5.5
 
-- An active YTConv account is required before every download or conversion.
-- Secure browser device login works from Windows, Linux, macOS, Termux, SSH, and iSH.
+- Cloud device sign-in remains available when the YTConv account service is online.
+- If cloud sign-in is unavailable, `ytconv login` creates a private local CLI profile so downloads are never trapped behind a broken web endpoint.
+- After interactive login, YTConv returns directly to the polished terminal interface; use `--no-launch` when only a session should be created.
 - `ytconv login`, `ytconv auth status`, `ytconv whoami`, and `ytconv logout`.
-- Device codes expire after ten minutes and CLI access tokens expire after ninety days.
-- Long-lived tokens are stored as hashes by the server; the temporary device exchange is encrypted and one-time.
+- `ytconv login --local` skips cloud sign-in, while `ytconv login --cloud-only` disables fallback.
+- The terminal interface now has clearer account state, focus borders, progress, completion, error, and setup states.
+- Stable self-tests, updater-channel checks, version output, installer identities, and package metadata are corrected for 1.5.5.
+- The npm tarball is CLI-only: no HTML, CSS, React web app, Next.js page, or other web frontend asset is published.
 - Public X/Twitter posts try yt-dlp before gallery-dl, and an empty gallery result is no longer reported as a successful conversion.
-- All 1.5.0-beta.2 features remain: persistent config, named profiles, privacy-limited history, shell completion, playlist/batch, retry/resume, subtitles, SponsorBlock mark mode, and separate archives.
+- Persistent config, named profiles, privacy-limited history, shell completion, playlist/batch, retry/resume, subtitles, SponsorBlock mark mode, and separate archives remain available.
 
-## Install stable 1.5.0
+## Install stable 1.5.5
 
 ### Windows
 
@@ -57,7 +60,7 @@ Default output: `~/storage/downloads/YTConv`.
 ### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.0/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.5/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv login
@@ -65,16 +68,20 @@ ytconv login
 
 The browser can be opened on the same device or another device. Enter the eight-character code shown in the terminal and approve the CLI session.
 
-## Account commands
+## Account and fallback commands
 
 ```sh
 ytconv login
+ytconv login --local
+ytconv login --cloud-only
 ytconv auth status
 ytconv whoami
 ytconv logout
 ```
 
-The local device token is stored in `~/.ytconv/auth.json`. On Unix-like systems it is written with user-only permissions. Never share that file, browser cookies, access tokens, or device codes.
+Cloud login opens a device-approval page when the configured account endpoint is available. If that endpoint is missing, offline, or unhealthy, YTConv automatically creates a local-only profile and continues into the CLI. A local profile never claims to be a verified cloud identity.
+
+The profile is stored in `~/.ytconv/auth.json`. On Unix-like systems it is written with user-only permissions. Never share that file, browser cookies, access tokens, or device codes.
 
 Help, version, diagnostics, repair, update, configuration, profile, and history commands remain available before login. Media downloads and conversions do not.
 
@@ -155,25 +162,10 @@ ytconv completion powershell
 
 History is capped and excludes cookies, tokens, proxy credentials, and browser session data.
 
-## Account-server deployment
-
-The Next.js account server needs:
-
-```text
-DATABASE_URL
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-NEXTAUTH_SECRET
-NEXTAUTH_URL
-CLI_AUTH_ENCRYPTION_KEY (recommended)
-```
-
-The CLI auth tables are included in `sql/schema.sql` and are also created by the API when the database is ready. See [docs/AUTH.md](docs/AUTH.md).
-
 ## Release channels
 
 ```text
-Stable: 1.5.0          npm install -g ytconv@latest
+Stable: 1.5.5          npm install -g ytconv@latest
 Beta:   1.6.0-beta.1   npm install -g ytconv@beta
 ```
 
@@ -181,7 +173,7 @@ The guarded beta workflow preserves the stable npm `latest` tag.
 
 ## Documentation
 
-- [Account login and deployment](docs/AUTH.md)
+- [Account login and local fallback](docs/AUTH.md)
 - [Complete installation guide](docs/INSTALL.md)
 - [Linux distribution guide](docs/LINUX.md)
 - [Command reference](docs/COMMANDS.md)
