@@ -2,6 +2,38 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.0 — account-protected stable release
+
+### Added
+
+- Required browser-based device login before any download or conversion.
+- Shared login flow for Windows, Linux, macOS, Termux, SSH, and native iSH/Python shells.
+- `ytconv login`, `ytconv auth status`, `ytconv whoami`, and `ytconv logout`.
+- Google sign-in and a dedicated `/cli-login` device approval page.
+- Secure device-code, token exchange, validation, and revocation API endpoints.
+- Server-side access-token hashing, AES-256-GCM protection for temporary token delivery, expiry, and device metadata.
+- Account session storage in `~/.ytconv/auth.json` with user-only permissions on Unix-like systems.
+- Complete account setup and deployment documentation in `docs/AUTH.md`.
+
+### Fixed
+
+- Public X/Twitter media now tries yt-dlp before gallery-dl instead of stopping after an empty gallery result.
+- gallery-dl exit code 0 with zero new files is no longer reported as a successful conversion unless an archive intentionally skipped an existing item.
+- Login-only X/Twitter posts now produce clearer cookies guidance while retaining yt-dlp/gallery-dl fallback behavior.
+
+### Preserved from 1.5.0-beta.2
+
+- Persistent validated defaults in `~/.ytconv/config.json`.
+- Named profiles, history, shell completion, quickstart, playlist, batch, retry, resume, archives, subtitles, SponsorBlock, metadata, and multi-platform installers.
+- Subtitles enabled by default for video, SponsorBlock in non-destructive mark mode, and separate archives per output profile.
+
+### Security
+
+- Device codes expire after ten minutes and access tokens after ninety days.
+- Long-lived raw tokens are not stored in the database.
+- Help, version, diagnostics, repair, update, configuration, profiles, and history remain available before login.
+- `logout` revokes the server token and deletes the local session.
+
 ## 1.5.0-beta.2 — persistent workflow beta
 
 ### Added
