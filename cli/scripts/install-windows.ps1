@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.5.7"
+$Version = "1.5.8"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell" -ForegroundColor Cyan
 

@@ -120,6 +120,12 @@ test('automatic mode retries the alternate engine but forced modes do not', () =
   assert.equal(automaticFallbackMode({ requestedMode: 'image', effectiveMode: 'image' }), '');
 });
 
+test('forced video still falls back for mixed Instagram posts', () => {
+  const url = 'https://www.instagram.com/p/mixed-carousel/';
+  assert.equal(automaticFallbackMode({ requestedMode: 'video', effectiveMode: 'video', url }), 'image');
+  assert.equal(automaticFallbackMode({ requestedMode: 'image', effectiveMode: 'image', url }), 'video');
+});
+
 test('platform hint detects mismatched social links', () => {
   assert.equal(validatePlatformHint({
     url: 'https://www.instagram.com/p/abc/',

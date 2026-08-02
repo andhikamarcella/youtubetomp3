@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.5.7
+# Troubleshooting YTConv 1.5.8
 
 Start with this safe sequence:
 
@@ -26,16 +26,16 @@ git status --short
 For the stable release, expected values are:
 
 ```text
-1.5.7
+1.5.8
 latest
-release/ytconv-1.5.7-cli-only-final
+release/ytconv-1.5.8-cli-only-final
 ```
 
 npm never allows a published version number to be overwritten.
 
 ## The screen stops at `setup incomplete`
 
-YTConv 1.5.7 automatically repairs yt-dlp, gallery-dl, and the bundled FFmpeg executable. Run:
+YTConv 1.5.8 automatically repairs yt-dlp, gallery-dl, and the bundled FFmpeg executable. Run:
 
 ```powershell
 ytconv.cmd repair
@@ -56,7 +56,7 @@ Do not use `--ignore-scripts` on Windows, macOS, or desktop Linux because it ski
 
 ## Instagram, Facebook, or X asks for cookies or login
 
-You do not need to download `cookies.txt`. Link a browser through the provider's official login page:
+You do not need to download `cookies.txt`. In the interactive CLI, paste the URL normally. If account access is required, YTConv opens the provider's official login page, waits for sign-in, verifies the same URL, and retries automatically. The manual commands remain available:
 
 ```powershell
 ytconv.cmd login instagram
@@ -65,9 +65,9 @@ ytconv.cmd login x --browser firefox
 ytconv.cmd social status
 ```
 
-After sign-in, retry the URL. YTConv tries public access first, followed by a matching browser session. YTConv never stores passwords, OTP codes, or raw cookies.
+After sign-in, return to YTConv and press Enter. The browser/profile link is saved only when the exact failed URL succeeds. A failed verification is never recorded as a linked account. YTConv never stores passwords, OTP codes, or raw cookies.
 
-If decryption fails or the database is locked, close every browser window and background process. If Chrome or Edge still refuses access because of App-Bound Encryption or device policy, sign in through Firefox; YTConv does not bypass browser/OS protections.
+If decryption fails or the database is locked, close every browser window and background process. Press `B` to try another detected profile. If Chrome or Edge still refuses access because of App-Bound Encryption or device policy, sign in through Firefox; YTConv does not bypass browser/OS protections.
 
 ## `spawnSync npm.cmd EINVAL` on Windows
 
@@ -190,7 +190,7 @@ ytconv download "URL" --cookies-from-browser chrome
 ytconv download "URL" --cookies-from-browser "firefox:default-release"
 ```
 
-Close the browser completely before retrying. `cookies.txt` is only a legacy compatibility fallback and is not the recommended YTConv 1.5.7 flow. Termux and iSH cannot directly access private Android/iOS browser databases.
+Close the browser completely before retrying. `cookies.txt` is only a legacy compatibility fallback and is not the recommended YTConv 1.5.8 flow. Termux and iSH cannot directly access private Android/iOS browser databases.
 
 ## HTTP 429 / Too Many Requests
 

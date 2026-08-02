@@ -1,20 +1,20 @@
-# YTConv CLI 1.5.7
+# YTConv CLI 1.5.8
 
 YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
 
 > Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
 
-## What's new in 1.5.7
+## What's new in 1.5.8
 
-- `ytconv repair` now reruns the bundled `ffmpeg-static` installer and verifies the downloaded executable before reporting success.
-- A clean Windows CI test removes FFmpeg and proves that YTConv restores it automatically.
-- Runtime messages, setup screens, social-login guidance, errors, and documentation are now consistently written in English.
-- yt-dlp and gallery-dl still bootstrap automatically, and interactive stable updates remain enabled.
-- Official browser login remains available for Instagram, Facebook, X, TikTok, YouTube, Pinterest, Reddit, Threads, Twitch, and other supported providers.
-- Passwords, OTP codes, and raw cookies remain in the browser; YTConv stores only a browser/profile reference.
+- When a social URL requires an account, the interactive CLI opens the provider's official login page automatically.
+- YTConv detects the last-used browser profile instead of assuming `Default`.
+- The exact failed URL is retried after sign-in; the browser/profile link is saved only after that retry succeeds.
+- Press `B` on the login or error screen to try another detected browser profile.
+- Instagram posts and other mixed media fall back between the video and gallery engines.
+- Passwords, OTP codes, and raw cookies remain in the browser; YTConv stores only a verified browser/profile reference.
 - The npm package remains CLI-only and does not depend on a website or account-server deployment.
 
-## Install stable 1.5.7
+## Install stable 1.5.8
 
 ### Windows
 
@@ -57,7 +57,7 @@ Default output: `~/storage/downloads/YTConv`.
 ### iPhone/iPad through iSH
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.7-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.8-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
@@ -75,13 +75,13 @@ ytconv social status
 ytconv logout instagram
 ```
 
-The flow is intentionally simple:
+When a pasted URL needs an account, the interactive screen starts this flow automatically. The command below can also start it manually:
 
-1. YTConv detects available browsers and asks you to choose one when needed.
+1. YTConv detects installed browsers and their last-used profiles.
 2. The provider's official login page opens. Enter passwords and OTP codes only on that official page.
 3. After sign-in, return to the terminal and press Enter.
-4. YTConv stores the provider and browser/profile reference in `~/.ytconv/social-sessions.json`.
-5. When public access fails because login is required, the linked browser session is tried automatically.
+4. YTConv retries the exact media URL with that local browser session.
+5. Only after the retry succeeds, YTConv stores the provider and browser/profile reference in `~/.ytconv/social-sessions.json`.
 
 Session cookies remain in the browser database under browser/OS encryption, such as DPAPI on Windows or Keychain on macOS. YTConv does not store passwords, OTP codes, access tokens, or raw cookie values, and it does not send social sessions to a YTConv server.
 
@@ -170,7 +170,7 @@ History is capped and excludes cookies, tokens, proxy credentials, and browser s
 ## Release channels
 
 ```text
-Stable: 1.5.7          npm install -g ytconv@latest
+Stable: 1.5.8          npm install -g ytconv@latest
 Beta:   1.6.0-beta.1   npm install -g ytconv@beta
 ```
 

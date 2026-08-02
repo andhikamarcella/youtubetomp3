@@ -1,21 +1,20 @@
-# Release trigger: YTConv 1.5.7
 name: Publish YTConv Stable to npm
 
 on:
   push:
     branches:
-      - release/ytconv-1.5.7-cli-only-final
+      - release/ytconv-1.5.8-cli-only-final
     paths:
       - ".github/workflows/publish-ytconv-stable.yml"
       - "cli/**"
-      - "release-metadata/ytconv-1.5.7.json"
+      - "release-metadata/ytconv-1.5.8.json"
       - "scripts/ytconv-release-metadata.mjs"
   workflow_dispatch:
     inputs:
       version:
         description: "Stable version; must match cli/package.json"
         required: true
-        default: "1.5.7"
+        default: "1.5.8"
       confirm:
         description: "Type PUBLISH-STABLE to continue"
         required: true
@@ -30,7 +29,7 @@ jobs:
     environment: npm
     runs-on: ubuntu-latest
     env:
-      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.5.7' }}
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.5.8' }}
     defaults:
       run:
         working-directory: cli
@@ -49,7 +48,7 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
           test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
-          test "$PACKAGE_VERSION" = "1.5.7"
+          test "$PACKAGE_VERSION" = "1.5.8"
           test "$PACKAGE_TAG" = "latest"
           test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
           test "$(node -p "require('./package.json').license")" = "MIT"

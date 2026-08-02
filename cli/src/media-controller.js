@@ -60,8 +60,11 @@ export function effectiveMediaMode({ url, mode = 'auto', platformHint = 'auto' }
   return socialRouteMode({ url, requestedMode: mode, platformHint });
 }
 
-export function automaticFallbackMode({ requestedMode = 'auto', effectiveMode = 'auto' } = {}) {
-  if (requestedMode !== 'auto' || effectiveMode === 'audio') return '';
+export function automaticFallbackMode({ requestedMode = 'auto', effectiveMode = 'auto', url = '' } = {}) {
+  if (effectiveMode === 'audio') return '';
+  const socialPlatform = detectSocialPlatform(url);
+  const mixedSocialMedia = ['instagram', 'facebook', 'tiktok', 'x', 'pinterest', 'reddit', 'threads'].includes(socialPlatform);
+  if (requestedMode !== 'auto' && !mixedSocialMedia) return '';
   if (effectiveMode === 'image') return 'video';
   if (effectiveMode === 'video') return 'image';
   return 'video';
@@ -152,6 +155,7 @@ export async function inspectMedia(options) {
     const fallbackMode = automaticFallbackMode({
       requestedMode,
       effectiveMode: mode,
+      url,
     });
     if (!fallbackMode) throw primaryError;
     if (fallbackMode === 'image') return genericGalleryMetadata(url);
@@ -278,6 +282,7 @@ export async function downloadMedia({ options, ...rest }) {
     const fallbackMode = automaticFallbackMode({
       requestedMode,
       effectiveMode: mode,
+      url,
     });
 
     if (!fallbackMode) {
