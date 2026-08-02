@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 const DEFAULT_API_BASE = 'https://ytconv.onrender.com';
 const REQUEST_TIMEOUT_MS = 20_000;
 const LOGIN_TIMEOUT_MS = 10 * 60 * 1000;
+const REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function apiBase() {
   return String(process.env.YTCONV_API_BASE || DEFAULT_API_BASE).replace(/\/+$/u, '');
@@ -110,13 +111,34 @@ function accountLabel(user = {}) {
   return user.displayName || user.display_name || user.email || user.id || 'YTConv user';
 }
 
+function validFutureDate(value) {
+  const timestamp = Date.parse(value || '');
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function shortDate(value) {
+  const timestamp = validFutureDate(value);
+  if (!timestamp) return '-';
+  return new Date(timestamp).toISOString().replace('T', ' ').slice(0, 16);
+}
+
+function clip(value, width) {
+  const text = String(value ?? '-').replace(/\s+/gu, ' ');
+  if (text.length <= width) return text.padEnd(width, ' ');
+  return `${text.slice(0, Math.max(1, width - 1))}…`;
+}
+
 export function authHelpText() {
   return [
     '',
     'Account commands:',
-    '  ytconv login              Open the secure browser login flow',
-    '  ytconv auth status        Show the active account and device',
-    '  ytconv logout             Revoke the current device session',
+    '  ytconv login                  Open the secure browser login flow',
+    '  ytconv auth status [--json]   Show the active account and device',
+    '  ytconv auth devices           List every signed-in CLI device',
+    '  ytconv auth revoke TOKEN_ID   Revoke another device',
+    '  ytconv auth revoke all        Revoke every other CLI device',
+    '  ytconv auth refresh           Rotate this device token now',
+    '  ytconv logout                 Revoke this device and sign out',
     '',
     `Account server: ${apiBase()}`,
     'Downloads and conversions require an active YTConv account.',
@@ -162,7 +184,7 @@ export async function login({ version = 'unknown', homeDirectory = os.homedir() 
       if (!token.accessToken) throw new Error('The account server approved login without returning a token.');
       const savedAt = new Date().toISOString();
       const session = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         accessToken: token.accessToken,
         tokenId: token.tokenId || '',
         user: token.user || {},
@@ -170,10 +192,12 @@ export async function login({ version = 'unknown', homeDirectory = os.homedir() 
         apiBase: apiBase(),
         savedAt,
         lastValidatedAt: savedAt,
+        lastRotatedAt: savedAt,
         expiresAt: token.expiresAt || null,
       };
       const target = await writeAuthSession(session, { homeDirectory });
-      console.log(`\nLogin complete. Signed in as ${accountLabel(session.user)}.`);
+      process.stdout.write('\n');
+      console.log(`Login complete. Signed in as ${accountLabel(session.user)}.`);
       console.log(`Session saved securely in ${target}`);
       return { exitCode: 0, session };
     } catch (error) {
@@ -189,20 +213,50 @@ export async function login({ version = 'unknown', homeDirectory = os.homedir() 
   throw new Error('The device login expired. Run `ytconv login` and try again.');
 }
 
-export async function validateAuthSession({ homeDirectory = os.homedir(), quiet = false } = {}) {
+async function rotateSession(session, { homeDirectory = os.homedir(), announce = false } = {}) {
+  const token = await requestJson('/api/cli-auth/refresh', { method: 'POST', token: session.accessToken });
+  if (!token.accessToken) throw new Error('The account server did not return a refreshed token.');
+  const rotated = {
+    ...session,
+    schemaVersion: 2,
+    accessToken: token.accessToken,
+    tokenId: token.tokenId || session.tokenId || '',
+    expiresAt: token.expiresAt || session.expiresAt || null,
+    user: token.user || session.user || {},
+    lastValidatedAt: new Date().toISOString(),
+    lastRotatedAt: new Date().toISOString(),
+    apiBase: apiBase(),
+  };
+  await writeAuthSession(rotated, { homeDirectory });
+  if (announce) {
+    console.log('YTConv device token rotated successfully.');
+    console.log(`New token ID: ${rotated.tokenId || '-'}`);
+    if (rotated.expiresAt) console.log(`Expires: ${rotated.expiresAt}`);
+  }
+  return rotated;
+}
+
+export async function validateAuthSession({ homeDirectory = os.homedir(), quiet = false, autoRefresh = true } = {}) {
   const session = await readAuthSession({ homeDirectory });
   if (!session) return { ok: false, reason: 'missing' };
   try {
     const current = await requestJson('/api/cli-auth/me', { token: session.accessToken });
-    const updated = {
+    let updated = {
       ...session,
+      schemaVersion: 2,
       user: current.user || session.user || {},
       tokenId: current.tokenId || session.tokenId || '',
       expiresAt: current.expiresAt || session.expiresAt || null,
       lastValidatedAt: new Date().toISOString(),
       apiBase: apiBase(),
     };
-    await writeAuthSession(updated, { homeDirectory });
+    const expiry = validFutureDate(updated.expiresAt);
+    if (autoRefresh && expiry && expiry - Date.now() <= REFRESH_WINDOW_MS) {
+      try { updated = await rotateSession(updated, { homeDirectory }); }
+      catch { await writeAuthSession(updated, { homeDirectory }); }
+    } else {
+      await writeAuthSession(updated, { homeDirectory });
+    }
     return { ok: true, session: updated };
   } catch (error) {
     if ([401, 403, 410].includes(error?.status)) await clearAuthSession({ homeDirectory });
@@ -221,6 +275,13 @@ export async function requireAuthenticatedSession(options = {}) {
   ].join('\n'));
 }
 
+export async function refreshAuthSession({ homeDirectory = os.homedir() } = {}) {
+  const session = await readAuthSession({ homeDirectory });
+  if (!session) throw new Error('Not signed in. Run: ytconv login');
+  await rotateSession(session, { homeDirectory, announce: true });
+  return 0;
+}
+
 export async function logout({ homeDirectory = os.homedir() } = {}) {
   const session = await readAuthSession({ homeDirectory });
   if (session?.accessToken) {
@@ -231,15 +292,29 @@ export async function logout({ homeDirectory = os.homedir() } = {}) {
   return 0;
 }
 
-export async function printAuthStatus({ homeDirectory = os.homedir() } = {}) {
+export async function printAuthStatus({ homeDirectory = os.homedir(), json = false } = {}) {
   const result = await validateAuthSession({ homeDirectory, quiet: true });
   if (!result.ok) {
-    console.log('Not signed in. Run: ytconv login');
+    if (json) console.log(JSON.stringify({ signedIn: false, reason: result.reason }, null, 2));
+    else console.log('Not signed in. Run: ytconv login');
     return 1;
   }
   const { session } = result;
+  if (json) {
+    console.log(JSON.stringify({
+      signedIn: true,
+      user: session.user,
+      deviceName: session.deviceName,
+      tokenId: session.tokenId,
+      apiBase: session.apiBase || apiBase(),
+      expiresAt: session.expiresAt,
+      lastValidatedAt: session.lastValidatedAt,
+      lastRotatedAt: session.lastRotatedAt || null,
+    }, null, 2));
+    return 0;
+  }
   console.log('YTConv account');
-  console.log(`Status      signed in`);
+  console.log('Status      signed in');
   console.log(`Account     ${accountLabel(session.user)}`);
   if (session.user?.email) console.log(`Email       ${session.user.email}`);
   if (session.user?.role) console.log(`Role        ${session.user.role}`);
@@ -250,16 +325,58 @@ export async function printAuthStatus({ homeDirectory = os.homedir() } = {}) {
   return 0;
 }
 
+export async function printDevices({ homeDirectory = os.homedir(), json = false } = {}) {
+  const session = await requireAuthenticatedSession({ homeDirectory });
+  const payload = await requestJson('/api/cli-auth/devices', { token: session.accessToken });
+  const devices = Array.isArray(payload.devices) ? payload.devices : [];
+  if (json) {
+    console.log(JSON.stringify(payload, null, 2));
+    return 0;
+  }
+  if (!devices.length) {
+    console.log('No CLI devices were found for this account.');
+    return 0;
+  }
+  console.log('YTConv signed-in devices\n');
+  console.log(`${clip('STATE', 8)} ${clip('DEVICE', 25)} ${clip('PLATFORM', 11)} ${clip('VERSION', 13)} ${clip('LAST USED', 16)} TOKEN ID`);
+  console.log('-'.repeat(100));
+  for (const device of devices) {
+    const state = device.current ? 'CURRENT' : device.active ? 'ACTIVE' : device.revokedAt ? 'REVOKED' : 'EXPIRED';
+    console.log(`${clip(state, 8)} ${clip(device.deviceName, 25)} ${clip(device.platform, 11)} ${clip(device.cliVersion, 13)} ${clip(shortDate(device.lastUsedAt || device.createdAt), 16)} ${device.tokenId}`);
+  }
+  console.log('\nRevoke another device: ytconv auth revoke TOKEN_ID');
+  console.log('Revoke every other device: ytconv auth revoke all');
+  return 0;
+}
+
+export async function revokeDevice(target, { homeDirectory = os.homedir() } = {}) {
+  const session = await requireAuthenticatedSession({ homeDirectory });
+  const value = String(target || '').trim();
+  if (!value) throw new Error('auth revoke requires a TOKEN_ID or all. Run: ytconv auth devices');
+  const payload = await requestJson('/api/cli-auth/revoke', {
+    method: 'POST',
+    token: session.accessToken,
+    body: value.toLowerCase() === 'all' ? { all: true } : { tokenId: value },
+  });
+  const count = Array.isArray(payload.revoked) ? payload.revoked.length : 0;
+  console.log(count ? `Revoked ${count} YTConv device session${count === 1 ? '' : 's'}.` : 'No matching active device session was found.');
+  return 0;
+}
+
 function normalizedAuthCommand(argv = []) {
   const first = String(argv[0] || '').toLowerCase();
   if (first === 'login' || first === 'signin' || first === 'sign-in') return 'login';
   if (first === 'logout' || first === 'signout' || first === 'sign-out') return 'logout';
   if (first === 'whoami') return 'status';
+  if (first === 'devices') return 'devices';
   if (first !== 'auth' && first !== 'account') return '';
   const action = String(argv[1] || 'status').toLowerCase();
   if (['login', 'signin', 'sign-in'].includes(action)) return 'login';
   if (['logout', 'signout', 'sign-out'].includes(action)) return 'logout';
   if (['status', 'whoami'].includes(action)) return 'status';
+  if (['devices', 'sessions'].includes(action)) return 'devices';
+  if (action === 'revoke') return 'revoke';
+  if (['refresh', 'rotate'].includes(action)) return 'refresh';
   if (['help', '--help', '-h'].includes(action)) return 'help';
   return 'unknown';
 }
@@ -273,7 +390,10 @@ export async function handleAuthCommand(argv = [], options = {}) {
     return { handled: true, exitCode: result.exitCode };
   }
   if (command === 'logout') return { handled: true, exitCode: await logout(options) };
-  if (command === 'status') return { handled: true, exitCode: await printAuthStatus(options) };
+  if (command === 'status') return { handled: true, exitCode: await printAuthStatus({ ...options, json: argv.includes('--json') }) };
+  if (command === 'devices') return { handled: true, exitCode: await printDevices({ ...options, json: argv.includes('--json') }) };
+  if (command === 'revoke') return { handled: true, exitCode: await revokeDevice(argv[2], options) };
+  if (command === 'refresh') return { handled: true, exitCode: await refreshAuthSession(options) };
   console.error(authHelpText());
   return { handled: true, exitCode: 2 };
 }
