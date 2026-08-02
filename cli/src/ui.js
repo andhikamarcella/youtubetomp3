@@ -110,13 +110,16 @@ async function appendSessionLog(message, kind = 'info') {
   await fs.appendFile(target, line, 'utf8').catch(() => {});
 }
 
-function Logo({ compact }) {
+function Logo({ compact, account, authMode }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center' },
-    h(Text, { bold: true }, compact ? LOGO_COMPACT : LOGO_WIDE),
-    h(Text, null, 'paste a social link. convert. done.'),
+    h(Text, { bold: true, color: 'cyan' }, compact ? LOGO_COMPACT : LOGO_WIDE),
+    h(Text, { bold: true }, 'paste a social link. convert. done.'),
     h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + lainnya'),
+    h(Box, { marginTop: 1 },
+      h(Text, { color: 'green', bold: true }, `● ${account || 'local user'}`),
+      h(Text, { dimColor: true }, ` · ${authMode === 'local' ? 'local CLI' : 'cloud'} · v${CLI_VERSION}`)),
   );
 }
 
@@ -152,7 +155,7 @@ function HomeScreen(props) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, null, 'Paste link sosmed')),
+    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, { bold: true, color: 'cyan' }, 'Paste link sosmed')),
     h(
       Box,
       { width: panelWidth, flexDirection: 'row' },
@@ -161,6 +164,7 @@ function HomeScreen(props) {
         {
           width: inputWidth,
           borderStyle: activeControl === 'input' ? 'double' : 'round',
+          borderColor: activeControl === 'input' ? 'cyan' : 'gray',
           paddingX: 1,
         },
         h(Text, null, '▣ '),
@@ -173,13 +177,14 @@ function HomeScreen(props) {
           width: 12,
           marginLeft: 1,
           borderStyle: buttonFocused ? 'double' : 'round',
+          borderColor: buttonFocused ? 'green' : 'gray',
           justifyContent: 'center',
         },
-        h(Text, { inverse: true, bold: true }, buttonFocused ? '» convert «' : ' convert '),
+        h(Text, { inverse: buttonFocused, color: 'green', bold: true }, buttonFocused ? '» convert «' : ' convert '),
       ),
     ),
-    inputError ? h(Text, { inverse: true, wrap: 'wrap' }, ` ${inputError} `) : null,
-    actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
+    inputError ? h(Text, { color: 'red', bold: true, wrap: 'wrap' }, `! ${inputError}`) : null,
+    actionMessage ? h(Text, { color: 'green', wrap: 'wrap' }, `✓ ${actionMessage}`) : null,
     h(
       Box,
       { marginTop: 1 },
@@ -201,7 +206,7 @@ function MediaCard({ media, panelWidth }) {
     .filter(Boolean).join(' · ');
   return h(
     Box,
-    { width: panelWidth, borderStyle: 'round', paddingX: 1, flexDirection: 'column' },
+    { width: panelWidth, borderStyle: 'round', borderColor: 'cyan', paddingX: 1, flexDirection: 'column' },
     h(Text, { bold: true, wrap: 'truncate-end' }, media.title),
     h(Text, { dimColor: true, wrap: 'truncate-end' }, `${details}${media.itemCount > 1 ? ` · ${media.itemCount} item` : ''}`),
   );
@@ -213,7 +218,8 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
     h(MediaCard, { media, panelWidth }),
     h(Box, { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { bold: true }, stage === 'probing' ? 'checking the social link...' : progressBar(progress.percent)),
+      h(Text, { bold: true, color: stage === 'probing' ? 'cyan' : 'green' },
+        stage === 'probing' ? 'checking the social link...' : progressBar(progress.percent)),
       h(Text, { dimColor: true }, stage === 'probing'
         ? 'detecting platform and choosing the best engine'
         : [progress.percent || '0%', progress.speed, progress.eta ? `ETA ${progress.eta}` : ''].filter(Boolean).join(' · ')),
@@ -228,8 +234,8 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMess
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
     h(MediaCard, { media, panelWidth }),
-    h(Box, { marginTop: 1, borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { bold: true, inverse: true }, ' conversion complete '),
+    h(Box, { marginTop: 1, borderStyle: 'double', borderColor: 'green', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, color: 'green' }, '✓ conversion complete'),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
@@ -243,9 +249,9 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage }) 
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
     h(MediaCard, { media, panelWidth }),
-    h(Box, { marginTop: 1, borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { bold: true, inverse: true }, ' conversion failed '),
-      h(Text, { wrap: 'wrap' }, error),
+    h(Box, { marginTop: 1, borderStyle: 'double', borderColor: 'red', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, color: 'red' }, '× conversion failed'),
+      h(Text, { color: 'red', wrap: 'wrap' }, error),
       h(Text, { dimColor: true }, `cookies: ${cookieSourceLabel(cookieSource)}`),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
@@ -269,7 +275,7 @@ function HelpScreen({ panelWidth, termux }) {
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', marginTop: 1 },
-    h(Text, { bold: true, inverse: true }, ` YTConv ${CLI_VERSION} help `),
+    h(Text, { bold: true, color: 'cyan' }, `YTConv ${CLI_VERSION} · keyboard help`),
     ...rows.map(([key, description]) => h(Box, { key, flexDirection: 'row' },
       h(Box, { width: 18 }, h(Text, { bold: true }, key)),
       h(Text, { dimColor: true }, description))),
@@ -310,7 +316,7 @@ function DiagnosticsScreen({
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', marginTop: 1 },
-    h(Text, { bold: true, inverse: true }, ' diagnostics '),
+    h(Text, { bold: true, color: 'cyan' }, 'YTConv diagnostics'),
     ...rows.map(([label, value]) => h(Box, { key: label, flexDirection: 'row' },
       h(Box, { width: 16 }, h(Text, { bold: true }, label)),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, String(value)))),
@@ -321,9 +327,9 @@ function DiagnosticsScreen({
 function MissingDependencies({ dependencies, panelWidth }) {
   return h(
     Box,
-    { width: panelWidth, borderStyle: 'double', paddingX: 1, flexDirection: 'column' },
-    h(Text, { bold: true, inverse: true }, ' setup incomplete '),
-    h(Text, null, dependencies.ytDlp.error || 'yt-dlp, gallery-dl, atau FFmpeg belum siap.'),
+    { width: panelWidth, borderStyle: 'double', borderColor: 'yellow', paddingX: 1, flexDirection: 'column' },
+    h(Text, { bold: true, color: 'yellow' }, '! setup incomplete'),
+    h(Text, { color: 'yellow' }, dependencies.ytDlp.error || 'yt-dlp, gallery-dl, atau FFmpeg belum siap.'),
     h(Text, { dimColor: true }, dependencies.platform?.setupCommand || 'Jalankan npm rebuild ytconv.'),
     h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C keluar'),
   );
@@ -737,7 +743,11 @@ function App({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-  }, h(Logo, { compact: compactLogo }), content);
+  }, h(Logo, {
+    compact: compactLogo,
+    account: process.env.YTCONV_ACCOUNT_LABEL,
+    authMode: process.env.YTCONV_AUTH_MODE,
+  }), content);
 }
 
 function sleep(ms) {

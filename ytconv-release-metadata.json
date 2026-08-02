@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "package": "ytconv",
+  "version": "1.5.5",
+  "publisher": "Andhika Marcella Fernanda",
+  "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
+  "license": "MIT",
+  "lastUpdated": "2026-08-02",
+  "installer": {
+    "type": "Tarball",
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.5.tgz",
+    "sha256": "9d54d8015a4d6191f0dcb83b0da51103ab24e569eb25cb052508ffba77faf5c2",
+    "sha512Integrity": "sha512-87G/bVgJT3L+16TwIE+5dNxDUy0NHVD8le7NspMBEuN1/KIRDV4bJnRjVE8Ixf2oq1P2IYtJvHSeJApfR9ynVg==",
+    "packedSize": 101679,
+    "unpackedSize": 380553
+  },
+  "dependencies": {
+    "figlet": "^1.8.2",
+    "ink": "^5.2.1",
+    "react": "^18.3.1",
+    "which": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "5.3.0"
+  },
+  "releaseNotes": "YTConv 1.5.5 adds automatic local CLI fallback when cloud login is unavailable, returns users to the TUI after login, refreshes the terminal interface, fixes stable self-tests and release metadata, and guarantees a CLI-only npm package with no HTML or web frontend assets.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.5/cli/CHANGELOG.md"
+}

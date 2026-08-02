@@ -1,6 +1,6 @@
-# YTConv Beta Configuration, Profiles, History, and Completion
+# YTConv Configuration, Profiles, History, and Completion
 
-This document applies to YTConv `1.5.0-beta.2`.
+This document applies to YTConv `1.5.5`.
 
 ## Storage locations
 
@@ -161,7 +161,7 @@ This does not change the active profile.
 
 From lowest to highest priority:
 
-1. built-in beta defaults
+1. built-in stable defaults
 2. persistent global defaults
 3. active or one-run profile
 4. explicit command-line options

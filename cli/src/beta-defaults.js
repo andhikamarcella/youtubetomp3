@@ -86,7 +86,7 @@ export function applyBetaDefaults(options = {}, toggles = {}, {
 
 export function betaDefaultsHelpText() {
   return [
-    'YTConv 1.5 beta defaults:',
+    'YTConv stable defaults:',
     '  subtitles       ON for video; disable with --no-subtitles',
     '  SponsorBlock    ON in mark mode; disable with --no-sponsorblock',
     '  download archive ON per output profile; disable with --no-archive',

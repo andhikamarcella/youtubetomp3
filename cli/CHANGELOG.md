@@ -2,6 +2,68 @@
 
 YTConv follows Semantic Versioning.
 
+## 1.5.5 — reliable login fallback and complete package metadata
+
+### Added
+
+- A private local CLI profile fallback when the configured cloud account endpoint is unavailable or not deployed.
+- `ytconv login --local` to select local mode immediately and `ytconv login --cloud-only` to require remote authentication.
+- Automatic return to the interactive YTConv interface after a successful terminal login; `--no-launch` keeps command-only behavior.
+- Account and authentication mode badges in the TUI.
+- Explicit publisher, author, license, release date, release notes, installer URL, checksum location, artifact metadata location, engine requirements, and dependency metadata.
+- A release artifact record containing the packed tarball URL, SHA-256, SHA-512 integrity, packed size, unpacked size, dependency list, and release notes.
+
+### Changed
+
+- Refreshed terminal focus, progress, success, error, setup, help, and diagnostics styling.
+- npm homepage and documentation now point to the CLI release instead of the web converter.
+- The published package is explicitly CLI-only and is validated to contain no HTML, CSS, JSX, TSX, or web frontend assets.
+- Account documentation now covers CLI behavior only.
+
+### Fixed
+
+- Stable self-test incorrectly expected `1.5.0-beta.2` and the npm `beta` update channel.
+- Stable examples and help still used beta labels and hard-coded beta version text.
+- A missing `/api/cli-auth/device` deployment previously prevented every new user from entering the CLI.
+- Login previously exited to the shell instead of returning to the TUI.
+
+### Preserved
+
+- Cloud device-code authentication remains supported when a valid account API is configured.
+- Existing downloads, conversion engines, profiles, history, playlists, batch mode, retry/resume, metadata, cookies, subtitles, SponsorBlock, and cross-platform installers remain intact.
+
+## 1.5.0 — account-protected stable release
+
+### Added
+
+- Required browser-based device login before any download or conversion.
+- Shared login flow for Windows, Linux, macOS, Termux, SSH, and native iSH/Python shells.
+- `ytconv login`, `ytconv auth status`, `ytconv whoami`, and `ytconv logout`.
+- Google sign-in and a dedicated `/cli-login` device approval page.
+- Secure device-code, token exchange, validation, and revocation API endpoints.
+- Server-side access-token hashing, AES-256-GCM protection for temporary token delivery, expiry, and device metadata.
+- Account session storage in `~/.ytconv/auth.json` with user-only permissions on Unix-like systems.
+- Complete account setup and deployment documentation in `docs/AUTH.md`.
+
+### Fixed
+
+- Public X/Twitter media now tries yt-dlp before gallery-dl instead of stopping after an empty gallery result.
+- gallery-dl exit code 0 with zero new files is no longer reported as a successful conversion unless an archive intentionally skipped an existing item.
+- Login-only X/Twitter posts now produce clearer cookies guidance while retaining yt-dlp/gallery-dl fallback behavior.
+
+### Preserved from 1.5.0-beta.2
+
+- Persistent validated defaults in `~/.ytconv/config.json`.
+- Named profiles, history, shell completion, quickstart, playlist, batch, retry, resume, archives, subtitles, SponsorBlock, metadata, and multi-platform installers.
+- Subtitles enabled by default for video, SponsorBlock in non-destructive mark mode, and separate archives per output profile.
+
+### Security
+
+- Device codes expire after ten minutes and access tokens after ninety days.
+- Long-lived raw tokens are not stored in the database.
+- Help, version, diagnostics, repair, update, configuration, profiles, and history remain available before login.
+- `logout` revokes the server token and deletes the local session.
+
 ## 1.5.0-beta.2 — persistent workflow beta
 
 ### Added

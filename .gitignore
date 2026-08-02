@@ -5,5 +5,7 @@ public/jobs/
 cookies.txt
 next-app/.next/
 next-app/node_modules/
+cli/node_modules/
+**/__pycache__/
+*.py[cod]
 .env
-

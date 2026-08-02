@@ -1,0 +1,119 @@
+name: Publish YTConv Stable to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable version; must match cli/package.json"
+        required: true
+        default: "1.5.5"
+      confirm:
+        description: "Type PUBLISH-STABLE to continue"
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+environment: npm
+
+jobs:
+  publish:
+    if: ${{ inputs.confirm == 'PUBLISH-STABLE' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Verify stable package identity
+        run: |
+          test ! -f ../.github/workflows/ytconv-auth.yml
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
+          test "$PACKAGE_VERSION" = "${{ inputs.version }}"
+          test "$PACKAGE_VERSION" = "1.5.5"
+          test "$PACKAGE_TAG" = "latest"
+          test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
+          test "$(node -p "require('./package.json').license")" = "MIT"
+          test "$(node -p "require('./package.json').releaseDate")" = "2026-08-02"
+          node -e "const p=require('./package.json'); if(!p.author||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!Object.keys(p.dependencies||{}).length) process.exitCode=1"
+          case "$PACKAGE_VERSION" in
+            *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
+            *) ;;
+          esac
+          if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "ytconv@$PACKAGE_VERSION is already published; refusing to overwrite it."
+            exit 1
+          fi
+      - name: Install and test clean package
+        run: |
+          npm install
+          npm run check
+          npm test
+          npm run check:ish
+          npm run test:ish
+          npm publish --dry-run --tag latest
+      - name: Build and verify exact release artifact
+        id: package
+        run: |
+          npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
+          TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(require('path').join('$RUNNER_TEMP',p[0].filename))")
+          UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(String(p[0].unpackedSize))")
+          node ../scripts/ytconv-release-metadata.mjs \
+            --package package.json \
+            --tarball "$TARBALL" \
+            --unpacked-size "$UNPACKED_SIZE" \
+            --output "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
+            --verify "../release-metadata/ytconv-${{ inputs.version }}.json"
+          if node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web)(?:\/|$)/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"; then
+            echo "CLI-only package validation passed."
+          fi
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "unpacked_size=$UNPACKED_SIZE" >> "$GITHUB_OUTPUT"
+      - name: Publish stable package with provenance
+        run: npm publish --tag latest --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Verify registry metadata and tarball
+        id: registry
+        run: |
+          test "$(npm view ytconv@latest version --prefer-online)" = "${{ inputs.version }}"
+          npm view "ytconv@${{ inputs.version }}" --json > "$RUNNER_TEMP/ytconv-registry.json"
+          node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); if(!p.author||!p.license||!p.time?.['${{ inputs.version }}']||!p.dist?.tarball||!p.dist?.integrity||!p.dist?.unpackedSize||!p.maintainers?.length||!Object.keys(p.dependencies||{}).length||!p.releaseNotes) process.exitCode=1"
+          TARBALL_URL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(p.dist.tarball)")
+          curl --fail --location --retry 5 "$TARBALL_URL" --output "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz"
+          UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(String(p.dist.unpackedSize))")
+          node ../scripts/ytconv-release-metadata.mjs \
+            --package package.json \
+            --tarball "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" \
+            --unpacked-size "$UNPACKED_SIZE" \
+            --output "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
+            --verify "../release-metadata/ytconv-${{ inputs.version }}.json"
+          SHA256=$(sha256sum "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" | cut -d ' ' -f 1)
+          printf '%s  %s\n' "$SHA256" "ytconv-${{ inputs.version }}.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
+          npm view ytconv dist-tags --json
+      - name: Create GitHub release with installer metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="ytconv-v${{ inputs.version }}"
+          NOTES=$(node -p "require('./package.json').releaseNotes")
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" \
+              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
+              "$RUNNER_TEMP/SHA256SUMS.txt" --clobber
+          else
+            gh release create "$TAG" \
+              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.tgz" \
+              "$RUNNER_TEMP/ytconv-${{ inputs.version }}.metadata.json" \
+              "$RUNNER_TEMP/SHA256SUMS.txt" \
+              --target "$GITHUB_SHA" \
+              --title "YTConv CLI ${{ inputs.version }}" \
+              --notes "$NOTES"
+          fi

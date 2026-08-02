@@ -4,8 +4,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.5.0-beta.2"
-$Channel = "beta"
+$Version = "1.5.5"
+$Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell" -ForegroundColor Cyan
 
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
@@ -34,7 +34,7 @@ if ($Local) {
   & npm.cmd cache verify
   & npm.cmd install -g "ytconv@$Channel" --force
 }
-if ($LASTEXITCODE -ne 0) { throw "npm could not install YTConv beta." }
+if ($LASTEXITCODE -ne 0) { throw "npm could not install YTConv." }
 
 Write-Host "`nVerification:" -ForegroundColor Cyan
 $installed = (& ytconv.cmd --version).Trim()
@@ -43,5 +43,5 @@ if ($installed -ne $Version) { throw "Installed version is $installed; expected 
 & ytconv.cmd --shell-info
 & ytconv.cmd doctor
 & ytconv.cmd quickstart
-Write-Host "`nBeta installation completed. Run: ytconv.cmd or ytconv" -ForegroundColor Green
-Write-Host "Return to stable with: npm.cmd install -g ytconv@latest --force" -ForegroundColor Yellow
+Write-Host "`nStable installation completed. Run: ytconv.cmd or ytconv" -ForegroundColor Green
+Write-Host "Sign in once before downloading: ytconv.cmd login" -ForegroundColor Yellow
