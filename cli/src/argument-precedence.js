@@ -31,6 +31,23 @@ const PRESET_MEDIA_GROUPS = new Set([
   'subtitles', 'sponsorBlock', 'normalizeAudio', 'restrictFilenames',
 ]);
 
+const USER_DATA_META_FLAGS = new Set(['--no-config']);
+const USER_DATA_META_VALUE_FLAGS = new Set(['--profile']);
+
+function runtimeExplicitArgs(args) {
+  const kept = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+    if (USER_DATA_META_FLAGS.has(value)) continue;
+    if (USER_DATA_META_VALUE_FLAGS.has(value)) {
+      index += 1;
+      continue;
+    }
+    kept.push(value);
+  }
+  return kept;
+}
+
 function explicitGroups(args) {
   const groups = new Set();
   for (const value of args) {
@@ -44,9 +61,10 @@ function explicitGroups(args) {
 }
 
 export function applyExplicitPrecedence(resolvedArgs = [], explicitArgs = []) {
-  const prefixLength = Math.max(0, resolvedArgs.length - explicitArgs.length);
+  const runtimeArgs = runtimeExplicitArgs(explicitArgs);
+  const prefixLength = Math.max(0, resolvedArgs.length - runtimeArgs.length);
   const savedArgs = resolvedArgs.slice(0, prefixLength);
-  const groups = explicitGroups(explicitArgs);
+  const groups = explicitGroups(runtimeArgs);
   if (!groups.size) return [...resolvedArgs];
 
   const kept = [];
@@ -60,5 +78,5 @@ export function applyExplicitPrecedence(resolvedArgs = [], explicitArgs = []) {
     }
     if (hasValue) index += 1;
   }
-  return [...kept, ...explicitArgs];
+  return [...kept, ...runtimeArgs];
 }
