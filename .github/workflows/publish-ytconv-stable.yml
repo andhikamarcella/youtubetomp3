@@ -40,10 +40,11 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: cli/package-lock.json
-      - name: Pin npm and synchronize lock metadata
+      - name: Pin npm, synchronize lock metadata, and install dependencies
         run: |
           npm install -g npm@11.19.0
           npm install --package-lock-only --ignore-scripts
+          npm ci --ignore-scripts
       - name: Verify release identity and retry fix
         id: identity
         run: |
@@ -76,7 +77,6 @@ jobs:
           fi
       - name: Test and audit the CLI
         run: |
-          npm ci --ignore-scripts
           npm run check
           npm test
           npm run check:ish
