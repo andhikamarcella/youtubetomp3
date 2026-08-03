@@ -143,7 +143,7 @@ function runBuffered(runnerValue, args, { signal, maxBytes = MAX_METADATA_BYTES 
       stdout += chunk.toString();
       if (Buffer.byteLength(stdout, 'utf8') > maxBytes) {
         child.kill('SIGTERM');
-        finish(() => reject(new Error('The URL metadata is too large to process.'));
+        finish(() => reject(new Error('The URL metadata is too large to process.')));
       }
     });
     child.stderr.on('data', (chunk) => {
