@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { applyStableDefaults, extractDefaultToggles, stableDefaultsHelpText } from '../src/defaults.js';
+import { applyStableDefaults, extractDefaultToggles, normalizeRetrySleep, stableDefaultsHelpText } from '../src/defaults.js';
 import { parseCliOptions } from '../src/cli-options.js';
 
 function parseWithDefaults(argv, homeDirectory = '/tmp/ytconv-defaults-home') {
@@ -17,6 +17,20 @@ test('stable defaults enable subtitles SponsorBlock mark and per-profile archive
   assert.equal(options.sponsorBlockMode, 'mark');
   assert.match(options.archivePath, /yt-dlp-auto-balanced\.txt$/u);
   assert.match(options.galleryArchivePath, /gallery-dl-auto-balanced\.sqlite3$/u);
+});
+
+test('retry sleep removes current legacy and nested type prefixes', () => {
+  for (const value of [
+    'linear=1::2',
+    'http:linear=1::2',
+    'fragment:linear=1::2',
+    'fragment:http:linear=1::2',
+    'file_access:fragment:http:linear=1::2',
+  ]) {
+    assert.equal(normalizeRetrySleep(value), 'linear=1::2');
+  }
+  const { options } = parseWithDefaults(['--retry-sleep', 'http:linear=1::2']);
+  assert.equal(options.retrySleep, 'linear=1::2');
 });
 
 test('explicit values remain authoritative over stable defaults', () => {
