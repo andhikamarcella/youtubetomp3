@@ -1,17 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { applyBetaDefaults, betaDefaultsHelpText, extractBetaToggles } from '../src/beta-defaults.js';
+import { applyStableDefaults, extractDefaultToggles, stableDefaultsHelpText } from '../src/defaults.js';
 import { parseCliOptions } from '../src/cli-options.js';
 
-function parseWithDefaults(argv, homeDirectory = '/tmp/ytconv-beta-home') {
-  const toggles = extractBetaToggles(argv);
+function parseWithDefaults(argv, homeDirectory = '/tmp/ytconv-defaults-home') {
+  const toggles = extractDefaultToggles(argv);
   const options = parseCliOptions(toggles.cleanArgs);
-  applyBetaDefaults(options, toggles, { homeDirectory, mkdirSync() {} });
+  applyStableDefaults(options, toggles, { homeDirectory, mkdirSync() {} });
   return { options, toggles };
 }
 
-test('beta.2 enables subtitles SponsorBlock mark and per-profile archives', () => {
+test('stable defaults enable subtitles SponsorBlock mark and per-profile archives', () => {
   const { options } = parseWithDefaults([]);
   assert.equal(options.subtitles, true);
   assert.equal(options.sponsorBlockMode, 'mark');
@@ -19,7 +19,7 @@ test('beta.2 enables subtitles SponsorBlock mark and per-profile archives', () =
   assert.match(options.galleryArchivePath, /gallery-dl-auto-balanced\.sqlite3$/u);
 });
 
-test('explicit beta values remain authoritative', () => {
+test('explicit values remain authoritative over stable defaults', () => {
   const { options } = parseWithDefaults([
     '--sponsorblock', 'remove',
     '--archive', './custom.txt',
@@ -32,7 +32,7 @@ test('explicit beta values remain authoritative', () => {
   assert.equal(options.galleryArchivePath, `${path.resolve('./custom.txt')}.gallery.sqlite3`);
 });
 
-test('negative flags disable every beta default before normal parsing', () => {
+test('negative flags disable every stable default before normal parsing', () => {
   const { options, toggles } = parseWithDefaults([
     '--no-subtitles', '--no-sponsorblock', '--no-archive', 'https://example.com/media',
   ]);
@@ -51,8 +51,8 @@ test('audio and video archives are separated by output profile', () => {
   assert.notEqual(audio.archivePath, video.archivePath);
 });
 
-test('beta help explains defaults and opt-out commands', () => {
-  const text = betaDefaultsHelpText();
+test('stable help explains defaults and opt-out commands', () => {
+  const text = stableDefaultsHelpText();
   assert.match(text, /subtitles\s+ON/u);
   assert.match(text, /SponsorBlock\s+ON/u);
   assert.match(text, /archive ON/u);

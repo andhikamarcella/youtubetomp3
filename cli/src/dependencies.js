@@ -1,26 +1,46 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import process from 'node:process';
 import { execFile, spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { promisify } from 'node:util';
+import { gunzip } from 'node:zlib';
 import which from 'which';
-import { ensureBundledYtDlp } from './binaries.js';
+import { bundledYtDlpPath, ensureBundledYtDlp } from './binaries.js';
+import { detectSystemBrowsers } from './cookies.js';
+import { engineDirectory, engineFileStatus, enginePath } from './engine-storage.js';
 import { installGalleryDlPython, resolveGalleryDlRunner } from './gallery.js';
 import { detectLinuxDistro } from './linux-distro.js';
 import { isTermux } from './platform.js';
+import { monochromeChildEnvironment } from './terminal-style.js';
+import { downloadVerifiedGitHubAsset } from './verified-download.js';
 
 const execFileAsync = promisify(execFile);
-const require = createRequire(import.meta.url);
+const gunzipAsync = promisify(gunzip);
+const FFMPEG_REPOSITORY = 'eugeneware/ffmpeg-static';
+const FFMPEG_RELEASE = 'b6.1.1';
+const MINIMUM_FFMPEG_BYTES = 10 * 1024 * 1024;
+const MINIMUM_NODE = [22, 14, 0];
+
+function numericVersion(value = '') {
+  return String(value).replace(/^v/u, '').split(/[.-]/u).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+}
+
+export function nodeRuntimeSupported(version = process.versions.node) {
+  const actual = numericVersion(version);
+  for (let index = 0; index < MINIMUM_NODE.length; index += 1) {
+    if (actual[index] > MINIMUM_NODE[index]) return true;
+    if (actual[index] < MINIMUM_NODE[index]) return false;
+  }
+  return true;
+}
 
 async function fileExists(filePath) {
   if (!filePath) return false;
-  try { await fs.access(filePath); return true; } catch { return false; }
+  try { return (await fs.stat(filePath)).isFile(); } catch { return false; }
 }
 
 async function resolveCommand(names) {
   for (const name of names) {
-    try { return await which(name); } catch { /* next */ }
+    try { return await which(name); } catch { /* Try the next command. */ }
   }
   return null;
 }
@@ -29,91 +49,82 @@ async function readVersion(command, args = ['--version']) {
   if (!command) return null;
   try {
     const { stdout, stderr } = await execFileAsync(command, args, {
-      windowsHide: true, timeout: 20_000, env: process.env,
+      windowsHide: true,
+      timeout: 20_000,
+      env: monochromeChildEnvironment(process.env),
     });
     return `${stdout || stderr}`.trim().split(/\r?\n/u)[0] || null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
-async function resolveBundledFfmpeg() {
+export function ffmpegReleaseAsset({ platform = process.platform, architecture = process.arch } = {}) {
+  const assets = {
+    'darwin-arm64': 'ffmpeg-darwin-arm64.gz',
+    'darwin-x64': 'ffmpeg-darwin-x64.gz',
+    'linux-arm': 'ffmpeg-linux-arm.gz',
+    'linux-arm64': 'ffmpeg-linux-arm64.gz',
+    'linux-ia32': 'ffmpeg-linux-ia32.gz',
+    'linux-x64': 'ffmpeg-linux-x64.gz',
+    'win32-x64': 'ffmpeg-win32-x64.gz',
+  };
+  return assets[`${platform}-${architecture}`] ?? null;
+}
+
+export function bundledFfmpegPath(options = {}) {
+  return enginePath(process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg', options);
+}
+
+export async function resolveBundledFfmpeg() {
   if (isTermux()) return null;
-  try {
-    const module = await import('ffmpeg-static');
-    const candidate = module.default;
-    if (!await fileExists(candidate)) return null;
-    return await readVersion(candidate, ['-version']) ? candidate : null;
-  } catch { return null; }
+  const candidate = bundledFfmpegPath();
+  const status = await engineFileStatus(candidate, { minimumBytes: MINIMUM_FFMPEG_BYTES });
+  if (!status.valid) return null;
+  return await readVersion(candidate, ['-version']) ? candidate : null;
 }
 
-function ffmpegStaticDetails() {
-  const packageJsonPath = require.resolve('ffmpeg-static/package.json');
-  return {
-    binaryPath: require('ffmpeg-static'),
-    installerPath: path.join(path.dirname(packageJsonPath), 'install.js'),
-    packageDirectory: path.dirname(packageJsonPath),
-  };
-}
-
-export function ffmpegInstallerInvocation({
-  execPath = process.execPath,
-  packageJsonPath = require.resolve('ffmpeg-static/package.json'),
+export async function repairBundledFfmpeg({
+  silent = false,
+  force = false,
+  fetchImpl = globalThis.fetch,
 } = {}) {
-  const pathApi = packageJsonPath.includes('\\') ? path.win32 : path;
-  const packageDirectory = pathApi.dirname(packageJsonPath);
-  return {
-    command: execPath,
-    args: [pathApi.join(packageDirectory, 'install.js')],
-    cwd: packageDirectory,
-  };
-}
-
-export async function repairBundledFfmpeg({ silent = false, runInstaller = spawnSync } = {}) {
   const current = await resolveBundledFfmpeg();
-  if (current) return { installed: true, path: current, repaired: false, error: '' };
+  if (current && !force) return { installed: true, path: current, repaired: false, error: '' };
 
-  let details;
-  try {
-    details = ffmpegStaticDetails();
-  } catch (error) {
+  const assetName = ffmpegReleaseAsset();
+  if (!assetName) {
     return {
       installed: false,
       path: null,
       repaired: false,
-      error: `The ffmpeg-static package is unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      error: `No verified bundled FFmpeg executable is available for ${process.platform}/${process.arch}; install FFmpeg with the operating-system package manager.`,
     };
   }
 
-  if (!details.binaryPath || !await fileExists(details.installerPath)) {
-    return {
-      installed: false,
-      path: null,
-      repaired: false,
-      error: 'The ffmpeg-static installer is unavailable. Reinstall YTConv with npm install -g ytconv@latest --force.',
-    };
-  }
-
+  const destination = bundledFfmpegPath();
   try {
-    // The installer exits early when a broken or truncated binary still exists.
-    // Remove only that package-owned binary after it has failed the version check.
-    await fs.rm(details.binaryPath, { force: true });
-    if (!silent) console.log('YTConv: downloading and repairing the bundled FFmpeg engine...');
-    const invocation = ffmpegInstallerInvocation({
-      execPath: process.execPath,
-      packageJsonPath: path.join(details.packageDirectory, 'package.json'),
+    await downloadVerifiedGitHubAsset({
+      repository: FFMPEG_REPOSITORY,
+      release: FFMPEG_RELEASE,
+      assetName,
+      destination,
+      minimumBytes: 1024 * 1024,
+      maximumOutputBytes: 150 * 1024 * 1024,
+      transform: (data) => gunzipAsync(data),
+      fetchImpl,
+      silent,
     });
-    const result = runInstaller(invocation.command, invocation.args, {
-      cwd: invocation.cwd,
-      env: process.env,
-      windowsHide: true,
-      timeout: 180_000,
-      stdio: silent ? 'pipe' : 'inherit',
-    });
-    if (result.error || result.status !== 0) {
-      const detail = result.error?.message || `${result.stderr || ''}`.trim() || `exit code ${result.status ?? 'unknown'}`;
-      throw new Error(detail);
-    }
     const repaired = await resolveBundledFfmpeg();
-    if (!repaired) throw new Error('the downloaded FFmpeg binary did not pass the version check');
+    if (!repaired) {
+      await fs.rm(destination, { force: true }).catch(() => {});
+      throw new Error('the verified FFmpeg executable did not pass `ffmpeg -version`');
+    }
+    const stats = await fs.stat(repaired);
+    if (stats.size < MINIMUM_FFMPEG_BYTES) {
+      await fs.rm(repaired, { force: true }).catch(() => {});
+      throw new Error('the verified FFmpeg executable is unexpectedly small');
+    }
     if (!silent) console.log('YTConv: FFmpeg is ready.');
     return { installed: true, path: repaired, repaired: true, error: '' };
   } catch (error) {
@@ -127,7 +138,11 @@ export async function repairBundledFfmpeg({ silent = false, runInstaller = spawn
 }
 
 function runVisible(command, args, { optional = false } = {}) {
-  const result = spawnSync(command, args, { stdio: 'inherit', windowsHide: true, env: process.env });
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    windowsHide: true,
+    env: monochromeChildEnvironment(process.env),
+  });
   if (result.error || result.status !== 0) {
     if (optional) return false;
     const detail = result.error?.message || `exit code ${result.status ?? 'unknown'}`;
@@ -143,11 +158,12 @@ async function resolvePython() {
 async function installPythonEngines({ visible = true } = {}) {
   const python = await resolvePython();
   if (!python) return { installed: false, error: 'Python 3 was not found.' };
-  const args = python.toLowerCase().endsWith('py.exe')
-    ? ['-3', '-m', 'pip', 'install', '--user', '--upgrade', '--no-cache-dir', 'yt-dlp', 'gallery-dl']
-    : ['-m', 'pip', 'install', '--user', '--upgrade', '--no-cache-dir', 'yt-dlp', 'gallery-dl'];
+  const moduleArgs = ['-m', 'pip', 'install', '--user', '--upgrade', '--no-cache-dir', 'yt-dlp[default]', 'gallery-dl'];
+  const args = python.toLowerCase().endsWith('py.exe') ? ['-3', ...moduleArgs] : moduleArgs;
   const result = spawnSync(python, args, {
-    stdio: visible ? 'inherit' : 'ignore', windowsHide: true, env: process.env,
+    stdio: visible ? 'inherit' : 'ignore',
+    windowsHide: true,
+    env: monochromeChildEnvironment(process.env),
   });
   return {
     installed: !result.error && result.status === 0,
@@ -167,7 +183,7 @@ async function resolvePythonYtDlpRunner() {
 async function resolveYtDlpRunner({ bundledYtDlp = null } = {}) {
   if (bundledYtDlp) {
     const version = await readVersion(bundledYtDlp);
-    if (version) return { command: bundledYtDlp, prefixArgs: [], displayPath: bundledYtDlp, version, mode: 'bundled' };
+    if (version) return { command: bundledYtDlp, prefixArgs: [], displayPath: bundledYtDlp, version, mode: 'verified-bundled' };
   }
   const executable = await resolveCommand(['yt-dlp', 'yt-dlp.exe']);
   const executableVersion = await readVersion(executable);
@@ -177,21 +193,43 @@ async function resolveYtDlpRunner({ bundledYtDlp = null } = {}) {
   return resolvePythonYtDlpRunner();
 }
 
+async function existingBundledYtDlp() {
+  if (isTermux()) return null;
+  const candidate = bundledYtDlpPath();
+  const status = await engineFileStatus(candidate, { minimumBytes: 1024 * 1024 });
+  return status.valid && await readVersion(candidate) ? candidate : null;
+}
+
+async function inspectJavaScriptRuntimes() {
+  const runtimes = [];
+  const deno = await resolveCommand(['deno', 'deno.exe']);
+  const denoVersion = await readVersion(deno);
+  if (deno && denoVersion) runtimes.push({ name: 'deno', path: deno, version: denoVersion, recommended: true });
+  if (nodeRuntimeSupported()) runtimes.push({ name: 'node', path: process.execPath, version: process.version, recommended: true });
+  const quickJs = await resolveCommand(['qjs', 'quickjs']);
+  const quickJsVersion = await readVersion(quickJs);
+  if (quickJs && quickJsVersion) runtimes.push({ name: 'quickjs', path: quickJs, version: quickJsVersion, recommended: false });
+  const bun = await resolveCommand(['bun', 'bun.exe']);
+  const bunVersion = await readVersion(bun);
+  if (bun && bunVersion) runtimes.push({ name: 'bun', path: bun, version: bunVersion, recommended: false });
+  return runtimes;
+}
+
 export async function prepareTermuxDependencies() {
   if (!isTermux()) return { prepared: false, termux: false };
-  runVisible('pkg', ['install', '-y', 'python', 'ffmpeg']);
+  runVisible('pkg', ['install', '-y', 'python', 'ffmpeg', 'nodejs']);
   const installedFromRepository = runVisible('pkg', ['install', '-y', 'python-yt-dlp'], { optional: true });
+  runVisible('pkg', ['install', '-y', 'gallery-dl'], { optional: true });
   const python = await resolvePython();
   if (!python) throw new Error('Python was not found after the Termux installation.');
   let ytDlpVersion = await readVersion(python, ['-m', 'yt_dlp', '--version']);
   if (!ytDlpVersion) {
-    runVisible(python, ['-m', 'pip', 'install', '--upgrade', '--no-cache-dir', 'yt-dlp']);
+    runVisible(python, ['-m', 'pip', 'install', '--upgrade', '--no-cache-dir', 'yt-dlp[default]', 'gallery-dl']);
     ytDlpVersion = await readVersion(python, ['-m', 'yt_dlp', '--version']);
   }
   if (!ytDlpVersion) throw new Error('The Python yt_dlp module still cannot run.');
-  const galleryRunner = await installGalleryDlPython({ visible: true });
+  const galleryRunner = await resolveGalleryDlRunner({ install: true, silent: false });
   if (!galleryRunner) throw new Error('The gallery_dl module could not be installed in Termux.');
-  runVisible('pkg', ['install', '-y', 'yt-dlp-ejs'], { optional: true });
   return { prepared: true, termux: true, installedFromRepository, ytDlpVersion, galleryDlVersion: galleryRunner.version };
 }
 
@@ -200,7 +238,7 @@ export async function prepareDesktopDependencies({ silent = false } = {}) {
   const errors = [];
   let bundledYtDlp = null;
   try { bundledYtDlp = await ensureBundledYtDlp({ silent }); }
-  catch (error) { errors.push(`yt-dlp bundled: ${error instanceof Error ? error.message : String(error)}`); }
+  catch (error) { errors.push(`yt-dlp: ${error instanceof Error ? error.message : String(error)}`); }
 
   let ytDlpRunner = await resolveYtDlpRunner({ bundledYtDlp });
   let galleryRunner = await resolveGalleryDlRunner({ install: true, silent }).catch((error) => {
@@ -208,25 +246,23 @@ export async function prepareDesktopDependencies({ silent = false } = {}) {
     return null;
   });
 
-  if ((!ytDlpRunner || !galleryRunner) && process.platform !== 'win32') {
+  if (!ytDlpRunner || !galleryRunner) {
     const pipResult = await installPythonEngines({ visible: !silent });
     if (!pipResult.installed) errors.push(`Python engines: ${pipResult.error}`);
     ytDlpRunner = ytDlpRunner || await resolveYtDlpRunner({ bundledYtDlp });
     galleryRunner = galleryRunner || await resolveGalleryDlRunner({ install: false });
   }
 
-  let bundledFfmpeg = await resolveBundledFfmpeg();
   const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
   const usableSystemFfmpeg = await readVersion(systemFfmpeg, ['-version']) ? systemFfmpeg : null;
-  if (!bundledFfmpeg && !usableSystemFfmpeg) {
+  let bundledFfmpeg = usableSystemFfmpeg ? null : await resolveBundledFfmpeg();
+  if (!usableSystemFfmpeg && !bundledFfmpeg) {
     const ffmpegRepair = await repairBundledFfmpeg({ silent });
     bundledFfmpeg = ffmpegRepair.path;
     if (!ffmpegRepair.installed) errors.push(ffmpegRepair.error);
   }
-  const ffmpegPath = bundledFfmpeg || usableSystemFfmpeg;
-  if (!ffmpegPath) {
-    errors.push('FFmpeg is unavailable after automatic repair. Run ytconv doctor for the exact failure and platform-specific setup help.');
-  }
+  const ffmpegPath = usableSystemFfmpeg || bundledFfmpeg;
+  if (!ffmpegPath) errors.push('FFmpeg is unavailable after automatic repair. Run `ytconv doctor` for platform-specific setup help.');
 
   return {
     prepared: Boolean(ytDlpRunner && galleryRunner && ffmpegPath),
@@ -234,7 +270,7 @@ export async function prepareDesktopDependencies({ silent = false } = {}) {
     ytDlpPath: ytDlpRunner?.displayPath ?? null,
     galleryDlPath: galleryRunner?.displayPath ?? null,
     ffmpegPath,
-    errors,
+    errors: [...new Set(errors)],
   };
 }
 
@@ -248,69 +284,68 @@ async function availableManagers() {
 export async function inspectDependencies({ repair = true } = {}) {
   const termux = isTermux();
   const repairErrors = [];
-  let bundledYtDlp = null;
-  let ytDlpInstallError = null;
-  if (!termux) {
-    try { bundledYtDlp = await ensureBundledYtDlp({ silent: true }); }
-    catch (error) { ytDlpInstallError = error instanceof Error ? error.message : String(error); }
+
+  if (repair) {
+    const repaired = termux
+      ? await prepareTermuxDependencies().catch((error) => ({ prepared: false, errors: [error.message] }))
+      : await prepareDesktopDependencies({ silent: true }).catch((error) => ({ prepared: false, errors: [error.message] }));
+    repairErrors.push(...(repaired.errors || []));
   }
 
-  let ytDlpRunner = await resolveYtDlpRunner({ bundledYtDlp });
-  let galleryDlRunner = await resolveGalleryDlRunner({ install: false });
-  let bundledFfmpeg = await resolveBundledFfmpeg();
-  let systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
-  let ffmpegPath = termux ? systemFfmpeg : (bundledFfmpeg || systemFfmpeg);
-  let ffmpegVersion = await readVersion(ffmpegPath, ['-version']);
-  if (!ffmpegVersion) { ffmpegPath = null; bundledFfmpeg = null; }
-
-  if (repair && (!ytDlpRunner || !galleryDlRunner || !ffmpegPath)) {
-    if (termux) {
-      await prepareTermuxDependencies().catch((error) => {
-        repairErrors.push(error instanceof Error ? error.message : String(error));
-      });
-    } else {
-      const repairResult = await prepareDesktopDependencies({ silent: true }).catch((error) => ({
-        prepared: false,
-        errors: [error instanceof Error ? error.message : String(error)],
-      }));
-      repairErrors.push(...(repairResult.errors || []));
-    }
-    ytDlpRunner = await resolveYtDlpRunner({ bundledYtDlp: bundledYtDlp || await ensureBundledYtDlp({ silent: true }).catch(() => null) });
-    galleryDlRunner = await resolveGalleryDlRunner({ install: false });
-    bundledFfmpeg = await resolveBundledFfmpeg();
-    systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
-    ffmpegPath = termux ? systemFfmpeg : (bundledFfmpeg || systemFfmpeg);
-    ffmpegVersion = await readVersion(ffmpegPath, ['-version']);
-    if (!ffmpegVersion) ffmpegPath = null;
-  }
-
+  const bundledYtDlp = await existingBundledYtDlp();
+  const ytDlpRunner = await resolveYtDlpRunner({ bundledYtDlp });
+  const galleryDlRunner = await resolveGalleryDlRunner({ install: false });
+  const systemFfmpeg = await resolveCommand(['ffmpeg', 'ffmpeg.exe']);
+  const usableSystemFfmpeg = await readVersion(systemFfmpeg, ['-version']) ? systemFfmpeg : null;
+  const bundledFfmpeg = termux || usableSystemFfmpeg ? null : await resolveBundledFfmpeg();
+  const ffmpegPath = usableSystemFfmpeg || bundledFfmpeg;
+  const ffmpegVersion = await readVersion(ffmpegPath, ['-version']);
   const ffprobePath = await resolveCommand(['ffprobe', 'ffprobe.exe']);
   const ffprobeVersion = await readVersion(ffprobePath, ['-version']);
+  const pythonPath = await resolvePython();
+  const pythonVersion = await readVersion(pythonPath, ['--version']);
+  const npmPath = await resolveCommand(process.platform === 'win32' ? ['npm.cmd', 'npm.exe', 'npm'] : ['npm']);
+  const npmVersion = await readVersion(npmPath);
+  const javaScriptRuntimes = await inspectJavaScriptRuntimes();
+  const browsers = termux ? [] : await detectSystemBrowsers().catch(() => []);
   const distro = await detectLinuxDistro({ available: await availableManagers() });
-  const missing = [!ytDlpRunner ? 'yt-dlp' : '', !galleryDlRunner ? 'gallery-dl' : '', !ffmpegPath ? 'FFmpeg' : ''].filter(Boolean);
-  const runnerValue = ytDlpRunner ? { command: ytDlpRunner.command, prefixArgs: ytDlpRunner.prefixArgs, path: ytDlpRunner.displayPath } : null;
+  const supportedNode = nodeRuntimeSupported();
+  const missing = [
+    !supportedNode ? 'Node.js 22.14.0 or newer' : '',
+    !ytDlpRunner ? 'yt-dlp' : '',
+    !galleryDlRunner ? 'gallery-dl' : '',
+    !ffmpegPath ? 'FFmpeg' : '',
+  ].filter(Boolean);
+  const recommendedMissing = [
+    !javaScriptRuntimes.length ? 'JavaScript runtime (Deno or Node.js 22+)' : '',
+    !ffprobeVersion ? 'ffprobe' : '',
+    !termux && !browsers.length ? 'supported desktop browser for account-required media' : '',
+  ].filter(Boolean);
+  const setupCommand = termux
+    ? 'pkg install -y python ffmpeg nodejs && python -m pip install -U "yt-dlp[default]" gallery-dl'
+    : distro.installPlan;
 
   return {
-    platform: {
-      termux,
-      distro,
-      setupCommand: termux
-        ? 'pkg install -y python ffmpeg && python -m pip install -U yt-dlp gallery-dl'
-        : distro.installPlan,
-    },
+    platform: { termux, distro, setupCommand },
     ready: missing.length === 0,
     missing,
-    errors: [...new Set([ytDlpInstallError, ...repairErrors].filter(Boolean))],
+    recommendedMissing,
+    errors: [...new Set(repairErrors.filter(Boolean))],
+    engineDirectory: engineDirectory(),
+    node: { path: process.execPath, version: process.version, installed: true, supported: supportedNode, minimum: '22.14.0' },
+    npm: { path: npmPath, version: npmVersion, installed: Boolean(npmPath && npmVersion) },
+    python: { path: pythonPath, version: pythonVersion, installed: Boolean(pythonPath && pythonVersion) },
+    javaScriptRuntimes,
+    browsers,
     ytDlp: {
       command: ytDlpRunner?.command ?? null,
       prefixArgs: ytDlpRunner?.prefixArgs ?? [],
-      path: runnerValue,
+      path: ytDlpRunner ? { command: ytDlpRunner.command, prefixArgs: ytDlpRunner.prefixArgs, path: ytDlpRunner.displayPath } : null,
       displayPath: ytDlpRunner?.displayPath ?? null,
       mode: ytDlpRunner?.mode ?? null,
       version: ytDlpRunner?.version ?? null,
       installed: Boolean(ytDlpRunner),
-      bundled: ytDlpRunner?.mode === 'bundled',
-      error: ytDlpInstallError,
+      bundled: ytDlpRunner?.mode === 'verified-bundled',
     },
     galleryDl: {
       command: galleryDlRunner?.command ?? null,

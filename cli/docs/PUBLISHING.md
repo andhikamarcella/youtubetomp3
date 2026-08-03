@@ -1,242 +1,164 @@
-# Publishing YTConv to npm
+# Publishing YTConv 1.6.0 to npm
 
-This guide is for YTConv maintainers. Never put an npm token in source code, an issue, a screenshot, logs, or chat.
+This document is for maintainers. YTConv has one active npm channel: `latest`.
 
-## Release channels
+## Identity
 
-| Channel | Branch | Version | npm tag | Workflow |
-| --- | --- | --- | --- | --- |
-| Stable | `release/ytconv-1.5.9-cli-only-final` | `1.5.9` | `latest` | `Publish YTConv Stable to npm` |
-| Beta | `release/ytconv-1.6.0-beta` | `1.6.0-beta.1` | `beta` | `Publish YTConv Beta to npm` |
+| Field | Value |
+|---|---|
+| npm package | `ytconv` |
+| version | `1.6.0` |
+| npm dist-tag | `latest` |
+| GitHub repository | `andhikamarcella/youtubetomp3` |
+| release branch | `release/ytconv-1.6.0-cli-only-final` |
+| Git tag | `ytconv-v1.6.0` |
+| publisher/maintainer | Andhika Marcella Fernanda |
 
-Beta must never be published with the `latest` tag.
+The current GitHub owner is a personal account. Do not insert an organization name into package metadata, provenance, or documentation unless ownership is actually transferred and verified.
 
-## One-time npm and GitHub setup
+## Required protections
 
-1. Sign in to the npm account that owns `ytconv` and enable 2FA.
-2. Create a **Granular Access Token** with read/write access to `ytconv`. Enable 2FA bypass only for the automation token stored in GitHub Actions.
-3. Open the GitHub repository and go to **Settings → Environments**.
-4. Create an environment named exactly `npm`.
-5. Add this secret to the `npm` environment:
+- Review changes through a pull request based on the last stable CLI release.
+- Keep website/server code outside the npm package scope.
+- Require all cross-platform CI jobs to pass.
+- Pin third-party GitHub Actions to full commit SHAs.
+- Restrict CI to `contents: read`; grant release workflow only `contents: write` and `id-token: write`.
+- Use an npm trusted publisher/OIDC when configured; keep token fallback limited to the protected release environment.
+- Publish with public provenance.
+- Never accept a tarball whose tree differs from the reviewed commit.
 
-   ```text
-   NPM_TOKEN=<granular npm automation token>
-   ```
+## Local verification
 
-6. A required reviewer is recommended for the `npm` environment so publishing needs approval.
-
-The workflow uses the `npm` environment, `id-token: write`, a dry run, the complete test suite, version/tag checks, and post-publish registry verification.
-
-## Pre-publish checklist
-
-Confirm that the CLI-only package, dependency bootstrap, and local browser login work. An account server or website is not a release requirement:
-
-```sh
-ytconv doctor
-ytconv --self-test
-ytconv social status
-ytconv login instagram --browser firefox
-ytconv "AUTHORIZED_MEDIA_URL"
-ytconv logout instagram
-```
-
-Check package identity:
+From `cli`:
 
 ```sh
-cd cli
-node -p "require('./package.json').name"
-node -p "require('./package.json').version"
-node -p "require('./package.json').publishConfig.tag"
-npm view ytconv versions --json
-```
-
-Run local validation before publishing:
-
-```sh
-npm install
+npm ci --ignore-scripts
 npm run check
 npm test
 npm run check:ish
-npm run test:ish
+npm run security
+npm audit --omit=dev
+npm audit signatures
 npm pack --dry-run
+npm publish --dry-run --access public --provenance
 ```
 
-## Publish stable 1.5.9 through GitHub Actions
+Review the allowlist. It must contain CLI JavaScript, Python iSH files, installers, English Markdown, license, and metadata only. It must not contain HTML, CSS, Express, server routes, deployment configuration, secrets, browser profiles, cookies, caches, or downloaded engines.
 
-1. Confirm that every stable change is on `release/ytconv-1.5.9-cli-only-final`.
-2. Open the repository's **Actions** tab.
-3. Select **Publish YTConv Stable to npm**.
-4. Choose **Run workflow**.
-5. Select `release/ytconv-1.5.9-cli-only-final`.
-6. Enter:
-
-   ```text
-   version: 1.5.9
-   confirm: PUBLISH-STABLE
-   ```
-
-7. Start the workflow and approve the `npm` environment if approval is enabled.
-8. Wait for every step, including **Verify registry**, to pass.
-
-The workflow runs:
+## Package artifact
 
 ```sh
-npm publish --tag latest --access public --provenance
+npm pack --json
+sha256sum ytconv-1.6.0.tgz
+npm sbom --sbom-format=cyclonedx > ytconv-1.6.0.sbom.cdx.json
 ```
 
-Verify the result:
+Record:
+
+- tarball filename and byte count;
+- unpacked size and file count;
+- SHA-1, SHA-256, and npm integrity;
+- commit SHA and tree SHA;
+- publisher and repository;
+- test/CI results;
+- Node/npm versions;
+- timestamp.
+
+## Clean installation proof
+
+Install the generated tarball into an empty temporary prefix with lifecycle scripts enabled:
 
 ```sh
-npm view ytconv@latest version
-npm view ytconv@1.5.9 dist.integrity
+npm install -g ./ytconv-1.6.0.tgz --prefix TEMP_PREFIX --force
+TEMP_PREFIX/bin/ytconv --version
+TEMP_PREFIX/bin/ytconv --self-test
+TEMP_PREFIX/bin/ytconv doctor
+```
+
+Windows must also prove CMD and PowerShell launchers. CI must delete the fallback FFmpeg test executable, run repair, execute `ffmpeg -version`, and verify that the GitHub digest path was used.
+
+## GitHub Actions publish inputs
+
+The protected workflow supports an explicit manual dispatch and the final release branch. Manual confirmation must match the exact version. The workflow:
+
+1. checks out the locked commit;
+2. installs the supported Node/npm toolchain;
+3. installs dependencies without lifecycle scripts;
+4. runs syntax, tests, iSH compilation, audit, signatures, and package inspection;
+5. generates the tarball, checksum, metadata, and SBOM;
+6. publishes `ytconv@1.6.0` with `latest` and provenance if unused;
+7. removes the retired prerelease dist-tag;
+8. downloads the public registry tarball and compares it byte-for-byte/integrity with the tested artifact;
+9. creates `ytconv-v1.6.0` and attaches all release artifacts.
+
+## Registry verification
+
+```sh
+npm view ytconv@latest version --prefer-online
+npm view ytconv@1.6.0 dist.integrity dist.shasum dist.tarball --json
 npm view ytconv dist-tags --json
 ```
 
-Expected:
+Required result:
 
-```text
-latest = 1.5.9
+```json
+{
+  "latest": "1.6.0"
+}
 ```
 
-## Publish beta 1.6.0-beta.1 through GitHub Actions
+The registry may retain an immutable historical prerelease version record. It must not have an active dist-tag and must not be used by installers or the updater.
 
-1. Confirm that every beta change is on `release/ytconv-1.6.0-beta`.
-2. Open the **Actions** tab.
-3. Select **Publish YTConv Beta to npm**.
-4. Choose **Run workflow**.
-5. Select `release/ytconv-1.6.0-beta`.
-6. Enter:
+## GitHub Release verification
 
-   ```text
-   version: 1.6.0-beta.1
-   confirm: PUBLISH-BETA
-   ```
+Confirm that:
 
-7. Start the workflow and wait for every step to pass.
+- tag `ytconv-v1.6.0` points to the final tested commit;
+- Release is marked latest and is not a prerelease;
+- `ytconv-1.6.0.tgz`, `SHA256SUMS.txt`, metadata JSON, and SBOM are attached;
+- the release asset digest shown by GitHub matches the local/public artifact;
+- release notes describe security boundaries and platform limitations honestly.
 
-The workflow runs:
+## Recovery
+
+### Publication fails before npm accepts the version
+
+Fix the workflow on the release branch, rerun every check, and publish the same reviewed tree.
+
+### npm accepted 1.6.0 but GitHub Release failed
+
+Do not republish or overwrite npm. Rerun only the idempotent registry-verification and GitHub Release steps using the exact public tarball.
+
+### Wrong `latest` tag
+
+Move `latest` only to a known valid stable version:
 
 ```sh
-npm publish --tag beta --access public --provenance
+npm dist-tag add ytconv@1.6.0 latest
 ```
 
-The workflow also verifies that the `latest` tag does not change.
+Never delete a valid published version as routine rollback. Correct the dist-tag and publish a new patch version when source changes are required.
 
-Verify the result:
+### Retired prerelease tag still exists
 
 ```sh
-npm view ytconv@beta version
-npm view ytconv@latest version
-npm view ytconv@1.6.0-beta.1 dist.integrity
+npm dist-tag rm ytconv beta
 npm view ytconv dist-tags --json
 ```
 
-Expected:
+### Artifact mismatch
 
-```text
-beta   = 1.6.0-beta.1
-latest = 1.5.9
-```
+Stop the release, preserve logs/artifacts, rotate any potentially exposed token, and investigate the commit, lockfile, npm environment, and provenance. Do not attach a different tarball under the same release identity.
 
-## Manual local fallback
+## Publisher changes
 
-Use this only when GitHub Actions is unavailable. Publishing through Actions is safer and generates provenance.
+Before adding an npm maintainer or moving to a GitHub organization:
 
-```sh
-npm login
-npm whoami
-cd cli
-npm install
-npm run check
-npm test
-npm run check:ish
-npm run test:ish
-npm pack --dry-run
-```
+1. verify the exact account and organization;
+2. use least privilege and enforced 2FA;
+3. update repository/package metadata in one reviewed PR;
+4. reconfigure trusted publishing for the exact workflow/environment;
+5. verify npm owners after the change;
+6. document the ownership transfer in release notes.
 
-Stable:
-
-```sh
-npm publish --tag latest --access public
-```
-
-Beta:
-
-```sh
-npm publish --tag beta --access public
-```
-
-Do not publish from the wrong branch.
-
-## Install verification
-
-Stable:
-
-```sh
-npm install -g ytconv@latest --force
-ytconv --version
-```
-
-Beta:
-
-```sh
-npm install -g ytconv@beta --force
-ytconv --version
-```
-
-Windows PowerShell/CMD can use:
-
-```powershell
-npm.cmd install -g ytconv@latest --force
-ytconv.cmd --version
-```
-
-## Version and tag recovery
-
-An npm version cannot be overwritten after publication. Update `package.json`, the lockfile, documentation, installers, and identity tests before publishing the next version.
-
-Repair dist-tags without republishing the package:
-
-```sh
-npm dist-tag add ytconv@1.5.9 latest
-npm dist-tag add ytconv@1.6.0-beta.1 beta
-npm view ytconv dist-tags --json
-```
-
-Example next versions:
-
-```text
-Stable patch: 1.5.9
-Beta next:    1.6.0-beta.2
-```
-
-## Common failures
-
-### `ENEEDAUTH` or `E401`
-
-- Confirm that a secret named exactly `NPM_TOKEN` exists in the `npm` environment.
-- Confirm that the token has not expired or been revoked.
-- Confirm that the token has read/write permission for `ytconv`.
-
-### `You cannot publish over the previously published versions`
-
-That version has already been published. Increase the version number; do not attempt to overwrite an old version.
-
-### Beta accidentally changes `latest`
-
-Restore the tags:
-
-```sh
-npm dist-tag add ytconv@1.5.9 latest
-npm dist-tag add ytconv@1.6.0-beta.1 beta
-```
-
-### Package contents are wrong
-
-Always inspect this output before publishing:
-
-```sh
-npm pack --dry-run
-```
-
-Confirm that `bin`, `src`, `scripts`, `ish`, `docs`, `README.md`, `CHANGELOG.md`, and `LICENSE` are included.
+Never invent an organization entry to make metadata look more complete.

@@ -24,28 +24,28 @@ test('compares stable and prerelease semantic versions', () => {
   assert.equal(compareVersions('1.5.0', '1.5.0-beta.9'), 1);
 });
 
-test('chooses latest for stable and beta for prereleases', () => {
+test('always uses the stable latest channel', () => {
   assert.equal(releaseChannel('1.3.0'), 'latest');
-  assert.equal(releaseChannel('1.5.0-beta.1'), 'beta');
-  assert.equal(updateCommand('1.5.0-beta.1'), 'npm install -g ytconv@beta --force');
+  assert.equal(releaseChannel('1.5.0-beta.1'), 'latest');
+  assert.equal(updateCommand('1.5.0-beta.1'), 'npm install -g ytconv@latest --force');
   assert.equal(updateCommand('1.3.0'), 'npm install -g ytconv@latest --force');
 });
 
-test('reports an available beta registry update', async () => {
+test('a legacy prerelease installation checks the stable registry channel', async () => {
   const cacheFile = path.join(os.tmpdir(), `ytconv-update-${Date.now()}-${Math.random()}.json`);
   let requestedUrl = '';
   const result = await checkForUpdate({
     currentVersion: '1.5.0-beta.1', force: true, cacheFile,
     fetchImpl: async (url) => {
       requestedUrl = String(url);
-      return { ok: true, json: async () => ({ version: '1.5.0-beta.2' }) };
+      return { ok: true, json: async () => ({ version: '1.6.0' }) };
     },
   });
-  assert.match(requestedUrl, /\/beta$/u);
+  assert.match(requestedUrl, /\/latest$/u);
   assert.equal(result.checked, true);
   assert.equal(result.available, true);
-  assert.equal(result.latestVersion, '1.5.0-beta.2');
-  assert.equal(result.channel, 'beta');
+  assert.equal(result.latestVersion, '1.6.0');
+  assert.equal(result.channel, 'latest');
 });
 
 test('clearing update cache preserves archive files', async () => {
@@ -68,7 +68,7 @@ test('clearing update cache preserves archive files', async () => {
   await fs.rm(homeDirectory, { recursive: true, force: true });
 });
 
-test('preferred beta updater runs npm-cli.js through current Node', () => {
+test('preferred updater always runs latest through the current Node', () => {
   const invocation = selfUpdateInvocation({
     currentVersion: '1.5.0-beta.1',
     platform: 'win32', env: {}, execPath: 'C:\\Program Files\\nodejs\\node.exe',
@@ -78,11 +78,11 @@ test('preferred beta updater runs npm-cli.js through current Node', () => {
   assert.equal(invocation.strategy, 'node-npm-cli');
   assert.deepEqual(invocation.args, [
     'C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js',
-    'install', '-g', 'ytconv@beta', '--force',
+    'install', '-g', 'ytconv@latest', '--force',
   ]);
 });
 
-test('Windows beta fallback uses cmd.exe instead of npm.cmd', () => {
+test('Windows latest fallback uses cmd.exe instead of npm.cmd', () => {
   const invocation = selfUpdateInvocation({
     currentVersion: '1.5.0-beta.1',
     platform: 'win32', env: { ComSpec: 'C:\\Windows\\System32\\cmd.exe' },
@@ -90,7 +90,7 @@ test('Windows beta fallback uses cmd.exe instead of npm.cmd', () => {
   });
   assert.equal(invocation.command, 'C:\\Windows\\System32\\cmd.exe');
   assert.equal(invocation.strategy, 'windows-cmd-fallback');
-  assert.deepEqual(invocation.args, ['/d', '/s', '/c', 'npm install -g ytconv@beta --force']);
+  assert.deepEqual(invocation.args, ['/d', '/s', '/c', 'npm install -g ytconv@latest --force']);
 });
 
 test('self-update returns strategy and success', () => {
@@ -105,7 +105,7 @@ test('self-update returns strategy and success', () => {
   });
   assert.equal(result.ok, true);
   assert.equal(result.strategy, 'node-npm-cli');
-  assert.equal(result.command, 'npm install -g ytconv@beta --force');
+  assert.equal(result.command, 'npm install -g ytconv@latest --force');
   assert.equal(captured.command, 'node.exe');
   assert.equal(captured.options.stdio, 'inherit');
 });

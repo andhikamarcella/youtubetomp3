@@ -7,6 +7,7 @@ import {
   isGalleryPreferredUrl as baseIsGalleryPreferredUrl,
   resolveGalleryDlRunner,
 } from './gallery.js';
+import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 
 export { inspectGallery };
 
@@ -60,7 +61,7 @@ async function listFiles(directory) {
 }
 
 function readableError(stderr, fallback) {
-  const text = String(stderr || '');
+  const text = sanitizeTerminalText(stderr || '');
   if (/429|too many requests/iu.test(text)) return 'The site is rate limiting requests (429). Wait, then try again.';
   if (/login|cookies?|authentication|private|not authorized/iu.test(text)) {
     return 'This media requires a signed-in account. Run `ytconv login PROVIDER`, then try again.';
@@ -126,7 +127,7 @@ export async function downloadGallery({
       cwd: outputDirectory,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
+      env: monochromeChildEnvironment(process.env),
     });
     let stdoutBuffer = '';
     let stderrBuffer = '';
@@ -149,7 +150,7 @@ export async function downloadGallery({
     signal?.addEventListener('abort', abort, { once: true });
 
     const processLine = (line, isError = false) => {
-      const clean = line.trim();
+      const clean = sanitizeTerminalText(line, { allowNewlines: false, maximumLength: 4096 }).trim();
       if (!clean) return;
       if (clean.startsWith('ytconv-file:')) {
         outputPath = clean.slice('ytconv-file:'.length).trim();

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { applyExplicitPrecedence } from '../src/argument-precedence.js';
-import { applyBetaDefaults, betaDefaultsHelpText, extractBetaToggles } from '../src/beta-defaults.js';
+import { applyStableDefaults, extractDefaultToggles, stableDefaultsHelpText } from '../src/defaults.js';
 import { applyCliEnvironment, helpText, isDirectCommand, parseCliOptions } from '../src/cli-options.js';
 import { commandSummaryText, normalizeCommandArgs } from '../src/commands.js';
 import { inspectDependencies } from '../src/dependencies.js';
@@ -148,7 +148,7 @@ function showUpdateNotice(updateInfo) {
 }
 
 function fullHelpText() {
-  return `${commandSummaryText()}${betaDefaultsHelpText()}${userDataHelpText()}${helpText()}\n${systemHelpText()}`;
+  return `${commandSummaryText()}${stableDefaultsHelpText()}${userDataHelpText()}${helpText()}\n${systemHelpText()}`;
 }
 
 async function main() {
@@ -170,13 +170,13 @@ async function main() {
     const resolved = await resolveUserArguments(explicitArgs);
     selectedProfile = resolved.profile;
     const effectiveArgs = applyExplicitPrecedence(resolved.args, explicitArgs);
-    const toggles = extractBetaToggles(effectiveArgs);
+    const toggles = extractDefaultToggles(effectiveArgs);
     ({ system, cleanArgs } = extractSystemOptions(toggles.cleanArgs));
     options = parseCliOptions(cleanArgs);
     const informationalOnly = options.help || options.version || system.examples || system.shellInfo
       || system.clearCache || system.repair || options.listPresets || options.checkUpdate
       || options.update || options.diagnose;
-    if (!informationalOnly || system.selfTest) applyBetaDefaults(options, toggles);
+    if (!informationalOnly || system.selfTest) applyStableDefaults(options, toggles);
   } catch (error) {
     console.error(`YTConv: ${explainError(error)}\n`);
     console.error(fullHelpText());

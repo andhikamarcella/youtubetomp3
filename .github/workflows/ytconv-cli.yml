@@ -1,10 +1,10 @@
-# Final branch verification: YTConv 1.5.9
-name: YTConv CLI 1.5.9 Stable
+# Final branch verification: YTConv 1.6.0
+name: YTConv CLI 1.6.0 Stable
 
 on:
   push:
     branches:
-      - "release/ytconv-1.5.9*"
+      - "release/ytconv-1.6.0*"
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -14,121 +14,98 @@ on:
       - ".github/workflows/ytconv-cli.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ytconv-cli-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   node-compatibility:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        node: [18, 20, 22]
+        node: [22.14.0, 24, 26]
     defaults:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: ${{ matrix.node }}
-      - run: npm install --ignore-scripts --omit=optional
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
-      - name: Stable identity and command smoke tests
+      - run: npm run security
+      - name: Stable identity and channel smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.9"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.0"
           node ./bin/ytconv.js --help | grep -q "Persistent CLI features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
           HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "No accounts are linked yet"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.5.9') !== 'latest') process.exitCode=1; if (!updateCommand('1.5.9').includes('@latest')) process.exitCode=1; })"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'latest') process.exitCode=1; if (!updateCommand('1.6.0').includes('@latest')) process.exitCode=1; })"
 
-  linux-full:
-    runs-on: ubuntu-latest
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 20
-      - run: npm install
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
-      - name: Check native iSH stable frontend and installers
+      - run: npm run check:ish
+        if: runner.os != 'Windows'
+      - run: npm run test:ish
+        if: runner.os != 'Windows'
+      - name: Verify stable defaults
+        shell: bash
         run: |
-          npm run check:ish
-          npm run test:ish
-          test "$(cat ish/VERSION)" = "1.5.9"
-          sh -n scripts/install-ish.sh
-          sh -n scripts/install-termux.sh
-          sh -n scripts/install-unix.sh
-      - name: Verify persistent defaults and explicit precedence
-        run: |
-          node -e "import('./src/beta-defaults.js').then(({extractBetaToggles,applyBetaDefaults}) => import('./src/cli-options.js').then(({parseCliOptions}) => { const t=extractBetaToggles([]); const o=parseCliOptions(t.cleanArgs); applyBetaDefaults(o,t,{homeDirectory:'/tmp/ytconv-stable',mkdirSync(){}}); if(!o.subtitles || o.sponsorBlockMode!=='mark' || !o.archivePath || !o.galleryArchivePath) process.exitCode=1; }))"
-          node -e "import('./src/argument-precedence.js').then(({applyExplicitPrecedence}) => { const e=['--preset','hd','https://example.com/a']; const r=['--preset','mobile','--resolution','720',...e]; const v=applyExplicitPrecedence(r,e); if(v.join(' ') !== e.join(' ')) process.exitCode=1; })"
-      - name: Test config profile history and completion with isolated home
-        run: |
-          TEST_HOME=$(mktemp -d)
-          HOME="$TEST_HOME" node ./bin/ytconv.js config set output "$TEST_HOME/output"
-          HOME="$TEST_HOME" node ./bin/ytconv.js profile set music preset=music audioQuality=320
-          HOME="$TEST_HOME" node ./bin/ytconv.js profile use music
-          HOME="$TEST_HOME" node ./bin/ytconv.js config list
-          HOME="$TEST_HOME" node ./bin/ytconv.js profile list
-          HOME="$TEST_HOME" node ./bin/ytconv.js history --json
-          node ./bin/ytconv.js completion bash
-          node ./bin/ytconv.js completion zsh
-          node ./bin/ytconv.js completion fish
-          node ./bin/ytconv.js completion powershell
-          rm -rf "$TEST_HOME"
-      - name: Verify media engines
-        run: |
-          test -x vendor/yt-dlp
-          test -x vendor/gallery-dl
-          test -x node_modules/ffmpeg-static/ffmpeg
-          ./vendor/yt-dlp --version
-          ./vendor/gallery-dl --version
-          node -e "import('./src/dependencies.js').then(async ({inspectDependencies}) => { const d=await inspectDependencies({repair:false}); if(!d.ready) process.exitCode=1; })"
-      - name: Preview stable package and documentation
+          node -e "import('./src/defaults.js').then(({extractDefaultToggles,applyStableDefaults}) => import('./src/cli-options.js').then(({parseCliOptions}) => { const t=extractDefaultToggles([]); const o=parseCliOptions(t.cleanArgs); applyStableDefaults(o,t,{homeDirectory:'/tmp/ytconv-stable',mkdirSync(){}}); if(!o.subtitles || o.sponsorBlockMode!=='mark' || !o.archivePath || !o.galleryArchivePath) process.exitCode=1; }))"
+      - name: Preview and install the CLI-only tarball
+        shell: bash
         run: |
           test ! -f ../.github/workflows/ytconv-auth.yml
-          npm pack --dry-run
-          npm pack --json > package-preview.json
-          grep -q '"version": "1.5.9"' package.json
-          grep -q '"tag": "latest"' package.json
-          grep -q 'src/auth.js' package-preview.json
-          grep -q 'bin/ytconv-auth.js' package-preview.json
-          grep -q 'docs/AUTH.md' package-preview.json
-          grep -q 'src/social-auth.js' package-preview.json
-          grep -q 'src/social-sessions.js' package-preview.json
-          if grep -Eiq '\.(html|css|jsx|tsx)"|(^|/)(next-app|public-ui|web|server)(/|\")' package-preview.json; then
-            echo "Web/server asset found in CLI tarball."
-            exit 1
-          fi
-      - name: Simulate portable npm install
-        run: |
-          TARBALL=$(npm pack --silent)
-          rm -rf /tmp/ytconv-portable
-          mkdir -p /tmp/ytconv-portable
-          npm install --prefix /tmp/ytconv-portable "$PWD/$TARBALL" --omit=optional --ignore-scripts
-          test "$(node /tmp/ytconv-portable/node_modules/ytconv/bin/ytconv.js --version)" = "1.5.9"
+          TARBALL=$(npm pack --ignore-scripts --silent)
+          node -e "const {execFileSync}=require('child_process');const out=execFileSync('npm',['pack','--json','--dry-run'],{encoding:'utf8'});const p=JSON.parse(out)[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          PORTABLE_PREFIX="$RUNNER_TEMP/ytconv-portable-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          npm install --prefix "$PORTABLE_PREFIX" "$PWD/$TARBALL" --ignore-scripts
+          test "$(node "$PORTABLE_PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.0"
 
-  windows-cmd-powershell:
+  windows-browser-and-ffmpeg:
     runs-on: windows-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 20
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
       - shell: pwsh
-        run: npm install
-      - shell: pwsh
-        run: npm run check
-      - shell: pwsh
-        run: npm test
-      - name: Prove the real managed-browser cookie bridge on Windows
+        run: npm ci --ignore-scripts
+      - name: Prove the real managed-browser cookie bridge
         shell: pwsh
         run: |
           $candidates = @(
@@ -141,74 +118,41 @@ jobs:
           if (-not $browser) { throw "Chrome or Edge is required for the managed-browser smoke test." }
           $env:YTCONV_TEST_BROWSER = $browser
           npm run test:browser
-      - name: Prove automatic FFmpeg repair on Windows
+      - name: Prove verified automatic FFmpeg repair
         shell: pwsh
         run: |
-          $ffmpeg = node -e "import('ffmpeg-static').then(m => process.stdout.write(m.default))"
-          if (-not (Test-Path $ffmpeg)) { throw "FFmpeg was not installed before the repair test: $ffmpeg" }
-          $backup = "$ffmpeg.ytconv-ci-backup"
-          Move-Item -LiteralPath $ffmpeg -Destination $backup -Force
-          try {
-            node -e "import('./src/dependencies.js').then(async ({repairBundledFfmpeg}) => { const r=await repairBundledFfmpeg({silent:false}); if(!r.installed||!r.path||!r.repaired){console.error(r);process.exit(1)} })"
-            if ($LASTEXITCODE -ne 0) { throw "YTConv automatic FFmpeg repair failed" }
-            & $ffmpeg -version
-            if ($LASTEXITCODE -ne 0) { throw "The repaired FFmpeg executable failed its version check" }
-          } finally {
-            if (-not (Test-Path $ffmpeg) -and (Test-Path $backup)) {
-              Move-Item -LiteralPath $backup -Destination $ffmpeg -Force
-            } elseif (Test-Path $backup) {
-              Remove-Item -LiteralPath $backup -Force
-            }
-          }
-      - name: CMD stable user flow
+          $ffmpeg = node -e "import('./src/dependencies.js').then(m => process.stdout.write(m.bundledFfmpegPath()))"
+          Remove-Item -LiteralPath $ffmpeg -Force -ErrorAction SilentlyContinue
+          node -e "import('./src/dependencies.js').then(async m => { const r=await m.repairBundledFfmpeg({silent:false,force:true}); if(!r.installed||!r.path||!r.repaired){console.error(r);process.exit(1)} })"
+          if ($LASTEXITCODE -ne 0) { throw "Verified FFmpeg repair failed." }
+          & $ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { throw "The verified FFmpeg executable failed its version check." }
+      - name: CMD and PowerShell smoke tests
         shell: cmd
         run: |
           node .\bin\ytconv.js --version
           node .\bin\ytconv.js --help
           node .\bin\ytconv.js quickstart
-          node .\bin\ytconv.js completion powershell
-      - name: PowerShell stable identity
-        shell: pwsh
-        run: |
-          $version = node .\bin\ytconv.js --version
-          if ($version -ne '1.5.9') { throw "Wrong version: $version" }
-          node -e "import('./src/update.js').then(({selfUpdateInvocation}) => { const i=selfUpdateInvocation({currentVersion:'1.5.9',platform:'win32',env:{ComSpec:'cmd.exe'},execPath:'node.exe',npmCliPath:'npm-cli.js'}); if(i.command!=='node.exe'||!i.args.includes('ytconv@latest')) process.exitCode=1; })"
-
-  macos:
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: cli
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install
-      - run: npm run check
-      - run: npm test
-      - run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.5.9"
-          node ./bin/ytconv.js completion zsh
-          sh ./scripts/install-unix.sh --print-plan | grep -q 'brew'
 
   alpine-musl:
     runs-on: ubuntu-latest
-    container: node:20-alpine
+    timeout-minutes: 30
+    container: node:24-alpine
     defaults:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: apk add --no-cache python3 py3-pip ffmpeg bash
-      - run: python3 -m pip install --break-system-packages --no-cache-dir yt-dlp gallery-dl
-      - run: npm install --ignore-scripts --omit=optional
+      - run: python3 -m pip install --break-system-packages --no-cache-dir 'yt-dlp[default]' gallery-dl
+      - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.5.9"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.0"
 
   distro-installer-plans:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -222,7 +166,6 @@ jobs:
           - gentoo/stage3:latest
           - nixos/nix:latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Detect distribution and print install plan
-        run: |
-          docker run --rm -e YTCONV_INSTALL_DRY_RUN=1 -v "$PWD/cli:/work:ro" "${{ matrix.image }}" sh /work/scripts/install-unix.sh --print-plan
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Detect distribution and print its install plan
+        run: docker run --rm -e YTCONV_INSTALL_DRY_RUN=1 -v "$PWD/cli:/work:ro" "${{ matrix.image }}" sh /work/scripts/install-unix.sh --print-plan

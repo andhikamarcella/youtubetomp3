@@ -2,18 +2,17 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { execFile, spawn, spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import which from 'which';
+import { engineFileStatus, enginePath } from './engine-storage.js';
 import { isTermux } from './platform.js';
+import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
+import { downloadVerifiedGitHubAsset } from './verified-download.js';
 
 const execFileAsync = promisify(execFile);
-const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VENDOR_DIRECTORY = path.join(PACKAGE_ROOT, 'vendor');
 const MINIMUM_BINARY_SIZE = 400 * 1024;
-const MAX_BINARY_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 12 * 1024 * 1024;
-const BUILDS_RELEASE_API = 'https://api.github.com/repos/gdl-org/builds/releases/latest';
+const BUILDS_REPOSITORY = 'gdl-org/builds';
 
 const GALLERY_HOSTS = [
   'instagram.com',
@@ -60,7 +59,7 @@ async function readVersion(command, args = ['--version']) {
     const { stdout, stderr } = await execFileAsync(command, args, {
       windowsHide: true,
       timeout: 20_000,
-      env: process.env,
+      env: monochromeChildEnvironment(process.env),
     });
     return `${stdout || stderr}`.trim().split(/\r?\n/u)[0] || null;
   } catch {
@@ -68,142 +67,98 @@ async function readVersion(command, args = ['--version']) {
   }
 }
 
-async function fileStatus(filePath) {
-  try {
-    const stats = await fs.stat(filePath);
-    return {
-      valid: stats.isFile() && stats.size >= MINIMUM_BINARY_SIZE,
-      fresh: Date.now() - stats.mtimeMs < MAX_BINARY_AGE_MS,
-    };
-  } catch {
-    return { valid: false, fresh: false };
-  }
+export function bundledGalleryDlPath(options = {}) {
+  return enginePath(process.platform === 'win32' ? 'gallery-dl.exe' : 'gallery-dl', options);
 }
 
-export function bundledGalleryDlPath() {
-  return path.join(VENDOR_DIRECTORY, process.platform === 'win32' ? 'gallery-dl.exe' : 'gallery-dl');
-}
-
-function assetScore(name) {
+function assetScore(name, {
+  platform = process.platform,
+  architecture = process.arch,
+} = {}) {
   const lower = name.toLowerCase();
   let score = 0;
 
-  if (process.platform === 'win32') {
+  if (platform === 'win32') {
     if (!lower.endsWith('.exe')) return -1;
+    if (architecture === 'arm64' && !/(arm64|aarch64)/u.test(lower)) return -1;
+    if (architecture === 'x64' && /(arm64|aarch64|x86|32bit|win32)/u.test(lower)) return -1;
+    if (!['arm64', 'x64'].includes(architecture)) return -1;
     if (lower === 'gallery-dl.exe') score += 100;
     if (lower.includes('gallery-dl')) score += 30;
-    if (process.arch === 'x64' && /(x64|amd64|win64)/u.test(lower)) score += 20;
-    if (process.arch === 'arm64' && /(arm64|aarch64)/u.test(lower)) score += 25;
+    if (architecture === 'x64' && /(x64|amd64|win64)/u.test(lower)) score += 20;
+    if (architecture === 'arm64' && /(arm64|aarch64)/u.test(lower)) score += 25;
     if (/(x86|32bit|win32)/u.test(lower)) score -= 10;
     return score;
   }
 
-  if (process.platform === 'linux') {
+  if (platform === 'linux') {
     if (!/(gallery-dl|gallery_dl)/u.test(lower)) return -1;
+    if (architecture === 'arm64' && !/(arm64|aarch64)/u.test(lower)) return -1;
+    if (architecture === 'arm' && !/(armv7|armhf)/u.test(lower)) return -1;
+    if (architecture === 'x64' && /(arm64|aarch64|armv7|armhf|i[3-6]86|32bit)/u.test(lower)) return -1;
+    if (!['arm', 'arm64', 'x64'].includes(architecture)) return -1;
     if (lower === 'gallery-dl.bin') score += 100;
     if (/\.(bin|appimage)$/u.test(lower) || !lower.includes('.')) score += 30;
-    if (process.arch === 'x64' && /(x64|amd64|linux64)/u.test(lower)) score += 20;
-    if (process.arch === 'arm64' && /(arm64|aarch64)/u.test(lower)) score += 25;
-    if (process.arch === 'arm' && /(armv7|armhf)/u.test(lower)) score += 25;
+    if (architecture === 'x64' && /(x64|amd64|linux64)/u.test(lower)) score += 20;
+    if (architecture === 'arm64' && /(arm64|aarch64)/u.test(lower)) score += 25;
+    if (architecture === 'arm' && /(armv7|armhf)/u.test(lower)) score += 25;
     if (/(sha|sig|txt|json|zip|tar|whl)/u.test(lower)) score -= 100;
+    return score;
+  }
+
+  if (platform === 'darwin') {
+    if (!/(gallery-dl|gallery_dl)/u.test(lower) || !lower.includes('macos')) return -1;
+    if (architecture === 'arm64' && !/(arm64|aarch64|universal)/u.test(lower)) return -1;
+    if (architecture === 'x64' && /(arm64|aarch64)/u.test(lower)) return -1;
+    if (!['arm64', 'x64'].includes(architecture)) return -1;
+    score += 100;
     return score;
   }
 
   return -1;
 }
 
-async function latestStandaloneAsset() {
-  const response = await fetch(BUILDS_RELEASE_API, {
-    headers: {
-      accept: 'application/vnd.github+json',
-      'user-agent': 'ytconv-gallery-installer',
-    },
-  });
-  if (!response.ok) throw new Error(`GitHub release API HTTP ${response.status}`);
-  const release = await response.json();
-  const assets = Array.isArray(release.assets) ? release.assets : [];
+export function selectGalleryDlAsset(assets, options = {}) {
   return assets
-    .map((asset) => ({ ...asset, score: assetScore(String(asset.name || '')) }))
+    .map((asset) => ({ ...asset, score: assetScore(String(asset.name || ''), options) }))
     .filter((asset) => asset.score >= 0 && asset.browser_download_url)
     .sort((left, right) => right.score - left.score)[0] ?? null;
 }
 
-async function downloadFile(url, destination, { silent = false } = {}) {
-  await fs.mkdir(path.dirname(destination), { recursive: true });
-  const temporary = `${destination}.download`;
-  await fs.rm(temporary, { force: true });
-
-  if (!silent) console.log('YTConv: downloading gallery-dl image engine...');
-  let data = null;
-  let lastError = null;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const response = await fetch(url, {
-        redirect: 'follow',
-        headers: {
-          accept: 'application/octet-stream',
-          'user-agent': 'ytconv-gallery-installer',
-        },
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-      const candidate = Buffer.from(await response.arrayBuffer());
-      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('incomplete file');
-      data = candidate;
-      break;
-    } catch (error) {
-      lastError = error;
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
-    }
-  }
-  if (!data) throw new Error(`gallery-dl failed after 3 attempts (${lastError?.message || 'unknown error'})`);
-
-  await fs.writeFile(temporary, data);
-  if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);
-  await fs.rm(destination, { force: true });
-  await fs.rename(temporary, destination);
-  if (!silent) console.log('YTConv: gallery-dl is ready.');
-  return destination;
-}
-
-export async function ensureBundledGalleryDl({ force = false, silent = false } = {}) {
+export async function ensureBundledGalleryDl({
+  force = false,
+  silent = false,
+  fetchImpl = globalThis.fetch,
+} = {}) {
   if (isTermux()) {
-    throw new Error('Termux menjalankan gallery-dl melalui modul Python.');
+    throw new Error('Termux runs gallery-dl through its Python module.');
   }
-  if (!['win32', 'linux'].includes(process.platform)) {
-    throw new Error('The standalone gallery-dl engine is available automatically on Windows and Linux.');
+  if (!['win32', 'linux', 'darwin'].includes(process.platform)) {
+    throw new Error('The standalone gallery-dl engine is available automatically on Windows, macOS, and Linux.');
   }
 
   const destination = bundledGalleryDlPath();
-  const existing = await fileStatus(destination);
+  const existing = await engineFileStatus(destination, { minimumBytes: MINIMUM_BINARY_SIZE });
   if (!force && existing.valid && existing.fresh) return destination;
 
-  const errors = [];
   try {
-    const asset = await latestStandaloneAsset();
-    if (asset) {
-      try {
-        return await downloadFile(asset.browser_download_url, destination, { silent });
-      } catch (error) {
-        errors.push(`aset GitHub API: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-  } catch (error) {
-    errors.push(`GitHub Release API: ${error instanceof Error ? error.message : String(error)}`);
-  }
-
-  const fallbackName = process.platform === 'win32' ? 'gallery-dl.exe' : 'gallery-dl.bin';
-  const fallbackUrl = `https://github.com/gdl-org/builds/releases/latest/download/${fallbackName}`;
-  try {
-    return await downloadFile(fallbackUrl, destination, { silent });
-  } catch (error) {
-    errors.push(`URL release langsung: ${error instanceof Error ? error.message : String(error)}`);
-  }
-
-  if (existing.valid) {
-    if (!silent) console.warn(`YTConv: using the existing gallery-dl because its update failed. ${errors.join('; ')}`);
+    await downloadVerifiedGitHubAsset({
+      repository: BUILDS_REPOSITORY,
+      release: 'latest',
+      selectAsset: (assets) => selectGalleryDlAsset(assets),
+      destination,
+      minimumBytes: MINIMUM_BINARY_SIZE,
+      fetchImpl,
+      silent,
+    });
     return destination;
+  } catch (error) {
+    if (existing.valid) {
+      if (!silent) console.warn(`YTConv: the verified gallery-dl update failed; using the existing engine. ${error.message}`);
+      return destination;
+    }
+    throw new Error(`gallery-dl could not be downloaded and verified. ${error instanceof Error ? error.message : String(error)}`);
   }
-  throw new Error(`gallery-dl could not be downloaded. ${errors.join('; ')}`);
 }
 
 async function resolvePythonModuleRunner() {
@@ -249,7 +204,7 @@ export async function installGalleryDlPython({ visible = false } = {}) {
     const result = spawnSync(command, args, {
       stdio: visible ? 'inherit' : 'ignore',
       windowsHide: true,
-      env: process.env,
+      env: monochromeChildEnvironment(process.env),
     });
     if (!result.error && result.status === 0) return resolvePythonModuleRunner();
   }
@@ -268,7 +223,8 @@ export async function resolveGalleryDlRunner({ install = false, silent = true } 
 
   if (!isTermux()) {
     const bundled = bundledGalleryDlPath();
-    const bundledVersion = await readVersion(bundled);
+    const status = await engineFileStatus(bundled, { minimumBytes: MINIMUM_BINARY_SIZE });
+    const bundledVersion = status.valid ? await readVersion(bundled) : null;
     if (bundledVersion) {
       return { ...runnerValue(bundled, [], bundled, 'bundled'), version: bundledVersion };
     }
@@ -276,7 +232,7 @@ export async function resolveGalleryDlRunner({ install = false, silent = true } 
 
   if (!install) return null;
 
-  if (!isTermux() && ['win32', 'linux'].includes(process.platform)) {
+  if (!isTermux() && ['win32', 'linux', 'darwin'].includes(process.platform)) {
     try {
       const bundled = await ensureBundledGalleryDl({ silent });
       const version = await readVersion(bundled);
@@ -373,12 +329,12 @@ function commonGalleryArgs({ cookieConfig, outputDirectory, simulate = false } =
   ];
   if (include) args.push('--option', `extractor.instagram.include=${include}`);
   if (simulate) args.push('--dump-json', '--simulate');
-  else args.push('--Print', 'file:ytconv-file:{_path}');
+  else args.push('--print', 'file:ytconv-file:{_path}');
   return args;
 }
 
 function galleryError(stderr, fallback) {
-  const text = String(stderr || '');
+  const text = sanitizeTerminalText(stderr || '');
   if (/429|too many requests/iu.test(text)) {
     return 'The site is rate limiting requests (429). Wait a few minutes, reduce concurrency, and retry with an official account session if required.';
   }
@@ -400,7 +356,7 @@ function runBuffered(runnerValue, args, { signal } = {}) {
     const { child, runner } = spawnRunner(runnerValue, args, {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
+      env: monochromeChildEnvironment(process.env),
     });
     let stdout = '';
     let stderr = '';
@@ -522,7 +478,7 @@ export async function downloadGallery({
       cwd: outputDirectory,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
+      env: monochromeChildEnvironment(process.env),
     });
     let stdoutBuffer = '';
     let stderrBuffer = '';
@@ -548,7 +504,7 @@ export async function downloadGallery({
     signal?.addEventListener('abort', abort, { once: true });
 
     const processLine = (line, isError = false) => {
-      const clean = line.trim();
+      const clean = sanitizeTerminalText(line, { allowNewlines: false, maximumLength: 4096 }).trim();
       if (!clean) return;
       if (clean.startsWith('ytconv-file:')) {
         outputPath = clean.slice('ytconv-file:'.length).trim();
@@ -558,7 +514,7 @@ export async function downloadGallery({
           speed: `${downloadedCount} file`,
           eta: '',
         });
-        onLog?.(`Tersimpan: ${outputPath}`, false);
+        onLog?.(`Saved: ${outputPath}`, false);
         return;
       }
       onLog?.(clean, isError);

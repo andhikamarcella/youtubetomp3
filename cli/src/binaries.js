@@ -1,18 +1,12 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { engineFileStatus, enginePath } from './engine-storage.js';
 import { isTermux } from './platform.js';
+import { downloadVerifiedGitHubAsset } from './verified-download.js';
 
-const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VENDOR_DIRECTORY = path.join(PACKAGE_ROOT, 'vendor');
+const YT_DLP_REPOSITORY = 'yt-dlp/yt-dlp';
 const MINIMUM_BINARY_SIZE = 1024 * 1024;
-const MAX_BINARY_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-function releaseAsset() {
-  if (isTermux()) return null;
-
-  const key = `${process.platform}-${process.arch}`;
+export function ytDlpReleaseAsset({ platform = process.platform, architecture = process.arch } = {}) {
   const assets = {
     'win32-x64': 'yt-dlp.exe',
     'win32-arm64': 'yt-dlp_arm64.exe',
@@ -20,88 +14,46 @@ function releaseAsset() {
     'darwin-arm64': 'yt-dlp_macos',
     'linux-x64': 'yt-dlp_linux',
     'linux-arm64': 'yt-dlp_linux_aarch64',
-    'linux-arm': 'yt-dlp_linux_armv7l',
   };
-
-  return assets[key] ?? null;
+  return assets[`${platform}-${architecture}`] ?? null;
 }
 
-export function bundledYtDlpPath() {
-  return path.join(VENDOR_DIRECTORY, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+export function bundledYtDlpPath(options = {}) {
+  return enginePath(process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp', options);
 }
 
-async function binaryStatus(binaryPath) {
-  try {
-    const stats = await fs.stat(binaryPath);
-    return {
-      valid: stats.isFile() && stats.size >= MINIMUM_BINARY_SIZE,
-      fresh: Date.now() - stats.mtimeMs < MAX_BINARY_AGE_MS,
-    };
-  } catch {
-    return { valid: false, fresh: false };
-  }
-}
-
-async function downloadLatest(asset, destination, { silent }) {
-  await fs.mkdir(VENDOR_DIRECTORY, { recursive: true });
-  const temporary = `${destination}.download`;
-  await fs.rm(temporary, { force: true });
-
-  const url = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${asset}`;
-  if (!silent) console.log(`YTConv: downloading ${asset}...`);
-
-  let data = null;
-  let lastError = null;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const response = await fetch(url, {
-        redirect: 'follow',
-        headers: {
-          'user-agent': 'ytconv-npm-installer',
-          accept: 'application/octet-stream',
-        },
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-      const candidate = Buffer.from(await response.arrayBuffer());
-      if (candidate.length < MINIMUM_BINARY_SIZE) throw new Error('incomplete file');
-      data = candidate;
-      break;
-    } catch (error) {
-      lastError = error;
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
-    }
-  }
-  if (!data) throw new Error(`Could not download yt-dlp after 3 attempts (${lastError?.message || 'unknown error'}).`);
-
-  await fs.writeFile(temporary, data);
-  if (process.platform !== 'win32') await fs.chmod(temporary, 0o755);
-  await fs.rm(destination, { force: true });
-  await fs.rename(temporary, destination);
-  if (!silent) console.log('YTConv: yt-dlp is ready.');
-}
-
-export async function ensureBundledYtDlp({ force = false, silent = false } = {}) {
+export async function ensureBundledYtDlp({
+  force = false,
+  silent = false,
+  fetchImpl = globalThis.fetch,
+} = {}) {
   if (isTermux()) {
-    throw new Error('Termux uses the native python-yt-dlp package for Android compatibility.');
+    throw new Error('Termux uses the native Python yt-dlp package for Android compatibility.');
   }
 
-  const asset = releaseAsset();
+  const asset = ytDlpReleaseAsset();
   if (!asset) {
-    throw new Error(`YTConv does not yet support ${process.platform}/${process.arch}.`);
+    throw new Error(`No official standalone yt-dlp executable is available for ${process.platform}/${process.arch}; YTConv will try Python instead.`);
   }
 
   const destination = bundledYtDlpPath();
-  const existing = await binaryStatus(destination);
+  const existing = await engineFileStatus(destination, { minimumBytes: MINIMUM_BINARY_SIZE });
   if (!force && existing.valid && existing.fresh) return destination;
 
   try {
-    await downloadLatest(asset, destination, { silent });
+    await downloadVerifiedGitHubAsset({
+      repository: YT_DLP_REPOSITORY,
+      release: 'latest',
+      assetName: asset,
+      destination,
+      minimumBytes: MINIMUM_BINARY_SIZE,
+      fetchImpl,
+      silent,
+    });
     return destination;
   } catch (error) {
     if (existing.valid) {
-      if (!silent) {
-        console.warn(`YTConv: the yt-dlp update failed; using the existing version. ${error.message}`);
-      }
+      if (!silent) console.warn(`YTConv: the verified yt-dlp update failed; using the existing engine. ${error.message}`);
       return destination;
     }
     throw error;

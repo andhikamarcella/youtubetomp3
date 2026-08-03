@@ -1,188 +1,244 @@
-# YTConv CLI 1.5.9
+# YTConv CLI 1.6.0
 
-YTConv is a cross-platform media downloader and converter for Windows CMD/PowerShell, Linux, macOS, SSH/headless servers, Android Termux, and iPhone/iPad through iSH. It uses **yt-dlp**, **gallery-dl**, and **FFmpeg** for supported video, audio, images, carousels, Stories, Reels, mixed posts, and playlists.
+YTConv is a responsive, CLI-only media downloader and converter for Windows, macOS, desktop Linux, Android Termux, and iPhone/iPad through iSH. It routes video and audio work to yt-dlp, image and gallery work to gallery-dl, and conversion work to FFmpeg.
 
-> Download only media that you own, that is openly licensed, or that you are allowed to save. YTConv does not bypass DRM, paywalls, private-account access, regional restrictions, or copyright controls.
+Version 1.6.0 is the only active release channel. Install it from npm `latest`:
 
-## What's new in 1.5.9
+```sh
+npm install -g ytconv@latest --force
+ytconv --version
+ytconv doctor
+```
 
-- Chrome and Edge App-Bound Encryption no longer causes an endless “linked but unreadable” login loop.
-- When regular Chromium cookies cannot be decrypted, YTConv opens the official provider page in a private YTConv browser profile.
-- The browser passes only the selected provider's cookies over a loopback-only local connection for the current download.
-- The temporary cookie file uses user-only permissions and is deleted after every success or failure.
-- The exact failed URL is retried after sign-in and the account is marked verified only after that retry succeeds.
-- Press `B` on the login or error screen to try another detected browser.
-- Firefox session extraction and Instagram video/gallery fallback remain available.
-- The npm package remains CLI-only and does not depend on a website or account-server deployment.
+Expected version:
 
-## Install stable 1.5.9
+```text
+1.6.0
+```
 
-### Windows
+## What changed in 1.6.0
+
+- Monochrome terminal UI: normal, focused, working, and successful states use the terminal foreground color; only errors use red.
+- Responsive layout for narrow Termux/iSH windows, standard terminals, maximized Windows Terminal, and resized SSH sessions.
+- Stable-only updater: every installation checks and installs `ytconv@latest`.
+- Verified engine downloads: YTConv requires GitHub Release SHA-256 digests before accepting yt-dlp, gallery-dl, or fallback FFmpeg executables.
+- Private engine directory: verified executables are stored under `~/.ytconv/engines`, outside the npm package directory.
+- Local token-free profile: legacy cloud bearer tokens and email addresses are removed during migration.
+- Safer extractors: external configuration and remote JavaScript components are disabled; a local supported JavaScript runtime is used.
+- Expanded `doctor`: Node.js, npm, Python, yt-dlp, gallery-dl, FFmpeg, ffprobe, JavaScript runtimes, browsers, distribution, and package-manager guidance are detected.
+- Complete English documentation and platform-specific tutorials.
+- Exact production dependency versions, npm provenance, action pinning, security tests, package audit, and release checks.
+
+No software can honestly guarantee zero bugs, support every changing website, or provide “100% security.” YTConv 1.6.0 instead uses explicit controls, repeatable tests, verified artifacts, least-privilege storage, and documented limitations.
+
+## Requirements
+
+For the npm CLI:
+
+- Node.js 22.14.0 or newer
+- npm 10 or newer
+- Internet access to the requested site and engine release endpoints
+- Enough free storage for media and temporary conversion files
+
+YTConv automatically prepares yt-dlp, gallery-dl, and FFmpeg on supported desktop architectures. Termux and iSH use their native package/Python environments. See [Dependency Guide](docs/DEPENDENCIES.md).
+
+## Install by platform
+
+### Windows CMD
+
+```cmd
+npm.cmd uninstall -g ytconv
+npm.cmd cache verify
+npm.cmd install -g ytconv@latest --force
+ytconv.cmd --version
+ytconv.cmd repair
+ytconv.cmd doctor
+```
+
+Use `.cmd` explicitly when PowerShell execution policy or PATH command precedence is unclear.
+
+### Windows PowerShell
 
 ```powershell
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
+ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-Use `ytconv.cmd` when PowerShell execution policy blocks the generated `ytconv.ps1` shim.
+Complete Windows instructions: [Windows Guide](docs/WINDOWS.md).
 
-### Linux, macOS, or SSH
+### macOS or desktop Linux
 
 ```sh
-npm uninstall -g ytconv
+npm uninstall -g ytconv || true
 npm cache verify
 npm install -g ytconv@latest --force
 ytconv --version
+ytconv repair
 ytconv doctor
 ```
 
-The included `scripts/install-unix.sh` can install the operating-system dependencies on supported package managers without using `sudo npm install -g`.
+If global npm writes require administrator access, use the user-local prefix described in [Installation Guide](docs/INSTALL.md). Distribution commands are in [Linux Guide](docs/LINUX.md).
 
 ### Android Termux
 
+Install Termux from F-Droid or GitHub, not an obsolete store build. Then:
+
 ```sh
-pkg update
-pkg install -y nodejs python ffmpeg curl ca-certificates
+pkg update && pkg upgrade -y
+pkg install -y nodejs python ffmpeg
 termux-setup-storage
-python -m pip install -U --no-cache-dir yt-dlp gallery-dl
-npm install -g ytconv@latest --omit=optional --force
+python -m pip install -U 'yt-dlp[default]' gallery-dl
+npm install -g ytconv@latest --force
 ytconv repair
 ytconv doctor
 ```
 
-Default output: `~/storage/downloads/YTConv`.
+Android prevents Termux from reading private browser databases. Public URLs work; media that requires a signed-in browser session should be processed on a desktop. See [Termux Guide](docs/TERMUX.md).
 
-### iPhone/iPad through iSH
+### iPhone or iPad with iSH
+
+Inside iSH/Alpine:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.9-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
-sh /tmp/ytconv-ish.sh
-ytconv --version
+apk update
+apk add python3 py3-pip ffmpeg curl ca-certificates
+python3 -m pip install -U --break-system-packages 'yt-dlp[default]' gallery-dl
+```
+
+Then follow [iSH Guide](docs/ISH.md). iOS sandboxes Safari from iSH, and iSH is emulated Alpine rather than a native iOS downloader. Public links are the supported path.
+
+## First run
+
+```sh
+ytconv quickstart
+ytconv --self-test
+ytconv --shell-info
 ytconv doctor
 ```
 
-The browser can be opened on the same device or another device. Enter the eight-character code shown in the terminal and approve the CLI session.
+`doctor` must end with:
 
-## Official Instagram, Facebook, X, and social-media login
-
-```sh
-ytconv login instagram
-ytconv login facebook --browser edge
-ytconv login x --browser "chrome:Profile 1"
-ytconv social status
-ytconv logout instagram
+```text
+Status: ready to use.
 ```
 
-When a pasted URL needs an account, the interactive screen starts this flow automatically. The command below can also start it manually:
+Optional tools such as ffprobe or a desktop browser may be listed as recommendations without blocking public downloads.
 
-1. YTConv first tries public access and any previously verified session.
-2. If regular Chrome/Edge cookies cannot be decrypted, a private YTConv browser profile opens on the provider's official page.
-3. Enter passwords and OTP codes only on that official page, then return to the terminal and press Enter.
-4. The browser exposes only cookies belonging to that provider through a loopback-only local connection.
-5. YTConv writes them to a user-only temporary file, retries the exact media URL, and deletes the file in a `finally` cleanup after success or failure.
-6. Only after the retry succeeds, YTConv stores a verified provider/browser reference in `~/.ytconv/social-sessions.json`.
+## Download examples
 
-The persistent session remains encrypted inside `~/.ytconv/browser-profiles`. YTConv never reads passwords or OTP codes, never modifies the user's regular browser profile, and never sends browser sessions to a YTConv server. The provider-scoped cookie copy exists only for the current local attempt and is removed immediately afterward.
+Interactive:
 
-Firefox remains available as a desktop fallback. Termux and iSH cannot access private Android/iOS browser databases; use public media or an official authentication method available on the device.
+```sh
+ytconv
+```
 
-The legacy YTConv cloud account is optional and remains available through `ytconv account login`.
-
-## Media commands
+Direct video, audio, images, and playlists:
 
 ```sh
 ytconv download "URL"
-ytconv playlist "PLAYLIST_URL"
-ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
-ytconv info "URL" --json
-ytconv formats "URL"
-ytconv subtitles "URL"
+ytconv download "URL" --mode video --resolution 1080 --video-format mp4
+ytconv download "URL" --mode audio --audio-format mp3 --audio-quality 320
+ytconv download "URL" --mode image --image-format original
+ytconv playlist "URL" --playlist-items 1-20
 ```
 
-## Persistent configuration and profiles
+Headless or SSH:
 
 ```sh
-ytconv config list
-ytconv config set output "$HOME/Downloads/YTConv"
-ytconv config set audioQuality 192
-ytconv profile set music preset=music audioQuality=320
-ytconv profile set phone preset=mobile resolution=720
-ytconv profile use phone
-ytconv --profile music download "URL"
+ytconv --headless download "URL"
+printf '%s\n' "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error
+ytconv batch links.txt --jobs 2 --result-json report.json
 ```
 
-Explicit command-line options override saved defaults. Use `--no-config` for a clean one-run session.
+## Official social-site login
 
-## Default media behavior
-
-```text
-Subtitles         enabled for video
-SponsorBlock      enabled in non-destructive mark mode
-Download archives enabled per output profile
-Resume            enabled
-```
-
-One-run opt-outs:
+For account-required media on desktop:
 
 ```sh
-ytconv download "URL" --no-subtitles
-ytconv download "URL" --no-sponsorblock
-ytconv download "URL" --no-archive
-```
-
-SponsorBlock `mark` adds chapter markers; it does not cut the media. Cutting requires the explicit `--sponsorblock remove` option.
-
-## Formats, metadata, cookies, and diagnostics
-
-```sh
-ytconv download "URL" --audio-format mp3 --audio-quality 320
-ytconv download "URL" --audio-format flac
-ytconv download "URL" --video-format mp4 --resolution 1080
-ytconv download "URL" --preset music
-ytconv download "URL" --metadata --thumbnail --metadata-files
 ytconv login instagram
-ytconv download "URL_INSTAGRAM"
-ytconv download "URL" --cookies-from-browser chrome
-ytconv doctor
-ytconv repair
-ytconv --self-test
-ytconv --shell-info
+ytconv social status
+ytconv download "INSTAGRAM_URL"
 ```
 
-Cookies are account credentials. Use them only for media you are authorized to access and never include them in screenshots, logs, issues, or chat messages.
+YTConv opens the provider’s official page in a dedicated browser profile. Complete the password and OTP/2FA in that browser. YTConv verifies the exact failed URL before saving only the provider-to-browser reference.
 
-## History and shell completion
+YTConv does not store the password, OTP, raw persistent cookie database, npm token, or GitHub token. A provider-only cookie file may be created temporarily for one attempt with user-only permissions and is deleted on success or failure.
+
+See [Authentication Guide](docs/AUTH.md).
+
+## Monochrome UI and red errors
+
+YTConv intentionally does not paint normal output cyan, green, or yellow. Focus uses borders, bold text, inverse text, and spacing. Errors may use red when stderr is a TTY. Red is automatically disabled when output is redirected, `NO_COLOR` is present, `FORCE_COLOR=0`, or `TERM=dumb`.
 
 ```sh
-ytconv history
-ytconv history --json
-ytconv history --limit 50
-ytconv history clear
+NO_COLOR=1 ytconv doctor
+ytconv --no-color --headless download "URL"
+```
+
+Child engines always receive `NO_COLOR=1` and `FORCE_COLOR=0` so their progress output cannot reintroduce unrelated colors.
+
+## Configuration and profiles
+
+```sh
+ytconv config set output "$HOME/Downloads/YTConv"
+ytconv config set subtitles true
+ytconv profile set music preset=music audioQuality=320
+ytconv --profile music download "URL"
+ytconv history list
 ytconv completion bash
-ytconv completion zsh
-ytconv completion fish
-ytconv completion powershell
 ```
 
-History is capped and excludes cookies, tokens, proxy credentials, and browser session data.
+Full reference: [Configuration Guide](docs/CONFIGURATION.md) and [Command Reference](docs/COMMANDS.md).
 
-## Release channels
+## Repair and update
 
-```text
-Stable: 1.5.9          npm install -g ytconv@latest
-Beta:   1.6.0-beta.1   npm install -g ytconv@beta
+```sh
+ytconv repair
+ytconv doctor
+ytconv update
 ```
 
-The guarded beta workflow preserves the stable npm `latest` tag.
+The updater always installs npm `latest`. The retired prerelease dist-tag is removed by the 1.6.0 release workflow. Previously published immutable npm version records may remain in registry history, but they are not an install channel.
 
-## Documentation
+## Security and integrity
 
-- [Account login and local fallback](docs/AUTH.md)
-- [Complete installation guide](docs/INSTALL.md)
-- [Linux distribution guide](docs/LINUX.md)
-- [Command reference](docs/COMMANDS.md)
-- [Shell guide](docs/SHELLS.md)
+- Production npm dependencies are pinned to exact versions.
+- npm publication uses public provenance.
+- GitHub Actions are pinned to full commit SHAs.
+- Downloaded release assets require a GitHub-provided `sha256:` digest and exact declared size.
+- Downloads use HTTPS, expected repository paths, timeouts, retry limits, size limits, private temporary files, and atomic replacement.
+- yt-dlp runs with `--ignore-config`, `--no-colors`, and `--no-remote-components`.
+- Managed Chromium debugging binds to `127.0.0.1`, uses an ephemeral port, disables extensions and sync, and stores its profile under the user’s YTConv directory.
+- Child processes do not receive common npm/GitHub bearer-token environment variables where isolation matters.
+
+Read [Security Guide](docs/SECURITY.md) before using browser sessions or automation.
+
+## Support boundaries
+
+Site support changes upstream. A recognized platform does not guarantee every URL. DRM, paywalls, private/deleted media, geographic restrictions, provider API changes, rate limits, account policy, browser encryption, and OS sandboxing can still prevent a download. Use YTConv only for media you are authorized to access and save.
+
+## Documentation index
+
+- [Installation](docs/INSTALL.md)
+- [Windows](docs/WINDOWS.md)
+- [Linux and macOS](docs/LINUX.md)
+- [Termux](docs/TERMUX.md)
+- [iSH](docs/ISH.md)
+- [Commands](docs/COMMANDS.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Authentication](docs/AUTH.md)
+- [Dependencies](docs/DEPENDENCIES.md)
+- [Platforms](docs/PLATFORMS.md)
+- [Shells and automation](docs/SHELLS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Security](docs/SECURITY.md)
+- [Publishing](docs/PUBLISHING.md)
+- [Release checklist](docs/RELEASE.md)
+
+Publisher and maintainer: Andhika Marcella Fernanda. Repository owner: `andhikamarcella`. No organization identity is claimed because this package is currently published from the named personal repository and npm publisher metadata.
+
+License: MIT. Site terms and media rights remain the user’s responsibility.

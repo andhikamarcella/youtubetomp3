@@ -4,7 +4,7 @@ import {
   buildGalleryDownloadArgs,
   classifyEmptyGalleryResult,
   isGalleryPreferredUrl,
-} from '../src/gallery-beta.js';
+} from '../src/gallery-routing.js';
 
 test('public X and Twitter links prefer yt-dlp while gallery platforms keep gallery-dl', () => {
   assert.equal(isGalleryPreferredUrl('https://x.com/example/status/123'), false);

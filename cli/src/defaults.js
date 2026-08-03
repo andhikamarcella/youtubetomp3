@@ -33,7 +33,7 @@ function profileName(options = {}) {
   return `auto-${safeProfilePart(options.preset, 'balanced')}`;
 }
 
-export function extractBetaToggles(argv = []) {
+export function extractDefaultToggles(argv = []) {
   const cleanArgs = [];
   const disabled = { subtitles: false, sponsorBlock: false, archive: false };
 
@@ -54,7 +54,7 @@ export function extractBetaToggles(argv = []) {
   };
 }
 
-export function applyBetaDefaults(options = {}, toggles = {}, {
+export function applyStableDefaults(options = {}, toggles = {}, {
   homeDirectory = os.homedir(),
   mkdirSync = fs.mkdirSync,
 } = {}) {
@@ -84,7 +84,7 @@ export function applyBetaDefaults(options = {}, toggles = {}, {
   return options;
 }
 
-export function betaDefaultsHelpText() {
+export function stableDefaultsHelpText() {
   return [
     'YTConv stable defaults:',
     '  subtitles       ON for video; disable with --no-subtitles',

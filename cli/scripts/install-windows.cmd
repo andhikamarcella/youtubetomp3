@@ -1,12 +1,11 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.5.9"
+set "VERSION=1.6.0"
 set "CHANNEL=latest"
 echo YTConv %VERSION% installer for CMD
-where node.exe >nul 2>nul || (echo Node.js 18 or newer is not installed.& exit /b 1)
+where node.exe >nul 2>nul || (echo Node.js 22.14 or newer is not installed.& exit /b 1)
 where npm.cmd >nul 2>nul || (echo npm.cmd was not found.& exit /b 1)
-for /f "tokens=1 delims=." %%V in ('node -p "process.versions.node"') do set "NODE_MAJOR=%%V"
-if %NODE_MAJOR% LSS 18 (echo Node.js is too old. Version 18 or newer is required.& exit /b 1)
+node -e "const [a,b]=process.versions.node.split('.').map(Number);process.exit(a>22||(a===22&&b>=14)?0:1)" || (echo Node.js 22.14 or newer is required.& exit /b 1)
 
 if /I "%~1"=="--local" goto LOCAL
 call npm.cmd uninstall -g ytconv >nul 2>nul

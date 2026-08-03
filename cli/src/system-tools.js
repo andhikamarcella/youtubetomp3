@@ -70,11 +70,19 @@ async function availableManagers() {
 
 export async function printShellInfo({ outputDirectory = '' } = {}) {
   const distro = await detectLinuxDistro({ available: await availableManagers() });
+  const dependencies = await inspectDependencies({ repair: false });
   const rows = [
     ['Shell', shellName()], ['Platform', `${process.platform} ${process.arch}`],
     ['Distribution', distro.name], ['Package manager', distro.manager],
-    ['Node', `${process.version} (${process.execPath})`],
-    ['npm', await commandPath(process.platform === 'win32' ? 'npm.cmd' : 'npm')],
+    ['Node', `${process.version} (${dependencies.node?.supported ? 'supported' : 'requires 22.14+'})`],
+    ['npm', `${dependencies.npm?.version || 'not found'} (${dependencies.npm?.path || '-'})`],
+    ['Python', `${dependencies.python?.version || 'not found'} (${dependencies.python?.path || '-'})`],
+    ['JS runtimes', dependencies.javaScriptRuntimes?.map((runtime) => runtime.name).join(', ') || 'not found'],
+    ['yt-dlp', `${dependencies.ytDlp.version || 'not found'} (${dependencies.ytDlp.mode || '-'})`],
+    ['gallery-dl', `${dependencies.galleryDl?.version || 'not found'} (${dependencies.galleryDl?.mode || '-'})`],
+    ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
+    ['ffprobe', dependencies.ffprobe?.version || 'not found (optional)'],
+    ['Browsers', dependencies.browsers?.map((browser) => browser.name || browser).join(', ') || 'none detected'],
     ['ytconv', await commandPath(process.platform === 'win32' ? 'ytconv.cmd' : 'ytconv')],
     ['TTY stdin/out', `${Boolean(process.stdin.isTTY)} / ${Boolean(process.stdout.isTTY)}`],
     ['Working directory', process.cwd()], ['Home', os.homedir()], ['Output', outputDirectory || '-'],
@@ -130,10 +138,12 @@ async function writableDirectory(directory) {
 export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Downloads', 'YTConv') } = {}) {
   const dependencies = await inspectDependencies({ repair: false });
   const updater = selfUpdateInvocation({ currentVersion: CLI_VERSION });
-  const updateChannel = CLI_VERSION.includes('-') ? 'beta' : 'latest';
+  const updateChannel = 'latest';
   const checks = [
     [`YTConv version is ${CLI_VERSION}`, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(CLI_VERSION)],
-    ['Node.js is version 18 or newer', Number(process.versions.node.split('.')[0]) >= 18],
+    ['Node.js is version 22.14 or newer', dependencies.node?.supported === true],
+    ['npm is available', dependencies.npm?.installed === true],
+    ['A supported JavaScript runtime is available', dependencies.javaScriptRuntimes?.length > 0],
     ['Home directory is available', Boolean(os.homedir())],
     ['Output directory is writable', await writableDirectory(outputDirectory)],
     [`Updater uses the ${updateChannel} channel`, updater.args.some((value) => String(value).includes(`ytconv@${updateChannel}`))],
@@ -145,6 +155,8 @@ export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Down
     ['gallery-dl is available', dependencies.galleryDl?.installed],
     ['FFmpeg is available', dependencies.ffmpeg.installed],
     ['ffprobe is available (optional)', dependencies.ffprobe?.installed !== false],
+    ['Python 3 fallback is available (optional)', dependencies.python?.installed !== false],
+    ['A desktop browser is available for account media (optional)', dependencies.platform?.termux || dependencies.browsers?.length > 0],
   ];
   console.log('YTConv self-test\n');
   for (const [label, ok] of checks) console.log(`${ok ? 'OK  ' : 'FAIL'} ${label}`);

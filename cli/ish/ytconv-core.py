@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.5.0 Beta native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.6.0 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.5.0-beta.1"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/codex/add-ytconv-cli/cli"
+VERSION = "1.6.0"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-cli-only-final/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"
@@ -41,7 +41,10 @@ PRESETS = {
 
 
 def eprint(message):
-    print(message, file=sys.stderr)
+    value = str(message)
+    if sys.stderr.isatty() and "NO_COLOR" not in os.environ:
+        value = "\033[31m%s\033[0m" % value
+    print(value, file=sys.stderr)
 
 
 def version_tuple(value):
@@ -87,7 +90,7 @@ def remote_version():
 
 
 def perform_update():
-    print("Downloading the latest YTConv iSH beta installer...")
+    print("Downloading the latest stable YTConv iSH installer...")
     target = None
     try:
         data = fetch_text(INSTALLER_URL, timeout=20)
@@ -141,6 +144,25 @@ def tool_version(runner):
         return "failed to run"
 
 
+def javascript_runtime_args():
+    deno = shutil.which("deno")
+    if deno:
+        return ["--js-runtimes", "deno:%s" % deno]
+    node = shutil.which("node")
+    if node:
+        try:
+            result = subprocess.run(
+                [node, "-p", "process.versions.node.split('.')[0]"],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+                timeout=10, check=False,
+            )
+            if result.returncode == 0 and int(result.stdout.strip()) >= 22:
+                return ["--js-runtimes", "node:%s" % node]
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+    return []
+
+
 def pip_install(*packages):
     for extra in (["--break-system-packages"], []):
         command = [sys.executable, "-m", "pip", "install", "-U", "--no-cache-dir"] + extra + list(packages)
@@ -150,11 +172,11 @@ def pip_install(*packages):
 
 
 def repair():
-    print("YTConv iSH beta repair")
+    print("YTConv iSH repair")
     if Path("/etc/alpine-release").exists() and shutil.which("apk"):
         subprocess.run(["apk", "update"], check=False)
-        subprocess.run(["apk", "add", "--no-cache", "python3", "py3-pip", "ffmpeg", "curl", "ca-certificates"], check=False)
-    if not pip_install("yt-dlp", "gallery-dl"):
+        subprocess.run(["apk", "add", "--no-cache", "python3", "py3-pip", "ffmpeg", "curl", "ca-certificates", "nodejs"], check=False)
+    if not pip_install("yt-dlp[default]", "gallery-dl"):
         eprint("pip could not install yt-dlp/gallery-dl. Check the internet connection and device clock.")
     available = tools()
     missing = [name for name in ("yt-dlp", "gallery-dl", "ffmpeg") if not available[name]]
@@ -238,7 +260,8 @@ def metadata_args(options):
 
 def common_args(options, output, yt_archive):
     args = [
-        "--ignore-config", "--newline", "--socket-timeout", "30",
+        "--ignore-config", "--no-colors", "--no-remote-components",
+        "--newline", "--socket-timeout", "30",
         "--retries", options.retries, "--fragment-retries", options.fragment_retries,
         "--file-access-retries", options.file_access_retries,
         "--retry-sleep", "http:%s" % options.retry_sleep,
@@ -248,6 +271,7 @@ def common_args(options, output, yt_archive):
         "--continue" if options.resume else "--no-continue",
         "--yes-playlist" if options.playlist else "--no-playlist",
     ]
+    args += javascript_runtime_args()
     args += cookie_args(options.cookies)
     args += metadata_args(options)
     if yt_archive:
@@ -319,13 +343,16 @@ def run_tool(label, runner, args, capture=False):
     if not runner:
         raise RuntimeError("%s is not available. Run ytconv repair" % label)
     command = runner + args
+    environment = dict(os.environ)
+    environment["NO_COLOR"] = "1"
+    environment["FORCE_COLOR"] = "0"
     if not capture:
         print("\nYTConv %s is using %s" % (VERSION, label))
-        result = subprocess.run(command, check=False)
+        result = subprocess.run(command, check=False, env=environment)
         if result.returncode:
             raise RuntimeError("%s failed with exit code %s" % (label, result.returncode))
         return ""
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False, env=environment)
     if result.returncode:
         rows = (result.stderr or result.stdout or "").strip().splitlines()
         raise RuntimeError(rows[-1] if rows else "%s failed" % label)
@@ -390,7 +417,7 @@ def diagnostics():
         ("Output", str(default_output())), ("Update", latest or "offline"),
         ("Subtitle", "ON"), ("SponsorBlock", "ON (mark)"), ("Archive", "ON per profile"),
     ]
-    print("YTConv iSH Beta doctor\n")
+    print("YTConv iSH doctor\n")
     for label, value in rows:
         print("%-14s %s" % (label, value))
     missing = [name for name in ("yt-dlp", "gallery-dl", "ffmpeg") if not available[name]]
@@ -431,7 +458,7 @@ def selected_preset(argv):
 def parser(argv):
     preset = selected_preset(argv)
     defaults = dict(PRESETS.get(preset, {}))
-    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.5.0 Beta for iSH/Alpine.")
+    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.6.0 for iSH/Alpine.")
     value.set_defaults(**defaults)
     value.add_argument("url", nargs="?")
     value.add_argument("--version", action="store_true")

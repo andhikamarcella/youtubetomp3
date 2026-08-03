@@ -1,10 +1,10 @@
-# Complete YTConv 1.5.9 Installation Guide
+# Complete YTConv 1.6.0 Installation Guide
 
-YTConv 1.5.9 is the stable release published on the npm `latest` tag.
+YTConv 1.6.0 is the stable release published on the npm `latest` tag.
 
 ## Requirements
 
-- Node.js 18 or newer and npm. These are required to run `npm install` itself.
+- Node.js 22.14 or newer and npm. These are required to run `npm install` itself.
 - A working HTTPS connection and valid system certificates.
 
 FFmpeg, yt-dlp, gallery-dl, Ink, React, and other runtime dependencies are prepared automatically by npm installation. Python 3 is not required on desktop Windows because YTConv uses standalone binaries; Python remains a fallback on selected platforms.
@@ -32,7 +32,7 @@ ytconv.cmd doctor
 
 Do not install FFmpeg, yt-dlp, gallery-dl, or Python manually first. Try the automatic installation above; use `ytconv.cmd repair` only when diagnostics are still failing.
 
-The version must be `1.5.9`.
+The version must be `1.6.0`.
 
 Local repository installation:
 
@@ -59,11 +59,7 @@ ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-When you intentionally want PowerShell scripts enabled for the current user:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
+There is no need to weaken the PowerShell execution policy. Continue using the generated `.cmd` shims.
 
 ## Linux universal installer
 
@@ -99,8 +95,8 @@ The complete distribution-by-distribution procedure is in [LINUX.md](LINUX.md).
 After Node.js, npm, Python, and FFmpeg are installed:
 
 ```bash
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 mkdir -p "$HOME/.local/bin"
@@ -117,7 +113,7 @@ ytconv doctor
 ```bash
 brew update
 brew install node python ffmpeg
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
 npm install -g ytconv@latest --force
@@ -133,7 +129,7 @@ pkg update
 pkg upgrade -y
 pkg install -y nodejs python ffmpeg curl ca-certificates
 termux-setup-storage
-python -m pip install -U --no-cache-dir yt-dlp gallery-dl
+python -m pip install -U --no-cache-dir "yt-dlp[default]" gallery-dl
 npm uninstall -g ytconv
 npm cache verify
 npm install -g ytconv@latest --omit=optional --force
@@ -161,7 +157,7 @@ The iSH frontend is native Python because modern Node.js TUI dependencies are no
 ```sh
 apk update
 apk add python3 py3-pip ffmpeg curl ca-certificates
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.9-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv doctor
@@ -215,8 +211,8 @@ ytconv --examples
 
 Expected:
 
-- version `1.5.9`
-- Node.js 18 or newer
+- version `1.6.0`
+- Node.js 22.14 or newer
 - yt-dlp ready
 - gallery-dl ready
 - FFmpeg ready

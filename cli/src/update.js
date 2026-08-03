@@ -44,8 +44,8 @@ export function compareVersions(left, right) {
   return 0;
 }
 
-export function releaseChannel(currentVersion = MANIFEST_VERSION) {
-  return String(currentVersion).includes('-') ? 'beta' : 'latest';
+export function releaseChannel() {
+  return 'latest';
 }
 
 export function defaultCacheFile(currentVersion = MANIFEST_VERSION, homeDirectory = os.homedir()) {
@@ -159,12 +159,12 @@ export async function checkForUpdate({
   }
 }
 
-export function updateCommand(currentVersion = MANIFEST_VERSION) {
-  return `npm install -g ytconv@${releaseChannel(currentVersion)} --force`;
+export function updateCommand() {
+  return 'npm install -g ytconv@latest --force';
 }
 
-function updateArguments(currentVersion = MANIFEST_VERSION) {
-  return ['install', '-g', `ytconv@${releaseChannel(currentVersion)}`, '--force'];
+function updateArguments() {
+  return ['install', '-g', 'ytconv@latest', '--force'];
 }
 
 function npmCliCandidates({ env = process.env, execPath = process.execPath } = {}) {

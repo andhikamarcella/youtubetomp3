@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.5.9"
+VERSION="1.6.0"
 CHANNEL="latest"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
@@ -44,7 +44,7 @@ case "$MANAGER" in
   emerge) PLAN='emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates' ;;
   nix) PLAN='nix profile install nixpkgs#nodejs_22 nixpkgs#python3 nixpkgs#ffmpeg' ;;
   brew) PLAN='brew install node python ffmpeg' ;;
-  *) PLAN='install Node.js 18+, npm, Python 3, FFmpeg, curl, and CA certificates with the system package manager' ;;
+  *) PLAN='install Node.js 22.14+, npm, Python 3, FFmpeg, curl, and CA certificates with the system package manager' ;;
 esac
 
 say "YTConv $VERSION installer"
@@ -84,12 +84,12 @@ fi
 
 has node || fail "Node.js was not found after setup."
 has npm || fail "npm was not found after setup."
-major=$(node -p 'process.versions.node.split(".")[0]')
-[ "$major" -ge 18 ] || fail "Node.js $(node --version) is too old. Use Node.js 18 or newer."
+node -e 'const [major,minor]=process.versions.node.split(".").map(Number);process.exit(major>22||(major===22&&minor>=14)?0:1)' \
+  || fail "Node.js $(node --version) is unsupported. Install Node.js 22.14 or a newer supported LTS release."
 
 if has python3; then
-  python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl 2>/dev/null \
-    || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl 2>/dev/null \
+  python3 -m pip install --user -U --no-cache-dir 'yt-dlp[default]' gallery-dl 2>/dev/null \
+    || python3 -m pip install --user -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl 2>/dev/null \
     || say "Note: pip fallback engines were not installed; YTConv will still try bundled/PATH engines."
 fi
 

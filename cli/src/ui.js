@@ -33,6 +33,7 @@ import {
 import { socialLoginHint } from './social-sessions.js';
 import { copyText, openOutputFile, openOutputLocation } from './system-actions.js';
 import { createTerminalInputDecoder, readClipboardText } from './terminal-input.js';
+import { sanitizeTerminalText } from './terminal-style.js';
 import { CLI_VERSION } from './version.js';
 
 figlet.parseFont('ANSI Shadow', ansiShadowFont);
@@ -49,6 +50,32 @@ const OVERLAYS = new Set(['help', 'diagnostics']);
 
 const LOGO_WIDE = figlet.textSync('YTCONV', { font: 'ANSI Shadow' });
 const LOGO_COMPACT = figlet.textSync('YTCONV', { font: 'Small', horizontalLayout: 'fitted' });
+
+export function terminalLayout(columns = 80, rows = 24) {
+  if (columns && typeof columns === 'object') {
+    rows = columns.rows;
+    columns = columns.columns;
+  }
+  const width = Math.max(20, Number(columns) || 80);
+  const height = Math.max(8, Number(rows) || 24);
+  const panelWidth = Math.max(18, Math.min(82, width - 2));
+  return {
+    columns: width,
+    rows: height,
+    panelWidth,
+    stackedControls: panelWidth < 48,
+    compactLogo: width < 78,
+    tinyLogo: width < 40,
+    minHeight: Math.max(7, height - 1),
+    showTagline: height >= 14,
+    showDetails: height >= 17,
+    showShortcuts: height >= 22 && width >= 48,
+  };
+}
+
+function safeText(value, maximumLength = 4096) {
+  return sanitizeTerminalText(value, { maximumLength });
+}
 
 function cycle(values, current) {
   const index = values.indexOf(current);
@@ -112,21 +139,21 @@ function durationText(seconds) {
 async function appendSessionLog(message, kind = 'info') {
   const target = process.env.YTCONV_LOG_FILE;
   if (!target) return;
-  const line = `[${new Date().toISOString()}] [${kind}] ${String(message).replace(/[\r\n]+/gu, ' ')}\n`;
+  const line = `[${new Date().toISOString()}] [${kind}] ${sanitizeTerminalText(message, { allowNewlines: false })}\n`;
   await fs.mkdir(path.dirname(target), { recursive: true }).catch(() => {});
   await fs.appendFile(target, line, 'utf8').catch(() => {});
 }
 
-function Logo({ compact, account, authMode }) {
+function Logo({ compact, tiny, account, showTagline }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center' },
-    h(Text, { bold: true, color: 'cyan' }, compact ? LOGO_COMPACT : LOGO_WIDE),
-    h(Text, { bold: true }, 'paste a social link. convert. done.'),
-    h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + more'),
-    h(Box, { marginTop: 1 },
-      h(Text, { color: 'green', bold: true }, `● ${account || 'local user'}`),
-      h(Text, { dimColor: true }, ` · ${authMode === 'cloud' ? 'cloud' : 'local device'} · v${CLI_VERSION}`)),
+    h(Text, { bold: true }, tiny ? 'YTCONV' : (compact ? LOGO_COMPACT : LOGO_WIDE)),
+    showTagline ? h(Text, { bold: true }, 'paste a social link. convert. done.') : null,
+    showTagline && !tiny ? h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · + more') : null,
+    h(Box, { marginTop: tiny ? 0 : 1 },
+      h(Text, { bold: true }, `● ${safeText(account || 'local user', 160)}`),
+      h(Text, { dimColor: true }, ` · local device · v${CLI_VERSION}`)),
   );
 }
 
@@ -149,8 +176,11 @@ function HomeScreen(props) {
     playlist,
     autoOpen,
     activeControl,
+    stackedControls,
+    showDetails,
+    showShortcuts,
   } = props;
-  const inputWidth = Math.max(24, panelWidth - 14);
+  const inputWidth = stackedControls ? panelWidth : Math.max(20, panelWidth - 14);
   const buttonFocused = activeControl === 'convert';
   const platform = socialPlatformSummary({ selected: platformHint, url });
   const mediaSetting = mode === 'audio'
@@ -158,52 +188,54 @@ function HomeScreen(props) {
     : mode === 'image'
       ? `image:${imageFormat.toUpperCase()}`
       : `video:${videoFormat}/${resolution}`;
+  const inputControl = h(
+    Box,
+    {
+      width: inputWidth,
+      borderStyle: activeControl === 'input' ? 'double' : 'round',
+      paddingX: 1,
+    },
+    h(Text, null, '▣ '),
+    h(Text, { wrap: 'truncate-end' }, displayInput(url, inputWidth) || h(Text, { dimColor: true }, 'https://...')),
+    activeControl === 'input' ? h(Text, { inverse: true }, ' ') : null,
+  );
+  const convertControl = h(
+    Box,
+    {
+      width: stackedControls ? panelWidth : 12,
+      marginLeft: stackedControls ? 0 : 1,
+      marginTop: stackedControls ? 1 : 0,
+      borderStyle: buttonFocused ? 'double' : 'round',
+      justifyContent: 'center',
+    },
+    h(Text, { inverse: buttonFocused, bold: true }, buttonFocused ? '» convert «' : ' convert '),
+  );
+  const controls = h(
+    Box,
+    { width: panelWidth, flexDirection: stackedControls ? 'column' : 'row' },
+    inputControl,
+    convertControl,
+  );
 
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, { bold: true, color: 'cyan' }, 'Paste a social-media URL')),
-    h(
-      Box,
-      { width: panelWidth, flexDirection: 'row' },
-      h(
-        Box,
-        {
-          width: inputWidth,
-          borderStyle: activeControl === 'input' ? 'double' : 'round',
-          borderColor: activeControl === 'input' ? 'cyan' : 'gray',
-          paddingX: 1,
-        },
-        h(Text, null, '▣ '),
-        h(Text, { wrap: 'truncate-end' }, displayInput(url, inputWidth) || h(Text, { dimColor: true }, 'https://...')),
-        activeControl === 'input' ? h(Text, { inverse: true }, ' ') : null,
-      ),
-      h(
-        Box,
-        {
-          width: 12,
-          marginLeft: 1,
-          borderStyle: buttonFocused ? 'double' : 'round',
-          borderColor: buttonFocused ? 'green' : 'gray',
-          justifyContent: 'center',
-        },
-        h(Text, { inverse: buttonFocused, color: 'green', bold: true }, buttonFocused ? '» convert «' : ' convert '),
-      ),
-    ),
+    h(Box, { width: panelWidth, paddingLeft: 1 }, h(Text, { bold: true }, 'Paste a social-media URL')),
+    controls,
     inputError ? h(Text, { color: 'red', bold: true, wrap: 'wrap' }, `! ${inputError}`) : null,
-    actionMessage ? h(Text, { color: 'green', wrap: 'wrap' }, `✓ ${actionMessage}`) : null,
-    h(
+    actionMessage ? h(Text, { wrap: 'wrap' }, `✓ ${safeText(actionMessage)}`) : null,
+    showDetails ? h(
       Box,
       { marginTop: 1 },
       h(Text, { dimColor: true },
         `${platform} · mode:${mode} · ${mediaSetting}`
         + ` · subs:${subtitles ? 'on' : 'off'} · thumb:${writeThumbnail ? 'on' : 'auto'}`),
-    ),
-    h(Text, { dimColor: true },
-      `access:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`),
-    h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T container · Ctrl+Q quality'),
-    h(Text, { dimColor: true }, 'Ctrl+S subtitles · Ctrl+N thumbnail · Ctrl+F images · Ctrl+G social'),
-    h(Text, { dimColor: true }, 'Ctrl+B account access · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H help'),
+    ) : null,
+    showDetails ? h(Text, { dimColor: true },
+      `access:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'} · auto-open:${autoOpen ? 'on' : 'off'}`) : null,
+    showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T container · Ctrl+Q quality') : null,
+    showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+S subtitles · Ctrl+N thumbnail · Ctrl+F images · Ctrl+G social') : null,
+    showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+B account access · Ctrl+P playlist · Ctrl+O auto-open · Ctrl+H help') : null,
   );
 }
 
@@ -213,9 +245,9 @@ function MediaCard({ media, panelWidth }) {
     .filter(Boolean).join(' · ');
   return h(
     Box,
-    { width: panelWidth, borderStyle: 'round', borderColor: 'cyan', paddingX: 1, flexDirection: 'column' },
-    h(Text, { bold: true, wrap: 'truncate-end' }, media.title),
-    h(Text, { dimColor: true, wrap: 'truncate-end' }, `${details}${media.itemCount > 1 ? ` · ${media.itemCount} item` : ''}`),
+    { width: panelWidth, borderStyle: 'round', paddingX: 1, flexDirection: 'column' },
+    h(Text, { bold: true, wrap: 'truncate-end' }, safeText(media.title)),
+    h(Text, { dimColor: true, wrap: 'truncate-end' }, safeText(`${details}${media.itemCount > 1 ? ` · ${media.itemCount} item` : ''}`)),
   );
 }
 
@@ -225,12 +257,11 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
     h(MediaCard, { media, panelWidth }),
     h(Box, { marginTop: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { bold: true, color: stage === 'probing' ? 'cyan' : 'green' },
-        stage === 'probing' ? 'checking the social link...' : progressBar(progress.percent)),
+      h(Text, { bold: true }, stage === 'probing' ? 'checking the social link...' : progressBar(progress.percent, Math.max(10, Math.min(34, panelWidth - 6)))),
       h(Text, { dimColor: true }, stage === 'probing'
         ? 'detecting platform and choosing the best engine'
         : [progress.percent || '0%', progress.speed, progress.eta ? `ETA ${progress.eta}` : ''].filter(Boolean).join(' · ')),
-      h(Text, { dimColor: true, wrap: 'truncate-end' }, statusText || 'please wait'),
+      h(Text, { dimColor: true, wrap: 'truncate-end' }, safeText(statusText || 'please wait')),
     ),
     h(Text, { dimColor: true }, 'Esc/Ctrl+C cancels and exits'),
   );
@@ -241,9 +272,9 @@ function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMess
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
     h(MediaCard, { media, panelWidth }),
-    h(Box, { marginTop: 1, borderStyle: 'double', borderColor: 'green', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { bold: true, color: 'green' }, '✓ conversion complete'),
-      h(Text, { dimColor: true, wrap: 'truncate-end' }, outputPath || outputDirectory),
+    h(Box, { marginTop: 1, borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true }, '✓ conversion complete'),
+      h(Text, { dimColor: true, wrap: 'truncate-end' }, safeText(outputPath || outputDirectory)),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
     h(Text, { dimColor: true }, 'O open folder · F open file · C copy path · R another URL'),
@@ -259,12 +290,12 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage, ur
     h(MediaCard, { media, panelWidth }),
     h(Box, { marginTop: 1, borderStyle: 'double', borderColor: 'red', width: panelWidth, paddingX: 1, flexDirection: 'column' },
       h(Text, { bold: true, color: 'red' }, '× conversion failed'),
-      h(Text, { color: 'red', wrap: 'wrap' }, error),
+      h(Text, { color: 'red', wrap: 'wrap' }, safeText(error)),
       h(Text, { dimColor: true }, `access: ${cookieSourceLabel(cookieSource)}`),
     ),
     actionMessage ? h(Text, { wrap: 'wrap' }, actionMessage) : null,
     h(Text, { dimColor: true }, 'L official login · B another browser · R retry · E edit URL · D diagnostics · Q/Esc exit'),
-    loginHint ? h(Text, { color: 'yellow' }, loginHint) : null,
+    loginHint ? h(Text, null, loginHint) : null,
     h(Text, { dimColor: true }, 'Account sessions remain in the browser under browser/OS encryption.'),
   );
 }
@@ -273,14 +304,14 @@ function SocialLoginScreen({ handoff, panelWidth, actionMessage }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center', marginTop: 1, width: panelWidth },
-    h(Box, { borderStyle: 'double', borderColor: 'yellow', width: panelWidth, paddingX: 1, flexDirection: 'column' },
-      h(Text, { bold: true, color: 'yellow' }, `${handoff.label} sign-in required`),
+    h(Box, { borderStyle: 'double', width: panelWidth, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true }, `${safeText(handoff.label, 160)} sign-in required`),
       h(Text, { wrap: 'wrap' }, 'The official login page is open in your browser. Finish sign-in and any OTP/2FA there.'),
-      h(Text, { color: 'cyan' }, `Browser: ${handoff.browserDisplay || handoff.browserSpec}`),
-      h(Text, { dimColor: true, wrap: 'wrap' }, handoff.loginUrl),
+      h(Text, null, `Browser: ${safeText(handoff.browserDisplay || handoff.browserSpec, 200)}`),
+      h(Text, { dimColor: true, wrap: 'wrap' }, safeText(handoff.loginUrl, 2048)),
       h(Text, { dimColor: true, wrap: 'wrap' }, 'YTConv will verify this exact media URL before saving the browser/profile link.'),
     ),
-    actionMessage ? h(Text, { color: 'cyan', wrap: 'wrap' }, actionMessage) : null,
+    actionMessage ? h(Text, { wrap: 'wrap' }, safeText(actionMessage)) : null,
     h(Text, { bold: true }, 'Enter verify session and retry · B another browser · Q/Esc exit'),
     h(Text, { dimColor: true }, 'Passwords and OTP codes never enter YTConv. Temporary provider cookies stay local and are deleted after the attempt.'),
   );
@@ -301,7 +332,7 @@ function HelpScreen({ panelWidth, termux }) {
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', marginTop: 1 },
-    h(Text, { bold: true, color: 'cyan' }, `YTConv ${CLI_VERSION} · keyboard help`),
+    h(Text, { bold: true }, `YTConv ${CLI_VERSION} · keyboard help`),
     ...rows.map(([key, description]) => h(Box, { key, flexDirection: 'row' },
       h(Box, { width: 18 }, h(Text, { bold: true }, key)),
       h(Text, { dimColor: true }, description))),
@@ -326,7 +357,10 @@ function DiagnosticsScreen({
 }) {
   const rows = [
     ['YTConv', CLI_VERSION],
-    ['Node.js', process.version],
+    ['Node.js', `${dependencies.node?.version || process.version}${dependencies.node?.supported === false ? ' (unsupported)' : ''}`],
+    ['npm', dependencies.npm?.version || 'not found'],
+    ['Python', dependencies.python?.version || 'not found (optional)'],
+    ['JS runtime', dependencies.javaScriptRuntimes?.map((runtime) => runtime.name).join(', ') || 'not found'],
     ['Device', dependencies.platform?.termux ? 'Android Termux' : `${process.platform} ${process.arch}`],
     ['Social', socialPlatformLabel(platformHint)],
     ['Mode', mode],
@@ -336,16 +370,18 @@ function DiagnosticsScreen({
     ['yt-dlp', dependencies.ytDlp.version || 'not found'],
     ['gallery-dl', dependencies.galleryDl?.version || 'not found'],
     ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
+    ['ffprobe', dependencies.ffprobe?.version || 'not found (optional)'],
+    ['Browsers', dependencies.browsers?.map((browser) => browser.name || browser).join(', ') || 'none detected'],
     ['Output', outputDirectory],
     ['Account access', cookieSourceLabel(cookieSource)],
   ];
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', marginTop: 1 },
-    h(Text, { bold: true, color: 'cyan' }, 'YTConv diagnostics'),
+    h(Text, { bold: true }, 'YTConv diagnostics'),
     ...rows.map(([label, value]) => h(Box, { key: label, flexDirection: 'row' },
       h(Box, { width: 16 }, h(Text, { bold: true }, label)),
-      h(Text, { dimColor: true, wrap: 'truncate-end' }, String(value)))),
+      h(Text, { dimColor: true, wrap: 'truncate-end' }, safeText(value)))),
     h(Text, null, 'B back · Q/Esc exit'),
   );
 }
@@ -355,31 +391,35 @@ function MissingDependencies({ dependencies, panelWidth }) {
   const errors = (dependencies.errors || []).slice(0, 2);
   return h(
     Box,
-    { width: panelWidth, borderStyle: 'double', borderColor: 'yellow', paddingX: 1, flexDirection: 'column' },
-    h(Text, { bold: true, color: 'yellow' }, '! Automatic setup is incomplete'),
-    h(Text, { color: 'yellow' }, `Not ready: ${missing}`),
+    { width: panelWidth, borderStyle: 'double', borderColor: 'red', paddingX: 1, flexDirection: 'column' },
+    h(Text, { bold: true, color: 'red' }, '! Automatic setup is incomplete'),
+    h(Text, { color: 'red' }, `Not ready: ${safeText(missing)}`),
     ...errors.map((item) => h(Text, { key: item, dimColor: true, wrap: 'wrap' }, `• ${item}`)),
-    h(Text, { color: 'cyan' }, 'Run: ytconv repair'),
+    h(Text, { bold: true }, 'Run: ytconv repair'),
     h(Text, { dimColor: true, wrap: 'wrap' }, dependencies.platform?.setupCommand || 'If repair still fails, run ytconv doctor and follow the displayed solution.'),
     h(Text, { dimColor: true }, 'Q/Esc/Ctrl+C exit'),
   );
 }
 
-function logoLines(compact) {
-  return (compact ? LOGO_COMPACT : LOGO_WIDE).split('\n').filter(Boolean).length;
+function logoLines({ compactLogo, tinyLogo }) {
+  if (tinyLogo) return 1;
+  return (compactLogo ? LOGO_COMPACT : LOGO_WIDE).split('\n').filter(Boolean).length;
 }
 
-function controlBounds({ columns, rows, panelWidth, compactLogo }) {
-  const rootHeight = Math.max(20, rows - 1);
-  const logoHeight = logoLines(compactLogo) + 2;
+function controlBounds({ layout }) {
+  const { columns, panelWidth, minHeight, stackedControls } = layout;
+  const rootHeight = minHeight;
+  const logoHeight = logoLines(layout) + (layout.showTagline ? 3 : 1);
   const homeHeight = 14;
   const rootTop = Math.max(1, Math.floor((rootHeight - logoHeight - homeHeight) / 2) + 1);
   const panelLeft = Math.max(1, Math.floor((columns - panelWidth) / 2) + 1);
-  const inputWidth = Math.max(24, panelWidth - 14);
+  const inputWidth = stackedControls ? panelWidth : Math.max(20, panelWidth - 14);
   const inputTop = rootTop + logoHeight + 2;
   return {
     input: { left: panelLeft - 1, right: panelLeft + inputWidth, top: inputTop - 1, bottom: inputTop + 3 },
-    convert: { left: panelLeft + inputWidth, right: panelLeft + inputWidth + 13, top: inputTop - 1, bottom: inputTop + 3 },
+    convert: stackedControls
+      ? { left: panelLeft - 1, right: panelLeft + panelWidth, top: inputTop + 3, bottom: inputTop + 7 }
+      : { left: panelLeft + inputWidth, right: panelLeft + inputWidth + 13, top: inputTop - 1, bottom: inputTop + 3 },
   };
 }
 
@@ -442,11 +482,11 @@ function App({
   const [error, setError] = useState('');
   const [outputPath, setOutputPath] = useState('');
   const [loginHandoff, setLoginHandoff] = useState(null);
-
-  const columns = process.stdout.columns || 80;
-  const rows = process.stdout.rows || 24;
-  const panelWidth = Math.max(34, Math.min(82, columns - 4));
-  const compactLogo = columns < 78;
+  const [terminalSize, setTerminalSize] = useState(() => terminalLayout(process.stdout.columns, process.stdout.rows));
+  const {
+    panelWidth, compactLogo, tinyLogo, stackedControls, minHeight,
+    showTagline, showDetails, showShortcuts,
+  } = terminalSize;
   const outputDirectory = process.env.YTCONV_OUTPUT
     ? path.resolve(process.env.YTCONV_OUTPUT)
     : (termux ? termuxSharedDownloadsDirectory() : desktopDownloadsDirectory());
@@ -458,6 +498,12 @@ function App({
     controllerRef.current?.abort();
     exit();
   };
+
+  useEffect(() => {
+    const resize = () => setTerminalSize(terminalLayout(process.stdout.columns, process.stdout.rows));
+    process.stdout.on?.('resize', resize);
+    return () => process.stdout.off?.('resize', resize);
+  }, []);
 
   const showOverlay = (next) => {
     if (!OVERLAYS.has(stage)) setReturnStage(stage);
@@ -697,7 +743,7 @@ function App({
   useInput((input, key) => {
     const decoded = decoderRef.current.feed(input);
     const lower = decoded.text.toLowerCase();
-    const bounds = controlBounds({ columns, rows, panelWidth, compactLogo });
+    const bounds = controlBounds({ layout: terminalSize });
 
     for (const event of decoded.events) {
       if (!event.pressed) continue;
@@ -831,6 +877,9 @@ function App({
     playlist,
     autoOpen,
     activeControl,
+    stackedControls,
+    showDetails,
+    showShortcuts,
   });
   else if (stage === 'probing' || stage === 'downloading') content = h(WorkingScreen, {
     stage, media, progress, statusText, panelWidth,
@@ -845,14 +894,15 @@ function App({
 
   return h(Box, {
     width: '100%',
-    minHeight: Math.max(20, rows - 1),
+    minHeight,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
   }, h(Logo, {
     compact: compactLogo,
+    tiny: tinyLogo,
     account: process.env.YTCONV_ACCOUNT_LABEL,
-    authMode: process.env.YTCONV_AUTH_MODE,
+    showTagline,
   }), content);
 }
 

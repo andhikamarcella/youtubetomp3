@@ -23,41 +23,41 @@ async function temporaryHome(t) {
   return directory;
 }
 
-test('auth session is stored outside config with user-only permissions', async (t) => {
+test('auth session strips bearer tokens and email before private storage', async (t) => {
   const homeDirectory = await temporaryHome(t);
   const value = { accessToken: 'secret-token', user: { id: 'u1', email: 'user@example.com' } };
   await writeAuthSession(value, { homeDirectory });
-  assert.deepEqual(await readAuthSession({ homeDirectory }), value);
+  const stored = await readAuthSession({ homeDirectory });
+  assert.equal(stored.mode, 'local');
+  assert.equal(stored.user.id, 'u1');
+  assert.equal(stored.user.displayName, 'u1');
+  assert.equal('accessToken' in stored, false);
+  assert.equal('email' in stored.user, false);
+  assert.doesNotMatch(await fs.readFile(authPaths(homeDirectory).auth, 'utf8'), /secret-token|user@example\.com/u);
   const stats = await fs.stat(authPaths(homeDirectory).auth);
   if (process.platform !== 'win32') assert.equal(stats.mode & 0o777, 0o600);
   await clearAuthSession({ homeDirectory });
   assert.equal(await readAuthSession({ homeDirectory }), null);
 });
 
-test('validateAuthSession refreshes account metadata from the server', async (t) => {
+test('validateAuthSession stays local and never calls a cloud endpoint', async (t) => {
   const homeDirectory = await temporaryHome(t);
-  await writeAuthSession({ accessToken: 'valid-token', user: {} }, { homeDirectory });
+  await writeAuthSession({ accessToken: 'valid-token', user: { id: 'local-valid-token' } }, { homeDirectory });
   const originalFetch = globalThis.fetch;
   t.after(() => { globalThis.fetch = originalFetch; });
-  globalThis.fetch = async (_url, options) => {
-    assert.equal(options.headers.authorization, 'Bearer valid-token');
-    return new Response(JSON.stringify({
-      tokenId: 'token-id',
-      expiresAt: '2099-01-01T00:00:00.000Z',
-      user: { id: 'user-id', email: 'user@example.com', role: 'user' },
-    }), { status: 200, headers: { 'content-type': 'application/json' } });
-  };
+  globalThis.fetch = async () => { throw new Error('cloud request must not run'); };
   const result = await validateAuthSession({ homeDirectory });
   assert.equal(result.ok, true);
-  assert.equal(result.session.user.email, 'user@example.com');
-  assert.equal(result.session.tokenId, 'token-id');
+  assert.equal(result.offline, true);
+  assert.equal(result.session.user.id, 'local-valid-token');
+  assert.equal('accessToken' in result.session, false);
 });
 
-test('legacy explicit account requirement still reports a clear login command', async (t) => {
+test('explicit local profile requirement reports a clear account command', async (t) => {
   const homeDirectory = await temporaryHome(t);
   await assert.rejects(
     requireAuthenticatedSession({ homeDirectory }),
-    /A YTConv profile is required before downloading or converting media/u,
+    /A local YTConv profile is not configured.*ytconv account login/u,
   );
 });
 
@@ -69,7 +69,7 @@ test('CLI wrapper no longer blocks public commands behind the cloud account serv
     env: { ...process.env, HOME: homeDirectory, USERPROFILE: homeDirectory, YTCONV_NO_UPDATE_CHECK: '1' },
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), '1.5.9');
+  assert.equal(result.stdout.trim(), '1.6.0');
 });
 
 test('local fallback profile validates without a cloud request', async (t) => {
@@ -78,7 +78,7 @@ test('local fallback profile validates without a cloud request', async (t) => {
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async () => { throw new Error('cloud request must not run'); };
   const result = await loginLocally({
-    version: '1.5.9',
+    version: '1.6.0',
     homeDirectory,
     localName: 'Local Tester',
   });
@@ -95,7 +95,7 @@ test('login falls back locally when the cloud endpoint is not deployed', async (
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async () => new Response('Not Found', { status: 404 });
   const result = await login({
-    version: '1.5.9',
+    version: '1.6.0',
     homeDirectory,
     localName: 'Fallback Tester',
   });
@@ -113,4 +113,6 @@ test('auth environment exposes account label and mode without leaking through ar
   assert.equal(env.YTCONV_AUTH_MODE, 'local');
   assert.equal(env.YTCONV_ACCOUNT_LABEL, 'Dhika');
   assert.equal(env.YTCONV_USER_ID, 'local-user');
+  assert.equal(env.YTCONV_AUTH_TOKEN, undefined);
+  assert.equal(env.YTCONV_USER_EMAIL, undefined);
 });

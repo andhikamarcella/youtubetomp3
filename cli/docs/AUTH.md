@@ -1,4 +1,4 @@
-# Social-media account login in YTConv 1.5.9
+# Social-media account login in YTConv 1.6.0
 
 YTConv can use an account session that is already signed in through a desktop browser without asking the user to export `cookies.txt`. This is available for Instagram, Facebook, X/Twitter, TikTok, YouTube/Google, Pinterest, Reddit, Threads, Twitch, SoundCloud, Vimeo, Tumblr, Flickr, and Pixiv.
 
@@ -84,17 +84,17 @@ Firefox is often easier for CLI tools to read because its session database does 
 
 Android and iOS isolate private browser data from terminal applications. Termux and iSH therefore cannot read Chrome or Safari databases directly. YTConv does not bypass the device sandbox. Use public media or an official authentication method available for that platform or device.
 
-## Optional legacy YTConv cloud account
+## Optional local display profile
 
-The legacy YTConv account is not required for downloads. To use it anyway:
+A YTConv profile is not required for downloads. If a local label is useful on a shared terminal, create a token-free profile:
 
 ```sh
 ytconv account login
-ytconv auth status
+ytconv account status
 ytconv account logout
 ```
 
-If the account endpoint is unavailable, use `ytconv account login --local`. An account-server failure does not block CLI downloading.
+This command does not contact an account server and does not store an email, password, bearer token, or OAuth token. Version 1.6.0 removes legacy cloud-token records during migration.
 
 ## Acceptable use
 

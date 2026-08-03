@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ffmpegInstallerInvocation } from '../src/dependencies.js';
+import { ffmpegReleaseAsset, nodeRuntimeSupported } from '../src/dependencies.js';
 import { extractSystemOptions, systemHelpText } from '../src/system-tools.js';
 import { explainError } from '../src/error-help.js';
 
@@ -16,14 +16,17 @@ test('extracts beginner and headless flags before normal CLI parsing', () => {
   assert.deepEqual(result.cleanArgs, ['--preset', 'music', 'https://example.com/a']);
 });
 
-test('FFmpeg repair reruns the package installer through Node on every platform', () => {
-  const invocation = ffmpegInstallerInvocation({
-    execPath: 'node.exe',
-    packageJsonPath: 'C:\\npm\\node_modules\\ffmpeg-static\\package.json',
-  });
-  assert.equal(invocation.command, 'node.exe');
-  assert.equal(invocation.args[0], 'C:\\npm\\node_modules\\ffmpeg-static\\install.js');
-  assert.equal(invocation.cwd, 'C:\\npm\\node_modules\\ffmpeg-static');
+test('FFmpeg repair selects only explicitly supported verified release assets', () => {
+  assert.equal(ffmpegReleaseAsset({ platform: 'win32', architecture: 'x64' }), 'ffmpeg-win32-x64.gz');
+  assert.equal(ffmpegReleaseAsset({ platform: 'darwin', architecture: 'arm64' }), 'ffmpeg-darwin-arm64.gz');
+  assert.equal(ffmpegReleaseAsset({ platform: 'linux', architecture: 'x64' }), 'ffmpeg-linux-x64.gz');
+  assert.equal(ffmpegReleaseAsset({ platform: 'win32', architecture: 'arm64' }), null);
+});
+
+test('supported Node runtime starts at 22.14.0', () => {
+  assert.equal(nodeRuntimeSupported('22.13.1'), false);
+  assert.equal(nodeRuntimeSupported('22.14.0'), true);
+  assert.equal(nodeRuntimeSupported('24.0.0'), true);
 });
 
 test('doctor alias is translated before the normal parser', () => {

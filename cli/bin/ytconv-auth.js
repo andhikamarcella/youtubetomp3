@@ -11,6 +11,9 @@ import {
 import { handleSocialAuthCommand } from '../src/social-auth.js';
 import { maybeAutoUpdate } from '../src/update.js';
 import { CLI_VERSION } from '../src/version.js';
+import { installConsoleErrorStyle } from '../src/terminal-style.js';
+
+installConsoleErrorStyle();
 
 function isInteractiveTerminal() {
   return Boolean(process.stdin.isTTY && process.stdout.isTTY);

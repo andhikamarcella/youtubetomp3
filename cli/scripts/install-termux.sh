@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
-VERSION="1.5.9"
+VERSION="1.6.0"
 CHANNEL="latest"
 printf '%s\n' "YTConv $VERSION installer for Termux"
 
@@ -8,8 +8,8 @@ command -v pkg >/dev/null 2>&1 || { printf '%s\n' 'Run this installer inside the
 pkg update
 pkg install -y nodejs python ffmpeg curl ca-certificates
 
-major=$(node -p 'process.versions.node.split(".")[0]')
-[ "$major" -ge 18 ] || { printf '%s\n' 'The Termux Node.js package is too old. Run pkg upgrade.' >&2; exit 1; }
+node -e 'const [major,minor]=process.versions.node.split(".").map(Number);process.exit(major>22||(major===22&&minor>=14)?0:1)' \
+  || { printf '%s\n' 'Termux needs Node.js 22.14 or newer. Run: pkg update && pkg upgrade' >&2; exit 1; }
 
 if [ ! -d "$HOME/storage/downloads" ]; then
   printf '%s\n' 'Requesting Android shared-storage permission...'
@@ -17,8 +17,8 @@ if [ ! -d "$HOME/storage/downloads" ]; then
   printf '%s\n' 'Accept the Android permission dialog. Run the installer again if the storage directory does not appear.'
 fi
 
-python -m pip install -U --no-cache-dir yt-dlp gallery-dl \
-  || python -m pip install -U --no-cache-dir --break-system-packages yt-dlp gallery-dl \
+python -m pip install -U --no-cache-dir 'yt-dlp[default]' gallery-dl \
+  || python -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl \
   || printf '%s\n' 'pip could not install the fallback engines; ytconv repair will try again.'
 
 npm uninstall -g ytconv >/dev/null 2>&1 || true

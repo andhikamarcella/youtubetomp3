@@ -1,4 +1,4 @@
-# Installing YTConv 1.5.9 on Linux
+# Installing YTConv 1.6.0 on Linux
 
 This guide starts from a clean Linux installation and ends with a verified YTConv download. It covers desktop Linux, servers, SSH sessions, and the major package-manager families.
 
@@ -6,7 +6,7 @@ This guide starts from a clean Linux installation and ends with a verified YTCon
 
 Required:
 
-- Node.js 18 or newer
+- Node.js 22.14 or newer
 - npm
 - FFmpeg
 - HTTPS CA certificates
@@ -26,7 +26,7 @@ python3 --version
 ffmpeg -version
 ```
 
-Node.js must report `v18` or newer.
+Node.js must report `v22.14.0` or newer.
 
 ## Fast universal installation
 
@@ -55,7 +55,7 @@ ytconv doctor
 ytconv --shell-info
 ```
 
-The version must be `1.5.9`.
+The version must be `1.6.0`.
 
 ## Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon
 
@@ -70,11 +70,11 @@ Check Node.js:
 node --version
 ```
 
-When the distribution ships Node.js older than 18, install a supported Node.js release with a version manager such as `nvm`, or use the official Node.js packages for your distribution. After Node.js is ready:
+When the distribution ships Node.js older than 22.14.0, install a supported LTS release with a version manager such as `nvm`, or use the official Node.js packages for your distribution. After Node.js is ready:
 
 ```bash
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
@@ -96,8 +96,8 @@ ytconv doctor
 
 ```bash
 sudo dnf install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.bashrc"
@@ -115,8 +115,8 @@ Some Fedora-family systems require an additional multimedia repository before th
 
 ```bash
 sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg ca-certificates curl
-python -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.bashrc"
@@ -139,8 +139,8 @@ fish_add_path $HOME/.local/bin
 ```bash
 sudo zypper refresh
 sudo zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg ca-certificates curl
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
@@ -158,7 +158,7 @@ Use the system FFmpeg package. A glibc-only bundled FFmpeg binary may not run on
 
 ```sh
 apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl
-python3 -m pip install --break-system-packages -U --no-cache-dir yt-dlp gallery-dl
+python3 -m pip install --break-system-packages -U --no-cache-dir "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 mkdir -p "$HOME/.local/bin"
@@ -180,8 +180,8 @@ printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
 
 ```bash
 sudo xbps-install -Syu nodejs npm python3 python3-pip ffmpeg ca-certificates curl
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
@@ -196,8 +196,8 @@ ytconv doctor
 
 ```bash
 sudo emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
@@ -228,7 +228,7 @@ For a permanent NixOS setup, add Node.js, Python, FFmpeg, yt-dlp, and gallery-dl
 ```bash
 brew update
 brew install node python ffmpeg
-python3 -m pip install --user -U --no-cache-dir yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
 npm install -g ytconv@latest --force
@@ -273,8 +273,8 @@ ytconv --shell-info
 
 Expected result:
 
-- YTConv version is `1.5.9`
-- Node.js is 18 or newer
+- YTConv version is `1.6.0`
+- Node.js is 22.14.0 or newer
 - yt-dlp is available
 - gallery-dl is available
 - FFmpeg is available
@@ -324,7 +324,7 @@ npm install -g ytconv@latest --force
 
 ### Node.js is too old
 
-Install Node.js 18, 20, or 22, then reopen the shell and run:
+Install Node.js 22.14, 24, or 26, then reopen the shell and run:
 
 ```bash
 node --version
@@ -345,7 +345,7 @@ ytconv doctor
 Use the fallback supported by the distribution:
 
 ```bash
-python3 -m pip install --user -U --no-cache-dir --break-system-packages yt-dlp gallery-dl
+python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
 ```
 
 Alternatively, install yt-dlp and gallery-dl from the distribution repository or with `pipx`.

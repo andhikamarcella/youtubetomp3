@@ -1,6 +1,6 @@
 # YTConv Configuration, Profiles, History, and Completion
 
-This document applies to YTConv `1.5.9`.
+This document applies to YTConv `1.6.0`.
 
 ## Storage locations
 
@@ -16,7 +16,7 @@ Files and directories:
 config.json            Persistent defaults and named profiles
 history.jsonl          Privacy-limited headless/batch history
 archives/              yt-dlp text archives and gallery-dl SQLite archives
-update-check-beta.json Beta-channel update cache
+update-check-*.json    Update caches; legacy names are removed by cache cleanup
 social-sessions.json   Provider + browser/profile references (never raw cookies)
 ```
 
@@ -222,7 +222,7 @@ Clear history:
 ytconv history clear
 ```
 
-Interactive TUI-only sessions may not produce the same history detail as headless and batch executions in this beta.
+Interactive TUI-only sessions may not produce the same history detail as headless and batch executions.
 
 ## Shell completion
 
@@ -270,7 +270,7 @@ Copy-Item "$HOME\.ytconv" "$HOME\ytconv-backup" -Recurse
 
 Never publish a backup without reviewing it. Although config/history exclude known secrets, paths and URLs may still be private.
 
-## Remove beta user data
+## Remove all local YTConv data
 
 First uninstall YTConv:
 

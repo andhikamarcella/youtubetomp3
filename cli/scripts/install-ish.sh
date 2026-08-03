@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.5.9-cli-only-final/cli"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-cli-only-final/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
 TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
 TMP_CORE="/tmp/ytconv-ish-core.py.$$"
-VERSION="1.5.9"
+VERSION="1.6.0"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
@@ -28,14 +28,14 @@ pip_install() {
     || python3 -m pip install -U --no-cache-dir "$@"
 }
 
-pip_install yt-dlp gallery-dl
+pip_install 'yt-dlp[default]' gallery-dl
 mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
 
 rm -f "$TMP_APP" "$TMP_CORE"
 trap 'rm -f "$TMP_APP" "$TMP_CORE"' EXIT HUP INT TERM
 
 curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv.py" -o "$TMP_APP"
-curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv-beta.py" -o "$TMP_CORE"
+curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv-core.py" -o "$TMP_CORE"
 python3 -m py_compile "$TMP_APP" "$TMP_CORE" || fail "the downloaded frontend is invalid."
 
 mv "$TMP_APP" "$APP_FILE"

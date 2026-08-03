@@ -1,4 +1,4 @@
-# YTConv 1.5.9 Command Reference
+# YTConv 1.6.0 Command Reference
 
 ## General syntax
 
@@ -173,7 +173,7 @@ Resolution is a maximum limit. YTConv selects the closest available source forma
 --list-subs
 ```
 
-YTConv 1.5.9 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
+YTConv 1.6.0 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -186,7 +186,7 @@ YTConv 1.5.9 enables subtitles by default for video unless explicitly disabled. 
 --sponsorblock-off
 ```
 
-YTConv 1.5.9 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.6.0 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -246,7 +246,7 @@ The `batch` command automatically enables continue-on-error. The final exit code
 --no-archive
 ```
 
-Resume is enabled by default. YTConv 1.5.9 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
+Resume is enabled by default. YTConv 1.6.0 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
 ## Network and performance
 
@@ -327,7 +327,7 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.5.9 updates through:
+Stable 1.6.0 updates through:
 
 ```bash
 npm install -g ytconv@latest --force
