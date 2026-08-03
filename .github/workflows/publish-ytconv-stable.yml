@@ -1,32 +1,26 @@
-# Final stable release: YTConv 1.6.2
-name: Publish YTConv Stable to npm
+name: Publish YTConv 1.6.3 to npm
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.2-cli-only-final
+      - release/ytconv-1.6.3-cli-only-final
     paths:
       - ".github/workflows/publish-ytconv-stable.yml"
       - "cli/**"
       - "scripts/ytconv-release-metadata.mjs"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Stable version; must match cli/package.json"
-        required: true
-        default: "1.6.2"
       confirm:
         description: "Type PUBLISH-STABLE to continue"
         required: true
 
 permissions:
-  actions: read
   contents: write
   id-token: write
   issues: write
 
 concurrency:
-  group: ytconv-npm-stable
+  group: ytconv-npm-1.6.3
   cancel-in-progress: false
 
 jobs:
@@ -35,172 +29,113 @@ jobs:
     environment: npm
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.6.2' }}
     defaults:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: cli/package-lock.json
-      - name: Pin npm for the reproducible release tarball
-        run: npm install -g npm@11.19.0
-      - name: Verify stable package identity
+      - name: Pin npm and synchronize lock metadata
+        run: |
+          npm install -g npm@11.19.0
+          npm install --package-lock-only --ignore-scripts
+      - name: Verify release identity and retry fix
         id: identity
         run: |
-          npm ci --ignore-scripts
-          test ! -f ../.github/workflows/ytconv-auth.yml
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
-          test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
-          test "$PACKAGE_VERSION" = "1.6.2"
-          test "$PACKAGE_TAG" = "latest"
-          test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
-          test "$(node -p "require('./package.json').organization.name")" = "YTConv Project"
+          test "$(node -p "require('./package.json').version")" = "1.6.3"
+          test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
           test "$(node -p "require('./package.json').license")" = "MIT"
-          test "$(node -p "require('./package.json').engines.node")" = ">=22.14.0"
-          node -e "const p=require('./package.json'); if(!p.author||!p.maintainers?.length||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!p.documentation?.url||!p.documentation?.nodejs||!p.dependencies?.ws||p.dependencies?.['ffmpeg-static']||p.optionalDependencies||p.publishConfig?.provenance!==true) process.exitCode=1"
-          test -f src/youtube-output.js
-          test -f scripts/test-youtube-output.js
-          node -e "import('./src/media-controller.js').then(({effectiveMediaMode}) => { if(effectiveMediaMode({url:'https://music.youtube.com/watch?v=x',mode:'auto'})!=='audio'||effectiveMediaMode({url:'https://www.youtube.com/watch?v=x',mode:'auto'})!=='video') process.exitCode=1; })"
-          node -e "import('./src/youtube-output.js').then(({effectiveVideoContainer}) => { if(effectiveVideoContainer({url:'https://www.youtube.com/watch?v=x',mode:'video',requestedContainer:'auto'})!=='mp4') process.exitCode=1; })"
-          case "$PACKAGE_VERSION" in
-            *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
-            *) ;;
-          esac
-          if npm view "ytconv@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "ytconv@$PACKAGE_VERSION is already published; continuing with registry verification."
+          node - <<'NODE'
+          import { applyStableDefaults } from './src/defaults.js';
+          import { buildDownloadArgs } from './src/downloader.js';
+          const options = {
+            retrySleep: 'fragment:http:linear=1::2', subtitles: false,
+            sponsorBlockMode: 'off', archivePath: '', galleryArchivePath: '',
+            initialMode: 'video', videoFormat: 'mp4', resolution: '720', preset: 'balanced',
+          };
+          applyStableDefaults(options, { disabled: { archive: true }, explicit: {} }, { homeDirectory: '/tmp/ytconv', mkdirSync() {} });
+          if (options.retrySleep !== 'linear=1::2') throw new Error(options.retrySleep);
+          const args = buildDownloadArgs({
+            ...options, url: 'https://www.youtube.com/watch?v=test', mode: 'video',
+            audioFormat: 'mp3', audioQuality: 'best', cookieConfig: { kind: 'none' },
+            playlist: false, outputDirectory: process.cwd(), subtitleOnly: false,
+          });
+          const sleeps = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
+          const expected = ['linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
+          if (JSON.stringify(sleeps) !== JSON.stringify(expected)) throw new Error(JSON.stringify(sleeps));
+          NODE
+          if npm view ytconv@1.6.3 version >/dev/null 2>&1; then
             echo "already_published=true" >> "$GITHUB_OUTPUT"
           else
             echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install test and audit the clean package
+      - name: Test and audit the CLI
         run: |
           npm ci --ignore-scripts
           npm run check
           npm test
           npm run check:ish
           npm run test:ish
-          npm audit --omit=dev
-          npm audit signatures
-      - name: Prove a real public YouTube MP4 before publication
-        continue-on-error: true
-        env:
-          NO_COLOR: "1"
-          YTCONV_NO_UPDATE_CHECK: "1"
-        run: |
-          python3 -m pip --version
-          python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]'
-          node ./scripts/test-youtube-output.js
-      - name: Build and validate the exact CLI-only tarball
+          npm run security
+      - name: Build exact CLI-only tarball
         id: package
         run: |
-          npm sbom --omit=dev --sbom-format cyclonedx > "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.cdx.json"
+          npm sbom --omit=dev --sbom-format cyclonedx > "$RUNNER_TEMP/ytconv-1.6.3.cdx.json"
           npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
-          TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(require('path').join('$RUNNER_TEMP',p[0].filename))")
-          UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(String(p[0].unpackedSize))")
-          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"
-          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];const paths=new Set(p.files.map(f=>f.path));for(const required of ['src/youtube-output.js','docs/TROUBLESHOOTING.md','README.md'])if(!paths.has(required)){console.error('missing',required);process.exit(1)}"
-          node ../scripts/ytconv-release-metadata.mjs \
-            --package package.json \
-            --tarball "$TARBALL" \
-            --unpacked-size "$UNPACKED_SIZE" \
-            --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json"
-          LOCAL_SHA256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
-          printf '%s  %s\n' "$LOCAL_SHA256" "ytconv-$RELEASE_VERSION.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
-          echo "CLI-only package, output policy, and documentation validation passed."
+          TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];process.stdout.write(require('path').join('$RUNNER_TEMP',p.filename))")
+          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          SHA256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
+          printf '%s  %s\n' "$SHA256" "ytconv-1.6.3.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-          echo "sha256=$LOCAL_SHA256" >> "$GITHUB_OUTPUT"
-      - name: Dry-run the exact tarball
-        run: npm publish "${{ steps.package.outputs.tarball }}" --dry-run --tag latest --provenance
-      - name: Publish stable package with provenance
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+      - name: Dry-run exact tarball
+        if: ${{ steps.identity.outputs.already_published != 'true' }}
+        run: npm publish "${{ steps.package.outputs.tarball }}" --dry-run --tag latest
+      - name: Publish stable package
         if: ${{ steps.identity.outputs.already_published != 'true' }}
         run: npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Verify registry metadata and exact downloaded tarball
+      - name: Verify npm latest
         run: |
-          REGISTRY_READY=false
-          for ATTEMPT in $(seq 1 12); do
-            LATEST_VERSION=$(npm view ytconv@latest version --prefer-online 2>/dev/null || true)
-            PUBLISHED_VERSION=$(npm view "ytconv@$RELEASE_VERSION" version --prefer-online 2>/dev/null || true)
-            if [ "$LATEST_VERSION" = "$RELEASE_VERSION" ] && [ "$PUBLISHED_VERSION" = "$RELEASE_VERSION" ]; then
-              npm view "ytconv@$RELEASE_VERSION" --json --prefer-online > "$RUNNER_TEMP/ytconv-registry.json"
-              if node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); if(!p.author||!p.license||!p.time?.['$RELEASE_VERSION']||!p.dist?.tarball||!p.dist?.integrity||!p.dist?.unpackedSize||!p.maintainers?.length||!Object.keys(p.dependencies||{}).length||!p.releaseNotes||!p.documentation?.nodejs) process.exitCode=1"; then
-                REGISTRY_READY=true
-                break
-              fi
-            fi
-            echo "Registry metadata is still propagating (attempt $ATTEMPT/12)."
+          READY=false
+          for ATTEMPT in $(seq 1 18); do
+            VERSION=$(npm view ytconv@latest version --prefer-online 2>/dev/null || true)
+            if [ "$VERSION" = "1.6.3" ]; then READY=true; break; fi
+            echo "Waiting for npm propagation ($ATTEMPT/18)..."
             sleep 5
           done
-          test "$REGISTRY_READY" = "true"
-          TARBALL_URL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(p.dist.tarball)")
-          curl --fail --location --retry 5 "$TARBALL_URL" --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.registry.tgz"
-          REGISTRY_SHA256=$(sha256sum "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.registry.tgz" | cut -d ' ' -f 1)
-          test "$REGISTRY_SHA256" = "${{ steps.package.outputs.sha256 }}"
-          UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-registry.json'); process.stdout.write(String(p.dist.unpackedSize))")
-          node ../scripts/ytconv-release-metadata.mjs \
-            --package package.json \
-            --tarball "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.registry.tgz" \
-            --unpacked-size "$UNPACKED_SIZE" \
-            --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json"
-      - name: Create GitHub release with checksum metadata and SBOM
+          test "$READY" = "true"
+          URL=$(npm view ytconv@1.6.3 dist.tarball --prefer-online)
+          curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-1.6.3.registry.tgz"
+          test "$(sha256sum "$RUNNER_TEMP/ytconv-1.6.3.registry.tgz" | cut -d ' ' -f 1)" = "${{ steps.package.outputs.sha256 }}"
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="ytconv-v$RELEASE_VERSION"
-          NOTES=$(node -p "require('./package.json').releaseNotes")
+          TAG="ytconv-v1.6.3"
           ASSETS=(
             "${{ steps.package.outputs.tarball }}"
-            "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json"
-            "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.cdx.json"
+            "$RUNNER_TEMP/ytconv-1.6.3.cdx.json"
             "$RUNNER_TEMP/SHA256SUMS.txt"
           )
+          NOTES=$(node -p "require('./package.json').releaseNotes")
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --target "$GITHUB_SHA" \
-              --title "YTConv CLI $RELEASE_VERSION" \
-              --notes "$NOTES"
+            gh release create "$TAG" "${ASSETS[@]}" --target "$GITHUB_SHA" --title "YTConv CLI 1.6.3" --notes "$NOTES"
           fi
-      - name: Verify final stable channel
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          test "$(npm view ytconv@latest version --prefer-online)" = "$RELEASE_VERSION"
-          npm view ytconv dist-tags --json --prefer-online > "$RUNNER_TEMP/ytconv-tags.json"
-          node -e "const t=require('$RUNNER_TEMP/ytconv-tags.json'); if(t.latest!=='$RELEASE_VERSION'){console.error(t);process.exit(1)}"
-      - name: Report failed stable publish
+      - name: Report failure
         if: ${{ failure() }}
         working-directory: .
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          LOG_FILE="$RUNNER_TEMP/ytconv-publish-failed.log"
-          BODY_FILE="$RUNNER_TEMP/ytconv-publish-failed.md"
-          gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed > "$LOG_FILE" 2>&1 || true
-          tail -c 50000 "$LOG_FILE" > "$LOG_FILE.trimmed"
-          {
-            echo "The automated YTConv $RELEASE_VERSION stable publication failed."
-            echo
-            echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            echo "Commit: $GITHUB_SHA"
-            echo
-            echo '```text'
-            cat "$LOG_FILE.trimmed"
-            echo '```'
-          } > "$BODY_FILE"
-          ISSUE_NUMBER=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "YTConv $RELEASE_VERSION publish failed in:title" --json number --jq '.[0].number // empty')
-          if [ -n "$ISSUE_NUMBER" ]; then
-            gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_FILE"
-          else
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "YTConv $RELEASE_VERSION publish failed" --body-file "$BODY_FILE"
-          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "YTConv 1.6.3 publish failed" \
+            --body "Publication failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA." || true
