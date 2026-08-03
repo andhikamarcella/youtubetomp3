@@ -1,0 +1,55 @@
+name: Switch YTConv real smoke to verified FFmpeg repair
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/fix-ytconv-1.6.2-verified-ffmpeg-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - name: Let the smoke script repair and verify FFmpeg
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          ci = Path('.github/workflows/ytconv-cli.yml')
+          text = ci.read_text(encoding='utf-8')
+          old = "      - run: ffmpeg -version && ffprobe -version && python3 -m pip --version\n"
+          new = "      - run: python3 -m pip --version\n"
+          if text.count(old) != 1:
+              raise SystemExit('expected one CI media-tool precheck')
+          ci.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          publish = Path('.github/workflows/publish-ytconv-stable.yml')
+          text = publish.read_text(encoding='utf-8')
+          old = "          ffmpeg -version\n          ffprobe -version\n          python3 -m pip --version\n"
+          new = "          python3 -m pip --version\n"
+          if text.count(old) != 1:
+              raise SystemExit('expected one publish media-tool precheck')
+          publish.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Verify the protected smoke still runs
+        run: |
+          grep -q 'node ./scripts/test-youtube-output.js' .github/workflows/ytconv-cli.yml
+          grep -q 'node ./scripts/test-youtube-output.js' .github/workflows/publish-ytconv-stable.yml
+          ! grep -q 'ffprobe -version' .github/workflows/ytconv-cli.yml
+          ! grep -q 'ffprobe -version' .github/workflows/publish-ytconv-stable.yml
+      - name: Commit workflow updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/ytconv-cli.yml .github/workflows/publish-ytconv-stable.yml
+          git commit -m "ci(cli): use verified FFmpeg repair in real smoke"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
