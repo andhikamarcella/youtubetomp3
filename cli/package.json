@@ -24,10 +24,10 @@
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv-auth.js",
     "check": "node ./scripts/check-syntax.js",
-    "check:ish": "python3 -m py_compile ./ish/ytconv.py ./ish/ytconv-core.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
+    "check:ish": "python3 -m py_compile ./ish/ytconv.py ./ish/ytconv-core.py ./scripts/test-ish.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node ./scripts/test-cli.js",
     "test:browser": "node ./scripts/test-managed-browser.js",
-    "test:ish": "python3 ./ish/ytconv.py --version",
+    "test:ish": "python3 ./ish/ytconv.py --version && python3 ./scripts/test-ish.py",
     "security": "npm audit --omit=dev && node --test ./test/security.test.js",
     "prepack": "npm run check && npm test && npm run check:ish"
   },
