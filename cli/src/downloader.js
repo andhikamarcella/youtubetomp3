@@ -53,8 +53,8 @@ function commonExtractorArgs(options = {}) {
     '--ignore-config', '--no-colors', '--no-remote-components', ...javascriptRuntimeArgs(),
     '--socket-timeout', '30', '--retries', retries, '--fragment-retries', fragmentRetries,
     '--file-access-retries', fileAccessRetries, '--extractor-retries', '5',
-    '--retry-sleep', retrySleep, '--retry-sleep', `fragment:${retrySleep.replace(/^[^:]+:/u, '')}`,
-    '--retry-sleep', `file_access:${retrySleep.replace(/^[^:]+:/u, '')}`, '--geo-bypass',
+    '--retry-sleep', retrySleep, '--retry-sleep', `fragment:${retrySleep}`,
+    '--retry-sleep', `file_access:${retrySleep}`, '--geo-bypass',
   ];
   const proxy = optionValue(options, 'proxy', 'YTCONV_PROXY');
   if (proxy) args.push('--proxy', proxy);
@@ -143,7 +143,7 @@ function runBuffered(runnerValue, args, { signal, maxBytes = MAX_METADATA_BYTES 
       stdout += chunk.toString();
       if (Buffer.byteLength(stdout, 'utf8') > maxBytes) {
         child.kill('SIGTERM');
-        finish(() => reject(new Error('The URL metadata is too large to process.')));
+        finish(() => reject(new Error('The URL metadata is too large to process.'));
       }
     });
     child.stderr.on('data', (chunk) => {
