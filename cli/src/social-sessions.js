@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { randomUUID } from 'node:crypto';
 import { detectSocialPlatform, socialPlatformLabel } from './social-platforms.js';
 
 const SCHEMA_VERSION = 1;
@@ -71,15 +72,20 @@ export async function readSocialSessions({ homeDirectory = os.homedir() } = {}) 
 
 export async function writeSocialSessions(value, { homeDirectory = os.homedir() } = {}) {
   const target = socialSessionPaths(homeDirectory);
-  await fs.mkdir(target.directory, { recursive: true });
-  const temporary = `${target.sessions}.${process.pid}.tmp`;
+  await fs.mkdir(target.directory, { recursive: true, mode: 0o700 });
+  if (process.platform !== 'win32') await fs.chmod(target.directory, 0o700).catch(() => {});
+  const temporary = `${target.sessions}.${process.pid}.${randomUUID()}.tmp`;
   const payload = {
     schemaVersion: SCHEMA_VERSION,
     providers: value?.providers && typeof value.providers === 'object' ? value.providers : {},
   };
   await fs.writeFile(temporary, `${JSON.stringify(payload, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-  await fs.rename(temporary, target.sessions);
-  if (process.platform !== 'win32') await fs.chmod(target.sessions, 0o600).catch(() => {});
+  try {
+    await fs.rename(temporary, target.sessions);
+    if (process.platform !== 'win32') await fs.chmod(target.sessions, 0o600).catch(() => {});
+  } finally {
+    await fs.rm(temporary, { force: true }).catch(() => {});
+  }
   return target.sessions;
 }
 

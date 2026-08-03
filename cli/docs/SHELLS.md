@@ -1,4 +1,4 @@
-# YTConv 1.5.9 Shell Guide
+# YTConv 1.6.0 Shell Guide
 
 ## Windows CMD
 
@@ -48,11 +48,7 @@ ytconv.cmd download "URL" `
   --title "Title"
 ```
 
-If `ytconv.ps1` is blocked, continue using `ytconv.cmd`, or deliberately allow signed/local scripts for the current user:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
+If `ytconv.ps1` is blocked, continue using `ytconv.cmd`. YTConv does not require weakening the execution policy.
 
 ## Bash and Zsh
 
@@ -125,11 +121,7 @@ Shared output directory:
 ~/storage/downloads/YTConv
 ```
 
-Termux cannot directly read the private Chrome Android cookie database. Use a legally exported Netscape cookie file:
-
-```bash
-ytconv download "URL" --cookies ~/storage/downloads/cookies.txt
-```
+Termux cannot read private Android browser databases. Use public URLs; process account-required media on a desktop instead of copying a long-lived cookie database into shared storage.
 
 ## iPhone/iPad iSH
 

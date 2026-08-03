@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { cookieArgs } from './cookies.js';
-import { downloadGallery, inspectGallery, isGalleryPreferredUrl } from './gallery-beta.js';
+import { downloadGallery, inspectGallery, isGalleryPreferredUrl } from './gallery-routing.js';
+import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
 
@@ -26,13 +27,22 @@ function optionFlag(options, key, envName, fallback = false) {
   return fallback;
 }
 
+export function javascriptRuntimeArgs({
+  nodeVersion = process.versions.node,
+  nodePath = process.execPath,
+} = {}) {
+  const [major = 0, minor = 0] = String(nodeVersion).replace(/^v/u, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const supported = major > 22 || (major === 22 && minor >= 14);
+  return supported && nodePath ? ['--js-runtimes', `node:${nodePath}`] : [];
+}
+
 function commonExtractorArgs(options = {}) {
   const retries = optionValue(options, 'retries', 'YTCONV_RETRIES', '10');
   const fragmentRetries = optionValue(options, 'fragmentRetries', 'YTCONV_FRAGMENT_RETRIES', '10');
   const fileAccessRetries = optionValue(options, 'fileAccessRetries', 'YTCONV_FILE_ACCESS_RETRIES', '3');
   const retrySleep = optionValue(options, 'retrySleep', 'YTCONV_RETRY_SLEEP', 'linear=1::2');
   const args = [
-    '--ignore-config', '--js-runtimes', 'node', '--remote-components', 'ejs:github',
+    '--ignore-config', '--no-colors', '--no-remote-components', ...javascriptRuntimeArgs(),
     '--socket-timeout', '30', '--retries', retries, '--fragment-retries', fragmentRetries,
     '--file-access-retries', fileAccessRetries, '--extractor-retries', '5',
     '--retry-sleep', retrySleep, '--retry-sleep', `fragment:${retrySleep.replace(/^[^:]+:/u, '')}`,
@@ -110,7 +120,7 @@ function cookieFailureMessage(stderr) {
 function readableError(stderr, fallback) {
   const cookieMessage = cookieFailureMessage(stderr);
   if (cookieMessage) return cookieMessage;
-  const usefulLines = String(stderr || '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean)
+  const usefulLines = sanitizeTerminalText(stderr || '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean)
     .filter((line) => /error|unsupported|login|cookie|private|unavailable|failed|blocked|forbidden|requested format|http error/iu.test(line));
   return usefulLines.at(-1)?.replace(/^ERROR:\s*/u, '') || fallback;
 }
@@ -119,7 +129,11 @@ function runBuffered(runnerValue, args, { signal, maxBytes = MAX_METADATA_BYTES 
   return new Promise((resolve, reject) => {
     let spawned;
     try {
-      spawned = spawnYtDlp(runnerValue, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+      spawned = spawnYtDlp(runnerValue, args, {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: monochromeChildEnvironment(),
+      });
     } catch (error) { reject(error); return; }
     const { child, runner } = spawned;
     let stdout = '';
@@ -323,7 +337,11 @@ export function runYtDlpUtility({ ytDlp, ytDlpPath, url, cookieConfig, playlist,
   return new Promise((resolve, reject) => {
     let spawned;
     try {
-      spawned = spawnYtDlp(ytDlp || ytDlpPath, buildUtilityArgs({ url, cookieConfig, playlist, kind, options }), { windowsHide: true, stdio: 'inherit', env: process.env });
+      spawned = spawnYtDlp(ytDlp || ytDlpPath, buildUtilityArgs({ url, cookieConfig, playlist, kind, options }), {
+        windowsHide: true,
+        stdio: 'inherit',
+        env: monochromeChildEnvironment(),
+      });
     } catch (error) { reject(error); return; }
     spawned.child.once('error', (error) => reject(new Error(`Could not start yt-dlp (${spawned.runner.displayPath}): ${error.message}`)));
     spawned.child.once('close', (code) => code === 0 ? resolve(0) : reject(new Error(`yt-dlp exited with code ${code ?? 'unknown'}.`)));
@@ -335,7 +353,12 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     const args = buildDownloadArgs(options);
     let spawned;
     try {
-      spawned = spawnYtDlp(ytDlp || ytDlpPath, args, { cwd: options.outputDirectory, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
+      spawned = spawnYtDlp(ytDlp || ytDlpPath, args, {
+        cwd: options.outputDirectory,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: monochromeChildEnvironment(),
+      });
     } catch (error) { reject(error); return; }
     const { child, runner } = spawned;
     let bufferedStdout = '';
@@ -349,7 +372,7 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     signal?.addEventListener('abort', abort, { once: true });
 
     const processLine = (line, isError = false) => {
-      const cleanLine = line.trim();
+      const cleanLine = sanitizeTerminalText(line, { allowNewlines: false, maximumLength: 4096 }).trim();
       if (!cleanLine) return;
       if (cleanLine.startsWith('ytconv-progress:')) {
         const [percent = '', speed = '', eta = '', total = ''] = cleanLine.slice('ytconv-progress:'.length).split('|');

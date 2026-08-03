@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.5.9",
+  "version": "1.6.0",
   "description": "CLI-only media downloader with automatic setup and updates, official browser-session login, profiles, batch downloads, and multi-platform support.",
   "type": "module",
   "bin": {
@@ -23,55 +23,111 @@
   "scripts": {
     "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv-auth.js",
-    "check": "node --check ./bin/ytconv-auth.js && node --check ./bin/ytconv.js && node --check ./src/auth.js && node --check ./src/argument-precedence.js && node --check ./src/ui.js && node --check ./src/direct.js && node --check ./src/presets.js && node --check ./src/media-controller.js && node --check ./src/social-platforms.js && node --check ./src/social-sessions.js && node --check ./src/social-auth.js && node --check ./src/managed-browser.js && node --check ./src/system-actions.js && node --check ./src/system-tools.js && node --check ./src/headless.js && node --check ./src/error-help.js && node --check ./src/english-help.js && node --check ./src/commands.js && node --check ./src/user-data.js && node --check ./src/exit-codes.js && node --check ./src/linux-distro.js && node --check ./src/beta-defaults.js && node --check ./src/cli-options.js && node --check ./src/update.js && node --check ./src/version.js && node --check ./src/gallery.js && node --check ./src/gallery-beta.js && node --check ./src/terminal-input.js && node --check ./src/cookies.js && node --check ./src/platform.js && node --check ./src/binaries.js && node --check ./src/dependencies.js && node --check ./src/downloader.js && node --check ./scripts/postinstall.js && node --check ./scripts/test-cli.js && node --check ./scripts/test-managed-browser.js",
-    "check:ish": "python3 -m py_compile ./ish/ytconv.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
+    "check": "node ./scripts/check-syntax.js",
+    "check:ish": "python3 -m py_compile ./ish/ytconv.py ./ish/ytconv-core.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node ./scripts/test-cli.js",
     "test:browser": "node ./scripts/test-managed-browser.js",
-    "test:ish": "python3 ./ish/ytconv.py --version"
+    "test:ish": "python3 ./ish/ytconv.py --version",
+    "security": "npm audit --omit=dev && node --test ./test/security.test.js",
+    "prepack": "npm run check && npm test && npm run check:ish"
   },
   "keywords": [
-    "yt-dlp", "gallery-dl", "ffmpeg", "youtube", "youtube-music", "instagram", "facebook", "tiktok", "pinterest", "twitter", "reddit", "threads", "twitch", "soundcloud", "downloader", "converter", "playlist", "batch", "resume", "retry", "archive", "metadata", "cookies", "sponsorblock", "subtitles", "config", "profiles", "history", "completion", "login", "device-auth", "termux", "ish", "ssh", "powershell", "cmd", "windows", "linux", "ubuntu", "debian", "fedora", "arch", "alpine", "macos", "automation", "json", "tui", "cli", "terminal"
+    "yt-dlp",
+    "gallery-dl",
+    "ffmpeg",
+    "youtube",
+    "youtube-music",
+    "instagram",
+    "facebook",
+    "tiktok",
+    "pinterest",
+    "twitter",
+    "reddit",
+    "threads",
+    "twitch",
+    "soundcloud",
+    "downloader",
+    "converter",
+    "playlist",
+    "batch",
+    "resume",
+    "retry",
+    "archive",
+    "metadata",
+    "cookies",
+    "sponsorblock",
+    "subtitles",
+    "config",
+    "profiles",
+    "history",
+    "completion",
+    "login",
+    "supply-chain-security",
+    "termux",
+    "ish",
+    "ssh",
+    "powershell",
+    "cmd",
+    "windows",
+    "linux",
+    "ubuntu",
+    "debian",
+    "fedora",
+    "arch",
+    "alpine",
+    "macos",
+    "automation",
+    "json",
+    "tui",
+    "cli",
+    "terminal"
   ],
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
+  "organization": {
+    "name": "YTConv Project",
+    "url": "https://github.com/andhikamarcella/youtubetomp3"
+  },
   "maintainers": [
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "MIT",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.9-cli-only-final/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.0-cli-only-final/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.5.9-cli-only-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.0-cli-only-final/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "releaseDate": "2026-08-03",
-  "releaseNotes": "YTConv 1.5.9 fixes Chromium login loops with a private official-login browser profile, a loopback-only provider-cookie bridge, verified retry of the exact media URL, user-only temporary files, and guaranteed cleanup after every attempt.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.9-cli-only-final/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.0 is the stable monochrome release with red-only errors, responsive terminal layouts, verified media-engine downloads, local token-free profiles, complete English documentation, and expanded dependency diagnostics.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.0-cli-only-final/cli/CHANGELOG.md",
   "installer": {
     "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.5.9.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.9/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.5.9/ytconv-1.5.9.metadata.json"
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.0.tgz",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.0/SHA256SUMS.txt",
+    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.0/ytconv-1.6.0.metadata.json"
   },
   "engines": {
-    "node": ">=18",
-    "npm": ">=9"
+    "node": ">=22.14.0",
+    "npm": ">=10"
   },
+  "packageManager": "npm@11.19.0",
+  "preferGlobal": true,
   "dependencies": {
-    "figlet": "^1.8.2",
-    "ffmpeg-static": "5.3.0",
-    "ink": "^5.2.1",
-    "react": "^18.3.1",
-    "which": "^5.0.0",
-    "ws": "^8.18.3"
+    "figlet": "1.11.4",
+    "ink": "7.1.1",
+    "react": "19.2.8",
+    "which": "6.0.0",
+    "ws": "8.21.1"
   },
   "publishConfig": {
     "access": "public",
-    "tag": "latest"
+    "tag": "latest",
+    "provenance": true
   },
   "readmeFilename": "README.md"
 }

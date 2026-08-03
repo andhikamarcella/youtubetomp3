@@ -1,22 +1,21 @@
-# Final release trigger: YTConv 1.5.9
-# Release trigger: YTConv 1.5.9
+# Final stable release: YTConv 1.6.0
 name: Publish YTConv Stable to npm
 
 on:
   push:
     branches:
-      - release/ytconv-1.5.9-cli-only-final
+      - release/ytconv-1.6.0-cli-only-final
     paths:
       - ".github/workflows/publish-ytconv-stable.yml"
       - "cli/**"
-      - "release-metadata/ytconv-1.5.9.json"
+      - "release-metadata/ytconv-1.6.0.json"
       - "scripts/ytconv-release-metadata.mjs"
   workflow_dispatch:
     inputs:
       version:
         description: "Stable version; must match cli/package.json"
         required: true
-        default: "1.5.9"
+        default: "1.6.0"
       confirm:
         description: "Type PUBLISH-STABLE to continue"
         required: true
@@ -25,24 +24,31 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: ytconv-npm-stable
+  cancel-in-progress: false
+
 jobs:
   publish:
     if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-STABLE' }}
     environment: npm
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
-      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.5.9' }}
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.6.0' }}
     defaults:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
-      - name: Pin npm for reproducible release tarball
-        run: npm install -g npm@11.9.0
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Pin npm for the reproducible release tarball
+        run: npm install -g npm@11.19.0
       - name: Verify stable package identity
         id: identity
         run: |
@@ -50,12 +56,13 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
           test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
-          test "$PACKAGE_VERSION" = "1.5.9"
+          test "$PACKAGE_VERSION" = "1.6.0"
           test "$PACKAGE_TAG" = "latest"
           test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
+          test "$(node -p "require('./package.json').organization.name")" = "YTConv Project"
           test "$(node -p "require('./package.json').license")" = "MIT"
-          test "$(node -p "require('./package.json').releaseDate")" = "2026-08-03"
-          node -e "const p=require('./package.json'); if(!p.author||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!p.dependencies?.['ffmpeg-static']||!p.dependencies?.ws||p.optionalDependencies) process.exitCode=1"
+          test "$(node -p "require('./package.json').engines.node")" = ">=22.14.0"
+          node -e "const p=require('./package.json'); if(!p.author||!p.maintainers?.length||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!p.dependencies?.ws||p.dependencies?.['ffmpeg-static']||p.optionalDependencies||p.publishConfig?.provenance!==true) process.exitCode=1"
           case "$PACKAGE_VERSION" in
             *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
             *) ;;
@@ -66,18 +73,21 @@ jobs:
           else
             echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install and test clean package
+      - name: Install, test, and audit the clean package
         run: |
-          npm install
+          npm ci --ignore-scripts
           npm run check
           npm test
           npm run check:ish
           npm run test:ish
-          npm publish --dry-run --tag latest
-      - name: Build and verify exact release artifact
+          npm audit --omit=dev
+          npm audit signatures
+          npm publish --dry-run --tag latest --provenance
+      - name: Build SBOM and exact release artifact
         id: package
         run: |
-          npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
+          npm sbom --omit=dev --sbom-format cyclonedx > "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.cdx.json"
+          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
           TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(require('path').join('$RUNNER_TEMP',p[0].filename))")
           UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(String(p[0].unpackedSize))")
           node ../scripts/ytconv-release-metadata.mjs \
@@ -86,17 +96,15 @@ jobs:
             --unpacked-size "$UNPACKED_SIZE" \
             --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
             --verify "../release-metadata/ytconv-$RELEASE_VERSION.json"
-          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path)||/(?:^|\/)(?:index|server)\.js$/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"
+          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"
           echo "CLI-only package validation passed."
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-          echo "unpacked_size=$UNPACKED_SIZE" >> "$GITHUB_OUTPUT"
       - name: Publish stable package with provenance
         if: ${{ steps.identity.outputs.already_published != 'true' }}
         run: npm publish --tag latest --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Verify registry metadata and tarball
-        id: registry
+      - name: Verify registry metadata and downloaded tarball
         run: |
           REGISTRY_READY=false
           for ATTEMPT in $(seq 1 12); do
@@ -124,24 +132,38 @@ jobs:
             --verify "../release-metadata/ytconv-$RELEASE_VERSION.json"
           SHA256=$(sha256sum "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" | cut -d ' ' -f 1)
           printf '%s  %s\n' "$SHA256" "ytconv-$RELEASE_VERSION.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
-          npm view ytconv dist-tags --json
-      - name: Create GitHub release with installer metadata
+      - name: Create GitHub release with checksum, metadata, and SBOM
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="ytconv-v$RELEASE_VERSION"
           NOTES=$(node -p "require('./package.json').releaseNotes")
+          ASSETS=(
+            "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz"
+            "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json"
+            "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.cdx.json"
+            "$RUNNER_TEMP/SHA256SUMS.txt"
+          )
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" \
-              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" \
-              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
-              "$RUNNER_TEMP/SHA256SUMS.txt" --clobber
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" \
-              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.tgz" \
-              "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json" \
-              "$RUNNER_TEMP/SHA256SUMS.txt" \
+            gh release create "$TAG" "${ASSETS[@]}" \
               --target "$GITHUB_SHA" \
               --title "YTConv CLI $RELEASE_VERSION" \
               --notes "$NOTES"
           fi
+      - name: Retire the beta channel after stable verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test "$(npm view ytconv@latest version --prefer-online)" = "$RELEASE_VERSION"
+          if npm dist-tag ls ytconv | grep -q '^beta:'; then
+            npm dist-tag rm ytconv beta
+          fi
+          gh release delete ytconv-v1.6.0-beta.1 --cleanup-tag --yes 2>/dev/null || true
+          if git ls-remote --exit-code --heads origin refs/heads/release/ytconv-1.6.0-beta >/dev/null 2>&1; then
+            git push origin --delete release/ytconv-1.6.0-beta
+          fi
+          npm view ytconv dist-tags --json --prefer-online > "$RUNNER_TEMP/ytconv-tags.json"
+          node -e "const t=require('$RUNNER_TEMP/ytconv-tags.json'); if(t.latest!=='$RELEASE_VERSION'||Object.hasOwn(t,'beta')){console.error(t);process.exit(1)}"

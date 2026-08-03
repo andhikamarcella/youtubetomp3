@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGalleryDownloadArgs } from '../src/gallery-beta.js';
+import { buildGalleryDownloadArgs } from '../src/gallery-routing.js';
 
-test('gallery beta uses canonical print option and separate archive', () => {
+test('gallery routing uses canonical print option and separate archive', () => {
   const args = buildGalleryDownloadArgs({
     url: 'https://example.com/post',
     cookieConfig: { kind: 'none' },
@@ -16,7 +16,7 @@ test('gallery beta uses canonical print option and separate archive', () => {
   assert.equal(args.at(-1), 'https://example.com/post');
 });
 
-test('gallery beta omits archive when disabled', () => {
+test('gallery routing omits archive when disabled', () => {
   const args = buildGalleryDownloadArgs({
     url: 'https://example.com/post',
     cookieConfig: { kind: 'none' },

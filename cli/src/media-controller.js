@@ -12,6 +12,7 @@ import {
   validatePlatformHint,
 } from './social-platforms.js';
 import { socialLoginHint } from './social-sessions.js';
+import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 
 const STATIC_IMAGE_EXTENSIONS = new Set([
   '.avif',
@@ -187,7 +188,7 @@ function runFfmpeg(ffmpegPath, args) {
     const child = spawn(ffmpegPath, args, {
       windowsHide: true,
       stdio: ['ignore', 'ignore', 'pipe'],
-      env: process.env,
+      env: monochromeChildEnvironment(process.env),
     });
     let stderr = '';
     child.stderr.on('data', (chunk) => {
@@ -196,7 +197,7 @@ function runFfmpeg(ffmpegPath, args) {
     child.once('error', reject);
     child.once('close', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(stderr.trim().split(/\r?\n/u).at(-1) || `FFmpeg exit ${code}`));
+      else reject(new Error(sanitizeTerminalText(stderr).trim().split(/\r?\n/u).at(-1) || `FFmpeg exit ${code}`));
     });
   });
 }

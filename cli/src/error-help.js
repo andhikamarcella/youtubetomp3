@@ -1,4 +1,3 @@
-import { CLI_VERSION } from './version.js';
 import { socialLoginHint } from './social-sessions.js';
 
 function text(error) {
@@ -6,7 +5,7 @@ function text(error) {
 }
 
 function updateChannel() {
-  return CLI_VERSION.includes('-') ? 'beta' : 'latest';
+  return 'latest';
 }
 
 export function explainError(error, { platform = process.platform, url = error?.ytconvUrl || '' } = {}) {
@@ -20,7 +19,7 @@ export function explainError(error, { platform = process.platform, url = error?.
   } else if (/execution policy|running scripts is disabled|cannot be loaded because running scripts/u.test(value)) {
     lines.push('PowerShell blocked the npm .ps1 shim.');
     lines.push('Use: ytconv.cmd');
-    lines.push('Optional current-user fix: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned');
+    lines.push('The .cmd shim works without weakening the execution policy.');
   } else if (/not recognized|is not recognized|enoent|not found/u.test(value)) {
     lines.push('Cause: a command or dependency is not available through PATH.');
     lines.push(platform === 'win32'

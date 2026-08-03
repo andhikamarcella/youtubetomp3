@@ -1,263 +1,158 @@
-# YTConv 1.5.0-beta.2 Release Checklist
+# YTConv 1.6.0 Stable Release Checklist
 
-## 1. Synchronize the beta branch
+## 1. Confirm scope and base
 
-```bash
-git switch release/ytconv-1.5.0-beta.2
-git pull --ff-only origin release/ytconv-1.5.0-beta.2
-cd cli
+- Base is the published 1.5.9 stable CLI release.
+- Version is exactly `1.6.0` with no prerelease suffix.
+- Only `cli/`, stable CLI workflows, and release metadata are changed.
+- No website, API server, Express route, credentials, cookies, browser profiles, or generated engines are included.
+
+## 2. Review identity and metadata
+
+```sh
+node -e "const p=require('./package.json'); console.log(p.version,p.publisher,p.publishConfig,p.repository)"
+```
+
+Required:
+
+- version `1.6.0`;
+- tag `latest`;
+- provenance enabled;
+- repository `andhikamarcella/youtubetomp3`, directory `cli`;
+- personal publisher/maintainer accurately named;
+- Node.js `>=22.14.0` or compatible manifest range plus explicit self-test baseline;
+- no active prerelease channel documentation.
+
+## 3. Review the diff
+
+```sh
 git status --short
+git diff --check
+git diff --stat
+git diff -- cli .github/workflows release-metadata ytconv-release-metadata.json
 ```
 
-The working tree must be clean.
+Search for accidental credentials, web/server files, stale versions, non-English runtime text, unsafe shell execution, remote extractor components, and non-red UI colors.
 
-## 2. Verify beta identity
+## 4. Install deterministically
 
-```bash
-node -p "require('./package.json').version"
-node -p "require('./package.json').publishConfig.tag"
-node ./bin/ytconv.js --version
-python3 ./ish/ytconv.py --version
-cat ish/VERSION
+```sh
+npm ci --ignore-scripts
+npm ls --all
+npm audit --omit=dev
+npm audit signatures
 ```
 
-Expected:
+All production versions must be exact and the lockfile must match.
 
-```text
-1.5.0-beta.2
-beta
-1.5.0-beta.2
-1.5.0-beta.2
-1.5.0-beta.2
-```
+## 5. Run static and unit tests
 
-## 3. Install and test
-
-```bash
-npm install
+```sh
 npm run check
 npm test
 npm run check:ish
-npm run test:ish
+npm run security
 ```
 
-## 4. Test beta defaults and opt-out flags
+Required coverage includes:
 
-```bash
-node ./bin/ytconv.js --help
-node ./bin/ytconv.js --self-test
+- parser and explicit precedence;
+- stable defaults and opt-outs;
+- yt-dlp/gallery routing;
+- social login validation and cleanup;
+- managed Chromium loopback bridge;
+- token-free profile migration;
+- terminal control sanitization;
+- red-only styling;
+- responsive layouts at 20, 40, 56, 80, and 120 columns;
+- stable-only updater;
+- engine asset mapping, URL restriction, size, and SHA-256 verification;
+- package metadata and English documentation.
+
+## 6. Cross-platform CI
+
+Required jobs:
+
+- Windows CMD, PowerShell, and real managed-browser bridge;
+- macOS;
+- Node.js 22 and 24;
+- Ubuntu/Debian;
+- Fedora/RHEL family;
+- Arch family;
+- openSUSE;
+- Alpine/musl;
+- Void;
+- Gentoo;
+- NixOS;
+- iSH Python compilation and smoke test;
+- Termux static/simulated compatibility checks.
+
+Each job has a timeout and least-privilege token. A platform limitation must be documented rather than hidden by a false success.
+
+## 7. Real engine proof
+
+Using an empty `YTCONV_ENGINE_DIR`:
+
+1. download the current yt-dlp release asset;
+2. require GitHub SHA-256 and exact size;
+3. execute `--version`;
+4. repeat for gallery-dl;
+5. remove fallback FFmpeg, download and gunzip it, verify digest, execute `-version`;
+6. confirm temporary `.download` files are absent;
+7. confirm Unix files are not group/world writable.
+
+Do not mutate the user’s normal engine directory during CI.
+
+## 8. Package proof
+
+```sh
+npm pack --dry-run
+npm publish --dry-run --access public --provenance
+npm pack --json
 ```
 
-Help and self-test must confirm:
+Inspect every packaged file. Record the exact tarball SHA-256. Generate CycloneDX SBOM and metadata. Install the tarball into an empty prefix with postinstall enabled; verify version, self-test, and doctor.
 
-```text
-Subtitles        ON
-SponsorBlock     ON in mark mode
-Download archive ON per output profile
+## 9. Pull request and locked merge
+
+- Push one intentional release branch.
+- Open a draft PR against the last stable release branch.
+- Wait for every required job.
+- Fix failures based on complete logs and rerun all affected jobs.
+- Mark ready only when the tested head SHA is unchanged.
+- Merge with the head SHA locked to prevent a race.
+
+## 10. Publish final branch
+
+- Create `release/ytconv-1.6.0-cli-only-final` from the merged commit.
+- Trigger only CLI CI and stable npm publish workflows.
+- Do not claim release completion while the registry still reports an older `latest`.
+
+## 11. Verify public state
+
+```sh
+npm view ytconv@latest version --prefer-online
+npm view ytconv dist-tags --json --prefer-online
+npm view ytconv@1.6.0 dist.integrity dist.shasum --json --prefer-online
 ```
 
-Verify opt-out parsing:
+Required:
 
-```bash
-node ./bin/ytconv.js --no-subtitles --no-sponsorblock --no-archive --help
-```
+- `latest = 1.6.0`;
+- no active prerelease dist-tag;
+- public integrity/hash match the tested tarball;
+- GitHub tag and Release exist;
+- Release is not marked prerelease;
+- artifacts and SBOM are downloadable.
 
-## 5. Test persistent configuration
+## 12. Download-back test
 
-Use a temporary home directory so release tests never touch real user data:
+Download the public npm tarball into a new directory. Verify SHA-256, file count, package allowlist, CLI-only scope, `1.6.0`, clean install, self-test, and doctor. This is the final release gate.
 
-```bash
-TEST_HOME=$(mktemp -d)
-HOME="$TEST_HOME" node ./bin/ytconv.js config set output "$TEST_HOME/output"
-HOME="$TEST_HOME" node ./bin/ytconv.js config set audioQuality 192
-HOME="$TEST_HOME" node ./bin/ytconv.js config list
-HOME="$TEST_HOME" node ./bin/ytconv.js config path
-HOME="$TEST_HOME" node ./bin/ytconv.js config reset
-rm -rf "$TEST_HOME"
-```
+## 13. Post-release instructions
 
-## 6. Test profiles and explicit precedence
+Publish upgrade commands for CMD, PowerShell, Linux/macOS, Termux, and iSH. State account-session limitations on Android/iOS and avoid zero-bug or universal-site guarantees.
 
-```bash
-TEST_HOME=$(mktemp -d)
-HOME="$TEST_HOME" node ./bin/ytconv.js profile set phone preset=mobile resolution=720
-HOME="$TEST_HOME" node ./bin/ytconv.js profile use phone
-HOME="$TEST_HOME" node ./bin/ytconv.js profile list
-HOME="$TEST_HOME" node ./bin/ytconv.js --profile phone --resolution 1080 --help
-HOME="$TEST_HOME" node ./bin/ytconv.js --no-config --help
-rm -rf "$TEST_HOME"
-```
+## 14. Rollback
 
-Unit tests must verify that explicit options remove conflicting saved settings while preserving unrelated saved values such as the output directory.
-
-## 7. Test history and completion
-
-```bash
-TEST_HOME=$(mktemp -d)
-HOME="$TEST_HOME" node ./bin/ytconv.js history
-HOME="$TEST_HOME" node ./bin/ytconv.js history --json
-HOME="$TEST_HOME" node ./bin/ytconv.js history clear
-node ./bin/ytconv.js completion bash
-node ./bin/ytconv.js completion zsh
-node ./bin/ytconv.js completion fish
-node ./bin/ytconv.js completion powershell
-rm -rf "$TEST_HOME"
-```
-
-History must exclude cookies, tokens, proxy credentials, and browser sessions and remain capped at 500 entries.
-
-## 8. Test media inspection without downloading
-
-Use a legal public test URL:
-
-```bash
-node ./bin/ytconv.js info "TEST_URL" --json
-node ./bin/ytconv.js formats "TEST_URL" --json
-node ./bin/ytconv.js subtitles "TEST_URL"
-```
-
-JSON stdout must remain valid and must not contain update notices.
-
-## 9. Test real media operations
-
-Use media that you own or are allowed to download:
-
-```bash
-node ./bin/ytconv.js download "VIDEO_URL" --preset mobile
-node ./bin/ytconv.js download "MUSIC_URL" --preset music
-node ./bin/ytconv.js playlist "PLAYLIST_URL" --playlist-items "1-2"
-node ./bin/ytconv.js batch links.txt --jobs 2 --continue-on-error --result-json report.json
-node ./bin/ytconv.js download "VIDEO_URL" --sponsorblock remove
-```
-
-Verify subtitles, safe SponsorBlock marking, explicit removal, separate archives, resume, metadata, cover art, square YouTube Music artwork, batch reporting, and exit codes.
-
-## 10. Required CI coverage
-
-The workflow must pass for:
-
-- Node.js 18, 20, and 22
-- Windows CMD and PowerShell
-- Ubuntu/Linux full installation
-- macOS
-- Alpine/musl with system FFmpeg
-- SSH/headless
-- Termux package simulation
-- native iSH frontend
-- installer plans for Debian/Ubuntu, Fedora, Arch/CachyOS family, openSUSE, Alpine, Void, Gentoo, and NixOS
-- persistent config/profile/history/completion tests
-- beta defaults and opt-out tests
-- npm package preview and English documentation audit
-
-## 11. Preview npm contents
-
-```bash
-npm publish --dry-run --tag beta
-npm pack --json > package-preview.json
-```
-
-Confirm:
-
-```text
-name: ytconv
-version: 1.5.0-beta.2
-```
-
-The package must include `bin`, `src`, `scripts`, `ish`, `docs`, README, changelog, and license. It must not include real config files, history, cookies, `.env`, personal logs, downloads, tokens, or secrets.
-
-## 12. Confirm the version is unused
-
-```bash
-npm view ytconv versions --json
-npm view ytconv dist-tags --json
-```
-
-`1.5.0-beta.2` must not already exist. npm does not allow overwriting a published version.
-
-## 13. Verify npm ownership
-
-```bash
-npm whoami
-npm owner ls ytconv
-```
-
-## 14. Publish beta
-
-Capture the stable tag first:
-
-```bash
-LATEST_BEFORE=$(npm view ytconv@latest version --prefer-online)
-```
-
-Publish:
-
-```bash
-npm publish --tag beta --access public
-```
-
-With OTP:
-
-```bash
-npm publish --tag beta --access public --otp=123456
-```
-
-## 15. Verify registry tags
-
-```bash
-npm view ytconv@beta version --prefer-online
-npm view ytconv@1.5.0-beta.2 dist.integrity
-npm view ytconv dist-tags --json
-test "$(npm view ytconv@latest version --prefer-online)" = "$LATEST_BEFORE"
-```
-
-The `beta` tag must point to `1.5.0-beta.2`. The `latest` tag must remain unchanged.
-
-## 16. Test a clean public beta installation
-
-Windows:
-
-```cmd
-npm.cmd uninstall -g ytconv
-npm.cmd cache verify
-npm.cmd install -g ytconv@beta --force
-ytconv.cmd --version
-ytconv.cmd --self-test
-ytconv.cmd doctor
-ytconv.cmd quickstart
-```
-
-Linux/macOS:
-
-```bash
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@beta --force
-ytconv --version
-ytconv --self-test
-ytconv doctor
-ytconv quickstart
-```
-
-Termux:
-
-```bash
-npm install -g ytconv@beta --omit=optional --force
-ytconv --self-test
-ytconv doctor
-```
-
-## 17. Return to stable during rollback testing
-
-```bash
-npm uninstall -g ytconv
-npm cache verify
-npm install -g ytconv@latest --force
-ytconv --version
-```
-
-## 18. After publishing
-
-- Never republish or overwrite `1.5.0-beta.2`.
-- The next beta fix must use a new prerelease number.
-- Do not merge a release PR until the public package has been tested and the user explicitly requests the merge.
-- Do not claim that every site, URL, device, architecture, or distribution is guaranteed forever.
+If a serious defect is discovered, preserve the release audit trail, move `latest` back only when necessary, and publish a corrected patch version. Do not overwrite 1.6.0 or silently replace its artifact.

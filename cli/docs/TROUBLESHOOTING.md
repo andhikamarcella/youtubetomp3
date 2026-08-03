@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.5.9
+# Troubleshooting YTConv 1.6.0
 
 Start with this safe sequence:
 
@@ -26,16 +26,16 @@ git status --short
 For the stable release, expected values are:
 
 ```text
-1.5.9
+1.6.0
 latest
-release/ytconv-1.5.9-cli-only-final
+release/ytconv-1.6.0-cli-only-final
 ```
 
 npm never allows a published version number to be overwritten.
 
 ## The screen stops at `setup incomplete`
 
-YTConv 1.5.9 automatically repairs yt-dlp, gallery-dl, and the bundled FFmpeg executable. Run:
+YTConv 1.6.0 automatically repairs yt-dlp, gallery-dl, and the bundled FFmpeg executable. Run:
 
 ```powershell
 ytconv.cmd repair
@@ -131,13 +131,13 @@ npm install -g ytconv@latest --force
 
 ## Node.js is too old
 
-YTConv requires Node.js 18 or newer:
+YTConv requires Node.js 22.14 or newer:
 
 ```bash
 node --version
 ```
 
-Install Node.js 18, 20, or 22, reopen the terminal, and reinstall YTConv.
+Install Node.js 22.14, 24, or 26, reopen the terminal, and reinstall YTConv.
 
 ## FFmpeg or ffprobe is missing
 
@@ -191,7 +191,7 @@ ytconv download "URL"
 
 Finish sign-in in the private YTConv browser window, return to the terminal, and press Enter. YTConv copies only the provider's cookies to a user-only temporary file for that attempt and deletes it afterward. If the private Chromium window cannot start, press `B` or use `ytconv login instagram --browser firefox`.
 
-`cookies.txt` and direct `--cookies-from-browser` are legacy compatibility fallbacks, not the recommended YTConv 1.5.9 flow. Termux and iSH cannot directly access private Android/iOS browser databases.
+`cookies.txt` and direct `--cookies-from-browser` are legacy compatibility fallbacks, not the recommended YTConv 1.6.0 flow. Termux and iSH cannot directly access private Android/iOS browser databases.
 
 ## HTTP 429 / Too Many Requests
 

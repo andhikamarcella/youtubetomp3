@@ -2,10 +2,11 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
 import which from 'which';
+import { privateChildEnvironment } from './terminal-style.js';
 
 const MANAGED_BROWSERS = new Set([
   'chrome',
@@ -203,10 +204,14 @@ export function managedBrowserLaunchArgs({
     `--user-data-dir=${userDataDirectory}`,
     '--profile-directory=Default',
     '--remote-debugging-port=0',
+    '--remote-debugging-address=127.0.0.1',
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-background-mode',
     '--disable-component-update',
+    '--disable-extensions',
+    '--disable-sync',
+    '--no-service-autorun',
   ];
   if (headless) args.push('--headless=new', '--disable-gpu');
   args.push(url || 'about:blank');
@@ -219,7 +224,15 @@ function delay(milliseconds) {
 
 export function cdpCommand(webSocketDebuggerUrl, method, params = {}, { timeoutMs = 10_000 } = {}) {
   return new Promise((resolve, reject) => {
-    const id = Math.floor(Math.random() * 1_000_000_000) + 1;
+    let endpoint;
+    try { endpoint = new URL(webSocketDebuggerUrl); } catch { endpoint = null; }
+    if (!endpoint
+      || endpoint.protocol !== 'ws:'
+      || !['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname)) {
+      reject(new Error('Refusing a browser bridge that is not bound to the local device.'));
+      return;
+    }
+    const id = randomInt(1, 1_000_000_000);
     const socket = new WebSocket(webSocketDebuggerUrl, { perMessageDeflate: false });
     let settled = false;
     const timer = setTimeout(() => {
@@ -309,7 +322,7 @@ export async function launchManagedBrowserSession({
       detached: !headless,
       stdio: 'ignore',
       windowsHide: false,
-      env,
+      env: privateChildEnvironment(env),
     });
   } catch (error) {
     throw new Error(`The secure browser window could not start: ${error instanceof Error ? error.message : String(error)}`);

@@ -44,7 +44,7 @@ export function installPlanFor(manager) {
     nix: 'nix profile install nixpkgs#nodejs_22 nixpkgs#python3 nixpkgs#ffmpeg',
     brew: 'brew install node python ffmpeg',
   };
-  return plans[manager] || 'Install Node.js 18+, npm, Python 3, and FFmpeg through the distribution package manager.';
+  return plans[manager] || 'Install Node.js 22.14+, npm, Python 3, and FFmpeg through the distribution package manager.';
 }
 
 export async function detectLinuxDistro({ file = '/etc/os-release', available = [] } = {}) {

@@ -5,6 +5,7 @@ import {
   buildDownloadArgs,
   buildUtilityArgs,
   formatVideoSelector,
+  javascriptRuntimeArgs,
 } from '../src/downloader.js';
 import {
   createTerminalInputDecoder,
@@ -73,13 +74,22 @@ test('video selectors prioritize compatible streams and retain fallbacks', () =>
   assert.match(formatVideoSelector('720', 'webm'), /bv\*\[height<=720\]\+ba/u);
 });
 
+test('local JavaScript runtime requires the supported Node baseline', () => {
+  assert.deepEqual(javascriptRuntimeArgs({ nodeVersion: '22.13.1', nodePath: '/node' }), []);
+  assert.deepEqual(javascriptRuntimeArgs({ nodeVersion: '22.14.0', nodePath: '/node' }), ['--js-runtimes', 'node:/node']);
+  assert.deepEqual(javascriptRuntimeArgs({ nodeVersion: '24.0.0', nodePath: '/node' }), ['--js-runtimes', 'node:/node']);
+});
+
 test('default download arguments include resilient extraction and safe files', () => {
   const args = withEnvironment({}, () => buildDownloadArgs(baseOptions({
     cookieConfig: { kind: 'file', path: '/tmp/cookies.txt' },
     ffmpegPath: '/tmp/ffmpeg',
   })));
   assert.ok(args.includes('--js-runtimes'));
-  assert.ok(args.includes('--remote-components'));
+  assert.ok(args.includes('--no-remote-components'));
+  assert.ok(args.includes('--ignore-config'));
+  assert.ok(args.includes('--no-colors'));
+  assert.equal(args.includes('--remote-components'), false);
   assert.ok(args.includes('--check-formats'));
   assert.ok(args.includes('--no-overwrites'));
   assert.equal(args[args.indexOf('--concurrent-fragments') + 1], '4');
