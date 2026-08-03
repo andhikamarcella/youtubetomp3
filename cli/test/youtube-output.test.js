@@ -185,8 +185,9 @@ test('an existing path printed by yt-dlp is verified instead of treated as empty
     ytDlp: runner,
     options: baseOptions({ outputDirectory: directory }),
   });
-  assert.equal(result.outputPath, existing);
-  assert.deepEqual(result.outputPaths, [existing]);
+  const canonicalExisting = await fs.realpath(existing);
+  assert.equal(result.outputPath, canonicalExisting);
+  assert.deepEqual(result.outputPaths, [canonicalExisting]);
   assert.equal(result.fileCount, 1);
 });
 
