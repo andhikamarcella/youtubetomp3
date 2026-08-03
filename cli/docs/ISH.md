@@ -1,32 +1,61 @@
-# YTConv 1.6.0 on iPhone and iPad with iSH
+# YTConv 1.6.1 on iPhone and iPad with iSH
 
-## What iSH is
+## Important Node.js exception
 
-iSH runs an emulated Alpine Linux userland inside an iOS application. It is not a native iOS terminal with access to Safari data. Performance, memory, background execution, and filesystem integration are more limited than desktop or Termux.
+Node.js is required before YTConv on npm platforms, but **it is intentionally not required for iSH**. iSH runs an emulated Alpine Linux environment with tighter compatibility, memory, and background limits. The supported YTConv iSH edition therefore uses Python, yt-dlp, gallery-dl, and FFmpeg instead of the Node.js/Ink terminal interface.
 
-YTConv’s iSH path uses Python, yt-dlp, gallery-dl, and FFmpeg without the Node/Ink TUI.
+Do not force a desktop Node.js tutorial into iSH.
 
-## Install packages
+## What iSH can and cannot do
+
+- Public media URLs are supported when the upstream extractor supports them.
+- iSH cannot read Safari, Chrome, or another iOS application's private browser database.
+- Signing into a website in Safari does not sign iSH into that website.
+- Large playlists, high-resolution merges, and background conversions may exceed iOS or iSH limits.
+
+## Step 1: install packages
 
 Inside iSH:
 
 ```sh
 apk update
+apk upgrade
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
 update-ca-certificates
 python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
 ```
 
-Install the stable YTConv wrapper using the repository’s `install-ish.sh` instructions from the GitHub Release. The installer downloads `ish/ytconv.py` and `ish/ytconv-core.py`, validates Python syntax, installs them under `/usr/local/lib/ytconv-ish`, and creates `/usr/local/bin/ytconv`.
+## Step 2: install YTConv
 
-Verify:
+Download the reviewed 1.6.1 installer from the final release branch:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+sh /tmp/ytconv-ish.sh
+```
+
+The installer:
+
+- confirms that it is running as root inside iSH/Alpine;
+- installs Python, FFmpeg, certificates, yt-dlp, and gallery-dl;
+- downloads `ish/ytconv.py` and `ish/ytconv-core.py` from the same reviewed 1.6.1 branch;
+- validates Python syntax;
+- installs files under `/usr/local/lib/ytconv-ish`;
+- creates `/usr/local/bin/ytconv`;
+- verifies the installed version.
+
+## Step 3: verify
 
 ```sh
 ytconv --version
 ytconv --diagnose
 ```
 
-Expected version: `1.6.0`.
+Expected version:
+
+```text
+1.6.1
+```
 
 ## Use
 
@@ -39,39 +68,42 @@ ytconv info "URL"
 ytconv formats "URL"
 ```
 
-Output defaults to:
+Default output:
 
 ```text
 ~/Downloads/YTConv
 ```
 
-## Stable defaults
+The folder can be accessed through Files → iSH.
 
-The iSH core uses the same intent as the npm CLI:
+## Stable behavior
 
-- public access;
-- external extractor configuration ignored;
+The iSH core uses:
+
+- public access first;
+- ignored external extractor configuration;
 - no remote JavaScript components;
-- monochrome engine output;
-- subtitles and safe archive behavior where supported;
-- bounded retries and safe filenames.
+- monochrome output;
+- bounded retries;
+- safe filenames;
+- subtitle and archive behavior where the native frontend supports it.
 
-Use `--help` for the exact Python launcher flags.
+Use `ytconv --help` for the exact iSH options.
 
 ## Safari login limitation
 
-iOS sandboxes Safari, Chrome, and other apps from iSH. The terminal cannot read their cookies or start the desktop managed-browser bridge. Signing into Instagram in Safari does not make that session visible in iSH. Public URLs are supported; use a desktop for account-required media.
+iOS sandboxing prevents iSH from reading browser cookies or starting the desktop managed-browser bridge. Use a supported desktop system for media that requires an authenticated browser session.
 
-Do not export or paste a long-lived browser cookie database into iSH as a workaround.
+Do not export a long-lived browser cookie database into iSH as a workaround.
 
 ## Performance
 
 - Prefer audio or 360p/720p on older devices.
 - Process one URL at a time.
 - Keep iSH in the foreground.
-- Ensure enough free iOS and iSH filesystem storage for both source and conversion files.
+- Keep enough free storage for both source and converted files.
 - Avoid large playlists and 4K merges.
-- A `.part` file after interruption can normally resume on the next attempt.
+- Resume an interrupted `.part` download by running the same command again when the upstream engine supports resume.
 
 ## Update
 
@@ -79,19 +111,24 @@ Do not export or paste a long-lived browser cookie database into iSH as a workar
 apk update
 apk upgrade
 python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+sh /tmp/ytconv-ish.sh
+ytconv --version
 ```
-
-Then rerun the stable iSH installer and verify `ytconv --version`.
 
 ## Troubleshooting
 
+### `404 - page not found`
+
+Use the absolute 1.6.1 documentation and installer links in this guide. Do not reuse a commit-specific link from an older npm README.
+
 ### `No space left on device`
 
-Remove unwanted files from the iSH filesystem, lower media quality, and avoid conversion formats that need both input and output copies.
+Remove unwanted iSH files, lower media quality, and avoid formats that require simultaneous input and output copies.
 
 ### `Killed`
 
-iOS likely reclaimed memory or background time. Keep iSH foreground, use a smaller item, and avoid parallel work.
+iOS likely reclaimed memory or background time. Keep iSH in the foreground and use a smaller item.
 
 ### Certificate errors
 
@@ -107,4 +144,8 @@ python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default
 ytconv --diagnose
 ```
 
-Site changes can occur after a YTConv release; updating Python engines is often the correct first step.
+## More documentation
+
+- [Node.js platform guide and iSH exception](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md#iphone-and-ipad-with-ish)
+- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TROUBLESHOOTING.md)
