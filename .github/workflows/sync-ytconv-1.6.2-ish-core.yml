@@ -1,0 +1,44 @@
+name: Sync YTConv 1.6.2 iSH core
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/sync-ytconv-1.6.2-ish-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - name: Update the maintained Python core identity
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          target = Path('cli/ish/ytconv-core.py')
+          text = target.read_text(encoding='utf-8')
+          text = text.replace('release/ytconv-1.6.0-cli-only-final', 'release/ytconv-1.6.2-cli-only-final')
+          text = text.replace('YTConv 1.6.0', 'YTConv 1.6.2')
+          text = text.replace('VERSION = "1.6.0"', 'VERSION = "1.6.2"')
+          target.write_text(text, encoding='utf-8')
+          PY
+      - name: Compile and commit the synchronized core
+        run: |
+          python3 -m py_compile cli/ish/ytconv.py cli/ish/ytconv-core.py
+          if git diff --quiet -- cli/ish/ytconv-core.py; then
+            echo "iSH core is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/ish/ytconv-core.py
+          git commit -m "release(ish): sync 1.6.2 core identity"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
