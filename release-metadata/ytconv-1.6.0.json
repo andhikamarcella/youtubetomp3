@@ -9,10 +9,10 @@
   "installer": {
     "type": "Tarball",
     "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.0.tgz",
-    "sha256": "297d564efe77ae41963b82cdca035b2b807c5c6a8d337f2edc69c0361ea01fe7",
-    "sha512Integrity": "sha512-DktmRoyCF/2xOqEydlDAjqpHS3mnV8O6/A8L7Pdb3kMMQFzbwe8/fiOFnjSHpsUSCD3pue3gqcf9KBodwtMvvw==",
-    "packedSize": 122701,
-    "unpackedSize": 452841
+    "sha256": "33c67c8e3c4f9f8a10bad9f7e22db280535f99fa14d34969a6aedc8a02dc6db5",
+    "sha512Integrity": "sha512-FgNiJFbne7hY3BNCLyx1eyZ0dq0iUfTM/PfoFT1txdft46wNhxH0gZ9rm3JJ9AY6g4Di5/CtK+T4oKJO+anqBg==",
+    "packedSize": 123047,
+    "unpackedSize": 454546
   },
   "dependencies": {
     "figlet": "1.11.4",
@@ -25,4 +25,3 @@
   "releaseNotes": "YTConv 1.6.0 is the stable monochrome release with red-only errors, responsive terminal layouts, verified media-engine downloads, local token-free profiles, complete English documentation, and expanded dependency diagnostics.",
   "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.0-cli-only-final/cli/CHANGELOG.md"
 }
-
