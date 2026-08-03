@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
 TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
 TMP_CORE="/tmp/ytconv-ish-core.py.$$"
-VERSION="1.6.1"
+VERSION="1.6.2"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
@@ -59,6 +59,8 @@ say "YTConv iSH $VERSION was installed successfully."
 "$BIN_FILE" --version
 "$BIN_FILE" --diagnose || true
 say ""
+say "AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
+say "Explicit --audio, --video, and --video-format choices remain authoritative."
 say "Public links are ready. Safari sessions remain sandboxed from iSH."
 say "Download: ytconv URL"
 say "Playlist: ytconv playlist URL"
