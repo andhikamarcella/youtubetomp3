@@ -53,6 +53,7 @@ jobs:
       - name: Verify stable package identity
         id: identity
         run: |
+          npm ci --ignore-scripts
           test ! -f ../.github/workflows/ytconv-auth.yml
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
