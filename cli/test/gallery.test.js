@@ -8,13 +8,13 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv stable is version 1.6.0 on the latest tag with provenance', () => {
-  assert.equal(manifest.version, '1.6.0');
+test('YTConv stable is version 1.6.1 on the latest tag with provenance', () => {
+  assert.equal(manifest.version, '1.6.1');
   assert.equal(manifest.publishConfig.tag, 'latest');
   assert.equal(manifest.publishConfig.provenance, true);
 });
 
-test('stable package includes social login, installers, and the iSH runtime', () => {
+test('stable package includes social login installers iSH and beginner documentation', () => {
   const required = [
     'bin/ytconv-auth.js', 'src/auth.js', 'src/social-auth.js', 'src/social-sessions.js',
     'src/defaults.js', 'src/gallery-routing.js', 'src/user-data.js',
@@ -22,8 +22,9 @@ test('stable package includes social login, installers, and the iSH runtime', ()
     'ish/ytconv.py', 'ish/ytconv-core.py', 'ish/VERSION', 'scripts/install-ish.sh',
     'scripts/install-windows.ps1', 'scripts/install-windows.cmd',
     'scripts/install-termux.sh', 'scripts/install-unix.sh',
-    'CHANGELOG.md', 'docs/AUTH.md', 'docs/SECURITY.md', 'docs/COMMANDS.md', 'docs/TROUBLESHOOTING.md',
-    'docs/INSTALL.md', 'docs/SHELLS.md', 'docs/LINUX.md',
+    'CHANGELOG.md', 'docs/NODEJS.md', 'docs/AUTH.md', 'docs/SECURITY.md',
+    'docs/COMMANDS.md', 'docs/TROUBLESHOOTING.md', 'docs/INSTALL.md',
+    'docs/SHELLS.md', 'docs/LINUX.md', 'docs/TERMUX.md', 'docs/ISH.md',
   ];
   for (const item of required) assert.equal(fs.existsSync(path.join(packageRoot, item)), true, item);
   assert.ok(manifest.files.includes('ish/VERSION'));
