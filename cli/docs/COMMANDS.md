@@ -1,4 +1,4 @@
-# YTConv 1.6.0 Command Reference
+# YTConv 1.6.2 Command Reference
 
 ## General syntax
 
@@ -30,6 +30,31 @@ quickstart                   Show a five-step beginner setup
 ```
 
 Aliases include `dl`, `get`, `pl`, `subs`, `inspect`, and `setup`.
+
+## YouTube AUTO policy
+
+When mode is AUTO:
+
+```text
+music.youtube.com                           audio, MP3 by default
+youtube.com / youtu.be / youtube-nocookie  video, MP4 by default
+```
+
+Examples:
+
+```sh
+ytconv download "https://music.youtube.com/watch?v=MUSIC_ID"
+ytconv download "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+Explicit mode and format options always override the URL-based default:
+
+```sh
+ytconv download "YOUTUBE_URL" --mode audio --audio-format mp3
+ytconv download "YOUTUBE_MUSIC_URL" --mode video --video-format mp4
+ytconv download "YOUTUBE_URL" --mode video --video-format mkv
+ytconv download "YOUTUBE_URL" --mode video --video-format webm
+```
 
 ## Persistent configuration
 
@@ -90,12 +115,12 @@ Use one profile without changing the active profile:
 
 Example:
 
-```bash
+```sh
 ytconv profile set music preset=music audioQuality=320
 ytconv --profile music download "URL"
 ```
 
-Explicit command-line values are intended to override saved defaults and profile values.
+Explicit command-line values override saved defaults and profile values.
 
 ## History
 
@@ -130,6 +155,7 @@ Copy the generated script into the matching shell profile.
 
 ```text
 --auto
+--mode auto|video|audio|image
 --video
 --audio
 --image | --images | --gallery
@@ -138,7 +164,7 @@ Copy the generated script into the matching shell profile.
 --platform PLATFORM
 ```
 
-A forced mode is never silently replaced. AUTO may fall back between yt-dlp and gallery-dl.
+A forced mode is never silently replaced. AUTO may fall back between yt-dlp and gallery-dl only where the platform supports mixed media.
 
 ## Audio
 
@@ -162,6 +188,21 @@ MP3 320 kbps is an encoder target and cannot add detail missing from the source.
 
 Resolution is a maximum limit. YTConv selects the closest available source format.
 
+For MP4, YTConv prefers AVC/H.264 video plus M4A audio. If those streams are unavailable, YTConv uses a broader source fallback and FFmpeg recoding so the final file is a real MP4 rather than an incompatible remux.
+
+## Verified output
+
+YTConv 1.6.2 verifies that the final path exists and matches the requested mode:
+
+```text
+video mode       a real video file such as MP4, MKV, or WebM
+audio mode       a real audio file such as MP3, M4A, FLAC, or Opus
+image/gallery    a real image or gallery video
+subtitle-only    a real subtitle file
+```
+
+A thumbnail, metadata JSON file, archive text file, log, or partial file does not count as a completed video/audio conversion.
+
 ## Subtitles
 
 ```text
@@ -173,7 +214,7 @@ Resolution is a maximum limit. YTConv selects the closest available source forma
 --list-subs
 ```
 
-YTConv 1.6.0 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
+YTConv 1.6.2 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -186,7 +227,7 @@ YTConv 1.6.0 enables subtitles by default for video unless explicitly disabled. 
 --sponsorblock-off
 ```
 
-YTConv 1.6.0 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.6.2 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -246,7 +287,9 @@ The `batch` command automatically enables continue-on-error. The final exit code
 --no-archive
 ```
 
-Resume is enabled by default. YTConv 1.6.0 creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
+Resume is enabled by default. YTConv creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
+
+If an archived URL has no real output file, YTConv 1.6.2 retries that item once without the archive. A second zero-file result fails instead of reporting success.
 
 ## Network and performance
 
@@ -327,31 +370,27 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.6.0 updates through:
+Stable 1.6.2 updates through:
 
-```bash
-npm install -g ytconv@latest --force
-```
-
-Return to stable:
-
-```bash
+```sh
 npm install -g ytconv@latest --force
 ```
 
 ## Stable defaults
 
 ```text
-Subtitles        ON
-SponsorBlock     ON in mark mode
+Subtitles         ON
+SponsorBlock      ON in mark mode
 Download archive ON per output profile
-Resume           ON
+Resume            ON
+YouTube Music AUTO MP3
+Regular YouTube AUTO MP4
 ```
 
 ## Exit codes
 
 ```text
-0    Success
+0    Success with a verified output or successful utility command
 1    Download or conversion failed
 2    Invalid URL or invalid option
 3    Required dependency missing
