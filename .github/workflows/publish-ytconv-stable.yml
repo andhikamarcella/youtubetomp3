@@ -92,8 +92,6 @@ jobs:
           NO_COLOR: "1"
           YTCONV_NO_UPDATE_CHECK: "1"
         run: |
-          ffmpeg -version
-          ffprobe -version
           python3 -m pip --version
           python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]'
           node ./scripts/test-youtube-output.js
