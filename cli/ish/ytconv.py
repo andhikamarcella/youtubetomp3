@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stable YTConv 1.6.2 launcher and compatibility policy for iSH/Alpine."""
+"""Stable YTConv 1.6.3 launcher and compatibility policy for iSH/Alpine."""
 
 import os
 import runpy
@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.6.2"
-RELEASE_BRANCH = "release/ytconv-1.6.2-cli-only-final"
+VERSION = "1.6.3"
+RELEASE_BRANCH = "release/ytconv-1.6.3-cli-only-final"
 RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/%s/cli" % RELEASE_BRANCH
 CORE = Path(__file__).resolve().with_name("ytconv-core.py")
 MEDIA_EXTENSIONS = {
