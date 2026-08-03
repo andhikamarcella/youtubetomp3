@@ -21,8 +21,10 @@ on:
         required: true
 
 permissions:
+  actions: read
   contents: write
   id-token: write
+  issues: write
 
 concurrency:
   group: ytconv-npm-stable
@@ -167,3 +169,30 @@ jobs:
           fi
           npm view ytconv dist-tags --json --prefer-online > "$RUNNER_TEMP/ytconv-tags.json"
           node -e "const t=require('$RUNNER_TEMP/ytconv-tags.json'); if(t.latest!=='$RELEASE_VERSION'||Object.hasOwn(t,'beta')){console.error(t);process.exit(1)}"
+      - name: Report failed stable publish
+        if: ${{ failure() }}
+        working-directory: .
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LOG_FILE="$RUNNER_TEMP/ytconv-publish-failed.log"
+          BODY_FILE="$RUNNER_TEMP/ytconv-publish-failed.md"
+          gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed > "$LOG_FILE" 2>&1 || true
+          tail -c 50000 "$LOG_FILE" > "$LOG_FILE.trimmed"
+          {
+            echo "The automated YTConv 1.6.0 stable publication failed."
+            echo
+            echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            echo '```text'
+            cat "$LOG_FILE.trimmed"
+            echo '```'
+          } > "$BODY_FILE"
+          ISSUE_NUMBER=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'YTConv 1.6.0 publish failed in:title' --json number --jq '.[0].number // empty')
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_FILE"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "YTConv 1.6.0 publish failed" --body-file "$BODY_FILE"
+          fi
