@@ -1,0 +1,49 @@
+name: Repair YTConv 1.6.2 downloader syntax
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/fix-ytconv-1.6.2-downloader-syntax.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Repair the exact malformed callback
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          target = Path('cli/src/downloader.js')
+          text = target.read_text(encoding='utf-8')
+          old = "finish(() => reject(new Error('The URL metadata is too large to process.'));"
+          new = "finish(() => reject(new Error('The URL metadata is too large to process.')));"
+          if text.count(old) != 1:
+              raise SystemExit('expected exactly one malformed callback')
+          target.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Verify syntax and tests
+        working-directory: cli
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+          npm test
+      - name: Commit verified repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/src/downloader.js
+          git commit -m "fix(cli): close downloader metadata callback"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
