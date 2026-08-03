@@ -1,0 +1,177 @@
+name: Prepare YTConv 1.6.3 retry hotfix
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.3-retry-sleep-hotfix
+    paths:
+      - .github/workflows/hotfix-ytconv-1.6.3.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: agent/ytconv-1.6.3-retry-sleep-hotfix
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Apply retry-sleep hotfix
+        run: |
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          cli_options = Path('cli/src/cli-options.js')
+          text = cli_options.read_text(encoding='utf-8')
+          replacements = {
+              "  return `http:${normalized}`;": "  return normalized;",
+              "    retrySleep: 'http:linear=1::2',": "    retrySleep: 'linear=1::2',",
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'cli-options target not found exactly once: {old}')
+              text = text.replace(old, new, 1)
+          cli_options.write_text(text, encoding='utf-8')
+
+          downloader = Path('cli/src/downloader.js')
+          text = downloader.read_text(encoding='utf-8')
+          marker = "function optionFlag(options, key, envName, fallback = false) {\n  if (typeof options?.[key] === 'boolean') return options[key];\n  if (process.env[envName] !== undefined) return envFlag(envName);\n  return fallback;\n}\n"
+          addition = marker + "\nconst RETRY_SLEEP_PREFIX = /^(?:http|fragment|file_access|extractor):/iu;\n\nexport function normalizeRetrySleepExpression(value, fallback = 'linear=1::2') {\n  const normalized = String(value ?? '').trim().replace(RETRY_SLEEP_PREFIX, '');\n  return normalized || fallback;\n}\n"
+          if text.count(marker) != 1:
+              raise SystemExit('downloader optionFlag marker not found exactly once')
+          text = text.replace(marker, addition, 1)
+
+          old = "  const retrySleep = optionValue(options, 'retrySleep', 'YTCONV_RETRY_SLEEP', 'linear=1::2');"
+          new = "  const retrySleep = normalizeRetrySleepExpression(optionValue(options, 'retrySleep', 'YTCONV_RETRY_SLEEP', 'linear=1::2'));"
+          if text.count(old) != 1:
+              raise SystemExit('retrySleep assignment not found exactly once')
+          text = text.replace(old, new, 1)
+
+          old = "    '--retry-sleep', retrySleep, '--retry-sleep', `fragment:${retrySleep}`,\n    '--retry-sleep', `file_access:${retrySleep}`, '--geo-bypass',"
+          new = "    '--retry-sleep', `http:${retrySleep}`, '--retry-sleep', `fragment:${retrySleep}`,\n    '--retry-sleep', `file_access:${retrySleep}`, '--geo-bypass',"
+          if text.count(old) != 1:
+              raise SystemExit('retry-sleep argument block not found exactly once')
+          downloader.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test_file = Path('cli/test/youtube-output.test.js')
+          text = test_file.read_text(encoding='utf-8')
+          marker = "test('archive skip with a missing file is restored once without the archive', async (t) => {"
+          addition = """test('retry sleep expressions are typed exactly once', () => {
+  for (const retrySleep of ['linear=1::2', 'http:linear=1::2', 'fragment:linear=1::2']) {
+    const args = buildDownloadArgs(baseOptions({ retrySleep }));
+    const values = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
+    assert.deepEqual(values, [
+      'http:linear=1::2',
+      'fragment:linear=1::2',
+      'file_access:linear=1::2',
+    ]);
+    assert.equal(values.some((value) => /:(?:http|fragment|file_access|extractor):/u.test(value)), false);
+  }
+});
+
+"""
+          if text.count(marker) != 1:
+              raise SystemExit('youtube output test marker not found exactly once')
+          test_file.write_text(text.replace(marker, addition + marker, 1), encoding='utf-8')
+          PY
+
+      - name: Bump package and release identity
+        working-directory: cli
+        run: npm version 1.6.3 --no-git-tag-version
+
+      - name: Update release metadata and documentation links
+        run: |
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          package_path = Path('cli/package.json')
+          package = json.loads(package_path.read_text(encoding='utf-8'))
+          final_branch = 'release/ytconv-1.6.3-cli-only-final'
+          package['licenseUrl'] = f'https://github.com/andhikamarcella/youtubetomp3/blob/{final_branch}/cli/LICENSE'
+          package['homepage'] = f'https://github.com/andhikamarcella/youtubetomp3/tree/{final_branch}/cli#readme'
+          package['documentation'] = {
+              'url': f'https://github.com/andhikamarcella/youtubetomp3/tree/{final_branch}/cli/docs',
+              'nodejs': f'https://github.com/andhikamarcella/youtubetomp3/blob/{final_branch}/cli/docs/NODEJS.md',
+          }
+          package['releaseNotes'] = 'YTConv 1.6.3 fixes invalid yt-dlp retry-sleep arguments that prevented YouTube downloads from starting. Retry expressions are normalized for current defaults and legacy saved profiles, and HTTP, fragment, and file-access retry types are emitted exactly once.'
+          package['releaseNotesUrl'] = f'https://github.com/andhikamarcella/youtubetomp3/blob/{final_branch}/cli/CHANGELOG.md'
+          package['installer'] = {
+              'type': 'Tarball',
+              'url': 'https://registry.npmjs.org/ytconv/-/ytconv-1.6.3.tgz',
+              'sha256Url': 'https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.3/SHA256SUMS.txt',
+              'metadataUrl': 'https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.3/ytconv-1.6.3.metadata.json',
+          }
+          package_path.write_text(json.dumps(package, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+          paths = []
+          paths += list(Path('cli/bin').glob('*.js'))
+          paths += list(Path('cli/src').glob('*.js'))
+          paths += list(Path('cli/test').glob('*.js'))
+          paths += list(Path('cli/ish').glob('*.py'))
+          paths += list(Path('cli/scripts').glob('*'))
+          paths += list(Path('cli/docs').glob('*.md'))
+          paths += [Path('cli/README.md'), Path('cli/ish/VERSION')]
+          paths += [Path('.github/workflows/ytconv-cli.yml'), Path('.github/workflows/publish-ytconv-stable.yml')]
+          for path in paths:
+              if not path.is_file():
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              text = text.replace('release/ytconv-1.6.2-cli-only-final', 'release/ytconv-1.6.3-cli-only-final')
+              text = text.replace('ytconv-v1.6.2', 'ytconv-v1.6.3')
+              text = text.replace('ytconv-1.6.2', 'ytconv-1.6.3')
+              text = text.replace('1.6.2', '1.6.3')
+              path.write_text(text, encoding='utf-8')
+
+          changelog = Path('cli/CHANGELOG.md')
+          text = changelog.read_text(encoding='utf-8')
+          heading = '# YTConv CLI changelog\n'
+          section = '''\n## 1.6.3 — retry-sleep hotfix\n\nReleased: 2026-08-03\n\n- Fixed YouTube conversions failing before download with `invalid fragment retry sleep expression 'http:linear=1::2'`.\n- Store retry sleep as a plain expression and apply `http`, `fragment`, and `file_access` exactly once when building yt-dlp arguments.\n- Normalize legacy saved values that already include a retry-type prefix.\n- Added regression coverage that rejects nested values such as `fragment:http:linear=1::2`.\n\n'''
+          if not text.startswith(heading):
+              raise SystemExit('unexpected changelog heading')
+          changelog.write_text(heading + section + text[len(heading):], encoding='utf-8')
+          PY
+
+      - name: Verify hotfix
+        working-directory: cli
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+          npm test
+          npm run check:ish
+          npm run test:ish
+          npm run security
+          node - <<'NODE'
+          import { buildDownloadArgs } from './src/downloader.js';
+          const args = buildDownloadArgs({
+            url: 'https://www.youtube.com/watch?v=test', mode: 'video', resolution: '720',
+            videoFormat: 'mp4', audioFormat: 'mp3', audioQuality: 'best',
+            cookieConfig: { kind: 'none' }, playlist: false, outputDirectory: process.cwd(),
+            subtitles: false, subtitleOnly: false, sponsorBlockMode: 'off', archivePath: '',
+            retrySleep: 'http:linear=1::2',
+          });
+          const values = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
+          const expected = ['http:linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
+          if (JSON.stringify(values) !== JSON.stringify(expected)) throw new Error(JSON.stringify(values));
+          NODE
+          test "$(node ./bin/ytconv.js --version)" = "1.6.3"
+
+      - name: Commit hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli .github/workflows/ytconv-cli.yml .github/workflows/publish-ytconv-stable.yml
+          git commit -m "fix(cli): correct retry sleep arguments in 1.6.3"
+          git push origin HEAD:agent/ytconv-1.6.3-retry-sleep-hotfix
