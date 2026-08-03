@@ -183,6 +183,30 @@ async function listFiles(directory) {
   return files;
 }
 
+async function verifiedReportedPaths(result, outputDirectory) {
+  const candidates = [
+    ...(Array.isArray(result?.outputPaths) ? result.outputPaths : []),
+    result?.outputPath,
+  ].filter(Boolean);
+  const verified = [];
+  for (const candidate of candidates) {
+    const resolved = path.isAbsolute(candidate) ? candidate : path.join(outputDirectory, candidate);
+    try {
+      const stats = await fs.stat(resolved);
+      if (stats.isFile()) verified.push(resolved);
+    } catch {
+      // A printed path is not a result until it exists on disk.
+    }
+  }
+  return verified;
+}
+
+async function producedFiles({ before, after, result, outputDirectory }) {
+  const created = [...after].filter((file) => !before.has(file));
+  const reported = await verifiedReportedPaths(result, outputDirectory);
+  return [...new Set([...created, ...reported])];
+}
+
 function runFfmpeg(ffmpegPath, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(ffmpegPath, args, {
@@ -279,6 +303,7 @@ export async function downloadMedia({ options, ...rest }) {
   const before = await listFiles(outputDirectory);
 
   let result;
+  let completedMode = mode;
   try {
     result = await runDownloadMode({ mode, options, rest, url });
   } catch (primaryError) {
@@ -304,6 +329,7 @@ export async function downloadMedia({ options, ...rest }) {
 
     try {
       result = await runDownloadMode({ mode: fallbackMode, options, rest, url });
+      completedMode = fallbackMode;
     } catch (fallbackError) {
       const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
       const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
@@ -315,19 +341,44 @@ export async function downloadMedia({ options, ...rest }) {
     }
   }
 
-  const after = await listFiles(outputDirectory);
-  let created = [...after].filter((file) => !before.has(file));
-  if (result.engine === 'gallery-dl' && !created.length) {
+  let after = await listFiles(outputDirectory);
+  let produced = await producedFiles({ before, after, result, outputDirectory });
+
+  if (!produced.length && result.engine === 'yt-dlp' && result.archiveSkipped && options.archivePath) {
+    rest.onLog?.(
+      'The URL was recorded in the archive, but no output file exists. Restoring it once without the archive...',
+      false,
+    );
+    const retryOptions = { ...options, archivePath: '', galleryArchivePath: '' };
+    try {
+      result = await runDownloadMode({
+        mode: completedMode,
+        options: retryOptions,
+        rest,
+        url,
+      });
+    } catch (retryError) {
+      throw new Error(accessHint({
+        url,
+        cookieConfig: options.cookieConfig,
+        originalError: `The archive recovery retry failed: ${retryError instanceof Error ? retryError.message : String(retryError)}`,
+      }));
+    }
+    after = await listFiles(outputDirectory);
+    produced = await producedFiles({ before, after, result, outputDirectory });
+  }
+
+  if (!produced.length) {
     throw new Error(accessHint({
       url,
       cookieConfig: options.cookieConfig,
-      originalError: `${socialPlatformLabel(detectSocialPlatform(url))} returned no file for this URL.`,
+      originalError: `${result.engine || 'The media engine'} exited successfully but produced no file. YTConv did not mark this conversion as successful.`,
     }));
   }
 
   if (result.engine === 'gallery-dl') {
-    created = await convertImages({
-      files: created,
+    produced = await convertImages({
+      files: produced,
       format: options.imageFormat,
       ffmpegPath: options.ffmpegPath,
       onLog: rest.onLog,
@@ -337,8 +388,8 @@ export async function downloadMedia({ options, ...rest }) {
 
   return {
     ...result,
-    outputPath: created.at(-1) || result.outputPath,
-    outputPaths: created,
-    fileCount: created.length || result.fileCount || 1,
+    outputPath: produced.at(-1),
+    outputPaths: produced,
+    fileCount: produced.length,
   };
 }
