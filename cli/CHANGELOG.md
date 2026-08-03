@@ -9,6 +9,7 @@ Released: 2026-08-03
 - Made `music.youtube.com` resolve to MP3 audio when mode is AUTO.
 - Made regular `youtube.com`, `youtu.be`, and `youtube-nocookie.com` resolve to video when mode is AUTO.
 - Made regular YouTube AUTO video default to MP4.
+- Added a one-time `android_vr` public-client fallback when YouTube challenges the default unauthenticated client, while preserving normal login requirements for private media.
 - Preserved explicit audio, video, image, MP4, MKV, WebM, resolution, and audio-format selections as authoritative user choices.
 
 ### MP4 compatibility
