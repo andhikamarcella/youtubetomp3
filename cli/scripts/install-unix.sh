@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.6.0"
+VERSION="1.6.1"
 CHANNEL="latest"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
@@ -42,7 +42,7 @@ case "$MANAGER" in
   apk) PLAN='apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl' ;;
   xbps) PLAN='xbps-install -Sy nodejs npm python3 python3-pip ffmpeg ca-certificates curl' ;;
   emerge) PLAN='emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates' ;;
-  nix) PLAN='nix profile install nixpkgs#nodejs_22 nixpkgs#python3 nixpkgs#ffmpeg' ;;
+  nix) PLAN='nix profile install nixpkgs#nodejs_24 nixpkgs#python3 nixpkgs#ffmpeg' ;;
   brew) PLAN='brew install node python ffmpeg' ;;
   *) PLAN='install Node.js 22.14+, npm, Python 3, FFmpeg, curl, and CA certificates with the system package manager' ;;
 esac
