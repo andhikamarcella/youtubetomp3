@@ -10,6 +10,8 @@ const NEGATIVE_FLAGS = new Map([
   ['--no-archive', 'archive'],
 ]);
 
+const RETRY_SLEEP_PREFIXES = /^(?:(?:http|fragment|file_access|extractor):)+/iu;
+
 function includesAny(argv, names) {
   return argv.some((value) => names.includes(value));
 }
@@ -31,6 +33,11 @@ function profileName(options = {}) {
   }
   if (options.initialMode === 'image') return `image-${safeProfilePart(options.initialImageFormat, 'original')}`;
   return `auto-${safeProfilePart(options.preset, 'balanced')}`;
+}
+
+export function normalizeRetrySleep(value, fallback = 'linear=1::2') {
+  const normalized = String(value || fallback).trim().replace(RETRY_SLEEP_PREFIXES, '');
+  return normalized || fallback;
 }
 
 export function extractDefaultToggles(argv = []) {
@@ -60,6 +67,8 @@ export function applyStableDefaults(options = {}, toggles = {}, {
 } = {}) {
   const disabled = toggles.disabled || {};
   const explicit = toggles.explicit || {};
+
+  options.retrySleep = normalizeRetrySleep(options.retrySleep);
 
   if (disabled.subtitles) options.subtitles = false;
   else if (!explicit.subtitles) options.subtitles = true;
