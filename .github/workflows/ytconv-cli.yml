@@ -1,86 +1,109 @@
-name: Apply YTConv 1.6.3 Retry Hotfix
+name: YTConv CLI 1.6.3 Stable
 
 on:
   push:
     branches:
       - release/ytconv-1.6.3-cli-only-final
     paths:
+      - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
-      - ".github/scripts/prepare-ytconv-1.6.3.py"
-      - "cli/.ytconv-1.6.3-hotfix-trigger"
+  pull_request:
+    paths:
+      - "cli/**"
+      - ".github/workflows/ytconv-cli.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: ytconv-1.6.3-hotfix
-  cancel-in-progress: false
+  group: ytconv-cli-1.6.3-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  apply-and-verify:
+  node-compatibility:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22.14.0, 24, 26]
+    defaults:
+      run:
+        working-directory: cli
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
-          ref: release/ytconv-1.6.3-cli-only-final
-          fetch-depth: 0
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npm run security
+      - name: Verify retry hotfix and stable identity
+        run: |
+          test "$(node ./bin/ytconv.js --version)" = "1.6.3"
+          node - <<'NODE'
+          import { applyStableDefaults } from './src/defaults.js';
+          import { buildDownloadArgs } from './src/downloader.js';
+          const options = {
+            retrySleep: 'fragment:http:linear=1::2',
+            subtitles: false,
+            sponsorBlockMode: 'off',
+            archivePath: '',
+            galleryArchivePath: '',
+            initialMode: 'video',
+            videoFormat: 'mp4',
+            resolution: '720',
+            preset: 'balanced',
+          };
+          applyStableDefaults(options, { disabled: { archive: true }, explicit: {} }, { homeDirectory: '/tmp/ytconv', mkdirSync() {} });
+          if (options.retrySleep !== 'linear=1::2') throw new Error(options.retrySleep);
+          const args = buildDownloadArgs({
+            ...options,
+            url: 'https://www.youtube.com/watch?v=test',
+            mode: 'video',
+            audioFormat: 'mp3',
+            audioQuality: 'best',
+            cookieConfig: { kind: 'none' },
+            playlist: false,
+            outputDirectory: process.cwd(),
+            subtitleOnly: false,
+          });
+          const sleeps = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
+          const expected = ['linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
+          if (JSON.stringify(sleeps) !== JSON.stringify(expected)) throw new Error(JSON.stringify(sleeps));
+          NODE
+
+  desktop:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: cli/package-lock.json
-      - name: Apply retry fix and bump immutable package
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npm run check:ish
+        if: runner.os != 'Windows'
+      - run: npm run test:ish
+        if: runner.os != 'Windows'
+      - name: Preview CLI-only tarball
+        shell: bash
         run: |
-          python3 .github/scripts/prepare-ytconv-1.6.3.py
-          cd cli
-          npm version 1.6.3 --no-git-tag-version
-      - name: Restore complete 1.6.3 CI workflow
-        run: |
-          git show b2424b836d3aa0d4ca5262aa372561442625d077:.github/workflows/ytconv-cli.yml > .github/workflows/ytconv-cli.yml
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('.github/workflows/ytconv-cli.yml')
-          text = path.read_text(encoding='utf-8')
-          text = text.replace('release/ytconv-1.6.2-cli-only-final', 'release/ytconv-1.6.3-cli-only-final')
-          text = text.replace('1.6.2', '1.6.3')
-          path.write_text(text, encoding='utf-8')
-          PY
-      - name: Remove one-time hotfix automation
-        run: |
-          rm -f .github/scripts/prepare-ytconv-1.6.3.py
-          rm -f .github/workflows/hotfix-ytconv-1.6.3.yml
-          rm -f .github/workflows/hotfix-ytconv-1.6.3-pr.yml
-          rm -f cli/.ytconv-1.6.3-hotfix-trigger
-      - name: Verify fixed retry arguments and CLI
-        working-directory: cli
-        run: |
-          npm ci --ignore-scripts
-          npm run check
-          npm test
-          npm run check:ish
-          npm run test:ish
-          npm run security
-          node - <<'NODE'
-          import { buildDownloadArgs } from './src/downloader.js';
-          const args = buildDownloadArgs({
-            url: 'https://www.youtube.com/watch?v=test', mode: 'video', resolution: '720',
-            videoFormat: 'mp4', audioFormat: 'mp3', audioQuality: 'best',
-            cookieConfig: { kind: 'none' }, playlist: false, outputDirectory: process.cwd(),
-            subtitles: false, subtitleOnly: false, sponsorBlockMode: 'off', archivePath: '',
-            retrySleep: 'http:linear=1::2',
-          });
-          const values = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
-          const expected = ['http:linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
-          if (JSON.stringify(values) !== JSON.stringify(expected)) throw new Error(JSON.stringify(values));
-          if (values.some((value) => /:(?:http|fragment|file_access|extractor):/u.test(value))) throw new Error('Nested retry type detected');
-          NODE
-          test "$(node ./bin/ytconv.js --version)" = "1.6.3"
-      - name: Commit verified 1.6.3 source
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix(cli): correct yt-dlp retry sleep arguments in 1.6.3"
-          git push origin HEAD:release/ytconv-1.6.3-cli-only-final
+          npm pack --json --dry-run --ignore-scripts > package-preview.json
+          node -e "const p=require('./package-preview.json')[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          rm -f package-preview.json
