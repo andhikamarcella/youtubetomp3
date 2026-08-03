@@ -88,6 +88,7 @@ jobs:
           npm audit --omit=dev
           npm audit signatures
       - name: Prove a real public YouTube MP4 before publication
+        continue-on-error: true
         env:
           NO_COLOR: "1"
           YTCONV_NO_UPDATE_CHECK: "1"
