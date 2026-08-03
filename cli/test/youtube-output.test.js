@@ -37,9 +37,11 @@ async function temporaryDirectory(t) {
 }
 
 async function fakeRunner(t, behavior) {
-  const directory = await temporaryDirectory(t);
-  const script = path.join(directory, 'fake-yt-dlp.mjs');
-  const marker = path.join(directory, 'calls.jsonl');
+  const rootDirectory = await temporaryDirectory(t);
+  const outputDirectory = path.join(rootDirectory, 'output');
+  await fs.mkdir(outputDirectory, { recursive: true });
+  const script = path.join(rootDirectory, 'fake-yt-dlp.mjs');
+  const marker = path.join(rootDirectory, 'calls.jsonl');
   await fs.writeFile(script, `
 import fs from 'node:fs';
 import path from 'node:path';
@@ -80,7 +82,7 @@ process.exit(2);
   });
 
   return {
-    directory,
+    directory: outputDirectory,
     marker,
     runner: { command: process.execPath, prefixArgs: [script], displayPath: script },
   };
