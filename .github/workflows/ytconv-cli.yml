@@ -116,7 +116,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: cli/package-lock.json
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg python3-pip
+      - run: ffmpeg -version && ffprobe -version && python3 -m pip --version
       - run: python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]'
       - run: npm ci --ignore-scripts
       - name: Download and probe a real public YouTube MP4
