@@ -85,7 +85,9 @@ jobs:
         run: |
           test ! -f ../.github/workflows/ytconv-auth.yml
           TARBALL=$(npm pack --ignore-scripts --silent)
-          node -e "const {execFileSync}=require('child_process');const out=execFileSync('npm',['pack','--json','--dry-run','--ignore-scripts'],{encoding:'utf8'});const p=JSON.parse(out)[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          npm pack --json --dry-run --ignore-scripts > package-preview.json
+          node -e "const p=require('./package-preview.json')[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          rm -f package-preview.json
           PORTABLE_PREFIX="$RUNNER_TEMP/ytconv-portable-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           npm install --prefix "$PORTABLE_PREFIX" "$PWD/$TARBALL" --ignore-scripts
           test "$(node "$PORTABLE_PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.0"
