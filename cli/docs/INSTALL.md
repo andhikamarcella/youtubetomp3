@@ -1,166 +1,157 @@
-# Complete YTConv 1.6.0 Installation Guide
+# Complete YTConv 1.6.1 Installation Guide
 
-YTConv 1.6.0 is the stable release published on the npm `latest` tag.
+YTConv 1.6.1 is the stable npm `latest` release.
 
-## Requirements
+## Read this first
 
-- Node.js 22.14 or newer and npm. These are required to run `npm install` itself.
-- A working HTTPS connection and valid system certificates.
+On Windows, macOS, Linux, WSL, SSH servers, and Termux, install Node.js before installing YTConv. Follow the complete [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md).
 
-FFmpeg, yt-dlp, gallery-dl, Ink, React, and other runtime dependencies are prepared automatically by npm installation. Python 3 is not required on desktop Windows because YTConv uses standalone binaries; Python remains a fallback on selected platforms.
+Required versions:
 
-Check the requirements:
+```text
+Node.js 22.14.0 or newer
+npm 10 or newer
+```
 
-```bash
+Verify:
+
+```sh
 node --version
 npm --version
 ```
 
-After installation, `ytconv doctor` checks every engine and `ytconv repair` downloads any missing or broken component again.
+The iSH edition is different: it uses the maintained Python frontend and does not require Node.js.
 
 ## Windows CMD
 
+After installing Node.js LTS and reopening CMD:
+
 ```cmd
+node.exe --version
+npm.cmd --version
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@latest --force
 where ytconv
 ytconv.cmd --version
 ytconv.cmd --self-test
+ytconv.cmd repair
 ytconv.cmd doctor
 ```
 
-Do not install FFmpeg, yt-dlp, gallery-dl, or Python manually first. Try the automatic installation above; use `ytconv.cmd repair` only when diagnostics are still failing.
+Expected version:
 
-The version must be `1.6.0`.
-
-Local repository installation:
-
-```cmd
-cd C:\path\to\youtubetomp3\cli
-npm.cmd install
-npm.cmd run check
-npm.cmd test
-npm.cmd install -g . --force
-ytconv.cmd --version
+```text
+1.6.1
 ```
+
+Full Windows tutorial: [WINDOWS.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/WINDOWS.md).
 
 ## Windows PowerShell
 
-Use `npm.cmd` and `ytconv.cmd` for maximum compatibility with execution policy:
+Use `.cmd` shims so PowerShell execution policy does not block npm or YTConv:
 
 ```powershell
+node.exe --version
+npm.cmd --version
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@latest --force
 Get-Command ytconv.cmd -All
 ytconv.cmd --version
 ytconv.cmd --self-test
+ytconv.cmd repair
 ytconv.cmd doctor
 ```
 
-There is no need to weaken the PowerShell execution policy. Continue using the generated `.cmd` shims.
+Do not weaken the system execution policy solely for YTConv.
 
-## Linux universal installer
+## macOS
 
-From the repository:
+Install a current Node.js LTS release first. Then use a per-user npm prefix:
 
-```bash
+```sh
+mkdir -p "$HOME/.local/bin"
+npm config set prefix "$HOME/.local"
+printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.zprofile"
+export PATH="$HOME/.local/bin:$PATH"
+npm install -g ytconv@latest --force
+ytconv --version
+ytconv --self-test
+ytconv repair
+ytconv doctor
+```
+
+Full tutorial: [LINUX.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/LINUX.md).
+
+## Desktop Linux
+
+Install Node.js first with the beginner guide. Then either install directly:
+
+```sh
+npm install -g ytconv@latest --force
+ytconv --version
+ytconv --self-test
+ytconv repair
+ytconv doctor
+```
+
+Or run the repository installer:
+
+```sh
 cd /path/to/youtubetomp3/cli
 sh ./scripts/install-unix.sh --print-plan
 sh ./scripts/install-unix.sh
 ```
 
-The installer recognizes apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, and Homebrew. It may request administrator access for operating-system packages but installs the npm package with a user prefix under `~/.local`.
+The installer detects apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, and Homebrew. It uses a user npm prefix under `~/.local` rather than `sudo npm`.
 
-Open a new shell or run:
+When needed:
 
-```bash
+```sh
 export PATH="$HOME/.local/bin:$PATH"
-```
-
-Then verify:
-
-```bash
-ytconv --version
-ytconv --self-test
-ytconv doctor
-ytconv --shell-info
-```
-
-The complete distribution-by-distribution procedure is in [LINUX.md](LINUX.md).
-
-## Direct Linux/macOS npm installation
-
-After Node.js, npm, Python, and FFmpeg are installed:
-
-```bash
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-
-npm config set prefix "$HOME/.local"
-mkdir -p "$HOME/.local/bin"
-export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@latest --force
-
-ytconv --version
-ytconv --self-test
-ytconv doctor
-```
-
-## macOS with Homebrew
-
-```bash
-brew update
-brew install node python ffmpeg
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl
-npm config set prefix "$HOME/.local"
-export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@latest --force
-ytconv doctor
 ```
 
 ## Android Termux
 
-Use a maintained Termux build.
+Use a maintained Termux build. Then:
 
-```bash
+```sh
 pkg update
 pkg upgrade -y
 pkg install -y nodejs python ffmpeg curl ca-certificates
+node --version
+npm --version
 termux-setup-storage
-python -m pip install -U --no-cache-dir "yt-dlp[default]" gallery-dl
+python -m pip install -U --no-cache-dir 'yt-dlp[default]' gallery-dl
 npm uninstall -g ytconv
 npm cache verify
 npm install -g ytconv@latest --omit=optional --force
-ytconv repair
+ytconv --version
 ytconv --self-test
+ytconv repair
 ytconv doctor
 ```
 
-Accept the Android storage permission dialog. Default output:
+Default output:
 
 ```text
 ~/storage/downloads/YTConv
 ```
 
-Repository installer:
-
-```bash
-sh ./scripts/install-termux.sh
-```
+Full tutorial: [TERMUX.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TERMUX.md).
 
 ## iPhone and iPad through iSH
 
-The iSH frontend is native Python because modern Node.js TUI dependencies are not a good match for iSH.
+Node.js is not required for the supported iSH edition.
 
 ```sh
 apk update
-apk add python3 py3-pip ffmpeg curl ca-certificates
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
-ytconv doctor
+ytconv --diagnose
 ```
 
 Default output:
@@ -169,39 +160,35 @@ Default output:
 ~/Downloads/YTConv
 ```
 
-The folder is visible through Files → iSH.
+Full tutorial: [ISH.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md).
 
-## SSH and servers without a TUI
+## WSL and SSH servers
 
-```bash
+Follow the Linux Node.js instructions, then:
+
+```sh
 npm install -g ytconv@latest --force
-ytconv --headless "URL"
+ytconv --headless --help
 ```
 
-Batch:
+Batch example:
 
-```bash
+```sh
 ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
 ```
 
-Pipe URLs through standard input:
+## Run without a permanent global installation
 
-```bash
-printf '%s\n' "URL1" "URL2" | ytconv --stdin --jobs 2 --continue-on-error
-```
+After Node.js is ready:
 
-## Run without global installation
-
-```bash
+```sh
 npx -y ytconv@latest --help
 npx -y ytconv@latest download "URL"
 ```
 
 ## Final verification
 
-Run every command below:
-
-```bash
+```sh
 ytconv --version
 ytconv --self-test
 ytconv doctor
@@ -211,29 +198,18 @@ ytconv --examples
 
 Expected:
 
-- version `1.6.0`
-- Node.js 22.14 or newer
-- yt-dlp ready
-- gallery-dl ready
-- FFmpeg ready
-- writable output directory
-- stable update channel
-
-Metadata-only test:
-
-```bash
-ytconv info "PUBLIC_TEST_URL" --json
-```
-
-Legal test download:
-
-```bash
-ytconv download "PUBLIC_TEST_URL" --preset mobile
-```
+- YTConv `1.6.1`;
+- Node.js 22.14.0 or newer on npm platforms;
+- npm 10 or newer;
+- yt-dlp ready;
+- gallery-dl ready;
+- FFmpeg ready;
+- writable output directory;
+- stable update channel.
 
 ## Update
 
-```bash
+```sh
 npm cache verify
 npm install -g ytconv@latest --force
 ytconv --version
@@ -241,15 +217,13 @@ ytconv --version
 
 Or:
 
-```bash
+```sh
 ytconv update
 ```
 
-A failed update does not delete the previous installation or downloaded files.
-
 ## Uninstall
 
-```bash
+```sh
 npm uninstall -g ytconv
 ```
 
@@ -260,4 +234,4 @@ rm -f /usr/local/bin/ytconv
 rm -rf /usr/local/lib/ytconv-ish
 ```
 
-Downloaded files and archives remain until the user removes them.
+Downloaded media and user data remain until the user removes them.
