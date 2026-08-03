@@ -66,8 +66,8 @@ jobs:
           node -e "const p=require('./package.json'); if(!p.author||!p.maintainers?.length||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!p.documentation?.url||!p.documentation?.nodejs||!p.dependencies?.ws||p.dependencies?.['ffmpeg-static']||p.optionalDependencies||p.publishConfig?.provenance!==true) process.exitCode=1"
           test -f src/youtube-output.js
           test -f scripts/test-youtube-output.js
-          grep -q 'music.youtube.com.*MP3' README.md
-          grep -q 'regular YouTube.*MP4' README.md
+          node -e "import('./src/media-controller.js').then(({effectiveMediaMode}) => { if(effectiveMediaMode({url:'https://music.youtube.com/watch?v=x',mode:'auto'})!=='audio'||effectiveMediaMode({url:'https://www.youtube.com/watch?v=x',mode:'auto'})!=='video') process.exitCode=1; })"
+          node -e "import('./src/youtube-output.js').then(({effectiveVideoContainer}) => { if(effectiveVideoContainer({url:'https://www.youtube.com/watch?v=x',mode:'video',requestedContainer:'auto'})!=='mp4') process.exitCode=1; })"
           case "$PACKAGE_VERSION" in
             *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
             *) ;;
