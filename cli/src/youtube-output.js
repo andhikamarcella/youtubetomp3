@@ -42,15 +42,17 @@ function heightFilter(resolution) {
 export function formatVideoSelector(resolution = 'best', container = 'auto') {
   const limit = heightFilter(resolution);
   const separateAny = `bv${limit}+ba`;
+  const broadSeparateAny = `bv*${limit}+ba`;
   const combinedAny = `b${limit}`;
 
-  if (container === 'mp4') {
+  if (container === 'mp4' || container === 'auto') {
     return [
       `bv${limit}[ext=mp4][vcodec^=avc1]+ba[ext=m4a]`,
       `b${limit}[ext=mp4][vcodec^=avc1]`,
       `bv${limit}[ext=mp4]+ba[ext=m4a]`,
       `b${limit}[ext=mp4]`,
       separateAny,
+      broadSeparateAny,
       combinedAny,
     ].join('/');
   }
@@ -60,11 +62,12 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
       `bv${limit}[ext=webm]+ba[ext=webm]`,
       `b${limit}[ext=webm]`,
       separateAny,
+      broadSeparateAny,
       combinedAny,
     ].join('/');
   }
 
-  return [separateAny, combinedAny].join('/');
+  return [separateAny, broadSeparateAny, combinedAny].join('/');
 }
 
 export function videoContainerArgs(container = 'auto') {
