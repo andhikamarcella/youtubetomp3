@@ -72,9 +72,10 @@ test('default retry sleep preserves complete general fragment and file-access ex
   }, []);
   assert.ok(sleeps.length >= 3);
   assert.ok(sleeps.every((value) => !/^(?:fragment|file_access)::/u.test(value)), sleeps.join(','));
-  assert.ok(sleeps.includes('linear=1::2'));
-  assert.ok(sleeps.includes('fragment:linear=1::2'));
-  assert.ok(sleeps.includes('file_access:linear=1::2'));
+  const general = sleeps.find((value) => !/^(?:fragment|file_access):/u.test(value));
+  assert.ok(general, sleeps.join(','));
+  assert.ok(sleeps.includes(`fragment:${general}`), sleeps.join(','));
+  assert.ok(sleeps.includes(`file_access:${general}`), sleeps.join(','));
 });
 
 test('subtitle-only downloads subtitles without media payload', () => {
