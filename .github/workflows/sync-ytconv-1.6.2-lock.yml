@@ -1,0 +1,46 @@
+name: Sync YTConv 1.6.2 lockfile
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/sync-ytconv-1.6.2-lock.yml
+      - cli/package.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-ytconv-1.6.2-lock
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Generate lockfile with npm
+        working-directory: cli
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit the generated lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- cli/package-lock.json; then
+            echo "Lockfile is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/package-lock.json
+          git commit -m "release(cli): sync 1.6.2 package lock"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
