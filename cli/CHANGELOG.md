@@ -1,5 +1,16 @@
 # YTConv CLI changelog
 
+## 1.6.3 — yt-dlp retry-sleep hotfix
+
+Released: 2026-08-03
+
+- Fixed YouTube conversions failing before download with `invalid fragment retry sleep expression 'http:linear=1::2'`.
+- Normalize retry sleep from defaults, command-line input, saved profiles, environment variables, and legacy configurations.
+- Remove repeated `http`, `fragment`, `file_access`, and `extractor` prefixes before yt-dlp arguments are generated.
+- Keep the effective retry expressions valid as `linear=1::2`, `fragment:linear=1::2`, and `file_access:linear=1::2`.
+- Added regression tests covering plain, typed, and nested legacy values.
+- Preserved the 1.6.2 YouTube Music-to-MP3, regular YouTube-to-MP4, archive recovery, and real-file verification fixes.
+
 ## 1.6.2 — reliable YouTube MP4 and real-file verification
 
 Released: 2026-08-03
