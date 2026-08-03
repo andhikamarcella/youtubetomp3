@@ -1,0 +1,73 @@
+name: Diagnose public YouTube player clients
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/diagnose-youtube-public-clients.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - run: python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]' >/dev/null
+      - name: Probe public clients
+        shell: bash
+        run: |
+          set +e
+          URL='https://www.youtube.com/watch?v=aqz-KE-bpKQ'
+          : > youtube-public-client-diagnostic.txt
+          probe() {
+            NAME="$1"
+            shift
+            echo "=== $NAME ===" >> youtube-public-client-diagnostic.txt
+            python3 -m yt_dlp \
+              --ignore-config --no-colors --no-remote-components \
+              --js-runtimes "node:$(command -v node)" \
+              --skip-download --dump-single-json --no-warnings \
+              "$@" "$URL" \
+              > /tmp/ytconv-client-out 2>/tmp/ytconv-client-err
+            STATUS=$?
+            echo "status=$STATUS" >> youtube-public-client-diagnostic.txt
+            if [ "$STATUS" = 0 ]; then
+              python3 - <<'PY' >> youtube-public-client-diagnostic.txt
+import json
+with open('/tmp/ytconv-client-out', encoding='utf-8') as handle:
+    value = json.load(handle)
+print('title=' + str(value.get('title')))
+print('formats=' + str(len(value.get('formats') or [])))
+print('video_formats=' + str(sum(1 for item in value.get('formats') or [] if item.get('vcodec') not in (None, 'none'))))
+print('audio_formats=' + str(sum(1 for item in value.get('formats') or [] if item.get('acodec') not in (None, 'none'))))
+PY
+            else
+              tail -n 12 /tmp/ytconv-client-err >> youtube-public-client-diagnostic.txt
+            fi
+            echo >> youtube-public-client-diagnostic.txt
+          }
+          probe default
+          probe android_vr --extractor-args 'youtube:player_client=android_vr'
+          probe android --extractor-args 'youtube:player_client=android'
+          probe tv_embedded --extractor-args 'youtube:player_client=tv_embedded'
+          probe web_safari --extractor-args 'youtube:player_client=web_safari'
+          probe web_safari_impersonate --impersonate safari --extractor-args 'youtube:player_client=web_safari'
+          probe web_impersonate --impersonate chrome --extractor-args 'youtube:player_client=web'
+          rm -f /tmp/ytconv-client-out /tmp/ytconv-client-err
+      - name: Commit concise result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add youtube-public-client-diagnostic.txt
+          git commit -m "test(cli): capture public YouTube client diagnostic"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
