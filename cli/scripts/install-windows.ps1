@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.6.2"
+$Version = "1.6.3"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell"
 
@@ -45,7 +45,8 @@ if ($installed -ne $Version) { throw "Installed version is $installed; expected 
 & ytconv.cmd --shell-info
 & ytconv.cmd doctor
 & ytconv.cmd quickstart
-Write-Host "`nAUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
+Write-Host "`nRetry hotfix: nested HTTP/fragment/file-access retry prefixes are normalized."
+Write-Host "AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
 Write-Host "Explicit audio/video mode and MP4/MKV/WebM selections remain authoritative."
 Write-Host "Stable installation completed. Run: ytconv.cmd or ytconv"
 Write-Host "Public links are ready. If a site asks for login: ytconv.cmd login instagram"
