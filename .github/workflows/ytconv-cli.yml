@@ -1,10 +1,10 @@
-# Final branch verification: YTConv 1.6.1
-name: YTConv CLI 1.6.1 Stable
+# Final branch verification: YTConv 1.6.2
+name: YTConv CLI 1.6.2 Stable
 
 on:
   push:
     branches:
-      - "release/ytconv-1.6.1*"
+      - "release/ytconv-1.6.2*"
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -43,18 +43,22 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run security
-      - name: Stable identity documentation and channel smoke tests
+      - name: Stable identity output documentation and channel smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.6.1"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.2"
           node ./bin/ytconv.js --help | grep -q "Persistent CLI features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
+          test -f src/youtube-output.js
+          test -f scripts/test-youtube-output.js
           test -f docs/NODEJS.md
           test -f docs/ISH.md
           ! grep -Eq '\]\((\./)?docs/' README.md
-          grep -q 'release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md' README.md
+          grep -q 'release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md' README.md
+          grep -q 'music.youtube.com.*MP3' README.md
+          grep -q 'regular YouTube.*MP4' README.md
           HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "No accounts are linked yet"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'latest') process.exitCode=1; if (!updateCommand('1.6.1').includes('@latest')) process.exitCode=1; })"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'latest') process.exitCode=1; if (!updateCommand('1.6.2').includes('@latest')) process.exitCode=1; })"
 
   desktop:
     strategy:
@@ -94,9 +98,32 @@ jobs:
           rm -f package-preview.json
           PORTABLE_PREFIX="$RUNNER_TEMP/ytconv-portable-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           npm install --prefix "$PORTABLE_PREFIX" "$PWD/$TARBALL" --ignore-scripts
-          test "$(node "$PORTABLE_PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.1"
+          test "$(node "$PORTABLE_PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.2"
+          test -f "$PORTABLE_PREFIX/node_modules/ytconv/src/youtube-output.js"
           test -f "$PORTABLE_PREFIX/node_modules/ytconv/docs/NODEJS.md"
           test -f "$PORTABLE_PREFIX/node_modules/ytconv/docs/ISH.md"
+
+  real-youtube-mp4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg python3-pip
+      - run: python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]'
+      - run: npm ci --ignore-scripts
+      - name: Download and probe a real public YouTube MP4
+        env:
+          NO_COLOR: "1"
+          YTCONV_NO_UPDATE_CHECK: "1"
+        run: node ./scripts/test-youtube-output.js
 
   windows-browser-and-ffmpeg:
     runs-on: windows-latest
@@ -156,7 +183,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.1"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.2"
 
   distro-installer-plans:
     runs-on: ubuntu-latest
