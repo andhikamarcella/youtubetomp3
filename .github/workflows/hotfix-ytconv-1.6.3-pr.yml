@@ -1,0 +1,77 @@
+name: Apply YTConv 1.6.3 retry hotfix
+
+on:
+  pull_request:
+    branches:
+      - release/ytconv-1.6.2-cli-only-final
+    paths:
+      - .github/scripts/prepare-ytconv-1.6.3.py
+      - .github/workflows/hotfix-ytconv-1.6.3-pr.yml
+      - .github/workflows/hotfix-ytconv-1.6.3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Apply source hotfix
+        run: python3 .github/scripts/prepare-ytconv-1.6.3.py
+      - name: Bump npm package and lockfile
+        working-directory: cli
+        run: npm version 1.6.3 --no-git-tag-version
+      - name: Reapply package metadata after npm version
+        run: python3 - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          path = Path('.github/scripts/prepare-ytconv-1.6.3.py')
+          spec = importlib.util.spec_from_file_location('hotfix', path)
+          module = importlib.util.module_from_spec(spec)
+          # Only package metadata is needed after npm rewrites package.json.
+          source = path.read_text(encoding='utf-8')
+          namespace = {'__file__': str(path)}
+          prefix = source.split('patch_retry_logic()')[0]
+          exec(prefix, namespace)
+          namespace['update_package_metadata']()
+        PY
+      - name: Verify complete hotfix
+        working-directory: cli
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+          npm test
+          npm run check:ish
+          npm run test:ish
+          npm run security
+          node - <<'NODE'
+          import { buildDownloadArgs } from './src/downloader.js';
+          const args = buildDownloadArgs({
+            url: 'https://www.youtube.com/watch?v=test', mode: 'video', resolution: '720',
+            videoFormat: 'mp4', audioFormat: 'mp3', audioQuality: 'best',
+            cookieConfig: { kind: 'none' }, playlist: false, outputDirectory: process.cwd(),
+            subtitles: false, subtitleOnly: false, sponsorBlockMode: 'off', archivePath: '',
+            retrySleep: 'http:linear=1::2',
+          });
+          const values = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
+          const expected = ['http:linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
+          if (JSON.stringify(values) !== JSON.stringify(expected)) throw new Error(JSON.stringify(values));
+          if (values.some((value) => /:(?:http|fragment|file_access|extractor):/u.test(value))) throw new Error('nested retry prefix');
+          NODE
+          test "$(node ./bin/ytconv.js --version)" = "1.6.3"
+      - name: Commit verified hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli .github/workflows/ytconv-cli.yml .github/workflows/publish-ytconv-stable.yml
+          git commit -m "fix(cli): correct retry sleep arguments in 1.6.3"
+          git push origin HEAD:${{ github.head_ref }}
