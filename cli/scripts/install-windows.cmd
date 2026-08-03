@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.6.2"
+set "VERSION=1.6.3"
 set "CHANNEL=latest"
 echo YTConv %VERSION% installer for CMD
 where node.exe >nul 2>nul || (echo Node.js 22.14 or newer is not installed.& exit /b 1)
@@ -28,6 +28,7 @@ call ytconv.cmd --shell-info
 call ytconv.cmd doctor
 call ytconv.cmd quickstart
 echo.
+echo Retry hotfix: nested HTTP/fragment/file-access retry prefixes are normalized.
 echo AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4.
 echo Explicit audio/video mode and MP4/MKV/WebM selections remain authoritative.
 echo Stable installation completed. Run: ytconv.cmd or ytconv
