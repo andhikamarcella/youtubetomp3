@@ -30,3 +30,27 @@ test('unrelated saved settings remain available', () => {
     '--output', '/tmp/out', '--retries', '20', ...explicit,
   ]);
 });
+
+test('user-data meta flags never re-enter the media parser', () => {
+  const noConfigExplicit = [
+    'https://example.com/video', '--no-config', '--video-format', 'mp4',
+  ];
+  const noConfigResolved = [
+    'https://example.com/video', '--video-format', 'mp4',
+  ];
+  assert.deepEqual(
+    applyExplicitPrecedence(noConfigResolved, noConfigExplicit),
+    noConfigResolved,
+  );
+
+  const profileExplicit = [
+    '--profile', 'hd', 'https://example.com/video', '--resolution', '1080',
+  ];
+  const profileResolved = [
+    '--preset', 'hd', 'https://example.com/video', '--resolution', '1080',
+  ];
+  assert.deepEqual(
+    applyExplicitPrecedence(profileResolved, profileExplicit),
+    profileResolved,
+  );
+});
