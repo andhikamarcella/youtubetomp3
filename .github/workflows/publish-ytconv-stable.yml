@@ -1,10 +1,10 @@
-# Final stable release: YTConv 1.6.1
+# Final stable release: YTConv 1.6.2
 name: Publish YTConv Stable to npm
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.1-cli-only-final
+      - release/ytconv-1.6.2-cli-only-final
     paths:
       - ".github/workflows/publish-ytconv-stable.yml"
       - "cli/**"
@@ -14,7 +14,7 @@ on:
       version:
         description: "Stable version; must match cli/package.json"
         required: true
-        default: "1.6.1"
+        default: "1.6.2"
       confirm:
         description: "Type PUBLISH-STABLE to continue"
         required: true
@@ -34,9 +34,9 @@ jobs:
     if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-STABLE' }}
     environment: npm
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
-      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.6.1' }}
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '1.6.2' }}
     defaults:
       run:
         working-directory: cli
@@ -57,13 +57,17 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           PACKAGE_TAG=$(node -p "require('./package.json').publishConfig.tag")
           test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
-          test "$PACKAGE_VERSION" = "1.6.1"
+          test "$PACKAGE_VERSION" = "1.6.2"
           test "$PACKAGE_TAG" = "latest"
           test "$(node -p "require('./package.json').publisher")" = "Andhika Marcella Fernanda"
           test "$(node -p "require('./package.json').organization.name")" = "YTConv Project"
           test "$(node -p "require('./package.json').license")" = "MIT"
           test "$(node -p "require('./package.json').engines.node")" = ">=22.14.0"
           node -e "const p=require('./package.json'); if(!p.author||!p.maintainers?.length||!p.releaseNotes||!p.releaseNotesUrl||!p.installer?.url||!p.installer?.sha256Url||!p.documentation?.url||!p.documentation?.nodejs||!p.dependencies?.ws||p.dependencies?.['ffmpeg-static']||p.optionalDependencies||p.publishConfig?.provenance!==true) process.exitCode=1"
+          test -f src/youtube-output.js
+          test -f scripts/test-youtube-output.js
+          grep -q 'music.youtube.com.*MP3' README.md
+          grep -q 'regular YouTube.*MP4' README.md
           case "$PACKAGE_VERSION" in
             *-*) echo "Stable publish cannot use a prerelease version."; exit 1 ;;
             *) ;;
@@ -74,7 +78,7 @@ jobs:
           else
             echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install, test, and audit the clean package
+      - name: Install test and audit the clean package
         run: |
           npm ci --ignore-scripts
           npm run check
@@ -83,6 +87,15 @@ jobs:
           npm run test:ish
           npm audit --omit=dev
           npm audit signatures
+      - name: Prove a real public YouTube MP4 before publication
+        env:
+          NO_COLOR: "1"
+          YTCONV_NO_UPDATE_CHECK: "1"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-pip
+          python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]'
+          node ./scripts/test-youtube-output.js
       - name: Build and validate the exact CLI-only tarball
         id: package
         run: |
@@ -91,6 +104,7 @@ jobs:
           TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(require('path').join('$RUNNER_TEMP',p[0].filename))")
           UNPACKED_SIZE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); process.stdout.write(String(p[0].unpackedSize))")
           node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json'); const bad=p[0].files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path)); if(bad.length){console.error(bad);process.exit(1)}"
+          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];const paths=new Set(p.files.map(f=>f.path));for(const required of ['src/youtube-output.js','docs/TROUBLESHOOTING.md','README.md'])if(!paths.has(required)){console.error('missing',required);process.exit(1)}"
           node ../scripts/ytconv-release-metadata.mjs \
             --package package.json \
             --tarball "$TARBALL" \
@@ -98,7 +112,7 @@ jobs:
             --output "$RUNNER_TEMP/ytconv-$RELEASE_VERSION.metadata.json"
           LOCAL_SHA256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
           printf '%s  %s\n' "$LOCAL_SHA256" "ytconv-$RELEASE_VERSION.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
-          echo "CLI-only package and documentation validation passed."
+          echo "CLI-only package, output policy, and documentation validation passed."
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           echo "sha256=$LOCAL_SHA256" >> "$GITHUB_OUTPUT"
       - name: Dry-run the exact tarball
