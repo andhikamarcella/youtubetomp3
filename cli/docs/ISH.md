@@ -1,4 +1,4 @@
-# YTConv 1.6.1 on iPhone and iPad with iSH
+# YTConv 1.6.2 on iPhone and iPad with iSH
 
 ## Important Node.js exception
 
@@ -27,10 +27,10 @@ python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default
 
 ## Step 2: install YTConv
 
-Download the reviewed 1.6.1 installer from the final release branch:
+Download the reviewed 1.6.2 installer from the final release branch:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ```
 
@@ -38,7 +38,7 @@ The installer:
 
 - confirms that it is running as root inside iSH/Alpine;
 - installs Python, FFmpeg, certificates, yt-dlp, and gallery-dl;
-- downloads `ish/ytconv.py` and `ish/ytconv-core.py` from the same reviewed 1.6.1 branch;
+- downloads `ish/ytconv.py` and `ish/ytconv-core.py` from the same reviewed 1.6.2 branch;
 - validates Python syntax;
 - installs files under `/usr/local/lib/ytconv-ish`;
 - creates `/usr/local/bin/ytconv`;
@@ -54,7 +54,7 @@ ytconv --diagnose
 Expected version:
 
 ```text
-1.6.1
+1.6.2
 ```
 
 ## Use
@@ -111,7 +111,7 @@ Do not export a long-lived browser cookie database into iSH as a workaround.
 apk update
 apk upgrade
 python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ```
@@ -120,7 +120,7 @@ ytconv --version
 
 ### `404 - page not found`
 
-Use the absolute 1.6.1 documentation and installer links in this guide. Do not reuse a commit-specific link from an older npm README.
+Use the absolute 1.6.2 documentation and installer links in this guide. Do not reuse a commit-specific link from an older npm README.
 
 ### `No space left on device`
 
@@ -146,6 +146,6 @@ ytconv --diagnose
 
 ## More documentation
 
-- [Node.js platform guide and iSH exception](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md#iphone-and-ipad-with-ish)
-- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
-- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TROUBLESHOOTING.md)
+- [Node.js platform guide and iSH exception](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md#iphone-and-ipad-with-ish)
+- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/INSTALL.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/TROUBLESHOOTING.md)

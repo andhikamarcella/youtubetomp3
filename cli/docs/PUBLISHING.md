@@ -1,4 +1,4 @@
-# Publishing YTConv 1.6.1 to npm
+# Publishing YTConv 1.6.2 to npm
 
 This document is for maintainers. YTConv has one active npm channel: `latest`.
 
@@ -7,11 +7,11 @@ This document is for maintainers. YTConv has one active npm channel: `latest`.
 | Field | Value |
 |---|---|
 | npm package | `ytconv` |
-| version | `1.6.1` |
+| version | `1.6.2` |
 | npm dist-tag | `latest` |
 | GitHub repository | `andhikamarcella/youtubetomp3` |
-| release branch | `release/ytconv-1.6.1-cli-only-final` |
-| Git tag | `ytconv-v1.6.1` |
+| release branch | `release/ytconv-1.6.2-cli-only-final` |
+| Git tag | `ytconv-v1.6.2` |
 | publisher/maintainer | Andhika Marcella Fernanda |
 | project label | YTConv Project |
 
@@ -52,15 +52,15 @@ Documentation verification must prove:
 - `docs/NODEJS.md` exists;
 - `docs/ISH.md` exists;
 - the public README has no relative `docs/` links;
-- every absolute documentation URL uses `release/ytconv-1.6.1-cli-only-final`;
+- every absolute documentation URL uses `release/ytconv-1.6.2-cli-only-final`;
 - every linked Markdown target is packed.
 
 ## Exact package artifact
 
 ```sh
 npm pack --json --pack-destination /tmp/ytconv-release
-sha256sum /tmp/ytconv-release/ytconv-1.6.1.tgz
-npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.1.cdx.json
+sha256sum /tmp/ytconv-release/ytconv-1.6.2.tgz
+npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.2.cdx.json
 ```
 
 Record:
@@ -77,7 +77,7 @@ Record:
 ## Clean installation proof
 
 ```sh
-npm install -g /tmp/ytconv-release/ytconv-1.6.1.tgz --prefix TEMP_PREFIX --force
+npm install -g /tmp/ytconv-release/ytconv-1.6.2.tgz --prefix TEMP_PREFIX --force
 TEMP_PREFIX/bin/ytconv --version
 TEMP_PREFIX/bin/ytconv --self-test
 TEMP_PREFIX/bin/ytconv doctor
@@ -87,7 +87,7 @@ Windows must also prove the CMD and PowerShell launchers. CI must prove browser-
 
 ## GitHub Actions publication
 
-The protected workflow runs from `release/ytconv-1.6.1-cli-only-final` or an explicit manual dispatch with confirmation `PUBLISH-STABLE`.
+The protected workflow runs from `release/ytconv-1.6.2-cli-only-final` or an explicit manual dispatch with confirmation `PUBLISH-STABLE`.
 
 The workflow:
 
@@ -98,17 +98,17 @@ The workflow:
 5. runs syntax checks,  tests, iSH checks, npm audit, and signature verification;
 6. builds one exact CLI-only tarball, metadata file, checksum, and SBOM;
 7. performs a dry-run using that tarball;
-8. publishes that same tarball as `ytconv@1.6.1` with `latest` and provenance;
+8. publishes that same tarball as `ytconv@1.6.2` with `latest` and provenance;
 9. downloads the public registry tarball and requires its SHA-256 to equal the tested tarball;
-10. creates `ytconv-v1.6.1` and attaches the tarball, checksum, metadata, and SBOM;
-11. verifies that npm `latest` is exactly `1.6.1`.
+10. creates `ytconv-v1.6.2` and attaches the tarball, checksum, metadata, and SBOM;
+11. verifies that npm `latest` is exactly `1.6.2`.
 
 ## Registry verification
 
 ```sh
 npm view ytconv@latest version --prefer-online
-npm view ytconv@1.6.1 dist.integrity dist.shasum dist.tarball --json
-npm view ytconv@1.6.1 documentation --json
+npm view ytconv@1.6.2 dist.integrity dist.shasum dist.tarball --json
+npm view ytconv@1.6.2 documentation --json
 npm view ytconv dist-tags --json
 ```
 
@@ -116,7 +116,7 @@ Required stable tag:
 
 ```json
 {
-  "latest": "1.6.1"
+  "latest": "1.6.2"
 }
 ```
 
@@ -124,9 +124,9 @@ Required stable tag:
 
 Confirm:
 
-- tag `ytconv-v1.6.1` points to the final tested commit;
+- tag `ytconv-v1.6.2` points to the final tested commit;
 - the release is not a prerelease;
-- `ytconv-1.6.1.tgz`, `SHA256SUMS.txt`, metadata JSON, and CycloneDX SBOM are attached;
+- `ytconv-1.6.2.tgz`, `SHA256SUMS.txt`, metadata JSON, and CycloneDX SBOM are attached;
 - the release checksum matches the npm registry tarball;
 - the README documentation URLs open successfully;
 - release notes describe platform and security limitations honestly.
@@ -137,7 +137,7 @@ Confirm:
 
 Fix the workflow on the final branch, rerun every check, and publish the same reviewed tree.
 
-### npm accepts 1.6.1 but GitHub Release fails
+### npm accepts 1.6.2 but GitHub Release fails
 
 Do not republish npm. Rerun the idempotent verification and GitHub Release steps against the exact public registry tarball.
 
@@ -146,7 +146,7 @@ Do not republish npm. Rerun the idempotent verification and GitHub Release steps
 Move `latest` only to a known valid stable version:
 
 ```sh
-npm dist-tag add ytconv@1.6.1 latest
+npm dist-tag add ytconv@1.6.2 latest
 ```
 
 ### Artifact mismatch

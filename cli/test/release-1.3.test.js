@@ -64,15 +64,18 @@ test('builds yt-dlp args for archive, retries, resume, metadata, and browser coo
   assert.ok(args.some((value) => value.includes('%(meta_album)s')));
 });
 
-test('default retry sleep never generates malformed fragment arguments', () => {
+test('default retry sleep preserves complete general fragment and file-access expressions', () => {
   const args = buildDownloadArgs(downloadOptions(['--audio']));
   const sleeps = args.reduce((values, value, index) => {
     if (value === '--retry-sleep') values.push(args[index + 1]);
     return values;
   }, []);
   assert.ok(sleeps.length >= 3);
-  assert.ok(sleeps.every((value) => !/fragment::|file_access::/u.test(value)), sleeps.join(','));
-  assert.ok(sleeps.some((value) => value === 'fragment:linear=1::2'));
+  assert.ok(sleeps.every((value) => !/^(?:fragment|file_access)::/u.test(value)), sleeps.join(','));
+  const general = sleeps.find((value) => !/^(?:fragment|file_access):/u.test(value));
+  assert.ok(general, sleeps.join(','));
+  assert.ok(sleeps.includes(`fragment:${general}`), sleeps.join(','));
+  assert.ok(sleeps.includes(`file_access:${general}`), sleeps.join(','));
 });
 
 test('subtitle-only downloads subtitles without media payload', () => {
@@ -89,8 +92,8 @@ test('extracts batch jobs and JSON report for automation', () => {
   ]);
   assert.equal(value.system.batchFile, 'links.txt');
   assert.equal(value.system.jobs, 3);
-  assert.match(value.system.resultJson, /report\.json$/u);
   assert.equal(value.system.continueOnError, true);
+  assert.match(value.system.resultJson, /report\.json$/u);
 });
 
 test('maps stable automation exit codes', () => {

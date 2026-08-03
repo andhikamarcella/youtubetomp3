@@ -1,9 +1,9 @@
-# YTConv 1.6.1 Stable Release Checklist
+# YTConv 1.6.2 Stable Release Checklist
 
 ## 1. Confirm scope and base
 
 - Base is the published 1.6.0 stable CLI release.
-- Version is exactly `1.6.1` with no prerelease suffix.
+- Version is exactly `1.6.2` with no prerelease suffix.
 - Scope is the CLI package, stable CLI workflows, documentation, installers, tests, and release metadata.
 - No website, API server, Express route, credentials, cookies, browser profiles, or generated engines are included.
 
@@ -12,7 +12,7 @@
 - `docs/NODEJS.md` exists and is packed.
 - `docs/ISH.md` exists and is packed.
 - The public README contains no relative `docs/` links.
-- Every public documentation URL uses `release/ytconv-1.6.1-cli-only-final`.
+- Every public documentation URL uses `release/ytconv-1.6.2-cli-only-final`.
 - Every linked Markdown target exists locally.
 - Windows, macOS, Linux, WSL, SSH, and Termux install Node.js before YTConv.
 - iSH clearly documents the supported Python exception.
@@ -25,7 +25,7 @@ node -e "const p=require('./package.json'); console.log(p.version,p.publisher,p.
 
 Required:
 
-- version `1.6.1`;
+- version `1.6.2`;
 - npm tag `latest`;
 - provenance enabled;
 - repository `andhikamarcella/youtubetomp3`, directory `cli`;
@@ -33,7 +33,7 @@ Required:
 - project label that does not claim a nonexistent repository owner;
 - Node.js `>=22.14.0` and npm `>=10`;
 - versioned absolute documentation metadata;
-- installer URL for `ytconv-1.6.1.tgz`.
+- installer URL for `ytconv-1.6.2.tgz`.
 
 ## 4. Review the diff
 
@@ -115,8 +115,8 @@ Inspect every packaged file. Reject HTML, CSS, JSX, TSX, server folders, web fol
 Generate:
 
 ```sh
-sha256sum /tmp/ytconv-release/ytconv-1.6.1.tgz
-npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.1.cdx.json
+sha256sum /tmp/ytconv-release/ytconv-1.6.2.tgz
+npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.2.cdx.json
 ```
 
 ## 9. Clean installation proof
@@ -133,32 +133,32 @@ Install the exact tarball into an empty prefix with lifecycle scripts enabled. V
 
 ## 11. Publish final branch
 
-- Create `release/ytconv-1.6.1-cli-only-final` from the merged commit.
+- Create `release/ytconv-1.6.2-cli-only-final` from the merged commit.
 - Trigger the stable npm workflow.
 - Publish the exact tarball validated by CI.
-- Do not claim success until npm `latest` reports 1.6.1.
+- Do not claim success until npm `latest` reports 1.6.2.
 
 ## 12. Verify public state
 
 ```sh
 npm view ytconv@latest version --prefer-online
 npm view ytconv dist-tags --json --prefer-online
-npm view ytconv@1.6.1 dist.integrity dist.shasum dist.tarball --json --prefer-online
-npm view ytconv@1.6.1 documentation --json --prefer-online
+npm view ytconv@1.6.2 dist.integrity dist.shasum dist.tarball --json --prefer-online
+npm view ytconv@1.6.2 documentation --json --prefer-online
 ```
 
 Required:
 
-- `latest = 1.6.1`;
+- `latest = 1.6.2`;
 - registry tarball SHA-256 matches the tested tarball;
-- GitHub tag `ytconv-v1.6.1` exists;
+- GitHub tag `ytconv-v1.6.2` exists;
 - the GitHub Release is not a prerelease;
 - tarball, SHA256SUMS, metadata, and SBOM are attached;
 - README documentation links open without 404 errors.
 
 ## 13. Download-back test
 
-Download the public npm tarball into a new directory. Verify SHA-256, file count, CLI-only allowlist, version `1.6.1`, clean install, self-test, doctor, `docs/NODEJS.md`, and `docs/ISH.md`.
+Download the public npm tarball into a new directory. Verify SHA-256, file count, CLI-only allowlist, version `1.6.2`, clean install, self-test, doctor, `docs/NODEJS.md`, and `docs/ISH.md`.
 
 ## 14. Post-release instructions
 
@@ -166,4 +166,4 @@ Publish beginner upgrade commands for CMD, PowerShell, Linux/macOS, Termux, and 
 
 ## 15. Rollback
 
-If a serious defect appears, preserve the audit trail and publish a corrected patch version. Do not overwrite or silently replace 1.6.1 artifacts.
+If a serious defect appears, preserve the audit trail and publish a corrected patch version. Do not overwrite or silently replace 1.6.2 artifacts.

@@ -15,15 +15,16 @@ import { socialLoginHint } from './social-sessions.js';
 import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 
 const STATIC_IMAGE_EXTENSIONS = new Set([
-  '.avif',
-  '.bmp',
-  '.heic',
-  '.jpeg',
-  '.jpg',
-  '.png',
-  '.tif',
-  '.tiff',
-  '.webp',
+  '.avif', '.bmp', '.gif', '.heic', '.jpeg', '.jpg', '.png', '.tif', '.tiff', '.webp',
+]);
+const AUDIO_OUTPUT_EXTENSIONS = new Set([
+  '.aac', '.alac', '.flac', '.m4a', '.mp3', '.oga', '.ogg', '.opus', '.vorbis', '.wav',
+]);
+const VIDEO_OUTPUT_EXTENSIONS = new Set([
+  '.3gp', '.avi', '.flv', '.m4v', '.mkv', '.mov', '.mp4', '.mpeg', '.mpg', '.ts', '.webm',
+]);
+const SUBTITLE_OUTPUT_EXTENSIONS = new Set([
+  '.ass', '.lrc', '.srt', '.ssa', '.ttml', '.vtt',
 ]);
 
 export function cleanMediaUrl(value) {
@@ -164,6 +165,14 @@ export async function inspectMedia(options) {
   }
 }
 
+async function canonicalPath(target) {
+  try {
+    return await fs.realpath(target);
+  } catch {
+    return path.resolve(target);
+  }
+}
+
 async function listFiles(directory) {
   const files = new Set();
   async function walk(current) {
@@ -176,11 +185,54 @@ async function listFiles(directory) {
     await Promise.all(entries.map(async (entry) => {
       const target = path.join(current, entry.name);
       if (entry.isDirectory()) await walk(target);
-      else if (entry.isFile()) files.add(target);
+      else if (entry.isFile()) files.add(await canonicalPath(target));
     }));
   }
   await walk(directory);
   return files;
+}
+
+function outputKind({ result, completedMode, options }) {
+  if (options.subtitleOnly) return 'subtitle';
+  if (result?.engine === 'gallery-dl') return 'gallery';
+  if (completedMode === 'audio') return 'audio';
+  return 'video';
+}
+
+function isExpectedOutput(file, kind) {
+  const extension = path.extname(file).toLowerCase();
+  if (kind === 'audio') return AUDIO_OUTPUT_EXTENSIONS.has(extension);
+  if (kind === 'video') return VIDEO_OUTPUT_EXTENSIONS.has(extension);
+  if (kind === 'subtitle') return SUBTITLE_OUTPUT_EXTENSIONS.has(extension);
+  if (kind === 'gallery') return STATIC_IMAGE_EXTENSIONS.has(extension) || VIDEO_OUTPUT_EXTENSIONS.has(extension);
+  return false;
+}
+
+async function verifiedReportedPaths(result, outputDirectory, kind) {
+  const candidates = [
+    ...(Array.isArray(result?.outputPaths) ? result.outputPaths : []),
+    result?.outputPath,
+  ].filter(Boolean);
+  const verified = [];
+  for (const candidate of candidates) {
+    const resolved = path.isAbsolute(candidate) ? candidate : path.join(outputDirectory, candidate);
+    if (!isExpectedOutput(resolved, kind)) continue;
+    try {
+      const stats = await fs.stat(resolved);
+      if (stats.isFile() && stats.size > 0) verified.push(await canonicalPath(resolved));
+    } catch {
+      // A printed path is not a result until it exists on disk.
+    }
+  }
+  return verified;
+}
+
+async function producedFiles({ before, after, result, outputDirectory, kind }) {
+  const created = [...after]
+    .filter((file) => !before.has(file))
+    .filter((file) => isExpectedOutput(file, kind));
+  const reported = await verifiedReportedPaths(result, outputDirectory, kind);
+  return [...new Set([...created, ...reported])];
 }
 
 function runFfmpeg(ffmpegPath, args) {
@@ -279,6 +331,7 @@ export async function downloadMedia({ options, ...rest }) {
   const before = await listFiles(outputDirectory);
 
   let result;
+  let completedMode = mode;
   try {
     result = await runDownloadMode({ mode, options, rest, url });
   } catch (primaryError) {
@@ -304,6 +357,7 @@ export async function downloadMedia({ options, ...rest }) {
 
     try {
       result = await runDownloadMode({ mode: fallbackMode, options, rest, url });
+      completedMode = fallbackMode;
     } catch (fallbackError) {
       const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
       const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
@@ -315,19 +369,46 @@ export async function downloadMedia({ options, ...rest }) {
     }
   }
 
-  const after = await listFiles(outputDirectory);
-  let created = [...after].filter((file) => !before.has(file));
-  if (result.engine === 'gallery-dl' && !created.length) {
+  let kind = outputKind({ result, completedMode, options });
+  let after = await listFiles(outputDirectory);
+  let produced = await producedFiles({ before, after, result, outputDirectory, kind });
+
+  if (!produced.length && result.engine === 'yt-dlp' && result.archiveSkipped && options.archivePath) {
+    rest.onLog?.(
+      'The URL was recorded in the archive, but no output file exists. Restoring it once without the archive...',
+      false,
+    );
+    const retryOptions = { ...options, archivePath: '', galleryArchivePath: '' };
+    try {
+      result = await runDownloadMode({
+        mode: completedMode,
+        options: retryOptions,
+        rest,
+        url,
+      });
+    } catch (retryError) {
+      throw new Error(accessHint({
+        url,
+        cookieConfig: options.cookieConfig,
+        originalError: `The archive recovery retry failed: ${retryError instanceof Error ? retryError.message : String(retryError)}`,
+      }));
+    }
+    kind = outputKind({ result, completedMode, options });
+    after = await listFiles(outputDirectory);
+    produced = await producedFiles({ before, after, result, outputDirectory, kind });
+  }
+
+  if (!produced.length) {
     throw new Error(accessHint({
       url,
       cookieConfig: options.cookieConfig,
-      originalError: `${socialPlatformLabel(detectSocialPlatform(url))} returned no file for this URL.`,
+      originalError: `${result.engine || 'The media engine'} exited successfully but produced no ${kind} file. YTConv did not mark this conversion as successful.`,
     }));
   }
 
   if (result.engine === 'gallery-dl') {
-    created = await convertImages({
-      files: created,
+    produced = await convertImages({
+      files: produced,
       format: options.imageFormat,
       ffmpegPath: options.ffmpegPath,
       onLog: rest.onLog,
@@ -337,8 +418,8 @@ export async function downloadMedia({ options, ...rest }) {
 
   return {
     ...result,
-    outputPath: created.at(-1) || result.outputPath,
-    outputPaths: created,
-    fileCount: created.length || result.fileCount || 1,
+    outputPath: produced.at(-1),
+    outputPaths: produced,
+    fileCount: produced.length,
   };
 }

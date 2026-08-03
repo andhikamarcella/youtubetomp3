@@ -1,6 +1,6 @@
 # Install Node.js Before YTConv
 
-YTConv 1.6.1 uses Node.js on Windows, macOS, desktop Linux, Android Termux, WSL, SSH servers, and other supported npm environments. Install Node.js first, close and reopen the terminal, and only then install YTConv.
+YTConv 1.6.2 uses Node.js on Windows, macOS, desktop Linux, Android Termux, WSL, SSH servers, and other supported npm environments. Install Node.js first, close and reopen the terminal, and only then install YTConv.
 
 YTConv requires:
 
@@ -218,7 +218,7 @@ apk update
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
 ```
 
-Then use the iSH installer described in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md).
+Then use the iSH installer described in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).
 
 Do not force a desktop Node.js tutorial into iSH. The native Python path is the supported installation for iPhone and iPad.
 
@@ -263,7 +263,7 @@ ytconv.cmd doctor
 Expected YTConv version for this release:
 
 ```text
-1.6.1
+1.6.2
 ```
 
 ## Common beginner problems

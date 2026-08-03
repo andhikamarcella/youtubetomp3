@@ -1,10 +1,10 @@
-# Complete YTConv 1.6.1 Installation Guide
+# Complete YTConv 1.6.2 Installation Guide
 
-YTConv 1.6.1 is the stable npm `latest` release.
+YTConv 1.6.2 is the stable npm `latest` release.
 
 ## Read this first
 
-On Windows, macOS, Linux, WSL, SSH servers, and Termux, install Node.js before installing YTConv. Follow the complete [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md).
+On Windows, macOS, Linux, WSL, SSH servers, and Termux, install Node.js before installing YTConv. Follow the complete [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md).
 
 Required versions:
 
@@ -42,10 +42,10 @@ ytconv.cmd doctor
 Expected version:
 
 ```text
-1.6.1
+1.6.2
 ```
 
-Full Windows tutorial: [WINDOWS.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/WINDOWS.md).
+Full Windows tutorial: [WINDOWS.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/WINDOWS.md).
 
 ## Windows PowerShell
 
@@ -82,7 +82,7 @@ ytconv repair
 ytconv doctor
 ```
 
-Full tutorial: [LINUX.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/LINUX.md).
+Full tutorial: [LINUX.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/LINUX.md).
 
 ## Desktop Linux
 
@@ -139,7 +139,7 @@ Default output:
 ~/storage/downloads/YTConv
 ```
 
-Full tutorial: [TERMUX.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TERMUX.md).
+Full tutorial: [TERMUX.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/TERMUX.md).
 
 ## iPhone and iPad through iSH
 
@@ -148,7 +148,7 @@ Node.js is not required for the supported iSH edition.
 ```sh
 apk update
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv --diagnose
@@ -160,7 +160,7 @@ Default output:
 ~/Downloads/YTConv
 ```
 
-Full tutorial: [ISH.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md).
+Full tutorial: [ISH.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).
 
 ## WSL and SSH servers
 
@@ -198,7 +198,7 @@ ytconv --examples
 
 Expected:
 
-- YTConv `1.6.1`;
+- YTConv `1.6.2`;
 - Node.js 22.14.0 or newer on npm platforms;
 - npm 10 or newer;
 - yt-dlp ready;
