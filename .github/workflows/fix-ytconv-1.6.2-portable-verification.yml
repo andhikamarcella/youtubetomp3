@@ -1,0 +1,66 @@
+name: Apply YTConv 1.6.2 portable verification fixes
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/fix-ytconv-1.6.2-portable-verification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - name: Canonicalize physical output paths and replace fragile text gates
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          controller = Path('cli/src/media-controller.js')
+          text = controller.read_text(encoding='utf-8')
+          old = """      else if (entry.isFile()) files.add(target);"""
+          new = """      else if (entry.isFile()) {
+        try { files.add(await fs.realpath(target)); }
+        catch { files.add(path.resolve(target)); }
+      }"""
+          if old not in text:
+              raise SystemExit('listFiles replacement target was not found')
+          text = text.replace(old, new, 1)
+          old = """      if (stats.isFile() && stats.size > 0) verified.push(resolved);"""
+          new = """      if (stats.isFile() && stats.size > 0) {
+        try { verified.push(await fs.realpath(resolved)); }
+        catch { verified.push(path.resolve(resolved)); }
+      }"""
+          if old not in text:
+              raise SystemExit('reported path replacement target was not found')
+          controller.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          for name in ('.github/workflows/ytconv-cli.yml', '.github/workflows/publish-ytconv-stable.yml'):
+              target = Path(name)
+              text = target.read_text(encoding='utf-8')
+              text = text.replace(
+                  "          grep -q 'music.youtube.com.*MP3' README.md\n          grep -q 'regular YouTube.*MP4' README.md",
+                  "          node -e \"import('./src/media-controller.js').then(({effectiveMediaMode}) => { if(effectiveMediaMode({url:'https://music.youtube.com/watch?v=x',mode:'auto'})!=='audio'||effectiveMediaMode({url:'https://www.youtube.com/watch?v=x',mode:'auto'})!=='video') process.exitCode=1; })\"\n          node -e \"import('./src/youtube-output.js').then(({effectiveVideoContainer}) => { if(effectiveVideoContainer({url:'https://www.youtube.com/watch?v=x',mode:'video',requestedContainer:'auto'})!=='mp4') process.exitCode=1; })\"",
+              )
+              target.write_text(text, encoding='utf-8')
+          PY
+      - name: Verify and commit fixes
+        run: |
+          cd cli
+          npm ci --ignore-scripts
+          npm run check
+          npm test
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/src/media-controller.js .github/workflows/ytconv-cli.yml .github/workflows/publish-ytconv-stable.yml
+          git commit -m "fix(cli): canonicalize outputs and execute policy gates"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
