@@ -24,6 +24,7 @@ function baseOptions(overrides = {}) {
     playlist: false,
     outputDirectory: os.tmpdir(),
     subtitles: false,
+    subtitleOnly: false,
     sponsorBlockMode: 'off',
     archivePath: '',
     ...overrides,
@@ -59,6 +60,16 @@ if (process.env.YTCONV_TEST_BEHAVIOR === 'archive-recovery') {
 }
 if (process.env.YTCONV_TEST_BEHAVIOR === 'existing-output') {
   console.log('ytconv-file:' + process.env.YTCONV_TEST_EXISTING_FILE);
+  process.exit(0);
+}
+if (process.env.YTCONV_TEST_BEHAVIOR === 'thumbnail-only') {
+  const target = path.join(process.cwd(), 'thumbnail.jpg');
+  fs.writeFileSync(target, 'not a video');
+  console.log('ytconv-file:' + target);
+  process.exit(0);
+}
+if (process.env.YTCONV_TEST_BEHAVIOR === 'metadata-only') {
+  fs.writeFileSync(path.join(process.cwd(), 'metadata.info.json'), '{}');
   process.exit(0);
 }
 if (process.env.YTCONV_TEST_BEHAVIOR === 'zero-output') process.exit(0);
@@ -179,13 +190,15 @@ test('an existing path printed by yt-dlp is verified instead of treated as empty
   assert.equal(result.fileCount, 1);
 });
 
-test('yt-dlp exit zero without a real file is rejected', async (t) => {
-  const { directory, runner } = await fakeRunner(t, 'zero-output');
-  await assert.rejects(
-    downloadMedia({
-      ytDlp: runner,
-      options: baseOptions({ outputDirectory: directory }),
-    }),
-    /exited successfully but produced no file/u,
-  );
+test('yt-dlp exit zero without a real mode-matching file is rejected', async (t) => {
+  for (const behavior of ['zero-output', 'thumbnail-only', 'metadata-only']) {
+    const { directory, runner } = await fakeRunner(t, behavior);
+    await assert.rejects(
+      downloadMedia({
+        ytDlp: runner,
+        options: baseOptions({ outputDirectory: directory }),
+      }),
+      /exited successfully but produced no video file/u,
+    );
+  }
 });
