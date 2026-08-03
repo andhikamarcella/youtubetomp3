@@ -1,6 +1,9 @@
 name: Apply YTConv 1.6.3 Retry Hotfix
 
 on:
+  push:
+    branches:
+      - release/ytconv-1.6.2-cli-only-final
   pull_request:
     paths:
       - ".github/workflows/ytconv-cli.yml"
@@ -21,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
           fetch-depth: 0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
@@ -35,8 +38,7 @@ jobs:
           npm version 1.6.3 --no-git-tag-version
       - name: Restore full 1.6.3 CI workflow
         run: |
-          git fetch origin release/ytconv-1.6.2-cli-only-final
-          git show origin/release/ytconv-1.6.2-cli-only-final:.github/workflows/ytconv-cli.yml > .github/workflows/ytconv-cli.yml
+          git show HEAD^:.github/workflows/ytconv-cli.yml > .github/workflows/ytconv-cli.yml
           python3 - <<'PY'
           from pathlib import Path
           path = Path('.github/workflows/ytconv-cli.yml')
@@ -45,6 +47,12 @@ jobs:
           text = text.replace('1.6.2', '1.6.3')
           path.write_text(text, encoding='utf-8')
           PY
+      - name: Remove one-time automation
+        run: |
+          rm -f .github/scripts/prepare-ytconv-1.6.3.py
+          rm -f .github/workflows/hotfix-ytconv-1.6.3.yml
+          rm -f .github/workflows/hotfix-ytconv-1.6.3-pr.yml
+          rm -f cli/.ytconv-1.6.3-hotfix-trigger
       - name: Verify retry arguments and full CLI
         working-directory: cli
         run: |
@@ -82,6 +90,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cli .github/workflows/ytconv-cli.yml .github/workflows/publish-ytconv-stable.yml
+          git add -A
           git commit -m "fix(cli): correct retry sleep arguments in 1.6.3"
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
