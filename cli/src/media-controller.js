@@ -15,15 +15,16 @@ import { socialLoginHint } from './social-sessions.js';
 import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 
 const STATIC_IMAGE_EXTENSIONS = new Set([
-  '.avif',
-  '.bmp',
-  '.heic',
-  '.jpeg',
-  '.jpg',
-  '.png',
-  '.tif',
-  '.tiff',
-  '.webp',
+  '.avif', '.bmp', '.gif', '.heic', '.jpeg', '.jpg', '.png', '.tif', '.tiff', '.webp',
+]);
+const AUDIO_OUTPUT_EXTENSIONS = new Set([
+  '.aac', '.alac', '.flac', '.m4a', '.mp3', '.oga', '.ogg', '.opus', '.vorbis', '.wav',
+]);
+const VIDEO_OUTPUT_EXTENSIONS = new Set([
+  '.3gp', '.avi', '.flv', '.m4v', '.mkv', '.mov', '.mp4', '.mpeg', '.mpg', '.ts', '.webm',
+]);
+const SUBTITLE_OUTPUT_EXTENSIONS = new Set([
+  '.ass', '.lrc', '.srt', '.ssa', '.ttml', '.vtt',
 ]);
 
 export function cleanMediaUrl(value) {
@@ -183,7 +184,23 @@ async function listFiles(directory) {
   return files;
 }
 
-async function verifiedReportedPaths(result, outputDirectory) {
+function outputKind({ result, completedMode, options }) {
+  if (options.subtitleOnly) return 'subtitle';
+  if (result?.engine === 'gallery-dl') return 'gallery';
+  if (completedMode === 'audio') return 'audio';
+  return 'video';
+}
+
+function isExpectedOutput(file, kind) {
+  const extension = path.extname(file).toLowerCase();
+  if (kind === 'audio') return AUDIO_OUTPUT_EXTENSIONS.has(extension);
+  if (kind === 'video') return VIDEO_OUTPUT_EXTENSIONS.has(extension);
+  if (kind === 'subtitle') return SUBTITLE_OUTPUT_EXTENSIONS.has(extension);
+  if (kind === 'gallery') return STATIC_IMAGE_EXTENSIONS.has(extension) || VIDEO_OUTPUT_EXTENSIONS.has(extension);
+  return false;
+}
+
+async function verifiedReportedPaths(result, outputDirectory, kind) {
   const candidates = [
     ...(Array.isArray(result?.outputPaths) ? result.outputPaths : []),
     result?.outputPath,
@@ -191,9 +208,10 @@ async function verifiedReportedPaths(result, outputDirectory) {
   const verified = [];
   for (const candidate of candidates) {
     const resolved = path.isAbsolute(candidate) ? candidate : path.join(outputDirectory, candidate);
+    if (!isExpectedOutput(resolved, kind)) continue;
     try {
       const stats = await fs.stat(resolved);
-      if (stats.isFile()) verified.push(resolved);
+      if (stats.isFile() && stats.size > 0) verified.push(resolved);
     } catch {
       // A printed path is not a result until it exists on disk.
     }
@@ -201,9 +219,11 @@ async function verifiedReportedPaths(result, outputDirectory) {
   return verified;
 }
 
-async function producedFiles({ before, after, result, outputDirectory }) {
-  const created = [...after].filter((file) => !before.has(file));
-  const reported = await verifiedReportedPaths(result, outputDirectory);
+async function producedFiles({ before, after, result, outputDirectory, kind }) {
+  const created = [...after]
+    .filter((file) => !before.has(file))
+    .filter((file) => isExpectedOutput(file, kind));
+  const reported = await verifiedReportedPaths(result, outputDirectory, kind);
   return [...new Set([...created, ...reported])];
 }
 
@@ -341,8 +361,9 @@ export async function downloadMedia({ options, ...rest }) {
     }
   }
 
+  let kind = outputKind({ result, completedMode, options });
   let after = await listFiles(outputDirectory);
-  let produced = await producedFiles({ before, after, result, outputDirectory });
+  let produced = await producedFiles({ before, after, result, outputDirectory, kind });
 
   if (!produced.length && result.engine === 'yt-dlp' && result.archiveSkipped && options.archivePath) {
     rest.onLog?.(
@@ -364,15 +385,16 @@ export async function downloadMedia({ options, ...rest }) {
         originalError: `The archive recovery retry failed: ${retryError instanceof Error ? retryError.message : String(retryError)}`,
       }));
     }
+    kind = outputKind({ result, completedMode, options });
     after = await listFiles(outputDirectory);
-    produced = await producedFiles({ before, after, result, outputDirectory });
+    produced = await producedFiles({ before, after, result, outputDirectory, kind });
   }
 
   if (!produced.length) {
     throw new Error(accessHint({
       url,
       cookieConfig: options.cookieConfig,
-      originalError: `${result.engine || 'The media engine'} exited successfully but produced no file. YTConv did not mark this conversion as successful.`,
+      originalError: `${result.engine || 'The media engine'} exited successfully but produced no ${kind} file. YTConv did not mark this conversion as successful.`,
     }));
   }
 
