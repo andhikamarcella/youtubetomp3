@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { repairBundledFfmpeg } from '../src/dependencies.js';
 import { downloadMedia } from '../src/media-controller.js';
 
 const DEFAULT_TEST_URLS = [
@@ -26,18 +27,41 @@ function executable(name) {
   return result.stdout.trim().split(/\r?\n/u)[0] || '';
 }
 
-function probeMedia(ffprobePath, outputPath) {
-  const probe = spawnSync(ffprobePath, [
-    '-v', 'error',
-    '-show_entries', 'stream=codec_type,codec_name',
-    '-of', 'json',
-    outputPath,
-  ], { encoding: 'utf8', windowsHide: true });
-  assert.equal(probe.status, 0, probe.stderr);
-  return JSON.parse(probe.stdout).streams || [];
+async function resolveFfmpeg() {
+  const system = executable('ffmpeg');
+  if (system) return { path: system, source: 'system FFmpeg' };
+
+  process.stdout.write('System FFmpeg is unavailable; testing YTConv verified FFmpeg repair...\n');
+  const repaired = await repairBundledFfmpeg({ silent: false });
+  assert.equal(
+    repaired.installed,
+    true,
+    repaired.error || 'YTConv verified FFmpeg repair did not install an executable.',
+  );
+  assert.ok(repaired.path, 'YTConv verified FFmpeg repair returned no executable path.');
+  return {
+    path: repaired.path,
+    source: repaired.repaired ? 'new verified YTConv FFmpeg' : 'existing verified YTConv FFmpeg',
+  };
 }
 
-async function verifyCandidate({ url, index, ffmpegPath, ffprobePath }) {
+function verifyStream(ffmpegPath, outputPath, type) {
+  const args = type === 'video'
+    ? ['-v', 'error', '-i', outputPath, '-map', '0:v:0', '-frames:v', '1', '-f', 'null', '-']
+    : ['-v', 'error', '-i', outputPath, '-map', '0:a:0', '-t', '1', '-f', 'null', '-'];
+  const result = spawnSync(ffmpegPath, args, {
+    encoding: 'utf8',
+    windowsHide: true,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  assert.equal(
+    result.status,
+    0,
+    `The MP4 has no decodable ${type} stream. ${result.stderr || result.error?.message || ''}`,
+  );
+}
+
+async function verifyCandidate({ url, index, ffmpegPath }) {
   const outputDirectory = path.join(rootDirectory, `candidate-${index + 1}`);
   await fs.mkdir(outputDirectory, { recursive: true });
 
@@ -88,18 +112,20 @@ async function verifyCandidate({ url, index, ffmpegPath, ffprobePath }) {
   assert.equal(stats.isFile(), true);
   assert.ok(stats.size > 1024, `The MP4 output is unexpectedly small: ${stats.size} bytes.`);
 
-  const streams = probeMedia(ffprobePath, result.outputPath);
-  assert.ok(streams.some((stream) => stream.codec_type === 'video'), 'The MP4 has no video stream.');
-  assert.ok(streams.some((stream) => stream.codec_type === 'audio'), 'The MP4 has no audio stream.');
+  verifyStream(ffmpegPath, result.outputPath, 'video');
+  verifyStream(ffmpegPath, result.outputPath, 'audio');
 
-  return { outputPath: result.outputPath, size: stats.size, streams };
+  return { outputPath: result.outputPath, size: stats.size };
 }
 
 try {
-  const ffmpegPath = executable('ffmpeg');
-  const ffprobePath = executable('ffprobe');
-  assert.ok(ffmpegPath, 'FFmpeg is required for the real YouTube smoke test.');
-  assert.ok(ffprobePath, 'FFprobe is required for the real YouTube smoke test.');
+  const ffmpeg = await resolveFfmpeg();
+  const version = spawnSync(ffmpeg.path, ['-version'], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  assert.equal(version.status, 0, version.stderr || version.error?.message);
+  process.stdout.write(`Using ${ffmpeg.source}: ${ffmpeg.path}\n`);
   assert.ok(TEST_URLS.length > 0, 'At least one real YouTube test URL is required.');
 
   const failures = [];
@@ -108,10 +134,9 @@ try {
     const url = TEST_URLS[index];
     process.stdout.write(`Trying real YouTube candidate ${index + 1}/${TEST_URLS.length}: ${url}\n`);
     try {
-      verified = await verifyCandidate({ url, index, ffmpegPath, ffprobePath });
+      verified = await verifyCandidate({ url, index, ffmpegPath: ffmpeg.path });
       process.stdout.write(
-        `Verified real YouTube MP4: ${verified.outputPath} (${verified.size} bytes; `
-        + `${verified.streams.map((stream) => `${stream.codec_type}:${stream.codec_name}`).join(', ')})\n`,
+        `Verified real YouTube MP4: ${verified.outputPath} (${verified.size} bytes; video + audio)\n`,
       );
       break;
     } catch (error) {
