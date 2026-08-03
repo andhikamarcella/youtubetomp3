@@ -1,19 +1,29 @@
-# YTConv 1.6.0 on Windows
+# YTConv 1.6.1 on Windows
 
-## Requirements
+## Step 1: install Node.js first
 
-- Windows 10 or 11 on x64 or ARM64.
-- Node.js 22.14.0 or newer and npm 10 or newer.
-- CMD, PowerShell, or Windows Terminal.
-- A current Chrome, Edge, Firefox, Brave, or compatible browser for account-required media.
+Follow the [beginner Node.js guide for Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md#windows-10-or-windows-11).
 
-The npm CLI supports Windows ARM64. The automatic yt-dlp asset supports ARM64; when no matching fallback FFmpeg asset exists, install an ARM64 FFmpeg build through a trusted package manager and confirm it is on PATH.
+Recommended beginner path:
 
-## Install in CMD
+1. Download the current Node.js LTS Windows Installer from <https://nodejs.org/en/download>.
+2. Keep npm and Add to PATH enabled.
+3. Finish the installer.
+4. Close every terminal window.
+5. Open a new CMD, PowerShell, or Windows Terminal window.
+
+Verify:
 
 ```cmd
 node.exe --version
 npm.cmd --version
+```
+
+YTConv requires Node.js 22.14.0 or newer and npm 10 or newer.
+
+## Step 2: install YTConv in CMD
+
+```cmd
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@latest --force
@@ -23,24 +33,36 @@ ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-## Install in PowerShell
+## Step 2 alternative: PowerShell
 
-Use `npm.cmd` and `ytconv.cmd` to avoid PowerShell script-policy conflicts:
+Use `npm.cmd` and `ytconv.cmd` to avoid script-policy conflicts:
 
 ```powershell
-node.exe --version
-npm.cmd --version
 npm.cmd uninstall -g ytconv
 npm.cmd cache verify
 npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd repair
+ytconv.cmd --self-test
 ytconv.cmd doctor
 ```
 
-Expected output includes `1.6.0` and `Status: ready to use.`
+Expected output includes:
 
-## Run the repository installer
+```text
+1.6.1
+Status: ready to use.
+```
+
+## Supported Windows systems
+
+- Windows 10 or Windows 11.
+- x64 for most Intel and AMD computers.
+- ARM64 for Windows on ARM, subject to matching media-engine availability.
+- CMD, PowerShell, and Windows Terminal.
+- Current Chrome, Edge, Firefox, Brave, or another supported browser for account-required media.
+
+## Repository installer
 
 From a checked-out `cli` directory:
 
@@ -48,11 +70,13 @@ From a checked-out `cli` directory:
 scripts\install-windows.cmd --local
 ```
 
+PowerShell:
+
 ```powershell
 .\scripts\install-windows.ps1 -Local
 ```
 
-The local installer runs syntax and unit tests before global installation. The public installer path always uses `ytconv@latest`.
+The local installer runs syntax and unit tests before global installation. The public path always installs npm `latest`.
 
 ## Official Instagram login
 
@@ -61,16 +85,16 @@ ytconv.cmd social logout instagram
 ytconv.cmd login instagram
 ```
 
-Complete sign-in and OTP/2FA in the browser window opened by YTConv. Return to the terminal only after Instagram visibly shows the signed-in account. YTConv then validates the original URL. If regular Chrome/Edge cookie encryption blocks access, the dedicated YTConv profile and loopback browser bridge are used.
+Complete sign-in and OTP/2FA in the official browser page opened by YTConv. Return to the terminal after the site shows the signed-in account.
 
-Use another browser:
+Choose another browser when needed:
 
 ```powershell
 ytconv.cmd login instagram --browser firefox
 ytconv.cmd login instagram --browser edge --profile "Profile 2"
 ```
 
-## Commands
+## Download examples
 
 ```cmd
 ytconv.cmd download "URL"
@@ -81,6 +105,8 @@ ytconv.cmd batch links.txt --jobs 2 --continue-on-error --result-json report.jso
 
 ## PATH problems
 
+CMD:
+
 ```cmd
 where node
 where npm
@@ -88,9 +114,7 @@ where ytconv
 npm.cmd config get prefix
 ```
 
-Close and reopen the terminal after installing Node.js or YTConv. If multiple YTConv commands appear, remove obsolete global prefixes and reinstall once.
-
-PowerShell inspection:
+PowerShell:
 
 ```powershell
 Get-Command node -All
@@ -99,11 +123,13 @@ Get-Command ytconv -All
 npm.cmd config get prefix
 ```
 
+Close and reopen the terminal after installing Node.js or YTConv. If several obsolete commands appear, remove the old installation and reinstall once.
+
 ## PowerShell execution policy
 
-An error about `npm.ps1` or `ytconv.ps1` does not require weakening system policy. Use `npm.cmd` and `ytconv.cmd`. Do not globally set an unrestricted execution policy solely for YTConv.
+An error involving `npm.ps1` or `ytconv.ps1` does not require weakening the system policy. Continue with `npm.cmd` and `ytconv.cmd`.
 
-## Repair FFmpeg and engines
+## Repair media engines
 
 ```powershell
 $env:NO_COLOR = "1"
@@ -111,13 +137,13 @@ ytconv.cmd repair
 ytconv.cmd doctor
 ```
 
-Verified engines are stored in:
+Verified engines are stored under:
 
 ```text
 %USERPROFILE%\.ytconv\engines
 ```
 
-Do not download a random DLL or executable suggested by an error popup. Use `repair`, an official package manager, or a documented upstream release.
+Do not install random DLL or executable files from an error popup.
 
 ## Clean update
 
@@ -129,10 +155,16 @@ ytconv.cmd --version
 ytconv.cmd --self-test
 ```
 
+## More documentation
+
+- [Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md)
+- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TROUBLESHOOTING.md)
+
 ## Uninstall
 
 ```powershell
 npm.cmd uninstall -g ytconv
 ```
 
-Downloaded media and `~/.ytconv` data are intentionally preserved. Review and delete those separately only if no longer needed.
+Downloaded media and `~/.ytconv` data are preserved until removed manually.

@@ -1,24 +1,40 @@
-# YTConv 1.6.0 on Android Termux
+# YTConv 1.6.1 on Android Termux
 
 ## Supported environment
 
-Use a current Termux release from F-Droid or the official GitHub repository. Obsolete store builds have outdated package metadata and are not supported.
+Use a current Termux release from F-Droid or the official Termux GitHub project. Obsolete store builds may have outdated package metadata.
 
-Termux supports public URLs. Android application sandboxing prevents Termux from reading Chrome, Firefox, or other browser private databases. Account-required social media should be processed on desktop.
+Android application sandboxing prevents Termux from reading private Chrome, Firefox, or other browser databases. Public URLs are supported; account-required social media may require a desktop system.
 
-## Install
+## Step 1: install Node.js first
 
 ```sh
-pkg update && pkg upgrade -y
+pkg update
+pkg upgrade -y
 pkg install -y nodejs python ffmpeg curl ca-certificates
-termux-setup-storage
-python -m pip install -U --no-cache-dir 'yt-dlp[default]' gallery-dl
-npm install -g ytconv@latest --force
+node --version
+npm --version
 ```
 
-Accept the Android storage permission. Then:
+YTConv requires Node.js 22.14.0 or newer and npm 10 or newer. If the version is too old, update the Termux repositories and packages before continuing.
+
+Full beginner guide: [Node.js on Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md#android-with-termux).
+
+## Step 2: prepare storage and fallback engines
 
 ```sh
+termux-setup-storage
+python -m pip install -U --no-cache-dir 'yt-dlp[default]' gallery-dl
+```
+
+Accept the Android storage permission.
+
+## Step 3: install YTConv
+
+```sh
+npm uninstall -g ytconv
+npm cache verify
+npm install -g ytconv@latest --omit=optional --force
 ytconv --version
 ytconv repair
 ytconv --self-test
@@ -26,7 +42,11 @@ ytconv --shell-info
 ytconv doctor
 ```
 
-The version must be `1.6.0`. Required dependencies must be ready.
+Expected version:
+
+```text
+1.6.1
+```
 
 ## Output directory
 
@@ -36,13 +56,13 @@ Default shared output:
 ~/storage/downloads/YTConv
 ```
 
-Configure another directory:
+Configure it explicitly:
 
 ```sh
 ytconv config set output "$HOME/storage/downloads/YTConv"
 ```
 
-If storage links are missing:
+When storage links are missing:
 
 ```sh
 termux-setup-storage
@@ -51,19 +71,19 @@ ls -la "$HOME/storage/downloads"
 
 ## Responsive interface
 
-YTConv stacks the URL field and conversion button on narrow screens and removes decorative/help rows when terminal height is limited. Rotate the device, pinch terminal font size, or run headless when the TUI is inconvenient:
+YTConv stacks controls on narrow screens and removes decoration when the terminal height is limited. Use headless mode when the interactive interface is inconvenient:
 
 ```sh
 ytconv --headless download "URL"
 ```
 
-Normal output remains monochrome; only errors may be red. Disable even error red:
+Normal output remains monochrome; only actionable errors may be red. Disable color completely:
 
 ```sh
 NO_COLOR=1 ytconv doctor
 ```
 
-## Downloads
+## Download examples
 
 ```sh
 ytconv download "URL"
@@ -79,7 +99,7 @@ printf '%s\n' "URL1" "URL2" > links.txt
 ytconv batch links.txt --jobs 1 --continue-on-error --result-json report.json
 ```
 
-Use one job on memory-constrained devices. FFmpeg conversion can be CPU-intensive and may be stopped by Android background restrictions.
+Use one job on memory-constrained devices.
 
 ## Keep Termux alive
 
@@ -91,27 +111,40 @@ ytconv --headless download "URL"
 termux-wake-unlock
 ```
 
-Exclude Termux from aggressive battery optimization if Android repeatedly kills the process. This is an OS setting, not a YTConv security bypass.
+Android may still stop background work under aggressive battery management.
 
 ## Update
 
 ```sh
-pkg update && pkg upgrade -y
+pkg update
+pkg upgrade -y
 python -m pip install -U --no-cache-dir 'yt-dlp[default]' gallery-dl
-npm install -g ytconv@latest --force
+npm install -g ytconv@latest --omit=optional --force
+ytconv --version
 ytconv repair
 ytconv doctor
 ```
 
 ## Common failures
 
-### `Permission denied` under shared storage
+### `node` or `npm` is not found
 
-Run `termux-setup-storage`, accept permission, and use `~/storage/downloads` rather than guessing an Android filesystem path.
+```sh
+pkg update
+pkg upgrade -y
+pkg install -y nodejs
+hash -r
+node --version
+npm --version
+```
+
+### Shared-storage permission is denied
+
+Run `termux-setup-storage`, accept the Android prompt, and use `~/storage/downloads`.
 
 ### npm global permission error
 
-Termux normally uses a user-owned prefix. Inspect it:
+Termux normally uses a user-owned prefix:
 
 ```sh
 npm config get prefix
@@ -119,12 +152,18 @@ command -v npm
 command -v ytconv
 ```
 
-Do not use `sudo`; standard Termux does not require it.
+Do not use `sudo` in standard Termux.
 
 ### Browser login does not work
 
-This is an Android sandbox boundary. Logging into Chrome does not make its private cookie database readable from Termux. Use public URLs or run the account-required URL on Windows, macOS, or desktop Linux.
+This is an Android sandbox boundary. A Chrome login does not expose the browser cookie database to Termux.
 
-### Process is slow or killed
+### The process is slow or killed
 
-Reduce resolution, use `--jobs 1`, keep free storage, avoid simultaneous conversions, and use a foreground wake lock. Some devices lack enough memory for large playlists or 4K merges.
+Reduce resolution, use `--jobs 1`, keep enough free storage, avoid simultaneous conversions, and keep Termux in the foreground when possible.
+
+## More documentation
+
+- [Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md)
+- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TROUBLESHOOTING.md)

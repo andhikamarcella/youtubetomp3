@@ -1,10 +1,10 @@
-# Final branch verification: YTConv 1.6.0
-name: YTConv CLI 1.6.0 Stable
+# Final branch verification: YTConv 1.6.1
+name: YTConv CLI 1.6.1 Stable
 
 on:
   push:
     branches:
-      - "release/ytconv-1.6.0*"
+      - "release/ytconv-1.6.1*"
     paths:
       - "cli/**"
       - ".github/workflows/ytconv-cli.yml"
@@ -43,14 +43,18 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run security
-      - name: Stable identity and channel smoke tests
+      - name: Stable identity documentation and channel smoke tests
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.6.0"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.1"
           node ./bin/ytconv.js --help | grep -q "Persistent CLI features"
           node ./bin/ytconv.js quickstart | grep -q "YTConv quick start"
           node ./bin/ytconv.js completion bash | grep -q "complete"
+          test -f docs/NODEJS.md
+          test -f docs/ISH.md
+          ! grep -Eq '\]\((\./)?docs/' README.md
+          grep -q 'release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md' README.md
           HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "No accounts are linked yet"
-          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'latest') process.exitCode=1; if (!updateCommand('1.6.0').includes('@latest')) process.exitCode=1; })"
+          node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'latest') process.exitCode=1; if (!updateCommand('1.6.1').includes('@latest')) process.exitCode=1; })"
 
   desktop:
     strategy:
@@ -90,7 +94,9 @@ jobs:
           rm -f package-preview.json
           PORTABLE_PREFIX="$RUNNER_TEMP/ytconv-portable-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           npm install --prefix "$PORTABLE_PREFIX" "$PWD/$TARBALL" --ignore-scripts
-          test "$(node "$PORTABLE_PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.0"
+          test "$(node "$PORTABLE_PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.1"
+          test -f "$PORTABLE_PREFIX/node_modules/ytconv/docs/NODEJS.md"
+          test -f "$PORTABLE_PREFIX/node_modules/ytconv/docs/ISH.md"
 
   windows-browser-and-ffmpeg:
     runs-on: windows-latest
@@ -150,7 +156,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.0"
+      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.1"
 
   distro-installer-plans:
     runs-on: ubuntu-latest

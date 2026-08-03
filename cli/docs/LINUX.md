@@ -1,264 +1,216 @@
-# Installing YTConv 1.6.0 on Linux
+# Installing YTConv 1.6.1 on Linux and macOS
 
-This guide starts from a clean Linux installation and ends with a verified YTConv download. It covers desktop Linux, servers, SSH sessions, and the major package-manager families.
+This guide covers desktop Linux, macOS, WSL, servers, SSH sessions, and major package-manager families.
 
-## What YTConv needs
+## Step 1: install Node.js first
 
-Required:
+Read the [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md).
 
-- Node.js 22.14 or newer
-- npm
-- FFmpeg
-- HTTPS CA certificates
+YTConv requires:
 
-Recommended:
+```text
+Node.js 22.14.0 or newer
+npm 10 or newer
+```
 
-- Python 3
-- pip
-- yt-dlp and gallery-dl installed through pip as fallback engines
+The recommended cross-distribution beginner method is a per-user Node.js installation with nvm:
 
-Check the current system:
-
-```bash
+```sh
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.6/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm install --lts
+nvm use --lts
 node --version
 npm --version
-python3 --version
-ffmpeg -version
 ```
 
-Node.js must report `v22.14.0` or newer.
+Close and reopen the terminal after installation when `nvm`, `node`, or `npm` is not immediately available.
 
-## Fast universal installation
+## Step 2: install YTConv
 
-From the YTConv repository:
-
-```bash
-cd /path/to/youtubetomp3/cli
-sh ./scripts/install-unix.sh --print-plan
-sh ./scripts/install-unix.sh
-```
-
-The installer detects apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, or Homebrew. It may use `sudo` for operating-system packages, but it does **not** run `sudo npm install -g`. The npm prefix is configured under `~/.local`.
-
-After installation, open a new terminal or run:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Then verify:
-
-```bash
+```sh
+npm install -g ytconv@latest --force
 ytconv --version
 ytconv --self-test
+ytconv repair
 ytconv doctor
-ytconv --shell-info
 ```
 
-The version must be `1.6.0`.
+Expected version:
 
-## Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon
-
-```bash
-sudo apt update
-sudo apt install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl
+```text
+1.6.1
 ```
 
-Check Node.js:
+## Avoid `sudo npm install -g`
 
-```bash
-node --version
-```
+Use a per-user npm prefix when global installation reports `EACCES`:
 
-When the distribution ships Node.js older than 22.14.0, install a supported LTS release with a version manager such as `nvm`, or use the official Node.js packages for your distribution. After Node.js is ready:
-
-```bash
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-
+```sh
+mkdir -p "$HOME/.local/bin"
 npm config set prefix "$HOME/.local"
 printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
 export PATH="$HOME/.local/bin:$PATH"
-
 npm install -g ytconv@latest --force
 ```
 
-Verify:
-
-```bash
-command -v ytconv
-ytconv --version
-ytconv --self-test
-ytconv doctor
-```
-
-## Fedora, RHEL, Rocky Linux, AlmaLinux, Nobara
-
-```bash
-sudo dnf install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-
-npm config set prefix "$HOME/.local"
-printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.bashrc"
-export PATH="$HOME/.local/bin:$PATH"
-
-npm install -g ytconv@latest --force
-ytconv --version
-ytconv --self-test
-ytconv doctor
-```
-
-Some Fedora-family systems require an additional multimedia repository before the `ffmpeg` package is available. Install FFmpeg using the repository recommended by your distribution, then rerun `ytconv doctor`.
-
-## Arch Linux, CachyOS, Manjaro, EndeavourOS, Garuda
-
-```bash
-sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg ca-certificates curl
-python -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-
-npm config set prefix "$HOME/.local"
-printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.bashrc"
-export PATH="$HOME/.local/bin:$PATH"
-
-npm install -g ytconv@latest --force
-ytconv --version
-ytconv --self-test
-ytconv doctor
-```
-
-For Zsh, put the PATH line in `~/.zshrc`. For Fish:
+For Zsh, put the PATH line in `~/.zshrc` or `~/.zprofile`. For Fish:
 
 ```fish
 fish_add_path $HOME/.local/bin
 ```
 
-## openSUSE Leap and Tumbleweed
+## Universal repository installer
 
-```bash
-sudo zypper refresh
-sudo zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg ca-certificates curl
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
+From the YTConv `cli` directory:
 
-npm config set prefix "$HOME/.local"
-printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
-export PATH="$HOME/.local/bin:$PATH"
+```sh
+sh ./scripts/install-unix.sh --print-plan
+sh ./scripts/install-unix.sh
+```
 
+The installer detects apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, and Homebrew. It may use administrator privileges for operating-system packages, but installs the npm package with a user prefix.
+
+## Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon
+
+Install system media tools:
+
+```sh
+sudo apt update
+sudo apt install -y python3 python3-pip ffmpeg ca-certificates curl
+```
+
+Install Node.js with the nvm section above when the distribution package is older than 22.14.0.
+
+Optional Python fallback engines:
+
+```sh
+python3 -m pip install --user -U --no-cache-dir 'yt-dlp[default]' gallery-dl \
+  || python3 -m pip install --user -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
+```
+
+Then install YTConv:
+
+```sh
 npm install -g ytconv@latest --force
-ytconv --version
-ytconv --self-test
 ytconv doctor
 ```
+
+## Fedora, RHEL, Rocky Linux, AlmaLinux, Nobara
+
+```sh
+sudo dnf install -y python3 python3-pip ffmpeg ca-certificates curl
+```
+
+Install Node.js LTS with nvm when the active `node --version` does not meet the requirement. Some Fedora-family systems require the multimedia repository recommended by the distribution before `ffmpeg` is available.
+
+## Arch Linux, CachyOS, Manjaro, EndeavourOS, Garuda
+
+```sh
+sudo pacman -Syu --needed python python-pip ffmpeg ca-certificates curl
+```
+
+The distribution Node.js package is normally recent, but verify before installation:
+
+```sh
+node --version
+npm --version
+```
+
+Use nvm when the installed version is too old or when a per-user Node.js installation is preferred.
+
+## openSUSE Leap and Tumbleweed
+
+```sh
+sudo zypper refresh
+sudo zypper --non-interactive install python3 python3-pip ffmpeg ca-certificates curl
+```
+
+Install and verify Node.js before YTConv.
 
 ## Alpine Linux and musl systems
 
-Use the system FFmpeg package. A glibc-only bundled FFmpeg binary may not run on musl.
-
 ```sh
 apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl
-python3 -m pip install --break-system-packages -U --no-cache-dir "yt-dlp[default]" gallery-dl
-
-npm config set prefix "$HOME/.local"
-mkdir -p "$HOME/.local/bin"
-export PATH="$HOME/.local/bin:$PATH"
-
+node --version
+npm --version
+python3 -m pip install --break-system-packages -U --no-cache-dir 'yt-dlp[default]' gallery-dl
 npm install -g ytconv@latest --omit=optional --force
-ytconv --version
-ytconv --self-test
 ytconv doctor
 ```
 
-Persist PATH:
-
-```sh
-printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
-```
+Use the system FFmpeg package. A glibc-only binary may not run on musl.
 
 ## Void Linux
 
-```bash
+```sh
 sudo xbps-install -Syu nodejs npm python3 python3-pip ffmpeg ca-certificates curl
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-
-npm config set prefix "$HOME/.local"
-export PATH="$HOME/.local/bin:$PATH"
+node --version
+npm --version
 npm install -g ytconv@latest --force
-
-ytconv --version
-ytconv --self-test
-ytconv doctor
 ```
 
 ## Gentoo
 
-```bash
+```sh
 sudo emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-
-npm config set prefix "$HOME/.local"
-export PATH="$HOME/.local/bin:$PATH"
+node --version
+npm --version
 npm install -g ytconv@latest --force
-
-ytconv --version
-ytconv --self-test
-ytconv doctor
 ```
 
 ## NixOS and Nix
 
-Temporary shell:
+Temporary environment:
 
-```bash
-nix shell nixpkgs#nodejs_22 nixpkgs#python3 nixpkgs#ffmpeg nixpkgs#yt-dlp nixpkgs#gallery-dl
+```sh
+nix shell nixpkgs#nodejs_24 nixpkgs#python3 nixpkgs#ffmpeg nixpkgs#yt-dlp nixpkgs#gallery-dl
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
 npm install -g ytconv@latest --force
-ytconv --version
 ytconv doctor
 ```
 
-For a permanent NixOS setup, add Node.js, Python, FFmpeg, yt-dlp, and gallery-dl to your system or Home Manager configuration, rebuild, then install YTConv with a user npm prefix.
+For permanent use, add the packages to NixOS or Home Manager configuration.
 
-## macOS with Homebrew
+## macOS
 
-```bash
+Official Node.js installer method:
+
+1. Open <https://nodejs.org/en/download>.
+2. Choose the current LTS release.
+3. Install the matching Apple Silicon or Intel package.
+4. Reopen Terminal.
+
+Homebrew alternative:
+
+```sh
 brew update
 brew install node python ffmpeg
-python3 -m pip install --user -U --no-cache-dir "yt-dlp[default]" gallery-dl
-npm config set prefix "$HOME/.local"
-export PATH="$HOME/.local/bin:$PATH"
+node --version
+npm --version
 npm install -g ytconv@latest --force
-
-ytconv --version
-ytconv --self-test
 ytconv doctor
 ```
 
-## SSH and headless servers
+Use the per-user npm prefix shown above when needed.
 
-Install using the package manager instructions above. Then use the non-interactive mode:
+## WSL and SSH servers
 
-```bash
-ytconv --headless "URL"
-ytconv --headless --preset music "URL"
+Follow the Linux Node.js steps, then use headless mode:
+
+```sh
+ytconv --headless download "URL"
+ytconv --headless --preset music download "URL"
 ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
 ```
 
-For cron, use absolute paths:
+For cron, use absolute executable and output paths.
 
-```cron
-0 2 * * * /home/user/.local/bin/ytconv --headless --output /home/user/Downloads/YTConv "URL" >>/home/user/ytconv.log 2>&1
-```
+## Verification
 
-## Confirm that installation really works
-
-Run these checks in order:
-
-```bash
+```sh
 command -v node
 command -v npm
 command -v ytconv
@@ -271,107 +223,64 @@ ytconv doctor
 ytconv --shell-info
 ```
 
-Expected result:
+Expected:
 
-- YTConv version is `1.6.0`
-- Node.js is 22.14.0 or newer
-- yt-dlp is available
-- gallery-dl is available
-- FFmpeg is available
-- output directory is writable
-- updater uses the stable channel
+- YTConv `1.6.1`;
+- Node.js 22.14.0 or newer;
+- npm 10 or newer;
+- yt-dlp, gallery-dl, and FFmpeg ready or repairable;
+- writable output directory;
+- stable update channel.
 
-Then test metadata without downloading:
-
-```bash
-ytconv info "PUBLIC_TEST_URL" --json
-```
-
-Finally, test a legal media download:
-
-```bash
-ytconv download "PUBLIC_TEST_URL" --preset mobile
-```
-
-Check the output directory printed by YTConv. The usual desktop path is:
-
-```text
-~/Downloads/YTConv
-```
-
-## Common installation failures
+## Common failures
 
 ### `ytconv: command not found`
 
-```bash
+```sh
 npm prefix -g
 export PATH="$HOME/.local/bin:$PATH"
 command -v ytconv
 ```
 
-Persist the PATH line in `~/.profile`, `~/.bashrc`, or `~/.zshrc`.
+### `EACCES` during npm installation
 
-### `EACCES` during npm install
-
-Do not use `sudo npm install -g`. Use a user prefix:
-
-```bash
-npm config set prefix "$HOME/.local"
-mkdir -p "$HOME/.local/bin"
-export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@latest --force
-```
+Use the per-user npm prefix. Do not blindly change ownership of system directories.
 
 ### Node.js is too old
 
-Install Node.js 22.14, 24, or 26, then reopen the shell and run:
-
-```bash
+```sh
+nvm install --lts
+nvm use --lts
 node --version
 npm install -g ytconv@latest --force
 ```
 
+### Python is externally managed
+
+Use the distribution package, pipx, or the documented `--break-system-packages` fallback only when appropriate for that environment.
+
 ### FFmpeg is missing
 
-Install the distribution package, then run:
+Install the distribution FFmpeg package, then:
 
-```bash
+```sh
 ytconv repair
 ytconv doctor
 ```
 
-### Python reports an externally managed environment
+## Update
 
-Use the fallback supported by the distribution:
-
-```bash
-python3 -m pip install --user -U --no-cache-dir --break-system-packages "yt-dlp[default]" gallery-dl
-```
-
-Alternatively, install yt-dlp and gallery-dl from the distribution repository or with `pipx`.
-
-### Certificate, DNS, or proxy errors
-
-Check the system clock, CA certificates, DNS, and proxy settings. Run:
-
-```bash
-ytconv doctor
-ytconv --shell-info
-```
-
-## Update stable YTConv
-
-```bash
+```sh
 npm cache verify
 npm install -g ytconv@latest --force
 ytconv --version
 ytconv --self-test
 ```
 
-## Remove YTConv
+## Remove
 
-```bash
+```sh
 npm uninstall -g ytconv
 ```
 
-Downloaded media and archive files are not deleted automatically.
+Downloaded media and archive files are not removed automatically.

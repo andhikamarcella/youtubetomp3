@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.6.0"
+set "VERSION=1.6.1"
 set "CHANNEL=latest"
 echo YTConv %VERSION% installer for CMD
 where node.exe >nul 2>nul || (echo Node.js 22.14 or newer is not installed.& exit /b 1)

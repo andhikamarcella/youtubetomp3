@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "CLI-only media downloader with automatic setup and updates, official browser-session login, profiles, batch downloads, and multi-platform support.",
   "type": "module",
   "bin": {
@@ -92,24 +92,28 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "MIT",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.0-cli-only-final/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.0-cli-only-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.1-cli-only-final/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
+  "documentation": {
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.1-cli-only-final/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md"
+  },
   "releaseDate": "2026-08-03",
-  "releaseNotes": "YTConv 1.6.0 is the stable monochrome release with red-only errors, responsive terminal layouts, verified media-engine downloads, local token-free profiles, complete English documentation, and expanded dependency diagnostics.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.0-cli-only-final/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.1 fixes every published documentation link, adds a complete beginner-first Node.js installation guide for supported npm platforms, verifies documentation targets during tests, and keeps the native Python path for iSH.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/CHANGELOG.md",
   "installer": {
     "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.0.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.0/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.0/ytconv-1.6.0.metadata.json"
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.1.tgz",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.1/SHA256SUMS.txt",
+    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.1/ytconv-1.6.1.metadata.json"
   },
   "engines": {
     "node": ">=22.14.0",

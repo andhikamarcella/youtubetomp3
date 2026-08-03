@@ -1,5 +1,32 @@
 # YTConv CLI changelog
 
+## 1.6.1 — documentation integrity and beginner installation repair
+
+Released: 2026-08-03
+
+### Documentation integrity
+
+- Fixed the 404 errors caused when npm or GitHub rewrote relative README documentation links to a commit that did not contain the requested file.
+- Replaced every published README documentation link with an absolute, versioned link to `release/ytconv-1.6.1-cli-only-final`.
+- Added automated tests that reject relative `docs/` links, wrong release branches, and missing documentation targets.
+- Added complete package metadata for the documentation index and beginner Node.js guide.
+- Kept all documentation and runtime help in English.
+
+### Beginner installation
+
+- Added `docs/NODEJS.md` with beginner-first setup for Windows, macOS, Linux, WSL, SSH servers, Termux, Chromebook Linux, and the supported iSH exception.
+- Made Node.js installation and verification the first step on every npm platform.
+- Documented the supported baseline of Node.js 22.14.0 or newer and npm 10 or newer.
+- Explained the Windows `.cmd` workaround without weakening PowerShell execution policy.
+- Documented per-user npm prefixes instead of recommending `sudo npm install -g`.
+- Clarified that iSH intentionally uses the maintained Python frontend and does not require Node.js.
+
+### Platform fixes
+
+- Updated Windows, Linux/macOS, Termux, iSH, universal Unix, CMD, and PowerShell installation paths to version 1.6.1.
+- Pointed the iSH installer and its downloaded Python files to the reviewed 1.6.1 final branch.
+- Preserved CLI-only packaging, monochrome normal output, red-only actionable errors, verified engine downloads, and cross-platform diagnostics.
+
 ## 1.6.0 — stable, verified, monochrome release
 
 Released: 2026-08-03

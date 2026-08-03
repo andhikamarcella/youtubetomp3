@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-cli-only-final/cli"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.1-cli-only-final/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
 TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
 TMP_CORE="/tmp/ytconv-ish-core.py.$$"
-VERSION="1.6.0"
+VERSION="1.6.1"
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
@@ -17,6 +17,7 @@ fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
 [ -f /etc/alpine-release ] || fail "this installer is intended for iSH/Alpine Linux."
 
 say "YTConv iSH $VERSION installer"
+say "Node.js is not required for the supported iSH edition."
 say "Installing Python, FFmpeg, yt-dlp, gallery-dl, curl, and CA certificates..."
 
 apk update
@@ -59,8 +60,7 @@ say "YTConv iSH $VERSION was installed successfully."
 "$BIN_FILE" --diagnose || true
 say ""
 say "Public links are ready. Safari sessions remain sandboxed from iSH."
-say "Then download: ytconv URL"
+say "Download: ytconv URL"
 say "Playlist: ytconv playlist URL"
 say "Batch: ytconv batch links.txt --continue-on-error"
-say "Opt out: --no-subtitles --no-sponsorblock --no-archive"
 say "Output: $HOME/Downloads/YTConv"

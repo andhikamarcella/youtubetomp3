@@ -1,8 +1,8 @@
-# Troubleshooting YTConv 1.6.0
+# Troubleshooting YTConv 1.6.1
 
 Start with this safe sequence:
 
-```bash
+```sh
 ytconv clean
 ytconv repair
 ytconv --self-test
@@ -10,148 +10,170 @@ ytconv doctor
 ytconv --shell-info
 ```
 
-Do not include cookies, tokens, private URLs, or proxy credentials when sharing diagnostics.
+Do not share cookies, tokens, private URLs, proxy credentials, or browser profile data.
 
-## The wrong npm version is being published
+## A documentation link returns `404 - page not found`
 
-From the `cli` directory:
+The 1.6.0 npm README used relative documentation links. npm or GitHub could resolve those links against a commit that contained `cli/README.md` but did not contain the requested file, such as `cli/docs/ISH.md`.
 
-```bash
-node -p "require('./package.json').version"
-node -p "require('./package.json').publishConfig.tag"
-git branch --show-current
-git status --short
-```
+YTConv 1.6.1 fixes this by using absolute links to the reviewed final release branch and by testing every target before publication.
 
-For the stable release, expected values are:
+Use the versioned documentation index:
 
 ```text
-1.6.0
-latest
-release/ytconv-1.6.0-cli-only-final
+https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.1-cli-only-final/cli/docs
 ```
 
-npm never allows a published version number to be overwritten.
+Important guides:
+
+- [Node.js for beginners](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md)
+- [Installation](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
+- [Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/WINDOWS.md)
+- [Linux and macOS](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/LINUX.md)
+- [Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TERMUX.md)
+- [iSH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md)
+
+Remove an old npm-cached README by updating:
+
+```sh
+npm cache verify
+npm install -g ytconv@latest --force
+ytconv --version
+```
+
+Expected version: `1.6.1`.
+
+## Node.js or npm is not installed
+
+Install Node.js before YTConv on Windows, macOS, Linux, WSL, SSH servers, and Termux. Follow the [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md).
+
+Verify:
+
+```sh
+node --version
+npm --version
+```
+
+Required:
+
+```text
+Node.js 22.14.0 or newer
+npm 10 or newer
+```
+
+iSH uses the supported Python frontend and does not require Node.js.
 
 ## The screen stops at `setup incomplete`
 
-YTConv 1.6.0 automatically repairs yt-dlp, gallery-dl, and the bundled FFmpeg executable. Run:
+```sh
+ytconv repair
+ytconv doctor
+ytconv --self-test
+```
+
+Windows:
 
 ```powershell
+npm.cmd uninstall -g ytconv
+npm.cmd cache verify
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd repair
 ytconv.cmd doctor
-ytconv.cmd --self-test
 ```
 
-If repair still fails, reinstall the package with its install scripts enabled:
-
-```powershell
-npm.cmd uninstall -g ytconv
-npm.cmd cache verify
-npm.cmd install -g ytconv@latest --force
-ytconv.cmd doctor
-```
-
-Do not use `--ignore-scripts` on Windows, macOS, or desktop Linux because it skips media-engine bootstrap. Node.js and npm must already be installed because YTConv is distributed through npm.
-
-## Instagram, Facebook, or X asks for cookies or login
-
-You do not need to download `cookies.txt`. In the interactive CLI, paste the URL normally. If account access is required, YTConv opens the provider's official login page, waits for sign-in, verifies the same URL, and retries automatically. The manual commands remain available:
-
-```powershell
-ytconv.cmd login instagram
-ytconv.cmd login facebook --browser edge
-ytconv.cmd login x --browser firefox
-ytconv.cmd social status
-```
-
-After sign-in, return to YTConv and press Enter. The provider link is saved only when the exact failed URL succeeds. A failed verification is never recorded as linked. Passwords and OTP codes never enter YTConv; provider-scoped temporary cookies stay on the device and are deleted after the attempt.
-
-If Chrome or Edge refuses direct access because of App-Bound Encryption, YTConv opens a separate private browser profile and uses the browser's loopback-only session interface. Press `B` to try Firefox or another browser if that window cannot start.
-
-## `spawnSync npm.cmd EINVAL` on Windows
-
-Older updater code attempted to spawn a `.cmd` file directly. Install the current stable version manually:
-
-```cmd
-npm.cmd uninstall -g ytconv
-npm.cmd cache verify
-npm.cmd install -g ytconv@latest --force
-ytconv.cmd --version
-```
-
-The current updater uses the npm CLI through Node.js, with `cmd.exe` only as a controlled fallback.
+Do not use `--ignore-scripts` for a normal desktop installation because it skips the post-install dependency bootstrap.
 
 ## PowerShell says scripts are disabled
 
-Use the CMD shim:
+Use the CMD shims:
 
 ```powershell
+npm.cmd install -g ytconv@latest --force
 ytconv.cmd --version
 ytconv.cmd doctor
 ```
 
-Optionally enable local/signed scripts for the current user:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
+Changing the system execution policy is not required.
 
 ## `ytconv: command not found`
 
 Windows:
 
 ```cmd
-where ytconv
+where node
 where npm
+where ytconv
 npm.cmd prefix -g
 ```
 
-Linux/macOS:
+Linux and macOS:
 
-```bash
+```sh
+command -v node
+command -v npm
 command -v ytconv
-type -a ytconv
 npm prefix -g
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Persist the PATH line in the shell profile.
+Persist the PATH in the correct shell profile and reopen the terminal.
 
 ## npm reports `EACCES` or permission denied
 
 Do not use `sudo npm install -g`. Configure a user prefix:
 
-```bash
-npm config set prefix "$HOME/.local"
+```sh
 mkdir -p "$HOME/.local/bin"
+npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
 npm install -g ytconv@latest --force
 ```
 
 ## Node.js is too old
 
-YTConv requires Node.js 22.14 or newer:
-
-```bash
+```sh
 node --version
 ```
 
-Install Node.js 22.14, 24, or 26, reopen the terminal, and reinstall YTConv.
+Install a current supported LTS release, reopen the terminal, verify again, and reinstall YTConv.
+
+## Instagram, Facebook, or X asks for login
+
+On a supported desktop system:
+
+```sh
+ytconv login instagram
+ytconv login facebook --browser edge
+ytconv login x --browser firefox
+ytconv social status
+```
+
+Complete password and OTP/2FA entry only in the provider's official browser page. YTConv saves the provider-to-browser reference only after the exact failed URL succeeds.
+
+Android Termux and iSH cannot read private browser databases because of operating-system sandboxing.
+
+## Browser cookies cannot be read
+
+```sh
+ytconv login instagram --browser chrome
+ytconv download "URL"
+```
+
+YTConv may use a dedicated browser profile and a loopback-only bridge. Provider-scoped temporary cookies are deleted after the attempt. Use Firefox when a Chromium profile cannot be accessed.
 
 ## FFmpeg or ffprobe is missing
 
-```bash
+```sh
 ytconv --shell-info
 ytconv repair
 ytconv doctor
 ```
 
-FFmpeg is required for merging, conversion, embedded cover art, clipping, and some subtitle operations. ffprobe is optional for part of the diagnostics.
+FFmpeg is required for merging, conversion, cover art, clipping, and some subtitle operations. ffprobe is recommended for diagnostics.
 
 ## Alpine reports that FFmpeg cannot execute
 
-Alpine uses musl. Install system FFmpeg and omit the optional bundled binary:
+Alpine uses musl. Install system FFmpeg:
 
 ```sh
 apk add --no-cache ffmpeg
@@ -160,165 +182,96 @@ npm install -g ytconv@latest --omit=optional --force
 
 ## The URL works in a browser but fails in YTConv
 
-Possible causes:
+Possible causes include:
 
-- login is required
-- cookies expired or are locked by the browser
-- private or deleted media
-- regional restriction
-- extractor changes
-- DRM or a paywall
-- HTTP 429 rate limiting
+- authentication is required;
+- browser cookies expired or are encrypted;
+- media is private, deleted, or region-restricted;
+- the extractor needs an update;
+- DRM or a paywall is present;
+- the provider is rate limiting the connection.
 
 Try:
 
-```bash
+```sh
 ytconv info "URL"
-ytconv login instagram
+ytconv repair
 ytconv download "URL"
 ```
 
-On Chrome-family browsers, YTConv opens a private profile so App-Bound Encryption on the regular profile does not trap the login in a retry loop.
-
-## Browser cookies cannot be read
-
-Desktop example:
-
-```bash
-ytconv login instagram --browser chrome
-ytconv download "URL"
-```
-
-Finish sign-in in the private YTConv browser window, return to the terminal, and press Enter. YTConv copies only the provider's cookies to a user-only temporary file for that attempt and deletes it afterward. If the private Chromium window cannot start, press `B` or use `ytconv login instagram --browser firefox`.
-
-`cookies.txt` and direct `--cookies-from-browser` are legacy compatibility fallbacks, not the recommended YTConv 1.6.0 flow. Termux and iSH cannot directly access private Android/iOS browser databases.
-
-## HTTP 429 / Too Many Requests
+## HTTP 429 or too many requests
 
 Reduce concurrency and wait before retrying:
 
-```bash
+```sh
 ytconv download "URL" --concurrent-fragments 1 --retry-sleep "linear=2:20:3"
 ytconv batch links.txt --jobs 1 --continue-on-error
 ```
 
-Aggressive retries can extend the restriction.
+## Timeout, DNS, certificate, or proxy errors
 
-## Timeout, DNS, certificate, or proxy error
-
-```bash
+```sh
 ytconv doctor
 ytconv --shell-info
 ```
 
-Verify the system clock, CA certificates, DNS, and proxy URL. Supported forms include:
-
-```text
-http://host:port
-socks5://host:port
-```
+Verify the system clock, CA certificates, DNS configuration, and proxy settings.
 
 ## Requested format is not available
 
-Inspect real source formats:
-
-```bash
+```sh
 ytconv formats "URL"
 ytconv formats "URL" --json
-```
-
-Then lower the resolution or use automatic/MKV output:
-
-```bash
 ytconv download "URL" --video-format auto --resolution 720
 ```
 
-## MP3 320 kbps sounds unchanged
-
-That is expected. 320 kbps is an encoder target, not a source-quality upgrade. Inspect the original streams with:
-
-```bash
-ytconv formats "URL"
-```
-
-## Metadata is missing in the player
-
-```bash
-ytconv download "URL" --audio-format mp3 --artist "Artist" --title "Title" --album "Album"
-```
-
-Some players hide fields even when the file contains them.
-
-## Thumbnail or cover art failed
-
-```bash
-ytconv doctor
-ytconv repair
-```
-
-WAV does not use the same embedded-cover path. MP3 attempts both a separate JPG and embedded artwork.
-
-## YouTube Music artwork is not square
-
-Use a `music.youtube.com` URL and ensure FFmpeg is available. Standard YouTube URLs are intentionally not always cropped.
-
 ## Subtitles are missing
 
-```bash
+```sh
 ytconv subtitles "URL"
 ytconv download "URL" --subtitle-only --subtitle-langs "en,id"
 ```
 
-Not every video has manual or automatic subtitles. Live chat is excluded by default.
+Not every source contains the requested subtitle track.
 
-## SponsorBlock did not mark or remove anything
+## SponsorBlock does not mark or remove anything
 
-```bash
+```sh
 ytconv download "URL" --sponsorblock mark
 ```
 
-Community segment data may not exist. SponsorBlock is mainly useful on YouTube.
+Community segment data may not exist for the media.
 
-## Batch stops too early
+## Batch processing stops early
 
-```bash
+```sh
 ytconv batch links.txt --continue-on-error --jobs 2 --result-json report.json
 ```
 
-The final exit code remains nonzero when one or more items fail.
+The final exit code remains nonzero when at least one item fails.
 
 ## A `.part` file remains
 
 Resume is enabled by default:
 
-```bash
+```sh
 ytconv download "URL" --resume
 ```
 
-To remove newly created partial files after a failure:
+Remove newly created partial files after failure:
 
-```bash
+```sh
 ytconv download "URL" --cleanup-part
 ```
 
-Cleanup is disabled during parallel batch work so one worker cannot delete another worker's files.
-
-## Output template is rejected
-
-Templates must be relative, must not contain `..`, and must include `%(ext)s`:
-
-```bash
-ytconv download "URL" --output-template "%(uploader)s/%(title)s.%(ext)s"
-```
-
 ## iSH is slow or runs out of memory
-
-Use a smaller preset and one batch worker:
 
 ```sh
 ytconv download "URL" --preset mobile
 ytconv batch links.txt --jobs 1 --continue-on-error
 ```
+
+Keep iSH in the foreground, lower media quality, and avoid large playlists.
 
 ## Exit codes
 
@@ -334,8 +287,8 @@ ytconv batch links.txt --jobs 1 --continue-on-error
 
 ## Logs
 
-```bash
+```sh
 ytconv download "URL" --log-file ytconv.log
 ```
 
-Before sharing logs, remove private URLs, usernames, sensitive paths, proxy details, and account information. Never include cookie contents.
+Remove sensitive URLs, usernames, local paths, proxy details, and account information before sharing logs. Never include cookie contents.

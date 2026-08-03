@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Stable YTConv 1.6.0 launcher for iSH/Alpine."""
+"""Stable YTConv 1.6.1 launcher for iSH/Alpine."""
 
 import runpy
 from pathlib import Path
 
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 CORE = Path(__file__).resolve().with_name("ytconv-core.py")
 
 if not CORE.is_file():
