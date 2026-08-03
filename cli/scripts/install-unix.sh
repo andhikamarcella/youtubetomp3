@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.6.1"
+VERSION="1.6.2"
 CHANNEL="latest"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
@@ -120,5 +120,7 @@ ytconv --shell-info || true
 ytconv doctor || true
 ytconv quickstart || true
 say ""
+say "AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
+say "Explicit --audio, --video, and --video-format choices remain authoritative."
 say "Stable installation completed without sudo npm. Open a new terminal or run: export PATH=\"$NPM_PREFIX/bin:\$PATH\""
 say "Public links are ready. If a site asks for login: ytconv login instagram"
