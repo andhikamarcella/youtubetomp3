@@ -165,6 +165,14 @@ export async function inspectMedia(options) {
   }
 }
 
+async function canonicalPath(target) {
+  try {
+    return await fs.realpath(target);
+  } catch {
+    return path.resolve(target);
+  }
+}
+
 async function listFiles(directory) {
   const files = new Set();
   async function walk(current) {
@@ -177,7 +185,7 @@ async function listFiles(directory) {
     await Promise.all(entries.map(async (entry) => {
       const target = path.join(current, entry.name);
       if (entry.isDirectory()) await walk(target);
-      else if (entry.isFile()) files.add(target);
+      else if (entry.isFile()) files.add(await canonicalPath(target));
     }));
   }
   await walk(directory);
@@ -211,7 +219,7 @@ async function verifiedReportedPaths(result, outputDirectory, kind) {
     if (!isExpectedOutput(resolved, kind)) continue;
     try {
       const stats = await fs.stat(resolved);
-      if (stats.isFile() && stats.size > 0) verified.push(resolved);
+      if (stats.isFile() && stats.size > 0) verified.push(await canonicalPath(resolved));
     } catch {
       // A printed path is not a result until it exists on disk.
     }
