@@ -1,0 +1,58 @@
+name: Diagnose YTConv real YouTube smoke
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/diagnose-ytconv-real-youtube.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Prepare real media engines
+        run: |
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y ffmpeg python3-pip >/dev/null
+          python3 -m pip install --user --break-system-packages -U 'yt-dlp[default]' >/dev/null
+          cd cli
+          npm ci --ignore-scripts >/dev/null
+      - name: Capture the smoke-test result
+        shell: bash
+        run: |
+          set +e
+          cd cli
+          NO_COLOR=1 YTCONV_NO_UPDATE_CHECK=1 node ./scripts/test-youtube-output.js > ../ytconv-real-youtube-diagnostic.log 2>&1
+          STATUS=$?
+          cd ..
+          {
+            echo "exit_status=$STATUS"
+            echo "node=$(node --version)"
+            echo "python=$(python3 --version 2>&1)"
+            echo "yt_dlp=$(python3 -m yt_dlp --version 2>&1)"
+            echo "ffmpeg=$(ffmpeg -version 2>&1 | head -n1)"
+            echo "--- smoke output ---"
+            tail -n 200 ytconv-real-youtube-diagnostic.log
+          } > ytconv-real-youtube-diagnostic.txt
+          rm -f ytconv-real-youtube-diagnostic.log
+      - name: Commit the concise diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ytconv-real-youtube-diagnostic.txt
+          git commit -m "test(cli): capture real YouTube diagnostic"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
