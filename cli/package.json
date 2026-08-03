@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "CLI-only media downloader with automatic setup and updates, official browser-session login, profiles, batch downloads, and multi-platform support.",
   "type": "module",
   "bin": {
@@ -92,28 +92,28 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "MIT",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.3-cli-only-final/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.2-cli-only-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.3-cli-only-final/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.2-cli-only-final/cli/docs",
-    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md"
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.3-cli-only-final/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.3-cli-only-final/cli/docs/NODEJS.md"
   },
   "releaseDate": "2026-08-03",
-  "releaseNotes": "YTConv 1.6.2 restores reliable YouTube output: YouTube Music AUTO downloads MP3, regular YouTube AUTO produces MP4, explicit mode and container choices remain authoritative, incompatible streams receive a conversion-safe fallback, archive-only skips restore missing files, and exit-zero/no-file results are rejected.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.3 fixes invalid yt-dlp retry-sleep arguments that prevented YouTube downloads from starting. Retry expressions from defaults, command-line options, saved profiles, and legacy configurations are normalized before HTTP, fragment, and file-access retries are generated.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.3-cli-only-final/cli/CHANGELOG.md",
   "installer": {
     "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.2.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.2/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.2/ytconv-1.6.2.metadata.json"
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.3.tgz",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.3/SHA256SUMS.txt",
+    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.3/ytconv-1.6.3.metadata.json"
   },
   "engines": {
     "node": ">=22.14.0",
