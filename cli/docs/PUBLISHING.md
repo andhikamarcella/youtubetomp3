@@ -1,4 +1,4 @@
-# Publishing YTConv 1.6.0 to npm
+# Publishing YTConv 1.6.1 to npm
 
 This document is for maintainers. YTConv has one active npm channel: `latest`.
 
@@ -7,25 +7,28 @@ This document is for maintainers. YTConv has one active npm channel: `latest`.
 | Field | Value |
 |---|---|
 | npm package | `ytconv` |
-| version | `1.6.0` |
+| version | `1.6.1` |
 | npm dist-tag | `latest` |
 | GitHub repository | `andhikamarcella/youtubetomp3` |
-| release branch | `release/ytconv-1.6.0-cli-only-final` |
-| Git tag | `ytconv-v1.6.0` |
+| release branch | `release/ytconv-1.6.1-cli-only-final` |
+| Git tag | `ytconv-v1.6.1` |
 | publisher/maintainer | Andhika Marcella Fernanda |
+| project label | YTConv Project |
 
-The current GitHub owner is a personal account. Do not insert an organization name into package metadata, provenance, or documentation unless ownership is actually transferred and verified.
+`YTConv Project` is a project label in package metadata, not a claim that a separate GitHub organization owns the repository. The repository remains under the named personal account unless an ownership transfer is completed and verified.
 
 ## Required protections
 
 - Review changes through a pull request based on the last stable CLI release.
 - Keep website/server code outside the npm package scope.
 - Require all cross-platform CI jobs to pass.
+- Require the published README to use absolute versioned documentation links.
+- Verify that every documentation target exists in the packed tarball.
 - Pin third-party GitHub Actions to full commit SHAs.
-- Restrict CI to `contents: read`; grant release workflow only `contents: write` and `id-token: write`.
-- Use an npm trusted publisher/OIDC when configured; keep token fallback limited to the protected release environment.
+- Restrict normal CI permissions and limit release writes to the protected release job.
+- Keep `NPM_TOKEN` in the protected `npm` environment when trusted publishing is not configured.
 - Publish with public provenance.
-- Never accept a tarball whose tree differs from the reviewed commit.
+- Publish and verify the exact tarball inspected by CI.
 
 ## Local verification
 
@@ -40,17 +43,24 @@ npm run security
 npm audit --omit=dev
 npm audit signatures
 npm pack --dry-run
-npm publish --dry-run --access public --provenance
 ```
 
-Review the allowlist. It must contain CLI JavaScript, Python iSH files, installers, English Markdown, license, and metadata only. It must not contain HTML, CSS, Express, server routes, deployment configuration, secrets, browser profiles, cookies, caches, or downloaded engines.
+The allowlist must contain CLI JavaScript, the Python iSH files, installers, English Markdown, changelog, and license only. It must not contain HTML, CSS, Express, server routes, deployment configuration, secrets, browser profiles, cookies, caches, or downloaded engines.
 
-## Package artifact
+Documentation verification must prove:
+
+- `docs/NODEJS.md` exists;
+- `docs/ISH.md` exists;
+- the public README has no relative `docs/` links;
+- every absolute documentation URL uses `release/ytconv-1.6.1-cli-only-final`;
+- every linked Markdown target is packed.
+
+## Exact package artifact
 
 ```sh
-npm pack --json
-sha256sum ytconv-1.6.0.tgz
-npm sbom --sbom-format=cyclonedx > ytconv-1.6.0.sbom.cdx.json
+npm pack --json --pack-destination /tmp/ytconv-release
+sha256sum /tmp/ytconv-release/ytconv-1.6.1.tgz
+npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.1.cdx.json
 ```
 
 Record:
@@ -58,7 +68,7 @@ Record:
 - tarball filename and byte count;
 - unpacked size and file count;
 - SHA-1, SHA-256, and npm integrity;
-- commit SHA and tree SHA;
+- commit SHA;
 - publisher and repository;
 - test/CI results;
 - Node/npm versions;
@@ -66,99 +76,94 @@ Record:
 
 ## Clean installation proof
 
-Install the generated tarball into an empty temporary prefix with lifecycle scripts enabled:
-
 ```sh
-npm install -g ./ytconv-1.6.0.tgz --prefix TEMP_PREFIX --force
+npm install -g /tmp/ytconv-release/ytconv-1.6.1.tgz --prefix TEMP_PREFIX --force
 TEMP_PREFIX/bin/ytconv --version
 TEMP_PREFIX/bin/ytconv --self-test
 TEMP_PREFIX/bin/ytconv doctor
 ```
 
-Windows must also prove CMD and PowerShell launchers. CI must delete the fallback FFmpeg test executable, run repair, execute `ffmpeg -version`, and verify that the GitHub digest path was used.
+Windows must also prove the CMD and PowerShell launchers. CI must prove browser-session recovery, verified FFmpeg repair, native iSH compilation, and the documentation targets inside the installed tarball.
 
-## GitHub Actions publish inputs
+## GitHub Actions publication
 
-The protected workflow supports an explicit manual dispatch and the final release branch. Manual confirmation must match the exact version. The workflow:
+The protected workflow runs from `release/ytconv-1.6.1-cli-only-final` or an explicit manual dispatch with confirmation `PUBLISH-STABLE`.
 
-1. checks out the locked commit;
-2. installs the supported Node/npm toolchain;
-3. installs dependencies without lifecycle scripts;
-4. runs syntax, tests, iSH compilation, audit, signatures, and package inspection;
-5. generates the tarball, checksum, metadata, and SBOM;
-6. publishes `ytconv@1.6.0` with `latest` and provenance if unused;
-7. removes the retired prerelease dist-tag;
-8. downloads the public registry tarball and compares it byte-for-byte/integrity with the tested artifact;
-9. creates `ytconv-v1.6.0` and attaches all release artifacts.
+The workflow:
+
+1. checks out the final release commit;
+2. installs Node.js 24 and npm 11.19.0;
+3. verifies package identity and documentation metadata;
+4. installs dependencies without lifecycle scripts;
+5. runs syntax checks,  tests, iSH checks, npm audit, and signature verification;
+6. builds one exact CLI-only tarball, metadata file, checksum, and SBOM;
+7. performs a dry-run using that tarball;
+8. publishes that same tarball as `ytconv@1.6.1` with `latest` and provenance;
+9. downloads the public registry tarball and requires its SHA-256 to equal the tested tarball;
+10. creates `ytconv-v1.6.1` and attaches the tarball, checksum, metadata, and SBOM;
+11. verifies that npm `latest` is exactly `1.6.1`.
 
 ## Registry verification
 
 ```sh
 npm view ytconv@latest version --prefer-online
-npm view ytconv@1.6.0 dist.integrity dist.shasum dist.tarball --json
+npm view ytconv@1.6.1 dist.integrity dist.shasum dist.tarball --json
+npm view ytconv@1.6.1 documentation --json
 npm view ytconv dist-tags --json
 ```
 
-Required result:
+Required stable tag:
 
 ```json
 {
-  "latest": "1.6.0"
+  "latest": "1.6.1"
 }
 ```
 
-The registry may retain an immutable historical prerelease version record. It must not have an active dist-tag and must not be used by installers or the updater.
-
 ## GitHub Release verification
 
-Confirm that:
+Confirm:
 
-- tag `ytconv-v1.6.0` points to the final tested commit;
-- Release is marked latest and is not a prerelease;
-- `ytconv-1.6.0.tgz`, `SHA256SUMS.txt`, metadata JSON, and SBOM are attached;
-- the release asset digest shown by GitHub matches the local/public artifact;
-- release notes describe security boundaries and platform limitations honestly.
+- tag `ytconv-v1.6.1` points to the final tested commit;
+- the release is not a prerelease;
+- `ytconv-1.6.1.tgz`, `SHA256SUMS.txt`, metadata JSON, and CycloneDX SBOM are attached;
+- the release checksum matches the npm registry tarball;
+- the README documentation URLs open successfully;
+- release notes describe platform and security limitations honestly.
 
 ## Recovery
 
 ### Publication fails before npm accepts the version
 
-Fix the workflow on the release branch, rerun every check, and publish the same reviewed tree.
+Fix the workflow on the final branch, rerun every check, and publish the same reviewed tree.
 
-### npm accepted 1.6.0 but GitHub Release failed
+### npm accepts 1.6.1 but GitHub Release fails
 
-Do not republish or overwrite npm. Rerun only the idempotent registry-verification and GitHub Release steps using the exact public tarball.
+Do not republish npm. Rerun the idempotent verification and GitHub Release steps against the exact public registry tarball.
 
 ### Wrong `latest` tag
 
 Move `latest` only to a known valid stable version:
 
 ```sh
-npm dist-tag add ytconv@1.6.0 latest
-```
-
-Never delete a valid published version as routine rollback. Correct the dist-tag and publish a new patch version when source changes are required.
-
-### Retired prerelease tag still exists
-
-```sh
-npm dist-tag rm ytconv beta
-npm view ytconv dist-tags --json
+npm dist-tag add ytconv@1.6.1 latest
 ```
 
 ### Artifact mismatch
 
-Stop the release, preserve logs/artifacts, rotate any potentially exposed token, and investigate the commit, lockfile, npm environment, and provenance. Do not attach a different tarball under the same release identity.
+Stop the release, preserve logs and artifacts, investigate the commit, package lock, npm version, and provenance, and rotate any potentially exposed token. Do not attach a different tarball to the same release identity.
+
+### Documentation link returns 404
+
+Do not point npm README links at relative paths. Fix the URL in a new patch version, verify the target in CI, and publish a new immutable npm version.
 
 ## Publisher changes
 
-Before adding an npm maintainer or moving to a GitHub organization:
+Before adding an npm maintainer or transferring the repository:
 
-1. verify the exact account and organization;
-2. use least privilege and enforced 2FA;
-3. update repository/package metadata in one reviewed PR;
-4. reconfigure trusted publishing for the exact workflow/environment;
+1. verify the exact account or organization;
+2. enforce 2FA and least privilege;
+3. update repository and package metadata in one reviewed PR;
+4. reconfigure trusted publishing or the protected npm environment;
 5. verify npm owners after the change;
-6. document the ownership transfer in release notes.
-
-Never invent an organization entry to make metadata look more complete.
+6. document the transfer in release notes.
