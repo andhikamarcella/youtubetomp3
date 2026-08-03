@@ -55,8 +55,8 @@ jobs:
           test -f docs/ISH.md
           ! grep -Eq '\]\((\./)?docs/' README.md
           grep -q 'release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md' README.md
-          grep -q 'music.youtube.com.*MP3' README.md
-          grep -q 'regular YouTube.*MP4' README.md
+          node -e "import('./src/media-controller.js').then(({effectiveMediaMode}) => { if(effectiveMediaMode({url:'https://music.youtube.com/watch?v=x',mode:'auto'})!=='audio'||effectiveMediaMode({url:'https://www.youtube.com/watch?v=x',mode:'auto'})!=='video') process.exitCode=1; })"
+          node -e "import('./src/youtube-output.js').then(({effectiveVideoContainer}) => { if(effectiveVideoContainer({url:'https://www.youtube.com/watch?v=x',mode:'video',requestedContainer:'auto'})!=='mp4') process.exitCode=1; })"
           HOME=$(mktemp -d) node ./bin/ytconv-auth.js social status | grep -q "No accounts are linked yet"
           node -e "import('./src/update.js').then(({releaseChannel,updateCommand}) => { if (releaseChannel('1.6.0-beta.1') !== 'latest') process.exitCode=1; if (!updateCommand('1.6.2').includes('@latest')) process.exitCode=1; })"
 
