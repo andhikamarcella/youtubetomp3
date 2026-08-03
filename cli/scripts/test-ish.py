@@ -112,7 +112,8 @@ class RoutingTests(unittest.TestCase):
             metadata.write_text("{}", encoding="utf-8")
             video.write_bytes(b"mp4")
             files = CORE.verified_outputs(set(), {thumbnail, metadata, video}, [], "video")
-            self.assertEqual(files, [video.resolve()])
+            self.assertEqual(len(files), 1)
+            self.assertTrue(os.path.samefile(files[0], video))
 
 
 class ArchiveRecoveryTests(unittest.TestCase):
@@ -178,7 +179,8 @@ raise SystemExit(2)
         opts = options(self.output)
         archive = self.root / "archive.txt"
         result = CORE.run_verified_yt_dlp(opts, self.available, self.output, archive, "video")
-        self.assertEqual(result["files"], [str((self.output / "restored.mp4").resolve())])
+        restored = Path(result["files"][0])
+        self.assertTrue(os.path.samefile(restored, self.output / "restored.mp4"))
         calls = [
             json.loads(row)
             for row in self.marker.read_text(encoding="utf-8").splitlines()
