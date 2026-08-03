@@ -1,0 +1,42 @@
+name: Sync YTConv 1.6.2 documentation versions
+
+on:
+  push:
+    branches:
+      - agent/ytconv-1.6.2-youtube-output-fix
+    paths:
+      - .github/workflows/sync-ytconv-1.6.2-doc-versions.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/ytconv-1.6.2-youtube-output-fix
+      - name: Replace stale active-version references
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          for target in Path('cli/docs').glob('*.md'):
+              text = target.read_text(encoding='utf-8')
+              updated = text.replace('1.6.1', '1.6.2')
+              if updated != text:
+                  target.write_text(updated, encoding='utf-8')
+          PY
+      - name: Commit synchronized documentation
+        run: |
+          if git diff --quiet -- cli/docs; then
+            echo "Documentation versions are already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/docs
+          git commit -m "docs(cli): remove stale 1.6.1 references"
+          git push origin HEAD:agent/ytconv-1.6.2-youtube-output-fix
