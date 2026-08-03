@@ -1,8 +1,8 @@
-# YTConv 1.6.1 on Windows
+# YTConv 1.6.2 on Windows
 
 ## Step 1: install Node.js first
 
-Follow the [beginner Node.js guide for Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md#windows-10-or-windows-11).
+Follow the [beginner Node.js guide for Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md#windows-10-or-windows-11).
 
 Recommended beginner path:
 
@@ -157,9 +157,9 @@ ytconv.cmd --self-test
 
 ## More documentation
 
-- [Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md)
-- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
-- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TROUBLESHOOTING.md)
+- [Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md)
+- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/INSTALL.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/TROUBLESHOOTING.md)
 
 ## Uninstall
 

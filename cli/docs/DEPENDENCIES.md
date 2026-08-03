@@ -1,10 +1,10 @@
-# YTConv 1.6.1 Dependency Guide
+# YTConv 1.6.2 Dependency Guide
 
 ## Install Node.js before YTConv
 
 On Windows, macOS, desktop Linux, WSL, SSH servers, and Termux, install and verify Node.js before running any npm installation command.
 
-Beginner tutorial: [Install Node.js Before YTConv](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md).
+Beginner tutorial: [Install Node.js Before YTConv](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md).
 
 Required baseline:
 
@@ -98,4 +98,4 @@ apk upgrade
 python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
 ```
 
-Then rerun the absolute 1.6.1 iSH installer documented in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/ISH.md).
+Then rerun the absolute 1.6.1 iSH installer documented in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).

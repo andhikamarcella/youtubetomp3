@@ -1,10 +1,10 @@
-# Installing YTConv 1.6.1 on Linux and macOS
+# Installing YTConv 1.6.2 on Linux and macOS
 
 This guide covers desktop Linux, macOS, WSL, servers, SSH sessions, and major package-manager families.
 
 ## Step 1: install Node.js first
 
-Read the [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md).
+Read the [beginner Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md).
 
 YTConv requires:
 

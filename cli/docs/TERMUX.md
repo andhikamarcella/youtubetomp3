@@ -1,4 +1,4 @@
-# YTConv 1.6.1 on Android Termux
+# YTConv 1.6.2 on Android Termux
 
 ## Supported environment
 
@@ -18,7 +18,7 @@ npm --version
 
 YTConv requires Node.js 22.14.0 or newer and npm 10 or newer. If the version is too old, update the Termux repositories and packages before continuing.
 
-Full beginner guide: [Node.js on Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md#android-with-termux).
+Full beginner guide: [Node.js on Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md#android-with-termux).
 
 ## Step 2: prepare storage and fallback engines
 
@@ -164,6 +164,6 @@ Reduce resolution, use `--jobs 1`, keep enough free storage, avoid simultaneous 
 
 ## More documentation
 
-- [Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/NODEJS.md)
-- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/INSTALL.md)
-- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.1-cli-only-final/cli/docs/TROUBLESHOOTING.md)
+- [Node.js guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md)
+- [Installation guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/INSTALL.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/TROUBLESHOOTING.md)
