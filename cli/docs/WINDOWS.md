@@ -50,7 +50,7 @@ ytconv.cmd doctor
 Expected output includes:
 
 ```text
-1.6.1
+1.6.2
 Status: ready to use.
 ```
 

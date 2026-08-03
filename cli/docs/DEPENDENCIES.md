@@ -98,4 +98,4 @@ apk upgrade
 python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
 ```
 
-Then rerun the absolute 1.6.1 iSH installer documented in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).
+Then rerun the absolute 1.6.2 iSH installer documented in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).

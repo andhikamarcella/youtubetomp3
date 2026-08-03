@@ -45,7 +45,7 @@ ytconv doctor
 Expected version:
 
 ```text
-1.6.1
+1.6.2
 ```
 
 ## Output directory

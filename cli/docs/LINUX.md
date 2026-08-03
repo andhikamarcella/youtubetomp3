@@ -40,7 +40,7 @@ ytconv doctor
 Expected version:
 
 ```text
-1.6.1
+1.6.2
 ```
 
 ## Avoid `sudo npm install -g`
@@ -225,7 +225,7 @@ ytconv --shell-info
 
 Expected:
 
-- YTConv `1.6.1`;
+- YTConv `1.6.2`;
 - Node.js 22.14.0 or newer;
 - npm 10 or newer;
 - yt-dlp, gallery-dl, and FFmpeg ready or repairable;

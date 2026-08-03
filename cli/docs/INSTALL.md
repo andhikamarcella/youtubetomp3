@@ -42,7 +42,7 @@ ytconv.cmd doctor
 Expected version:
 
 ```text
-1.6.1
+1.6.2
 ```
 
 Full Windows tutorial: [WINDOWS.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/WINDOWS.md).
@@ -198,7 +198,7 @@ ytconv --examples
 
 Expected:
 
-- YTConv `1.6.1`;
+- YTConv `1.6.2`;
 - Node.js 22.14.0 or newer on npm platforms;
 - npm 10 or newer;
 - yt-dlp ready;

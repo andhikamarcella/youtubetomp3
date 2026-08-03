@@ -3,7 +3,7 @@
 ## 1. Confirm scope and base
 
 - Base is the published 1.6.0 stable CLI release.
-- Version is exactly `1.6.1` with no prerelease suffix.
+- Version is exactly `1.6.2` with no prerelease suffix.
 - Scope is the CLI package, stable CLI workflows, documentation, installers, tests, and release metadata.
 - No website, API server, Express route, credentials, cookies, browser profiles, or generated engines are included.
 
@@ -116,7 +116,7 @@ Generate:
 
 ```sh
 sha256sum /tmp/ytconv-release/ytconv-1.6.2.tgz
-npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.1.cdx.json
+npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.2.cdx.json
 ```
 
 ## 9. Clean installation proof
@@ -136,20 +136,20 @@ Install the exact tarball into an empty prefix with lifecycle scripts enabled. V
 - Create `release/ytconv-1.6.2-cli-only-final` from the merged commit.
 - Trigger the stable npm workflow.
 - Publish the exact tarball validated by CI.
-- Do not claim success until npm `latest` reports 1.6.1.
+- Do not claim success until npm `latest` reports 1.6.2.
 
 ## 12. Verify public state
 
 ```sh
 npm view ytconv@latest version --prefer-online
 npm view ytconv dist-tags --json --prefer-online
-npm view ytconv@1.6.1 dist.integrity dist.shasum dist.tarball --json --prefer-online
-npm view ytconv@1.6.1 documentation --json --prefer-online
+npm view ytconv@1.6.2 dist.integrity dist.shasum dist.tarball --json --prefer-online
+npm view ytconv@1.6.2 documentation --json --prefer-online
 ```
 
 Required:
 
-- `latest = 1.6.1`;
+- `latest = 1.6.2`;
 - registry tarball SHA-256 matches the tested tarball;
 - GitHub tag `ytconv-v1.6.2` exists;
 - the GitHub Release is not a prerelease;
@@ -166,4 +166,4 @@ Publish beginner upgrade commands for CMD, PowerShell, Linux/macOS, Termux, and 
 
 ## 15. Rollback
 
-If a serious defect appears, preserve the audit trail and publish a corrected patch version. Do not overwrite or silently replace 1.6.1 artifacts.
+If a serious defect appears, preserve the audit trail and publish a corrected patch version. Do not overwrite or silently replace 1.6.2 artifacts.

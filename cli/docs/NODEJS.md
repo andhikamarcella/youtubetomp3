@@ -263,7 +263,7 @@ ytconv.cmd doctor
 Expected YTConv version for this release:
 
 ```text
-1.6.1
+1.6.2
 ```
 
 ## Common beginner problems

@@ -7,7 +7,7 @@ This document is for maintainers. YTConv has one active npm channel: `latest`.
 | Field | Value |
 |---|---|
 | npm package | `ytconv` |
-| version | `1.6.1` |
+| version | `1.6.2` |
 | npm dist-tag | `latest` |
 | GitHub repository | `andhikamarcella/youtubetomp3` |
 | release branch | `release/ytconv-1.6.2-cli-only-final` |
@@ -60,7 +60,7 @@ Documentation verification must prove:
 ```sh
 npm pack --json --pack-destination /tmp/ytconv-release
 sha256sum /tmp/ytconv-release/ytconv-1.6.2.tgz
-npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.1.cdx.json
+npm sbom --omit=dev --sbom-format cyclonedx > /tmp/ytconv-release/ytconv-1.6.2.cdx.json
 ```
 
 Record:
@@ -98,17 +98,17 @@ The workflow:
 5. runs syntax checks,  tests, iSH checks, npm audit, and signature verification;
 6. builds one exact CLI-only tarball, metadata file, checksum, and SBOM;
 7. performs a dry-run using that tarball;
-8. publishes that same tarball as `ytconv@1.6.1` with `latest` and provenance;
+8. publishes that same tarball as `ytconv@1.6.2` with `latest` and provenance;
 9. downloads the public registry tarball and requires its SHA-256 to equal the tested tarball;
 10. creates `ytconv-v1.6.2` and attaches the tarball, checksum, metadata, and SBOM;
-11. verifies that npm `latest` is exactly `1.6.1`.
+11. verifies that npm `latest` is exactly `1.6.2`.
 
 ## Registry verification
 
 ```sh
 npm view ytconv@latest version --prefer-online
-npm view ytconv@1.6.1 dist.integrity dist.shasum dist.tarball --json
-npm view ytconv@1.6.1 documentation --json
+npm view ytconv@1.6.2 dist.integrity dist.shasum dist.tarball --json
+npm view ytconv@1.6.2 documentation --json
 npm view ytconv dist-tags --json
 ```
 
@@ -116,7 +116,7 @@ Required stable tag:
 
 ```json
 {
-  "latest": "1.6.1"
+  "latest": "1.6.2"
 }
 ```
 
@@ -137,7 +137,7 @@ Confirm:
 
 Fix the workflow on the final branch, rerun every check, and publish the same reviewed tree.
 
-### npm accepts 1.6.1 but GitHub Release fails
+### npm accepts 1.6.2 but GitHub Release fails
 
 Do not republish npm. Rerun the idempotent verification and GitHub Release steps against the exact public registry tarball.
 
@@ -146,7 +146,7 @@ Do not republish npm. Rerun the idempotent verification and GitHub Release steps
 Move `latest` only to a known valid stable version:
 
 ```sh
-npm dist-tag add ytconv@1.6.1 latest
+npm dist-tag add ytconv@1.6.2 latest
 ```
 
 ### Artifact mismatch
