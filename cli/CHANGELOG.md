@@ -1,5 +1,41 @@
 # YTConv CLI changelog
 
+## 1.6.2 — reliable YouTube MP4 and real-file verification
+
+Released: 2026-08-03
+
+### Deterministic YouTube routing
+
+- Made `music.youtube.com` resolve to MP3 audio when mode is AUTO.
+- Made regular `youtube.com`, `youtu.be`, and `youtube-nocookie.com` resolve to video when mode is AUTO.
+- Made regular YouTube AUTO video default to MP4.
+- Preserved explicit audio, video, image, MP4, MKV, WebM, resolution, and audio-format selections as authoritative user choices.
+
+### MP4 compatibility
+
+- Added a dedicated YouTube output policy instead of relying on an ambiguous generic container fallback.
+- Preferred AVC/H.264 video with M4A audio for directly compatible MP4 output.
+- Retained compatible MP4 and broad stream fallbacks when a preferred combination is unavailable.
+- Replaced unsafe forced MP4 remuxing with a conversion-safe FFmpeg fallback for incompatible codec combinations.
+- Kept MKV remux and WebM conversion behavior explicit when selected by the user.
+
+### Real output verification
+
+- Recorded every path printed by yt-dlp after post-processing.
+- Verified reported paths against the filesystem before declaring success.
+- Removed the fallback that fabricated `fileCount: 1` when no file existed.
+- Rejected exit-code-zero results that did not create or resolve a real file.
+- Detected URLs skipped by the default archive when their previous output file had been removed.
+- Retried a missing archived item once without the archive to restore the real output.
+- Added deterministic tests for YouTube Music MP3, regular YouTube MP4, mode/container overrides, archive recovery, existing-file verification, and zero-output rejection.
+
+### Platforms and release verification
+
+- Applied the same AUTO routing and MP4 fallback policy to the iSH Python compatibility launcher.
+- Updated Windows CMD, PowerShell, universal Unix, Termux, and iSH installers to 1.6.2.
+- Added a real public YouTube MP4 CI smoke test with FFprobe stream verification.
+- Preserved CLI-only packaging, exact dependencies, provenance, checksums, metadata, SBOM, security tests, and cross-platform diagnostics.
+
 ## 1.6.1 — documentation integrity and beginner installation repair
 
 Released: 2026-08-03
