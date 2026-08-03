@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.6.0 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.6.2 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.6.0"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.0-cli-only-final/cli"
+VERSION = "1.6.2"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"
@@ -458,7 +458,7 @@ def selected_preset(argv):
 def parser(argv):
     preset = selected_preset(argv)
     defaults = dict(PRESETS.get(preset, {}))
-    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.6.0 for iSH/Alpine.")
+    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.6.2 for iSH/Alpine.")
     value.set_defaults(**defaults)
     value.add_argument("url", nargs="?")
     value.add_argument("--version", action="store_true")
