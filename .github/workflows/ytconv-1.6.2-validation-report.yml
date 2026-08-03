@@ -1,0 +1,130 @@
+name: YTConv 1.6.2 Validation Report
+
+on:
+  push:
+    branches:
+      - release/ytconv-1.6.2-ci-validation
+    paths:
+      - .github/workflows/ytconv-1.6.2-validation-report.yml
+      - cli/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ytconv-1.6.2-validation-report
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/ytconv-1.6.2-ci-validation
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Run complete validation
+        id: validation
+        continue-on-error: true
+        shell: bash
+        working-directory: cli
+        run: |
+          set +e
+          mkdir -p ../.ci
+          LOG="$RUNNER_TEMP/ytconv-1.6.2-validation.log"
+          exec > >(tee -a "$LOG") 2>&1
+          FAILED=0
+
+          run_check() {
+            printf '\n===== %s =====\n' "$1"
+            shift
+            "$@"
+            CODE=$?
+            if [ "$CODE" -ne 0 ]; then
+              printf 'FAILED (%s): %s\n' "$CODE" "$*"
+              FAILED=1
+            fi
+          }
+
+          run_check "Install npm dependencies" npm ci --ignore-scripts
+          run_check "JavaScript syntax" npm run check
+          run_check "Node behavior tests" npm test
+          run_check "iSH syntax" npm run check:ish
+          run_check "iSH routing and archive tests" npm run test:ish
+          run_check "Production dependency audit" npm audit --omit=dev
+          run_check "CLI-only package preview" npm pack --ignore-scripts --dry-run
+
+          run_check "Install media smoke dependencies" bash -lc "sudo apt-get update && sudo apt-get install -y ffmpeg python3-pip && python3 -m pip install --user --break-system-packages --no-cache-dir 'yt-dlp[default]' gallery-dl"
+          export PATH="$HOME/.local/bin:$PATH"
+          export YTCONV_NO_UPDATE_CHECK=1
+
+          VIDEO_OUT="$RUNNER_TEMP/ytconv-video-smoke"
+          AUDIO_OUT="$RUNNER_TEMP/ytconv-audio-smoke"
+          HOME_DIR="$RUNNER_TEMP/ytconv-home"
+          mkdir -p "$VIDEO_OUT" "$AUDIO_OUT" "$HOME_DIR"
+
+          run_check "Real YouTube AUTO to MP4" env HOME="$HOME_DIR" node ./bin/ytconv-auth.js download "https://www.youtube.com/watch?v=BaW_jenozKc" --no-config --no-archive --no-subtitles --no-sponsorblock --mode video --video-format mp4 --resolution 144 --output "$VIDEO_OUT"
+          VIDEO_FILE=$(find "$VIDEO_OUT" -type f -name '*.mp4' -print -quit)
+          if [ -z "$VIDEO_FILE" ]; then
+            echo "FAILED: no MP4 file was created by the real YouTube smoke test."
+            FAILED=1
+          else
+            run_check "Verify MP4 video stream" ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$VIDEO_FILE"
+          fi
+
+          run_check "Real YouTube Music AUTO to MP3" env HOME="$HOME_DIR" node ./bin/ytconv-auth.js download "https://music.youtube.com/watch?v=BaW_jenozKc" --no-config --no-archive --no-subtitles --no-sponsorblock --audio-quality 96 --output "$AUDIO_OUT"
+          AUDIO_FILE=$(find "$AUDIO_OUT" -type f -name '*.mp3' -print -quit)
+          if [ -z "$AUDIO_FILE" ]; then
+            echo "FAILED: no MP3 file was created by the real YouTube Music smoke test."
+            FAILED=1
+          else
+            run_check "Verify MP3 audio stream" ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$AUDIO_FILE"
+          fi
+
+          export FAILED VIDEO_FILE AUDIO_FILE LOG
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          log_path = Path(os.environ['LOG'])
+          log = log_path.read_text(encoding='utf-8', errors='replace') if log_path.exists() else ''
+          report = {
+              'version': '1.6.2',
+              'status': 'success' if os.environ['FAILED'] == '0' else 'failure',
+              'nodeTests': 'executed',
+              'ishTests': 'executed',
+              'packageAudit': 'executed',
+              'youtubeMp4': os.environ.get('VIDEO_FILE') or None,
+              'youtubeMusicMp3': os.environ.get('AUDIO_FILE') or None,
+              'logTail': log[-50000:],
+          }
+          Path('../.ci/ytconv-1.6.2-validation.json').write_text(
+              json.dumps(report, indent=2, ensure_ascii=False) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+          exit "$FAILED"
+      - name: Commit validation report
+        if: always()
+        shell: bash
+        run: |
+          test -f .ci/ytconv-1.6.2-validation.json || {
+            mkdir -p .ci
+            printf '{"version":"1.6.2","status":"failure","logTail":"validation did not create a report"}\n' > .ci/ytconv-1.6.2-validation.json
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/ytconv-1.6.2-validation.json
+          git commit -m "ci: record YTConv 1.6.2 validation result" || true
+          git push origin HEAD:release/ytconv-1.6.2-ci-validation
+      - name: Enforce validation result
+        if: steps.validation.outcome != 'success'
+        run: exit 1
