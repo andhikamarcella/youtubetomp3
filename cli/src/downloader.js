@@ -4,6 +4,14 @@ import process from 'node:process';
 import { cookieArgs } from './cookies.js';
 import { downloadGallery, inspectGallery, isGalleryPreferredUrl } from './gallery-routing.js';
 import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
+import {
+  effectiveVideoContainer,
+  formatVideoSelector,
+  isYouTubeMusicUrl,
+  videoContainerArgs,
+} from './youtube-output.js';
+
+export { formatVideoSelector } from './youtube-output.js';
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
 
@@ -84,24 +92,12 @@ function platformFromInfo(info, url) {
   return platforms.find(([needle]) => value.includes(needle))?.[1] ?? info?.extractor_key ?? info?.extractor ?? 'Media site';
 }
 
-export function formatVideoSelector(resolution = 'best', container = 'auto') {
-  const limit = resolution === 'best' ? '' : `[height<=${resolution}]`;
-  if (container === 'webm') {
-    return [`bv*${limit}[ext=webm]+ba[ext=webm]`, `b${limit}[ext=webm]`, `bv*${limit}+ba`, `b${limit}`].join('/');
-  }
-  return [`bv*${limit}[ext=mp4]+ba[ext=m4a]`, `b${limit}[ext=mp4]`, `bv*${limit}+ba`, `b${limit}`].join('/');
-}
-
 function outputTemplate(options) {
   const custom = optionValue(options, 'outputTemplate', 'YTCONV_OUTPUT_TEMPLATE');
   if (custom) return path.join(options.outputDirectory, custom);
   const fileName = '%(title).180B [%(id)s].%(ext)s';
   if (!options.playlist) return path.join(options.outputDirectory, fileName);
   return path.join(options.outputDirectory, '%(playlist_title).120B', '%(playlist_index)03d - %(title).160B [%(id)s].%(ext)s');
-}
-
-function isYouTubeMusicUrl(value) {
-  try { return new URL(value).hostname.toLowerCase() === 'music.youtube.com'; } catch { return false; }
 }
 
 function cookieFailureMessage(stderr) {
@@ -285,13 +281,6 @@ function appendAdvancedArgs(args, options) {
   return { audioFormat, thumbnailRequested, subtitleOnly };
 }
 
-function appendVideoContainerArgs(args, videoFormat) {
-  if (videoFormat === 'mp4') args.push('--merge-output-format', 'mp4', '--remux-video', 'mp4');
-  else if (videoFormat === 'mkv') args.push('--merge-output-format', 'mkv', '--remux-video', 'mkv');
-  else if (videoFormat === 'webm') args.push('--merge-output-format', 'webm', '--remux-video', 'webm');
-  else args.push('--merge-output-format', 'mp4/mkv', '--remux-video', 'mov>mp4/mkv');
-}
-
 export function buildDownloadArgs(options) {
   const overwrite = optionFlag(options, 'overwrite', 'YTCONV_OVERWRITE');
   const resume = optionFlag(options, 'resume', 'YTCONV_RESUME', true);
@@ -315,10 +304,15 @@ export function buildDownloadArgs(options) {
     if (thumbnailRequested && isYouTubeMusicUrl(options.url)) args.push('--ppa', 'ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih');
     if (optionFlag(options, 'normalizeAudio', 'YTCONV_NORMALIZE_AUDIO')) args.push('--ppa', 'ExtractAudio+ffmpeg_o:-af loudnorm=I=-16:LRA=11:TP=-1.5');
   } else if (!subtitleOnly) {
-    const videoFormat = optionValue(options, 'videoFormat', 'YTCONV_VIDEO_FORMAT', 'auto');
+    const requestedVideoFormat = optionValue(options, 'videoFormat', 'YTCONV_VIDEO_FORMAT', 'auto');
+    const videoFormat = effectiveVideoContainer({
+      url: options.url,
+      mode: options.mode,
+      requestedContainer: requestedVideoFormat,
+    });
     const resolution = optionValue(options, 'resolution', 'YTCONV_RESOLUTION', 'best');
     args.push('-f', formatVideoSelector(resolution, videoFormat), '--embed-metadata', '--embed-chapters');
-    appendVideoContainerArgs(args, videoFormat);
+    args.push(...videoContainerArgs(videoFormat));
   }
   args.push(options.url);
   return args;
@@ -365,6 +359,8 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     let bufferedStderr = '';
     let allStderr = '';
     let outputPath = '';
+    const outputPaths = new Set();
+    let archiveSkipped = false;
     let settled = false;
     const finish = (callback) => { if (settled) return; settled = true; signal?.removeEventListener('abort', abort); callback(); };
     const abort = () => { child.kill('SIGTERM'); finish(() => reject(new Error('The download was cancelled.'))); };
@@ -374,6 +370,7 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     const processLine = (line, isError = false) => {
       const cleanLine = sanitizeTerminalText(line, { allowNewlines: false, maximumLength: 4096 }).trim();
       if (!cleanLine) return;
+      if (/has already been recorded in the archive/iu.test(cleanLine)) archiveSkipped = true;
       if (cleanLine.startsWith('ytconv-progress:')) {
         const [percent = '', speed = '', eta = '', total = ''] = cleanLine.slice('ytconv-progress:'.length).split('|');
         onProgress?.({ percent: percent.trim(), speed: speed.trim(), eta: eta.trim(), total: total.trim() });
@@ -381,6 +378,7 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
       }
       if (cleanLine.startsWith('ytconv-file:')) {
         outputPath = cleanLine.slice('ytconv-file:'.length).trim();
+        if (outputPath) outputPaths.add(outputPath);
         onLog?.(`Saved: ${outputPath}`, false);
         return;
       }
@@ -401,7 +399,14 @@ function downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signa
     child.on('close', (code) => {
       if (settled) return;
       processLine(bufferedStdout, false); processLine(bufferedStderr, true);
-      if (code === 0) return finish(() => resolve({ outputPath, engine: 'yt-dlp' }));
+      if (code === 0) {
+        return finish(() => resolve({
+          outputPath,
+          outputPaths: [...outputPaths],
+          archiveSkipped,
+          engine: 'yt-dlp',
+        }));
+      }
       return finish(() => reject(new Error(readableError(allStderr, `yt-dlp exited with code ${code ?? 'unknown'}.`))));
     });
   });
