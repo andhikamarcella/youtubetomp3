@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=YTConv
+Comment=YouTube MP4 and MP3 downloader CLI
+Exec=ytconv
+Icon=io.github.andhikamarcella.YTConv
+Terminal=true
+Categories=AudioVideo;Utility;
+Keywords=YouTube;MP4;MP3;Downloader;CLI;
