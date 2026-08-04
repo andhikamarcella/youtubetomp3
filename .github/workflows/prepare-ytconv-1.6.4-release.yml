@@ -1,0 +1,84 @@
+name: Prepare YTConv 1.6.4 Release Branch
+
+on:
+  push:
+    branches:
+      - codex/perbaiki-semua-fungsi-tombol
+    paths:
+      - .github/workflows/prepare-ytconv-1.6.4-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: prepare-ytconv-1.6.4-release-branch
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-1.6.4-security-types
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Synchronize release files
+        working-directory: .
+        run: python3 .github/scripts/prepare-ytconv-1.6.4.py
+      - name: Generate reproducible lockfile without lifecycle scripts
+        run: |
+          npm install -g npm@11.19.0
+          npm install --package-lock-only --ignore-scripts
+          npm ci --ignore-scripts
+      - name: Verify release identity and installation policy
+        run: |
+          node - <<'NODE'
+          const manifest = require('./package.json');
+          if (manifest.version !== '1.6.4') throw new Error(manifest.version);
+          if (manifest.license !== 'ISC') throw new Error(manifest.license);
+          if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
+            throw new Error('npm lifecycle install scripts are forbidden');
+          }
+          if (manifest.types !== './types/index.d.ts') throw new Error('missing types');
+          NODE
+      - name: Run complete validation
+        run: |
+          npm run check
+          npm run typecheck
+          npm test
+          npm run check:ish
+          npm run test:ish
+          npm run security
+          npm pack --ignore-scripts --dry-run
+      - name: Commit verified synchronized source
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Release source is already synchronized."
+          else
+            git commit -m "release: synchronize verified YTConv 1.6.4 source"
+            git push origin HEAD:release/ytconv-1.6.4-security-types
+          fi
+      - name: Report preparation failure
+        if: ${{ failure() }}
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "YTConv 1.6.4 preparation failed" \
+            --body "Preparation failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA." || true
