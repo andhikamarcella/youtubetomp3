@@ -6,6 +6,19 @@ const UNSAFE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001A\u001C-\u
 const RED = '\u001B[31m';
 const RESET = '\u001B[39m';
 const CONSOLE_PATCH = Symbol.for('ytconv.console-error-style');
+const SENSITIVE_ENVIRONMENT_NAME = /(?:^|_)(?:AUTH|AUTHORIZATION|COOKIE|CREDENTIAL|KEY|PASS|PASSWORD|SECRET|SESSION|TOKEN)(?:_|$)/iu;
+const SENSITIVE_ENVIRONMENT_PREFIX = /^(?:AWS|AZURE|CI_JOB|CIRCLE|CLOUDFLARE|DOCKER_AUTH|GCLOUD|GOOGLE|GH|GITHUB|GITLAB|NPM|NUGET|PYPI|TWINE|YTCONV_AUTH)_/iu;
+const EXPLICIT_SENSITIVE_NAMES = new Set([
+  'NODE_AUTH_TOKEN',
+  'NPM_TOKEN',
+  'GH_TOKEN',
+  'GITHUB_TOKEN',
+  'GIT_ASKPASS',
+  'SSH_ASKPASS',
+  'SSH_AUTH_SOCK',
+  'YTCONV_AUTH_TOKEN',
+  'YTCONV_USER_EMAIL',
+]);
 
 export function stripAnsi(value) {
   return String(value ?? '').replace(ANSI_PATTERN, '');
@@ -38,15 +51,27 @@ export function installConsoleErrorStyle({ consoleObject = console, stream = pro
   consoleObject.error = (...values) => original(styleError(format(...values), { stream, env }));
 }
 
+function isSensitiveEnvironmentName(name) {
+  return EXPLICIT_SENSITIVE_NAMES.has(name)
+    || SENSITIVE_ENVIRONMENT_PREFIX.test(name)
+    || SENSITIVE_ENVIRONMENT_NAME.test(name);
+}
+
+export function scrubChildEnvironment(env = process.env) {
+  const child = {};
+  for (const [name, value] of Object.entries(env ?? {})) {
+    if (value === undefined || isSensitiveEnvironmentName(name)) continue;
+    child[name] = value;
+  }
+  child.NO_COLOR = '1';
+  child.FORCE_COLOR = '0';
+  return child;
+}
+
 export function monochromeChildEnvironment(env = process.env) {
-  return { ...env, NO_COLOR: '1', FORCE_COLOR: '0' };
+  return scrubChildEnvironment(env);
 }
 
 export function privateChildEnvironment(env = process.env) {
-  const child = monochromeChildEnvironment(env);
-  for (const name of [
-    'NODE_AUTH_TOKEN', 'NPM_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN',
-    'YTCONV_AUTH_TOKEN', 'YTCONV_USER_EMAIL',
-  ]) delete child[name];
-  return child;
+  return scrubChildEnvironment(env);
 }
