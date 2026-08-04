@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -32,11 +33,18 @@ func install() error {
 		return errors.New("LOCALAPPDATA is unavailable")
 	}
 	target := filepath.Join(localAppData, "Programs", "YTConv")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return fmt.Errorf("create application directory: %w", err)
+	}
 	stage, err := os.MkdirTemp(filepath.Dir(target), "YTConv-install-")
 	if err != nil {
 		return fmt.Errorf("create staging directory: %w", err)
 	}
-	defer os.RemoveAll(stage)
+	defer func() {
+		if stage != "" {
+			_ = os.RemoveAll(stage)
+		}
+	}()
 
 	if err := extractPayload(stage); err != nil {
 		return err
@@ -78,7 +86,7 @@ func install() error {
 }
 
 func extractPayload(destination string) error {
-	reader, err := zip.NewReader(strings.NewReader(string(payload)), int64(len(payload)))
+	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
 		return fmt.Errorf("open embedded payload: %w", err)
 	}
@@ -117,7 +125,7 @@ func extractPayload(destination string) error {
 		}
 		destinationFile, err := os.OpenFile(absolute, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 		if err != nil {
-			source.Close()
+			_ = source.Close()
 			return err
 		}
 		_, copyErr := io.Copy(destinationFile, source)
