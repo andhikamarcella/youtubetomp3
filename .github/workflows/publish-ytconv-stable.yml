@@ -170,11 +170,14 @@ jobs:
           cd "$RUNNER_TEMP/release-assets"
           find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-      - name: Publish exact tarball to npm latest with provenance
+      - name: Publish exact tarball to npm latest with authenticated token and provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if npm view "ytconv@$VERSION" version --prefer-online >/dev/null 2>&1; then
             echo "ytconv@$VERSION is already present; skipping immutable npm publish."
           else
+            test -n "${NODE_AUTH_TOKEN:-}"
             npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public --provenance
           fi
       - name: Verify npm latest and registry bytes
@@ -223,7 +226,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 180 --repo "$GITHUB_REPOSITORY" --body "YTConv 1.6.5 was published to npm latest and GitHub Release **ytconv-v1.6.5**. The release includes Windows EXE/ZIP, Android APK/source, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Termux, ARM64 packages, portable archives, SBOM, and consolidated SHA-256 checksums. npm registry bytes were verified against the locally built tarball in run $GITHUB_RUN_ID."
+          BODY="YTConv 1.6.5 was published to npm latest and GitHub Release **ytconv-v1.6.5**. The release includes Windows EXE/ZIP, Android APK/source, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Termux, ARM64 packages, portable archives, SBOM, and consolidated SHA-256 checksums. npm registry bytes were verified against the locally built tarball in run $GITHUB_RUN_ID."
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/180/comments" -f body="$BODY"
       - name: Report failure
         if: ${{ failure() }}
         working-directory: .
