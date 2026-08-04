@@ -63,10 +63,15 @@ jobs:
           if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
             throw new Error('npm lifecycle install scripts are forbidden');
           }
-          const { effectiveMode, effectiveVideoContainer } = await import('./src/youtube-output.js');
-          if (effectiveMode('https://music.youtube.com/watch?v=x', 'auto') !== 'audio') throw new Error('music AUTO');
-          if (effectiveMode('https://youtu.be/x', 'auto') !== 'video') throw new Error('video AUTO');
-          if (effectiveVideoContainer({url:'https://youtu.be/x',mode:'video',requestedContainer:'auto'}) !== 'mp4') throw new Error('container AUTO');
+          const { resolveYouTubeOutputPolicy } = await import('./src/youtube-output.js');
+          const music = resolveYouTubeOutputPolicy({
+            url: 'https://music.youtube.com/watch?v=x', requestedMode: 'auto', requestedVideoFormat: 'auto',
+          });
+          const video = resolveYouTubeOutputPolicy({
+            url: 'https://youtu.be/x', requestedMode: 'auto', requestedVideoFormat: 'auto',
+          });
+          if (music.mode !== 'audio') throw new Error(`music AUTO: ${JSON.stringify(music)}`);
+          if (video.mode !== 'video' || video.videoFormat !== 'mp4') throw new Error(`video AUTO: ${JSON.stringify(video)}`);
           NODE
 
   desktop:
