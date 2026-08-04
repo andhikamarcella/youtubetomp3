@@ -161,7 +161,8 @@ jobs:
         run: |
           docker run --rm -v "$PWD/dist/alpine:/packages:ro" alpine:edge sh -exc '
             apk add --no-cache python3 py3-pip ffmpeg ca-certificates yt-dlp gallery-dl
-            sha256sum -c /packages/SHA256SUMS-alpine.txt
+            cd /packages
+            sha256sum -c SHA256SUMS-alpine.txt
             apk add --allow-untrusted /packages/ytconv-1.6.5-r0.apk
             test "$(ytconv --version)" = 1.6.5
             ytconv --diagnose
