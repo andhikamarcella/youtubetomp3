@@ -1,0 +1,98 @@
+name: Publish YTConv 1.6.5 npm only
+
+on:
+  push:
+    branches:
+      - codex/perbaiki-semua-fungsi-tombol
+    paths:
+      - ".github/release-markers/ytconv-1.6.5-npm-only"
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+concurrency:
+  group: ytconv-1.6.5-npm-only
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    environment: npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: cli
+    env:
+      VERSION: 1.6.5
+      SOURCE_SHA: 98c79c16b377857e4e8a7874be47e9361d41f1dc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 98c79c16b377857e4e8a7874be47e9361d41f1dc
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Install exact graph without lifecycle scripts
+        run: |
+          npm install -g npm@11.18.0
+          npm ci --ignore-scripts
+      - name: Verify and test exact release source
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(node -p "require('./package.json').version")" = "$VERSION"
+          test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
+          test "$(node -p "require('./package.json').license")" = "ISC"
+          node -e "const p=require('./package.json');if(p.scripts.preinstall||p.scripts.install||p.scripts.postinstall)process.exit(1)"
+          npm run check
+          npm run typecheck
+          npm test
+          npm run security
+      - name: Build exact CLI-only tarball
+        id: package
+        run: |
+          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
+          TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];process.stdout.write(require('path').join('$RUNNER_TEMP',p.filename))")
+          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server|android-app|packaging)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: Publish with npm environment token and provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "$NODE_AUTH_TOKEN"
+          if npm view "ytconv@$VERSION" version --prefer-online >/dev/null 2>&1; then
+            echo "ytconv@$VERSION already exists; preserving immutable version."
+          else
+            npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public --provenance
+          fi
+      - name: Verify npm latest and exact registry bytes
+        run: |
+          READY=false
+          for ATTEMPT in $(seq 1 30); do
+            FOUND=$(npm view ytconv@latest version --prefer-online 2>/dev/null || true)
+            if [ "$FOUND" = "$VERSION" ]; then READY=true; break; fi
+            echo "Waiting for npm propagation ($ATTEMPT/30): ${FOUND:-missing}"
+            sleep 5
+          done
+          test "$READY" = "true"
+          URL=$(npm view "ytconv@$VERSION" dist.tarball --prefer-online)
+          curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-$VERSION.registry.tgz"
+          test "$(sha256sum "$RUNNER_TEMP/ytconv-$VERSION.registry.tgz" | cut -d ' ' -f 1)" = "${{ steps.package.outputs.sha256 }}"
+      - name: Report npm success
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 180 --repo "$GITHUB_REPOSITORY" --body "npm publication completed: **ytconv@1.6.5** is the verified latest version. The registry tarball SHA-256 matches the exact CLI-only tarball built from commit $SOURCE_SHA in run $GITHUB_RUN_ID. GitHub Release asset publication is tracked separately."
+          gh issue comment 181 --repo "$GITHUB_REPOSITORY" --body "The npm portion was repaired with the explicit environment NPM_TOKEN and verified in run $GITHUB_RUN_ID. The remaining GitHub Release permission issue is being handled independently."
+      - name: Report npm failure
+        if: ${{ failure() }}
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment 181 --repo "$GITHUB_REPOSITORY" --body "Isolated npm retry failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Do not claim npm publication yet." || true
