@@ -5,6 +5,7 @@ OLD_VERSION = "1.6.3"
 NEW_VERSION = "1.6.4"
 OLD_BRANCH = "release/ytconv-1.6.3-cli-only-final"
 NEW_BRANCH = "release/ytconv-1.6.4-security-types"
+RELEASE_BLOB = f"https://github.com/andhikamarcella/youtubetomp3/blob/{NEW_BRANCH}/cli"
 
 
 def release_paths():
@@ -42,6 +43,19 @@ def synchronize_release_references():
         )
         if updated != text:
             path.write_text(updated, encoding="utf-8")
+
+
+def normalize_readme_links():
+    path = ROOT / "cli/README.md"
+    text = path.read_text(encoding="utf-8")
+    replacements = {
+        "](LICENSE)": f"]({RELEASE_BLOB}/LICENSE)",
+        "](SECURITY.md)": f"]({RELEASE_BLOB}/SECURITY.md)",
+        "](docs/NODEJS.md)": f"]({RELEASE_BLOB}/docs/NODEJS.md)",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    path.write_text(text, encoding="utf-8")
 
 
 def prepend_changelog():
@@ -90,4 +104,5 @@ Released: 2026-08-04
 
 
 synchronize_release_references()
+normalize_readme_links()
 prepend_changelog()
