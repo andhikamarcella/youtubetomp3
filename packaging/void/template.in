@@ -1,0 +1,27 @@
+# Template file for 'ytconv'
+pkgname=ytconv
+version=1.6.5
+revision=1
+archs="x86_64 aarch64"
+depends="ca-certificates python3 ffmpeg"
+short_desc="Secure YouTube MP4 and MP3 downloader CLI"
+maintainer="Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
+license="ISC"
+homepage="https://github.com/andhikamarcella/youtubetomp3"
+distfiles="https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v${version}/YTConv-${version}-linux-${XBPS_TARGET_MACHINE}.tar.zst"
+
+case "$XBPS_TARGET_MACHINE" in
+  x86_64) checksum=@PORTABLE_X86_64_SHA256@ ;;
+  aarch64) checksum=@PORTABLE_AARCH64_SHA256@ ;;
+  *) broken="unsupported architecture" ;;
+esac
+
+wrksrc=""
+
+do_install() {
+  vmkdir opt/ytconv
+  vcopy opt/ytconv "opt/ytconv"
+  vbin usr/bin/ytconv
+  vdoc usr/share/doc/ytconv/README.md
+  vlicense usr/share/doc/ytconv/LICENSE
+}
