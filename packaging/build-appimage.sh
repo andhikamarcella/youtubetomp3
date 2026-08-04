@@ -6,8 +6,9 @@ OUT=${1:-"$ROOT/dist/appimage"}
 STAGE="$ROOT/dist/portable-linux"
 APPDIR="$ROOT/dist/YTConv.AppDir"
 VERSION=$(node -p "require('$ROOT/cli/package.json').version")
-APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
-APPIMAGETOOL_SHA256="363dafac070b65cc36ca024b74db1f043c6f5cd7be8fca760e190dce0d18d684"
+APPIMAGETOOL_REPOSITORY="AppImage/appimagetool"
+APPIMAGETOOL_TAG="continuous"
+APPIMAGETOOL_ASSET="appimagetool-x86_64.AppImage"
 
 [ "$(uname -m)" = "x86_64" ] || { printf 'AppImage builder currently supports x86_64.\n' >&2; exit 2; }
 rm -rf "$OUT" "$APPDIR"
@@ -30,7 +31,27 @@ exec "$HERE/usr/bin/ytconv" "$@"
 SH
 chmod 0755 "$APPDIR/AppRun"
 
-TOOL="$OUT/appimagetool-x86_64.AppImage"
+RELEASE_JSON="$OUT/appimagetool-release.json"
+curl --fail --location --retry 5 --connect-timeout 20 \
+  -H 'Accept: application/vnd.github+json' \
+  "https://api.github.com/repos/${APPIMAGETOOL_REPOSITORY}/releases/tags/${APPIMAGETOOL_TAG}" \
+  -o "$RELEASE_JSON"
+mapfile -t ASSET_INFO < <(node - "$RELEASE_JSON" "$APPIMAGETOOL_ASSET" <<'NODE'
+const fs = require('node:fs');
+const release = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const asset = release.assets?.find((value) => value.name === process.argv[3]);
+if (!asset) throw new Error(`release asset not found: ${process.argv[3]}`);
+if (!/^sha256:[a-f0-9]{64}$/iu.test(asset.digest ?? '')) {
+  throw new Error(`GitHub release asset has no usable SHA-256 digest: ${asset.digest}`);
+}
+console.log(asset.browser_download_url);
+console.log(asset.digest.slice('sha256:'.length).toLowerCase());
+NODE
+)
+[ "${#ASSET_INFO[@]}" -eq 2 ] || { printf 'Could not resolve verified appimagetool asset metadata.\n' >&2; exit 3; }
+APPIMAGETOOL_URL=${ASSET_INFO[0]}
+APPIMAGETOOL_SHA256=${ASSET_INFO[1]}
+TOOL="$OUT/$APPIMAGETOOL_ASSET"
 curl --fail --location --retry 5 --connect-timeout 20 "$APPIMAGETOOL_URL" -o "$TOOL"
 printf '%s  %s\n' "$APPIMAGETOOL_SHA256" "$TOOL" | sha256sum --check --strict -
 chmod 0755 "$TOOL"
@@ -38,6 +59,9 @@ OUTPUT="$OUT/YTConv-${VERSION}-x86_64.AppImage"
 ARCH=x86_64 "$TOOL" --appimage-extract-and-run "$APPDIR" "$OUTPUT"
 chmod 0755 "$OUTPUT"
 "$OUTPUT" --appimage-extract-and-run --version | grep -Fx "$VERSION"
-sha256sum "$OUTPUT" > "$OUT/SHA256SUMS-appimage.txt"
-rm -f "$TOOL"
+(
+  cd "$OUT"
+  sha256sum "$(basename "$OUTPUT")" > SHA256SUMS-appimage.txt
+)
+rm -f "$TOOL" "$RELEASE_JSON"
 printf '%s\n' "$OUTPUT"
