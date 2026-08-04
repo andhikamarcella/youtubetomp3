@@ -1,0 +1,31 @@
+app-id: io.github.andhikamarcella.YTConv
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: ytconv
+finish-args:
+  - --share=network
+  - --filesystem=home
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.portal.OpenURI
+modules:
+  - name: ytconv
+    buildsystem: simple
+    build-commands:
+      - install -d /app/opt /app/bin /app/share/applications /app/share/metainfo /app/share/icons/hicolor/scalable/apps
+      - cp -a portable-linux/opt/ytconv /app/opt/ytconv
+      - install -m 0755 portable-linux/usr/bin/ytconv /app/bin/ytconv
+      - install -m 0644 io.github.andhikamarcella.YTConv.desktop /app/share/applications/io.github.andhikamarcella.YTConv.desktop
+      - install -m 0644 io.github.andhikamarcella.YTConv.metainfo.xml /app/share/metainfo/io.github.andhikamarcella.YTConv.metainfo.xml
+      - install -m 0644 ytconv.svg /app/share/icons/hicolor/scalable/apps/io.github.andhikamarcella.YTConv.svg
+    sources:
+      - type: dir
+        path: ../../dist/portable-linux
+        dest: portable-linux
+      - type: file
+        path: io.github.andhikamarcella.YTConv.desktop
+      - type: file
+        path: io.github.andhikamarcella.YTConv.metainfo.xml
+      - type: file
+        path: ../appimage/ytconv.svg
+        dest-filename: ytconv.svg
