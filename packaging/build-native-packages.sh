@@ -19,12 +19,27 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 "$ROOT/packaging/build-portable-linux.sh" "$STAGE"
 
-export VERSION PACKAGE_ARCH STAGE
-nfpm package --config "$ROOT/packaging/nfpm.yaml" --packager deb \
+CONFIG=$(mktemp)
+trap 'rm -f "$CONFIG"' EXIT
+node - "$ROOT/packaging/nfpm.yaml" "$CONFIG" "$STAGE" "$VERSION" "$PACKAGE_ARCH" <<'NODE'
+const fs = require('node:fs');
+const [, , source, destination, stage, version, packageArch] = process.argv;
+let config = fs.readFileSync(source, 'utf8');
+for (const [name, value] of Object.entries({ STAGE: stage, VERSION: version, PACKAGE_ARCH: packageArch })) {
+  config = config.replaceAll(`\${${name}}`, value);
+}
+if (/\$\{(?:STAGE|VERSION|PACKAGE_ARCH)\}/u.test(config)) {
+  throw new Error('An nFPM placeholder was not resolved');
+}
+fs.writeFileSync(destination, config);
+NODE
+
+grep -F "$STAGE/opt/ytconv" "$CONFIG" >/dev/null
+nfpm package --config "$CONFIG" --packager deb \
   --target "$OUT/ytconv_${VERSION}_${PACKAGE_ARCH}.deb"
-nfpm package --config "$ROOT/packaging/nfpm.yaml" --packager rpm \
+nfpm package --config "$CONFIG" --packager rpm \
   --target "$OUT/ytconv-${VERSION}-1.${RPM_ARCH}.rpm"
-nfpm package --config "$ROOT/packaging/nfpm.yaml" --packager archlinux \
+nfpm package --config "$CONFIG" --packager archlinux \
   --target "$OUT/ytconv-${VERSION}-1-${ARCH_ARCH}.pkg.tar.zst"
 
 for package in "$OUT"/*; do
