@@ -7,6 +7,7 @@ on:
     paths:
       - "cli/**"
       - "packaging/patch-core-and-lock.mjs"
+      - "packaging/update-release-docs.mjs"
       - ".github/workflows/ytconv-cli.yml"
   workflow_dispatch:
 
@@ -30,15 +31,18 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: node packaging/patch-core-and-lock.mjs
+      - name: Synchronize generated release files
+        run: |
+          node packaging/patch-core-and-lock.mjs
+          node packaging/update-release-docs.mjs
       - name: Commit deterministic generated source
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add cli/package-lock.json cli/ish/ytconv-core.py cli/ish/SHA256SUMS
+          git add cli/package-lock.json cli/ish/ytconv-core.py cli/ish/SHA256SUMS cli/docs cli/SECURITY.md cli/CHANGELOG.md
           if git diff --cached --quiet; then
             echo 'Generated source already synchronized.'
             exit 0
           fi
-          git commit -m 'Synchronize YTConv 1.6.5 core and lockfile'
+          git commit -m 'Synchronize YTConv 1.6.5 release documentation'
           git push origin HEAD:release/ytconv-1.6.5-packages
