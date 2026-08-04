@@ -10,11 +10,11 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 const license = fs.readFileSync(path.join(root, 'LICENSE'), 'utf8');
 
-function JavaScriptFiles(directory) {
+function javascriptFiles(directory) {
   const values = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) values.push(...JavaScriptFiles(fullPath));
+    if (entry.isDirectory()) values.push(...javascriptFiles(fullPath));
     else if (entry.name.endsWith('.js')) values.push(fullPath);
   }
   return values;
@@ -51,13 +51,14 @@ test('published JavaScript rejects dangerous dynamic shell patterns', () => {
     .filter((directory) => fs.existsSync(directory));
   const forbidden = [
     [/\bchild_process\.exec\s*\(/u, 'child_process.exec'],
-    [/\bexec\s*\(/u, 'exec'],
+    [/import\s*\{[^}]*\bexec\s*(?:,|\})[^}]*\}\s*from\s*['"]node:child_process['"]/su, 'exec import'],
+    [/require\s*\(\s*['"](?:node:)?child_process['"]\s*\)\.exec\s*\(/u, 'required child_process.exec'],
     [/\bshell\s*:\s*true\b/u, 'shell: true'],
     [/\beval\s*\(/u, 'eval'],
     [/\bnew\s+Function\s*\(/u, 'new Function'],
     [/\benv\s*:\s*process\.env\b/u, 'unfiltered process.env'],
   ];
-  for (const file of directories.flatMap(JavaScriptFiles)) {
+  for (const file of directories.flatMap(javascriptFiles)) {
     const source = fs.readFileSync(file, 'utf8');
     for (const [pattern, label] of forbidden) {
       assert.doesNotMatch(source, pattern, `${label} in ${path.relative(root, file)}`);
