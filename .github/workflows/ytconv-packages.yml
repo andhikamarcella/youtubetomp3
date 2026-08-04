@@ -2,8 +2,7 @@ name: YTConv 1.6.5 Native Package Matrix
 
 on:
   push:
-    branches:
-      - release/ytconv-1.6.5-packages
+    branches: [release/ytconv-1.6.5-packages]
     paths:
       - "cli/**"
       - "packaging/**"
@@ -49,7 +48,7 @@ jobs:
           sudo apt-get install -y curl xz-utils zstd rpm squashfs-tools snapd python3 python3-pip unzip
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - name: Build DEB RPM Arch portable AppImage Snap and Termux packages
+      - name: Build x86_64 packages
         run: |
           chmod +x packaging/*.sh
           packaging/build-native-packages.sh
@@ -57,41 +56,34 @@ jobs:
           packaging/build-appimage.sh
           packaging/build-snap.sh
           packaging/build-termux-deb.sh
-      - name: Install DEB package in Debian
+      - name: Install packages on their target families
         run: |
           docker run --rm -v "$PWD/dist/packages:/packages:ro" debian:bookworm-slim sh -exc '
-            apt-get update
-            apt-get install -y /packages/ytconv_1.6.5_amd64.deb
+            apt-get update; apt-get install -y /packages/ytconv_1.6.5_amd64.deb
             test "$(ytconv --version)" = 1.6.5
           '
-      - name: Install RPM package in Fedora
-        run: |
           docker run --rm -v "$PWD/dist/packages:/packages:ro" fedora:latest sh -exc '
             dnf install -y /packages/ytconv-1.6.5-1.x86_64.rpm
             test "$(ytconv --version)" = 1.6.5
           '
-      - name: Install RPM package in openSUSE
-        run: |
           docker run --rm -v "$PWD/dist/packages:/packages:ro" opensuse/tumbleweed sh -exc '
             zypper --non-interactive install /packages/ytconv-1.6.5-1.x86_64.rpm
             test "$(ytconv --version)" = 1.6.5
           '
-      - name: Install Arch package
-        run: |
           docker run --rm -v "$PWD/dist/packages:/packages:ro" archlinux:base sh -exc '
             pacman -Sy --noconfirm ca-certificates
             pacman -U --noconfirm /packages/ytconv-1.6.5-1-x86_64.pkg.tar.zst
             test "$(ytconv --version)" = 1.6.5
           '
-      - name: Verify release artifacts are non-empty
+      - name: Verify all x86_64 artifacts
         run: |
-          find dist -type f -size +0 -print
-          test -f dist/packages/ytconv_1.6.5_amd64.deb
-          test -f dist/packages/ytconv-1.6.5-1.x86_64.rpm
-          test -f dist/packages/ytconv-1.6.5-1-x86_64.pkg.tar.zst
-          test -f dist/appimage/YTConv-1.6.5-x86_64.AppImage
-          test -f dist/snap/ytconv_1.6.5_amd64.snap
-          test -f dist/termux/ytconv_1.6.5_all-termux.deb
+          test -s dist/packages/ytconv_1.6.5_amd64.deb
+          test -s dist/packages/ytconv-1.6.5-1.x86_64.rpm
+          test -s dist/packages/ytconv-1.6.5-1-x86_64.pkg.tar.zst
+          test -s dist/appimage/YTConv-1.6.5-x86_64.AppImage
+          test -s dist/snap/ytconv_1.6.5_amd64.snap
+          test -s dist/termux/ytconv_1.6.5_all-termux.deb
+          test -s dist/portable/YTConv-1.6.5-linux-x86_64.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ytconv-1.6.5-linux-x86_64
@@ -123,19 +115,14 @@ jobs:
           sudo apt-get install -y curl xz-utils zstd rpm python3 unzip
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - name: Build ARM64 DEB RPM Arch and portable archives
-        run: |
           chmod +x packaging/*.sh
           packaging/build-native-packages.sh
           packaging/build-portable-archives.sh
-          test -f dist/packages/ytconv_1.6.5_arm64.deb
-          test -f dist/packages/ytconv-1.6.5-1.aarch64.rpm
-          test -f dist/packages/ytconv-1.6.5-1-aarch64.pkg.tar.zst
-          test -f dist/portable/YTConv-1.6.5-linux-aarch64.tar.gz
-      - name: Install ARM64 DEB locally
-        run: |
           sudo apt-get install -y ./dist/packages/ytconv_1.6.5_arm64.deb
-          test "$(ytconv --version)" = "1.6.5"
+          test "$(ytconv --version)" = 1.6.5
+          test -s dist/packages/ytconv-1.6.5-1.aarch64.rpm
+          test -s dist/packages/ytconv-1.6.5-1-aarch64.pkg.tar.zst
+          test -s dist/portable/YTConv-1.6.5-linux-aarch64.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ytconv-1.6.5-linux-arm64
@@ -151,19 +138,16 @@ jobs:
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Build Alpine APK in Alpine edge
+      - name: Build, install, and diagnose Alpine APK
         run: |
           docker run --rm -v "$PWD:/workspace" -w /workspace alpine:edge sh -exc '
             apk add --no-cache alpine-sdk abuild sudo python3 py3-pip nodejs npm curl ca-certificates
             sh packaging/build-alpine-apk.sh /workspace/dist/alpine
           '
-      - name: Install and run Alpine APK
-        run: |
           docker run --rm -v "$PWD/dist/alpine:/packages:ro" alpine:edge sh -exc '
             apk add --no-cache python3 py3-pip ffmpeg ca-certificates yt-dlp gallery-dl
-            cd /packages
-            sha256sum -c SHA256SUMS-alpine.txt
-            apk add --allow-untrusted /packages/ytconv-1.6.5-r0.apk
+            cd /packages; sha256sum -c SHA256SUMS-alpine.txt
+            apk add --allow-untrusted ./ytconv-1.6.5-r0.apk
             test "$(ytconv --version)" = 1.6.5
             ytconv --diagnose
           '
@@ -180,15 +164,16 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: |
-          sudo apt-get update || { sleep 10; sudo apt-get update; }
-          sudo apt-get install -y flatpak flatpak-builder curl xz-utils
-          chmod +x packaging/*.sh
-          packaging/build-flatpak.sh
+      - name: Build, install, and run Flatpak in Fedora
+        run: |
+          docker run --privileged --rm \
+            -v "$PWD:/workspace" -w /workspace fedora:latest bash -euo pipefail -c '
+              dnf install -y nodejs npm flatpak flatpak-builder curl xz git tar gzip
+              node -e '\''const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>22||(a===22&&b>=14)?0:1)'\''
+              chmod +x packaging/*.sh
+              packaging/build-flatpak.sh /workspace/dist/flatpak
+            '
+          test -s dist/flatpak/YTConv-1.6.5.flatpak
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ytconv-1.6.5-flatpak
@@ -210,16 +195,13 @@ jobs:
         with:
           go-version: '1.26.x'
           cache: false
-      - name: Build install and verify EXE and portable ZIP
-        shell: pwsh
+      - shell: pwsh
         run: |
           .\packaging\build-windows-exe.ps1
-          if (-not (Test-Path .\dist\windows\YTConv-1.6.5-Setup-x64.exe)) { throw 'EXE installer is missing' }
-          if (-not (Test-Path .\dist\windows\YTConv-1.6.5-portable-win-x64.zip)) { throw 'portable ZIP is missing' }
-          $installed = & "$env:LOCALAPPDATA\Programs\YTConv\ytconv.cmd" --version
-          if ($installed.Trim() -ne '1.6.5') { throw "wrong installed version: $installed" }
-          $launcher = & "$env:LOCALAPPDATA\Microsoft\WindowsApps\ytconv.cmd" --version
-          if ($launcher.Trim() -ne '1.6.5') { throw "wrong launcher version: $launcher" }
+          if (-not (Test-Path .\dist\windows\YTConv-1.6.5-Setup-x64.exe)) { throw 'EXE missing' }
+          if (-not (Test-Path .\dist\windows\YTConv-1.6.5-portable-win-x64.zip)) { throw 'ZIP missing' }
+          if ((& "$env:LOCALAPPDATA\Programs\YTConv\ytconv.cmd" --version).Trim() -ne '1.6.5') { throw 'install failed' }
+          if ((& "$env:LOCALAPPDATA\Microsoft\WindowsApps\ytconv.cmd" --version).Trim() -ne '1.6.5') { throw 'launcher failed' }
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ytconv-1.6.5-windows
@@ -239,13 +221,12 @@ jobs:
           java-version: '17'
           cache: gradle
           cache-dependency-path: android-app/**/*.gradle
-      - name: Build lint and inspect Android APKs
-        run: |
+      - run: |
           chmod +x packaging/build-android-apk.sh
           packaging/build-android-apk.sh
-          test -f dist/android/YTConv-1.6.5-debug.apk
-          test -f dist/android/YTConv-1.6.5-release-unsigned.apk
-          test -f dist/android/YTConv-Android-1.6.5-source.tar.gz
+          test -s dist/android/YTConv-1.6.5-debug.apk
+          test -s dist/android/YTConv-1.6.5-release-unsigned.apk
+          test -s dist/android/YTConv-Android-1.6.5-source.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ytconv-1.6.5-android
@@ -262,11 +243,10 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@ab6bcb2d5af0e904d04aea750e2089e9dc4cbfdd
         with:
           determinate: false
-      - name: Build and run the Nix package
-        run: |
+      - run: |
           nix flake lock
           nix build --print-build-logs
-          test "$(./result/bin/ytconv --version)" = "1.6.5"
+          test "$(./result/bin/ytconv --version)" = 1.6.5
           cp flake.lock dist-flake.lock
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
