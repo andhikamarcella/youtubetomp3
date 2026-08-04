@@ -1,0 +1,2 @@
+-keep class com.yausername.** { *; }
+-dontwarn org.apache.commons.**
