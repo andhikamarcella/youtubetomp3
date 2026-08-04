@@ -1,0 +1,63 @@
+name: Patch YTConv 1.6.4 Public YouTube Recovery
+
+on:
+  push:
+    branches:
+      - codex/perbaiki-semua-fungsi-tombol
+    paths:
+      - .github/workflows/patch-ytconv-1.6.4-public-youtube.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: patch-ytconv-1.6.4-public-youtube
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-1.6.4-security-types
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Apply public YouTube recovery patch
+        working-directory: .
+        run: python3 .github/scripts/patch-ytconv-1.6.4-public-youtube.py
+      - name: Install and validate without lifecycle scripts
+        run: |
+          npm ci --ignore-scripts
+          npm run check
+          npm run typecheck
+          npm test
+          npm run security
+      - name: Commit verified patch
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cli/src/downloader.js cli/test/release-1.3.test.js
+          git commit -m "fix(cli): add bounded public YouTube client recovery"
+          git fetch origin release/ytconv-1.6.4-security-types
+          git rebase origin/release/ytconv-1.6.4-security-types
+          git push origin HEAD:release/ytconv-1.6.4-security-types
+      - name: Report failure
+        if: ${{ failure() }}
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "YTConv 1.6.4 public YouTube recovery patch failed" \
+            --body "Patch failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA." || true
