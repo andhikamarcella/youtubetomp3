@@ -1,4 +1,5 @@
 const VIDEO_CONTAINERS = new Set(['auto', 'mp4', 'mkv', 'webm']);
+const MEDIA_MODES = new Set(['auto', 'audio', 'video', 'image']);
 
 function normalizedHost(value) {
   try {
@@ -33,6 +34,27 @@ export function effectiveVideoContainer({
   if (requested !== 'auto') return requested;
   if (mode === 'video' && isYouTubeUrl(url)) return 'mp4';
   return 'auto';
+}
+
+export function resolveYouTubeOutputPolicy({
+  url = '',
+  requestedMode = 'auto',
+  requestedVideoFormat = 'auto',
+} = {}) {
+  const normalizedMode = MEDIA_MODES.has(String(requestedMode).toLowerCase())
+    ? String(requestedMode).toLowerCase()
+    : 'auto';
+  let mode = normalizedMode;
+  if (mode === 'auto') {
+    if (isYouTubeMusicUrl(url)) mode = 'audio';
+    else if (isYouTubeUrl(url)) mode = 'video';
+  }
+  const videoFormat = effectiveVideoContainer({
+    url,
+    mode,
+    requestedContainer: requestedVideoFormat,
+  });
+  return { mode, videoFormat };
 }
 
 function heightFilter(resolution) {
