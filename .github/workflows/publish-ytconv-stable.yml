@@ -222,6 +222,7 @@ jobs:
               --latest
           fi
       - name: Report successful publication
+        continue-on-error: true
         working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
