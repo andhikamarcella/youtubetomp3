@@ -14,7 +14,7 @@ on:
     branches:
       - codex/perbaiki-semua-fungsi-tombol
     paths:
-      - ".github/release-triggers/ytconv-1.6.4"
+      - ".github/release-triggers/ytconv-1.6.4*"
 
 permissions:
   contents: write
@@ -126,9 +126,13 @@ jobs:
       - name: Dry-run exact tarball
         if: ${{ steps.identity.outputs.already_published != 'true' }}
         run: npm publish "${{ steps.package.outputs.tarball }}" --dry-run --tag latest
-      - name: Publish with npm trusted publishing
+      - name: Publish with npm token and provenance
         if: ${{ steps.identity.outputs.already_published != 'true' }}
-        run: npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          test -n "${NODE_AUTH_TOKEN:-}"
+          npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public --provenance
       - name: Verify npm latest and registry bytes
         run: |
           READY=false
