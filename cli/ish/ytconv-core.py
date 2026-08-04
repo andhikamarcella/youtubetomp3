@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.6.4 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.6.5 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.6.4"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.4-security-types/cli"
+VERSION = "1.6.5"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"
@@ -174,7 +174,7 @@ def perform_update():
         with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as handle:
             handle.write(data + "\n")
             target = handle.name
-        result = subprocess.run(["sh", target], check=False)
+        result = subprocess.run(["sh", target], check=False, env=child_environment())
         if result.returncode:
             raise RuntimeError("installer exit %s" % result.returncode)
     except (OSError, RuntimeError, urllib.error.URLError) as error:
@@ -253,7 +253,7 @@ def javascript_runtime_args():
 def pip_install(*packages):
     for extra in (["--break-system-packages"], []):
         command = [sys.executable, "-m", "pip", "install", "-U", "--no-cache-dir"] + extra + list(packages)
-        if subprocess.run(command, check=False).returncode == 0:
+        if subprocess.run(command, check=False, env=child_environment()).returncode == 0:
             return True
     return False
 
@@ -261,10 +261,11 @@ def pip_install(*packages):
 def repair():
     print("YTConv iSH repair")
     if Path("/etc/alpine-release").exists() and shutil.which("apk"):
-        subprocess.run(["apk", "update"], check=False)
+        subprocess.run(["apk", "update"], check=False, env=child_environment())
         subprocess.run(
-            ["apk", "add", "--no-cache", "python3", "py3-pip", "ffmpeg", "curl", "ca-certificates", "nodejs"],
+            ["apk", "add", "--no-cache", "python3", "py3-pip", "ffmpeg", "curl", "ca-certificates"],
             check=False,
+            env=child_environment(),
         )
     if not pip_install("yt-dlp[default]", "gallery-dl"):
         eprint("pip could not install yt-dlp/gallery-dl. Check the internet connection and device clock.")
@@ -383,6 +384,7 @@ def common_args(options, output, yt_archive):
         "--file-access-retries", options.file_access_retries,
         "--retry-sleep", "http:%s" % options.retry_sleep,
         "--retry-sleep", "fragment:%s" % options.retry_sleep,
+        "--retry-sleep", "file_access:%s" % options.retry_sleep,
         "--output", output_template(options, output),
         "--print", "after_move:ytconv-file:%(filepath)s",
         "--force-overwrites" if options.overwrite else "--no-overwrites",
