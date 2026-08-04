@@ -27,7 +27,7 @@ test('1.6.4 publishes recognized license types and no lifecycle install hooks', 
   assert.equal(manifest.scripts.install, undefined);
   assert.equal(manifest.scripts.postinstall, undefined);
   assert.equal(fs.existsSync(path.join(root, 'scripts', 'postinstall.js')), false);
-  assert.match(license, /^ISC License\n/u);
+  assert.match(license, /^ISC License\r?\n/u);
   assert.match(license, /Permission to use, copy, modify, and\/or distribute/u);
 });
 
