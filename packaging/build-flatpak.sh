@@ -26,7 +26,7 @@ flatpak install --user --noninteractive -y flathub \
   "org.freedesktop.Platform/${ARCH}/24.08" \
   "org.freedesktop.Sdk/${ARCH}/24.08"
 
-flatpak-builder --user --force-clean --repo="$REPO" "$BUILD" \
+flatpak-builder --user --force-clean --default-branch=stable --repo="$REPO" "$BUILD" \
   "$ROOT/packaging/flatpak/$APP_ID.yml"
 PACKAGE="$OUT/YTConv-${VERSION}.flatpak"
 flatpak build-bundle "$REPO" "$PACKAGE" "$APP_ID" stable
