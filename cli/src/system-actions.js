@@ -4,6 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { spawn, spawnSync } from 'node:child_process';
 import { isTermux } from './platform.js';
+import { scrubChildEnvironment } from './terminal-style.js';
 
 async function exists(target) {
   if (!target) return false;
@@ -130,7 +131,7 @@ function runDetached({ command, args, label }) {
         detached: true,
         stdio: 'ignore',
         windowsHide: true,
-        env: process.env,
+        env: scrubChildEnvironment(),
       });
     } catch (error) {
       finish({ ok: false, error });
@@ -181,7 +182,7 @@ function runClipboard(command, args, input) {
     encoding: 'utf8',
     windowsHide: true,
     timeout: 5_000,
-    env: process.env,
+    env: scrubChildEnvironment(),
   });
   return !result.error && result.status === 0;
 }
