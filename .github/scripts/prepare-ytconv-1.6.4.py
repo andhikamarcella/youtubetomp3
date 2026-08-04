@@ -10,8 +10,6 @@ RELEASE_BLOB = f"https://github.com/andhikamarcella/youtubetomp3/blob/{NEW_BRANC
 
 def release_paths():
     patterns = (
-        ".github/workflows/ytconv-cli.yml",
-        ".github/workflows/publish-ytconv-stable.yml",
         "cli/bin/*.js",
         "cli/src/*.js",
         "cli/test/*.js",
