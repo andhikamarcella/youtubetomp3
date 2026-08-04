@@ -1,7 +1,7 @@
 {
   "name": "ytconv",
-  "version": "1.6.4",
-  "description": "Secure typed YouTube MP4 and MP3 downloader CLI with verified yt-dlp and FFmpeg engines, playlists, social media support, Termux, iSH, Windows, macOS, and Linux.",
+  "version": "1.6.5",
+  "description": "Secure typed YouTube MP4 and MP3 downloader CLI with verified yt-dlp and FFmpeg engines plus native Windows, Linux, Android, Termux, and iSH packages.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
@@ -25,6 +25,7 @@
     "scripts/*.ps1",
     "ish/VERSION",
     "ish/*.py",
+    "ish/SHA256SUMS",
     "docs/*.md",
     "README.md",
     "SECURITY.md",
@@ -96,8 +97,18 @@
     "ubuntu",
     "debian",
     "fedora",
+    "rhel",
+    "opensuse",
     "arch",
+    "manjaro",
     "alpine",
+    "nixos",
+    "flatpak",
+    "snap",
+    "appimage",
+    "android",
+    "apk",
+    "exe",
     "macos",
     "automation",
     "json",
@@ -115,29 +126,31 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.4-security-types/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.5-packages/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.4-security-types/cli/docs",
-    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/NODEJS.md",
-    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/SECURITY.md"
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.5-packages/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/NODEJS.md",
+    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/SECURITY.md"
   },
   "releaseDate": "2026-08-04",
-  "releaseNotes": "YTConv 1.6.4 removes npm install-time execution, adopts the recognized ISC license, publishes a real TypeScript declaration surface, strengthens child-process and verified-download policy, documents unavoidable downloader capabilities, and improves public YouTube MP4 recovery without requiring cookies.txt for ordinary public media.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.5 adds tested Windows EXE, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Termux and Android packaging; repairs stale iSH and Alpine update paths; and preserves the secure no-install-script, no-cookie public MP4 policy.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/CHANGELOG.md",
   "installer": {
-    "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.4.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.4/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.4/ytconv-1.6.4.metadata.json"
+    "type": "Multi-format release",
+    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.5.tgz",
+    "release": "https://github.com/andhikamarcella/youtubetomp3/releases/tag/ytconv-v1.6.5",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.5/SHA256SUMS.txt",
+    "sbomUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.5/ytconv-1.6.5.cdx.json"
   },
   "engines": {
     "node": ">=22.14.0",
