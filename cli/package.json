@@ -1,14 +1,24 @@
 {
   "name": "ytconv",
-  "version": "1.6.3",
-  "description": "CLI-only media downloader with automatic setup and updates, official browser-session login, profiles, batch downloads, and multi-platform support.",
+  "version": "1.6.4",
+  "description": "Secure typed YouTube MP4 and MP3 downloader CLI with verified yt-dlp and FFmpeg engines, playlists, social media support, Termux, iSH, Windows, macOS, and Linux.",
   "type": "module",
+  "main": "./src/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "bin": {
     "ytconv": "bin/ytconv-auth.js"
   },
   "files": [
     "bin/*.js",
     "src/*.js",
+    "types/*.d.ts",
     "scripts/*.js",
     "scripts/*.sh",
     "scripts/*.cmd",
@@ -17,25 +27,33 @@
     "ish/*.py",
     "docs/*.md",
     "README.md",
+    "SECURITY.md",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
-    "postinstall": "node ./scripts/postinstall.js",
     "start": "node ./bin/ytconv-auth.js",
     "check": "node ./scripts/check-syntax.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:ish": "python3 -m py_compile ./ish/ytconv.py ./ish/ytconv-core.py ./scripts/test-ish.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node ./scripts/test-cli.js",
     "test:browser": "node ./scripts/test-managed-browser.js",
     "test:ish": "python3 ./ish/ytconv.py --version && python3 ./scripts/test-ish.py",
-    "security": "npm audit --omit=dev && node --test ./test/security.test.js",
-    "prepack": "npm run check && npm test && npm run check:ish"
+    "security": "npm audit --omit=dev && node --test ./test/security.test.js ./test/supply-chain.test.js",
+    "prepack": "npm run check && npm run typecheck && npm test && npm run check:ish"
   },
   "keywords": [
+    "ytconv",
     "yt-dlp",
     "gallery-dl",
     "ffmpeg",
     "youtube",
+    "youtube-downloader",
+    "youtube-downloader-cli",
+    "youtube-mp4",
+    "youtube-mp3",
+    "mp4-downloader",
+    "mp3-converter",
     "youtube-music",
     "instagram",
     "facebook",
@@ -63,6 +81,11 @@
     "completion",
     "login",
     "supply-chain-security",
+    "socket-security",
+    "provenance",
+    "sbom",
+    "typescript",
+    "typed-api",
     "termux",
     "ish",
     "ssh",
@@ -91,29 +114,30 @@
   "maintainers": [
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
-  "license": "MIT",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.3-cli-only-final/cli/LICENSE",
+  "license": "ISC",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.3-cli-only-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.4-security-types/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.3-cli-only-final/cli/docs",
-    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.3-cli-only-final/cli/docs/NODEJS.md"
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.4-security-types/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/NODEJS.md",
+    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/SECURITY.md"
   },
-  "releaseDate": "2026-08-03",
-  "releaseNotes": "YTConv 1.6.3 fixes invalid yt-dlp retry-sleep arguments that prevented YouTube downloads from starting. Retry expressions from defaults, command-line options, saved profiles, and legacy configurations are normalized before HTTP, fragment, and file-access retries are generated.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.3-cli-only-final/cli/CHANGELOG.md",
+  "releaseDate": "2026-08-04",
+  "releaseNotes": "YTConv 1.6.4 removes npm install-time execution, adopts the recognized ISC license, publishes a real TypeScript declaration surface, strengthens child-process and verified-download policy, documents unavoidable downloader capabilities, and improves public YouTube MP4 recovery without requiring cookies.txt for ordinary public media.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/CHANGELOG.md",
   "installer": {
     "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.3.tgz",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.3/SHA256SUMS.txt",
-    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.3/ytconv-1.6.3.metadata.json"
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.4.tgz",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.4/SHA256SUMS.txt",
+    "metadataUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.4/ytconv-1.6.4.metadata.json"
   },
   "engines": {
     "node": ">=22.14.0",
@@ -121,12 +145,17 @@
   },
   "packageManager": "npm@11.19.0",
   "preferGlobal": true,
+  "sideEffects": false,
   "dependencies": {
     "figlet": "1.11.4",
     "ink": "7.1.1",
     "react": "19.2.8",
     "which": "6.0.0",
     "ws": "8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3"
   },
   "publishConfig": {
     "access": "public",
