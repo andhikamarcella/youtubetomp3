@@ -16,12 +16,22 @@ cp -a "$STAGE/opt" "$SNAPROOT/"
 cp -a "$STAGE/usr" "$SNAPROOT/"
 cp "$ROOT/packaging/snap/snap.yaml" "$SNAPROOT/meta/snap.yaml"
 
+snap pack "$SNAPROOT" "$OUT"
+BUILT=$(find "$OUT" -maxdepth 1 -type f -name "ytconv_${VERSION}_*.snap" | head -n1)
+[ -n "$BUILT" ] || { printf 'snap pack did not create a package file.\n' >&2; exit 3; }
 PACKAGE="$OUT/ytconv_${VERSION}_amd64.snap"
-snap pack "$SNAPROOT" "$PACKAGE"
+if [ "$BUILT" != "$PACKAGE" ]; then
+  mv "$BUILT" "$PACKAGE"
+fi
+[ -s "$PACKAGE" ] || { printf 'Snap package is empty.\n' >&2; exit 3; }
+
 EXTRACT="$OUT/extracted"
 mkdir -p "$EXTRACT"
 unsquashfs -d "$EXTRACT/squashfs-root" "$PACKAGE" >/dev/null
 SNAP="$EXTRACT/squashfs-root" "$EXTRACT/squashfs-root/usr/bin/ytconv" --version | grep -Fx "$VERSION"
 rm -rf "$EXTRACT"
-sha256sum "$PACKAGE" > "$OUT/SHA256SUMS-snap.txt"
+(
+  cd "$OUT"
+  sha256sum "$(basename "$PACKAGE")" > SHA256SUMS-snap.txt
+)
 printf '%s\n' "$PACKAGE"
