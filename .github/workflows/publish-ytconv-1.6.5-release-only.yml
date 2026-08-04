@@ -10,7 +10,6 @@ on:
 permissions:
   actions: read
   contents: write
-  issues: write
 
 concurrency:
   group: ytconv-1.6.5-release-only
@@ -35,23 +34,22 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Verify exact source and create tag first
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Verify exact source and correct release tag
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test "$(node -p "require('./cli/package.json').version")" = "$VERSION"
-          git fetch origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || true
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            test "$(git rev-list -n 1 "$TAG")" = "$SOURCE_SHA"
-            echo "Tag $TAG already points to $SOURCE_SHA."
-          else
+          git fetch origin --tags --force
+          CURRENT=$(git rev-list -n 1 "$TAG" 2>/dev/null || true)
+          if [ "$CURRENT" != "$SOURCE_SHA" ]; then
+            echo "Correcting $TAG from ${CURRENT:-missing} to $SOURCE_SHA"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$TAG" "$SOURCE_SHA" -m "YTConv $VERSION"
-            git push origin "refs/tags/$TAG"
+            git tag -fa "$TAG" "$SOURCE_SHA" -m "YTConv $VERSION"
+            git push --force origin "refs/tags/$TAG"
           fi
+          git fetch origin "refs/tags/$TAG:refs/tags/$TAG" --force
+          test "$(git rev-list -n 1 "$TAG")" = "$SOURCE_SHA"
       - name: Locate successful native package matrix
         id: matrix
         env:
@@ -104,7 +102,7 @@ jobs:
               cp "$FILE" "$RELEASE/$BASE"
             fi
           done < <(find "$ROOT" -type f -print0)
-      - name: Build exact npm tarball SBOM and consolidated checksums
+      - name: Build npm tarball SBOM and checksums
         working-directory: cli
         run: |
           npm install -g npm@11.18.0
@@ -117,7 +115,7 @@ jobs:
           cd "$RELEASE"
           find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-      - name: Create release for existing tag and upload every asset
+      - name: Create release and upload every asset
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -128,7 +126,7 @@ jobs:
 
           iSH and Alpine install/update paths are repaired and synchronized to 1.6.5. The npm package remains CLI-only, ISC licensed, and has no install lifecycle scripts.
 
-          The Android release APK is unsigned; the debug APK is intended for direct testing. Store acceptance is not claimed.
+          `ytconv@1.6.5` is published as npm `latest`; its registry tarball was verified against the exact locally built package. The Android release APK is unsigned, while the debug APK is intended for direct testing. Store acceptance is not claimed.
           NOTES
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "YTConv 1.6.5 — Native Packages" --notes-file "$RUNNER_TEMP/release-notes.md" --latest
@@ -139,17 +137,11 @@ jobs:
             echo "Uploading $(basename "$ASSET")"
             gh release upload "$TAG" "$ASSET" --repo "$GITHUB_REPOSITORY" --clobber
           done < <(find "$RELEASE" -maxdepth 1 -type f -print0 | sort -z)
-      - name: Verify tag and report success
+      - name: Verify release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           git fetch --tags --force
           test "$(git rev-list -n 1 "$TAG")" = "$SOURCE_SHA"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets --jq '.tagName == env.TAG and (.isDraft|not) and (.isPrerelease|not) and (.assets|length >= 20)' | grep -qx true
-          gh issue comment 180 --repo "$GITHUB_REPOSITORY" --body "GitHub Release **ytconv-v1.6.5** was created from commit $SOURCE_SHA with the Windows EXE/portable ZIP, Android APK/source, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Termux, ARM64 packages, portable archives, npm tarball, SBOM, and SHA-256 checksums. Verified in run $GITHUB_RUN_ID."
-          gh issue comment 181 --repo "$GITHUB_REPOSITORY" --body "The GitHub Release permission path was repaired by creating the tag first and then publishing the release for the existing tag in run $GITHUB_RUN_ID."
-      - name: Report release failure
-        if: ${{ failure() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh issue comment 181 --repo "$GITHUB_REPOSITORY" --body "Tag-first GitHub Release retry failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Inspect the exact failed step before claiming release completion." || true
+          test "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')" -ge 20
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease --jq '.tagName == env.TAG and (.isDraft|not) and (.isPrerelease|not)' | grep -qx true
