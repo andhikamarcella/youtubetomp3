@@ -49,27 +49,48 @@ jobs:
           test "$(node -p "require('./package.json').version")" = "1.6.4"
           test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
           test "$(node -p "require('./package.json').license")" = "ISC"
-          node - <<'NODE'
-          const manifest = require('./package.json');
+          node --input-type=module - <<'NODE'
+          const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
           if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
             throw new Error('npm lifecycle install scripts are forbidden');
           }
           if (manifest.types !== './types/index.d.ts') throw new Error('TypeScript declarations are missing');
-          const { buildDownloadArgs } = await import('./src/downloader.js');
+          const { applyStableDefaults } = await import('./src/defaults.js');
+          const { buildDownloadArgs, publicYouTubeRecoveryClients } = await import('./src/downloader.js');
+          const options = {
+            retrySleep: 'fragment:http:linear=1::2', subtitles: false,
+            sponsorBlockMode: 'off', archivePath: '', galleryArchivePath: '',
+            initialMode: 'video', videoFormat: 'auto', resolution: '720', preset: 'balanced',
+          };
+          applyStableDefaults(options, { disabled: { archive: true }, explicit: {} }, {
+            homeDirectory: '/tmp/ytconv', mkdirSync() {},
+          });
+          if (options.retrySleep !== 'linear=1::2') throw new Error(options.retrySleep);
           const args = buildDownloadArgs({
+            ...options,
             url: 'https://www.youtube.com/watch?v=BaW_jenozKc',
-            mode: 'video', resolution: '720', videoFormat: 'auto',
-            audioFormat: 'mp3', audioQuality: 'best', cookieConfig: { kind: 'none' },
-            playlist: false, outputDirectory: process.cwd(), subtitles: false,
-            subtitleOnly: false, sponsorBlockMode: 'off', archivePath: '',
-            retrySleep: 'fragment:http:linear=1::2',
+            mode: 'video', audioFormat: 'mp3', audioQuality: 'best',
+            cookieConfig: { kind: 'none' }, playlist: false,
+            outputDirectory: process.cwd(), subtitleOnly: false,
           });
           if (args.includes('--cookies') || args.includes('--cookies-from-browser')) {
             throw new Error('Public YouTube unexpectedly requires cookies');
           }
+          const sleeps = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
+          if (JSON.stringify(sleeps) !== JSON.stringify(['linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'])) {
+            throw new Error(JSON.stringify(sleeps));
+          }
           const mp4 = args.slice(args.indexOf('--merge-output-format'), args.indexOf('--merge-output-format') + 4);
           if (JSON.stringify(mp4) !== JSON.stringify(['--merge-output-format', 'mp4', '--recode-video', 'mp4'])) {
             throw new Error(JSON.stringify(mp4));
+          }
+          const recovery = publicYouTubeRecoveryClients({
+            url: 'https://www.youtube.com/watch?v=public',
+            cookieConfig: { kind: 'none' },
+            error: new Error('Sign in to confirm you are not a bot'),
+          });
+          if (JSON.stringify(recovery) !== JSON.stringify(['tv_simply', 'web_embedded'])) {
+            throw new Error(JSON.stringify(recovery));
           }
           NODE
           if npm view ytconv@1.6.4 version >/dev/null 2>&1; then
@@ -83,7 +104,7 @@ jobs:
           npm run typecheck
           npm test
           npm run check:ish
-          npm run test:ish
+          PYTHONWARNINGS=error::ResourceWarning npm run test:ish
           npm run security
       - name: Build exact CLI-only tarball and SBOM
         id: package
