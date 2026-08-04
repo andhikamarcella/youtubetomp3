@@ -13,8 +13,7 @@
 buildNpmPackage {
   pname = "ytconv";
   version = "1.6.5";
-  src = ../..;
-  npmRoot = "cli";
+  src = ../../cli;
 
   npmDeps = importNpmLock {
     npmRoot = ../../cli;
