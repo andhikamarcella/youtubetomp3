@@ -1,0 +1,27 @@
+EAPI=8
+
+DESCRIPTION="Secure YouTube MP4 and MP3 downloader CLI"
+HOMEPAGE="https://github.com/andhikamarcella/youtubetomp3"
+SRC_URI="
+  amd64? ( https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.5/YTConv-1.6.5-linux-x86_64.tar.zst )
+  arm64? ( https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.5/YTConv-1.6.5-linux-aarch64.tar.zst )
+"
+S="${WORKDIR}"
+LICENSE="ISC"
+SLOT="0"
+KEYWORDS="~amd64 ~arm64"
+IUSE=""
+RDEPEND="
+  app-misc/ca-certificates
+  dev-lang/python
+  media-video/ffmpeg
+"
+
+src_install() {
+  dodir /opt/ytconv
+  cp -a "${S}/opt/ytconv/." "${ED}/opt/ytconv/" || die
+  dobin "${S}/usr/bin/ytconv"
+  dodoc "${S}/usr/share/doc/ytconv/README.md"
+  insinto /usr/share/licenses/ytconv
+  doins "${S}/usr/share/doc/ytconv/LICENSE"
+}
