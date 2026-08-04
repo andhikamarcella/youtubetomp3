@@ -41,6 +41,9 @@ fi
 PACKAGE=$(find "$OUT" -maxdepth 1 -type f -name 'ytconv-1.6.5-r0.apk' | head -n1)
 [ -n "$PACKAGE" ] || { printf 'Alpine package was not produced.\n' >&2; exit 2; }
 [ -s "$PACKAGE" ] || { printf 'Alpine package is empty.\n' >&2; exit 2; }
-tar -tzf "$PACKAGE" >/dev/null 2>&1 || true
-sha256sum "$PACKAGE" > "$OUT/SHA256SUMS-alpine.txt"
+PACKAGE_NAME=$(basename "$PACKAGE")
+(
+  cd "$OUT"
+  sha256sum "$PACKAGE_NAME" > SHA256SUMS-alpine.txt
+)
 printf '%s\n' "$PACKAGE"
