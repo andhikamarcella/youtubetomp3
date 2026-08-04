@@ -8,12 +8,15 @@ import {
   effectiveVideoContainer,
   formatVideoSelector,
   isYouTubeMusicUrl,
+  isYouTubeUrl,
   videoContainerArgs,
 } from './youtube-output.js';
 
 export { formatVideoSelector } from './youtube-output.js';
 
 const MAX_METADATA_BYTES = 12 * 1024 * 1024;
+const PUBLIC_YOUTUBE_RECOVERY_CLIENTS = Object.freeze(['tv_simply', 'web_embedded']);
+const PUBLIC_YOUTUBE_CHALLENGE = /(?:sign in to confirm.*not a bot|site requires a signed-in account|login[_ ]required)/iu;
 
 function envValue(name, fallback = '') {
   return process.env[name]?.trim() || fallback;
@@ -58,7 +61,44 @@ function commonExtractorArgs(options = {}) {
   ];
   const proxy = optionValue(options, 'proxy', 'YTCONV_PROXY');
   if (proxy) args.push('--proxy', proxy);
+  const youtubePlayerClient = String(options?.youtubePlayerClient ?? '').trim();
+  if (youtubePlayerClient) {
+    if (!PUBLIC_YOUTUBE_RECOVERY_CLIENTS.includes(youtubePlayerClient)) {
+      throw new Error(`Unsupported internal YouTube public client: ${youtubePlayerClient}`);
+    }
+    args.push('--extractor-args', `youtube:player_client=${youtubePlayerClient}`);
+  }
   return args;
+}
+
+function cookieFree(cookieConfig) {
+  return !cookieConfig || cookieConfig.kind === 'none';
+}
+
+export function publicYouTubeRecoveryClients({ url, cookieConfig, error } = {}) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (!isYouTubeUrl(url) || !cookieFree(cookieConfig) || !PUBLIC_YOUTUBE_CHALLENGE.test(message)) return [];
+  return [...PUBLIC_YOUTUBE_RECOVERY_CLIENTS];
+}
+
+async function withPublicYouTubeRecovery(operation, { url, cookieConfig, onLog } = {}) {
+  try {
+    return await operation('');
+  } catch (primaryError) {
+    const clients = publicYouTubeRecoveryClients({ url, cookieConfig, error: primaryError });
+    if (!clients.length) throw primaryError;
+    const failures = [];
+    for (const client of clients) {
+      onLog?.(`YouTube public access was challenged; retrying without cookies through ${client}...`, true);
+      try {
+        return await operation(client);
+      } catch (error) {
+        failures.push(`${client}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    const primary = primaryError instanceof Error ? primaryError.message : String(primaryError);
+    throw new Error(`${primary} Public no-cookie client recovery failed (${failures.join(' | ')}).`);
+  }
 }
 
 function normalizeYtDlpRunner(value) {
@@ -216,7 +256,13 @@ export async function inspectMedia({ ytDlp, ytDlpPath, url, cookieConfig = { kin
   const galleryPreferred = !forceVideo && isGalleryPreferredUrl(url);
   if (galleryPreferred) return inspectGallery({ url, cookieConfig, outputDirectory: process.cwd(), signal });
   try {
-    return await inspectWithYtDlp({ ytDlp, ytDlpPath, url, cookieConfig, playlist, signal, options });
+    return await withPublicYouTubeRecovery(
+      (youtubePlayerClient) => inspectWithYtDlp({
+        ytDlp, ytDlpPath, url, cookieConfig, playlist, signal,
+        options: youtubePlayerClient ? { ...options, youtubePlayerClient } : options,
+      }),
+      { url, cookieConfig },
+    );
   } catch (ytDlpError) {
     if (forceVideo) throw ytDlpError;
     try { return await inspectGallery({ url, cookieConfig, outputDirectory: process.cwd(), signal }); }
@@ -421,7 +467,14 @@ export async function downloadMedia({ ytDlp, ytDlpPath, options, onProgress, onL
     return downloadGallery({ url: options.url, cookieConfig: options.cookieConfig, outputDirectory: options.outputDirectory, onProgress, onLog, signal });
   }
   try {
-    return await downloadWithYtDlp({ ytDlp, ytDlpPath, options, onProgress, onLog, signal });
+    return await withPublicYouTubeRecovery(
+      (youtubePlayerClient) => downloadWithYtDlp({
+        ytDlp, ytDlpPath,
+        options: youtubePlayerClient ? { ...options, youtubePlayerClient } : options,
+        onProgress, onLog, signal,
+      }),
+      { url: options.url, cookieConfig: options.cookieConfig, onLog },
+    );
   } catch (ytDlpError) {
     if (!mayUseGallery) throw ytDlpError;
     onLog?.('yt-dlp could not handle this media; trying the gallery engine...', true);

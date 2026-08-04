@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCliOptions } from '../src/cli-options.js';
-import { buildDownloadArgs } from '../src/downloader.js';
+import { buildDownloadArgs, publicYouTubeRecoveryClients } from '../src/downloader.js';
 import { EXIT_CODES, exitCodeForError } from '../src/exit-codes.js';
 import { extractSystemOptions } from '../src/system-tools.js';
 
@@ -76,6 +76,45 @@ test('default retry sleep preserves complete general fragment and file-access ex
   assert.ok(general, sleeps.join(','));
   assert.ok(sleeps.includes(`fragment:${general}`), sleeps.join(','));
   assert.ok(sleeps.includes(`file_access:${general}`), sleeps.join(','));
+});
+
+test('public YouTube bot challenges retry only allowlisted no-cookie clients', () => {
+  const clients = publicYouTubeRecoveryClients({
+    url: 'https://www.youtube.com/watch?v=public',
+    cookieConfig: { kind: 'none' },
+    error: new Error('Sign in to confirm you are not a bot'),
+  });
+  assert.deepEqual(clients, ['tv_simply', 'web_embedded']);
+  assert.deepEqual(publicYouTubeRecoveryClients({
+    url: 'https://www.youtube.com/watch?v=private',
+    cookieConfig: { kind: 'browser', spec: 'firefox' },
+    error: new Error('login required'),
+  }), []);
+  assert.deepEqual(publicYouTubeRecoveryClients({
+    url: 'https://example.com/video',
+    cookieConfig: { kind: 'none' },
+    error: new Error('login required'),
+  }), []);
+  assert.deepEqual(publicYouTubeRecoveryClients({
+    url: 'https://www.youtube.com/watch?v=network',
+    cookieConfig: { kind: 'none' },
+    error: new Error('HTTP 503'),
+  }), []);
+});
+
+test('public YouTube recovery client is emitted as one validated extractor argument', () => {
+  const args = buildDownloadArgs({
+    ...downloadOptions(['--video']),
+    youtubePlayerClient: 'tv_simply',
+  });
+  assert.deepEqual(
+    args.slice(args.indexOf('--extractor-args'), args.indexOf('--extractor-args') + 2),
+    ['--extractor-args', 'youtube:player_client=tv_simply'],
+  );
+  assert.throws(
+    () => buildDownloadArgs({ ...downloadOptions(['--video']), youtubePlayerClient: 'untrusted-client' }),
+    /Unsupported internal YouTube public client/u,
+  );
 });
 
 test('subtitle-only downloads subtitles without media payload', () => {

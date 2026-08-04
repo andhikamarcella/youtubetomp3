@@ -1,5 +1,38 @@
 # YTConv CLI changelog
 
+
+## 1.6.4 — supply-chain hardening and typed API
+
+Released: 2026-08-04
+
+### Installation and supply chain
+
+- Removed npm lifecycle install scripts so package installation does not download or execute media engines.
+- Kept first-use and explicit repair visible, verified, bounded, and outside npm installation.
+- Changed package licensing to the canonical SPDX-recognized ISC license.
+- Added a versioned Socket badge, capability threat model, SBOM/provenance policy, and package-content assertions.
+- Scrubbed tokens, credentials, passwords, cookies, cloud secrets, and authentication variables from every child-process environment.
+- Enforced no `exec`, `shell: true`, dynamic evaluation, or unfiltered `process.env` in published JavaScript.
+
+### TypeScript and package consumers
+
+- Added a real side-effect-free programmatic API for YouTube URL/container and retry helpers.
+- Added bundled TypeScript declarations, conditional exports, type-check CI, and development-only TypeScript/Node declarations.
+- Documented that npm Dependents are registry relationships and cannot be manufactured by package metadata.
+
+### Public YouTube MP4
+
+- Preserved no-cookie operation for ordinary public YouTube URLs.
+- Kept current yt-dlp default clients, JavaScript runtime support, AVC/M4A preference, broad format fallbacks, FFmpeg MP4 conversion, real-file verification, and automatic verified engine repair.
+- Added deterministic assertions that public MP4 arguments contain no cookie source and produce an MP4 conversion path.
+- Clarified that private, age-gated, members-only, region-restricted, or account-only media may still require official browser authentication.
+
+### Discoverability and release verification
+
+- Expanded accurate npm description and keywords for YTConv, YouTube MP4/MP3, yt-dlp, TypeScript, Termux, and supported platforms.
+- Added search-friendly README headings and examples without promising a particular Google rank.
+- Updated installers, iSH frontend, documentation, tests, CI, publishing metadata, tarball URLs, and release references to 1.6.4.
+
 ## 1.6.3 — yt-dlp retry-sleep hotfix
 
 Released: 2026-08-03

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.6.2 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.6.4 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.6.2"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli"
+VERSION = "1.6.4"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.4-security-types/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"
@@ -54,6 +54,36 @@ PRESETS = {
         "restrict_filenames": True,
     },
 }
+
+
+SENSITIVE_ENVIRONMENT_NAME = re.compile(
+    r"(?:^|_)(?:AUTH|AUTHORIZATION|COOKIE|CREDENTIAL|KEY|PASS|PASSWORD|SECRET|SESSION|TOKEN)(?:_|$)",
+    re.IGNORECASE,
+)
+SENSITIVE_ENVIRONMENT_PREFIX = re.compile(
+    r"^(?:AWS|AZURE|CI_JOB|CIRCLE|CLOUDFLARE|DOCKER_AUTH|GCLOUD|GOOGLE|GH|GITHUB|GITLAB|NPM|NUGET|PYPI|TWINE|YTCONV_AUTH)_",
+    re.IGNORECASE,
+)
+EXPLICIT_SENSITIVE_ENVIRONMENT_NAMES = {
+    "NODE_AUTH_TOKEN", "NPM_TOKEN", "GH_TOKEN", "GITHUB_TOKEN",
+    "GIT_ASKPASS", "SSH_ASKPASS", "SSH_AUTH_SOCK",
+    "YTCONV_AUTH_TOKEN", "YTCONV_USER_EMAIL",
+}
+
+
+def child_environment():
+    environment = {}
+    for name, value in os.environ.items():
+        if (
+            name in EXPLICIT_SENSITIVE_ENVIRONMENT_NAMES
+            or SENSITIVE_ENVIRONMENT_PREFIX.search(name)
+            or SENSITIVE_ENVIRONMENT_NAME.search(name)
+        ):
+            continue
+        environment[name] = value
+    environment["NO_COLOR"] = "1"
+    environment["FORCE_COLOR"] = "0"
+    return environment
 
 
 def eprint(message):
@@ -493,9 +523,7 @@ def run_tool(label, runner, args, capture=False):
     if not runner:
         raise RuntimeError("%s is not available. Run ytconv repair" % label)
     command = runner + args
-    environment = dict(os.environ)
-    environment["NO_COLOR"] = "1"
-    environment["FORCE_COLOR"] = "0"
+    environment = child_environment()
     if capture:
         result = subprocess.run(
             command,
@@ -523,16 +551,19 @@ def run_tool(label, runner, args, capture=False):
     archive_skipped = False
     rows = []
     assert process.stdout is not None
-    for row in process.stdout:
-        row = row.rstrip("\r\n")
-        rows.append(row)
-        if row.startswith("ytconv-file:"):
-            reported.append(row[len("ytconv-file:"):].strip())
-        else:
-            print(row)
-        lower = row.lower()
-        if "already been recorded in the archive" in lower or "has already been recorded in archive" in lower:
-            archive_skipped = True
+    try:
+        for row in process.stdout:
+            row = row.rstrip("\r\n")
+            rows.append(row)
+            if row.startswith("ytconv-file:"):
+                reported.append(row[len("ytconv-file:"):].strip())
+            else:
+                print(row)
+            lower = row.lower()
+            if "already been recorded in the archive" in lower or "has already been recorded in archive" in lower:
+                archive_skipped = True
+    finally:
+        process.stdout.close()
     return_code = process.wait()
     if return_code:
         message = next((row for row in reversed(rows) if row.strip()), "%s failed" % label)

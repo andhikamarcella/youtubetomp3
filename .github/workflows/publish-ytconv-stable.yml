@@ -1,17 +1,14 @@
-name: Publish YTConv 1.6.3 to npm
+name: Publish YTConv 1.6.4 to npm
 
 on:
-  push:
-    branches:
-      - release/ytconv-1.6.3-cli-only-final
-    paths:
-      - ".github/workflows/publish-ytconv-stable.yml"
-      - "cli/**"
-      - "scripts/ytconv-release-metadata.mjs"
   workflow_dispatch:
     inputs:
+      version:
+        description: "Stable version; must match cli/package.json"
+        required: true
+        default: "1.6.4"
       confirm:
-        description: "Type PUBLISH-STABLE to continue"
+        description: "Type PUBLISH-1.6.4 to continue"
         required: true
 
 permissions:
@@ -20,12 +17,12 @@ permissions:
   issues: write
 
 concurrency:
-  group: ytconv-npm-1.6.3
+  group: ytconv-npm-1.6.4
   cancel-in-progress: false
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-STABLE' }}
+    if: ${{ inputs.version == '1.6.4' && inputs.confirm == 'PUBLISH-1.6.4' }}
     environment: npm
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -34,102 +31,134 @@ jobs:
         working-directory: cli
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-1.6.4-security-types
+          fetch-depth: 0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: npm
-          cache-dependency-path: cli/package-lock.json
-      - name: Pin npm, synchronize lock metadata, and install dependencies
+          package-manager-cache: false
+      - name: Pin npm and install the committed lockfile without scripts
         run: |
-          npm install -g npm@11.19.0
-          npm install --package-lock-only --ignore-scripts
+          npm install -g npm@11.18.0
           npm ci --ignore-scripts
-      - name: Verify release identity and retry fix
+      - name: Verify release identity security and public MP4 policy
         id: identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "1.6.3"
+          test "$(node -p "require('./package.json').version")" = "1.6.4"
           test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
-          test "$(node -p "require('./package.json').license")" = "MIT"
-          node - <<'NODE'
-          import { applyStableDefaults } from './src/defaults.js';
-          import { buildDownloadArgs } from './src/downloader.js';
+          test "$(node -p "require('./package.json').license")" = "ISC"
+          test "$(node -p "require('./package.json').packageManager")" = "npm@11.18.0"
+          node --input-type=module - <<'NODE'
+          const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
+          if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
+            throw new Error('npm lifecycle install scripts are forbidden');
+          }
+          if (manifest.types !== './types/index.d.ts') throw new Error('TypeScript declarations are missing');
+          const { applyStableDefaults } = await import('./src/defaults.js');
+          const { buildDownloadArgs, publicYouTubeRecoveryClients } = await import('./src/downloader.js');
           const options = {
             retrySleep: 'fragment:http:linear=1::2', subtitles: false,
             sponsorBlockMode: 'off', archivePath: '', galleryArchivePath: '',
-            initialMode: 'video', videoFormat: 'mp4', resolution: '720', preset: 'balanced',
+            initialMode: 'video', videoFormat: 'auto', resolution: '720', preset: 'balanced',
           };
-          applyStableDefaults(options, { disabled: { archive: true }, explicit: {} }, { homeDirectory: '/tmp/ytconv', mkdirSync() {} });
+          applyStableDefaults(options, { disabled: { archive: true }, explicit: {} }, {
+            homeDirectory: '/tmp/ytconv', mkdirSync() {},
+          });
           if (options.retrySleep !== 'linear=1::2') throw new Error(options.retrySleep);
           const args = buildDownloadArgs({
-            ...options, url: 'https://www.youtube.com/watch?v=test', mode: 'video',
-            audioFormat: 'mp3', audioQuality: 'best', cookieConfig: { kind: 'none' },
-            playlist: false, outputDirectory: process.cwd(), subtitleOnly: false,
+            ...options,
+            url: 'https://www.youtube.com/watch?v=BaW_jenozKc',
+            mode: 'video', audioFormat: 'mp3', audioQuality: 'best',
+            cookieConfig: { kind: 'none' }, playlist: false,
+            outputDirectory: process.cwd(), subtitleOnly: false,
           });
+          if (args.includes('--cookies') || args.includes('--cookies-from-browser')) {
+            throw new Error('Public YouTube unexpectedly requires cookies');
+          }
           const sleeps = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
-          const expected = ['linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
-          if (JSON.stringify(sleeps) !== JSON.stringify(expected)) throw new Error(JSON.stringify(sleeps));
+          if (JSON.stringify(sleeps) !== JSON.stringify(['linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'])) {
+            throw new Error(JSON.stringify(sleeps));
+          }
+          const mp4 = args.slice(args.indexOf('--merge-output-format'), args.indexOf('--merge-output-format') + 4);
+          if (JSON.stringify(mp4) !== JSON.stringify(['--merge-output-format', 'mp4', '--recode-video', 'mp4'])) {
+            throw new Error(JSON.stringify(mp4));
+          }
+          const recovery = publicYouTubeRecoveryClients({
+            url: 'https://www.youtube.com/watch?v=public',
+            cookieConfig: { kind: 'none' },
+            error: new Error('Sign in to confirm you are not a bot'),
+          });
+          if (JSON.stringify(recovery) !== JSON.stringify(['tv_simply', 'web_embedded'])) {
+            throw new Error(JSON.stringify(recovery));
+          }
           NODE
-          if npm view ytconv@1.6.3 version >/dev/null 2>&1; then
+          if npm view ytconv@1.6.4 version >/dev/null 2>&1; then
             echo "already_published=true" >> "$GITHUB_OUTPUT"
           else
             echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Test and audit the CLI
+      - name: Test audit and inspect the package
         run: |
           npm run check
+          npm run typecheck
           npm test
           npm run check:ish
-          npm run test:ish
+          PYTHONWARNINGS=error::ResourceWarning npm run test:ish
           npm run security
-      - name: Build exact CLI-only tarball
+      - name: Build exact CLI-only tarball and SBOM
         id: package
         run: |
-          npm sbom --omit=dev --sbom-format cyclonedx > "$RUNNER_TEMP/ytconv-1.6.3.cdx.json"
+          npm sbom --omit=dev --sbom-format cyclonedx > "$RUNNER_TEMP/ytconv-1.6.4.cdx.json"
           npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
           TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];process.stdout.write(require('path').join('$RUNNER_TEMP',p.filename))")
           node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
           SHA256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
-          printf '%s  %s\n' "$SHA256" "ytconv-1.6.3.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
+          printf '%s  %s\n' "$SHA256" "ytconv-1.6.4.tgz" > "$RUNNER_TEMP/SHA256SUMS.txt"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
       - name: Dry-run exact tarball
         if: ${{ steps.identity.outputs.already_published != 'true' }}
         run: npm publish "${{ steps.package.outputs.tarball }}" --dry-run --tag latest
-      - name: Publish stable package
+      - name: Publish with npm trusted publishing
         if: ${{ steps.identity.outputs.already_published != 'true' }}
-        run: npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Verify npm latest
+        run: npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public
+      - name: Verify npm latest and registry bytes
         run: |
           READY=false
           for ATTEMPT in $(seq 1 18); do
             VERSION=$(npm view ytconv@latest version --prefer-online 2>/dev/null || true)
-            if [ "$VERSION" = "1.6.3" ]; then READY=true; break; fi
+            if [ "$VERSION" = "1.6.4" ]; then READY=true; break; fi
             echo "Waiting for npm propagation ($ATTEMPT/18)..."
             sleep 5
           done
           test "$READY" = "true"
-          URL=$(npm view ytconv@1.6.3 dist.tarball --prefer-online)
-          curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-1.6.3.registry.tgz"
-          test "$(sha256sum "$RUNNER_TEMP/ytconv-1.6.3.registry.tgz" | cut -d ' ' -f 1)" = "${{ steps.package.outputs.sha256 }}"
-      - name: Create GitHub release
+          URL=$(npm view ytconv@1.6.4 dist.tarball --prefer-online)
+          curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-1.6.4.registry.tgz"
+          test "$(sha256sum "$RUNNER_TEMP/ytconv-1.6.4.registry.tgz" | cut -d ' ' -f 1)" = "${{ steps.package.outputs.sha256 }}"
+      - name: Create immutable GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="ytconv-v1.6.3"
+          TAG="ytconv-v1.6.4"
           ASSETS=(
             "${{ steps.package.outputs.tarball }}"
-            "$RUNNER_TEMP/ytconv-1.6.3.cdx.json"
+            "$RUNNER_TEMP/ytconv-1.6.4.cdx.json"
             "$RUNNER_TEMP/SHA256SUMS.txt"
           )
           NOTES=$(node -p "require('./package.json').releaseNotes")
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" "${ASSETS[@]}" --target "$GITHUB_SHA" --title "YTConv CLI 1.6.3" --notes "$NOTES"
+            gh release create "$TAG" "${ASSETS[@]}" --target "$GITHUB_SHA" --title "YTConv CLI 1.6.4" --notes "$NOTES"
           fi
+      - name: Report successful publication
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 177 --repo "$GITHUB_REPOSITORY" --body "YTConv 1.6.4 was published successfully to npm latest and the registry tarball SHA-256 was verified. GitHub release ytconv-v1.6.4 was created or updated by run $GITHUB_RUN_ID."
       - name: Report failure
         if: ${{ failure() }}
         working-directory: .
@@ -137,5 +166,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "YTConv 1.6.3 publish failed" \
+            --title "YTConv 1.6.4 publish failed" \
             --body "Publication failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA." || true

@@ -6,6 +6,7 @@ import { managedBrowserLaunchArgs } from '../src/managed-browser.js';
 import {
   privateChildEnvironment,
   sanitizeTerminalText,
+  scrubChildEnvironment,
   styleError,
 } from '../src/terminal-style.js';
 import { releaseAssetDigest, verifyReleaseAssetBuffer } from '../src/verified-download.js';
@@ -17,17 +18,23 @@ test('terminal output removes ANSI, OSC, controls, and bidi overrides', () => {
   assert.equal(styleError(unsafe, { stream: { isTTY: false }, env: {} }), 'greenlinktxt');
 });
 
-test('child browser environment removes package and repository tokens', () => {
-  const result = privateChildEnvironment({
-    PATH: '/bin', NPM_TOKEN: 'secret', GH_TOKEN: 'secret', GITHUB_TOKEN: 'secret', NODE_AUTH_TOKEN: 'secret',
-  });
-  assert.equal(result.PATH, '/bin');
-  assert.equal(result.NO_COLOR, '1');
-  assert.equal(result.FORCE_COLOR, '0');
-  assert.equal(result.NPM_TOKEN, undefined);
-  assert.equal(result.GH_TOKEN, undefined);
-  assert.equal(result.GITHUB_TOKEN, undefined);
-  assert.equal(result.NODE_AUTH_TOKEN, undefined);
+test('every child environment removes package repository cloud and generic credentials', () => {
+  const input = {
+    PATH: '/bin', HOME: '/home/test', LANG: 'C.UTF-8',
+    NPM_TOKEN: 'secret', GH_TOKEN: 'secret', GITHUB_TOKEN: 'secret', NODE_AUTH_TOKEN: 'secret',
+    AWS_ACCESS_KEY_ID: 'secret', AZURE_CLIENT_SECRET: 'secret', GOOGLE_APPLICATION_CREDENTIALS: '/secret.json',
+    SERVICE_PASSWORD: 'secret', API_KEY: 'secret', SESSION_COOKIE: 'secret', SSH_AUTH_SOCK: '/tmp/agent',
+  };
+  for (const result of [scrubChildEnvironment(input), privateChildEnvironment(input)]) {
+    assert.equal(result.PATH, '/bin');
+    assert.equal(result.HOME, '/home/test');
+    assert.equal(result.LANG, 'C.UTF-8');
+    assert.equal(result.NO_COLOR, '1');
+    assert.equal(result.FORCE_COLOR, '0');
+    for (const name of Object.keys(input).filter((name) => !['PATH', 'HOME', 'LANG'].includes(name))) {
+      assert.equal(result[name], undefined, name);
+    }
+  }
 });
 
 test('managed Chromium bridge is loopback-only and isolates background features', () => {
