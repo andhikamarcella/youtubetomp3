@@ -1,3 +1,4 @@
+# Final one-time synchronization run for the reviewed YTConv 1.6.4 release branch.
 name: Prepare YTConv 1.6.4 Release Branch
 
 on:
@@ -58,7 +59,7 @@ jobs:
           npm run typecheck
           npm test
           npm run check:ish
-          npm run test:ish
+          PYTHONWARNINGS=error::ResourceWarning npm run test:ish
           npm run security
           npm pack --ignore-scripts --dry-run
       - name: Commit verified synchronized source
@@ -71,6 +72,8 @@ jobs:
             echo "Release source is already synchronized."
           else
             git commit -m "release: synchronize verified YTConv 1.6.4 source"
+            git fetch origin release/ytconv-1.6.4-security-types
+            git rebase origin/release/ytconv-1.6.4-security-types
             git push origin HEAD:release/ytconv-1.6.4-security-types
           fi
       - name: Report preparation failure
