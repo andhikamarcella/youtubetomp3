@@ -148,7 +148,7 @@ class RoutingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             args = CORE.common_args(options(directory), Path(directory), None)
         sleeps = [args[index + 1] for index, value in enumerate(args[:-1]) if value == "--retry-sleep"]
-        self.assertEqual(sleeps, ["0", "fragment:0", "file_access:0"])
+        self.assertEqual(sleeps, ["http:0", "fragment:0", "file_access:0"])
 
     def test_sidecars_are_not_media_results(self):
         with tempfile.TemporaryDirectory() as directory:
