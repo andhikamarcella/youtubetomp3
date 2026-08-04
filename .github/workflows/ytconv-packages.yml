@@ -67,7 +67,7 @@ jobs:
             test "$(ytconv --version)" = 1.6.5
           '
           docker run --rm -v "$PWD/dist/packages:/packages:ro" opensuse/tumbleweed sh -exc '
-            zypper --non-interactive install /packages/ytconv-1.6.5-1.x86_64.rpm
+            zypper --non-interactive --no-gpg-checks install /packages/ytconv-1.6.5-1.x86_64.rpm
             test "$(ytconv --version)" = 1.6.5
           '
           docker run --rm -v "$PWD/dist/packages:/packages:ro" archlinux:base sh -exc '
@@ -233,7 +233,6 @@ jobs:
           path: dist/android/*
           if-no-files-found: error
           retention-days: 14
-          compression-level: 0
 
   nix:
     runs-on: ubuntu-latest
