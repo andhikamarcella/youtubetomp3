@@ -1,0 +1,48 @@
+name: ytconv
+arch: ${PACKAGE_ARCH}
+platform: linux
+version: ${VERSION}
+release: "1"
+section: utils
+priority: optional
+maintainer: Andhika Marcella Fernanda <andhikamarcella546@gmail.com>
+description: Secure YouTube MP4 and MP3 downloader CLI with a bundled Node.js runtime.
+vendor: YTConv Project
+homepage: https://github.com/andhikamarcella/youtubetomp3
+license: ISC
+contents:
+  - src: ${STAGE}/opt/ytconv
+    dst: /opt/ytconv
+    type: tree
+  - src: ${STAGE}/usr/bin/ytconv
+    dst: /usr/bin/ytconv
+    file_info:
+      mode: 0755
+  - src: ${STAGE}/usr/share/doc/ytconv
+    dst: /usr/share/doc/ytconv
+    type: tree
+  - src: ${STAGE}/usr/share/ytconv
+    dst: /usr/share/ytconv
+    type: tree
+depends:
+  - ca-certificates
+recommends:
+  - python3
+  - ffmpeg
+provides:
+  - ytconv
+conflicts:
+  - ytconv-beta
+replaces:
+  - ytconv-beta
+rpm:
+  group: Applications/Multimedia
+  compression: xz
+  summary: Secure YouTube MP4 and MP3 downloader CLI
+deb:
+  compression: xz
+  fields:
+    Bugs: https://github.com/andhikamarcella/youtubetomp3/issues
+archlinux:
+  packager: Andhika Marcella Fernanda <andhikamarcella546@gmail.com>
+  pkgbase: ytconv
