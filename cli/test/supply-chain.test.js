@@ -20,8 +20,8 @@ function javascriptFiles(directory) {
   return values;
 }
 
-test('1.6.4 publishes recognized license types and no lifecycle install hooks', () => {
-  assert.equal(manifest.version, '1.6.4');
+test('1.6.5 publishes recognized license types and no lifecycle install hooks', () => {
+  assert.equal(manifest.version, '1.6.5');
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
@@ -90,10 +90,11 @@ test('ordinary public YouTube MP4 args contain no cookie source', () => {
   ]);
 });
 
-test('README exposes versioned Socket TypeScript ISC and security documentation', () => {
-  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.4/u);
+test('README exposes versioned Socket TypeScript ISC packaging and security documentation', () => {
+  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.5/u);
   assert.match(readme, /types-TypeScript/u);
   assert.match(readme, /License-ISC/u);
-  assert.match(readme, /Removed npm `preinstall`, `install`, and `postinstall` execution/iu);
+  assert.match(readme, /npm installation free of `preinstall`, `install`, and `postinstall` hooks/iu);
+  assert.match(readme, /docs\/PACKAGES\.md/u);
   assert.equal(fs.existsSync(path.join(root, 'SECURITY.md')), true);
 });
