@@ -12,6 +12,11 @@ cp "$ROOT/cli/ish/ytconv.py" "$BUILD/ytconv.py"
 cp "$ROOT/cli/ish/ytconv-core.py" "$BUILD/ytconv-core.py"
 cp "$ROOT/cli/LICENSE" "$BUILD/LICENSE"
 
+copy_built_package() {
+  search_root=$1
+  find "$search_root" -type f -name 'ytconv-1.6.5-r0.apk' -exec cp {} "$OUT/" \; 2>/dev/null || true
+}
+
 build_as_user() {
   user=$1
   home=$2
@@ -22,7 +27,7 @@ build_as_user() {
     abuild checksum
     abuild -r || true
   "
-  find "$home/packages" -type f -name 'ytconv-1.6.5-r0.apk' -exec cp {} "$OUT/" \;
+  copy_built_package "$home"
 }
 
 if [ "$(id -u)" = "0" ]; then
@@ -35,7 +40,7 @@ if [ "$(id -u)" = "0" ]; then
 else
   abuild-keygen -a -n >/dev/null 2>&1 || true
   (cd "$BUILD" && abuild checksum && { abuild -r || true; })
-  find "$HOME/packages" -type f -name 'ytconv-1.6.5-r0.apk' -exec cp {} "$OUT/" \;
+  copy_built_package "$HOME"
 fi
 
 PACKAGE=$(find "$OUT" -maxdepth 1 -type f -name 'ytconv-1.6.5-r0.apk' | head -n1)
