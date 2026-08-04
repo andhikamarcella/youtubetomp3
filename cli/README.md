@@ -3,8 +3,8 @@
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
 [![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.4)](https://badge.socket.dev/npm/package/ytconv/1.6.4)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/NODEJS.md)
 
 **YTConv 1.6.4** is a secure, typed, CLI-only YouTube MP4/MP3 downloader and media converter for Windows, macOS, Linux, WSL, SSH, Android Termux, and iPhone/iPad through iSH. It uses yt-dlp for video/audio, gallery-dl for galleries and mixed posts, and FFmpeg for verified merging or conversion.
 
@@ -186,7 +186,7 @@ Socket and similar scanners correctly detect capabilities that are inherent to a
 - no telemetry, analytics, credential collection, or hidden remote configuration;
 - npm releases use provenance, SBOM generation, registry tarball checksum verification, pinned GitHub Actions, and an immutable version/tag policy.
 
-See [SECURITY.md](SECURITY.md) for the exact threat model and explanation of scanner findings.
+See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/SECURITY.md) for the exact threat model and explanation of scanner findings.
 
 ## No false success
 
@@ -255,6 +255,6 @@ iSH:
 
 ## License
 
-YTConv 1.6.4 is distributed under the [ISC License](LICENSE).
+YTConv 1.6.4 is distributed under the [ISC License](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/LICENSE).
 
 Download only media that you are authorized to access and store.

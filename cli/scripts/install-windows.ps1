@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.6.3"
+$Version = "1.6.4"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell"
 
