@@ -17,6 +17,7 @@ try {
     Remove-Item -LiteralPath $OutputDirectory -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Path $OutputDirectory, $Work -Force | Out-Null
 
+    if (-not (Get-Command go.exe -ErrorAction SilentlyContinue)) { throw 'Go is required to build the native EXE installer.' }
     $ManifestVersion = (& node.exe -p "require('$($Cli.Replace('\','/'))/package.json').version").Trim()
     if ($ManifestVersion -ne $Version) { throw "Expected $Version, got $ManifestVersion" }
 
@@ -24,10 +25,11 @@ try {
     $NodeZip = Join-Path $Work $NodeArchive
     Invoke-WebRequest -UseBasicParsing -Uri "$NodeBase/SHASUMS256.txt" -OutFile $Checksums
     Invoke-WebRequest -UseBasicParsing -Uri "$NodeBase/$NodeArchive" -OutFile $NodeZip
-    $Expected = ((Get-Content -LiteralPath $Checksums) | Where-Object { $_ -match "  $([regex]::Escape($NodeArchive))$" } | Select-Object -First 1).Split(' ')[0]
-    if (-not $Expected) { throw "Node checksum was not found for $NodeArchive" }
+    $ChecksumRow = Get-Content -LiteralPath $Checksums | Where-Object { $_ -match "  $([regex]::Escape($NodeArchive))$" } | Select-Object -First 1
+    if (-not $ChecksumRow) { throw "Node checksum was not found for $NodeArchive" }
+    $Expected = $ChecksumRow.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)[0]
     $Actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $NodeZip).Hash.ToLowerInvariant()
-    if ($Actual -ne $Expected.ToLowerInvariant()) { throw "Node SHA-256 mismatch." }
+    if ($Actual -ne $Expected.ToLowerInvariant()) { throw 'Node SHA-256 mismatch.' }
 
     $PackJson = Join-Path $Work 'pack.json'
     Push-Location $Cli
@@ -78,58 +80,30 @@ exit $LASTEXITCODE
 
     $PortableZip = Join-Path $OutputDirectory "YTConv-$Version-portable-win-x64.zip"
     Compress-Archive -Path (Join-Path $Payload '*') -DestinationPath $PortableZip -CompressionLevel Optimal -Force
-    $PayloadZip = Join-Path $Work 'payload.zip'
-    Copy-Item -LiteralPath $PortableZip -Destination $PayloadZip
-    Copy-Item -LiteralPath (Join-Path $Root 'packaging\windows\install.ps1') -Destination (Join-Path $Work 'install.ps1')
-    Copy-Item -LiteralPath (Join-Path $Root 'packaging\windows\install.cmd') -Destination (Join-Path $Work 'install.cmd')
 
+    $InstallerSource = Join-Path $Work 'installer'
+    New-Item -ItemType Directory -Path $InstallerSource -Force | Out-Null
+    Copy-Item -LiteralPath $PortableZip -Destination (Join-Path $InstallerSource 'payload.zip')
+    Copy-Item -LiteralPath (Join-Path $Root 'packaging\windows\installer.go') -Destination (Join-Path $InstallerSource 'installer.go')
     $SetupExe = Join-Path $OutputDirectory "YTConv-$Version-Setup-x64.exe"
-    $Sed = Join-Path $Work 'ytconv.sed'
-    $SourceDir = $Work.TrimEnd('\') + '\'
-    @"
-[Version]
-Class=IEXPRESS
-SEDVersion=3
-[Options]
-PackagePurpose=InstallApp
-ShowInstallProgramWindow=1
-HideExtractAnimation=1
-UseLongFileName=1
-InsideCompressed=0
-CAB_FixedSize=0
-CAB_ResvCodeSigning=0
-RebootMode=N
-InstallPrompt=
-DisplayLicense=
-FinishMessage=
-TargetName=$SetupExe
-FriendlyName=YTConv $Version
-AppLaunched=cmd.exe /d /c install.cmd
-PostInstallCmd=<None>
-AdminQuietInstCmd=cmd.exe /d /c install.cmd
-UserQuietInstCmd=cmd.exe /d /c install.cmd
-SourceFiles=SourceFiles
-[Strings]
-FILE0=payload.zip
-FILE1=install.cmd
-FILE2=install.ps1
-[SourceFiles]
-SourceFiles0=$SourceDir
-[SourceFiles0]
-%FILE0%=
-%FILE1%=
-%FILE2%=
-"@ | Set-Content -LiteralPath $Sed -Encoding ascii
-
-    & (Join-Path $env:SystemRoot 'System32\iexpress.exe') /N /Q $Sed
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $SetupExe)) { throw 'IExpress failed to create the installer.' }
+    Push-Location $InstallerSource
+    try {
+        & go.exe build -trimpath -ldflags '-s -w' -o $SetupExe .\installer.go
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $SetupExe)) { throw 'Go failed to create the installer.' }
+    } finally {
+        Pop-Location
+    }
 
     $InstallTarget = Join-Path $env:LOCALAPPDATA 'Programs\YTConv'
     Remove-Item -LiteralPath $InstallTarget -Recurse -Force -ErrorAction SilentlyContinue
-    $Process = Start-Process -FilePath $SetupExe -ArgumentList '/Q' -Wait -PassThru
+    Remove-Item -LiteralPath (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\ytconv.cmd') -Force -ErrorAction SilentlyContinue
+    $Process = Start-Process -FilePath $SetupExe -Wait -PassThru
     if ($Process.ExitCode -ne 0) { throw "Installer exited with $($Process.ExitCode)." }
     $Installed = (& (Join-Path $InstallTarget 'ytconv.cmd') --version).Trim()
     if ($Installed -ne $Version) { throw "Installed EXE package reported $Installed." }
+    $Shim = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\ytconv.cmd'
+    if (-not (Test-Path -LiteralPath $Shim)) { throw 'WindowsApps launcher was not created.' }
+    if ((& $Shim --version).Trim() -ne $Version) { throw 'WindowsApps launcher verification failed.' }
 
     $ChecksumsOut = Join-Path $OutputDirectory 'SHA256SUMS-windows.txt'
     @($SetupExe, $PortableZip) | ForEach-Object {
