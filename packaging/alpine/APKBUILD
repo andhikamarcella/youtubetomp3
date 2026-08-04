@@ -1,0 +1,27 @@
+# Maintainer: Andhika Marcella Fernanda <andhikamarcella546@gmail.com>
+pkgname=ytconv
+pkgver=1.6.5
+pkgrel=0
+pkgdesc="Secure YouTube MP4 and MP3 downloader CLI"
+url="https://github.com/andhikamarcella/youtubetomp3"
+arch="noarch"
+license="ISC"
+depends="python3 yt-dlp gallery-dl ffmpeg ca-certificates"
+options="!check"
+source="ytconv.py ytconv-core.py LICENSE"
+builddir="$srcdir"
+
+package() {
+  install -d "$pkgdir/usr/lib/ytconv" "$pkgdir/usr/bin" "$pkgdir/usr/share/licenses/ytconv"
+  install -m 0755 "$srcdir/ytconv.py" "$pkgdir/usr/lib/ytconv/ytconv.py"
+  install -m 0755 "$srcdir/ytconv-core.py" "$pkgdir/usr/lib/ytconv/ytconv-core.py"
+  install -m 0644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/ytconv/LICENSE"
+  cat > "$pkgdir/usr/bin/ytconv" <<'SH'
+#!/bin/sh
+export YTCONV_DISTRIBUTION_PACKAGE=alpine-apk
+exec python3 /usr/lib/ytconv/ytconv.py "$@"
+SH
+  chmod 0755 "$pkgdir/usr/bin/ytconv"
+}
+
+sha512sums=""
