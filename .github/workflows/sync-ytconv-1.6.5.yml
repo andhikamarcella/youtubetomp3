@@ -1,0 +1,38 @@
+name: Sync YTConv 1.6.5 release source
+
+on:
+  push:
+    branches:
+      - codex/perbaiki-semua-fungsi-tombol
+    paths:
+      - .github/release-triggers/ytconv-1.6.5-sync
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-1.6.5-packages
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Synchronize core and lockfile
+        run: node packaging/patch-core-and-lock.mjs
+      - name: Commit synchronized files
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cli/package-lock.json cli/ish/ytconv-core.py cli/ish/SHA256SUMS
+          if git diff --cached --quiet; then
+            echo 'Nothing to commit.'
+            exit 0
+          fi
+          git commit -m 'Synchronize YTConv 1.6.5 core and lockfile'
+          git push origin HEAD:release/ytconv-1.6.5-packages
