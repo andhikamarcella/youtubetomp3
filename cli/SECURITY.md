@@ -40,7 +40,7 @@ URLs in the source identify npm metadata, allowlisted GitHub APIs/assets, docume
 
 ## Installation behavior
 
-YTConv 1.6.4 has no npm `preinstall`, `install`, or `postinstall` lifecycle script. `npm install ytconv` does not download or execute media engines. Engine inspection and verified repair happen only when the user runs YTConv or explicitly runs:
+YTConv 1.6.5 has no npm `preinstall`, `install`, or `postinstall` lifecycle script. `npm install ytconv` does not download or execute media engines. Engine inspection and verified repair happen only when the user runs YTConv or explicitly runs:
 
 ```sh
 ytconv repair
