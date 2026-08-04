@@ -8,11 +8,13 @@ on:
       - "cli/**"
       - "AGENTS.md"
       - ".github/workflows/ytconv-cli.yml"
+      - ".github/workflows/publish-ytconv-stable.yml"
   pull_request:
     paths:
       - "cli/**"
       - "AGENTS.md"
       - ".github/workflows/ytconv-cli.yml"
+      - ".github/workflows/publish-ytconv-stable.yml"
   workflow_dispatch:
 
 permissions:
