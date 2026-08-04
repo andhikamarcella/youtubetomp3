@@ -3,6 +3,7 @@
 
 import hashlib
 import importlib.util
+import inspect
 import json
 import os
 import sys
@@ -102,8 +103,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             self.assertEqual(expected[path.name], actual)
 
     def test_repair_does_not_require_nodejs_and_scrubs_subprocesses(self):
-        source = CORE_PATH.read_text(encoding="utf-8")
-        repair_block = source[source.index("def repair("):source.index("def print_diagnostics")]
+        repair_block = inspect.getsource(CORE.repair)
         self.assertNotIn('"nodejs"', repair_block)
         self.assertIn("env=child_environment()", repair_block)
 
@@ -146,7 +146,7 @@ class RoutingTests(unittest.TestCase):
 
     def test_retry_sleep_contains_general_fragment_and_file_access_types(self):
         with tempfile.TemporaryDirectory() as directory:
-            args = CORE.common_args(options(directory), Path(directory))
+            args = CORE.common_args(options(directory), Path(directory), None)
         sleeps = [args[index + 1] for index, value in enumerate(args[:-1]) if value == "--retry-sleep"]
         self.assertEqual(sleeps, ["0", "fragment:0", "file_access:0"])
 
