@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH 1.6.2 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.6.5 behavior checks."""
 
+import hashlib
 import importlib.util
+import inspect
 import json
 import os
 import sys
@@ -12,10 +14,15 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_PATH = ROOT / "ish" / "ytconv-core.py"
+WRAPPER_PATH = ROOT / "ish" / "ytconv.py"
 SPEC = importlib.util.spec_from_file_location("ytconv_ish_core", CORE_PATH)
 CORE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 SPEC.loader.exec_module(CORE)
+WRAPPER_SPEC = importlib.util.spec_from_file_location("ytconv_ish_wrapper", WRAPPER_PATH)
+WRAPPER = importlib.util.module_from_spec(WRAPPER_SPEC)
+assert WRAPPER_SPEC and WRAPPER_SPEC.loader
+WRAPPER_SPEC.loader.exec_module(WRAPPER)
 
 
 def options(output, **overrides):
@@ -66,6 +73,41 @@ def options(output, **overrides):
     return SimpleNamespace(**values)
 
 
+class ReleaseIdentityTests(unittest.TestCase):
+    def test_versions_and_branch_are_synchronized(self):
+        self.assertEqual(CORE.VERSION, "1.6.5")
+        self.assertEqual(WRAPPER.VERSION, "1.6.5")
+        self.assertIn("release/ytconv-1.6.5-packages", CORE.RAW_BASE)
+        self.assertIn("release/ytconv-1.6.5-packages", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.5")
+
+    def test_wrapper_auto_routing_is_not_duplicated(self):
+        music = WRAPPER.apply_auto_routing(["https://music.youtube.com/watch?v=music"])
+        video = WRAPPER.apply_auto_routing(["https://youtu.be/video"])
+        explicit = WRAPPER.apply_auto_routing(["--audio", "https://youtu.be/video"])
+        self.assertEqual(music.count("--audio"), 1)
+        self.assertEqual(music[music.index("--audio-format") + 1], "mp3")
+        self.assertEqual(video.count("--video"), 1)
+        self.assertEqual(video[video.index("--video-format") + 1], "mp4")
+        self.assertEqual(explicit.count("--audio"), 1)
+        self.assertNotIn("--video", explicit)
+
+    def test_frontend_checksums_match_published_files(self):
+        rows = (ROOT / "ish" / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
+        expected = {}
+        for row in rows:
+            digest, name = row.split(None, 1)
+            expected[name.strip()] = digest
+        for path in (WRAPPER_PATH, CORE_PATH):
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertEqual(expected[path.name], actual)
+
+    def test_repair_does_not_require_nodejs_and_scrubs_subprocesses(self):
+        repair_block = inspect.getsource(CORE.repair)
+        self.assertNotIn('"nodejs"', repair_block)
+        self.assertIn("env=child_environment()", repair_block)
+
+
 class RoutingTests(unittest.TestCase):
     def test_auto_routing(self):
         self.assertEqual(
@@ -101,6 +143,12 @@ class RoutingTests(unittest.TestCase):
             CORE.video_container_args("mp4"),
             ["--merge-output-format", "mp4", "--recode-video", "mp4"],
         )
+
+    def test_retry_sleep_contains_general_fragment_and_file_access_types(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = CORE.common_args(options(directory), Path(directory), None)
+        sleeps = [args[index + 1] for index, value in enumerate(args[:-1]) if value == "--retry-sleep"]
+        self.assertEqual(sleeps, ["http:0", "fragment:0", "file_access:0"])
 
     def test_sidecars_are_not_media_results(self):
         with tempfile.TemporaryDirectory() as directory:

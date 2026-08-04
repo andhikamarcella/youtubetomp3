@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.6.4"
+$Version = "1.6.5"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell"
 
@@ -23,18 +23,20 @@ if (($major -lt 22) -or (($major -eq 22) -and ($minor -lt 14))) { throw "YTConv 
 if ($Local) {
   if (-not (Test-Path .\package.json)) { throw "Run -Local from the YTConv cli directory." }
   if (-not $SkipTests) {
-    & npm.cmd install
-    if ($LASTEXITCODE -ne 0) { throw "npm install failed." }
+    & npm.cmd ci --ignore-scripts
+    if ($LASTEXITCODE -ne 0) { throw "npm ci failed." }
     & npm.cmd run check
     if ($LASTEXITCODE -ne 0) { throw "Syntax checks failed." }
+    & npm.cmd run typecheck
+    if ($LASTEXITCODE -ne 0) { throw "Type checking failed." }
     & npm.cmd test
     if ($LASTEXITCODE -ne 0) { throw "Unit tests failed; global installation was cancelled." }
   }
-  & npm.cmd install -g . --force
+  & npm.cmd install -g . --ignore-scripts --force
 } else {
   & npm.cmd uninstall -g ytconv 2>$null
   & npm.cmd cache verify
-  & npm.cmd install -g "ytconv@$Channel" --force
+  & npm.cmd install -g "ytconv@$Channel" --ignore-scripts --force
 }
 if ($LASTEXITCODE -ne 0) { throw "npm could not install YTConv." }
 
@@ -45,8 +47,7 @@ if ($installed -ne $Version) { throw "Installed version is $installed; expected 
 & ytconv.cmd --shell-info
 & ytconv.cmd doctor
 & ytconv.cmd quickstart
-Write-Host "`nRetry hotfix: nested HTTP/fragment/file-access retry prefixes are normalized."
-Write-Host "AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
+Write-Host "`nAUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
 Write-Host "Explicit audio/video mode and MP4/MKV/WebM selections remain authoritative."
 Write-Host "Stable installation completed. Run: ytconv.cmd or ytconv"
-Write-Host "Public links are ready. If a site asks for login: ytconv.cmd login instagram"
+Write-Host "A standalone EXE installer is also provided in the GitHub 1.6.5 release."

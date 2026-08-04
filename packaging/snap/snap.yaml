@@ -1,0 +1,19 @@
+name: ytconv
+version: '1.6.5'
+summary: Secure YouTube MP4 and MP3 downloader CLI
+description: |
+  YTConv is a cross-platform terminal downloader for public YouTube MP4,
+  YouTube Music MP3, playlists, and supported social-media URLs. The snap
+  bundles its Node.js runtime and does not execute install-time scripts.
+grade: stable
+confinement: classic
+base: core24
+license: ISC
+contact: https://github.com/andhikamarcella/youtubetomp3/issues
+website: https://github.com/andhikamarcella/youtubetomp3
+source-code: https://github.com/andhikamarcella/youtubetomp3
+apps:
+  ytconv:
+    command: usr/bin/ytconv
+    environment:
+      YTCONV_DISTRIBUTION_PACKAGE: snap

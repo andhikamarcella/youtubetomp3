@@ -1,59 +1,135 @@
 # YTConv – YouTube MP4 & MP3 Downloader CLI
 
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
-[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.4)](https://badge.socket.dev/npm/package/ytconv/1.6.4)
+[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.5)](https://badge.socket.dev/npm/package/ytconv/1.6.5)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/NODEJS.md)
 
-**YTConv 1.6.4** is a secure, typed, CLI-only YouTube MP4/MP3 downloader and media converter for Windows, macOS, Linux, WSL, SSH, Android Termux, and iPhone/iPad through iSH. It uses yt-dlp for video/audio, gallery-dl for galleries and mixed posts, and FFmpeg for verified merging or conversion.
+**YTConv 1.6.5** is a secure, typed media downloader for Windows, macOS, Linux, Android, Termux, iSH, WSL, and SSH. It provides npm installation plus native Windows EXE, Android APK, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Homebrew, Termux, and portable Linux packages.
 
-Search terms: **ytconv npm**, **YouTube downloader CLI**, **YouTube MP4 downloader**, **YouTube MP3 converter**, **yt-dlp frontend**, **Termux downloader**, and **typed Node.js media downloader**.
+Search terms: **ytconv npm**, **YouTube downloader CLI**, **YouTube MP4 downloader**, **YouTube MP3 converter**, **YTConv EXE**, **YTConv APK**, **apt install ytconv**, **dnf install ytconv**, **yt-dlp frontend**, and **Termux downloader**.
 
-## What changed in 1.6.4
+## What changed in 1.6.5
 
-- Removed npm `preinstall`, `install`, and `postinstall` execution. Installing YTConv no longer downloads or executes media engines.
-- Added real TypeScript declarations and a small side-effect-free programmatic API.
-- Changed the package license to the canonical SPDX-recognized **ISC** license.
-- Added stricter supply-chain tests for lifecycle scripts, shell execution, child environments, package contents, verified engine downloads, and public no-cookie YouTube arguments.
-- Added a versioned Socket security badge and a detailed capability/security document.
-- Kept automatic first-use engine repair, but only after the user starts YTConv; downloaded engines require HTTPS, allowlisted repositories, SHA-256 verification, size limits, private permissions, and atomic writes.
-- Improved public YouTube MP4 recovery while keeping explicit user format choices authoritative.
+- Added an installable Windows EXE and portable ZIP with a verified bundled Node.js runtime.
+- Added native DEB, RPM, Arch Linux, Alpine APK, AppImage, Snap, Flatpak, Nix, Homebrew, Void, Gentoo, and universal Linux packaging.
+- Added a native Android application that uses Android-compatible yt-dlp and FFmpeg engines; it is not a WebView.
+- Added a Termux-native DEB with verified bundled Python modules.
+- Fixed stale iSH and Alpine installer links that still pointed at 1.6.2 in earlier releases.
+- Added versioned SHA-256 verification before iSH/Alpine Python files are installed or updated.
+- Removed the unnecessary Node.js requirement from the maintained iSH/Alpine Python frontend.
+- Kept npm installation free of `preinstall`, `install`, and `postinstall` hooks.
+- Preserved public YouTube AUTO routing: regular YouTube → MP4, YouTube Music → MP3.
 
-## Install safely
+## Choose an installation method
 
-The npm package requires Node.js 22.14.0 or newer and npm 10 or newer.
+Complete beginner instructions for every artifact are in the [native package guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/PACKAGES.md).
 
-Windows CMD or PowerShell:
+### Windows EXE
 
-```cmd
-node.exe --version
-npm.cmd --version
-npm.cmd install -g ytconv@latest --ignore-scripts
-ytconv.cmd --version
-ytconv.cmd doctor
+Download:
+
+```text
+YTConv-1.6.5-Setup-x64.exe
 ```
 
-Linux, macOS, WSL, SSH, and Termux:
+The user-level installer includes Node.js and does not require administrator access. Verify the release SHA-256 first. The first community build is not Authenticode-signed, so Windows SmartScreen may identify it as an unknown publisher.
+
+After installation:
+
+```cmd
+ytconv --version
+ytconv doctor
+```
+
+### Debian, Ubuntu, and Linux Mint
 
 ```sh
-node --version
-npm --version
+sudo apt install ./ytconv_1.6.5_amd64.deb
+ytconv --version
+```
+
+ARM64 systems use `ytconv_1.6.5_arm64.deb`.
+
+### Fedora, RHEL, Rocky Linux, AlmaLinux, and openSUSE
+
+```sh
+sudo dnf install ./ytconv-1.6.5-1.x86_64.rpm
+```
+
+openSUSE:
+
+```sh
+sudo zypper install ./ytconv-1.6.5-1.x86_64.rpm
+```
+
+### Arch Linux, Manjaro, EndeavourOS, and CachyOS
+
+```sh
+sudo pacman -U ./ytconv-1.6.5-1-x86_64.pkg.tar.zst
+```
+
+### Alpine Linux
+
+```sh
+sudo apk add --allow-untrusted ./ytconv-1.6.5-r0.apk
+ytconv --version
+ytconv --diagnose
+```
+
+The Alpine package uses the maintained Python frontend and does not require Node.js.
+
+### Android APK
+
+Download and install:
+
+```text
+YTConv-1.6.5-debug.apk
+```
+
+The app saves media to `Download/YTConv`. The release also contains an unsigned release APK and complete Android source. The Android module is GPL-3.0-only because it links to GPL-3.0 youtubedl-android; the standalone CLI remains ISC licensed.
+
+### Termux
+
+```sh
+pkg install -y ./ytconv_1.6.5_all-termux.deb
+termux-setup-storage
+ytconv --version
+```
+
+### iSH on iPhone and iPad
+
+```sh
+apk update
+apk add --no-cache curl ca-certificates
+curl -fsSL \
+  https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages/cli/scripts/install-ish.sh \
+  -o /tmp/ytconv-ish.sh
+sh /tmp/ytconv-ish.sh
+ytconv --version
+```
+
+The installer checks both Python files against `ish/SHA256SUMS` before replacing the installed frontend. Future updates use:
+
+```sh
+ytconv update
+```
+
+### npm
+
+Node.js 22.14.0 or newer and npm 10 or newer are required:
+
+```sh
 npm install -g ytconv@latest --ignore-scripts
 ytconv --version
 ytconv doctor
 ```
 
-Expected version:
+Expected version after 1.6.5 is published:
 
 ```text
-1.6.4
-```
-
-The package itself performs no installation-time downloads. On first use, YTConv checks for usable local engines and visibly performs verified repair only when required. Manual repair remains available:
-
-```sh
-ytconv repair
+1.6.5
 ```
 
 ## Public YouTube MP4 without cookies.txt
@@ -67,11 +143,6 @@ ytconv download "https://www.youtube.com/watch?v=VIDEO_ID"
 AUTO mode resolves regular YouTube to video and defaults to MP4. YTConv prefers AVC/H.264 video plus M4A audio, retains broad stream fallbacks, and uses FFmpeg conversion when the available streams cannot be safely remuxed into MP4.
 
 A public URL does not require a manually exported `cookies.txt`. Private, members-only, age-restricted, region-restricted, or account-only media can still require the official browser-login flow because YTConv does not bypass provider access controls.
-
-```sh
-ytconv login youtube
-ytconv download "RESTRICTED_URL"
-```
 
 ## YouTube output policy
 
@@ -105,13 +176,6 @@ ytconv download "YOUTUBE_URL" --mode video --resolution 1080 --video-format mp4
 ytconv download "YOUTUBE_URL" --mode video --resolution 720 --video-format mkv
 ```
 
-Choose audio format and quality:
-
-```sh
-ytconv download "URL" --mode audio --audio-format mp3 --audio-quality 320
-ytconv download "URL" --mode audio --audio-format flac
-```
-
 Playlist and batch:
 
 ```sh
@@ -128,7 +192,7 @@ ytconv info "URL" --json
 
 ## Typed programmatic API
 
-YTConv remains a CLI first, but package consumers can import a small side-effect-free API with bundled declarations:
+YTConv remains CLI-first, but package consumers can import a small side-effect-free JavaScript API with bundled TypeScript declarations:
 
 ```ts
 import {
@@ -149,50 +213,35 @@ const args = videoContainerArgs(container);
 const retry = normalizeRetrySleep('fragment:http:linear=1::2');
 ```
 
-The TypeScript marker is backed by `types/index.d.ts`, package `types` metadata, conditional exports, and CI type-checking. It is not a decorative-only badge.
-
-## Dependencies and dependents
-
-Runtime dependencies are intentionally limited to packages required by the terminal UI, process discovery, and managed browser bridge. TypeScript and Node declarations are development-only dependencies used by CI and are not installed for production with `npm install --omit=dev`.
-
-The npm **Dependents** count is registry data. It increases only when another published package legitimately lists `ytconv` as a dependency. YTConv does not create fake dependent packages or manipulate registry statistics.
-
-A package can depend on the typed API with:
-
-```sh
-npm install ytconv
-```
+Another published npm package can legitimately count as a YTConv dependent by declaring:
 
 ```json
 {
   "dependencies": {
-    "ytconv": "^1.6.4"
+    "ytconv": "^1.6.5"
   }
 }
 ```
 
+Global CLI installations count as downloads, not npm Dependents.
+
 ## Supply-chain security
 
-Socket and similar scanners correctly detect capabilities that are inherent to a media downloader: network access, filesystem output, environment-based configuration, and child-process execution for yt-dlp/gallery-dl/FFmpeg. YTConv reduces the risk around those capabilities instead of hiding them:
+YTConv does not hide the network, filesystem, environment, and child-process capabilities required by a local media downloader. It restricts them:
 
-- no npm lifecycle install scripts;
+- no npm lifecycle install hooks;
 - no `eval`, `Function`, `child_process.exec`, `shell: true`, or string-built shell commands;
-- executables receive separate argument arrays;
-- child environments remove npm/GitHub tokens and unrelated secrets;
-- media-engine downloads are restricted to HTTPS and allowlisted GitHub repositories/assets;
-- GitHub-provided SHA-256, declared size, hard size limits, timeouts, retries, and atomic replacement are required;
-- YTConv state is stored under `~/.ytconv` with private permissions where supported;
-- output writes are limited to the selected output directory;
-- no telemetry, analytics, credential collection, or hidden remote configuration;
-- npm releases use provenance, SBOM generation, registry tarball checksum verification, pinned GitHub Actions, and an immutable version/tag policy.
+- executable and argument arrays remain separate;
+- child environments remove npm, GitHub, cloud, authorization, cookie, credential, password, session, key, and token values;
+- downloaded engines require HTTPS, allowlisted repositories/assets, SHA-256, size limits, retries, timeouts, private permissions, and atomic replacement;
+- no telemetry, analytics, advertisements, credential collection, or hidden remote configuration;
+- release artifacts include checksums, SBOM, provenance where supported, immutable source tags, and package installation smoke tests.
 
-See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/SECURITY.md) for the exact threat model and explanation of scanner findings.
+See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/SECURITY.md) for the threat model.
 
 ## No false success
 
-YTConv verifies paths reported by yt-dlp against the filesystem. Exit code zero is not accepted as success unless a real mode-matching output file exists.
-
-When an archive contains a URL but the previous output was deleted, YTConv retries once without that archive entry. If no real file is produced, the command fails clearly.
+YTConv verifies files reported by yt-dlp against the filesystem. Exit code zero is not accepted as success unless a real mode-matching output exists. If an archive contains a URL but its prior file was deleted, YTConv retries once without the archive and still requires a real file.
 
 ## Troubleshooting
 
@@ -209,15 +258,9 @@ Retry without saved profiles and archives:
 ytconv download "URL" --no-config --no-archive --mode video --video-format mp4
 ```
 
-On Windows:
-
-```cmd
-ytconv.cmd download "URL" --no-config --no-archive --mode video --video-format mp4
-```
-
 ## Output folders
 
-Desktop:
+Desktop and iSH:
 
 ```text
 ~/Downloads/YTConv
@@ -229,32 +272,34 @@ Termux:
 ~/storage/downloads/YTConv
 ```
 
-iSH:
+Android APK:
 
 ```text
-~/Downloads/YTConv
+Download/YTConv
 ```
 
 ## Documentation
 
-- [Install Node.js first](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/NODEJS.md)
-- [Complete installation](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/INSTALL.md)
-- [Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/WINDOWS.md)
-- [Linux and macOS](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/LINUX.md)
-- [Android Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/TERMUX.md)
-- [iPhone and iPad through iSH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/ISH.md)
-- [Commands and examples](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/COMMANDS.md)
-- [Configuration and profiles](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/CONFIGURATION.md)
-- [Dependencies](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/DEPENDENCIES.md)
-- [Official browser login](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/AUTH.md)
-- [Security model](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/SECURITY.md)
-- [Shells and PATH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/SHELLS.md)
-- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/TROUBLESHOOTING.md)
-- [Publishing](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/PUBLISHING.md)
-- [Release verification](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/docs/RELEASE.md)
+- [Native packages and installers](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/PACKAGES.md)
+- [Install Node.js first](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/NODEJS.md)
+- [Complete installation](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/INSTALL.md)
+- [Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/WINDOWS.md)
+- [Linux and macOS](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/LINUX.md)
+- [Platforms](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/PLATFORMS.md)
+- [Android Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/TERMUX.md)
+- [iPhone and iPad through iSH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/ISH.md)
+- [Commands and examples](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/COMMANDS.md)
+- [Configuration and profiles](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/CONFIGURATION.md)
+- [Dependencies](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/DEPENDENCIES.md)
+- [Official browser login](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/AUTH.md)
+- [Security model](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/SECURITY.md)
+- [Shells and PATH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/SHELLS.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/TROUBLESHOOTING.md)
+- [Publishing](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/PUBLISHING.md)
+- [Release verification](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/docs/RELEASE.md)
 
 ## License
 
-YTConv 1.6.4 is distributed under the [ISC License](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.4-security-types/cli/LICENSE).
+The standalone YTConv CLI and npm package are distributed under the [ISC License](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.5-packages/cli/LICENSE). The Android application module is GPL-3.0-only because of its linked GPL Android media engine; its complete corresponding source is included in the repository and release.
 
 Download only media that you are authorized to access and store.

@@ -1,24 +1,23 @@
 #!/bin/sh
 set -eu
 
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.2-cli-only-final/cli"
+VERSION="1.6.5"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
 BIN_FILE="/usr/local/bin/ytconv"
-TMP_APP="/tmp/ytconv-ish-wrapper.py.$$"
-TMP_CORE="/tmp/ytconv-ish-core.py.$$"
-VERSION="1.6.2"
+TMP_DIR="/tmp/ytconv-ish-install.$$"
 
 say() { printf '%s\n' "$*"; }
-fail() { printf 'YTConv iSH installer: %s\n' "$*" >&2; exit 1; }
+fail() { printf 'YTConv iSH/Alpine installer: %s\n' "$*" >&2; exit 1; }
+has() { command -v "$1" >/dev/null 2>&1; }
 
-[ "$(id -u)" = "0" ] || fail "run this installer as root inside iSH."
-[ -f /etc/alpine-release ] || fail "this installer is intended for iSH/Alpine Linux."
+[ "$(id -u)" = "0" ] || fail "run this installer as root (inside iSH, run: su)."
+[ -f /etc/alpine-release ] || fail "this installer is intended for iSH or Alpine Linux."
 
-say "YTConv iSH $VERSION installer"
-say "Node.js is not required for the supported iSH edition."
-say "Installing Python, FFmpeg, yt-dlp, gallery-dl, curl, and CA certificates..."
+say "YTConv iSH/Alpine $VERSION installer"
+say "This edition uses Python and does not require Node.js."
 
 apk update
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
@@ -29,40 +28,45 @@ pip_install() {
     || python3 -m pip install -U --no-cache-dir "$@"
 }
 
-pip_install 'yt-dlp[default]' gallery-dl
-mkdir -p "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
+pip_install 'yt-dlp[default]' gallery-dl \
+  || fail "pip could not install yt-dlp and gallery-dl. Check the device clock and internet connection."
 
-rm -f "$TMP_APP" "$TMP_CORE"
-trap 'rm -f "$TMP_APP" "$TMP_CORE"' EXIT HUP INT TERM
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR" "$APP_DIR" "$HOME/Downloads/YTConv" /usr/local/bin
+trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
 
-curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv.py" -o "$TMP_APP"
-curl -fL --retry 5 --retry-delay 2 --connect-timeout 20 "$RAW_BASE/ish/ytconv-core.py" -o "$TMP_CORE"
-python3 -m py_compile "$TMP_APP" "$TMP_CORE" || fail "the downloaded frontend is invalid."
+curl -fsSL --retry 5 --retry-delay 2 --connect-timeout 20 \
+  "$RAW_BASE/ish/SHA256SUMS" -o "$TMP_DIR/SHA256SUMS"
+curl -fsSL --retry 5 --retry-delay 2 --connect-timeout 20 \
+  "$RAW_BASE/ish/ytconv.py" -o "$TMP_DIR/ytconv.py"
+curl -fsSL --retry 5 --retry-delay 2 --connect-timeout 20 \
+  "$RAW_BASE/ish/ytconv-core.py" -o "$TMP_DIR/ytconv-core.py"
 
-mv "$TMP_APP" "$APP_FILE"
-mv "$TMP_CORE" "$CORE_FILE"
-trap - EXIT HUP INT TERM
-chmod 755 "$APP_FILE" "$CORE_FILE"
+(
+  cd "$TMP_DIR"
+  sha256sum -c SHA256SUMS
+) || fail "SHA-256 verification failed. No downloaded file was installed."
+
+python3 -m py_compile "$TMP_DIR/ytconv.py" "$TMP_DIR/ytconv-core.py" \
+  || fail "the verified Python frontend failed its syntax check."
+
+install -m 0755 "$TMP_DIR/ytconv.py" "$APP_FILE"
+install -m 0755 "$TMP_DIR/ytconv-core.py" "$CORE_FILE"
 
 cat > "$BIN_FILE" <<'SH'
 #!/bin/sh
 exec python3 /usr/local/lib/ytconv-ish/ytconv.py "$@"
 SH
-chmod 755 "$BIN_FILE"
+chmod 0755 "$BIN_FILE"
 hash -r 2>/dev/null || true
 
 installed=$("$BIN_FILE" --version)
 [ "$installed" = "$VERSION" ] || fail "the installed frontend reported $installed; expected $VERSION."
+"$BIN_FILE" --diagnose || true
 
 say ""
-say "YTConv iSH $VERSION was installed successfully."
-"$BIN_FILE" --version
-"$BIN_FILE" --diagnose || true
-say ""
-say "AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
-say "Explicit --audio, --video, and --video-format choices remain authoritative."
-say "Public links are ready. Safari sessions remain sandboxed from iSH."
-say "Download: ytconv URL"
-say "Playlist: ytconv playlist URL"
-say "Batch: ytconv batch links.txt --continue-on-error"
-say "Output: $HOME/Downloads/YTConv"
+say "YTConv iSH/Alpine $VERSION installed successfully."
+say "AUTO: music.youtube.com -> MP3; regular YouTube -> MP4."
+say "Update later with: ytconv update"
+say "Repair dependencies with: ytconv repair"
+say "Default output: $HOME/Downloads/YTConv"

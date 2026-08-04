@@ -1,5 +1,31 @@
 # YTConv CLI changelog
 
+## 1.6.5 — native packages and repaired iSH/Alpine updates
+
+Released: 2026-08-04
+
+### Installable release artifacts
+
+- Added a user-level Windows EXE installer and portable ZIP with a verified bundled Node.js runtime.
+- Added DEB, RPM, Arch package, Alpine APK, AppImage, Snap, Flatpak, Nix, Homebrew, Void, Gentoo, Termux DEB, and portable Linux archives.
+- Added a native Android application with bundled Android-compatible yt-dlp and FFmpeg engines, real output verification, AUTO MP4/MP3 routing, progress, and cancellation.
+- Added per-artifact SHA-256 files, release-wide checksums, source archives, SBOM generation, and installation smoke tests.
+
+### iSH and Alpine
+
+- Fixed stale installer URLs that still pointed to the 1.6.2 release branch.
+- Synchronized wrapper, core, remote version, installer URL, and update channel to 1.6.5.
+- Added versioned SHA-256 verification before iSH/Alpine Python files are installed.
+- Removed the unnecessary Node.js dependency from the maintained Python frontend.
+- Added general, fragment, and file-access retry expressions plus resource-leak and real-file regression tests.
+
+### Security and licensing
+
+- Kept npm installation free of lifecycle install hooks.
+- Bundled official runtimes only after upstream checksum verification.
+- Kept the standalone CLI under ISC. The Android module is GPL-3.0-only because it links to GPL-3.0 youtubedl-android, with complete corresponding source included.
+
+
 
 ## 1.6.4 — supply-chain hardening and typed API
 

@@ -5,32 +5,36 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const cliDirectory = fileURLToPath(new URL('../', import.meta.url));
+const repositoryDirectory = fileURLToPath(new URL('../../', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
-const releaseBranch = 'release/ytconv-1.6.4-security-types';
+const releaseBranch = 'release/ytconv-1.6.5-packages';
 const docsBase = `https://github.com/andhikamarcella/youtubetomp3/blob/${releaseBranch}/cli/docs/`;
 const releaseBase = `https://github.com/andhikamarcella/youtubetomp3/blob/${releaseBranch}/cli/`;
 
-test('1.6.4 exposes complete secure typed package metadata', () => {
-  assert.equal(manifest.version, '1.6.4');
+test('1.6.5 exposes complete secure typed multi-package metadata', () => {
+  assert.equal(manifest.version, '1.6.5');
   assert.equal(manifest.publisher, 'Andhika Marcella Fernanda');
   assert.match(manifest.author, /Andhika Marcella Fernanda/u);
   assert.equal(manifest.organization.name, 'YTConv Project');
   assert.equal(manifest.organization.url, 'https://github.com/andhikamarcella/youtubetomp3');
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.releaseDate, '2026-08-04');
-  assert.match(manifest.releaseNotes, /removes npm install-time execution/u);
-  assert.match(manifest.releaseNotes, /TypeScript declaration/u);
-  assert.match(manifest.releaseNotes, /public YouTube MP4/u);
+  assert.match(manifest.releaseNotes, /Windows EXE/u);
+  assert.match(manifest.releaseNotes, /Alpine APK/u);
+  assert.match(manifest.releaseNotes, /Android packaging/u);
+  assert.match(manifest.releaseNotes, /iSH and Alpine update paths/u);
   assert.equal(manifest.main, './src/index.js');
   assert.equal(manifest.types, './types/index.d.ts');
   assert.equal(manifest.exports['.'].types, './types/index.d.ts');
   assert.equal(manifest.exports['.'].import, './src/index.js');
-  assert.equal(manifest.installer.type, 'Tarball');
-  assert.equal(manifest.installer.url, 'https://registry.npmjs.org/ytconv/-/ytconv-1.6.4.tgz');
-  assert.match(manifest.installer.sha256Url, /ytconv-v1\.6\.4\/SHA256SUMS\.txt$/u);
+  assert.equal(manifest.installer.type, 'Multi-format release');
+  assert.equal(manifest.installer.npm, 'https://registry.npmjs.org/ytconv/-/ytconv-1.6.5.tgz');
+  assert.equal(manifest.installer.release, 'https://github.com/andhikamarcella/youtubetomp3/releases/tag/ytconv-v1.6.5');
+  assert.match(manifest.installer.sha256Url, /ytconv-v1\.6\.5\/SHA256SUMS\.txt$/u);
   assert.equal(manifest.documentation.url, `https://github.com/andhikamarcella/youtubetomp3/tree/${releaseBranch}/cli/docs`);
   assert.equal(manifest.documentation.nodejs, `${docsBase}NODEJS.md`);
+  assert.equal(manifest.documentation.packages, `${docsBase}PACKAGES.md`);
   assert.equal(manifest.documentation.security, `${releaseBase}SECURITY.md`);
   assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['figlet', 'ink', 'react', 'which', 'ws']);
   assert.deepEqual(manifest.devDependencies, {
@@ -47,11 +51,11 @@ test('1.6.4 exposes complete secure typed package metadata', () => {
   assert.equal(manifest.scripts.postinstall, undefined);
 });
 
-test('published package allowlist contains typed CLI and security assets only', () => {
+test('published npm allowlist contains typed CLI and verified iSH assets only', () => {
   assert.deepEqual(manifest.files, [
     'bin/*.js', 'src/*.js', 'types/*.d.ts', 'scripts/*.js', 'scripts/*.sh',
-    'scripts/*.cmd', 'scripts/*.ps1', 'ish/VERSION', 'ish/*.py', 'docs/*.md',
-    'README.md', 'SECURITY.md', 'CHANGELOG.md', 'LICENSE',
+    'scripts/*.cmd', 'scripts/*.ps1', 'ish/VERSION', 'ish/*.py', 'ish/SHA256SUMS',
+    'docs/*.md', 'README.md', 'SECURITY.md', 'CHANGELOG.md', 'LICENSE',
   ]);
   assert.equal(
     manifest.files.some((entry) => /(?:html|css|jsx|tsx|next-app|public-ui|web)/iu.test(entry)),
@@ -59,11 +63,40 @@ test('published package allowlist contains typed CLI and security assets only', 
   );
 });
 
+test('native package sources cover Windows Linux Android Termux and iSH', () => {
+  const required = [
+    'packaging/build-windows-exe.ps1',
+    'packaging/build-native-packages.sh',
+    'packaging/build-alpine-apk.sh',
+    'packaging/build-appimage.sh',
+    'packaging/build-snap.sh',
+    'packaging/build-flatpak.sh',
+    'packaging/build-termux-deb.sh',
+    'packaging/build-android-apk.sh',
+    'packaging/nfpm.yaml',
+    'packaging/alpine/APKBUILD',
+    'packaging/flatpak/io.github.andhikamarcella.YTConv.yml',
+    'packaging/snap/snap.yaml',
+    'packaging/nix/ytconv.nix',
+    'flake.nix',
+    'android-app/app/build.gradle',
+    'android-app/app/src/main/AndroidManifest.xml',
+    'android-app/app/src/main/java/io/github/andhikamarcella/ytconv/MainActivity.java',
+  ];
+  for (const relative of required) {
+    assert.equal(fs.existsSync(path.join(repositoryDirectory, relative)), true, `missing ${relative}`);
+  }
+  assert.equal(fs.readFileSync(new URL('../ish/VERSION', import.meta.url), 'utf8').trim(), '1.6.5');
+  assert.match(fs.readFileSync(new URL('../scripts/install-ish.sh', import.meta.url), 'utf8'), /release\/ytconv-1\.6\.5-packages/u);
+  assert.match(fs.readFileSync(new URL('../scripts/install-unix.sh', import.meta.url), 'utf8'), /VERSION="1\.6\.5"/u);
+  assert.match(fs.readFileSync(new URL('../scripts/install-termux.sh', import.meta.url), 'utf8'), /VERSION="1\.6\.5"/u);
+});
+
 test('published README uses only absolute versioned release links', () => {
   assert.doesNotMatch(readme, /\]\((?:\.\/)?docs\//u);
   assert.doesNotMatch(readme, /\]\((?:\.\/)?(?:LICENSE|SECURITY\.md)\)/u);
-  const links = [...readme.matchAll(/\]\((https:\/\/github\.com\/andhikamarcella\/youtubetomp3\/blob\/release\/ytconv-1\.6\.4-security-types\/cli\/docs\/([A-Z0-9-]+\.md)(?:#[^)]+)?)\)/gu)];
-  assert.ok(links.length >= 14, 'the public README must expose the complete absolute documentation index');
+  const links = [...readme.matchAll(/\]\((https:\/\/github\.com\/andhikamarcella\/youtubetomp3\/blob\/release\/ytconv-1\.6\.5-packages\/cli\/docs\/([A-Z0-9-]+\.md)(?:#[^)]+)?)\)/gu)];
+  assert.ok(links.length >= 15, 'the public README must expose the complete absolute documentation index');
   for (const [, url, fileName] of links) {
     assert.ok(url.startsWith(docsBase), `unexpected documentation branch in ${url}`);
     assert.equal(fs.existsSync(path.join(cliDirectory, 'docs', fileName)), true, `missing documentation target: ${fileName}`);
@@ -79,7 +112,7 @@ test('npm test remains restricted to the YTConv CLI test directory', () => {
   assert.equal(
     fs.existsSync(new URL('../../.github/workflows/ytconv-auth.yml', import.meta.url)),
     false,
-    'the 1.6.4 release branch must not contain the web account-server workflow',
+    'the 1.6.5 release branch must not contain the web account-server workflow',
   );
 });
 

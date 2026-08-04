@@ -1,0 +1,23 @@
+class Ytconv < Formula
+  desc "Secure YouTube MP4 and MP3 downloader CLI"
+  homepage "https://github.com/andhikamarcella/youtubetomp3"
+  url "https://registry.npmjs.org/ytconv/-/ytconv-1.6.5.tgz"
+  sha256 "@NPM_SHA256@"
+  license "ISC"
+
+  depends_on "node@24"
+  depends_on "python@3.13"
+  depends_on "ffmpeg"
+  depends_on "yt-dlp"
+  depends_on "gallery-dl"
+
+  def install
+    system "npm", "install", "--global", "--prefix=#{libexec}",
+           "--ignore-scripts", "--omit=dev", cached_download
+    bin.install_symlink libexec/"bin/ytconv"
+  end
+
+  test do
+    assert_equal "1.6.5", shell_output("#{bin}/ytconv --version").strip
+  end
+end
