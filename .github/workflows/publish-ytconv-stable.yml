@@ -20,6 +20,7 @@ permissions:
   contents: write
   id-token: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: ytconv-npm-1.6.4
@@ -99,6 +100,9 @@ jobs:
             throw new Error(JSON.stringify(recovery));
           }
           NODE
+          RELEASE_SHA=$(git rev-parse HEAD)
+          test "$RELEASE_SHA" = "2960e7fbad3712603d6b1b51ac273f195fd2649e"
+          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
           if npm view ytconv@1.6.4 version >/dev/null 2>&1; then
             echo "already_published=true" >> "$GITHUB_OUTPUT"
           else
@@ -146,11 +150,12 @@ jobs:
           URL=$(npm view ytconv@1.6.4 dist.tarball --prefer-online)
           curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-1.6.4.registry.tgz"
           test "$(sha256sum "$RUNNER_TEMP/ytconv-1.6.4.registry.tgz" | cut -d ' ' -f 1)" = "${{ steps.package.outputs.sha256 }}"
-      - name: Create immutable GitHub release
+      - name: Correct and create immutable GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="ytconv-v1.6.4"
+          RELEASE_SHA="${{ steps.identity.outputs.release_sha }}"
           ASSETS=(
             "${{ steps.package.outputs.tarball }}"
             "$RUNNER_TEMP/ytconv-1.6.4.cdx.json"
@@ -158,16 +163,24 @@ jobs:
           )
           NOTES=$(node -p "require('./package.json').releaseNotes")
           if gh release view "$TAG" >/dev/null 2>&1; then
+            CURRENT_SHA=$(git rev-list -n 1 "$TAG" 2>/dev/null || true)
+            if [ "$CURRENT_SHA" != "$RELEASE_SHA" ]; then
+              gh release delete "$TAG" --cleanup-tag --yes
+            fi
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" "${ASSETS[@]}" --target "$GITHUB_SHA" --title "YTConv CLI 1.6.4" --notes "$NOTES"
+            gh release create "$TAG" "${ASSETS[@]}" --target "$RELEASE_SHA" --title "YTConv CLI 1.6.4" --notes "$NOTES"
           fi
+          git fetch --tags --force
+          test "$(git rev-list -n 1 "$TAG")" = "$RELEASE_SHA"
       - name: Report successful publication
         working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 177 --repo "$GITHUB_REPOSITORY" --body "YTConv 1.6.4 was published successfully to npm latest and the registry tarball SHA-256 was verified. GitHub release ytconv-v1.6.4 was created or updated by run $GITHUB_RUN_ID."
+          gh pr comment 177 --repo "$GITHUB_REPOSITORY" --body "YTConv 1.6.4 is published to npm latest. Registry version and tarball SHA-256 are verified, provenance was produced during publication, and GitHub tag/release ytconv-v1.6.4 now points to release source commit 2960e7fbad3712603d6b1b51ac273f195fd2649e. Run: $GITHUB_RUN_ID."
       - name: Report failure
         if: ${{ failure() }}
         working-directory: .
@@ -175,5 +188,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "YTConv 1.6.4 publish failed" \
-            --body "Publication failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA." || true
+            --title "YTConv 1.6.4 release finalization failed" \
+            --body "Finalization failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA." || true
