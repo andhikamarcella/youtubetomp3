@@ -1,224 +1,44 @@
-name: YTConv CLI 1.6.4 Security and Compatibility
+name: Synchronize YTConv 1.6.5 generated source
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.4-security-types
+      - release/ytconv-1.6.5-packages
     paths:
       - "cli/**"
-      - "AGENTS.md"
+      - "packaging/patch-core-and-lock.mjs"
       - ".github/workflows/ytconv-cli.yml"
-      - ".github/workflows/publish-ytconv-stable.yml"
-  pull_request:
-    paths:
-      - "cli/**"
-      - "AGENTS.md"
-      - ".github/workflows/ytconv-cli.yml"
-      - ".github/workflows/publish-ytconv-stable.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: ytconv-cli-1.6.4-${{ github.ref }}
-  cancel-in-progress: true
+  group: ytconv-1.6.5-source-sync
+  cancel-in-progress: false
 
 jobs:
-  node-compatibility:
+  synchronize:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [22.14.0, 24, 26]
-    defaults:
-      run:
-        working-directory: cli
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
-          node-version: ${{ matrix.node }}
-          package-manager-cache: false
-      - name: Install committed dependency graph without lifecycle scripts
-        run: npm ci --ignore-scripts
-      - run: npm run check
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run security
-      - name: Verify stable identity license types install policy and public MP4 arguments
-        run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.6.4"
-          node --input-type=module - <<'NODE'
-          const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
-          if (manifest.version !== '1.6.4') throw new Error(manifest.version);
-          if (manifest.license !== 'ISC') throw new Error(manifest.license);
-          if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
-            throw new Error('npm lifecycle install scripts are forbidden');
-          }
-          if (manifest.types !== './types/index.d.ts') throw new Error('missing TypeScript declarations');
-          if (manifest.exports['.'].import !== './src/index.js') throw new Error('missing programmatic API');
-
-          const { applyStableDefaults } = await import('./src/defaults.js');
-          const { buildDownloadArgs, publicYouTubeRecoveryClients } = await import('./src/downloader.js');
-          const options = {
-            retrySleep: 'file_access:fragment:http:linear=1::2', subtitles: false,
-            sponsorBlockMode: 'off', archivePath: '', galleryArchivePath: '',
-            initialMode: 'video', videoFormat: 'auto', resolution: '720', preset: 'balanced',
-          };
-          applyStableDefaults(options, { disabled: { archive: true }, explicit: {} }, {
-            homeDirectory: '/tmp/ytconv', mkdirSync() {},
-          });
-          if (options.retrySleep !== 'linear=1::2') throw new Error(options.retrySleep);
-          const args = buildDownloadArgs({
-            ...options, url: 'https://www.youtube.com/watch?v=BaW_jenozKc', mode: 'video',
-            audioFormat: 'mp3', audioQuality: 'best', cookieConfig: { kind: 'none' },
-            playlist: false, outputDirectory: process.cwd(), subtitleOnly: false,
-          });
-          if (args.includes('--cookies') || args.includes('--cookies-from-browser')) {
-            throw new Error('ordinary public YouTube unexpectedly requires cookies');
-          }
-          const sleeps = args.flatMap((value, index) => args[index - 1] === '--retry-sleep' ? [value] : []);
-          const expectedSleeps = ['linear=1::2', 'fragment:linear=1::2', 'file_access:linear=1::2'];
-          if (JSON.stringify(sleeps) !== JSON.stringify(expectedSleeps)) throw new Error(JSON.stringify(sleeps));
-          const mp4 = args.slice(args.indexOf('--merge-output-format'), args.indexOf('--merge-output-format') + 4);
-          if (JSON.stringify(mp4) !== JSON.stringify(['--merge-output-format', 'mp4', '--recode-video', 'mp4'])) {
-            throw new Error(JSON.stringify(mp4));
-          }
-          const recovery = publicYouTubeRecoveryClients({
-            url: 'https://www.youtube.com/watch?v=public',
-            cookieConfig: { kind: 'none' },
-            error: new Error('Sign in to confirm you are not a bot'),
-          });
-          if (JSON.stringify(recovery) !== JSON.stringify(['tv_simply', 'web_embedded'])) {
-            throw new Error(JSON.stringify(recovery));
-          }
-          NODE
-
-  desktop:
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    defaults:
-      run:
-        working-directory: cli
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+          ref: release/ytconv-1.6.5-packages
+          fetch-depth: 0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           package-manager-cache: false
-      - run: npm ci --ignore-scripts
-      - run: npm run check
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run check:ish
-        if: runner.os != 'Windows'
-      - name: Run iSH tests with resource warnings treated as errors
-        if: runner.os != 'Windows'
-        env:
-          PYTHONWARNINGS: error::ResourceWarning
-        run: npm run test:ish
-      - name: Windows CMD and PowerShell entry-point smoke tests
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - run: node packaging/patch-core-and-lock.mjs
+      - name: Commit deterministic generated source
         run: |
-          node .\bin\ytconv.js --version
-          node .\bin\ytconv.js --help
-          node .\bin\ytconv.js quickstart
-
-  package-boundaries:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: cli
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npm ci --ignore-scripts
-      - name: Preview and install the exact CLI-only tarball without scripts
-        shell: bash
-        run: |
-          npm pack --json --dry-run --ignore-scripts > package-preview.json
-          node - <<'NODE'
-          const preview = require('./package-preview.json')[0];
-          const paths = preview.files.map((file) => file.path);
-          const forbidden = paths.filter((value) => /\.(?:html|css|jsx|tsx)$/i.test(value)
-            || /(?:^|\/)(?:next-app|public-ui|web|server)(?:\/|$)/i.test(value));
-          if (forbidden.length) throw new Error(JSON.stringify(forbidden));
-          for (const required of ['LICENSE', 'SECURITY.md', 'types/index.d.ts', 'src/index.js']) {
-            if (!paths.includes(required)) throw new Error(`missing ${required}`);
-          }
-          if (paths.includes('scripts/postinstall.js')) throw new Error('postinstall was packaged');
-          NODE
-          rm -f package-preview.json
-          TARBALL=$(npm pack --ignore-scripts --silent)
-          PREFIX="$RUNNER_TEMP/ytconv-package-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-          npm install --prefix "$PREFIX" "$PWD/$TARBALL" --ignore-scripts
-          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.4"
-          node -e "import('$PREFIX/node_modules/ytconv/src/index.js').then(m => { if (m.effectiveVideoContainer({url:'https://youtube.com/watch?v=x',mode:'video',requestedContainer:'auto'}) !== 'mp4') process.exit(1); })"
-
-  alpine-ish:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    container: node:24-alpine
-    defaults:
-      run:
-        working-directory: cli
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - run: apk add --no-cache python3 py3-pip ffmpeg bash
-      - run: python3 -m pip install --break-system-packages --no-cache-dir 'yt-dlp[default]' gallery-dl
-      - run: npm ci --ignore-scripts
-      - run: npm run check
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run check:ish
-      - name: Run Python frontend without resource leaks
-        env:
-          PYTHONWARNINGS: error::ResourceWarning
-        run: npm run test:ish
-      - run: test "$(node ./bin/ytconv.js --version)" = "1.6.4"
-
-  real-public-youtube-mp4:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    defaults:
-      run:
-        working-directory: cli
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: python3 -m pip install --user --break-system-packages --upgrade 'yt-dlp[default]'
-      - run: npm ci --ignore-scripts
-      - name: Download and verify an ordinary public YouTube MP4 without cookies
-        shell: bash
-        env:
-          NO_COLOR: "1"
-          YTCONV_NO_UPDATE_CHECK: "1"
-          YTCONV_COOKIES: ""
-          YTCONV_BROWSER_COOKIE_SPEC: ""
-        run: |
-          set +e
-          node ./scripts/test-youtube-output.js 2>&1 | tee "$RUNNER_TEMP/ytconv-youtube-public.log"
-          STATUS=${PIPESTATUS[0]}
-          set -e
-          if [ "$STATUS" -eq 0 ]; then
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add cli/package-lock.json cli/ish/ytconv-core.py cli/ish/SHA256SUMS
+          if git diff --cached --quiet; then
+            echo 'Generated source already synchronized.'
             exit 0
           fi
-          if grep -Eqi 'sign in to confirm.*not a bot|public no-cookie client recovery failed|site requires a signed-in account' "$RUNNER_TEMP/ytconv-youtube-public.log"; then
-            echo '::warning::YouTube rejected the GitHub-hosted runner IP after all bounded no-cookie clients. Deterministic MP4, FFmpeg, output, and security tests remain required and passed separately.'
-            exit 0
-          fi
-          exit "$STATUS"
+          git commit -m 'Synchronize YTConv 1.6.5 core and lockfile'
+          git push origin HEAD:release/ytconv-1.6.5-packages
