@@ -41,7 +41,7 @@ jobs:
           package-manager-cache: false
       - name: Pin npm and install the committed lockfile without scripts
         run: |
-          npm install -g npm@11.19.0
+          npm install -g npm@11.18.0
           npm ci --ignore-scripts
       - name: Verify release identity security and public MP4 policy
         id: identity
@@ -49,6 +49,7 @@ jobs:
           test "$(node -p "require('./package.json').version")" = "1.6.4"
           test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
           test "$(node -p "require('./package.json').license")" = "ISC"
+          test "$(node -p "require('./package.json').packageManager")" = "npm@11.18.0"
           node --input-type=module - <<'NODE'
           const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
           if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
@@ -152,6 +153,12 @@ jobs:
           else
             gh release create "$TAG" "${ASSETS[@]}" --target "$GITHUB_SHA" --title "YTConv CLI 1.6.4" --notes "$NOTES"
           fi
+      - name: Report successful publication
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 177 --repo "$GITHUB_REPOSITORY" --body "YTConv 1.6.4 was published successfully to npm latest and the registry tarball SHA-256 was verified. GitHub release ytconv-v1.6.4 was created or updated by run $GITHUB_RUN_ID."
       - name: Report failure
         if: ${{ failure() }}
         working-directory: .
