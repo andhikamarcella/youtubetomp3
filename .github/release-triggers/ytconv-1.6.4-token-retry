@@ -1,5 +1,0 @@
-YTConv 1.6.4 npm token fallback trigger
-release-branch: release/ytconv-1.6.4-security-types
-validated-head: 2960e7fbad3712603d6b1b51ac273f195fd2649e
-previous-run: 30927105838
-reason: npm Trusted Publisher is not configured; use existing NPM_TOKEN with provenance
