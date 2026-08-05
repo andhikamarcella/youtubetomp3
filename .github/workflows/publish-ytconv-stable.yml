@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 concurrency:
   group: ytconv-npm-publish-1.6.6
@@ -127,3 +128,19 @@ jobs:
           curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-$VERSION.verified.tgz"
           test "$(sha256sum "$RUNNER_TEMP/ytconv-$VERSION.verified.tgz" | cut -d ' ' -f 1)" = "$LOCAL_SHA256"
           npm view "ytconv@$VERSION" name version dist-tags.latest --json --prefer-online
+
+      - name: Report successful npm publication
+        if: ${{ success() }}
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "✅ YTConv **1.6.6** is published on npm with the **latest** tag. The workflow verified the registry tarball bytes against source commit \`$SOURCE_SHA\`. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Report npm publication failure
+        if: ${{ failure() }}
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "❌ YTConv **1.6.6** npm publication failed. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
