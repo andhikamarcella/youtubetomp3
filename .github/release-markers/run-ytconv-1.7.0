@@ -1,0 +1,4 @@
+YTConv 1.7.0 one-time migration
+source=release/ytconv-1.6.8-stable
+target=release/ytconv-1.7.0
+repository=andhikamarcella/YTConv
