@@ -28,7 +28,7 @@ Required:
 - version `1.6.2`;
 - npm tag `latest`;
 - provenance enabled;
-- repository `andhikamarcella/youtubetomp3`, directory `cli`;
+- repository `andhikamarcella/YTConv`, directory `cli`;
 - accurate publisher and maintainer;
 - project label that does not claim a nonexistent repository owner;
 - Node.js `>=22.14.0` and npm `>=10`;

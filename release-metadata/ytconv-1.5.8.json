@@ -23,5 +23,5 @@
   },
   "optionalDependencies": {},
   "releaseNotes": "YTConv 1.5.8 automatically opens the official social login page when account access is required, detects the active browser profile, verifies the failed media URL before saving the link, retries the download immediately, and falls back between video and gallery engines for mixed social posts.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.8-cli-only-final/cli/CHANGELOG.md"
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.5.8-cli-only-final/cli/CHANGELOG.md"
 }

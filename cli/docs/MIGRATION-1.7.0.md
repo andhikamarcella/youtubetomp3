@@ -41,4 +41,4 @@ The command rejects missing required guides, stale repository URLs, broken local
 
 ## Compatibility
 
-Version 1.7.0 intentionally preserves the established command names, public-first authentication policy, browser-login recovery, secure child-process model, and subtitles-off default from 1.6.8.
+Version 1.7.0 intentionally preserves the established command names, public-first authentication policy, browser-login recovery, secure child-process model, and subtitles-off default from 1.7.0.

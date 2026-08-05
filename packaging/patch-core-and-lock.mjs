@@ -39,7 +39,7 @@ core = replaceRequired(core, /^VERSION = "[^"]+"$/mu, `VERSION = "${version}"`, 
 core = replaceRequired(
   core,
   /^RAW_BASE = "https:\/\/raw\.githubusercontent\.com\/andhikamarcella\/youtubetomp3\/[^\n]+\/cli"$/mu,
-  `RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/${branch}/cli"`,
+  `RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/${branch}/cli"`,
   'iSH core release branch',
 );
 core = core.replace(

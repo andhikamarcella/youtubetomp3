@@ -24,5 +24,5 @@
     "ffmpeg-static": "5.3.0"
   },
   "releaseNotes": "YTConv 1.5.5 adds automatic local CLI fallback when cloud login is unavailable, returns users to the TUI after login, refreshes the terminal interface, fixes stable self-tests and release metadata, and guarantees a CLI-only npm package with no HTML or web frontend assets.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.5/cli/CHANGELOG.md"
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.5.5/cli/CHANGELOG.md"
 }

@@ -157,13 +157,13 @@ The Flatpak manifest grants network access, home-directory file access, and desk
 Run directly from the release branch:
 
 ```sh
-nix run github:andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening -- --version
+nix run github:andhikamarcella/YTConv/release/ytconv-1.6.6-socket-hardening -- --version
 ```
 
 Install into the current profile:
 
 ```sh
-nix profile install github:andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening
+nix profile install github:andhikamarcella/YTConv/release/ytconv-1.6.6-socket-hardening
 ```
 
 ## Void Linux and Gentoo
@@ -229,7 +229,7 @@ Run inside iSH as root:
 apk update
 apk add --no-cache curl ca-certificates
 curl -fsSL \
-  https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening/cli/scripts/install-ish.sh \
+  https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.6.6-socket-hardening/cli/scripts/install-ish.sh \
   -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version

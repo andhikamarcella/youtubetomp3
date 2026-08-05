@@ -7,8 +7,8 @@ depends="ca-certificates python3 ffmpeg"
 short_desc="Secure YouTube MP4 and MP3 downloader CLI"
 maintainer="Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
 license="ISC"
-homepage="https://github.com/andhikamarcella/youtubetomp3"
-distfiles="https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v${version}/YTConv-${version}-linux-${XBPS_TARGET_MACHINE}.tar.zst"
+homepage="https://github.com/andhikamarcella/YTConv"
+distfiles="https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v${version}/YTConv-${version}-linux-${XBPS_TARGET_MACHINE}.tar.zst"
 
 case "$XBPS_TARGET_MACHINE" in
   x86_64) checksum=@PORTABLE_X86_64_SHA256@ ;;

@@ -23,5 +23,5 @@
   },
   "optionalDependencies": {},
   "releaseNotes": "YTConv 1.5.6 completes automatic first-run media-engine setup, makes FFmpeg a required npm dependency, adds automatic stable updates for interactive installs, and links Instagram, Facebook, X, TikTok, YouTube, Pinterest, Reddit, Threads, Twitch, and more through official browser login. Passwords and raw cookies remain inside the browser and are never uploaded to YTConv.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.6-cli-only-final/cli/CHANGELOG.md"
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.5.6-cli-only-final/cli/CHANGELOG.md"
 }

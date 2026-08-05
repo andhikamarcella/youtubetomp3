@@ -24,5 +24,5 @@
   },
   "optionalDependencies": {},
   "releaseNotes": "YTConv 1.5.9 fixes Chromium login loops with a private official-login browser profile, a loopback-only provider-cookie bridge, verified retry of the exact media URL, user-only temporary files, and guaranteed cleanup after every attempt.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.9-cli-only-final/cli/CHANGELOG.md"
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.5.9-cli-only-final/cli/CHANGELOG.md"
 }

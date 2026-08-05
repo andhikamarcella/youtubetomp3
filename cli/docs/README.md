@@ -26,4 +26,4 @@ This directory is the canonical documentation hub for YTConv 1.7.0. YTConv is a 
 - npm package: `ytconv`
 - Release tag format: `ytconv-v<version>`
 
-Links using the retired `andhikamarcella/youtubetomp3` slug should be replaced with the canonical repository above.
+Links using the retired `andhikamarcella/YTConv` slug should be replaced with the canonical repository above.

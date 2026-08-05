@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $Cli = Join-Path $Root 'cli'
-$Version = '1.6.8'
+$Version = '1.7.0'
 $NodeVersion = '24.18.0'
 $NodeArchive = "node-v$NodeVersion-win-x64.zip"
 $NodeBase = "https://nodejs.org/dist/v$NodeVersion"

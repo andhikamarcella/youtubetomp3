@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.6.8"
+$Version = "1.7.0"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell"
 
@@ -53,4 +53,4 @@ Write-Host "`nAUTO policy: YouTube Music becomes MP3; regular video and social U
 Write-Host "Public access is attempted first; browser login is offered only when authentication is required."
 Write-Host "Subtitles remain off unless --subtitles is supplied."
 Write-Host "Stable installation completed. Run: ytconv.cmd or ytconv"
-Write-Host "A standalone EXE installer is also provided in the GitHub 1.6.8 release."
+Write-Host "A standalone EXE installer is also provided in the GitHub 1.7.0 release."

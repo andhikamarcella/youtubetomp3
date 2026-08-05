@@ -1,4 +1,4 @@
-# YTConv 1.6.2 Command Reference
+# YTConv 1.7.0 Command Reference
 
 ## General syntax
 
@@ -192,7 +192,7 @@ For MP4, YTConv prefers AVC/H.264 video plus M4A audio. If those streams are una
 
 ## Verified output
 
-YTConv 1.6.2 verifies that the final path exists and matches the requested mode:
+YTConv 1.7.0 verifies that the final path exists and matches the requested mode:
 
 ```text
 video mode       a real video file such as MP4, MKV, or WebM
@@ -214,7 +214,7 @@ A thumbnail, metadata JSON file, archive text file, log, or partial file does no
 --list-subs
 ```
 
-YTConv 1.6.2 enables subtitles by default for video unless explicitly disabled. Missing subtitles should not fail the main media download.
+YTConv 1.7.0 keeps subtitles disabled by default unless explicitly requested. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -227,7 +227,7 @@ YTConv 1.6.2 enables subtitles by default for video unless explicitly disabled. 
 --sponsorblock-off
 ```
 
-YTConv 1.6.2 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.7.0 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -289,7 +289,7 @@ The `batch` command automatically enables continue-on-error. The final exit code
 
 Resume is enabled by default. YTConv creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
-If an archived URL has no real output file, YTConv 1.6.2 retries that item once without the archive. A second zero-file result fails instead of reporting success.
+If an archived URL has no real output file, YTConv 1.7.0 retries that item once without the archive. A second zero-file result fails instead of reporting success.
 
 ## Network and performance
 
@@ -370,7 +370,7 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.6.2 updates through:
+Stable 1.7.0 updates through:
 
 ```sh
 npm install -g ytconv@latest --force
@@ -379,7 +379,7 @@ npm install -g ytconv@latest --force
 ## Stable defaults
 
 ```text
-Subtitles         ON
+Subtitles         OFF unless requested
 SponsorBlock      ON in mark mode
 Download archive ON per output profile
 Resume            ON

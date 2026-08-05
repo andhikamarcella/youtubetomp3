@@ -21,8 +21,8 @@ function javascriptFiles(directory) {
   return values;
 }
 
-test('1.6.8 publishes recognized license types and no lifecycle install hooks', () => {
-  assert.equal(manifest.version, '1.6.8');
+test('1.7.0 publishes recognized license types and no lifecycle install hooks', () => {
+  assert.equal(manifest.version, '1.7.0');
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
@@ -44,8 +44,8 @@ test('identity dependencies are exact and represented by the committed lock grap
     assert.equal(lock.packages[`node_modules/${name}`].version, version);
     assert.match(lock.packages[`node_modules/${name}`].integrity, /^sha512-/u);
   }
-  assert.equal(lock.version, '1.6.8');
-  assert.equal(lock.packages[''].version, '1.6.8');
+  assert.equal(lock.version, '1.7.0');
+  assert.equal(lock.packages[''].version, '1.7.0');
 });
 
 test('TypeScript badge is backed by declarations exports and type checking', () => {
