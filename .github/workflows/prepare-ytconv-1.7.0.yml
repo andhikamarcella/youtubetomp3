@@ -1,0 +1,869 @@
+name: Prepare YTConv 1.7.0
+
+on:
+  push:
+    branches:
+      - release/ytconv-1.7.0
+    paths:
+      - .github/release-markers/prepare-ytconv-1.7.0
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: prepare-ytconv-1.7.0
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-1.7.0
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Migrate repository identity and version
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import os
+
+          root = Path('.')
+          excluded_dirs = {'.git', 'node_modules', 'dist', 'build', '.gradle', '.cache'}
+          excluded_files = {
+              Path('.github/workflows/prepare-ytconv-1.7.0.yml'),
+              Path('cli/CHANGELOG.md'),
+          }
+          binary_suffixes = {
+              '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.pdf', '.zip', '.gz',
+              '.tgz', '.apk', '.deb', '.rpm', '.zst', '.exe', '.dll', '.so', '.woff',
+              '.woff2', '.ttf', '.jar', '.keystore', '.jks'
+          }
+
+          replacements = [
+              ('github.com/andhikamarcella/youtubetomp3', 'github.com/andhikamarcella/YTConv'),
+              ('andhikamarcella/youtubetomp3', 'andhikamarcella/YTConv'),
+              ('release/ytconv-1.6.8-stable', 'release/ytconv-1.7.0'),
+              ('ytconv-v1.6.8', 'ytconv-v1.7.0'),
+              ('YTConv-1.6.8', 'YTConv-1.7.0'),
+              ('ytconv-1.6.8', 'ytconv-1.7.0'),
+              ('ytconv_1.6.8', 'ytconv_1.7.0'),
+              ('1.6.8', '1.7.0'),
+              ('10608', '10700'),
+          ]
+
+          for path in root.rglob('*'):
+              if not path.is_file() or path in excluded_files:
+                  continue
+              if any(part in excluded_dirs for part in path.parts):
+                  continue
+              if path.suffix.lower() in binary_suffixes:
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              updated = text
+              for old, new in replacements:
+                  updated = updated.replace(old, new)
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+
+          # Rename release-specific files and markers while preserving history files.
+          candidates = sorted(
+              [p for p in root.rglob('*') if '1.6.8' in p.name and '.git' not in p.parts],
+              key=lambda p: len(p.parts),
+              reverse=True,
+          )
+          for path in candidates:
+              target = path.with_name(path.name.replace('1.6.8', '1.7.0'))
+              if target.exists():
+                  if path.is_file():
+                      path.unlink()
+                  continue
+              path.rename(target)
+
+          package_path = Path('cli/package.json')
+          package = json.loads(package_path.read_text(encoding='utf-8'))
+          package['version'] = '1.7.0'
+          package['description'] = (
+              'Secure cross-platform social-media downloader CLI with guided diagnostics, '
+              'browser-login recovery, animated progress, native packages, expanded documentation, '
+              'and verified release provenance.'
+          )
+          package['organization'] = {
+              'name': 'YTConv Project',
+              'url': 'https://github.com/andhikamarcella/YTConv'
+          }
+          package['repository'] = {
+              'type': 'git',
+              'url': 'git+https://github.com/andhikamarcella/YTConv.git',
+              'directory': 'cli'
+          }
+          package['homepage'] = 'https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.0/cli#readme'
+          package['bugs'] = {'url': 'https://github.com/andhikamarcella/YTConv/issues'}
+          package['documentation'] = {
+              'url': 'https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.0/cli/docs',
+              'installation': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/docs/INSTALLATION.md',
+              'commands': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/docs/COMMANDS.md',
+              'configuration': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/docs/CONFIGURATION.md',
+              'authentication': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/docs/AUTHENTICATION.md',
+              'troubleshooting': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/docs/TROUBLESHOOTING.md',
+              'packages': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/docs/PACKAGES.md',
+              'security': 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/SECURITY.md'
+          }
+          package['releaseDate'] = '2026-08-05'
+          package['releaseNotes'] = (
+              'YTConv 1.7.0 completes the canonical repository migration to andhikamarcella/YTConv, '
+              'adds a comprehensive documentation hub and automated documentation validation, '
+              'introduces npm Trusted Publishing through GitHub OIDC, and refreshes every supported package target.'
+          )
+          package['releaseNotesUrl'] = 'https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/CHANGELOG.md'
+          package['installer'] = {
+              'type': 'Multi-format release',
+              'npm': 'https://registry.npmjs.org/ytconv/-/ytconv-1.7.0.tgz',
+              'release': 'https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.0',
+              'sha256Url': 'https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.0/SHA256SUMS.txt',
+              'sbomUrl': 'https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.0/ytconv-1.7.0.cdx.json'
+          }
+          keywords = list(package.get('keywords', []))
+          for keyword in ['trusted-publishing', 'openid-connect', 'oidc', 'documentation-validation']:
+              if keyword not in keywords:
+                  keywords.append(keyword)
+          package['keywords'] = keywords
+          scripts = dict(package.get('scripts', {}))
+          scripts['docs:check'] = 'node ./scripts/check-docs.js'
+          prepack = scripts.get('prepack', '')
+          if 'npm run docs:check' not in prepack:
+              scripts['prepack'] = f"npm run docs:check && {prepack}" if prepack else 'npm run docs:check'
+          package['scripts'] = scripts
+          package_path.write_text(json.dumps(package, indent=2) + '\n', encoding='utf-8')
+
+          lock_path = Path('cli/package-lock.json')
+          lock = json.loads(lock_path.read_text(encoding='utf-8'))
+          lock['name'] = 'ytconv'
+          lock['version'] = '1.7.0'
+          if '' in lock.get('packages', {}):
+              lock['packages']['']['name'] = 'ytconv'
+              lock['packages']['']['version'] = '1.7.0'
+          lock_path.write_text(json.dumps(lock, indent=2) + '\n', encoding='utf-8')
+
+          changelog_path = Path('cli/CHANGELOG.md')
+          changelog = changelog_path.read_text(encoding='utf-8')
+          entry = '''## 1.7.0 — 2026-08-05
+
+### Repository and release integrity
+
+- Migrated every canonical source, issue, documentation, installer, checksum, SBOM, and release URL to `andhikamarcella/YTConv`.
+- Added npm Trusted Publishing through GitHub Actions OpenID Connect; the release workflow no longer requires a long-lived npm token.
+- Added an idempotent publication gate that validates the exact package version, runs the full prepack suite, verifies npm `latest`, and creates the matching GitHub Release.
+- Refreshed version identity across npm, iSH, Android, Windows, Linux, Alpine, Nix, Snap, Flatpak, Termux, portable archives, and CI matrices.
+
+### Documentation
+
+- Added a complete documentation hub with installation, command, configuration, authentication, troubleshooting, platform, architecture, development, release, FAQ, and migration guides.
+- Added `npm run docs:check` to reject stale repository URLs, missing required guides, broken local Markdown links, and package-version drift.
+- Expanded the main README with a stable documentation map and support workflow.
+
+### Compatibility and behavior
+
+- Retains the secure argument-array process model, secret-stripped child environments, browser-login recovery, animated download/conversion progress, subtitles disabled by default, and public-first access policy from 1.6.8.
+- No existing command was intentionally removed or renamed.
+
+'''
+          if changelog.startswith('# Changelog'):
+              changelog = changelog.replace('# Changelog', '# Changelog\n\n' + entry, 1)
+          else:
+              changelog = '# Changelog\n\n' + entry + changelog
+          changelog = changelog.replace('github.com/andhikamarcella/youtubetomp3', 'github.com/andhikamarcella/YTConv')
+          changelog_path.write_text(changelog, encoding='utf-8')
+          PY
+
+      - name: Add documentation validator
+        run: |
+          cat > cli/scripts/check-docs.js <<'JS'
+          import fs from 'node:fs/promises';
+          import path from 'node:path';
+          import process from 'node:process';
+
+          const cwd = process.cwd();
+          const required = [
+            'README.md',
+            'SECURITY.md',
+            'docs/README.md',
+            'docs/INSTALLATION.md',
+            'docs/COMMANDS.md',
+            'docs/CONFIGURATION.md',
+            'docs/AUTHENTICATION.md',
+            'docs/TROUBLESHOOTING.md',
+            'docs/PLATFORMS.md',
+            'docs/ARCHITECTURE.md',
+            'docs/DEVELOPMENT.md',
+            'docs/RELEASES.md',
+            'docs/TRUSTED-PUBLISHING.md',
+            'docs/FAQ.md',
+            'docs/MIGRATION-1.7.0.md'
+          ];
+          const errors = [];
+
+          for (const relative of required) {
+            try {
+              await fs.access(path.join(cwd, relative));
+            } catch {
+              errors.push(`Missing required documentation file: ${relative}`);
+            }
+          }
+
+          const packageJson = JSON.parse(await fs.readFile(path.join(cwd, 'package.json'), 'utf8'));
+          if (packageJson.version !== '1.7.0') errors.push(`package.json version is ${packageJson.version}, expected 1.7.0`);
+          if (!String(packageJson.repository?.url ?? '').includes('andhikamarcella/YTConv')) {
+            errors.push('package.json repository does not use the canonical andhikamarcella/YTConv URL');
+          }
+
+          for (const relative of required.filter((file) => file.endsWith('.md'))) {
+            let text;
+            try {
+              text = await fs.readFile(path.join(cwd, relative), 'utf8');
+            } catch {
+              continue;
+            }
+            if (/andhikamarcella\/youtubetomp3/iu.test(text)) {
+              errors.push(`${relative} contains the retired repository slug`);
+            }
+            const linkPattern = /\[[^\]]*\]\(([^)]+)\)/gu;
+            for (const match of text.matchAll(linkPattern)) {
+              const target = match[1].trim().split('#')[0];
+              if (!target || /^(?:https?:|mailto:|#)/u.test(target)) continue;
+              const resolved = path.resolve(cwd, path.dirname(relative), target);
+              try {
+                await fs.access(resolved);
+              } catch {
+                errors.push(`${relative} has a broken local link: ${match[1]}`);
+              }
+            }
+          }
+
+          if (errors.length) {
+            console.error('Documentation validation failed:');
+            for (const error of errors) console.error(`- ${error}`);
+            process.exitCode = 1;
+          } else {
+            console.log(`Documentation validation passed for ${required.length} required files.`);
+          }
+          JS
+
+      - name: Write expanded documentation hub
+        run: |
+          mkdir -p cli/docs
+
+          cat > cli/docs/README.md <<'DOC'
+          # YTConv Documentation
+
+          This directory is the canonical documentation hub for YTConv 1.7.0. YTConv is a cross-platform command-line downloader and media conversion tool. Use it only for media you own or are authorized to download, and follow the terms and laws that apply to the source service.
+
+          ## Start here
+
+          - [Installation](INSTALLATION.md) — supported installation methods and first-run verification.
+          - [Commands](COMMANDS.md) — command families, options, safe examples, and exit behavior.
+          - [Configuration](CONFIGURATION.md) — configuration files, profiles, paths, and precedence.
+          - [Authentication](AUTHENTICATION.md) — browser-login recovery and private session handling.
+          - [Troubleshooting](TROUBLESHOOTING.md) — diagnosis steps for common failures.
+          - [Platforms](PLATFORMS.md) — Windows, Linux, macOS, Termux, iSH, Android, and package notes.
+          - [Architecture](ARCHITECTURE.md) — modules, engines, process boundaries, and security model.
+          - [Development](DEVELOPMENT.md) — local setup, tests, contribution workflow, and release checks.
+          - [Releases](RELEASES.md) — versioning, artifacts, checksums, SBOM, and provenance.
+          - [Trusted Publishing](TRUSTED-PUBLISHING.md) — npm OIDC configuration for maintainers.
+          - [FAQ](FAQ.md) — concise answers to recurring questions.
+          - [Migration to 1.7.0](MIGRATION-1.7.0.md) — repository and automation changes.
+
+          ## Canonical project locations
+
+          - Repository: `https://github.com/andhikamarcella/YTConv`
+          - Issues: `https://github.com/andhikamarcella/YTConv/issues`
+          - npm package: `ytconv`
+          - Release tag format: `ytconv-v<version>`
+
+          Links using the retired `andhikamarcella/youtubetomp3` slug should be replaced with the canonical repository above.
+          DOC
+
+          cat > cli/docs/INSTALLATION.md <<'DOC'
+          # Installation
+
+          ## Requirements
+
+          The Node.js distribution requires Node.js 22.14 or newer and npm 10 or newer. Downloads and conversions may also require FFmpeg, yt-dlp, or gallery-dl. YTConv can diagnose missing engines with `ytconv --diagnose`.
+
+          ## npm installation
+
+          ```bash
+          npm install -g ytconv@latest
+          ytconv --version
+          ytconv --diagnose
+          ```
+
+          To install the exact 1.7.0 release:
+
+          ```bash
+          npm install -g ytconv@1.7.0
+          ```
+
+          ## Upgrade
+
+          ```bash
+          npm install -g ytconv@latest
+          ytconv --version
+          ```
+
+          ## Local development installation
+
+          ```bash
+          git clone https://github.com/andhikamarcella/YTConv.git
+          cd YTConv/cli
+          npm ci
+          npm link
+          ytconv --help
+          ```
+
+          ## Verification
+
+          After installation, run:
+
+          ```bash
+          ytconv --version
+          ytconv --diagnose
+          npm view ytconv@latest version
+          ```
+
+          For release files, verify `SHA256SUMS.txt` and the GitHub/npm provenance before executing an installer.
+
+          ## Uninstall
+
+          ```bash
+          npm uninstall -g ytconv
+          ```
+
+          Native packages should be removed with the package manager used to install them.
+          DOC
+
+          cat > cli/docs/COMMANDS.md <<'DOC'
+          # Command Reference
+
+          Use `ytconv --help` as the source of truth for commands available in the installed version.
+
+          ## Essential commands
+
+          ```bash
+          ytconv --version
+          ytconv --help
+          ytconv --diagnose
+          ytconv quickstart
+          ```
+
+          ## Download examples
+
+          ```bash
+          ytconv "https://example.com/media"
+          ytconv "https://example.com/media" --format mp3
+          ytconv "https://example.com/media" --format mp4
+          ```
+
+          Availability of formats depends on the source, installed engines, and the user's authorization. YTConv does not bypass access controls.
+
+          ## Authentication recovery
+
+          The authentication launcher exposes browser-session options such as `--cookies-browser` where supported:
+
+          ```bash
+          ytconv --help
+          ```
+
+          Prefer temporary browser exports and remove them after use. Never paste session cookies into issues or logs.
+
+          ## Diagnostics and automation
+
+          ```bash
+          ytconv --diagnose
+          ytconv --version
+          ```
+
+          Use non-interactive options documented by `--help` in scripts. Treat non-zero exit codes as failure and retain sanitized logs for troubleshooting.
+          DOC
+
+          cat > cli/docs/CONFIGURATION.md <<'DOC'
+          # Configuration
+
+          YTConv combines command-line options, profiles, and platform-specific configuration/cache directories. Command-line options have the highest precedence.
+
+          ## Principles
+
+          - Keep output directories explicit in automation.
+          - Store no passwords or long-lived tokens in project files.
+          - Prefer browser-login recovery over copying raw cookies manually.
+          - Keep subtitles disabled unless explicitly requested.
+          - Use public access first; authenticate only when the source requires it and you are authorized.
+
+          ## Profiles
+
+          Profiles can represent repeatable output and format choices. Keep profiles portable and avoid machine-specific absolute paths when sharing them.
+
+          ## Environment safety
+
+          YTConv reads only allowlisted configuration values and strips sensitive variables before starting child processes. Do not rely on undocumented environment variables; use options shown by `ytconv --help`.
+
+          ## Reset strategy
+
+          Before deleting configuration, preserve any output and user-created profile files. Run `ytconv --diagnose` after resetting to confirm dependencies and writable directories.
+          DOC
+
+          cat > cli/docs/AUTHENTICATION.md <<'DOC'
+          # Authentication and Browser Sessions
+
+          Some authorized downloads require an authenticated browser session. YTConv supports browser-login recovery without storing account passwords.
+
+          ## Safe workflow
+
+          1. Sign in through the official website in a supported browser.
+          2. Run the relevant YTConv browser-session option shown by `ytconv --help`.
+          3. Confirm the target URL and requested output.
+          4. Remove temporary cookie exports after the command finishes.
+
+          ## Security rules
+
+          - Never commit cookies, tokens, or browser profiles.
+          - Never paste cookies into GitHub issues, chat, or public logs.
+          - Use a dedicated browser profile where practical.
+          - Revoke sessions from the provider when a device is lost or a cookie may have leaked.
+          - YTConv does not bypass provider authorization or account restrictions.
+
+          ## Failure recovery
+
+          If authentication fails, update the relevant engine, sign in again through the official website, verify the browser profile, and run `ytconv --diagnose`. See [Troubleshooting](TROUBLESHOOTING.md) for additional steps.
+          DOC
+
+          cat > cli/docs/TROUBLESHOOTING.md <<'DOC'
+          # Troubleshooting
+
+          Start every investigation with:
+
+          ```bash
+          ytconv --version
+          ytconv --diagnose
+          node --version
+          npm --version
+          ```
+
+          ## Command not found
+
+          Reinstall globally and inspect npm's global binary location:
+
+          ```bash
+          npm install -g ytconv@latest
+          npm prefix -g
+          ```
+
+          Ensure the corresponding binary directory is on `PATH`, then open a new terminal.
+
+          ## FFmpeg, yt-dlp, or gallery-dl missing
+
+          Install the missing engine with the operating system's trusted package manager, then run `ytconv --diagnose` again. Avoid downloading unsigned executables from unknown mirrors.
+
+          ## Format unavailable
+
+          The source may not provide the requested format. Inspect available formats using the underlying engine when appropriate, try a less restrictive output choice, and update YTConv and its engines.
+
+          ## Authentication failed
+
+          Sign in through the official website, retry browser-login recovery, and avoid stale manually exported cookies. Private or restricted content still requires authorization.
+
+          ## Permission denied or EACCES
+
+          Do not routinely install npm packages with `sudo`. Use a user-owned Node.js installation or correct npm's global prefix permissions.
+
+          ## Network failures
+
+          Check DNS, proxy settings, firewall rules, system time, and access to npm/GitHub/provider endpoints. YTConv has no telemetry and should contact only the requested provider, npm metadata, and allowlisted engine endpoints.
+
+          ## Bug reports
+
+          Include the YTConv version, operating system, architecture, sanitized command, sanitized diagnostic output, and reproducible steps. Remove URLs containing private identifiers and never include secrets.
+          DOC
+
+          cat > cli/docs/PLATFORMS.md <<'DOC'
+          # Platform Support
+
+          ## Windows
+
+          Supported outputs include npm, portable archives, and Windows installers where published. Use PowerShell or Command Prompt examples appropriate to the installed package. Confirm that FFmpeg and downloader engines are visible on `PATH`.
+
+          ## Linux
+
+          YTConv targets common Debian/Ubuntu, Fedora/RHEL, openSUSE, Arch/Manjaro, Alpine, and Nix environments through native or portable packaging. Package availability can differ by distribution release.
+
+          ## macOS
+
+          The npm package is the primary distribution. Install Node.js and media engines through trusted sources, then verify with `ytconv --diagnose`.
+
+          ## Termux and Android
+
+          Use the documented Termux/native artifacts for their intended architecture. Android debug or unsigned APK artifacts are development outputs unless a release explicitly states otherwise.
+
+          ## iSH on iOS/iPadOS
+
+          iSH uses the dedicated Python-compatible implementation and installer files included in the package. Feature and engine availability may be more limited than desktop platforms.
+
+          ## Containers and CI
+
+          Pin the YTConv version, use a non-root user where possible, mount only required output directories, and verify release provenance before installation.
+          DOC
+
+          cat > cli/docs/ARCHITECTURE.md <<'DOC'
+          # Architecture
+
+          YTConv separates command parsing, provider/engine orchestration, process execution, authentication recovery, progress rendering, configuration, and packaging.
+
+          ## Security boundaries
+
+          - Child processes are launched with executable-and-argument arrays and `shell: false`.
+          - Sensitive environment variables are removed before child processes start.
+          - Network access is limited to user-requested provider URLs, npm metadata, and allowlisted HTTPS engine endpoints.
+          - Cookie exports are temporary and should be private to the current user.
+          - Telemetry is disabled.
+
+          ## Engines
+
+          yt-dlp, gallery-dl, and FFmpeg provide provider extraction and media processing. YTConv validates their presence and coordinates them but does not replace provider authorization.
+
+          ## Packaging
+
+          The repository contains npm, native Linux, Alpine, Nix, Snap, Flatpak, Termux, Windows, portable, Android, and iSH packaging paths. Release workflows must keep all version identities synchronized.
+          DOC
+
+          cat > cli/docs/DEVELOPMENT.md <<'DOC'
+          # Development
+
+          ## Setup
+
+          ```bash
+          git clone https://github.com/andhikamarcella/YTConv.git
+          cd YTConv/cli
+          npm ci
+          ```
+
+          ## Required checks
+
+          ```bash
+          npm run docs:check
+          npm run check
+          npm run typecheck
+          npm test
+          npm run check:ish
+          npm run security
+          npm run prepack
+          ```
+
+          `npm ci` must succeed without modifying `package-lock.json`. New behavior should include tests, and documentation links must remain local or canonical.
+
+          ## Pull requests
+
+          Keep changes focused, explain user impact, include validation output, and avoid committing generated binaries, credentials, cookie files, or private URLs.
+
+          ## Version changes
+
+          Update all package and platform identities together. The CI matrices verify npm, iSH, Android, Windows, Linux, Alpine, Nix, Snap, Flatpak, Termux, and portable artifacts.
+          DOC
+
+          cat > cli/docs/RELEASES.md <<'DOC'
+          # Release Process
+
+          YTConv uses semantic versioning and release tags in the form `ytconv-v<version>`.
+
+          ## Release gate
+
+          1. Synchronize every version identity.
+          2. Run the full prepack and platform CI suites.
+          3. Build exact artifacts.
+          4. Publish npm through Trusted Publishing with provenance.
+          5. Verify the npm version and `latest` tag.
+          6. Generate SHA-256 manifests and an SBOM.
+          7. Create the matching GitHub Release.
+
+          ## Artifact verification
+
+          Verify `SHA256SUMS.txt` before execution and prefer artifacts carrying GitHub/npm provenance. A checksum only proves byte equality with the manifest; provenance additionally links the artifact to its source workflow.
+
+          ## Roll-forward policy
+
+          npm versions are immutable. A broken published version must be corrected with a new patch release rather than overwritten.
+          DOC
+
+          cat > cli/docs/TRUSTED-PUBLISHING.md <<'DOC'
+          # npm Trusted Publishing
+
+          YTConv 1.7.0 uses GitHub Actions OpenID Connect instead of a long-lived npm publication token.
+
+          ## npm connection values
+
+          - Publisher: `GitHub Actions`
+          - Organization or user: `andhikamarcella`
+          - Repository: `YTConv`
+          - Workflow filename: `publish-ytconv.yml`
+          - Environment name: `npm`
+          - Allowed action: `npm publish`
+
+          The values are case-sensitive and the workflow must exist at `.github/workflows/publish-ytconv.yml`.
+
+          ## Workflow requirements
+
+          The job uses `id-token: write`, the `npm` GitHub environment, a recent npm CLI, and `npm publish --provenance`. It deliberately does not read `NPM_TOKEN`.
+
+          ## Safety
+
+          Publication is manual and requires confirmation. The workflow verifies the package version and full prepack suite before publishing, then checks npm `latest` and creates the corresponding GitHub Release.
+          DOC
+
+          cat > cli/docs/FAQ.md <<'DOC'
+          # Frequently Asked Questions
+
+          ## Is YTConv a website?
+
+          This package is the YTConv command-line application. The canonical source repository is `andhikamarcella/YTConv`.
+
+          ## Does it include FFmpeg and downloader engines?
+
+          Availability depends on the installation format. Run `ytconv --diagnose` to see what the current system can use.
+
+          ## Why is a requested format unavailable?
+
+          The provider may not expose it, the relevant engine may be outdated, or FFmpeg may be missing. See [Troubleshooting](TROUBLESHOOTING.md).
+
+          ## Can it access private content?
+
+          Only when the user is authorized and supplies a valid supported browser session. YTConv does not bypass access controls.
+
+          ## Are subtitles downloaded automatically?
+
+          Subtitles remain disabled by default unless explicitly requested.
+
+          ## Is telemetry enabled?
+
+          No. YTConv declares telemetry disabled.
+
+          ## How do I verify an official release?
+
+          Compare SHA-256 checksums and inspect npm/GitHub provenance as described in [Releases](RELEASES.md).
+          DOC
+
+          cat > cli/docs/MIGRATION-1.7.0.md <<'DOC'
+          # Migrating to YTConv 1.7.0
+
+          ## Repository rename
+
+          The canonical repository is now:
+
+          ```text
+          https://github.com/andhikamarcella/YTConv
+          ```
+
+          Existing GitHub redirects may continue to work, but scripts, badges, package metadata, clone commands, issue links, workflow references, and trusted-publisher settings should use the new URL.
+
+          Update an existing Git remote with:
+
+          ```bash
+          git remote set-url origin https://github.com/andhikamarcella/YTConv.git
+          git remote -v
+          ```
+
+          ## Upgrade
+
+          ```bash
+          npm install -g ytconv@1.7.0
+          ytconv --version
+          ytconv --diagnose
+          ```
+
+          ## Maintainer automation
+
+          npm publishing now uses OIDC Trusted Publishing. Configure the npm trusted publisher with repository `YTConv`, workflow `publish-ytconv.yml`, and environment `npm`. A long-lived `NPM_TOKEN` is no longer required by the release workflow.
+
+          ## Compatibility
+
+          Version 1.7.0 intentionally preserves the existing command names and public-first authentication policy from 1.6.8.
+          DOC
+
+          if ! grep -q '## Documentation hub' cli/README.md; then
+            cat >> cli/README.md <<'DOC'
+
+          ## Documentation hub
+
+          YTConv 1.7.0 includes a dedicated documentation hub:
+
+          - [Documentation index](docs/README.md)
+          - [Installation](docs/INSTALLATION.md)
+          - [Commands](docs/COMMANDS.md)
+          - [Configuration](docs/CONFIGURATION.md)
+          - [Authentication](docs/AUTHENTICATION.md)
+          - [Troubleshooting](docs/TROUBLESHOOTING.md)
+          - [Platform support](docs/PLATFORMS.md)
+          - [Architecture](docs/ARCHITECTURE.md)
+          - [Development](docs/DEVELOPMENT.md)
+          - [Release process](docs/RELEASES.md)
+          - [npm Trusted Publishing](docs/TRUSTED-PUBLISHING.md)
+          - [FAQ](docs/FAQ.md)
+          - [Migration to 1.7.0](docs/MIGRATION-1.7.0.md)
+
+          Canonical repository: <https://github.com/andhikamarcella/YTConv>
+          DOC
+          fi
+
+      - name: Install canonical Trusted Publishing workflow
+        run: |
+          cat > .github/workflows/publish-ytconv.yml <<'YAML'
+          name: Publish YTConv
+
+          on:
+            workflow_dispatch:
+              inputs:
+                confirm:
+                  description: Confirm irreversible publication of ytconv@1.7.0
+                  required: true
+                  default: false
+                  type: boolean
+
+          permissions:
+            contents: write
+            id-token: write
+
+          concurrency:
+            group: publish-ytconv-1.7.0
+            cancel-in-progress: false
+
+          jobs:
+            publish:
+              if: ${{ inputs.confirm == true && github.ref_name == 'release/ytconv-1.7.0' }}
+              runs-on: ubuntu-latest
+              environment: npm
+              steps:
+                - name: Checkout release source
+                  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+                - name: Set up Node.js
+                  uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+                  with:
+                    node-version: 24
+                    registry-url: https://registry.npmjs.org
+                    cache: npm
+                    cache-dependency-path: cli/package-lock.json
+
+                - name: Use the pinned npm CLI
+                  run: npm install --global npm@11.18.0
+
+                - name: Validate exact release source
+                  working-directory: cli
+                  run: |
+                    npm ci --ignore-scripts
+                    npm run prepack
+                    test "$(node -p "require('./package.json').name")" = "ytconv"
+                    test "$(node -p "require('./package.json').version")" = "1.7.0"
+                    test "$(node ./bin/ytconv.js --version)" = "1.7.0"
+                    test "$(cat ish/VERSION)" = "1.7.0"
+
+                - name: Pack exact npm candidate
+                  id: pack
+                  working-directory: cli
+                  run: |
+                    npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
+                    TARBALL=$(node -e "const p=require(process.env.RUNNER_TEMP + '/ytconv-pack.json')[0];process.stdout.write(require('path').join(process.env.RUNNER_TEMP,p.filename))")
+                    test -s "$TARBALL"
+                    echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+                    echo "sha256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+                - name: Publish through npm Trusted Publishing
+                  env:
+                    TARBALL: ${{ steps.pack.outputs.tarball }}
+                  run: |
+                    if npm view ytconv@1.7.0 version --prefer-online >/dev/null 2>&1; then
+                      echo "ytconv@1.7.0 already exists; publish skipped."
+                    else
+                      npm publish "$TARBALL" --access public --tag latest --provenance
+                    fi
+
+                - name: Verify npm registry publication
+                  env:
+                    EXPECTED_SHA: ${{ steps.pack.outputs.sha256 }}
+                  run: |
+                    PUBLISHED=""
+                    for attempt in $(seq 1 30); do
+                      PUBLISHED=$(npm view ytconv@1.7.0 version --prefer-online 2>/dev/null || true)
+                      [ "$PUBLISHED" = "1.7.0" ] && break
+                      sleep 4
+                    done
+                    test "$PUBLISHED" = "1.7.0"
+                    test "$(npm view ytconv@latest version --prefer-online)" = "1.7.0"
+                    URL=$(npm view ytconv@1.7.0 dist.tarball --prefer-online)
+                    curl --fail --silent --show-error --location "$URL" --output "$RUNNER_TEMP/registry.tgz"
+                    test "$(sha256sum "$RUNNER_TEMP/registry.tgz" | cut -d ' ' -f 1)" = "$EXPECTED_SHA"
+
+                - name: Create or update GitHub Release
+                  env:
+                    GH_TOKEN: ${{ github.token }}
+                    TARBALL: ${{ steps.pack.outputs.tarball }}
+                  run: |
+                    TAG="ytconv-v1.7.0"
+                    printf '%s  %s\n' "${{ steps.pack.outputs.sha256 }}" "$(basename "$TARBALL")" > SHA256SUMS.txt
+                    if gh release view "$TAG" >/dev/null 2>&1; then
+                      gh release upload "$TAG" "$TARBALL" SHA256SUMS.txt --clobber
+                    else
+                      gh release create "$TAG" "$TARBALL" SHA256SUMS.txt \
+                        --target "$GITHUB_SHA" \
+                        --title "YTConv 1.7.0" \
+                        --generate-notes
+                    fi
+          YAML
+
+      - name: Remove one-time preparation files
+        run: |
+          rm -f .github/workflows/prepare-ytconv-1.7.0.yml
+          rm -f .github/release-markers/prepare-ytconv-1.7.0
+
+      - name: Commit generated release source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: prepare YTConv 1.7.0" || true
+          git push origin HEAD:release/ytconv-1.7.0
+
+      - name: Run full package validation
+        working-directory: cli
+        run: |
+          npm ci --ignore-scripts
+          npm run prepack
+
+      - name: Report successful preparation
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "YTConv 1.7.0 preparation: success" \
+            --body "The canonical repository migration, version synchronization, expanded documentation, documentation validator, Trusted Publishing workflow, and full npm prepack validation completed successfully on branch \`release/ytconv-1.7.0\`. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Report failed preparation
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "YTConv 1.7.0 preparation: failure" \
+            --body "The YTConv 1.7.0 preparation workflow failed. Inspect the run before merging or publishing: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
