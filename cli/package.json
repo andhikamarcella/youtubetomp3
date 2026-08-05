@@ -127,25 +127,25 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.6-socket-hardening/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.6-zero-deps-final/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.6-socket-hardening/cli/docs",
-    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/NODEJS.md",
-    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/PACKAGES.md",
-    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/SECURITY.md"
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.6-zero-deps-final/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/NODEJS.md",
+    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/SECURITY.md"
   },
   "releaseDate": "2026-08-05",
-  "releaseNotes": "YTConv 1.6.6 removes every production npm dependency, replaces React/Ink/Figlet/ws/which with audited Node.js built-ins, adds Socket-focused package-content gates, and narrows documented network, child-process, filesystem, URL, and environment capabilities without weakening downloads.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.6 removes every production npm dependency, replaces React, Ink, Figlet, ws, and which with audited Node.js built-ins, preserves Windows EXE, Android packaging, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Termux, iSH and Alpine update paths, and adds Socket-focused package-content gates.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
     "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.6.tgz",
