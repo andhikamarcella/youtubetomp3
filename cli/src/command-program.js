@@ -6,7 +6,6 @@ function buildProgram(version) {
     .name('ytconv')
     .description('Download and convert media from YouTube and supported social platforms.')
     .version(version, '-v, --version', 'print the installed YTConv version')
-    .option('-h, --help', 'show complete command help')
     .option('--audio', 'download or convert to audio')
     .option('--video', 'download or convert to video')
     .option('--image', 'download images or social-media galleries')
@@ -34,5 +33,6 @@ Privacy:
 }
 
 export function commanderHelpText(version) {
-  return buildProgram(version).helpInformation().trimEnd();
+  const program = buildProgram(version);
+  return `${program.helpInformation().trimEnd()}\n\nExamples:\n  ytconv\n  ytconv "https://youtu.be/..." --video\n  ytconv "https://www.instagram.com/reel/..." --platform instagram\n  ytconv login instagram\n\nPrivacy:\n  Public access is attempted first. Browser login is requested only when required.`;
 }
