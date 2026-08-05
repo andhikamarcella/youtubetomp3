@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH and Alpine 1.6.6 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.6.7 behavior checks."""
 
 import hashlib
 import importlib.util
@@ -74,21 +74,29 @@ def options(output, **overrides):
 
 
 class ReleaseIdentityTests(unittest.TestCase):
-    def test_versions_and_branch_are_synchronized(self):
-        self.assertEqual(CORE.VERSION, "1.6.6")
-        self.assertEqual(WRAPPER.VERSION, "1.6.6")
-        self.assertIn("release/ytconv-1.6.6-socket-hardening", CORE.RAW_BASE)
-        self.assertIn("release/ytconv-1.6.6-socket-hardening", WRAPPER.RAW_BASE)
-        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.6")
+    def test_wrapper_version_branch_and_remote_version_are_synchronized(self):
+        self.assertEqual(WRAPPER.VERSION, "1.6.7")
+        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.6.7-identity-ui")
+        self.assertIn("release/ytconv-1.6.7-identity-ui", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.7")
+
+    def test_wrapper_injects_release_identity_into_the_core_runtime(self):
+        source = WRAPPER_PATH.read_text(encoding="utf-8")
+        self.assertIn('namespace["VERSION"] = VERSION', source)
+        self.assertIn('namespace["RAW_BASE"] = RAW_BASE', source)
+        self.assertIn('namespace["REMOTE_VERSION_URL"] = RAW_BASE + "/ish/VERSION"', source)
+        self.assertIn('namespace["INSTALLER_URL"] = RAW_BASE + "/scripts/install-ish.sh"', source)
 
     def test_wrapper_auto_routing_is_not_duplicated(self):
         music = WRAPPER.apply_auto_routing(["https://music.youtube.com/watch?v=music"])
         video = WRAPPER.apply_auto_routing(["https://youtu.be/video"])
+        social = WRAPPER.apply_auto_routing(["https://www.instagram.com/reel/example"])
         explicit = WRAPPER.apply_auto_routing(["--audio", "https://youtu.be/video"])
         self.assertEqual(music.count("--audio"), 1)
         self.assertEqual(music[music.index("--audio-format") + 1], "mp3")
         self.assertEqual(video.count("--video"), 1)
         self.assertEqual(video[video.index("--video-format") + 1], "mp4")
+        self.assertEqual(social, ["https://www.instagram.com/reel/example"])
         self.assertEqual(explicit.count("--audio"), 1)
         self.assertNotIn("--video", explicit)
 
@@ -98,9 +106,9 @@ class ReleaseIdentityTests(unittest.TestCase):
         for row in rows:
             digest, name = row.split(None, 1)
             expected[name.strip()] = digest
-        for path in (WRAPPER_PATH, CORE_PATH):
-            actual = hashlib.sha256(path.read_bytes()).hexdigest()
-            self.assertEqual(expected[path.name], actual)
+        for file_path in (WRAPPER_PATH, CORE_PATH):
+            actual = hashlib.sha256(file_path.read_bytes()).hexdigest()
+            self.assertEqual(expected[file_path.name], actual)
 
     def test_repair_does_not_require_nodejs_and_scrubs_subprocesses(self):
         repair_block = inspect.getsource(CORE.repair)
@@ -108,7 +116,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertIn("env=child_environment()", repair_block)
 
 
-class RoutingTests(unittest.TestCase):
+class RoutingAndPolicyTests(unittest.TestCase):
     def test_auto_routing(self):
         self.assertEqual(
             CORE.effective_mode("https://music.youtube.com/watch?v=music", "auto"),
@@ -143,6 +151,13 @@ class RoutingTests(unittest.TestCase):
             CORE.video_container_args("mp4"),
             ["--merge-output-format", "mp4", "--recode-video", "mp4"],
         )
+
+    def test_subtitles_are_off_by_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            args = CORE.common_args(options(directory), Path(directory), None)
+        self.assertNotIn("--write-subs", args)
+        self.assertNotIn("--write-auto-subs", args)
+        self.assertNotIn("--sub-langs", args)
 
     def test_retry_sleep_contains_general_fragment_and_file_access_types(self):
         with tempfile.TemporaryDirectory() as directory:
