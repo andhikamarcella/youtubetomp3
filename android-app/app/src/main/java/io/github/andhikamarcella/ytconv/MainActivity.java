@@ -1,6 +1,7 @@
 package io.github.andhikamarcella.ytconv;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -9,6 +10,9 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.view.View;
+import android.webkit.CookieManager;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -30,8 +34,11 @@ import com.yausername.youtubedl_android.YoutubeDLException;
 import com.yausername.youtubedl_android.YoutubeDLRequest;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -43,10 +50,11 @@ import kotlin.jvm.functions.Function3;
 
 public final class MainActivity extends AppCompatActivity {
     private static final String PROCESS_ID = "ytconv-android-download";
-    private static final int STORAGE_REQUEST = 1065;
+    private static final int STORAGE_REQUEST = 1067;
     private static final Set<String> MEDIA_EXTENSIONS = new HashSet<>(Arrays.asList(
             "mp3", "m4a", "aac", "opus", "ogg", "flac", "wav",
-            "mp4", "mkv", "webm", "mov", "m4v"
+            "mp4", "mkv", "webm", "mov", "m4v",
+            "jpg", "jpeg", "png", "webp", "gif"
     ));
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -54,14 +62,16 @@ public final class MainActivity extends AppCompatActivity {
     private EditText urlInput;
     private Spinner modeSpinner;
     private Button downloadButton;
+    private Button loginButton;
     private Button stopButton;
     private ProgressBar progressBar;
     private TextView statusView;
+    private File browserCookieFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setTitle("YTConv 1.6.6");
+        setTitle("YTConv " + BuildConfig.VERSION_NAME);
         setContentView(buildContentView());
         initializeEngines();
         applySharedUrl(getIntent());
@@ -81,19 +91,25 @@ public final class MainActivity extends AppCompatActivity {
         content.setPadding(padding, padding, padding, padding);
 
         TextView heading = new TextView(this);
-        heading.setText("YTConv – MP4 & MP3 Downloader");
-        heading.setTextSize(22);
+        heading.setText("YTConv " + BuildConfig.VERSION_NAME);
+        heading.setTextSize(28);
         heading.setTextColor(0xFF111111);
         content.addView(heading, matchWrap());
 
+        TextView tagline = new TextView(this);
+        tagline.setText("Social media downloader · private browser login · local conversion");
+        tagline.setTextSize(16);
+        tagline.setPadding(0, 0, 0, padding / 2);
+        content.addView(tagline, matchWrap());
+
         TextView help = new TextView(this);
-        help.setText("Paste a public media URL. AUTO uses MP3 for music.youtube.com and MP4 for regular YouTube. No cookies.txt is used by default.");
+        help.setText("Paste a supported social-media URL. Public access is attempted first. Use Browser login only when the provider requires an authenticated session. Subtitles stay off by default.");
         help.setTextSize(15);
-        help.setPadding(0, padding / 2, 0, padding);
+        help.setPadding(0, 0, 0, padding);
         content.addView(help, matchWrap());
 
         urlInput = new EditText(this);
-        urlInput.setHint("https://www.youtube.com/watch?v=...");
+        urlInput.setHint("https://youtube.com/…  https://instagram.com/…");
         urlInput.setSingleLine(false);
         urlInput.setMinLines(2);
         content.addView(urlInput, matchWrap());
@@ -102,7 +118,7 @@ public final class MainActivity extends AppCompatActivity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"AUTO", "MP4 video", "MP3 audio"}
+                new String[]{"AUTO best available", "MP4 video", "MP3 audio", "Images / gallery"}
         );
         modeSpinner.setAdapter(adapter);
         content.addView(modeSpinner, matchWrap());
@@ -115,6 +131,11 @@ public final class MainActivity extends AppCompatActivity {
         downloadButton.setText("Download");
         downloadButton.setOnClickListener(view -> startDownload());
         actions.addView(downloadButton, weightedWrap());
+
+        loginButton = new Button(this);
+        loginButton.setText("Browser login");
+        loginButton.setOnClickListener(view -> openBrowserLogin());
+        actions.addView(loginButton, weightedWrap());
 
         stopButton = new Button(this);
         stopButton.setText("Stop");
@@ -130,8 +151,21 @@ public final class MainActivity extends AppCompatActivity {
         statusView = new TextView(this);
         statusView.setText("Initializing bundled yt-dlp and FFmpeg...");
         statusView.setTextIsSelectable(true);
-        statusView.setPadding(0, padding / 2, 0, 0);
+        statusView.setPadding(0, padding / 2, 0, padding);
         content.addView(statusView, matchWrap());
+
+        TextView providers = new TextView(this);
+        providers.setText("AUTO supports yt-dlp providers including YouTube, Instagram, Facebook, TikTok, X, Reddit, Pinterest, Threads, Twitch, SoundCloud, Vimeo, Bilibili and more.");
+        providers.setTextSize(13);
+        providers.setTextColor(0xFF555555);
+        content.addView(providers, matchWrap());
+
+        TextView footer = new TextView(this);
+        footer.setText("© 2026 YTConv Project · Android " + BuildConfig.VERSION_NAME);
+        footer.setTextSize(13);
+        footer.setTextColor(0xFF666666);
+        footer.setPadding(0, padding, 0, 0);
+        content.addView(footer, matchWrap());
 
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
@@ -150,13 +184,20 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     private void initializeEngines() {
+        progressBar.setIndeterminate(true);
         executor.submit(() -> {
             try {
                 YoutubeDL.getInstance().init(getApplicationContext());
                 FFmpeg.getInstance().init(getApplicationContext());
-                runOnUiThread(() -> statusView.setText("Ready. Downloads are saved to Download/YTConv."));
+                runOnUiThread(() -> {
+                    progressBar.setIndeterminate(false);
+                    statusView.setText("Ready. Downloads are saved to Download/YTConv.");
+                });
             } catch (YoutubeDLException error) {
-                runOnUiThread(() -> showError("Engine initialization failed: " + safeMessage(error)));
+                runOnUiThread(() -> {
+                    progressBar.setIndeterminate(false);
+                    showError("Engine initialization failed: " + safeMessage(error));
+                });
             }
         });
     }
@@ -165,6 +206,100 @@ public final class MainActivity extends AppCompatActivity {
         if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return;
         CharSequence text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
         if (text != null) urlInput.setText(text.toString().trim());
+    }
+
+    private void openBrowserLogin() {
+        String mediaUrl = urlInput.getText().toString().trim();
+        if (!validHttpUrl(mediaUrl)) {
+            urlInput.setError("Enter the media URL before opening browser login.");
+            return;
+        }
+
+        String loginUrl = loginUrlFor(mediaUrl);
+        WebView webView = new WebView(this);
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        webView.setWebViewClient(new WebViewClient());
+        CookieManager manager = CookieManager.getInstance();
+        manager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            manager.setAcceptThirdPartyCookies(webView, true);
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Official browser login")
+                .setMessage("Finish login, OTP, or 2FA in this local browser window. Then tap Use session.")
+                .setView(webView)
+                .setPositiveButton("Use session", null)
+                .setNegativeButton("Cancel", (value, which) -> webView.destroy())
+                .create();
+
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            try {
+                browserCookieFile = exportBrowserCookies(mediaUrl, loginUrl, webView.getUrl());
+                statusView.setText("Browser session saved temporarily for this app. Start the download again.");
+                Toast.makeText(this, "Authenticated browser session ready", Toast.LENGTH_LONG).show();
+                dialog.dismiss();
+                webView.destroy();
+            } catch (Exception error) {
+                showError("Could not save browser session: " + safeMessage(error));
+            }
+        }));
+
+        dialog.show();
+        webView.loadUrl(loginUrl);
+    }
+
+    private File exportBrowserCookies(String... urls) throws IOException {
+        CookieManager manager = CookieManager.getInstance();
+        manager.flush();
+        File target = new File(getCacheDir(), "ytconv-browser-cookies.txt");
+        long expires = (System.currentTimeMillis() / 1000L) + (30L * 24L * 60L * 60L);
+        Set<String> rows = new LinkedHashSet<>();
+        rows.add("# Netscape HTTP Cookie File");
+        rows.add("# Generated locally by YTConv Android. Deleted when the app closes.");
+
+        for (String value : urls) {
+            if (!validHttpUrl(value)) continue;
+            Uri uri = Uri.parse(value);
+            String host = uri.getHost();
+            String raw = manager.getCookie(value);
+            if (TextUtils.isEmpty(host) || TextUtils.isEmpty(raw)) continue;
+            boolean secure = "https".equalsIgnoreCase(uri.getScheme());
+            for (String item : raw.split(";")) {
+                String cookie = item.trim();
+                int separator = cookie.indexOf('=');
+                if (separator <= 0) continue;
+                String name = cookie.substring(0, separator).trim();
+                String cookieValue = cookie.substring(separator + 1).trim();
+                if (name.isEmpty()) continue;
+                rows.add("." + host + "\tTRUE\t/\t" + (secure ? "TRUE" : "FALSE")
+                        + "\t" + expires + "\t" + name + "\t" + cookieValue);
+            }
+        }
+
+        if (rows.size() <= 2) throw new IOException("No login cookies were available yet.");
+        try (FileWriter writer = new FileWriter(target, false)) {
+            for (String row : rows) writer.write(row + "\n");
+        }
+        target.setReadable(true, true);
+        target.setWritable(true, true);
+        return target;
+    }
+
+    private String loginUrlFor(String mediaUrl) {
+        String host = Uri.parse(mediaUrl).getHost();
+        String value = host == null ? "" : host.toLowerCase(Locale.ROOT);
+        if (value.contains("instagram.com")) return "https://www.instagram.com/accounts/login/";
+        if (value.contains("facebook.com") || value.equals("fb.watch")) return "https://www.facebook.com/login/";
+        if (value.contains("tiktok.com")) return "https://www.tiktok.com/login";
+        if (value.equals("x.com") || value.contains("twitter.com")) return "https://x.com/i/flow/login";
+        if (value.contains("reddit.com") || value.equals("redd.it")) return "https://www.reddit.com/login/";
+        if (value.contains("pinterest.com") || value.equals("pin.it")) return "https://www.pinterest.com/login/";
+        if (value.contains("threads.net") || value.contains("threads.com")) return "https://www.threads.net/login";
+        if (value.contains("linkedin.com")) return "https://www.linkedin.com/login";
+        if (value.contains("bilibili.com")) return "https://passport.bilibili.com/login";
+        return mediaUrl;
     }
 
     private void startDownload() {
@@ -203,7 +338,9 @@ public final class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 progressBar.setProgress(Math.max(0, Math.min(100, Math.round(progress))));
                 String eta = etaSeconds != null && etaSeconds >= 0 ? " · ETA " + etaSeconds + "s" : "";
-                statusView.setText((line == null || line.isBlank() ? "Downloading..." : line) + eta);
+                String phase = line != null && line.matches("(?i).*(merger|extractaudio|ffmpeg|remux|convert|thumbnail).*")
+                        ? "Converting · " : "Downloading · ";
+                statusView.setText(phase + (line == null || line.isBlank() ? "please wait" : line) + eta);
             });
             return Unit.INSTANCE;
         };
@@ -213,7 +350,7 @@ public final class MainActivity extends AppCompatActivity {
                 YoutubeDL.getInstance().execute(request, PROCESS_ID, callback);
                 File result = newestMedia(output, startedAt, mode);
                 if (result == null) {
-                    throw new IllegalStateException("The engine exited without creating a verified " + mode + " file.");
+                    throw new IllegalStateException("The engine exited without creating a verified media file.");
                 }
                 runOnUiThread(() -> {
                     setRunning(false, "Completed: " + result.getAbsolutePath());
@@ -223,7 +360,11 @@ public final class MainActivity extends AppCompatActivity {
             } catch (Exception error) {
                 runOnUiThread(() -> {
                     setRunning(false, "Failed: " + safeMessage(error));
-                    showError(safeMessage(error));
+                    String message = safeMessage(error);
+                    if (message.matches("(?i).*(login|cookie|authentication|private|sign in).*")) {
+                        message += " Use Browser login, finish the official sign-in, then retry.";
+                    }
+                    showError(message);
                 });
             } finally {
                 downloading.set(false);
@@ -238,12 +379,16 @@ public final class MainActivity extends AppCompatActivity {
         request.addOption("--no-remote-components");
         request.addOption("--newline");
         request.addOption("--no-playlist");
+        request.addOption("--no-write-subs");
         request.addOption("--socket-timeout", "30");
         request.addOption("--retries", "10");
         request.addOption("--fragment-retries", "10");
         request.addOption("--output", new File(output, "%(title).180B [%(id)s].%(ext)s").getAbsolutePath());
         request.addOption("--embed-metadata");
         request.addOption("--embed-chapters");
+        if (browserCookieFile != null && browserCookieFile.isFile() && browserCookieFile.length() > 0) {
+            request.addOption("--cookies", browserCookieFile.getAbsolutePath());
+        }
 
         if ("mp3".equals(mode)) {
             request.addOption("-f", "ba/b");
@@ -253,14 +398,12 @@ public final class MainActivity extends AppCompatActivity {
             request.addOption("--write-thumbnail");
             request.addOption("--convert-thumbnails", "jpg");
             request.addOption("--embed-thumbnail");
+        } else if ("image".equals(mode)) {
+            request.addOption("--skip-download");
+            request.addOption("--write-all-thumbnails");
+            request.addOption("--convert-thumbnails", "jpg");
         } else {
-            request.addOption(
-                    "-f",
-                    "bv[height<=1080][ext=mp4][vcodec^=avc1]+ba[ext=m4a]/" +
-                            "b[height<=1080][ext=mp4][vcodec^=avc1]/" +
-                            "bv[height<=1080][ext=mp4]+ba[ext=m4a]/" +
-                            "b[height<=1080][ext=mp4]/bv[height<=1080]+ba/b[height<=1080]"
-            );
+            request.addOption("-f", "bv*[height<=1080]+ba/b[height<=1080]/best");
             request.addOption("--merge-output-format", "mp4");
             request.addOption("--recode-video", "mp4");
         }
@@ -271,6 +414,7 @@ public final class MainActivity extends AppCompatActivity {
         int selected = modeSpinner.getSelectedItemPosition();
         if (selected == 1) return "mp4";
         if (selected == 2) return "mp3";
+        if (selected == 3) return "image";
         Uri parsed = Uri.parse(url);
         String host = parsed.getHost();
         return host != null && host.equalsIgnoreCase("music.youtube.com") ? "mp3" : "mp4";
@@ -279,7 +423,7 @@ public final class MainActivity extends AppCompatActivity {
     private void stopDownload() {
         try {
             YoutubeDL.getInstance().destroyProcessById(PROCESS_ID);
-            statusView.setText("Stopping download...");
+            statusView.setText("Stopping download safely...");
         } catch (Exception error) {
             showError("Could not stop: " + safeMessage(error));
         }
@@ -314,6 +458,7 @@ public final class MainActivity extends AppCompatActivity {
 
     private void setRunning(boolean running, String message) {
         downloadButton.setEnabled(!running);
+        loginButton.setEnabled(!running);
         stopButton.setEnabled(running);
         if (!running && progressBar.getProgress() < 100) progressBar.setProgress(0);
         statusView.setText(message);
@@ -334,7 +479,8 @@ public final class MainActivity extends AppCompatActivity {
             String extension = dot >= 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";
             if (!MEDIA_EXTENSIONS.contains(extension) || file.length() <= 0 || file.lastModified() < startedAt) continue;
             if ("mp3".equals(mode) && !extension.equals("mp3")) continue;
-            if ("mp4".equals(mode) && !extension.equals("mp4")) continue;
+            if ("mp4".equals(mode) && !(extension.equals("mp4") || extension.equals("mkv") || extension.equals("webm"))) continue;
+            if ("image".equals(mode) && !(extension.equals("jpg") || extension.equals("jpeg") || extension.equals("png") || extension.equals("webp") || extension.equals("gif"))) continue;
             if (newest == null || file.lastModified() > newest.lastModified()) newest = file;
         }
         return newest;
@@ -358,6 +504,12 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        try {
+            YoutubeDL.getInstance().destroyProcessById(PROCESS_ID);
+        } catch (Exception ignored) {
+            // No active process.
+        }
+        if (browserCookieFile != null) browserCookieFile.delete();
         executor.shutdownNow();
         super.onDestroy();
     }
