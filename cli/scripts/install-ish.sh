@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.6.6"
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening/cli"
+VERSION="1.6.7"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.7-identity-ui/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"
@@ -66,7 +66,8 @@ installed=$("$BIN_FILE" --version)
 
 say ""
 say "YTConv iSH/Alpine $VERSION installed successfully."
-say "AUTO: music.youtube.com -> MP3; regular YouTube -> MP4."
+say "AUTO: music.youtube.com -> MP3; regular YouTube -> MP4; social URLs use provider detection."
+say "Subtitles remain off unless explicitly requested."
 say "Update later with: ytconv update"
 say "Repair dependencies with: ytconv repair"
 say "Default output: $HOME/Downloads/YTConv"
