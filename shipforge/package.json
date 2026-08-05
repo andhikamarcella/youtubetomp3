@@ -1,0 +1,44 @@
+{
+  "name": "shipforge-cli",
+  "version": "0.1.0",
+  "description": "Safe zero-dependency release automation CLI for versioning, validation, checksums, npm publishing, and GitHub Releases.",
+  "type": "module",
+  "bin": {
+    "shipforge": "bin/shipforge.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node ./bin/shipforge.js",
+    "check": "node --check ./bin/shipforge.js && find src test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "node --test",
+    "prepack": "npm run check && npm test"
+  },
+  "keywords": [
+    "release",
+    "automation",
+    "npm",
+    "github-release",
+    "versioning",
+    "checksum",
+    "sbom",
+    "cli"
+  ],
+  "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
