@@ -9,8 +9,10 @@ import { resolveCommandPath } from '../src/command-path.js';
 test('resolves an executable without invoking a shell', async (context) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-command-path-'));
   context.after(() => fs.rm(directory, { recursive: true, force: true }));
-  const executable = path.join(directory, 'safe-tool');
-  await fs.writeFile(executable, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  const fileName = process.platform === 'win32' ? 'safe-tool.cmd' : 'safe-tool';
+  const executable = path.join(directory, fileName);
+  const content = process.platform === 'win32' ? '@exit /b 0\r\n' : '#!/bin/sh\nexit 0\n';
+  await fs.writeFile(executable, content, { mode: 0o755 });
   const resolved = await resolveCommandPath('safe-tool', {
     environment: { PATH: directory },
     platform: process.platform,
@@ -33,8 +35,9 @@ test('does not resolve a non-executable file on POSIX', {
 test('does not search the working directory when PATH is empty', async (context) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-command-path-'));
   context.after(() => fs.rm(directory, { recursive: true, force: true }));
-  const executable = path.join(directory, 'local-tool');
-  await fs.writeFile(executable, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  const fileName = process.platform === 'win32' ? 'local-tool.cmd' : 'local-tool';
+  const executable = path.join(directory, fileName);
+  await fs.writeFile(executable, 'exit', { mode: 0o755 });
   assert.equal(await resolveCommandPath('local-tool', {
     environment: { PATH: '' }, platform: process.platform, currentDirectory: directory,
   }), null);
