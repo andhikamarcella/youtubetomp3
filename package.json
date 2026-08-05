@@ -1,34 +1,53 @@
 {
-  "name": "ytmp3-backend",
+  "name": "shipforge-cli",
+  "version": "0.1.0",
+  "description": "Safe zero-dependency release automation CLI for versioning, validation, checksums, npm publishing, and GitHub Releases.",
   "type": "module",
+  "bin": {
+    "shipforge": "bin/shipforge.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "start": "node index.js",
-    "migrate:xp": "node scripts/migrate_xp_events.js",
-    "sync:stickers": "node scripts/sync_stickers_firestore.mjs"
+    "start": "node ./bin/shipforge.js",
+    "check": "node ./scripts/check-syntax.js",
+    "test": "node --test",
+    "prepack": "npm run check && npm test"
   },
-  "dependencies": {
-    "axios": "^1.13.6",
-    "cloudinary": "^2.9.0",
-    "compression": "^1.8.1",
-    "cors": "^2.8.5",
-    "express": "^4.22.1",
-    "firebase-admin": "^13.5.0",
-    "nanoid": "^5.1.5",
-    "nodemailer": "^7.0.11",
-    "socket.io": "^4.8.1"
-  },
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "keywords": [
+    "release",
+    "automation",
+    "npm",
+    "github-release",
+    "versioning",
+    "checksum",
+    "sbom",
+    "cli"
+  ],
+  "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/andhikamarcella/youtubetomp3.git"
+    "url": "git+https://github.com/andhikamarcella/shipforge-cli.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "homepage": "https://github.com/andhikamarcella/shipforge-cli#readme",
   "bugs": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
+    "url": "https://github.com/andhikamarcella/shipforge-cli/issues"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3#readme"
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "latest",
+    "provenance": true
+  }
 }

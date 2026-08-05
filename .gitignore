@@ -1,9 +1,9 @@
-
-public/jobs/
-/data/
-/tmp/
-cookies.txt
-next-app/.next/
-next-app/node_modules/
+node_modules/
+coverage/
+*.tgz
+*.log
 .env
-
+.env.*
+shipforge.config.json
+SHA256SUMS.txt
+dist/
