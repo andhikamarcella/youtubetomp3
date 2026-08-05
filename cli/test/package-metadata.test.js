@@ -82,7 +82,7 @@ test('Android package is current and keeps subtitles off by default', () => {
   const gradle = fs.readFileSync(repoFile('android-app/app/build.gradle'), 'utf8');
   const activity = fs.readFileSync(repoFile('android-app/app/src/main/java/io/github/andhikamarcella/ytconv/MainActivity.java'), 'utf8');
   assert.match(gradle, /versionCode 10700/u);
-  assert.match(gradle, /versionName '1\.6\.8'/u);
+  assert.match(gradle, /versionName '1\.7\.0'/u);
   assert.match(activity, /© 2026 YTConv Project/u);
   assert.match(activity, /Browser login/u);
   assert.match(activity, /--cookies/u);
@@ -92,7 +92,7 @@ test('Android package is current and keeps subtitles off by default', () => {
 });
 
 test('README presents the 1.7.0 identity and browser-login behavior', () => {
-  assert.match(readme, /1\.6\.8/u);
+  assert.match(readme, /1\.7\.0/u);
   assert.match(readme, /Figlet/u);
   assert.match(readme, /browser login/iu);
   assert.match(readme, /subtitles.*off/iu);
