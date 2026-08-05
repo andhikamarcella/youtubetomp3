@@ -7,8 +7,10 @@ import { progressPhase, spinnerFrame } from '../src/progress-ui.js';
 
 test('1.6.7 restores a recognizable Figlet terminal identity', () => {
   const brand = renderBrand({ width: 120 });
-  assert.match(brand, /Y|T|C|O|N|V/u);
   assert.ok(brand.split('\n').length >= 2);
+  assert.match(brand, /[█╗╔╝╚]/u);
+  assert.equal(renderBrand({ compact: true }), 'YTCONV · social media downloader');
+  assert.equal(renderBrand({ tiny: true }), 'YTCONV');
 });
 
 test('Commander help documents social downloads and browser login', () => {
