@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
 
-VERSION="1.6.6"
+VERSION="1.6.7"
 CHANNEL="latest"
 printf '%s\n' "YTConv $VERSION installer for Termux"
 
@@ -32,7 +32,5 @@ ytconv --self-test
 ytconv --shell-info || true
 ytconv doctor || true
 ytconv quickstart || true
-printf '%s\n' 'AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4.'
-printf '%s\n' 'Explicit mode and container selections remain authoritative.'
-printf '%s\n' 'Stable installation completed. Default output: ~/storage/downloads/YTConv'
-printf '%s\n' 'Public links are ready. Android browser sessions remain sandboxed from Termux.'
+printf '%s\n' 'AUTO policy: YouTube Music becomes MP3; regular video and social URLs use provider detection.'
+printf '%s\n' 'Subtitles remain off unless --subtitles is supplied.'
