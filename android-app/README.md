@@ -1,4 +1,4 @@
-# YTConv Android 1.6.5
+# YTConv Android 1.6.6
 
 Native Android application for public media downloads. It is not a WebView and does not require Node.js, Termux, or a cookies.txt file for ordinary public media.
 
@@ -16,8 +16,8 @@ The release workflow uses JDK 17, Android SDK 36, Android Gradle Plugin 8.13.2, 
 
 The workflow produces:
 
-- `YTConv-1.6.5-debug.apk` — debug-signed, immediately installable for testing
-- `YTConv-1.6.5-release-unsigned.apk` — unsigned release build for downstream signing
+- `YTConv-1.6.6-debug.apk` — debug-signed, immediately installable for testing
+- `YTConv-1.6.6-release-unsigned.apk` — unsigned release build for downstream signing
 
 A public production store release requires a private Android signing key. No signing key is stored in this repository.
 

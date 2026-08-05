@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const version = '1.6.5';
-const branch = 'release/ytconv-1.6.5-packages';
+const version = '1.6.6';
+const branch = 'release/ytconv-1.6.6-socket-hardening';
 
 function read(relative) {
   return fs.readFileSync(path.join(root, relative), 'utf8');

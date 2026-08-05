@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.6.5"
+$Version = "1.6.6"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell"
 
@@ -50,4 +50,4 @@ if ($installed -ne $Version) { throw "Installed version is $installed; expected 
 Write-Host "`nAUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
 Write-Host "Explicit audio/video mode and MP4/MKV/WebM selections remain authoritative."
 Write-Host "Stable installation completed. Run: ytconv.cmd or ytconv"
-Write-Host "A standalone EXE installer is also provided in the GitHub 1.6.5 release."
+Write-Host "A standalone EXE installer is also provided in the GitHub 1.6.6 release."

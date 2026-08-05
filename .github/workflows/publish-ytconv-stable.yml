@@ -1,15 +1,15 @@
-name: Publish YTConv 1.6.5 to npm and GitHub
+name: Publish YTConv 1.6.6 to npm and GitHub
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.5-packages
+      - release/ytconv-1.6.6-socket-hardening
     paths:
-      - "cli/.release-1.6.5"
+      - "cli/.release-1.6.6"
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type PUBLISH-1.6.5 to continue"
+        description: "Type PUBLISH-1.6.6 to continue"
         required: true
         default: ""
 
@@ -20,12 +20,12 @@ permissions:
   issues: write
 
 concurrency:
-  group: ytconv-publish-1.6.5
+  group: ytconv-publish-1.6.6
   cancel-in-progress: false
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-1.6.5' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-1.6.6' }}
     environment: npm
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -33,23 +33,23 @@ jobs:
       run:
         working-directory: cli
     env:
-      VERSION: 1.6.5
-      TAG: ytconv-v1.6.5
+      VERSION: 1.6.6
+      TAG: ytconv-v1.6.6
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: release/ytconv-1.6.5-packages
+          ref: release/ytconv-1.6.6-socket-hardening
           fetch-depth: 0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - name: Install exact npm and committed graph without lifecycle scripts
+      - name: Install exact npm and committed development graph without lifecycle scripts
         run: |
           npm install -g npm@11.18.0
           npm ci --ignore-scripts
-      - name: Verify release identity and security policy
+      - name: Verify release identity and zero-runtime-dependency policy
         run: |
           test "$(node -p "require('./package.json').version")" = "$VERSION"
           test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
@@ -57,11 +57,16 @@ jobs:
           test "$(node -p "require('./package.json').packageManager")" = "npm@11.18.0"
           test "$(cat ish/VERSION)" = "$VERSION"
           node --input-type=module - <<'NODE'
-          const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
-          if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
-            throw new Error('npm lifecycle install scripts are forbidden');
+          const fs = await import('node:fs/promises');
+          const manifest = JSON.parse(await fs.readFile('./package.json', 'utf8'));
+          for (const hook of ['preinstall', 'install', 'postinstall']) {
+            if (manifest.scripts?.[hook]) throw new Error(`Forbidden lifecycle hook: ${hook}`);
+          }
+          for (const field of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+            if (Object.keys(manifest[field] || {}).length) throw new Error(`${field} must be empty`);
           }
           if (manifest.types !== './types/index.d.ts') throw new Error('TypeScript declarations are missing');
+          if (manifest.securityCapabilities?.telemetry !== false) throw new Error('Telemetry policy must remain false');
           const { resolveYouTubeOutputPolicy } = await import('./src/youtube-output.js');
           const music = resolveYouTubeOutputPolicy({
             url: 'https://music.youtube.com/watch?v=x', requestedMode: 'auto', requestedVideoFormat: 'auto',
@@ -82,7 +87,7 @@ jobs:
           npm run check:ish
           PYTHONWARNINGS=error::ResourceWarning npm run test:ish
           npm run security
-      - name: Wait for the native package matrix on this exact commit
+      - name: Wait for native package matrix on this exact commit
         id: matrix
         working-directory: .
         env:
@@ -90,6 +95,8 @@ jobs:
         run: |
           set -euo pipefail
           RUN_ID=""
+          STATUS=""
+          CONCLUSION=""
           for ATTEMPT in $(seq 1 120); do
             DATA=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ytconv-packages.yml/runs" \
               -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" -f event=push -f per_page=20)
@@ -120,22 +127,22 @@ jobs:
           mkdir -p "$ROOT" "$RELEASE"
           gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --dir "$ROOT"
           for REQUIRED in \
-            'YTConv-1.6.5-Setup-x64.exe' \
-            'YTConv-1.6.5-portable-win-x64.zip' \
-            'YTConv-1.6.5-debug.apk' \
-            'YTConv-1.6.5-release-unsigned.apk' \
-            'YTConv-Android-1.6.5-source.tar.gz' \
-            'ytconv_1.6.5_amd64.deb' \
-            'ytconv_1.6.5_arm64.deb' \
-            'ytconv-1.6.5-1.x86_64.rpm' \
-            'ytconv-1.6.5-1.aarch64.rpm' \
-            'ytconv-1.6.5-1-x86_64.pkg.tar.zst' \
-            'ytconv-1.6.5-1-aarch64.pkg.tar.zst' \
-            'ytconv-1.6.5-r0.apk' \
-            'YTConv-1.6.5-x86_64.AppImage' \
-            'ytconv_1.6.5_amd64.snap' \
-            'YTConv-1.6.5.flatpak' \
-            'ytconv_1.6.5_all-termux.deb'; do
+            'YTConv-1.6.6-Setup-x64.exe' \
+            'YTConv-1.6.6-portable-win-x64.zip' \
+            'YTConv-1.6.6-debug.apk' \
+            'YTConv-1.6.6-release-unsigned.apk' \
+            'YTConv-Android-1.6.6-source.tar.gz' \
+            'ytconv_1.6.6_amd64.deb' \
+            'ytconv_1.6.6_arm64.deb' \
+            'ytconv-1.6.6-1.x86_64.rpm' \
+            'ytconv-1.6.6-1.aarch64.rpm' \
+            'ytconv-1.6.6-1-x86_64.pkg.tar.zst' \
+            'ytconv-1.6.6-1-aarch64.pkg.tar.zst' \
+            'ytconv-1.6.6-r0.apk' \
+            'YTConv-1.6.6-x86_64.AppImage' \
+            'ytconv_1.6.6_amd64.snap' \
+            'YTConv-1.6.6.flatpak' \
+            'ytconv_1.6.6_all-termux.deb'; do
             FILE=$(find "$ROOT" -type f -name "$REQUIRED" -print -quit)
             test -n "$FILE"
             test -s "$FILE"
@@ -160,7 +167,17 @@ jobs:
           npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
           SOURCE=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];process.stdout.write(require('path').join('$RUNNER_TEMP',p.filename))")
           cp "$SOURCE" "$RELEASE/ytconv-$VERSION.tgz"
-          node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];const bad=p.files.filter(f=>/\.(?:html|css|jsx|tsx)$/i.test(f.path)||/(?:^|\/)(?:next-app|public-ui|web|server|android-app|packaging)(?:\/|$)/i.test(f.path));if(bad.length){console.error(bad);process.exit(1)}"
+          node - <<'NODE'
+          const p = require(process.env.RUNNER_TEMP + '/ytconv-pack.json')[0];
+          const bad = p.files.filter((file) =>
+            /(?:^|\/)node_modules(?:\/|$)/u.test(file.path)
+            || /(?:^|\.)min\.(?:c?js|mjs)$/iu.test(file.path)
+            || /\.(?:c?js|mjs)\.map$/iu.test(file.path)
+            || /\.(?:exe|dll|dylib|so|node|wasm|jar|class)$/iu.test(file.path)
+            || /\.(?:html|css|jsx|tsx)$/iu.test(file.path)
+            || /(?:^|\/)(?:next-app|public-ui|web|server|android-app|packaging)(?:\/|$)/iu.test(file.path));
+          if (bad.length) throw new Error(JSON.stringify(bad, null, 2));
+          NODE
           SHA256=$(sha256sum "$RELEASE/ytconv-$VERSION.tgz" | cut -d ' ' -f 1)
           echo "tarball=$RELEASE/ytconv-$VERSION.tgz" >> "$GITHUB_OUTPUT"
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
@@ -170,7 +187,7 @@ jobs:
           cd "$RUNNER_TEMP/release-assets"
           find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-      - name: Publish exact tarball to npm latest with authenticated token and provenance
+      - name: Publish exact tarball to npm latest with provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -180,7 +197,7 @@ jobs:
             test -n "${NODE_AUTH_TOKEN:-}"
             npm publish "${{ steps.package.outputs.tarball }}" --tag latest --access public --provenance
           fi
-      - name: Verify npm latest and registry bytes
+      - name: Verify npm latest and immutable registry bytes
         run: |
           READY=false
           for ATTEMPT in $(seq 1 24); do
@@ -201,23 +218,23 @@ jobs:
           set -euo pipefail
           RELEASE="$RUNNER_TEMP/release-assets"
           cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
-          YTConv 1.6.5 adds installable Windows EXE and portable ZIP packages, Android APK builds and corresponding source, DEB/RPM/Arch packages for x86_64 and ARM64, Alpine APK, AppImage, Snap, Flatpak, Termux DEB, portable Linux archives, Nix metadata, consolidated SHA-256 checksums, CycloneDX SBOM, and the exact npm tarball.
+          YTConv 1.6.6 is a Socket-oriented supply-chain hardening release with zero production npm dependencies. React, Ink, Figlet, ws, which, and their transitive runtime graph were replaced by Node.js built-ins and internal executable resolution.
 
-          iSH and Alpine update/install paths were repaired and synchronized to 1.6.5. The npm package remains CLI-only, ISC licensed, published without install lifecycle scripts, and verified against the bytes returned by the npm registry.
+          The npm tarball rejects minified bundles, source maps, native payloads, external runtime imports, debug statements, dynamic evaluation, shell execution, and lifecycle install hooks. Network, filesystem, environment, URL, and child-process capabilities remain narrowly constrained because they are required for a local downloader and converter.
 
-          Store acceptance is not claimed: the Flatpak, Snap, Android, Windows, and distro packages are direct GitHub Release artifacts. The Android release APK is unsigned; the debug APK is installable for testing.
+          The release includes Windows EXE/ZIP, Android APK/source, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Termux, ARM64 packages, portable archives, CycloneDX SBOM, the exact npm tarball, and consolidated SHA-256 checksums. The Android release APK is unsigned; the debug APK is installable for testing.
           NOTES
           mapfile -d '' ASSETS < <(find "$RELEASE" -maxdepth 1 -type f -print0 | sort -z)
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
-              --title "YTConv 1.6.5 — Native Packages" \
+              --title "YTConv 1.6.6 — Zero Runtime Dependencies" \
               --notes-file "$RUNNER_TEMP/release-notes.md" \
               --target "$GITHUB_SHA"
             gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           else
             gh release create "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "YTConv 1.6.5 — Native Packages" \
+              --title "YTConv 1.6.6 — Zero Runtime Dependencies" \
               --notes-file "$RUNNER_TEMP/release-notes.md" \
               --latest
           fi
@@ -227,8 +244,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          BODY="YTConv 1.6.5 was published to npm latest and GitHub Release **ytconv-v1.6.5**. The release includes Windows EXE/ZIP, Android APK/source, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Termux, ARM64 packages, portable archives, SBOM, and consolidated SHA-256 checksums. npm registry bytes were verified against the locally built tarball in run $GITHUB_RUN_ID."
-          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/180/comments" -f body="$BODY"
+          BODY="YTConv 1.6.6 was published to npm latest and GitHub Release **ytconv-v1.6.6**. The npm runtime dependency graph is empty. Registry bytes matched the locally built tarball. Native EXE/APK/Linux artifacts, SBOM, and consolidated SHA-256 checksums were attached in run $GITHUB_RUN_ID."
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/183/comments" -f body="$BODY"
       - name: Report failure
         if: ${{ failure() }}
         working-directory: .
@@ -236,5 +253,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "YTConv 1.6.5 publish failed" \
+            --title "YTConv 1.6.6 publish failed" \
             --body "Publication failed in https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID at commit $GITHUB_SHA. No success claim should be made until this run is repaired." || true

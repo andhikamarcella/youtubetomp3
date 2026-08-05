@@ -1,0 +1,27 @@
+version: 2
+
+# The repository also contains web and packaging sources, while the npm package
+# is published only from /cli. Scope dependency ingestion to the real npm
+# manifest so unrelated applications are not mixed into the ytconv report.
+projectIgnorePaths:
+  - "/*"
+  - "!/cli"
+  - "/cli/*"
+  - "!/cli/package.json"
+  - "!/cli/package-lock.json"
+
+triggerPaths:
+  - "/cli/package.json"
+  - "/cli/package-lock.json"
+  - "/cli/src/**"
+  - "/cli/test/**"
+  - "/cli/SECURITY.md"
+  - "/cli/docs/SOCKET-SECURITY.md"
+  - "/socket.yml"
+
+githubApp:
+  enabled: true
+  pullRequestAlertsEnabled: true
+  dependencyOverviewEnabled: true
+  projectReportsEnabled: true
+  disableCommentsAndCheckRuns: false

@@ -12,7 +12,7 @@
 
 buildNpmPackage {
   pname = "ytconv";
-  version = "1.6.5";
+  version = "1.6.6";
   src = ../../cli;
 
   npmDeps = importNpmLock {
@@ -32,7 +32,7 @@ buildNpmPackage {
       --add-flags "$out/lib/node_modules/ytconv/bin/ytconv-auth.js" \
       --prefix PATH : ${lib.makeBinPath [ python3 ffmpeg yt-dlp gallery-dl ]} \
       --set YTCONV_DISTRIBUTION_PACKAGE nix
-    "$out/bin/ytconv" --version | grep -Fx 1.6.5
+    "$out/bin/ytconv" --version | grep -Fx 1.6.6
     runHook postInstall
   '';
 

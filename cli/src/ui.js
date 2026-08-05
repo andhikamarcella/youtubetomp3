@@ -3,9 +3,6 @@ import path from 'node:path';
 import process from 'node:process';
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Text, render, useApp, useInput } from 'ink';
-import figlet from 'figlet';
-import ansiShadowFont from 'figlet/importable-fonts/ANSI Shadow.js';
-import smallFont from 'figlet/importable-fonts/Small.js';
 import {
   cookieSourceLabel,
   cookieSourcesForPlatform,
@@ -36,8 +33,6 @@ import { createTerminalInputDecoder, readClipboardText } from './terminal-input.
 import { sanitizeTerminalText } from './terminal-style.js';
 import { CLI_VERSION } from './version.js';
 
-figlet.parseFont('ANSI Shadow', ansiShadowFont);
-figlet.parseFont('Small', smallFont);
 
 const h = React.createElement;
 const MODES = ['auto', 'video', 'audio', 'image'];
@@ -48,8 +43,14 @@ const IMAGE_FORMATS = ['original', 'jpg', 'png', 'webp'];
 const EXIT_COMMANDS = new Set(['q', 'quit', 'exit', ':q']);
 const OVERLAYS = new Set(['help', 'diagnostics']);
 
-const LOGO_WIDE = figlet.textSync('YTCONV', { font: 'ANSI Shadow' });
-const LOGO_COMPACT = figlet.textSync('YTCONV', { font: 'Small', horizontalLayout: 'fitted' });
+const LOGO_WIDE = [
+  '██╗   ██╗████████╗ ██████╗ ██████╗ ███╗   ██╗██╗   ██╗',
+  '╚██╗ ██╔╝╚══██╔══╝██╔════╝██╔═══██╗████╗  ██║██║   ██║',
+  ' ╚████╔╝    ██║   ██║     ██║   ██║██╔██╗ ██║██║   ██║',
+  '  ╚██╔╝     ██║   ╚██████╗╚██████╔╝██║╚████║╚██████╔╝',
+  '   ╚═╝      ╚═╝    ╚═════╝ ╚═════╝ ╚═╝ ╚═══╝ ╚═════╝ ',
+].join('\n');
+const LOGO_COMPACT = 'YTCONV';
 
 export function terminalLayout(columns = 80, rows = 24) {
   if (columns && typeof columns === 'object') {

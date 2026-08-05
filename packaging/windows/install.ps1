@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$Version = '1.6.5'
+$Version = '1.6.6'
 $Source = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Payload = Join-Path $Source 'payload.zip'
 $Target = Join-Path $env:LOCALAPPDATA 'Programs\YTConv'
@@ -37,7 +37,7 @@ try {
     $Shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\cmd.exe'
     $Shortcut.Arguments = '/K ""' + (Join-Path $Target 'ytconv.cmd') + '""'
     $Shortcut.WorkingDirectory = [Environment]::GetFolderPath('UserProfile')
-    $Shortcut.Description = 'YTConv 1.6.5 terminal downloader'
+    $Shortcut.Description = 'YTConv 1.6.6 terminal downloader'
     $Shortcut.Save()
 
     $InstalledVersion = (& (Join-Path $Target 'ytconv.cmd') --version).Trim()

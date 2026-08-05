@@ -3,11 +3,11 @@ import path from 'node:path';
 import process from 'node:process';
 import { execFile, spawn, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
-import which from 'which';
 import { engineFileStatus, enginePath } from './engine-storage.js';
 import { isTermux } from './platform.js';
 import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 import { downloadVerifiedGitHubAsset } from './verified-download.js';
+import { resolveCommandPath } from './command-path.js';
 
 const execFileAsync = promisify(execFile);
 const MINIMUM_BINARY_SIZE = 400 * 1024;
@@ -43,14 +43,7 @@ function runnerValue(command, prefixArgs = [], displayPath = command, mode = 'ex
 }
 
 async function resolveCommand(names) {
-  for (const name of names) {
-    try {
-      return await which(name);
-    } catch {
-      // Try the next command name.
-    }
-  }
-  return null;
+  return resolveCommandPath(names);
 }
 
 async function readVersion(command, args = ['--version']) {

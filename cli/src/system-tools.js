@@ -2,12 +2,12 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import which from 'which';
 import { inspectDependencies, prepareDesktopDependencies, prepareTermuxDependencies } from './dependencies.js';
 import { detectLinuxDistro } from './linux-distro.js';
 import { isTermux } from './platform.js';
 import { clearUpdateCache, selfUpdateInvocation } from './update.js';
 import { CLI_VERSION } from './version.js';
+import { resolveCommandPath } from './command-path.js';
 
 function takeValue(argv, index, flag) {
   const value = argv[index + 1];
@@ -59,7 +59,7 @@ function shellName() {
 }
 
 async function commandPath(name) {
-  try { return await which(name); } catch { return '-'; }
+  return await resolveCommandPath(name) || '-';
 }
 
 async function availableManagers() {

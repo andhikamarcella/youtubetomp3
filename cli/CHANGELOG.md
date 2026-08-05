@@ -1,5 +1,16 @@
 # YTConv CLI changelog
 
+## 1.6.6 - 2026-08-05
+
+### Security and dependency hardening
+
+- Replaced the third-party `which`/`isexe` command lookup chain with a small audited resolver that never invokes a shell.
+- Removed `figlet`/`commander` by embedding the terminal logo variants used by the TUI.
+- Kept `ws` as an explicit dependency because the secure managed-browser bridge uses it only for loopback Chrome DevTools connections.
+- Added cross-platform command-resolution tests and kept all npm lifecycle install scripts forbidden.
+- Documented why network, filesystem, environment, URL, and subprocess access are expected and bounded for a downloader that launches verified yt-dlp, gallery-dl, and FFmpeg engines.
+
+
 ## 1.6.5 — native packages and repaired iSH/Alpine updates
 
 Released: 2026-08-04

@@ -3,7 +3,6 @@ import process from 'node:process';
 import { execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { gunzip } from 'node:zlib';
-import which from 'which';
 import { bundledYtDlpPath, ensureBundledYtDlp } from './binaries.js';
 import { detectSystemBrowsers } from './cookies.js';
 import { engineDirectory, engineFileStatus, enginePath } from './engine-storage.js';
@@ -12,6 +11,7 @@ import { detectLinuxDistro } from './linux-distro.js';
 import { isTermux } from './platform.js';
 import { monochromeChildEnvironment } from './terminal-style.js';
 import { downloadVerifiedGitHubAsset } from './verified-download.js';
+import { resolveCommandPath } from './command-path.js';
 
 const execFileAsync = promisify(execFile);
 const gunzipAsync = promisify(gunzip);
@@ -39,10 +39,7 @@ async function fileExists(filePath) {
 }
 
 async function resolveCommand(names) {
-  for (const name of names) {
-    try { return await which(name); } catch { /* Try the next command. */ }
-  }
-  return null;
+  return resolveCommandPath(names);
 }
 
 async function readVersion(command, args = ['--version']) {

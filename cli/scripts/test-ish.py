@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH and Alpine 1.6.5 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.6.6 behavior checks."""
 
 import hashlib
 import importlib.util
@@ -75,11 +75,11 @@ def options(output, **overrides):
 
 class ReleaseIdentityTests(unittest.TestCase):
     def test_versions_and_branch_are_synchronized(self):
-        self.assertEqual(CORE.VERSION, "1.6.5")
-        self.assertEqual(WRAPPER.VERSION, "1.6.5")
-        self.assertIn("release/ytconv-1.6.5-packages", CORE.RAW_BASE)
-        self.assertIn("release/ytconv-1.6.5-packages", WRAPPER.RAW_BASE)
-        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.5")
+        self.assertEqual(CORE.VERSION, "1.6.6")
+        self.assertEqual(WRAPPER.VERSION, "1.6.6")
+        self.assertIn("release/ytconv-1.6.6-socket-hardening", CORE.RAW_BASE)
+        self.assertIn("release/ytconv-1.6.6-socket-hardening", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.6")
 
     def test_wrapper_auto_routing_is_not_duplicated(self):
         music = WRAPPER.apply_auto_routing(["https://music.youtube.com/watch?v=music"])

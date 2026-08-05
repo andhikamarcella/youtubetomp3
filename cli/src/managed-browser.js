@@ -5,8 +5,8 @@ import process from 'node:process';
 import { randomBytes, randomInt } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import WebSocket from 'ws';
-import which from 'which';
 import { privateChildEnvironment } from './terminal-style.js';
+import { resolveCommandPath } from './command-path.js';
 
 const MANAGED_BROWSERS = new Set([
   'chrome',
@@ -154,21 +154,9 @@ function unixCandidates(browser) {
   return definitions[browser] || [];
 }
 
-async function executableExists(candidate) {
+async function executableExists(candidate, { environment = process.env, platform = process.platform } = {}) {
   if (!candidate) return '';
-  if (path.isAbsolute(candidate)) {
-    try {
-      const stats = await fs.stat(candidate);
-      return stats.isFile() ? candidate : '';
-    } catch {
-      return '';
-    }
-  }
-  try {
-    return await which(candidate);
-  } catch {
-    return '';
-  }
+  return await resolveCommandPath(candidate, { environment, platform }) || '';
 }
 
 export async function resolveManagedBrowserExecutable({
@@ -178,7 +166,7 @@ export async function resolveManagedBrowserExecutable({
   env = process.env,
 } = {}) {
   if (executable) {
-    const resolved = await executableExists(executable);
+    const resolved = await executableExists(executable, { environment: env, platform });
     if (resolved) return resolved;
     throw new Error(`The requested browser executable was not found: ${executable}`);
   }
@@ -189,7 +177,7 @@ export async function resolveManagedBrowserExecutable({
       ? macCandidates(browser)
       : unixCandidates(browser);
   for (const candidate of candidates) {
-    const resolved = await executableExists(candidate);
+    const resolved = await executableExists(candidate, { environment: env, platform });
     if (resolved) return resolved;
   }
   throw new Error(`YTConv could not locate ${browser || 'the selected Chromium browser'} for the secure login window.`);
