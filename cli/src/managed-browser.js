@@ -1,12 +1,11 @@
+import { constants as fsConstants } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { randomBytes, randomInt } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import WebSocket from 'ws';
 import { privateChildEnvironment } from './terminal-style.js';
-import { resolveCommandPath } from './command-path.js';
 
 const MANAGED_BROWSERS = new Set([
   'chrome',
@@ -154,9 +153,46 @@ function unixCandidates(browser) {
   return definitions[browser] || [];
 }
 
-async function executableExists(candidate, { environment = process.env, platform = process.platform } = {}) {
+function pathEntries(env = process.env) {
+  const value = env.PATH || env.Path || env.path || '';
+  return String(value).split(path.delimiter).map((entry) => entry.trim()).filter(Boolean);
+}
+
+function windowsExtensions(candidate, env = process.env) {
+  if (path.extname(candidate)) return [''];
+  const value = env.PATHEXT || '.COM;.EXE;.BAT;.CMD';
+  return String(value).split(';').map((entry) => entry.trim().toLowerCase()).filter(Boolean);
+}
+
+async function verifiedExecutable(candidate, platform) {
+  try {
+    const stats = await fs.stat(candidate);
+    if (!stats.isFile()) return '';
+    if (platform !== 'win32') await fs.access(candidate, fsConstants.X_OK);
+    return candidate;
+  } catch {
+    return '';
+  }
+}
+
+async function executableExists(candidate, {
+  platform = process.platform,
+  env = process.env,
+} = {}) {
   if (!candidate) return '';
-  return await resolveCommandPath(candidate, { environment, platform }) || '';
+  const hasSeparator = candidate.includes('/') || candidate.includes('\\');
+  if (path.isAbsolute(candidate) || hasSeparator) {
+    return verifiedExecutable(path.resolve(candidate), platform);
+  }
+
+  const extensions = platform === 'win32' ? windowsExtensions(candidate, env) : [''];
+  for (const directory of pathEntries(env)) {
+    for (const extension of extensions) {
+      const resolved = await verifiedExecutable(path.join(directory, `${candidate}${extension}`), platform);
+      if (resolved) return resolved;
+    }
+  }
+  return '';
 }
 
 export async function resolveManagedBrowserExecutable({
@@ -166,7 +202,7 @@ export async function resolveManagedBrowserExecutable({
   env = process.env,
 } = {}) {
   if (executable) {
-    const resolved = await executableExists(executable, { environment: env, platform });
+    const resolved = await executableExists(executable, { platform, env });
     if (resolved) return resolved;
     throw new Error(`The requested browser executable was not found: ${executable}`);
   }
@@ -177,7 +213,7 @@ export async function resolveManagedBrowserExecutable({
       ? macCandidates(browser)
       : unixCandidates(browser);
   for (const candidate of candidates) {
-    const resolved = await executableExists(candidate, { environment: env, platform });
+    const resolved = await executableExists(candidate, { platform, env });
     if (resolved) return resolved;
   }
   throw new Error(`YTConv could not locate ${browser || 'the selected Chromium browser'} for the secure login window.`);
@@ -210,6 +246,15 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function webSocketText(payload) {
+  if (typeof payload === 'string') return payload;
+  if (payload instanceof ArrayBuffer) return Buffer.from(payload).toString('utf8');
+  if (ArrayBuffer.isView(payload)) {
+    return Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength).toString('utf8');
+  }
+  return String(payload ?? '');
+}
+
 export function cdpCommand(webSocketDebuggerUrl, method, params = {}, { timeoutMs = 10_000 } = {}) {
   return new Promise((resolve, reject) => {
     let endpoint;
@@ -220,13 +265,14 @@ export function cdpCommand(webSocketDebuggerUrl, method, params = {}, { timeoutM
       reject(new Error('Refusing a browser bridge that is not bound to the local device.'));
       return;
     }
+    if (typeof globalThis.WebSocket !== 'function') {
+      reject(new Error('The secure browser bridge requires the built-in WebSocket implementation from Node.js 22.14 or newer.'));
+      return;
+    }
+
     const id = randomInt(1, 1_000_000_000);
-    const socket = new WebSocket(webSocketDebuggerUrl, { perMessageDeflate: false });
+    const socket = new globalThis.WebSocket(webSocketDebuggerUrl);
     let settled = false;
-    const timer = setTimeout(() => {
-      socket.terminate();
-      finish(() => reject(new Error(`The local browser did not answer ${method} within ${timeoutMs} ms.`)));
-    }, timeoutMs);
     const finish = (callback) => {
       if (settled) return;
       settled = true;
@@ -234,17 +280,27 @@ export function cdpCommand(webSocketDebuggerUrl, method, params = {}, { timeoutM
       try { socket.close(); } catch { /* Already closed. */ }
       callback();
     };
-    socket.once('open', () => socket.send(JSON.stringify({ id, method, params })));
-    socket.on('message', (payload) => {
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error(`The local browser did not answer ${method} within ${timeoutMs} ms.`)));
+    }, timeoutMs);
+
+    socket.addEventListener('open', () => {
+      socket.send(JSON.stringify({ id, method, params }));
+    }, { once: true });
+    socket.addEventListener('message', (event) => {
       let message;
-      try { message = JSON.parse(payload.toString()); } catch { return; }
+      try { message = JSON.parse(webSocketText(event.data)); } catch { return; }
       if (message.id !== id) return;
       if (message.error) {
         finish(() => reject(new Error(message.error.message || `Browser command ${method} failed.`)));
       } else finish(() => resolve(message.result || {}));
     });
-    socket.once('error', (error) => finish(() => reject(error)));
-    socket.once('close', () => finish(() => reject(new Error(`The local browser closed before ${method} completed.`))));
+    socket.addEventListener('error', () => {
+      finish(() => reject(new Error(`The local browser WebSocket failed while running ${method}.`)));
+    }, { once: true });
+    socket.addEventListener('close', () => {
+      finish(() => reject(new Error(`The local browser closed before ${method} completed.`)));
+    }, { once: true });
   });
 }
 
