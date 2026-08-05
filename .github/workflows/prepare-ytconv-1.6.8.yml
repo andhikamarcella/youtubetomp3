@@ -1,0 +1,164 @@
+name: Prepare YTConv 1.6.8
+
+on:
+  push:
+    branches:
+      - codex/perbaiki-semua-fungsi-tombol
+    paths:
+      - ".github/release-markers/prepare-ytconv-1.6.8"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-ytconv-1.6.8
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PREVIOUS_VERSION: 1.6.7
+      VERSION: 1.6.8
+      SOURCE_BRANCH: release/ytconv-1.6.7-identity-ui
+      TARGET_BRANCH: agent/ytconv-1.6.8-identity-and-social
+      RELEASE_BRANCH: release/ytconv-1.6.8-stable
+    steps:
+      - name: Checkout validated 1.6.7 source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Create 1.6.8 release branch content
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout -B "$TARGET_BRANCH"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          previous = os.environ['PREVIOUS_VERSION']
+          version = os.environ['VERSION']
+          source_branch = os.environ['SOURCE_BRANCH']
+          target_branch = os.environ['TARGET_BRANCH']
+          release_branch = os.environ['RELEASE_BRANCH']
+
+          selected_exact = {
+              'flake.nix',
+              '.github/workflows/ytconv-cli.yml',
+              '.github/workflows/ytconv-packages.yml',
+          }
+          selected_prefixes = ('cli/', 'android-app/', 'packaging/')
+          tracked = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+
+          for name in tracked:
+              if not name:
+                  continue
+              if name == 'cli/CHANGELOG.md':
+                  continue
+              if name not in selected_exact and not name.startswith(selected_prefixes):
+                  continue
+              path = pathlib.Path(name)
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              updated = text.replace(previous, version)
+              updated = updated.replace('10607', '10608')
+              updated = updated.replace(source_branch, release_branch)
+              updated = updated.replace('agent/ytconv-1.6.7-identity-and-social', target_branch)
+              if updated != text:
+                  path.write_text(updated, encoding='utf-8')
+
+          manifest_path = pathlib.Path('cli/package.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          manifest['version'] = version
+          manifest['releaseDate'] = '2026-08-05'
+          manifest['releaseNotes'] = (
+              'YTConv 1.6.8 is a maintenance release that carries forward the Figlet and Commander identity, '
+              'animated download and conversion progress, browser-login recovery, subtitles-off defaults, '
+              'cross-platform packaging, and security hardening from 1.6.7 while refreshing all release metadata.'
+          )
+          manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+          changelog_path = pathlib.Path('cli/CHANGELOG.md')
+          changelog = changelog_path.read_text(encoding='utf-8')
+          heading = '## 1.6.8 - 2026-08-05'
+          if heading not in changelog:
+              entry = (
+                  f'{heading}\n\n'
+                  '- Refreshed CLI, Android, installer, package, and native-build metadata for 1.6.8.\n'
+                  '- Preserved the tested Figlet/Commander interface, animated progress, browser-login recovery, and subtitles-off defaults.\n'
+                  '- Revalidated the npm package boundary, security suite, iSH checksums, desktop platforms, and native package matrix.\n\n'
+              )
+              if changelog.startswith('# '):
+                  first_break = changelog.find('\n') + 1
+                  changelog = changelog[:first_break] + '\n' + entry + changelog[first_break:].lstrip('\n')
+              else:
+                  changelog = entry + changelog
+              changelog_path.write_text(changelog, encoding='utf-8')
+
+          old_marker = pathlib.Path('cli/.release-1.6.6')
+          if old_marker.exists():
+              old_marker.unlink()
+          pathlib.Path('cli/.release-1.6.8').write_text(
+              'YTConv 1.6.8 release source\n'
+              f'Base: {source_branch}\n'
+              f'Target: {release_branch}\n',
+              encoding='utf-8',
+          )
+
+          ish = pathlib.Path('cli/ish')
+          checksum_lines = []
+          for filename in ('ytconv.py', 'ytconv-core.py'):
+              digest = hashlib.sha256((ish / filename).read_bytes()).hexdigest()
+              checksum_lines.append(f'{digest}  {filename}')
+          (ish / 'SHA256SUMS').write_text('\n'.join(checksum_lines) + '\n', encoding='utf-8')
+
+          package = json.loads(manifest_path.read_text(encoding='utf-8'))
+          assert package['version'] == version
+          assert pathlib.Path('cli/ish/VERSION').read_text(encoding='utf-8').strip() == version
+          android = pathlib.Path('android-app/app/build.gradle').read_text(encoding='utf-8')
+          assert f'versionName "{version}"' in android
+          assert 'versionCode 10608' in android
+          assert previous not in pathlib.Path('.github/workflows/ytconv-cli.yml').read_text(encoding='utf-8')
+          assert previous not in pathlib.Path('.github/workflows/ytconv-packages.yml').read_text(encoding='utf-8')
+          PY
+
+      - name: Install exact dependency graph
+        working-directory: cli
+        run: npm ci --ignore-scripts
+
+      - name: Run complete 1.6.8 validation
+        working-directory: cli
+        run: |
+          npm run check
+          npm run typecheck
+          npm test
+          npm run check:ish
+          PYTHONWARNINGS=error::ResourceWarning npm run test:ish
+          npm run security
+          npm pack --ignore-scripts --dry-run
+
+      - name: Commit and push prepared branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release YTConv 1.6.8"
+          git push --force origin "HEAD:refs/heads/$TARGET_BRANCH"
