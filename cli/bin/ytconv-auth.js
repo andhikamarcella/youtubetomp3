@@ -8,6 +8,7 @@ import {
   handleAuthCommand,
   validateAuthSession,
 } from '../src/auth.js';
+import { commanderHelpText } from '../src/command-program.js';
 import { handleSocialAuthCommand } from '../src/social-auth.js';
 import { maybeAutoUpdate } from '../src/update.js';
 import { CLI_VERSION } from '../src/version.js';
@@ -31,6 +32,12 @@ async function launchCli(session) {
 async function boot() {
   const argv = process.argv.slice(2);
   try {
+    if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) {
+      console.log(commanderHelpText(CLI_VERSION));
+      process.exitCode = 0;
+      return;
+    }
+
     const automaticUpdate = await maybeAutoUpdate({ currentVersion: CLI_VERSION, argv });
     if (automaticUpdate.updated) {
       console.log('Update complete. Restarting YTConv with the latest version.\n');
