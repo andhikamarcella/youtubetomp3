@@ -1,0 +1,27 @@
+version: 2
+
+# This repository contains historical web code and packaging sources, but the
+# npm package is published only from /cli. Keep dependency ingestion scoped to
+# the actual npm manifest instead of mixing unrelated applications into the
+# ytconv package report.
+projectIgnorePaths:
+  - "/*"
+  - "!/cli"
+  - "/cli/*"
+  - "!/cli/package.json"
+  - "!/cli/package-lock.json"
+
+triggerPaths:
+  - "/cli/package.json"
+  - "/cli/package-lock.json"
+  - "/cli/src/**"
+  - "/cli/test/**"
+  - "/cli/SECURITY.md"
+  - "/socket.yml"
+
+githubApp:
+  enabled: true
+  pullRequestAlertsEnabled: true
+  dependencyOverviewEnabled: true
+  projectReportsEnabled: true
+  disableCommentsAndCheckRuns: false
