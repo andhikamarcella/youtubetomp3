@@ -8,8 +8,8 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv stable is version 1.6.7 on the latest tag with provenance', () => {
-  assert.equal(manifest.version, '1.6.7');
+test('YTConv stable is version 1.6.8 on the latest tag with provenance', () => {
+  assert.equal(manifest.version, '1.6.8');
   assert.equal(manifest.publishConfig.tag, 'latest');
   assert.equal(manifest.publishConfig.provenance, true);
 });

@@ -1,5 +1,5 @@
 {
-  description = "YTConv 1.6.7 secure social-media downloader and converter CLI";
+  description = "YTConv 1.6.8 secure social-media downloader and converter CLI";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 

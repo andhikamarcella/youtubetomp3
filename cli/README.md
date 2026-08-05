@@ -1,16 +1,16 @@
 # YTConv – Social Media Downloader and Converter CLI
 
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
-[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.7)](https://badge.socket.dev/npm/package/ytconv/1.6.7)
+[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.8)](https://badge.socket.dev/npm/package/ytconv/1.6.8)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/docs/NODEJS.md)
 
-**YTConv 1.6.7** restores the recognizable Figlet terminal identity, adds Commander-powered command help, animated download and conversion progress, verified `which`/`isexe` executable discovery, browser-login recovery for private or age-restricted media, and a refreshed 2026 Android application.
+**YTConv 1.6.8** restores the recognizable Figlet terminal identity, adds Commander-powered command help, animated download and conversion progress, verified `which`/`isexe` executable discovery, browser-login recovery for private or age-restricted media, and a refreshed 2026 Android application.
 
 The npm package is a CLI only. It contains no web application, no telemetry, and no `preinstall`, `install`, or `postinstall` hooks.
 
-## Highlights in 1.6.7
+## Highlights in 1.6.8
 
 - Responsive Figlet branding with compact fallbacks for narrow terminals.
 - Commander-based `ytconv --help` with clear examples and privacy guidance.
@@ -19,7 +19,7 @@ The npm package is a CLI only. It contains no web application, no telemetry, and
 - Shell-free executable discovery and child-process execution.
 - Public access first. Browser cookies are requested only after an authentication-related provider failure.
 - Subtitles are **off by default** in interactive, headless, and Android flows. Use `--subtitles` or Ctrl+S to enable them.
-- Android version 1.6.7 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
+- Android version 1.6.8 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
 
 ## Supported sites
 
@@ -37,7 +37,7 @@ Provider support follows the installed media engines and may change when a websi
 ## Install from npm
 
 ```bash
-npm install --global ytconv@1.6.7
+npm install --global ytconv@1.6.8
 ytconv --version
 ```
 
@@ -148,7 +148,7 @@ Keep cookie files private. Do not commit them to Git or upload them to support t
 
 ## Android APK
 
-The Android application is version **1.6.7** with version code **10607** and 2026 UI metadata.
+The Android application is version **1.6.8** with version code **10608** and 2026 UI metadata.
 
 It provides:
 

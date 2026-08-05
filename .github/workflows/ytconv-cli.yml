@@ -1,10 +1,10 @@
-name: YTConv CLI 1.6.7 Core and Compatibility
+name: YTConv CLI 1.6.8 Core and Compatibility
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.7-identity-ui
-      - agent/ytconv-1.6.7-identity-and-social
+      - release/ytconv-1.6.8-stable
+      - agent/ytconv-1.6.8-identity-and-social
     paths:
       - "cli/**"
       - "AGENTS.md"
@@ -28,7 +28,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ytconv-cli-1.6.7-${{ github.ref }}
+  group: ytconv-cli-1.6.8-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -53,14 +53,14 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run security
-      - name: Verify 1.6.7 identity, UI dependencies, and AUTO policy
+      - name: Verify 1.6.8 identity, UI dependencies, and AUTO policy
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.6.7"
-          test "$(cat ish/VERSION)" = "1.6.7"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.8"
+          test "$(cat ish/VERSION)" = "1.6.8"
           node ./bin/ytconv-auth.js --help | grep -F 'cookies-browser'
           node --input-type=module - <<'NODE'
           const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
-          if (manifest.version !== '1.6.7') throw new Error(manifest.version);
+          if (manifest.version !== '1.6.8') throw new Error(manifest.version);
           if (manifest.license !== 'ISC') throw new Error(manifest.license);
           for (const dependency of ['commander', 'figlet', 'which', 'isexe']) {
             if (!manifest.dependencies[dependency]) throw new Error(`missing ${dependency}`);
@@ -112,7 +112,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          if ((node .\bin\ytconv.js --version) -ne '1.6.7') { throw 'wrong version' }
+          if ((node .\bin\ytconv.js --version) -ne '1.6.8') { throw 'wrong version' }
           node .\bin\ytconv-auth.js --help
           node .\bin\ytconv.js quickstart
           cmd.exe /d /c "node .\bin\ytconv.js --version"
@@ -147,7 +147,7 @@ jobs:
           TARBALL=$(npm pack --ignore-scripts --silent)
           PREFIX="$RUNNER_TEMP/ytconv-npm-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           npm install --prefix "$PREFIX" "$PWD/$TARBALL" --ignore-scripts
-          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.7"
+          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.8"
 
   alpine-ish:
     runs-on: ubuntu-latest
@@ -166,9 +166,9 @@ jobs:
           npm test
           npm run check:ish
           PYTHONWARNINGS=error::ResourceWarning npm run test:ish
-          test "$(python3 ./ish/ytconv.py --version)" = "1.6.7"
-          test "$(node ./bin/ytconv.js --version)" = "1.6.7"
-          grep -F 'release/ytconv-1.6.7-identity-ui' ish/ytconv.py scripts/install-ish.sh
+          test "$(python3 ./ish/ytconv.py --version)" = "1.6.8"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.8"
+          grep -F 'release/ytconv-1.6.8-stable' ish/ytconv.py scripts/install-ish.sh
 
   public-youtube-mp4:
     runs-on: ubuntu-latest

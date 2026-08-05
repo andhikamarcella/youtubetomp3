@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH and Alpine 1.6.7 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.6.8 behavior checks."""
 
 import hashlib
 import importlib.util
@@ -75,10 +75,10 @@ def options(output, **overrides):
 
 class ReleaseIdentityTests(unittest.TestCase):
     def test_wrapper_version_branch_and_remote_version_are_synchronized(self):
-        self.assertEqual(WRAPPER.VERSION, "1.6.7")
-        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.6.7-identity-ui")
-        self.assertIn("release/ytconv-1.6.7-identity-ui", WRAPPER.RAW_BASE)
-        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.7")
+        self.assertEqual(WRAPPER.VERSION, "1.6.8")
+        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.6.8-stable")
+        self.assertIn("release/ytconv-1.6.8-stable", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.6.8")
 
     def test_wrapper_injects_release_identity_into_the_core_runtime(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")

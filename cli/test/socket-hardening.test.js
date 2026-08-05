@@ -57,8 +57,8 @@ function packageName(specifier) {
   return specifier.split('/')[0];
 }
 
-test('1.6.7 has an exact allowlisted production npm dependency surface', () => {
-  assert.equal(manifest.version, '1.6.7');
+test('1.6.8 has an exact allowlisted production npm dependency surface', () => {
+  assert.equal(manifest.version, '1.6.8');
   assert.deepEqual(new Set(Object.keys(manifest.dependencies)), allowedRuntimePackages);
   assert.deepEqual(manifest.optionalDependencies ?? {}, {});
   assert.deepEqual(manifest.peerDependencies ?? {}, {});
