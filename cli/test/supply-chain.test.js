@@ -109,7 +109,7 @@ test('README exposes versioned Socket TypeScript ISC and security documentation'
   assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.7/u);
   assert.match(readme, /types-TypeScript/u);
   assert.match(readme, /License-ISC/u);
-  assert.match(readme, /npm installation free of `preinstall`, `install`, and `postinstall` hooks/iu);
+  assert.match(readme, /no `preinstall`, `install`, (?:or|and) `postinstall` hooks/iu);
   assert.match(readme, /docs\/PACKAGES\.md/u);
   assert.equal(fs.existsSync(path.join(root, 'SECURITY.md')), true);
 });
