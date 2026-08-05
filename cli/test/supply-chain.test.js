@@ -106,7 +106,7 @@ test('ordinary public YouTube MP4 args contain no cookie source and no subtitles
 });
 
 test('README exposes versioned Socket TypeScript ISC and security documentation', () => {
-  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.8/u);
+  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.7\.0/u);
   assert.match(readme, /types-TypeScript/u);
   assert.match(readme, /License-ISC/u);
   assert.match(readme, /no `preinstall`, `install`, (?:or|and) `postinstall` hooks/iu);
