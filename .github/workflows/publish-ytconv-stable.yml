@@ -1,89 +1,63 @@
-name: Publish YTConv 1.6.6 to npm
+name: Prepare YTConv 1.6.7 source
 
 on:
   push:
     branches:
       - codex/perbaiki-semua-fungsi-tombol
     paths:
-      - ".github/release-markers/ytconv-1.6.6"
-  workflow_dispatch:
-    inputs:
-      confirm:
-        description: "Type PUBLISH-1.6.6 to continue"
-        required: true
-        default: ""
+      - ".github/release-markers/prepare-ytconv-1.6.7-registered"
 
 permissions:
-  contents: read
-  id-token: write
+  contents: write
   issues: write
 
 concurrency:
-  group: ytconv-npm-publish-1.6.6
+  group: prepare-ytconv-1.6.7-registered
   cancel-in-progress: true
 
 jobs:
   announce:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-1.6.6' }}
     runs-on: ubuntu-latest
     steps:
       - name: Report workflow start
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "🚀 YTConv **1.6.6** npm publication workflow started. Source is locked to \`3bce580ce9aa0d58e6d470f665bb17ac440fd396\`. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "🚀 Registered YTConv 1.6.7 preparation workflow started. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
 
-  publish:
+  prepare:
     needs: announce
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'PUBLISH-1.6.6' }}
-    environment: npm
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    defaults:
-      run:
-        working-directory: cli
+    timeout-minutes: 90
     env:
-      VERSION: 1.6.6
-      SOURCE_REF: release/ytconv-1.6.6-socket-hardening
-      SOURCE_SHA: 3bce580ce9aa0d58e6d470f665bb17ac440fd396
+      TARGET_BRANCH: agent/ytconv-1.6.7-identity-and-social
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Checkout 1.6.7 branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 3bce580ce9aa0d58e6d470f665bb17ac440fd396
+          ref: agent/ytconv-1.6.7-identity-and-social
           fetch-depth: 0
+          token: ${{ github.token }}
 
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      - name: Install exact npm and dependency graph without lifecycle scripts
+      - name: Apply 1.6.7 migration
+        run: node .github/scripts/prepare-ytconv-1.6.7.mjs
+
+      - name: Regenerate exact npm graph without lifecycle scripts
+        working-directory: cli
         run: |
           npm install -g npm@11.18.0
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm ci --ignore-scripts
+          (cd ish && sha256sum ytconv.py ytconv-core.py > SHA256SUMS)
 
-      - name: Verify exact 1.6.6 source and publish policy
-        run: |
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          test "$(node -p "require('./package.json').name")" = "ytconv"
-          test "$(node -p "require('./package.json').version")" = "$VERSION"
-          test "$(node -p "require('./package.json').publishConfig.tag")" = "latest"
-          test "$(node -p "require('./package.json').publishConfig.provenance")" = "true"
-          test "$(node -p "require('./package.json').license")" = "ISC"
-          test "$(node -p "require('./package.json').packageManager")" = "npm@11.18.0"
-          test "$(cat ish/VERSION)" = "$VERSION"
-          node --input-type=module - <<'NODE'
-          const fs = await import('node:fs/promises');
-          const manifest = JSON.parse(await fs.readFile('./package.json', 'utf8'));
-          for (const hook of ['preinstall', 'install', 'postinstall']) {
-            if (manifest.scripts?.[hook]) throw new Error(`Forbidden lifecycle hook: ${hook}`);
-          }
-          if (manifest.private === true) throw new Error('Package is private');
-          if (manifest.types !== './types/index.d.ts') throw new Error('TypeScript declarations are missing');
-          NODE
-
-      - name: Run release checks
+      - name: Validate CLI and security
+        working-directory: cli
         run: |
           npm run check
           npm run typecheck
@@ -91,67 +65,32 @@ jobs:
           npm run check:ish
           PYTHONWARNINGS=error::ResourceWarning npm run test:ish
           npm run security
+          npm audit --omit=dev
 
-      - name: Build exact npm tarball
-        id: package
+      - name: Build Android debug APK
+        working-directory: android-app
         run: |
-          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
-          TARBALL=$(node -e "const p=require('$RUNNER_TEMP/ytconv-pack.json')[0];process.stdout.write(require('path').join('$RUNNER_TEMP',p.filename))")
-          test -s "$TARBALL"
-          SHA256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)
-          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleDebug
 
-      - name: Publish ytconv 1.6.6 to npm latest using trusted publishing
-        env:
-          TARBALL: ${{ steps.package.outputs.tarball }}
-          LOCAL_SHA256: ${{ steps.package.outputs.sha256 }}
+      - name: Commit prepared 1.6.7 source
         run: |
-          set -euo pipefail
-          if npm view "ytconv@$VERSION" version --prefer-online >/dev/null 2>&1; then
-            URL=$(npm view "ytconv@$VERSION" dist.tarball --prefer-online)
-            curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-$VERSION.registry.tgz"
-            REGISTRY_SHA256=$(sha256sum "$RUNNER_TEMP/ytconv-$VERSION.registry.tgz" | cut -d ' ' -f 1)
-            test "$REGISTRY_SHA256" = "$LOCAL_SHA256"
-            test "$(npm view ytconv@latest version --prefer-online)" = "$VERSION"
-            echo "ytconv@$VERSION already exists with matching bytes and is already latest."
-          else
-            npm publish "$TARBALL" --tag latest --access public --provenance
-          fi
+          rm -f .github/scripts/prepare-ytconv-1.6.7.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Prepare YTConv 1.6.7 identity and social UX"
+          git push origin "HEAD:$TARGET_BRANCH"
 
-      - name: Verify npm latest and immutable registry bytes
-        env:
-          LOCAL_SHA256: ${{ steps.package.outputs.sha256 }}
-        run: |
-          set -euo pipefail
-          READY=false
-          for ATTEMPT in $(seq 1 24); do
-            REGISTRY_VERSION=$(npm view ytconv@latest version --prefer-online 2>/dev/null || true)
-            if [ "$REGISTRY_VERSION" = "$VERSION" ]; then
-              READY=true
-              break
-            fi
-            echo "Waiting for npm propagation ($ATTEMPT/24)..."
-            sleep 5
-          done
-          test "$READY" = "true"
-          URL=$(npm view "ytconv@$VERSION" dist.tarball --prefer-online)
-          curl --fail --location --retry 5 "$URL" -o "$RUNNER_TEMP/ytconv-$VERSION.verified.tgz"
-          test "$(sha256sum "$RUNNER_TEMP/ytconv-$VERSION.verified.tgz" | cut -d ' ' -f 1)" = "$LOCAL_SHA256"
-          npm view "ytconv@$VERSION" name version dist-tags.latest --json --prefer-online
-
-      - name: Report successful npm publication
-        if: ${{ success() }}
-        working-directory: .
+      - name: Report success
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "✅ YTConv **1.6.6** is published on npm with the **latest** tag. The workflow verified the registry tarball bytes against source commit \`$SOURCE_SHA\`. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "✅ YTConv 1.6.7 preparation completed on **$TARGET_BRANCH**. Figlet, Commander, which/isexe, animated progress, subtitles-off defaults, browser-login recovery, and Android 1.6.7 passed the workflow. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
 
-      - name: Report npm publication failure
+      - name: Report failure
         if: ${{ failure() }}
-        working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "❌ YTConv **1.6.6** npm publication failed. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+          gh issue comment 184 --repo "$GITHUB_REPOSITORY" --body "❌ YTConv 1.6.7 preparation failed. Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
