@@ -7,6 +7,13 @@ on:
     paths:
       - .github/scripts/prepare-ytconv-1.6.6.mjs
       - .github/workflows/prepare-ytconv-1.6.6.yml
+  pull_request:
+    branches:
+      - release/ytconv-1.6.5-packages
+    paths:
+      - .github/scripts/prepare-ytconv-1.6.6.mjs
+      - .github/workflows/prepare-ytconv-1.6.6.yml
+      - cli/**
   workflow_dispatch:
 
 permissions:
@@ -18,6 +25,7 @@ concurrency:
 
 jobs:
   prepare-and-validate:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
