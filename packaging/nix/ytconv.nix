@@ -12,7 +12,7 @@
 
 buildNpmPackage {
   pname = "ytconv";
-  version = "1.6.6";
+  version = "1.6.7";
   src = ../../cli;
 
   npmDeps = importNpmLock {
@@ -32,12 +32,12 @@ buildNpmPackage {
       --add-flags "$out/lib/node_modules/ytconv/bin/ytconv-auth.js" \
       --prefix PATH : ${lib.makeBinPath [ python3 ffmpeg yt-dlp gallery-dl ]} \
       --set YTCONV_DISTRIBUTION_PACKAGE nix
-    "$out/bin/ytconv" --version | grep -Fx 1.6.6
+    "$out/bin/ytconv" --version | grep -Fx 1.6.7
     runHook postInstall
   '';
 
   meta = {
-    description = "Secure YouTube MP4 and MP3 downloader CLI";
+    description = "Secure social-media downloader and converter CLI";
     homepage = "https://github.com/andhikamarcella/youtubetomp3";
     license = lib.licenses.isc;
     mainProgram = "ytconv";
