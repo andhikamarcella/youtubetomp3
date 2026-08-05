@@ -8,6 +8,8 @@ root = Path(sys.argv[1] if len(sys.argv) > 1 else '.').resolve()
 skip_dirs = {'.git', 'node_modules', 'dist', 'build', '.gradle', '.cache'}
 binary = {'.png','.jpg','.jpeg','.gif','.webp','.ico','.pdf','.zip','.gz','.tgz','.apk','.deb','.rpm','.zst','.exe','.dll','.so','.woff','.woff2','.ttf','.jar','.keystore','.jks'}
 changelog = root / 'cli/CHANGELOG.md'
+package_path = root / 'cli/package.json'
+lock_path = root / 'cli/package-lock.json'
 
 replacements = [
     ('github.com/andhikamarcella/youtubetomp3', 'github.com/andhikamarcella/YTConv'),
@@ -18,16 +20,16 @@ replacements = [
     ('ytconv-1.6.8', 'ytconv-1.7.0'),
     ('ytconv_1.6.8', 'ytconv_1.7.0'),
     ('1.6.8', '1.7.0'),
-    ('YTConv 1.6.2', 'YTConv 1.7.0'),
-    ('Stable 1.6.2', 'Stable 1.7.0'),
-    ('1.6.2', '1.7.0'),
     ('10608', '10700'),
     ('Subtitles         ON', 'Subtitles         OFF unless requested'),
     ('enables subtitles by default for video unless explicitly disabled', 'keeps subtitles disabled by default unless explicitly requested'),
 ]
 
 for path in root.rglob('*'):
-    if not path.is_file() or path == changelog:
+    if not path.is_file() or path in {changelog, package_path, lock_path}:
+        continue
+    relative = path.relative_to(root)
+    if relative.parts[:2] == ('.github', 'workflows'):
         continue
     if any(part in skip_dirs for part in path.parts) or path.suffix.lower() in binary:
         continue
@@ -41,7 +43,22 @@ for path in root.rglob('*'):
     if updated != text:
         path.write_text(updated, encoding='utf-8')
 
-package_path = root / 'cli/package.json'
+# The inherited command guide still carried historical 1.6.2 headings. Update only
+# that documentation file instead of replacing a generic dependency-like version
+# throughout the repository.
+commands_path = root / 'cli/docs/COMMANDS.md'
+if commands_path.exists():
+    commands = commands_path.read_text(encoding='utf-8')
+    commands = commands.replace('YTConv 1.6.2', 'YTConv 1.7.0')
+    commands = commands.replace('Stable 1.6.2', 'Stable 1.7.0')
+    commands = commands.replace('1.6.2', '1.7.0')
+    commands = commands.replace('Subtitles         ON', 'Subtitles         OFF unless requested')
+    commands = commands.replace(
+        'enables subtitles by default for video unless explicitly disabled',
+        'keeps subtitles disabled by default unless explicitly requested',
+    )
+    commands_path.write_text(commands, encoding='utf-8')
+
 package = json.loads(package_path.read_text(encoding='utf-8'))
 package['version'] = '1.7.0'
 package['description'] = 'Secure cross-platform social-media downloader CLI with guided diagnostics, browser-login recovery, animated progress, native packages, expanded documentation, and verified release provenance.'
@@ -83,7 +100,6 @@ if 'npm run docs:check' not in existing:
 package['scripts'] = scripts
 package_path.write_text(json.dumps(package, indent=2) + '\n', encoding='utf-8')
 
-lock_path = root / 'cli/package-lock.json'
 lock = json.loads(lock_path.read_text(encoding='utf-8'))
 lock['name'] = 'ytconv'
 lock['version'] = '1.7.0'
@@ -125,12 +141,19 @@ if '## Documentation hub' not in readme_text:
     readme_text += '''\n\n## Documentation hub\n\n- [Documentation index](docs/README.md)\n- [Installation](docs/INSTALLATION.md)\n- [Commands](docs/COMMANDS.md)\n- [Configuration](docs/CONFIGURATION.md)\n- [Authentication](docs/AUTHENTICATION.md)\n- [Troubleshooting](docs/TROUBLESHOOTING.md)\n- [Platform support](docs/PLATFORMS.md)\n- [Architecture](docs/ARCHITECTURE.md)\n- [Development](docs/DEVELOPMENT.md)\n- [Release process](docs/RELEASES.md)\n- [npm Trusted Publishing](docs/TRUSTED-PUBLISHING.md)\n- [FAQ](docs/FAQ.md)\n- [Migration to 1.7.0](docs/MIGRATION-1.7.0.md)\n\nCanonical repository: <https://github.com/andhikamarcella/YTConv>\n'''
 readme.write_text(readme_text, encoding='utf-8')
 
-workflow_dir = root / '.github/workflows'
-for pattern in ('publish-ytconv-1.*.yml', '*token*.yml'):
-    for path in workflow_dir.glob(pattern):
-        path.unlink()
-
-for path in sorted([p for p in root.rglob('*') if '1.6.8' in p.name and '.git' not in p.parts], key=lambda p: len(p.parts), reverse=True):
+# Filename migrations are limited to non-workflow release artifacts. GitHub
+# workflow files are changed later through the GitHub API, which has the
+# required workflow permission.
+for path in sorted(
+    [
+        p for p in root.rglob('*')
+        if '1.6.8' in p.name
+        and '.git' not in p.parts
+        and p.relative_to(root).parts[:2] != ('.github', 'workflows')
+    ],
+    key=lambda p: len(p.parts),
+    reverse=True,
+):
     target = path.with_name(path.name.replace('1.6.8', '1.7.0'))
     if target.exists():
         if path.is_dir():
@@ -140,11 +163,8 @@ for path in sorted([p for p in root.rglob('*') if '1.6.8' in p.name and '.git' n
     else:
         path.rename(target)
 
-for obsolete in (
-    root / '.github/workflows/prepare-ytconv-1.7.0.yml',
-    root / '.github/release-markers/prepare-ytconv-1.7.0',
-):
-    if obsolete.exists():
-        obsolete.unlink()
+marker = root / '.github/release-markers/prepare-ytconv-1.7.0'
+if marker.exists():
+    marker.unlink()
 
 print('YTConv 1.7.0 migration completed.')
