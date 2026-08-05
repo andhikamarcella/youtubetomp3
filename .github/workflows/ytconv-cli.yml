@@ -1,9 +1,9 @@
-name: YTConv CLI 1.6.5 Core and Compatibility
+name: YTConv CLI 1.6.6 Core and Compatibility
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.5-packages
+      - release/ytconv-1.6.6-socket-hardening
     paths:
       - "cli/**"
       - "AGENTS.md"
@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ytconv-cli-1.6.5-${{ github.ref }}
+  group: ytconv-cli-1.6.6-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -52,13 +52,13 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run security
-      - name: Verify 1.6.5 package identity and AUTO policy
+      - name: Verify 1.6.6 package identity and AUTO policy
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.6.5"
-          test "$(cat ish/VERSION)" = "1.6.5"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.6"
+          test "$(cat ish/VERSION)" = "1.6.6"
           node --input-type=module - <<'NODE'
           const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
-          if (manifest.version !== '1.6.5') throw new Error(manifest.version);
+          if (manifest.version !== '1.6.6') throw new Error(manifest.version);
           if (manifest.license !== 'ISC') throw new Error(manifest.license);
           if (manifest.scripts.preinstall || manifest.scripts.install || manifest.scripts.postinstall) {
             throw new Error('npm lifecycle install scripts are forbidden');
@@ -105,7 +105,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          if ((node .\bin\ytconv.js --version) -ne '1.6.5') { throw 'wrong version' }
+          if ((node .\bin\ytconv.js --version) -ne '1.6.6') { throw 'wrong version' }
           node .\bin\ytconv.js --help
           node .\bin\ytconv.js quickstart
           cmd.exe /d /c "node .\bin\ytconv.js --version"
@@ -140,7 +140,7 @@ jobs:
           TARBALL=$(npm pack --ignore-scripts --silent)
           PREFIX="$RUNNER_TEMP/ytconv-npm-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           npm install --prefix "$PREFIX" "$PWD/$TARBALL" --ignore-scripts
-          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.5"
+          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.6.6"
 
   alpine-ish:
     runs-on: ubuntu-latest
@@ -159,9 +159,9 @@ jobs:
           npm test
           npm run check:ish
           PYTHONWARNINGS=error::ResourceWarning npm run test:ish
-          test "$(python3 ./ish/ytconv.py --version)" = "1.6.5"
-          test "$(node ./bin/ytconv.js --version)" = "1.6.5"
-          grep -F 'release/ytconv-1.6.5-packages' ish/ytconv.py ish/ytconv-core.py scripts/install-ish.sh
+          test "$(python3 ./ish/ytconv.py --version)" = "1.6.6"
+          test "$(node ./bin/ytconv.js --version)" = "1.6.6"
+          grep -F 'release/ytconv-1.6.6-socket-hardening' ish/ytconv.py ish/ytconv-core.py scripts/install-ish.sh
 
   public-youtube-mp4:
     runs-on: ubuntu-latest
