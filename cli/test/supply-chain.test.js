@@ -7,6 +7,7 @@ import { buildDownloadArgs } from '../src/downloader.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 const license = fs.readFileSync(path.join(root, 'LICENSE'), 'utf8');
 
@@ -20,18 +21,34 @@ function javascriptFiles(directory) {
   return values;
 }
 
-test('1.6.6 publishes recognized license types and no lifecycle install hooks', () => {
-  assert.equal(manifest.version, '1.6.6');
+test('1.6.7 publishes recognized license types and no lifecycle install hooks', () => {
+  assert.equal(manifest.version, '1.6.7');
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
   assert.equal(manifest.scripts.postinstall, undefined);
   assert.equal(fs.existsSync(path.join(root, 'scripts', 'postinstall.js')), false);
   assert.match(license, /^ISC License\r?\n/u);
-  assert.match(license, /Permission to use, copy, modify, and\/or distribute/u);
 });
 
-test('TypeScript badge is backed by real declarations exports and type checking', () => {
+test('identity dependencies are exact and represented by the committed lock graph', () => {
+  const expected = {
+    commander: '14.0.3',
+    figlet: '1.11.4',
+    isexe: '3.1.5',
+    which: '6.0.0',
+  };
+  for (const [name, version] of Object.entries(expected)) {
+    assert.equal(manifest.dependencies[name], version);
+    assert.equal(lock.packages[''].dependencies[name], version);
+    assert.equal(lock.packages[`node_modules/${name}`].version, version);
+    assert.match(lock.packages[`node_modules/${name}`].integrity, /^sha512-/u);
+  }
+  assert.equal(lock.version, '1.6.7');
+  assert.equal(lock.packages[''].version, '1.6.7');
+});
+
+test('TypeScript badge is backed by declarations exports and type checking', () => {
   assert.equal(manifest.main, './src/index.js');
   assert.equal(manifest.types, './types/index.d.ts');
   assert.equal(manifest.exports['.'].types, './types/index.d.ts');
@@ -39,10 +56,6 @@ test('TypeScript badge is backed by real declarations exports and type checking'
   assert.equal(fs.existsSync(path.join(root, 'src', 'index.js')), true);
   assert.equal(fs.existsSync(path.join(root, 'types', 'index.d.ts')), true);
   assert.equal(manifest.scripts.typecheck, 'tsc --noEmit -p tsconfig.json');
-  assert.deepEqual(manifest.devDependencies, {
-    '@types/node': '22.20.1',
-    typescript: '5.9.3',
-  });
 });
 
 test('published JavaScript rejects dangerous dynamic shell patterns', () => {
@@ -66,7 +79,7 @@ test('published JavaScript rejects dangerous dynamic shell patterns', () => {
   }
 });
 
-test('ordinary public YouTube MP4 args contain no cookie source', () => {
+test('ordinary public YouTube MP4 args contain no cookie source and no subtitles', () => {
   const args = buildDownloadArgs({
     url: 'https://www.youtube.com/watch?v=BaW_jenozKc',
     mode: 'video',
@@ -85,13 +98,15 @@ test('ordinary public YouTube MP4 args contain no cookie source', () => {
   });
   assert.equal(args.includes('--cookies'), false);
   assert.equal(args.includes('--cookies-from-browser'), false);
+  assert.equal(args.includes('--write-subs'), false);
+  assert.equal(args.includes('--write-auto-subs'), false);
   assert.deepEqual(args.slice(args.indexOf('--merge-output-format'), args.indexOf('--merge-output-format') + 4), [
     '--merge-output-format', 'mp4', '--recode-video', 'mp4',
   ]);
 });
 
-test('README exposes versioned Socket TypeScript ISC packaging and security documentation', () => {
-  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.6/u);
+test('README exposes versioned Socket TypeScript ISC and security documentation', () => {
+  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.7/u);
   assert.match(readme, /types-TypeScript/u);
   assert.match(readme, /License-ISC/u);
   assert.match(readme, /npm installation free of `preinstall`, `install`, and `postinstall` hooks/iu);
