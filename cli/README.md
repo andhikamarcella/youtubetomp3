@@ -2,9 +2,10 @@
 
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
 [![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.6)](https://badge.socket.dev/npm/package/ytconv/1.6.6)
+[![Runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/SECURITY.md)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/NODEJS.md)
 
 **YTConv 1.6.6** is a secure, typed media downloader for Windows, macOS, Linux, Android, Termux, iSH, WSL, and SSH. It provides npm installation plus native Windows EXE, Android APK, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Homebrew, Termux, and portable Linux packages.
 
@@ -12,19 +13,25 @@ Search terms: **ytconv npm**, **YouTube downloader CLI**, **YouTube MP4 download
 
 ## What changed in 1.6.6
 
-- Added an installable Windows EXE and portable ZIP with a verified bundled Node.js runtime.
-- Added native DEB, RPM, Arch Linux, Alpine APK, AppImage, Snap, Flatpak, Nix, Homebrew, Void, Gentoo, and universal Linux packaging.
-- Added a native Android application that uses Android-compatible yt-dlp and FFmpeg engines; it is not a WebView.
-- Added a Termux-native DEB with verified bundled Python modules.
-- Fixed stale iSH and Alpine installer links that still pointed at 1.6.2 in earlier releases.
-- Added versioned SHA-256 verification before iSH/Alpine Python files are installed or updated.
-- Removed the unnecessary Node.js requirement from the maintained iSH/Alpine Python frontend.
+- Removed every production npm dependency. The published CLI declares `"dependencies": {}`.
+- Replaced React, Ink, and Figlet with a dependency-free terminal wizard built from Node.js modules.
+- Replaced the `ws` package with Node.js 22+ built-in WebSocket support for the loopback-only managed-browser bridge.
+- Replaced `which` with internal PATH/PATHEXT executable resolution and Unix execute-permission checks.
+- Added package gates that reject minified JavaScript, source maps, native executable payloads, external runtime imports, debug statements, dynamic evaluation, and shell execution.
+- Added repository-level Socket configuration scoped to the actual CLI manifests while keeping alerts and pull-request checks enabled.
 - Kept npm installation free of `preinstall`, `install`, and `postinstall` hooks.
 - Preserved public YouTube AUTO routing: regular YouTube → MP4, YouTube Music → MP3.
+- Preserved Windows EXE, Android APK, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Termux, iSH, and portable packages.
+
+## Socket and supply-chain status
+
+YTConv 1.6.6 has **zero production npm dependencies**, removing the transitive runtime graph behind optimized-override, unmaintained-package, dependency-minification, and dependency-debug findings.
+
+Socket can still report **network**, **filesystem**, **environment-variable**, **URL-string**, and **child-process** capabilities because a downloader must fetch a user-selected URL, invoke yt-dlp/FFmpeg, and save media. These capabilities are constrained: shell execution and telemetry are absent, secrets are stripped from child environments, engine downloads require HTTPS, repository allowlisting, SHA-256, size limits, and atomic replacement, browser automation is loopback-only, and writes are limited to selected output plus YTConv-managed state. See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/SECURITY.md).
 
 ## Choose an installation method
 
-Complete beginner instructions for every artifact are in the [native package guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/PACKAGES.md).
+Complete beginner instructions for every artifact are in the [native package guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/PACKAGES.md).
 
 ### Windows EXE
 
@@ -104,7 +111,7 @@ ytconv --version
 apk update
 apk add --no-cache curl ca-certificates
 curl -fsSL \
-  https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening/cli/scripts/install-ish.sh \
+  https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.6-zero-deps-final/cli/scripts/install-ish.sh \
   -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
@@ -229,6 +236,7 @@ Global CLI installations count as downloads, not npm Dependents.
 
 YTConv does not hide the network, filesystem, environment, and child-process capabilities required by a local media downloader. It restricts them:
 
+- zero production npm dependencies;
 - no npm lifecycle install hooks;
 - no `eval`, `Function`, `child_process.exec`, `shell: true`, or string-built shell commands;
 - executable and argument arrays remain separate;
@@ -237,7 +245,7 @@ YTConv does not hide the network, filesystem, environment, and child-process cap
 - no telemetry, analytics, advertisements, credential collection, or hidden remote configuration;
 - release artifacts include checksums, SBOM, provenance where supported, immutable source tags, and package installation smoke tests.
 
-See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/SECURITY.md) for the threat model.
+See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/SECURITY.md) for the threat model.
 
 ## No false success
 
@@ -280,26 +288,26 @@ Download/YTConv
 
 ## Documentation
 
-- [Native packages and installers](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/PACKAGES.md)
-- [Install Node.js first](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/NODEJS.md)
-- [Complete installation](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/INSTALL.md)
-- [Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/WINDOWS.md)
-- [Linux and macOS](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/LINUX.md)
-- [Platforms](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/PLATFORMS.md)
-- [Android Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/TERMUX.md)
-- [iPhone and iPad through iSH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/ISH.md)
-- [Commands and examples](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/COMMANDS.md)
-- [Configuration and profiles](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/CONFIGURATION.md)
-- [Dependencies](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/DEPENDENCIES.md)
-- [Official browser login](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/AUTH.md)
-- [Security model](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/SECURITY.md)
-- [Shells and PATH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/SHELLS.md)
-- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/TROUBLESHOOTING.md)
-- [Publishing](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/PUBLISHING.md)
-- [Release verification](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/docs/RELEASE.md)
+- [Native packages and installers](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/PACKAGES.md)
+- [Install Node.js first](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/NODEJS.md)
+- [Complete installation](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/INSTALL.md)
+- [Windows](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/WINDOWS.md)
+- [Linux and macOS](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/LINUX.md)
+- [Platforms](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/PLATFORMS.md)
+- [Android Termux](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/TERMUX.md)
+- [iPhone and iPad through iSH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/ISH.md)
+- [Commands and examples](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/COMMANDS.md)
+- [Configuration and profiles](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/CONFIGURATION.md)
+- [Dependencies](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/DEPENDENCIES.md)
+- [Official browser login](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/AUTH.md)
+- [Security model](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/SECURITY.md)
+- [Shells and PATH](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/SHELLS.md)
+- [Troubleshooting](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/TROUBLESHOOTING.md)
+- [Publishing](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/PUBLISHING.md)
+- [Release verification](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/RELEASE.md)
 
 ## License
 
-The standalone YTConv CLI and npm package are distributed under the [ISC License](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/LICENSE). The Android application module is GPL-3.0-only because of its linked GPL Android media engine; its complete corresponding source is included in the repository and release.
+The standalone YTConv CLI and npm package are distributed under the [ISC License](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/LICENSE). The Android application module is GPL-3.0-only because of its linked GPL Android media engine; its complete corresponding source is included in the repository and release.
 
 Download only media that you are authorized to access and store.

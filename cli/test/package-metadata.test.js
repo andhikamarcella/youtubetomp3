@@ -8,7 +8,7 @@ const cliDirectory = fileURLToPath(new URL('../', import.meta.url));
 const repositoryDirectory = fileURLToPath(new URL('../../', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
-const releaseBranch = 'release/ytconv-1.6.6-socket-hardening';
+const releaseBranch = 'release/ytconv-1.6.6-zero-deps-final';
 const docsBase = `https://github.com/andhikamarcella/youtubetomp3/blob/${releaseBranch}/cli/docs/`;
 const releaseBase = `https://github.com/andhikamarcella/youtubetomp3/blob/${releaseBranch}/cli/`;
 
@@ -24,6 +24,7 @@ test('1.6.6 exposes complete secure typed multi-package metadata', () => {
   assert.match(manifest.releaseNotes, /Alpine APK/u);
   assert.match(manifest.releaseNotes, /Android packaging/u);
   assert.match(manifest.releaseNotes, /iSH and Alpine update paths/u);
+  assert.match(manifest.releaseNotes, /every production npm dependency/u);
   assert.equal(manifest.main, './src/index.js');
   assert.equal(manifest.types, './types/index.d.ts');
   assert.equal(manifest.exports['.'].types, './types/index.d.ts');
@@ -36,16 +37,16 @@ test('1.6.6 exposes complete secure typed multi-package metadata', () => {
   assert.equal(manifest.documentation.nodejs, `${docsBase}NODEJS.md`);
   assert.equal(manifest.documentation.packages, `${docsBase}PACKAGES.md`);
   assert.equal(manifest.documentation.security, `${releaseBase}SECURITY.md`);
-  assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['ink', 'react', 'ws']);
+  assert.deepEqual(manifest.dependencies, {});
+  assert.equal(Object.keys(manifest.optionalDependencies ?? {}).length, 0);
+  assert.equal(Object.keys(manifest.peerDependencies ?? {}).length, 0);
   assert.deepEqual(manifest.devDependencies, {
     '@types/node': '22.20.1',
     typescript: '5.9.3',
   });
-  assert.equal(Object.values(manifest.dependencies).every((version) => /^\d+\.\d+\.\d+$/u.test(version)), true);
   assert.equal(Object.values(manifest.devDependencies).every((version) => /^\d+\.\d+\.\d+$/u.test(version)), true);
   assert.equal(manifest.publishConfig.provenance, true);
   assert.equal(manifest.engines.node, '>=22.14.0');
-  assert.equal(manifest.optionalDependencies, undefined);
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
   assert.equal(manifest.scripts.postinstall, undefined);
@@ -95,7 +96,8 @@ test('native package sources cover Windows Linux Android Termux and iSH', () => 
 test('published README uses only absolute versioned release links', () => {
   assert.doesNotMatch(readme, /\]\((?:\.\/)?docs\//u);
   assert.doesNotMatch(readme, /\]\((?:\.\/)?(?:LICENSE|SECURITY\.md)\)/u);
-  const links = [...readme.matchAll(/\]\((https:\/\/github\.com\/andhikamarcella\/youtubetomp3\/blob\/release\/ytconv-1\.6\.6-socket-hardening\/cli\/docs\/([A-Z0-9-]+\.md)(?:#[^)]+)?)\)/gu)];
+  const branchPattern = releaseBranch.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const links = [...readme.matchAll(new RegExp(`\\]\\((https:\\/\\/github\\.com\\/andhikamarcella\\/youtubetomp3\\/blob\\/${branchPattern}\\/cli\\/docs\\/([A-Z0-9-]+\\.md)(?:#[^)]+)?)\\)`, 'gu'))];
   assert.ok(links.length >= 15, 'the public README must expose the complete absolute documentation index');
   for (const [, url, fileName] of links) {
     assert.ok(url.startsWith(docsBase), `unexpected documentation branch in ${url}`);
