@@ -103,3 +103,75 @@ jobs:
               --title "YTConv 1.7.0" \
               --generate-notes
           fi
+
+      - name: Record successful publication
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_SHA256: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          STATUS_PATH=".github/release-status/ytconv-1.7.0.json"
+          STATUS_FILE="$RUNNER_TEMP/ytconv-1.7.0-status.json"
+          jq -n \
+            --arg status "published" \
+            --arg package "ytconv" \
+            --arg version "1.7.0" \
+            --arg distTag "latest" \
+            --arg sha256 "$PACKAGE_SHA256" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg sourceCommit "$GITHUB_SHA" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runUrl "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg publishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{status:$status,package:$package,version:$version,distTag:$distTag,sha256:$sha256,repository:$repository,branch:$branch,sourceCommit:$sourceCommit,runId:$runId,runUrl:$runUrl,publishedAt:$publishedAt}' \
+            > "$STATUS_FILE"
+          ENCODED=$(base64 -w0 "$STATUS_FILE")
+          CURRENT_SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH?ref=release/ytconv-1.7.0" --jq .sha 2>/dev/null || true)
+          if [ -n "$CURRENT_SHA" ]; then
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
+              -f message="release: record successful ytconv 1.7.0 publication" \
+              -f content="$ENCODED" \
+              -f branch="release/ytconv-1.7.0" \
+              -f sha="$CURRENT_SHA"
+          else
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
+              -f message="release: record successful ytconv 1.7.0 publication" \
+              -f content="$ENCODED" \
+              -f branch="release/ytconv-1.7.0"
+          fi
+
+      - name: Record failed publication
+        if: ${{ failure() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATUS_PATH=".github/release-status/ytconv-1.7.0.json"
+          STATUS_FILE="$RUNNER_TEMP/ytconv-1.7.0-status.json"
+          jq -n \
+            --arg status "failed" \
+            --arg package "ytconv" \
+            --arg version "1.7.0" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg sourceCommit "$GITHUB_SHA" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runUrl "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg failedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{status:$status,package:$package,version:$version,repository:$repository,branch:$branch,sourceCommit:$sourceCommit,runId:$runId,runUrl:$runUrl,failedAt:$failedAt}' \
+            > "$STATUS_FILE"
+          ENCODED=$(base64 -w0 "$STATUS_FILE")
+          CURRENT_SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH?ref=release/ytconv-1.7.0" --jq .sha 2>/dev/null || true)
+          if [ -n "$CURRENT_SHA" ]; then
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
+              -f message="release: record failed ytconv 1.7.0 publication" \
+              -f content="$ENCODED" \
+              -f branch="release/ytconv-1.7.0" \
+              -f sha="$CURRENT_SHA"
+          else
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
+              -f message="release: record failed ytconv 1.7.0 publication" \
+              -f content="$ENCODED" \
+              -f branch="release/ytconv-1.7.0"
+          fi
