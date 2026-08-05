@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "1.6.6"
+$Version = "1.6.7"
 $Channel = "latest"
 Write-Host "YTConv $Version installer for PowerShell"
 
@@ -31,6 +31,8 @@ if ($Local) {
     if ($LASTEXITCODE -ne 0) { throw "Type checking failed." }
     & npm.cmd test
     if ($LASTEXITCODE -ne 0) { throw "Unit tests failed; global installation was cancelled." }
+    & npm.cmd run security
+    if ($LASTEXITCODE -ne 0) { throw "Security checks failed; global installation was cancelled." }
   }
   & npm.cmd install -g . --ignore-scripts --force
 } else {
@@ -47,7 +49,8 @@ if ($installed -ne $Version) { throw "Installed version is $installed; expected 
 & ytconv.cmd --shell-info
 & ytconv.cmd doctor
 & ytconv.cmd quickstart
-Write-Host "`nAUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4."
-Write-Host "Explicit audio/video mode and MP4/MKV/WebM selections remain authoritative."
+Write-Host "`nAUTO policy: YouTube Music becomes MP3; regular video and social URLs use provider detection."
+Write-Host "Public access is attempted first; browser login is offered only when authentication is required."
+Write-Host "Subtitles remain off unless --subtitles is supplied."
 Write-Host "Stable installation completed. Run: ytconv.cmd or ytconv"
-Write-Host "A standalone EXE installer is also provided in the GitHub 1.6.6 release."
+Write-Host "A standalone EXE installer is also provided in the GitHub 1.6.7 release."
