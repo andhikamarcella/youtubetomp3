@@ -158,7 +158,7 @@
     "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/SECURITY.md"
   },
   "releaseDate": "2026-08-05",
-  "releaseNotes": "YTConv 1.7.0 completes the canonical repository migration to andhikamarcella/YTConv, adds comprehensive documentation and automated documentation validation, introduces npm Trusted Publishing through GitHub OIDC, and refreshes every supported package target.",
+  "releaseNotes": "YTConv 1.7.0 preserves the recognizable Figlet identity and Commander command experience, keeps subtitles off by default, completes the canonical repository migration to andhikamarcella/YTConv, adds comprehensive documentation with automated validation, introduces npm Trusted Publishing through GitHub OIDC, and refreshes every supported package target.",
   "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.0/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
