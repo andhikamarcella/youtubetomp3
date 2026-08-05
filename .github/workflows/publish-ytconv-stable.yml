@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: ytconv-npm-publish-1.6.6
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   announce:
