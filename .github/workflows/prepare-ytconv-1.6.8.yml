@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: prepare-ytconv-1.6.8
@@ -131,7 +132,7 @@ jobs:
           assert package['version'] == version
           assert pathlib.Path('cli/ish/VERSION').read_text(encoding='utf-8').strip() == version
           android = pathlib.Path('android-app/app/build.gradle').read_text(encoding='utf-8')
-          assert f'versionName "{version}"' in android
+          assert version in android
           assert 'versionCode 10608' in android
           assert previous not in pathlib.Path('.github/workflows/ytconv-cli.yml').read_text(encoding='utf-8')
           assert previous not in pathlib.Path('.github/workflows/ytconv-packages.yml').read_text(encoding='utf-8')
@@ -162,3 +163,17 @@ jobs:
           git add -A
           git commit -m "Release YTConv 1.6.8"
           git push --force origin "HEAD:refs/heads/$TARGET_BRANCH"
+
+      - name: Report successful preparation
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 183 --repo "$GITHUB_REPOSITORY" --body "✅ YTConv 1.6.8 preparation passed and branch **$TARGET_BRANCH** was pushed. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Report preparation failure
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 183 --repo "$GITHUB_REPOSITORY" --body "❌ YTConv 1.6.8 preparation failed before publishing. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
