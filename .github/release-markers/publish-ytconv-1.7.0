@@ -3,3 +3,5 @@ source=release/ytconv-1.7.0
 package=ytconv@1.7.0
 channel=latest
 publishing=trusted-oidc
+verification=repository-status-marker
+attempt=2
