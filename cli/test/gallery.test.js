@@ -8,15 +8,16 @@ const directory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.join(directory, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 
-test('YTConv stable is version 1.6.6 on the latest tag with provenance', () => {
-  assert.equal(manifest.version, '1.6.6');
+test('YTConv stable is version 1.6.7 on the latest tag with provenance', () => {
+  assert.equal(manifest.version, '1.6.7');
   assert.equal(manifest.publishConfig.tag, 'latest');
   assert.equal(manifest.publishConfig.provenance, true);
 });
 
-test('stable package includes YouTube output policy social login installers iSH and documentation', () => {
+test('stable package includes identity social login installers iSH and documentation', () => {
   const required = [
     'bin/ytconv-auth.js', 'src/auth.js', 'src/social-auth.js', 'src/social-sessions.js',
+    'src/branding.js', 'src/command-program.js', 'src/progress-ui.js',
     'src/defaults.js', 'src/gallery-routing.js', 'src/user-data.js', 'src/youtube-output.js',
     'src/verified-download.js', 'src/terminal-style.js', 'src/engine-storage.js',
     'ish/ytconv.py', 'ish/ytconv-core.py', 'ish/VERSION', 'ish/SHA256SUMS', 'scripts/install-ish.sh',
