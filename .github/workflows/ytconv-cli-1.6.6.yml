@@ -1,0 +1,132 @@
+name: YTConv CLI 1.6.6 Socket Hardening
+
+on:
+  push:
+    branches: [release/ytconv-1.6.6-socket-hardening]
+  pull_request:
+    paths:
+      - "cli/**"
+      - "socket.yml"
+      - ".github/workflows/ytconv-cli-1.6.6.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ytconv-cli-1.6.6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22.14.0, 24, 26]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - working-directory: cli
+        run: npm ci --ignore-scripts
+      - working-directory: cli
+        run: |
+          test "$(node -p "require('./package.json').version")" = 1.6.6
+          test "$(node -e "const p=require('./package.json');process.stdout.write(String(Object.keys(p.dependencies||{}).length))")" = 0
+          npm run check
+          npm run typecheck
+          npm test
+          npm run security
+
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - working-directory: cli
+        run: npm ci --ignore-scripts
+      - working-directory: cli
+        run: |
+          npm run check
+          npm run typecheck
+          npm test
+          npm run security
+      - if: runner.os != 'Windows'
+        working-directory: cli
+        run: |
+          npm run check:ish
+          PYTHONWARNINGS=error::ResourceWarning npm run test:ish
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: cli
+        run: |
+          if ((node ./bin/ytconv-auth.js --version).Trim() -ne '1.6.6') { throw 'version mismatch' }
+
+  package-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - working-directory: cli
+        run: npm ci --ignore-scripts
+      - working-directory: cli
+        run: |
+          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/pack.json"
+          TARBALL=$(node -e "const p=require('$RUNNER_TEMP/pack.json')[0];process.stdout.write(require('path').join('$RUNNER_TEMP',p.filename))")
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const p = require(process.env.RUNNER_TEMP + '/pack.json')[0];
+          const forbidden = p.files.filter((file) =>
+            /(?:^|\/)node_modules(?:\/|$)/u.test(file.path)
+            || /(?:^|\.)min\.(?:c?js|mjs)$/iu.test(file.path)
+            || /\.(?:c?js|mjs)\.map$/iu.test(file.path)
+            || /\.(?:exe|dll|dylib|so|node|wasm|jar|class)$/iu.test(file.path));
+          if (forbidden.length) throw new Error(JSON.stringify(forbidden, null, 2));
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (Object.keys(manifest.dependencies || {}).length) throw new Error('production dependencies are not empty');
+          NODE
+          mkdir "$RUNNER_TEMP/install"
+          cd "$RUNNER_TEMP/install"
+          npm init -y >/dev/null
+          npm install "$TARBALL" --ignore-scripts
+          test "$(./node_modules/.bin/ytconv --version)" = 1.6.6
+
+  public-youtube-mp4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: python3 -m pip install --user --break-system-packages --upgrade 'yt-dlp[default]'
+      - working-directory: cli
+        run: npm ci --ignore-scripts
+      - name: Download and verify public YouTube MP4 without cookies
+        working-directory: cli
+        env:
+          YTCONV_NO_UPDATE_CHECK: "1"
+        run: |
+          OUTPUT="$RUNNER_TEMP/ytconv-public"
+          mkdir -p "$OUTPUT"
+          node ./bin/ytconv-auth.js download "https://www.youtube.com/watch?v=aqz-KE-bpKQ" \
+            --mode video --video-format mp4 --resolution 360 --download-sections '*0-8' \
+            --output "$OUTPUT" --no-config --no-archive --no-browser-cookies
+          FILE=$(find "$OUTPUT" -type f -name '*.mp4' -size +0c -print -quit)
+          test -n "$FILE"
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_type -of csv=p=0 "$FILE" | grep -qx video
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_type -of csv=p=0 "$FILE" | grep -qx audio
