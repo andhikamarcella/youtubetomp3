@@ -6,88 +6,95 @@ Security fixes are applied to the current npm `latest` release. YTConv versions 
 
 ## Reporting a vulnerability
 
-Open a GitHub security advisory for the repository when available. Do not place credentials, browser cookies, npm tokens, private media URLs, or personal data in a public issue. Include the affected YTConv version, operating system, Node.js version, reproduction steps, and the smallest safe proof of concept.
+Open a private GitHub security advisory when available. Never place credentials, browser cookies, npm tokens, private media URLs, or personal data in a public issue. Include the affected YTConv version, operating system, Node.js version, reproduction steps, and the smallest safe proof of concept.
 
 ## Expected capabilities
 
-Automated scanners can report the following capabilities. They are expected for a local media-downloader CLI, but each capability is constrained.
+Automated scanners may report network, filesystem, environment, URL, and child-process capabilities. They are expected for a local media downloader but are intentionally bounded.
 
 ### Network access
 
-YTConv must access the media URL supplied by the user. It can also access:
+YTConv accesses:
 
+- the media URL supplied by the user;
 - npm registry metadata for optional update checks;
-- allowlisted GitHub release APIs and release assets for verified yt-dlp/FFmpeg repair;
-- official provider login pages after an explicit login command.
+- allowlisted HTTPS release endpoints for verified media-engine repair;
+- official provider login pages after an explicit login command or an authentication-related provider failure.
 
-YTConv does not include telemetry, analytics, advertisements, credential collection, or hidden remote configuration.
+YTConv contains no telemetry, analytics, advertisements, credential collection, or hidden remote configuration.
 
 ### Child-process access
 
-YTConv launches yt-dlp, gallery-dl, FFmpeg, ffprobe, Python, package managers during explicit repair, and the user's browser during explicit login. It uses executable paths plus separate argument arrays. Runtime policy rejects `child_process.exec`, `shell: true`, dynamic evaluation, and string-built shell commands.
+YTConv launches verified yt-dlp, gallery-dl, FFmpeg, ffprobe, Python, an operating-system package manager during explicit repair, and the user's browser during login recovery.
 
-### Environment-variable access
+Executables are resolved with pinned `which` and `isexe` packages and launched with separate argument arrays. The source and supply-chain tests reject:
 
-YTConv reads documented `YTCONV_*`, `NO_COLOR`, platform, home-directory, and PATH-related values. Child processes receive a scrubbed environment. npm tokens, GitHub tokens, CI secrets, authentication headers, and unrelated package-manager credentials are removed.
+- `child_process.exec`;
+- `shell: true`;
+- `eval` or `new Function`;
+- dynamically constructed shell command strings;
+- unfiltered `process.env` forwarding.
 
 ### Filesystem access
 
-YTConv writes media to the selected output directory and stores managed state under `~/.ytconv`. Engine and sensitive state writes use private permissions where supported and atomic temporary-file replacement. YTConv does not intentionally scan arbitrary personal files.
+Filesystem writes are limited to:
 
-### URL strings
+- the user-selected output directory;
+- YTConv configuration, history, cache, and verified engine storage;
+- short-lived cookie exports used for one authenticated media attempt;
+- package-manager files during explicit repair or native package installation.
 
-URLs in the source identify npm metadata, allowlisted GitHub APIs/assets, documentation, and official provider login pages. Release-asset downloads require HTTPS and a repository/path match before bytes are accepted.
+Temporary cookie files are created with restricted permissions where the platform supports them and are deleted after use.
 
-## Installation behavior
+### Environment-variable access
 
-YTConv 1.6.6 has no npm `preinstall`, `install`, or `postinstall` lifecycle script. `npm install ytconv` does not download or execute media engines. Engine inspection and verified repair happen only when the user runs YTConv or explicitly runs:
+YTConv reads documented `YTCONV_*`, `NO_COLOR`, terminal, home-directory, and platform variables. Secrets are not placed in command arguments and are removed from child-process environments unless a specific operation requires them.
 
-```sh
-ytconv repair
-```
+## Browser login model
 
-Use `--ignore-scripts` for a defense-in-depth installation policy:
+Public access is always attempted first in AUTO mode. Browser login is not opened for every download.
 
-```sh
-npm install -g ytconv@latest --ignore-scripts
-```
+When a provider reports an authentication-related failure:
 
-## Verified engine downloads
+1. YTConv opens the provider's official login page in the user's normal browser or the Android application's local WebView.
+2. Passwords, OTP codes, and 2FA responses remain inside that browser surface.
+3. YTConv verifies the exact requested media URL with a temporary cookie export.
+4. The temporary export is deleted after the attempt.
 
-A downloaded engine is accepted only when all relevant controls pass:
+Users should keep browser profiles and cookie files private. Cookie files must never be committed to Git, uploaded to public issues, or shared with support staff.
 
-1. HTTPS is required.
-2. The GitHub owner/repository is syntactically validated and selected by YTConv code, not by untrusted media metadata.
-3. The asset name is an exact platform/architecture match.
-4. The release URL must remain under the expected GitHub repository release path.
-5. GitHub must provide a valid SHA-256 digest.
-6. Downloaded bytes must match the digest with a timing-safe comparison.
-7. Declared size, minimum size, and hard maximum size are checked.
-8. Timeouts and bounded retries are used.
-9. The executable is written with private permissions and replaced atomically.
-10. The executable must pass a version/health check before use.
+## Android WebView model
 
-## Public media and cookies
+The Android 1.6.7 login window enables JavaScript and DOM storage because modern provider login pages require them. It loads only the provider login URL derived from the user's media URL. Cookies are exported to the application cache, passed to yt-dlp for the requested operation, and removed when the activity closes.
 
-Ordinary public YouTube media is attempted without cookies. YTConv does not require a manually exported `cookies.txt` for public media. Provider restrictions can still require authentication for private, age-gated, members-only, region-restricted, or account-only content. In those cases, use the explicit official browser-login workflow. YTConv does not bypass access controls.
+## Subtitles
 
-## npm release security
+Subtitles are disabled by default in interactive, headless, iSH, Termux, and Android flows. They are enabled only by an explicit user option such as `--subtitles` or Ctrl+S.
 
-The release workflow must:
+## Runtime dependencies in 1.6.7
 
-- use a GitHub-hosted runner;
-- use npm trusted publishing with OIDC when the npm package settings are configured;
-- request only required GitHub permissions;
-- run with release-build package-manager caching disabled;
-- install from the committed lockfile with scripts disabled;
-- run syntax, type, unit, iSH, security, and package-content tests;
-- generate an SBOM;
-- publish provenance;
-- verify the npm dist-tag and registry tarball checksum;
-- create an immutable GitHub tag/release only after registry verification.
+All runtime dependencies use exact versions in both `package.json` and `package-lock.json`:
 
-Long-lived npm write tokens should be revoked after trusted publishing is verified. A read-only token may be used only when private development dependencies require it.
+- Commander 14.0.3 for top-level command help;
+- Figlet 1.11.4 for the responsive terminal identity;
+- Ink 7.1.1 and React 19.2.8 for the terminal interface;
+- which 6.0.0 and isexe 3.1.5 for executable discovery and validation;
+- ws 8.21.1 for the loopback-only managed-browser DevTools bridge.
 
-## License
+These dependencies do not add npm lifecycle installation hooks. The release pipeline runs syntax checking, TypeScript checking, CLI tests, iSH checks, security tests, npm audit, package-content validation, and native package builds.
 
-The published package contains the canonical ISC license text and declares the SPDX identifier `ISC` in `package.json`.
+## npm installation policy
+
+The package does not define `preinstall`, `install`, or `postinstall` scripts. `prepack` runs validation only and does not download or execute third-party installers.
+
+## Release integrity
+
+Official release automation produces:
+
+- an npm tarball with provenance;
+- CycloneDX SBOM data;
+- SHA-256 checksums;
+- native package artifacts built from the same source commit;
+- registry-byte verification after publication.
+
+Do not treat third-party mirrors or repackaged binaries as official YTConv releases.
