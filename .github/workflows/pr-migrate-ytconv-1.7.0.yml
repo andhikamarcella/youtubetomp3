@@ -39,8 +39,14 @@ jobs:
           cache: npm
           cache-dependency-path: target/cli/package-lock.json
 
-      - name: Run deterministic migration
-        run: python3 controller/.github/scripts/migrate-ytconv-1.7.0.py target
+      - name: Run deterministic migration when needed
+        run: |
+          VERSION=$(node -p "require('./target/cli/package.json').version")
+          if [ "$VERSION" = "1.7.0" ]; then
+            echo 'Release source is already on 1.7.0; migration skipped.'
+          else
+            python3 controller/.github/scripts/migrate-ytconv-1.7.0.py target
+          fi
 
       - name: Commit synchronized release source
         working-directory: target
