@@ -1,6 +1,6 @@
 # Native packages and installers
 
-YTConv 1.6.5 provides direct, installable artifacts for Windows, Android, Termux, iSH, and major Linux package families. Every release artifact is built from the same tested source and is accompanied by `SHA256SUMS.txt` and a CycloneDX SBOM.
+YTConv 1.6.6 provides direct, installable artifacts for Windows, Android, Termux, iSH, and major Linux package families. Every release artifact is built from the same tested source and is accompanied by `SHA256SUMS.txt` and a CycloneDX SBOM.
 
 Official distribution repositories and stores have separate review, signing, and account requirements. The commands below install the artifacts attached to the GitHub release; they do not claim that YTConv is already accepted into Debian, Fedora, Flathub, Snap Store, Google Play, or Microsoft Store.
 
@@ -17,7 +17,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 Windows PowerShell:
 
 ```powershell
-Get-FileHash .\YTConv-1.6.5-Setup-x64.exe -Algorithm SHA256
+Get-FileHash .\YTConv-1.6.6-Setup-x64.exe -Algorithm SHA256
 ```
 
 Compare the printed value with the matching entry in `SHA256SUMS.txt`.
@@ -27,7 +27,7 @@ Compare the printed value with the matching entry in `SHA256SUMS.txt`.
 Download and open:
 
 ```text
-YTConv-1.6.5-Setup-x64.exe
+YTConv-1.6.6-Setup-x64.exe
 ```
 
 The installer is user-level and installs into:
@@ -48,7 +48,7 @@ ytconv doctor
 Portable alternative:
 
 ```text
-YTConv-1.6.5-portable-win-x64.zip
+YTConv-1.6.6-portable-win-x64.zip
 ```
 
 Extract the ZIP and run `ytconv.cmd` from that folder.
@@ -58,14 +58,14 @@ Extract the ZIP and run `ytconv.cmd` from that folder.
 AMD64:
 
 ```sh
-sudo apt install ./ytconv_1.6.5_amd64.deb
+sudo apt install ./ytconv_1.6.6_amd64.deb
 ytconv --version
 ```
 
 ARM64:
 
 ```sh
-sudo apt install ./ytconv_1.6.5_arm64.deb
+sudo apt install ./ytconv_1.6.6_arm64.deb
 ytconv --version
 ```
 
@@ -76,21 +76,21 @@ The DEB includes the supported Node.js runtime. Python, FFmpeg, yt-dlp, and gall
 AMD64/x86_64:
 
 ```sh
-sudo dnf install ./ytconv-1.6.5-1.x86_64.rpm
+sudo dnf install ./ytconv-1.6.6-1.x86_64.rpm
 ytconv --version
 ```
 
 ARM64/aarch64:
 
 ```sh
-sudo dnf install ./ytconv-1.6.5-1.aarch64.rpm
+sudo dnf install ./ytconv-1.6.6-1.aarch64.rpm
 ytconv --version
 ```
 
 ## openSUSE Leap and Tumbleweed
 
 ```sh
-sudo zypper install ./ytconv-1.6.5-1.x86_64.rpm
+sudo zypper install ./ytconv-1.6.6-1.x86_64.rpm
 ytconv --version
 ```
 
@@ -99,7 +99,7 @@ Use the `.aarch64.rpm` artifact on ARM64.
 ## Arch Linux, Manjaro, EndeavourOS, CachyOS, and Garuda
 
 ```sh
-sudo pacman -U ./ytconv-1.6.5-1-x86_64.pkg.tar.zst
+sudo pacman -U ./ytconv-1.6.6-1-x86_64.pkg.tar.zst
 ytconv --version
 ```
 
@@ -110,7 +110,7 @@ Use the `aarch64` package on supported ARM64 Arch systems.
 The Alpine package uses the maintained Python frontend and the distribution packages for Python, yt-dlp, gallery-dl, FFmpeg, and CA certificates. It does not require Node.js.
 
 ```sh
-sudo apk add --allow-untrusted ./ytconv-1.6.5-r0.apk
+sudo apk add --allow-untrusted ./ytconv-1.6.6-r0.apk
 ytconv --version
 ytconv --diagnose
 ```
@@ -122,9 +122,9 @@ The same frontend is used by iSH and fixes the stale 1.6.2 installer path presen
 ## AppImage
 
 ```sh
-chmod +x YTConv-1.6.5-x86_64.AppImage
-./YTConv-1.6.5-x86_64.AppImage --version
-./YTConv-1.6.5-x86_64.AppImage
+chmod +x YTConv-1.6.6-x86_64.AppImage
+./YTConv-1.6.6-x86_64.AppImage --version
+./YTConv-1.6.6-x86_64.AppImage
 ```
 
 AppImage currently targets x86_64 Linux. ARM64 users should use DEB, RPM, Arch, Alpine, Nix, or the portable ARM64 archive.
@@ -134,7 +134,7 @@ AppImage currently targets x86_64 Linux. ARM64 users should use DEB, RPM, Arch, 
 Install the locally downloaded classic snap:
 
 ```sh
-sudo snap install ./ytconv_1.6.5_amd64.snap --dangerous --classic
+sudo snap install ./ytconv_1.6.6_amd64.snap --dangerous --classic
 ytconv --version
 ```
 
@@ -145,7 +145,7 @@ ytconv --version
 Install the local bundle:
 
 ```sh
-flatpak install --user ./YTConv-1.6.5.flatpak
+flatpak install --user ./YTConv-1.6.6.flatpak
 flatpak run io.github.andhikamarcella.YTConv --version
 flatpak run io.github.andhikamarcella.YTConv
 ```
@@ -157,13 +157,13 @@ The Flatpak manifest grants network access, home-directory file access, and desk
 Run directly from the release branch:
 
 ```sh
-nix run github:andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages -- --version
+nix run github:andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening -- --version
 ```
 
 Install into the current profile:
 
 ```sh
-nix profile install github:andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages
+nix profile install github:andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening
 ```
 
 ## Void Linux and Gentoo
@@ -172,7 +172,7 @@ The release contains reviewed packaging templates:
 
 ```text
 packaging/void/template
-packaging/gentoo/ytconv-1.6.5.ebuild
+packaging/gentoo/ytconv-1.6.6.ebuild
 ```
 
 They install the verified portable runtime archives. Repository maintainers can place these files in a local overlay and replace the release checksum placeholders with values from `SHA256SUMS.txt`.
@@ -182,17 +182,17 @@ They install the verified portable runtime archives. Repository maintainers can 
 Available for x86_64 and aarch64:
 
 ```text
-YTConv-1.6.5-linux-x86_64.tar.gz
-YTConv-1.6.5-linux-x86_64.tar.zst
-YTConv-1.6.5-linux-aarch64.tar.gz
-YTConv-1.6.5-linux-aarch64.tar.zst
+YTConv-1.6.6-linux-x86_64.tar.gz
+YTConv-1.6.6-linux-x86_64.tar.zst
+YTConv-1.6.6-linux-aarch64.tar.gz
+YTConv-1.6.6-linux-aarch64.tar.zst
 ```
 
 Extract and run without installing system-wide:
 
 ```sh
 mkdir -p "$HOME/.local/opt/ytconv"
-tar -xzf YTConv-1.6.5-linux-x86_64.tar.gz -C "$HOME/.local/opt/ytconv"
+tar -xzf YTConv-1.6.6-linux-x86_64.tar.gz -C "$HOME/.local/opt/ytconv"
 YTCONV_INSTALL_ROOT="$HOME/.local/opt/ytconv/opt/ytconv" \
   "$HOME/.local/opt/ytconv/usr/bin/ytconv" --version
 ```
@@ -213,7 +213,7 @@ Direct Termux package:
 
 ```sh
 pkg update
-pkg install -y ./ytconv_1.6.5_all-termux.deb
+pkg install -y ./ytconv_1.6.6_all-termux.deb
 termux-setup-storage
 ytconv --version
 ytconv --diagnose
@@ -229,7 +229,7 @@ Run inside iSH as root:
 apk update
 apk add --no-cache curl ca-certificates
 curl -fsSL \
-  https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages/cli/scripts/install-ish.sh \
+  https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening/cli/scripts/install-ish.sh \
   -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
@@ -249,7 +249,7 @@ The Android app is a native downloader, not a WebView. It bundles Android-compat
 Install the debug-signed testing APK:
 
 ```text
-YTConv-1.6.5-debug.apk
+YTConv-1.6.6-debug.apk
 ```
 
 Android may require enabling installation from the browser or file manager used to open the APK. The release also contains an unsigned release APK and the complete corresponding Android source archive.

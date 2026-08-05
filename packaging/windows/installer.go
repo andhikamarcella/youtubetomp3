@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const version = "1.6.5"
+const version = "1.6.6"
 
 //go:embed payload.zip
 var payload []byte

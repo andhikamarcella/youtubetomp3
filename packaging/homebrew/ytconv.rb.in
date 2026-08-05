@@ -1,7 +1,7 @@
 class Ytconv < Formula
   desc "Secure YouTube MP4 and MP3 downloader CLI"
   homepage "https://github.com/andhikamarcella/youtubetomp3"
-  url "https://registry.npmjs.org/ytconv/-/ytconv-1.6.5.tgz"
+  url "https://registry.npmjs.org/ytconv/-/ytconv-1.6.6.tgz"
   sha256 "@NPM_SHA256@"
   license "ISC"
 
@@ -18,6 +18,6 @@ class Ytconv < Formula
   end
 
   test do
-    assert_equal "1.6.5", shell_output("#{bin}/ytconv --version").strip
+    assert_equal "1.6.6", shell_output("#{bin}/ytconv --version").strip
   end
 end

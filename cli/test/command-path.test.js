@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { resolveCommandPath } from '../src/command-path.js';
+
+test('resolves an executable without invoking a shell', async (context) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-command-path-'));
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const executable = path.join(directory, 'safe-tool');
+  await fs.writeFile(executable, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  const resolved = await resolveCommandPath('safe-tool', {
+    environment: { PATH: directory },
+    platform: 'linux',
+    currentDirectory: directory,
+  });
+  assert.equal(resolved, executable);
+});
+
+test('does not resolve a non-executable file on POSIX', async (context) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-command-path-'));
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  await fs.writeFile(path.join(directory, 'not-executable'), 'data', { mode: 0o644 });
+  assert.equal(await resolveCommandPath('not-executable', {
+    environment: { PATH: directory }, platform: 'linux', currentDirectory: directory,
+  }), null);
+});
+
+test('does not search the working directory when PATH is empty', async (context) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-command-path-'));
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const executable = path.join(directory, 'local-tool');
+  await fs.writeFile(executable, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  assert.equal(await resolveCommandPath('local-tool', {
+    environment: { PATH: '' }, platform: 'linux', currentDirectory: directory,
+  }), null);
+});
+
+test('rejects null-byte command names', async () => {
+  assert.equal(await resolveCommandPath('bad\0name', { environment: { PATH: '' } }), null);
+});

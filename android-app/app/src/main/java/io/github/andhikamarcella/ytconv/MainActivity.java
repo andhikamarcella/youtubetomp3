@@ -61,7 +61,7 @@ public final class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setTitle("YTConv 1.6.5");
+        setTitle("YTConv 1.6.6");
         setContentView(buildContentView());
         initializeEngines();
         applySharedUrl(getIntent());

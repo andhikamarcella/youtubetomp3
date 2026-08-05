@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.6.5"
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.5-packages/cli"
+VERSION="1.6.6"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/youtubetomp3/release/ytconv-1.6.6-socket-hardening/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"

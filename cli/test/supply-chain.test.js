@@ -20,8 +20,8 @@ function javascriptFiles(directory) {
   return values;
 }
 
-test('1.6.5 publishes recognized license types and no lifecycle install hooks', () => {
-  assert.equal(manifest.version, '1.6.5');
+test('1.6.6 publishes recognized license types and no lifecycle install hooks', () => {
+  assert.equal(manifest.version, '1.6.6');
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
@@ -91,7 +91,7 @@ test('ordinary public YouTube MP4 args contain no cookie source', () => {
 });
 
 test('README exposes versioned Socket TypeScript ISC packaging and security documentation', () => {
-  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.5/u);
+  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.6\.6/u);
   assert.match(readme, /types-TypeScript/u);
   assert.match(readme, /License-ISC/u);
   assert.match(readme, /npm installation free of `preinstall`, `install`, and `postinstall` hooks/iu);

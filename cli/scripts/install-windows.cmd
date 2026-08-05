@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-set "VERSION=1.6.5"
+set "VERSION=1.6.6"
 set "CHANNEL=latest"
 echo YTConv %VERSION% installer for CMD
 where node.exe >nul 2>nul || (echo Node.js 22.14 or newer is not installed.& exit /b 1)
@@ -32,5 +32,5 @@ echo.
 echo AUTO policy: music.youtube.com becomes MP3; regular YouTube becomes MP4.
 echo Explicit audio/video mode and MP4/MKV/WebM selections remain authoritative.
 echo Stable installation completed. Run: ytconv.cmd or ytconv
-echo A standalone EXE installer is also provided in the GitHub 1.6.5 release.
+echo A standalone EXE installer is also provided in the GitHub 1.6.6 release.
 endlocal

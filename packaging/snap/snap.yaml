@@ -1,5 +1,5 @@
 name: ytconv
-version: '1.6.5'
+version: '1.6.6'
 summary: Secure YouTube MP4 and MP3 downloader CLI
 description: |
   YTConv is a cross-platform terminal downloader for public YouTube MP4,
