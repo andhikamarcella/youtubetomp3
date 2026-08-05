@@ -2,3 +2,4 @@ ShipForge 0.1.0 npm publication and verification gate
 source=addbe0be4cc6fc90c54f396f3ad3aeadb176f7ef
 package=shipforge-cli
 version=0.1.0
+retry=2026-08-05T18:33:00+07:00
