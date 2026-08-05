@@ -1,49 +1,43 @@
-name: Pin YTConv 1.6.6 publish source SHA
+name: Sync YTConv 1.6.5 release source
 
 on:
   push:
     branches:
       - codex/perbaiki-semua-fungsi-tombol
     paths:
-      - .github/release-triggers/ytconv-1.6.6-pin-publish
+      - .github/release-triggers/ytconv-1.6.5-sync-v2
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: pin-ytconv-1.6.6-publish
+  group: sync-ytconv-1.6.5
   cancel-in-progress: false
 
 jobs:
-  pin:
+  sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: release/ytconv-1.6.6-zero-deps-final
+          ref: release/ytconv-1.6.5-packages
           fetch-depth: 0
-      - name: Pin checkout to the immutable workflow event SHA
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          target = Path('.github/workflows/publish-ytconv-stable.yml')
-          text = target.read_text(encoding='utf-8')
-          old = '          ref: release/ytconv-1.6.6-socket-hardening\n'
-          new = '          ref: ${{ github.sha }}\n'
-          if new not in text:
-              if old not in text:
-                  raise SystemExit('expected publish checkout ref was not found')
-              target.write_text(text.replace(old, new, 1), encoding='utf-8')
-          PY
-      - name: Commit pin
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Synchronize core and lockfile
+        run: node packaging/patch-core-and-lock.mjs
+      - name: Commit synchronized files
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows/publish-ytconv-stable.yml
+          git add cli/package-lock.json cli/ish/ytconv-core.py cli/ish/SHA256SUMS
           if git diff --cached --quiet; then
-            echo 'Publish workflow is already pinned.'
+            echo 'Nothing to commit.'
             exit 0
           fi
-          git commit -m 'ci(release): pin YTConv 1.6.6 publication to event SHA'
-          git push origin HEAD:release/ytconv-1.6.6-zero-deps-final
+          git commit -m 'Synchronize YTConv 1.6.5 core and lockfile'
+          git push origin HEAD:release/ytconv-1.6.5-packages
