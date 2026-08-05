@@ -1,3 +1,23 @@
+# Changelog
+
+## 1.7.0 — 2026-08-05
+
+### Repository and release integrity
+
+- Migrated canonical source, issue, documentation, installer, checksum, SBOM, and release URLs to `andhikamarcella/YTConv`.
+- Added npm Trusted Publishing through GitHub Actions OpenID Connect; the canonical release workflow no longer requires a long-lived npm token.
+- Refreshed version identity across npm, iSH, Android, Windows, Linux, Alpine, Nix, Snap, Flatpak, Termux, portable archives, and CI matrices.
+
+### Documentation and validation
+
+- Added a comprehensive documentation hub covering installation, commands, configuration, authentication, troubleshooting, platforms, architecture, development, releases, trusted publishing, FAQ, and migration.
+- Added `npm run docs:check` to reject stale repository URLs, missing guides, broken local Markdown links, and package-version drift.
+
+### Compatibility
+
+- Preserves existing commands, secure argument-array child processes, secret-stripped environments, browser-login recovery, animated progress, public-first access, and subtitles disabled by default.
+- No existing command was intentionally removed or renamed.
+
 # YTConv CLI changelog
 
 ## 1.6.8 - 2026-08-05

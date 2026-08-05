@@ -22,13 +22,13 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/andhikamarcella/youtubetomp3.git"
+    "url": "git+https://github.com/andhikamarcella/YTConv.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
+    "url": "https://github.com/andhikamarcella/YTConv/issues"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3#readme"
+  "homepage": "https://github.com/andhikamarcella/YTConv#readme"
 }

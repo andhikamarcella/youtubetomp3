@@ -218,7 +218,7 @@ apk update
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
 ```
 
-Then use the iSH installer described in the [iSH guide](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).
+Then use the iSH installer described in the [iSH guide](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/ISH.md).
 
 Do not force a desktop Node.js tutorial into iSH. The native Python path is the supported installation for iPhone and iPad.
 

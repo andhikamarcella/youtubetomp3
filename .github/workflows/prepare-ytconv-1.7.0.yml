@@ -1,0 +1,14 @@
+name: Archived YTConv 1.7.0 Preparation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archived:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "YTConv 1.7.0 preparation is complete. Use publish-ytconv.yml for releases."

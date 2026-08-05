@@ -1,10 +1,9 @@
-name: YTConv 1.6.8 Native Package Matrix
+name: YTConv 1.7.0 Native Package Matrix
 
 on:
   push:
     branches:
-      - release/ytconv-1.6.8-stable
-      - agent/ytconv-1.6.8-identity-and-social
+      - release/ytconv-1.7.0
     paths:
       - "cli/**"
       - "packaging/**"
@@ -24,11 +23,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ytconv-packages-1.6.8-${{ github.ref }}
+  group: ytconv-packages-1.7.0-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  VERSION: 1.6.8
+  VERSION: 1.7.0
 
 jobs:
   linux-native-x86_64:
@@ -61,34 +60,34 @@ jobs:
       - name: Install packages on their target families
         run: |
           docker run --rm -v "$PWD/dist/packages:/packages:ro" debian:bookworm-slim sh -exc '
-            apt-get update; apt-get install -y /packages/ytconv_1.6.8_amd64.deb
-            test "$(ytconv --version)" = 1.6.8
+            apt-get update; apt-get install -y /packages/ytconv_1.7.0_amd64.deb
+            test "$(ytconv --version)" = 1.7.0
           '
           docker run --rm -v "$PWD/dist/packages:/packages:ro" fedora:latest sh -exc '
-            dnf install -y /packages/ytconv-1.6.8-1.x86_64.rpm
-            test "$(ytconv --version)" = 1.6.8
+            dnf install -y /packages/ytconv-1.7.0-1.x86_64.rpm
+            test "$(ytconv --version)" = 1.7.0
           '
           docker run --rm -v "$PWD/dist/packages:/packages:ro" opensuse/tumbleweed sh -exc '
-            zypper --non-interactive --no-gpg-checks install /packages/ytconv-1.6.8-1.x86_64.rpm
-            test "$(ytconv --version)" = 1.6.8
+            zypper --non-interactive --no-gpg-checks install /packages/ytconv-1.7.0-1.x86_64.rpm
+            test "$(ytconv --version)" = 1.7.0
           '
           docker run --rm -v "$PWD/dist/packages:/packages:ro" archlinux:base sh -exc '
             pacman -Sy --noconfirm ca-certificates
-            pacman -U --noconfirm /packages/ytconv-1.6.8-1-x86_64.pkg.tar.zst
-            test "$(ytconv --version)" = 1.6.8
+            pacman -U --noconfirm /packages/ytconv-1.7.0-1-x86_64.pkg.tar.zst
+            test "$(ytconv --version)" = 1.7.0
           '
       - name: Verify all x86_64 artifacts
         run: |
-          test -s dist/packages/ytconv_1.6.8_amd64.deb
-          test -s dist/packages/ytconv-1.6.8-1.x86_64.rpm
-          test -s dist/packages/ytconv-1.6.8-1-x86_64.pkg.tar.zst
-          test -s dist/appimage/YTConv-1.6.8-x86_64.AppImage
-          test -s dist/snap/ytconv_1.6.8_amd64.snap
-          test -s dist/termux/ytconv_1.6.8_all-termux.deb
-          test -s dist/portable/YTConv-1.6.8-linux-x86_64.tar.gz
+          test -s dist/packages/ytconv_1.7.0_amd64.deb
+          test -s dist/packages/ytconv-1.7.0-1.x86_64.rpm
+          test -s dist/packages/ytconv-1.7.0-1-x86_64.pkg.tar.zst
+          test -s dist/appimage/YTConv-1.7.0-x86_64.AppImage
+          test -s dist/snap/ytconv_1.7.0_amd64.snap
+          test -s dist/termux/ytconv_1.7.0_all-termux.deb
+          test -s dist/portable/YTConv-1.7.0-linux-x86_64.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-linux-x86_64
+          name: ytconv-1.7.0-linux-x86_64
           path: |
             dist/packages/*
             dist/portable/*
@@ -120,14 +119,14 @@ jobs:
           chmod +x packaging/*.sh
           packaging/build-native-packages.sh
           packaging/build-portable-archives.sh
-          sudo apt-get install -y ./dist/packages/ytconv_1.6.8_arm64.deb
-          test "$(ytconv --version)" = 1.6.8
-          test -s dist/packages/ytconv-1.6.8-1.aarch64.rpm
-          test -s dist/packages/ytconv-1.6.8-1-aarch64.pkg.tar.zst
-          test -s dist/portable/YTConv-1.6.8-linux-aarch64.tar.gz
+          sudo apt-get install -y ./dist/packages/ytconv_1.7.0_arm64.deb
+          test "$(ytconv --version)" = 1.7.0
+          test -s dist/packages/ytconv-1.7.0-1.aarch64.rpm
+          test -s dist/packages/ytconv-1.7.0-1-aarch64.pkg.tar.zst
+          test -s dist/portable/YTConv-1.7.0-linux-aarch64.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-linux-arm64
+          name: ytconv-1.7.0-linux-arm64
           path: |
             dist/packages/*
             dist/portable/*
@@ -149,13 +148,13 @@ jobs:
           docker run --rm -v "$PWD/dist/alpine:/packages:ro" alpine:edge sh -exc '
             apk add --no-cache python3 py3-pip ffmpeg ca-certificates yt-dlp gallery-dl
             cd /packages; sha256sum -c SHA256SUMS-alpine.txt
-            apk add --allow-untrusted ./ytconv-1.6.8-r0.apk
-            test "$(ytconv --version)" = 1.6.8
+            apk add --allow-untrusted ./ytconv-1.7.0-r0.apk
+            test "$(ytconv --version)" = 1.7.0
             ytconv --diagnose
           '
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-alpine-apk
+          name: ytconv-1.7.0-alpine-apk
           path: dist/alpine/*
           if-no-files-found: error
           retention-days: 14
@@ -175,10 +174,10 @@ jobs:
               chmod +x packaging/*.sh
               packaging/build-flatpak.sh /workspace/dist/flatpak
             '
-          test -s dist/flatpak/YTConv-1.6.8.flatpak
+          test -s dist/flatpak/YTConv-1.7.0.flatpak
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-flatpak
+          name: ytconv-1.7.0-flatpak
           path: dist/flatpak/*
           if-no-files-found: error
           retention-days: 14
@@ -200,13 +199,13 @@ jobs:
       - shell: pwsh
         run: |
           .\packaging\build-windows-exe.ps1
-          if (-not (Test-Path .\dist\windows\YTConv-1.6.8-Setup-x64.exe)) { throw 'EXE missing' }
-          if (-not (Test-Path .\dist\windows\YTConv-1.6.8-portable-win-x64.zip)) { throw 'ZIP missing' }
-          if ((& "$env:LOCALAPPDATA\Programs\YTConv\ytconv.cmd" --version).Trim() -ne '1.6.8') { throw 'install failed' }
-          if ((& "$env:LOCALAPPDATA\Microsoft\WindowsApps\ytconv.cmd" --version).Trim() -ne '1.6.8') { throw 'launcher failed' }
+          if (-not (Test-Path .\dist\windows\YTConv-1.7.0-Setup-x64.exe)) { throw 'EXE missing' }
+          if (-not (Test-Path .\dist\windows\YTConv-1.7.0-portable-win-x64.zip)) { throw 'ZIP missing' }
+          if ((& "$env:LOCALAPPDATA\Programs\YTConv\ytconv.cmd" --version).Trim() -ne '1.7.0') { throw 'install failed' }
+          if ((& "$env:LOCALAPPDATA\Microsoft\WindowsApps\ytconv.cmd" --version).Trim() -ne '1.7.0') { throw 'launcher failed' }
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-windows
+          name: ytconv-1.7.0-windows
           path: dist/windows/*
           if-no-files-found: error
           retention-days: 14
@@ -226,12 +225,12 @@ jobs:
       - run: |
           chmod +x packaging/build-android-apk.sh
           packaging/build-android-apk.sh
-          test -s dist/android/YTConv-1.6.8-debug.apk
-          test -s dist/android/YTConv-1.6.8-release-unsigned.apk
-          test -s dist/android/YTConv-Android-1.6.8-source.tar.gz
+          test -s dist/android/YTConv-1.7.0-debug.apk
+          test -s dist/android/YTConv-1.7.0-release-unsigned.apk
+          test -s dist/android/YTConv-Android-1.7.0-source.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-android
+          name: ytconv-1.7.0-android
           path: dist/android/*
           if-no-files-found: error
           retention-days: 14
@@ -247,11 +246,11 @@ jobs:
       - run: |
           nix flake lock
           nix build --print-build-logs
-          test "$(./result/bin/ytconv --version)" = 1.6.8
+          test "$(./result/bin/ytconv --version)" = 1.7.0
           cp flake.lock dist-flake.lock
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: ytconv-1.6.8-nix-lock
+          name: ytconv-1.7.0-nix-lock
           path: dist-flake.lock
           if-no-files-found: error
           retention-days: 14

@@ -1,18 +1,18 @@
 name: ytconv
-version: '1.6.8'
+version: '1.7.0'
 summary: Secure social-media downloader and converter CLI
 description: |
   YTConv is a cross-platform terminal downloader for YouTube and supported
-  social-media URLs. Version 1.6.8 restores Figlet branding, Commander help,
+  social-media URLs. Version 1.7.0 restores Figlet branding, Commander help,
   animated progress, browser-login recovery, and subtitles-off defaults. The
   snap bundles its Node.js runtime and does not execute install-time scripts.
 grade: stable
 confinement: classic
 base: core24
 license: ISC
-contact: https://github.com/andhikamarcella/youtubetomp3/issues
-website: https://github.com/andhikamarcella/youtubetomp3
-source-code: https://github.com/andhikamarcella/youtubetomp3
+contact: https://github.com/andhikamarcella/YTConv/issues
+website: https://github.com/andhikamarcella/YTConv
+source-code: https://github.com/andhikamarcella/YTConv
 apps:
   ytconv:
     command: usr/bin/ytconv

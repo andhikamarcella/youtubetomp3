@@ -1,0 +1,5 @@
+YTConv 1.7.0 release source
+Base: release/ytconv-1.6.8-stable
+Target: release/ytconv-1.7.0
+Canonical repository: andhikamarcella/YTConv
+Validation: documentation, core, security, iSH, and native package matrices

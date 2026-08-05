@@ -9,7 +9,7 @@ This document is for maintainers. YTConv has one active npm channel: `latest`.
 | npm package | `ytconv` |
 | version | `1.6.2` |
 | npm dist-tag | `latest` |
-| GitHub repository | `andhikamarcella/youtubetomp3` |
+| GitHub repository | `andhikamarcella/YTConv` |
 | release branch | `release/ytconv-1.6.2-cli-only-final` |
 | Git tag | `ytconv-v1.6.2` |
 | publisher/maintainer | Andhika Marcella Fernanda |

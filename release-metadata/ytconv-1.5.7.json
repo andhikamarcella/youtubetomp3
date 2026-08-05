@@ -23,5 +23,5 @@
   },
   "optionalDependencies": {},
   "releaseNotes": "YTConv 1.5.7 makes Windows repair reinstall and verify the bundled FFmpeg engine automatically, converts CLI messages and documentation to English, and adds release checks that reproduce and repair a missing FFmpeg binary before publication.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.5.7-cli-only-final/cli/CHANGELOG.md"
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.5.7-cli-only-final/cli/CHANGELOG.md"
 }

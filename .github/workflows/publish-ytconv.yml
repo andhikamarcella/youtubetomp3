@@ -1,0 +1,100 @@
+name: Publish YTConv
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Confirm irreversible publication of ytconv@1.7.0
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: publish-ytconv-1.7.0
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ inputs.confirm == true && github.ref_name == 'release/ytconv-1.7.0' }}
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Use the pinned npm CLI
+        run: npm install --global npm@11.18.0
+
+      - name: Validate exact release source
+        working-directory: cli
+        run: |
+          npm ci --ignore-scripts
+          npm run prepack
+          test "$(node -p "require('./package.json').name")" = "ytconv"
+          test "$(node -p "require('./package.json').version")" = "1.7.0"
+          test "$(node ./bin/ytconv.js --version)" = "1.7.0"
+          test "$(cat ish/VERSION)" = "1.7.0"
+
+      - name: Pack exact npm candidate
+        id: pack
+        working-directory: cli
+        run: |
+          npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
+          TARBALL=$(node -e "const p=require(process.env.RUNNER_TEMP + '/ytconv-pack.json')[0];process.stdout.write(require('path').join(process.env.RUNNER_TEMP,p.filename))")
+          test -s "$TARBALL"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish through npm Trusted Publishing
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          if npm view ytconv@1.7.0 version --prefer-online >/dev/null 2>&1; then
+            echo "ytconv@1.7.0 already exists; publish skipped."
+          else
+            npm publish "$TARBALL" --access public --tag latest --provenance
+          fi
+
+      - name: Verify npm registry publication
+        env:
+          EXPECTED_SHA: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          PUBLISHED=""
+          for attempt in $(seq 1 30); do
+            PUBLISHED=$(npm view ytconv@1.7.0 version --prefer-online 2>/dev/null || true)
+            [ "$PUBLISHED" = "1.7.0" ] && break
+            sleep 4
+          done
+          test "$PUBLISHED" = "1.7.0"
+          test "$(npm view ytconv@latest version --prefer-online)" = "1.7.0"
+          URL=$(npm view ytconv@1.7.0 dist.tarball --prefer-online)
+          curl --fail --silent --show-error --location "$URL" --output "$RUNNER_TEMP/registry.tgz"
+          test "$(sha256sum "$RUNNER_TEMP/registry.tgz" | cut -d ' ' -f 1)" = "$EXPECTED_SHA"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          TAG="ytconv-v1.7.0"
+          printf '%s  %s\n' "${{ steps.pack.outputs.sha256 }}" "$(basename "$TARBALL")" > SHA256SUMS.txt
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$TARBALL" SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" "$TARBALL" SHA256SUMS.txt \
+              --target "$GITHUB_SHA" \
+              --title "YTConv 1.7.0" \
+              --generate-notes
+          fi

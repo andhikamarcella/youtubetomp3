@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 OUT=${1:-"$ROOT/dist/termux"}
-VERSION=1.6.8
+VERSION=1.7.0
 YT_DLP_VERSION=2026.7.4
 YT_DLP_SHA256=f11f2b11d5a8ac4059f9bdf29fa4407dc7c6bb00c5097e95ca22a7a9db518266
 GALLERY_DL_VERSION=1.32.7
@@ -54,7 +54,7 @@ Maintainer: Andhika Marcella Fernanda <andhikamarcella546@gmail.com>
 Depends: python, ffmpeg, ca-certificates
 Section: utilities
 Priority: optional
-Homepage: https://github.com/andhikamarcella/youtubetomp3
+Homepage: https://github.com/andhikamarcella/YTConv
 Description: Secure social-media downloader and converter CLI for Termux
  Bundles verified pure-Python yt-dlp and gallery-dl modules while using the
  Termux Python and FFmpeg packages. Public access is tried first and subtitles
