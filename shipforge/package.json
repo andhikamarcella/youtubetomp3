@@ -34,11 +34,21 @@
   ],
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
+    "directory": "shipforge"
+  },
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/codex/perbaiki-semua-fungsi-tombol/shipforge#readme",
+  "bugs": {
+    "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
+  },
   "engines": {
     "node": ">=22.14.0"
   },
   "publishConfig": {
     "access": "public",
+    "tag": "latest",
     "provenance": true
   }
 }
