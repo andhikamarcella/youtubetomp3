@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.6.6"
+VERSION="1.6.7"
 CHANNEL="latest"
-RELEASE_BRANCH="release/ytconv-1.6.6-socket-hardening"
+RELEASE_BRANCH="release/ytconv-1.6.7-identity-ui"
 PRINT_PLAN=0
 [ "${YTCONV_INSTALL_DRY_RUN:-0}" = "1" ] && PRINT_PLAN=1
 [ "${1:-}" = "--print-plan" ] && PRINT_PLAN=1
@@ -102,7 +102,7 @@ fi
 
 has node || fail "Node.js was not found after setup."
 has npm || fail "npm was not found after setup."
-node_supported || fail "Node.js $(node --version) is unsupported. Install Node.js 22.14+ or use a native 1.6.6 package."
+node_supported || fail "Node.js $(node --version) is unsupported. Install Node.js 22.14+ or use a native 1.6.7 package."
 
 if has python3; then
   python3 -m pip install --user -U --no-cache-dir 'yt-dlp[default]' gallery-dl 2>/dev/null \
@@ -136,6 +136,7 @@ ytconv --self-test
 ytconv doctor || true
 ytconv quickstart || true
 say ""
-say "AUTO: music.youtube.com -> MP3; regular YouTube -> MP4."
+say "AUTO: YouTube Music -> MP3; regular videos and social URLs use provider detection."
+say "Subtitles remain off unless explicitly enabled."
 say "Stable installation completed without sudo npm."
-say "Native DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, and Nix artifacts are available in the 1.6.6 GitHub release."
+say "Native DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, and Nix artifacts are available in the 1.6.7 GitHub release."
