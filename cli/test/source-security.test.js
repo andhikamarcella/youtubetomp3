@@ -25,11 +25,23 @@ test('runtime avoids shell execution, dynamic evaluation, and remote extractor c
   assert.match(source, /--no-remote-components/u);
 });
 
-test('dependency-free terminal UI contains no external styling framework', () => {
+test('terminal UI uses only the approved identity stack and sanitizes untrusted text', () => {
   const ui = fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8');
-  assert.match(ui, /node:readline\/promises/u);
-  assert.doesNotMatch(ui, /(?:from|import\s*\()\s*['"](?:ink|react|figlet)/u);
-  assert.doesNotMatch(ui, /(?:color|borderColor)\s*:/u);
+  const branding = fs.readFileSync(path.join(root, 'src', 'branding.js'), 'utf8');
+  const commands = fs.readFileSync(path.join(root, 'src', 'command-program.js'), 'utf8');
+  assert.match(ui, /from ['"]react['"]/u);
+  assert.match(ui, /from ['"]ink['"]/u);
+  assert.match(ui, /sanitizeTerminalText/u);
+  assert.match(branding, /from ['"]figlet['"]/u);
+  assert.match(commands, /from ['"]commander['"]/u);
+  assert.doesNotMatch(`${ui}\n${branding}\n${commands}`, /from ['"](?:chalk|ora|blessed|enquirer|inquirer)['"]/u);
+});
+
+test('executable discovery uses which and isexe without enabling a shell', () => {
+  const source = fs.readFileSync(path.join(root, 'src', 'command-path.js'), 'utf8');
+  assert.match(source, /from ['"]which['"]/u);
+  assert.match(source, /from ['"]isexe['"]/u);
+  assert.doesNotMatch(source, /node:child_process|\bshell\s*:/u);
 });
 
 test('GitHub Actions are pinned to full commit SHAs', () => {
