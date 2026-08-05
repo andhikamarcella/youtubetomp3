@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "description": "Distinctive secure social-media downloader CLI with Figlet branding, Commander command UX, animated download and conversion progress, browser-login recovery, and native desktop and Android packages.",
   "type": "module",
   "main": "./src/index.js",
@@ -132,31 +132,31 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.7-identity-ui/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.8-stable/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.7-identity-ui/cli/docs",
-    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/docs/NODEJS.md",
-    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/docs/PACKAGES.md",
-    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/SECURITY.md"
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.8-stable/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/docs/NODEJS.md",
+    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/SECURITY.md"
   },
   "releaseDate": "2026-08-05",
-  "releaseNotes": "YTConv 1.6.7 restores the recognizable Figlet terminal identity, adds Commander-powered command help, uses which and isexe for verified executable discovery, adds animated probing, download and conversion progress, keeps subtitles off by default, improves browser-login cookie recovery for social platforms, and refreshes Android packaging and UI for 2026.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.8 is a maintenance release that carries forward the Figlet and Commander identity, animated download and conversion progress, browser-login recovery, subtitles off by default, cross-platform packaging, and security hardening from 1.6.7 while refreshing all release metadata.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.8-stable/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
-    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.7.tgz",
-    "release": "https://github.com/andhikamarcella/youtubetomp3/releases/tag/ytconv-v1.6.7",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.7/SHA256SUMS.txt",
-    "sbomUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.7/ytconv-1.6.7.cdx.json"
+    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.8.tgz",
+    "release": "https://github.com/andhikamarcella/youtubetomp3/releases/tag/ytconv-v1.6.8",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.8/SHA256SUMS.txt",
+    "sbomUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.8/ytconv-1.6.8.cdx.json"
   },
   "securityCapabilities": {
     "network": "Only user-requested media/provider URLs, npm metadata checks, and allowlisted HTTPS engine release endpoints.",

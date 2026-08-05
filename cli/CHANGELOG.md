@@ -1,5 +1,11 @@
 # YTConv CLI changelog
 
+## 1.6.8 - 2026-08-05
+
+- Refreshed CLI, Android, installer, package, and native-build metadata for 1.6.8.
+- Preserved the tested Figlet/Commander interface, animated progress, browser-login recovery, and subtitles-off defaults.
+- Revalidated the npm package boundary, security suite, iSH checksums, desktop platforms, and native package matrix.
+
 ## 1.6.7 - 2026-08-05
 
 ### Terminal identity and progress
