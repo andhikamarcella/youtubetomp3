@@ -1,73 +1,14 @@
-name: Synchronize YTConv 1.7.0 iSH Identity
+name: Archived YTConv 1.7.0 iSH Synchronization
 
 on:
-  pull_request:
-    branches:
-      - release/ytconv-web
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  issues: write
-
-concurrency:
-  group: sync-ytconv-1.7.0-ish
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  synchronize:
-    if: ${{ github.head_ref == 'trigger/ytconv-1.7.0-ish-sync' }}
+  archived:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout YTConv 1.7.0
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: release/ytconv-1.7.0
-          fetch-depth: 0
-
-      - name: Synchronize native iSH core and checksums
-        run: |
-          python3 - <<'PY'
-          from hashlib import sha256
-          from pathlib import Path
-
-          directory = Path('cli/ish')
-          core = directory / 'ytconv-core.py'
-          text = core.read_text(encoding='utf-8')
-          text = text.replace(
-              '"""YTConv 1.6.6 native frontend for iSH/Alpine and Python-only shells."""',
-              '"""YTConv 1.7.0 native frontend for iSH/Alpine and Python-only shells."""',
-          )
-          text = text.replace('VERSION = "1.6.6"', 'VERSION = "1.7.0"')
-          text = text.replace(
-              'RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.6.6-socket-hardening/cli"',
-              'RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.0/cli"',
-          )
-          core.write_text(text, encoding='utf-8')
-
-          wrapper = directory / 'ytconv.py'
-          rows = []
-          for path in (wrapper, core):
-              rows.append(f'{sha256(path.read_bytes()).hexdigest()}  {path.name}')
-          (directory / 'SHA256SUMS').write_text('\n'.join(rows) + '\n', encoding='utf-8')
-          PY
-
-          grep -F 'YTConv 1.7.0 native frontend' cli/ish/ytconv-core.py
-          grep -F 'VERSION = "1.7.0"' cli/ish/ytconv-core.py
-          grep -F 'release/ytconv-1.7.0/cli' cli/ish/ytconv-core.py
-          cd cli
-          PYTHONWARNINGS=error::ResourceWarning npm run test:ish
-
-      - name: Commit synchronized iSH release files
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add cli/ish/ytconv-core.py cli/ish/SHA256SUMS
-          git commit -m 'fix: synchronize YTConv 1.7.0 iSH identity and checksums'
-          git push origin HEAD:release/ytconv-1.7.0
-
-      - name: Report completion
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue create --title 'YTConv 1.7.0 iSH synchronization: success' --body "The native iSH core identity, canonical release URL, and SHA-256 manifest were synchronized to 1.7.0. ResourceWarning-strict iSH tests passed. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+      - run: echo "The YTConv 1.7.0 iSH identity and checksum synchronization is complete."
