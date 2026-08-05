@@ -25,11 +25,11 @@ test('runtime avoids shell execution, dynamic evaluation, and remote extractor c
   assert.match(source, /--no-remote-components/u);
 });
 
-test('normal Ink styling is monochrome and only error paths request red', () => {
+test('dependency-free terminal UI contains no external styling framework', () => {
   const ui = fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8');
-  const colors = [...ui.matchAll(/(?:color|borderColor)\s*:\s*['"]([^'"]+)['"]/gu)].map((match) => match[1]);
-  assert.ok(colors.length > 0);
-  assert.deepEqual([...new Set(colors)], ['red']);
+  assert.match(ui, /node:readline\/promises/u);
+  assert.doesNotMatch(ui, /(?:from|import\s*\()\s*['"](?:ink|react|figlet)/u);
+  assert.doesNotMatch(ui, /(?:color|borderColor)\s*:/u);
 });
 
 test('GitHub Actions are pinned to full commit SHAs', () => {
