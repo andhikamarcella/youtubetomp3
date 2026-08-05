@@ -8,11 +8,6 @@ on:
         required: true
         default: false
         type: boolean
-  push:
-    branches:
-      - release/ytconv-1.7.0
-    paths:
-      - ".github/release-markers/publish-ytconv-1.7.0"
 
 permissions:
   contents: write
@@ -24,7 +19,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.ref_name == 'release/ytconv-1.7.0' && ((github.event_name == 'workflow_dispatch' && inputs.confirm == true) || github.event_name == 'push') }}
+    if: ${{ inputs.confirm == true && github.ref_name == 'release/ytconv-1.7.0' }}
     runs-on: ubuntu-latest
     environment: npm
     steps:
