@@ -55,6 +55,8 @@ jobs:
           source_branch = os.environ['SOURCE_BRANCH']
           target_branch = os.environ['TARGET_BRANCH']
           release_branch = os.environ['RELEASE_BRANCH']
+          escaped_previous = previous.replace('.', r'\.')
+          escaped_version = version.replace('.', r'\.')
 
           selected_exact = {
               'flake.nix',
@@ -76,10 +78,11 @@ jobs:
                   text = path.read_text(encoding='utf-8')
               except (UnicodeDecodeError, OSError):
                   continue
-              updated = text.replace(previous, version)
-              updated = updated.replace('10607', '10608')
-              updated = updated.replace(source_branch, release_branch)
+              updated = text.replace(source_branch, release_branch)
               updated = updated.replace('agent/ytconv-1.6.7-identity-and-social', target_branch)
+              updated = updated.replace(escaped_previous, escaped_version)
+              updated = updated.replace(previous, version)
+              updated = updated.replace('10607', '10608')
               if updated != text:
                   path.write_text(updated, encoding='utf-8')
 
@@ -89,7 +92,7 @@ jobs:
           manifest['releaseDate'] = '2026-08-05'
           manifest['releaseNotes'] = (
               'YTConv 1.6.8 is a maintenance release that carries forward the Figlet and Commander identity, '
-              'animated download and conversion progress, browser-login recovery, subtitles-off defaults, '
+              'animated download and conversion progress, browser-login recovery, subtitles off by default, '
               'cross-platform packaging, and security hardening from 1.6.7 while refreshing all release metadata.'
           )
           manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
@@ -136,6 +139,7 @@ jobs:
           assert 'versionCode 10608' in android
           assert previous not in pathlib.Path('.github/workflows/ytconv-cli.yml').read_text(encoding='utf-8')
           assert previous not in pathlib.Path('.github/workflows/ytconv-packages.yml').read_text(encoding='utf-8')
+          assert release_branch in manifest_path.read_text(encoding='utf-8')
           PY
 
       - name: Install exact dependency graph
