@@ -1,164 +1,43 @@
-name: Sync YTConv 1.6.6 Socket hardening source
+name: Sync YTConv 1.6.5 release source
 
 on:
   push:
     branches:
       - codex/perbaiki-semua-fungsi-tombol
     paths:
-      - .github/release-triggers/ytconv-1.6.6-sync
+      - .github/release-triggers/ytconv-1.6.5-sync-v2
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: sync-ytconv-1.6.6
+  group: sync-ytconv-1.6.5
   cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: release/ytconv-1.6.6-socket-hardening
+          ref: release/ytconv-1.6.5-packages
           fetch-depth: 0
-      - name: Apply zero-dependency source migration
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import hashlib
-          import re
-
-          root = Path('.')
-          branch = 'release/ytconv-1.6.6-socket-hardening'
-
-          def rewrite(relative, transform):
-              target = root / relative
-              text = target.read_text(encoding='utf-8')
-              updated = transform(text)
-              if updated != text:
-                  target.write_text(updated, encoding='utf-8')
-
-          def migrate_which(relative):
-              def transform(text):
-                  text = text.replace("import which from 'which';", "import { resolveExecutable } from './executable-path.js';")
-                  text = re.sub(
-                      r"async function resolveCommand\(names\) \{[\s\S]*?\n\}\n\nasync function readVersion",
-                      "async function resolveCommand(names) {\n  return resolveExecutable(names);\n}\n\nasync function readVersion",
-                      text,
-                      count=1,
-                  )
-                  return text
-              rewrite(relative, transform)
-
-          migrate_which('cli/src/dependencies.js')
-          migrate_which('cli/src/gallery.js')
-          rewrite('cli/src/system-tools.js', lambda text: text
-              .replace("import which from 'which';", "import { resolveExecutable } from './executable-path.js';")
-              .replace("async function commandPath(name) {\n  try { return await which(name); } catch { return '-'; }\n}",
-                       "async function commandPath(name) {\n  return await resolveExecutable([name]) || '-';\n}"))
-
-          roots = [
-              root / 'cli' / 'README.md', root / 'cli' / 'docs', root / 'cli' / 'scripts',
-              root / 'cli' / 'ish', root / 'cli' / 'test', root / 'packaging',
-              root / 'android-app', root / 'flake.nix',
-          ]
-          allowed = {'.md', '.txt', '.json', '.js', '.mjs', '.py', '.sh', '.cmd', '.ps1',
-                     '.yml', '.yaml', '.xml', '.gradle', '.kts', '.nix', '.toml', '.spec',
-                     '.ebuild', '.template', '.desktop', '.metainfo', '.conf', '.go'}
-          files = []
-          for entry in roots:
-              if entry.is_file():
-                  files.append(entry)
-              elif entry.is_dir():
-                  files.extend(item for item in entry.rglob('*') if item.is_file())
-          for target in files:
-              if target.name in {'SHA256SUMS', 'CHANGELOG.md'}:
-                  continue
-              if target.suffix.lower() not in allowed and target.name not in {'VERSION', 'APKBUILD', 'PKGBUILD'}:
-                  continue
-              try:
-                  text = target.read_text(encoding='utf-8')
-              except UnicodeDecodeError:
-                  continue
-              updated = text.replace('release/ytconv-1.6.5-packages', branch).replace('1.6.5', '1.6.6')
-              if updated != text:
-                  target.write_text(updated, encoding='utf-8')
-
-          readme_path = root / 'cli' / 'README.md'
-          readme = readme_path.read_text(encoding='utf-8')
-          socket_badge = '[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.6.6)](https://badge.socket.dev/npm/package/ytconv/1.6.6)'
-          runtime_badge = f'[![Runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-brightgreen)](https://github.com/andhikamarcella/youtubetomp3/blob/{branch}/cli/SECURITY.md)'
-          if runtime_badge not in readme:
-              readme = readme.replace(socket_badge, socket_badge + '\n' + runtime_badge)
-          section = '''## What changed in 1.6.6
-
-- Removed every production npm dependency. The published CLI now has `"dependencies": {}`.
-- Replaced React, Ink, and Figlet with a dependency-free Node.js terminal wizard.
-- Replaced `ws` with the Node.js 22+ built-in WebSocket for the loopback-only browser bridge.
-- Replaced `which` with internal PATH/PATHEXT resolution and execute-permission checks.
-- Added gates rejecting minified bundles, source maps, native payloads, external runtime imports, debug statements, dynamic evaluation, and shell execution.
-- Added a Socket configuration scoped to the published CLI manifests while keeping alerts enabled.
-- Kept npm installation free of `preinstall`, `install`, and `postinstall` hooks.
-- Preserved public YouTube AUTO routing: regular YouTube → MP4, YouTube Music → MP3.
-- Preserved EXE, Android APK, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Termux, iSH, and portable packages.
-
-## Socket and supply-chain status
-
-YTConv 1.6.6 has **zero production npm dependencies**, removing the transitive runtime graph behind optimized-override, unmaintained-package, dependency-minification, and dependency-debug findings.
-
-Socket can still report **network**, **filesystem**, **environment-variable**, **URL-string**, and **child-process** capabilities because a downloader must fetch a user-selected URL, invoke yt-dlp/FFmpeg, and save media. These capabilities are constrained: shell execution and telemetry are absent, secrets are stripped from child environments, engine downloads require HTTPS/allowlist/SHA-256 validation, browser automation is loopback-only, and writes are limited to selected output plus YTConv-managed state. See [SECURITY.md](https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-socket-hardening/cli/SECURITY.md).
-'''
-          readme = re.sub(r'## What changed in 1\.6\.6\n.*?(?=\n## Choose an installation method)', section.rstrip(), readme, flags=re.S)
-          readme_path.write_text(readme, encoding='utf-8')
-
-          source_test = root / 'cli' / 'test' / 'source-security.test.js'
-          source = source_test.read_text(encoding='utf-8')
-          source = re.sub(
-              r"test\('normal Ink styling is monochrome and only error paths request red',[\s\S]*?\n\}\);",
-              "test('dependency-free terminal UI contains no external styling framework', () => {\n"
-              "  const ui = fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8');\n"
-              "  assert.match(ui, /node:readline\\/promises/u);\n"
-              "  assert.doesNotMatch(ui, /(?:from|import\\s*\\()\\s*['\\\"](?:ink|react|figlet)/u);\n"
-              "  assert.doesNotMatch(ui, /(?:color|borderColor)\\s*:/u);\n"
-              "});",
-              source,
-              count=1,
-          )
-          source_test.write_text(source, encoding='utf-8')
-
-          changelog = root / 'cli' / 'CHANGELOG.md'
-          text = changelog.read_text(encoding='utf-8')
-          if '## 1.6.6' not in text:
-              entry = '''## 1.6.6 - Socket hardening and zero runtime dependencies
-
-- Removed React, Ink, Figlet, ws, which, and every transitive production npm dependency.
-- Rebuilt the interactive terminal workflow with Node.js built-ins.
-- Added zero-dependency, no-minification, no-source-map, no-native-payload, no-debug, and no-dynamic-code package gates.
-- Added scoped Socket project configuration without suppressing legitimate downloader capabilities.
-- Preserved public YouTube MP4, YouTube Music MP3, official login recovery, iSH/Alpine, and native packages.
-
-'''
-              marker = '# Changelog\n\n'
-              text = text.replace(marker, marker + entry, 1) if marker in text else entry + text
-              changelog.write_text(text, encoding='utf-8')
-
-          ish = root / 'cli' / 'ish'
-          (ish / 'SHA256SUMS').write_text('\n'.join(
-              f"{hashlib.sha256((ish / name).read_bytes()).hexdigest()}  {name}"
-              for name in ['ytconv.py', 'ytconv-core.py']
-          ) + '\n', encoding='utf-8')
-          PY
-      - name: Commit synchronized source
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Synchronize core and lockfile
+        run: node packaging/patch-core-and-lock.mjs
+      - name: Commit synchronized files
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add cli packaging android-app flake.nix
+          git add cli/package-lock.json cli/ish/ytconv-core.py cli/ish/SHA256SUMS
           if git diff --cached --quiet; then
             echo 'Nothing to commit.'
             exit 0
           fi
-          git commit -m 'refactor(security): complete YTConv 1.6.6 zero-dependency migration'
-          git push origin HEAD:release/ytconv-1.6.6-socket-hardening
+          git commit -m 'Synchronize YTConv 1.6.5 core and lockfile'
+          git push origin HEAD:release/ytconv-1.6.5-packages
