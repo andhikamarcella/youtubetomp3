@@ -55,12 +55,18 @@ test('release assets require an exact SHA-256 digest and declared size', () => {
   assert.throws(() => releaseAssetDigest({ name: 'engine' }), /did not provide a SHA-256/u);
 });
 
-test('terminal layout stacks controls and reduces decoration on small screens', () => {
-  assert.equal(terminalLayout(120, 40).stackedControls, false);
+test('terminal layout reduces decoration while remaining inside small screens', () => {
+  const desktop = terminalLayout(120, 40);
+  assert.equal(desktop.compactLogo, false);
+  assert.equal(desktop.tinyLogo, false);
+  assert.equal(desktop.showShortcuts, true);
+  assert.ok(desktop.panelWidth <= 118);
+
   const narrow = terminalLayout(32, 12);
-  assert.equal(narrow.stackedControls, true);
+  assert.equal(narrow.compactLogo, true);
   assert.equal(narrow.tinyLogo, true);
   assert.equal(narrow.showShortcuts, false);
+  assert.equal(narrow.showDetails, false);
   assert.ok(narrow.panelWidth <= 30);
 });
 

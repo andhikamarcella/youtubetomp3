@@ -1,8 +1,8 @@
 # Maintainer: Andhika Marcella Fernanda <andhikamarcella546@gmail.com>
 pkgname=ytconv
-pkgver=1.6.6
+pkgver=1.6.7
 pkgrel=0
-pkgdesc="Secure YouTube MP4 and MP3 downloader CLI"
+pkgdesc="Secure social-media downloader and converter CLI"
 url="https://github.com/andhikamarcella/youtubetomp3"
 arch="noarch"
 license="ISC"

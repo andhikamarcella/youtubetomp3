@@ -6,9 +6,13 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
 const publishedDirectories = ['bin', 'src', 'scripts', 'types', 'ish', 'docs']
   .map((name) => path.join(root, name))
   .filter((directory) => fs.existsSync(directory));
+const allowedRuntimePackages = new Set([
+  'commander', 'figlet', 'ink', 'isexe', 'react', 'which', 'ws',
+]);
 
 function walk(directory) {
   const files = [];
@@ -48,31 +52,48 @@ function isInternalSpecifier(specifier) {
     || specifier.startsWith('file:');
 }
 
-test('1.6.6 has no production npm dependency surface', () => {
-  assert.equal(manifest.version, '1.6.6');
-  assert.deepEqual(manifest.dependencies, {});
+function packageName(specifier) {
+  if (specifier.startsWith('@')) return specifier.split('/').slice(0, 2).join('/');
+  return specifier.split('/')[0];
+}
+
+test('1.6.7 has an exact allowlisted production npm dependency surface', () => {
+  assert.equal(manifest.version, '1.6.7');
+  assert.deepEqual(new Set(Object.keys(manifest.dependencies)), allowedRuntimePackages);
   assert.deepEqual(manifest.optionalDependencies ?? {}, {});
   assert.deepEqual(manifest.peerDependencies ?? {}, {});
   assert.equal(manifest.securityCapabilities.telemetry, false);
 
+  for (const [name, version] of Object.entries(manifest.dependencies)) {
+    assert.match(version, /^\d+\.\d+\.\d+$/u, `${name} must be exact`);
+    assert.equal(lock.packages[''].dependencies[name], version);
+    assert.equal(lock.packages[`node_modules/${name}`].version, version);
+    assert.match(lock.packages[`node_modules/${name}`].integrity, /^sha512-/u);
+  }
+
   for (const file of runtimeJavaScriptFiles()) {
     const source = fs.readFileSync(file, 'utf8');
-    const external = importSpecifiers(source).filter((specifier) => !isInternalSpecifier(specifier));
-    assert.deepEqual(external, [], `external runtime import in ${path.relative(root, file)}: ${external.join(', ')}`);
+    const external = importSpecifiers(source)
+      .filter((specifier) => !isInternalSpecifier(specifier))
+      .map(packageName);
+    for (const dependency of external) {
+      assert.equal(allowedRuntimePackages.has(dependency), true,
+        `unapproved runtime import in ${path.relative(root, file)}: ${dependency}`);
+    }
   }
 });
 
-test('React Ink Figlet ws which and debug packages are absent from runtime source', () => {
-  const forbiddenPackages = ['react', 'ink', 'figlet', 'ws', 'which', 'debug'];
-  const sources = runtimeJavaScriptFiles().map((file) => [file, fs.readFileSync(file, 'utf8')]);
-  for (const [file, source] of sources) {
-    for (const packageName of forbiddenPackages) {
-      const pattern = new RegExp(`(?:from\\s*|import\\s*\\(|require\\s*\\()\\s*['\"]${packageName}(?:[/\"]|$)`, 'u');
-      assert.doesNotMatch(source, pattern, `${packageName} imported by ${path.relative(root, file)}`);
-    }
-  }
-  assert.match(fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8'), /node:readline\/promises/u);
-  assert.match(fs.readFileSync(path.join(root, 'src', 'managed-browser.js'), 'utf8'), /globalThis\.WebSocket/u);
+test('requested identity and executable-discovery dependencies are used by their intended modules', () => {
+  assert.match(fs.readFileSync(path.join(root, 'src', 'branding.js'), 'utf8'), /from ['"]figlet['"]/u);
+  assert.match(fs.readFileSync(path.join(root, 'src', 'command-program.js'), 'utf8'), /from ['"]commander['"]/u);
+  const ui = fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8');
+  assert.match(ui, /from ['"]react['"]/u);
+  assert.match(ui, /from ['"]ink['"]/u);
+  const resolver = fs.readFileSync(path.join(root, 'src', 'command-path.js'), 'utf8');
+  assert.match(resolver, /from ['"]which['"]/u);
+  assert.match(resolver, /from ['"]isexe['"]/u);
+  const browser = fs.readFileSync(path.join(root, 'src', 'managed-browser.js'), 'utf8');
+  assert.match(browser, /globalThis\.WebSocket|from ['"]ws['"]/u);
 });
 
 test('published package contains no minified bundles source maps or native executable payloads', () => {

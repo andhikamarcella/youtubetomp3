@@ -4,6 +4,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 OUT=${1:-"$ROOT/dist/alpine"}
 BUILD="$ROOT/dist/alpine-build"
+VERSION=1.6.7
 
 rm -rf "$OUT" "$BUILD"
 mkdir -p "$OUT" "$BUILD"
@@ -14,7 +15,7 @@ cp "$ROOT/cli/LICENSE" "$BUILD/LICENSE"
 
 copy_built_package() {
   search_root=$1
-  find "$search_root" -type f -name 'ytconv-1.6.6-r0.apk' -exec cp {} "$OUT/" \; 2>/dev/null || true
+  find "$search_root" -type f -name "ytconv-${VERSION}-r0.apk" -exec cp {} "$OUT/" \; 2>/dev/null || true
 }
 
 build_as_user() {
@@ -43,7 +44,7 @@ else
   copy_built_package "$HOME"
 fi
 
-PACKAGE=$(find "$OUT" -maxdepth 1 -type f -name 'ytconv-1.6.6-r0.apk' | head -n1)
+PACKAGE=$(find "$OUT" -maxdepth 1 -type f -name "ytconv-${VERSION}-r0.apk" | head -n1)
 [ -n "$PACKAGE" ] || { printf 'Alpine package was not produced.\n' >&2; exit 2; }
 [ -s "$PACKAGE" ] || { printf 'Alpine package is empty.\n' >&2; exit 2; }
 PACKAGE_NAME=$(basename "$PACKAGE")

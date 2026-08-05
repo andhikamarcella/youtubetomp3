@@ -1,10 +1,11 @@
 name: ytconv
-version: '1.6.6'
-summary: Secure YouTube MP4 and MP3 downloader CLI
+version: '1.6.7'
+summary: Secure social-media downloader and converter CLI
 description: |
-  YTConv is a cross-platform terminal downloader for public YouTube MP4,
-  YouTube Music MP3, playlists, and supported social-media URLs. The snap
-  bundles its Node.js runtime and does not execute install-time scripts.
+  YTConv is a cross-platform terminal downloader for YouTube and supported
+  social-media URLs. Version 1.6.7 restores Figlet branding, Commander help,
+  animated progress, browser-login recovery, and subtitles-off defaults. The
+  snap bundles its Node.js runtime and does not execute install-time scripts.
 grade: stable
 confinement: classic
 base: core24

@@ -1,7 +1,7 @@
 {
   "name": "ytconv",
-  "version": "1.6.6",
-  "description": "Dependency-free secure typed YouTube MP4 and MP3 downloader CLI with verified yt-dlp and FFmpeg engines plus native Windows, Linux, Android, Termux, and iSH packages.",
+  "version": "1.6.7",
+  "description": "Distinctive secure social-media downloader CLI with Figlet branding, Commander command UX, animated download and conversion progress, browser-login recovery, and native desktop and Android packages.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
@@ -40,7 +40,7 @@
     "test": "node ./scripts/test-cli.js",
     "test:browser": "node ./scripts/test-managed-browser.js",
     "test:ish": "python3 ./ish/ytconv.py --version && python3 ./scripts/test-ish.py",
-    "security": "npm audit --omit=dev && node --test ./test/security.test.js ./test/supply-chain.test.js ./test/socket-hardening.test.js",
+    "security": "npm audit --omit=dev && node --test ./test/security.test.js ./test/supply-chain.test.js ./test/identity-ui.test.js",
     "prepack": "npm run check && npm run typecheck && npm test && npm run check:ish && npm run security"
   },
   "keywords": [
@@ -83,7 +83,6 @@
     "login",
     "supply-chain-security",
     "socket-security",
-    "zero-runtime-dependencies",
     "provenance",
     "sbom",
     "typescript",
@@ -115,7 +114,13 @@
     "json",
     "tui",
     "cli",
-    "terminal"
+    "terminal",
+    "commander",
+    "figlet",
+    "which",
+    "isexe",
+    "animated-progress",
+    "browser-login"
   ],
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
@@ -127,31 +132,31 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/youtubetomp3.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.6-zero-deps-final/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.7-identity-ui/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/youtubetomp3/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.6-zero-deps-final/cli/docs",
-    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/NODEJS.md",
-    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/docs/PACKAGES.md",
-    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/SECURITY.md"
+    "url": "https://github.com/andhikamarcella/youtubetomp3/tree/release/ytconv-1.6.7-identity-ui/cli/docs",
+    "nodejs": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/docs/NODEJS.md",
+    "packages": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/SECURITY.md"
   },
   "releaseDate": "2026-08-05",
-  "releaseNotes": "YTConv 1.6.6 removes every production npm dependency, replaces React, Ink, Figlet, ws, and which with audited Node.js built-ins, preserves Windows EXE, Android packaging, DEB, RPM, Arch, Alpine APK, AppImage, Snap, Flatpak, Nix, Termux, iSH and Alpine update paths, and adds Socket-focused package-content gates.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.6-zero-deps-final/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.6.7 restores the recognizable Figlet terminal identity, adds Commander-powered command help, uses which and isexe for verified executable discovery, adds animated probing, download and conversion progress, keeps subtitles off by default, improves browser-login cookie recovery for social platforms, and refreshes Android packaging and UI for 2026.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/youtubetomp3/blob/release/ytconv-1.6.7-identity-ui/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
-    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.6.tgz",
-    "release": "https://github.com/andhikamarcella/youtubetomp3/releases/tag/ytconv-v1.6.6",
-    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.6/SHA256SUMS.txt",
-    "sbomUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.6/ytconv-1.6.6.cdx.json"
+    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.7.tgz",
+    "release": "https://github.com/andhikamarcella/youtubetomp3/releases/tag/ytconv-v1.6.7",
+    "sha256Url": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.7/SHA256SUMS.txt",
+    "sbomUrl": "https://github.com/andhikamarcella/youtubetomp3/releases/download/ytconv-v1.6.7/ytconv-1.6.7.cdx.json"
   },
   "securityCapabilities": {
     "network": "Only user-requested media/provider URLs, npm metadata checks, and allowlisted HTTPS engine release endpoints.",
@@ -167,7 +172,15 @@
   "packageManager": "npm@11.18.0",
   "preferGlobal": true,
   "sideEffects": false,
-  "dependencies": {},
+  "dependencies": {
+    "commander": "14.0.3",
+    "figlet": "1.11.4",
+    "ink": "7.1.1",
+    "isexe": "3.1.5",
+    "react": "19.2.8",
+    "which": "6.0.0",
+    "ws": "8.21.1"
+  },
   "devDependencies": {
     "@types/node": "22.20.1",
     "typescript": "5.9.3"

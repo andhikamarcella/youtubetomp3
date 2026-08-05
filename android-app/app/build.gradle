@@ -10,8 +10,8 @@ android {
         applicationId 'io.github.andhikamarcella.ytconv'
         minSdk 24
         targetSdk 36
-        versionCode 10605
-        versionName '1.6.6'
+        versionCode 10607
+        versionName '1.6.7'
 
         ndk {
             abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'

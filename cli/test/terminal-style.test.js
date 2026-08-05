@@ -12,10 +12,12 @@ test('responsive layout never exceeds terminals from iSH to desktop', () => {
     const layout = terminalLayout(columns, rows);
     assert.ok(layout.panelWidth <= columns - 2);
     assert.ok(layout.minHeight <= rows);
-    assert.equal(layout.stackedControls, columns < 50);
+    assert.equal(layout.compactLogo, columns < 78);
+    assert.equal(layout.tinyLogo, columns < 42);
   }
   assert.equal(terminalLayout(20, 8).tinyLogo, true);
   assert.equal(terminalLayout(80, 24).showShortcuts, true);
+  assert.equal(terminalLayout(40, 12).showDetails, false);
 });
 
 test('normal output is monochrome while terminal errors may be red', () => {
