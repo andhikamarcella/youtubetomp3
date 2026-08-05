@@ -18,7 +18,11 @@ test('resolves an executable without invoking a shell', async (context) => {
     platform: process.platform,
     currentDirectory: directory,
   });
-  assert.equal(resolved, executable);
+  if (process.platform === 'win32') {
+    assert.equal(resolved?.toLowerCase(), executable.toLowerCase());
+  } else {
+    assert.equal(resolved, executable);
+  }
 });
 
 test('does not resolve a non-executable file on POSIX', {
