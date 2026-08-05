@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   migrate:
-    if: ${{ github.head_ref == 'release/ytconv-1.7.0' }}
+    if: ${{ github.head_ref == 'trigger/ytconv-1.7.0-migration' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout controller
