@@ -157,10 +157,11 @@ jobs:
           npm run security
           npm pack --ignore-scripts --dry-run
 
-      - name: Commit and push prepared branch
+      - name: Commit and push prepared source branch
         shell: bash
         run: |
           set -euo pipefail
+          git restore --source="$SOURCE_BRANCH" -- .github/workflows/ytconv-cli.yml .github/workflows/ytconv-packages.yml
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -173,7 +174,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 183 --repo "$GITHUB_REPOSITORY" --body "✅ YTConv 1.6.8 preparation passed and branch **$TARGET_BRANCH** was pushed. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh issue comment 183 --repo "$GITHUB_REPOSITORY" --body "✅ YTConv 1.6.8 source preparation passed and branch **$TARGET_BRANCH** was pushed. Workflow files are applied separately through the repository API. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       - name: Report preparation failure
         if: ${{ failure() }}
