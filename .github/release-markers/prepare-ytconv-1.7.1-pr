@@ -1,4 +1,4 @@
 Trigger monitored preparation for release/ytconv-1.7.1.
 This branch is temporary and must not be merged.
-attempt=2
-contracts=release-date,android-version,readme-badge,docs-count
+attempt=3
+contracts=release-date,android-version,readme-badge,docs-count,figlet-release-notes
