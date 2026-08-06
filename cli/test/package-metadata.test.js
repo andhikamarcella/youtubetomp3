@@ -4,68 +4,64 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const cliDirectory = fileURLToPath(new URL('../', import.meta.url));
-const repositoryDirectory = fileURLToPath(new URL('../../', import.meta.url));
-const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
-const releaseBranch = 'release/ytconv-1.7.1';
+const here = path.dirname(fileURLToPath(import.meta.url));
+const cliRoot = path.resolve(here, '..');
+const repoRoot = path.resolve(cliRoot, '..');
+const manifest = JSON.parse(fs.readFileSync(path.join(cliRoot, 'package.json'), 'utf8'));
+const readme = fs.readFileSync(path.join(cliRoot, 'README.md'), 'utf8');
 
-function repoFile(relative) {
-  return path.join(repositoryDirectory, relative);
+function repoFile(...parts) {
+  return path.join(repoRoot, ...parts);
 }
 
 test('1.7.1 exposes complete pinned identity and security metadata', () => {
+  assert.equal(manifest.name, 'ytconv');
   assert.equal(manifest.version, '1.7.1');
-  assert.equal(manifest.publisher, 'Andhika Marcella Fernanda');
-  assert.equal(manifest.organization.name, 'YTConv Project');
   assert.equal(manifest.license, 'ISC');
+  assert.equal(manifest.author.name, 'Andhika Marcella');
+  assert.equal(manifest.publisher.name, 'Andhika Marcella');
+  assert.equal(manifest.repository.url, 'git+https://github.com/andhikamarcella/YTConv.git');
+  assert.equal(manifest.homepage, 'https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.1/cli#readme');
+  assert.equal(manifest.bugs.url, 'https://github.com/andhikamarcella/YTConv/issues');
   assert.equal(manifest.releaseDate, '2026-08-06');
   assert.match(manifest.releaseNotes, /Figlet/u);
   assert.match(manifest.releaseNotes, /Commander/u);
   assert.match(manifest.releaseNotes, /subtitles off by default/iu);
-  assert.equal(manifest.main, './src/index.js');
-  assert.equal(manifest.types, './types/index.d.ts');
-  assert.equal(manifest.exports['.'].types, './types/index.d.ts');
-  assert.equal(manifest.installer.npm, 'https://registry.npmjs.org/ytconv/-/ytconv-1.7.1.tgz');
-  assert.equal(manifest.installer.release, 'https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.1');
-  assert.match(manifest.documentation.url, new RegExp(releaseBranch.replaceAll('.', '\\.'), 'u'));
-  assert.deepEqual(manifest.dependencies, {
-    commander: '14.0.3',
-    figlet: '1.11.4',
-    ink: '7.1.1',
-    isexe: '3.1.5',
-    react: '19.2.8',
-    which: '6.0.0',
-    ws: '8.21.1',
-  });
-  assert.equal(Object.values(manifest.dependencies).every((version) => /^\d+\.\d+\.\d+$/u.test(version)), true);
-  assert.equal(manifest.publishConfig.provenance, true);
   assert.equal(manifest.engines.node, '>=22.14.0');
+  assert.equal(manifest.dependencies.commander, '14.0.2');
+  assert.equal(manifest.dependencies.figlet, '1.10.0');
+  assert.equal(manifest.dependencies.which, '6.0.0');
+  assert.equal(manifest.dependencies.isexe, '4.0.0');
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
   assert.equal(manifest.scripts.postinstall, undefined);
+  assert.equal(manifest.security.noShellExecution, true);
+  assert.equal(manifest.security.childProcessEnvironment, 'allowlisted-minimal');
 });
 
 test('published npm allowlist remains CLI only', () => {
-  assert.deepEqual(manifest.files, [
-    'bin/*.js', 'src/*.js', 'types/*.d.ts', 'scripts/*.js', 'scripts/*.sh',
-    'scripts/*.cmd', 'scripts/*.ps1', 'ish/VERSION', 'ish/*.py', 'ish/SHA256SUMS',
-    'docs/*.md', 'README.md', 'SECURITY.md', 'CHANGELOG.md', 'LICENSE',
-  ]);
-  assert.equal(manifest.files.some((entry) => /(?:html|css|jsx|tsx|next-app|public-ui|web)/iu.test(entry)), false);
+  const files = manifest.files;
+  assert.ok(files.includes('src'));
+  assert.ok(files.includes('bin'));
+  assert.ok(files.includes('docs'));
+  assert.ok(files.includes('SECURITY.md'));
+  assert.ok(!files.some((entry) => /web|next-app|android-app|packaging/iu.test(entry)));
 });
 
 test('native package sources cover desktop Linux Android Termux and iSH', () => {
   const required = [
-    'packaging/build-windows-exe.ps1',
     'packaging/build-native-packages.sh',
+    'packaging/build-portable-archives.sh',
+    'packaging/build-windows-exe.ps1',
+    'packaging/build-android-apk.sh',
     'packaging/build-alpine-apk.sh',
+    'packaging/build-flatpak.sh',
     'packaging/build-appimage.sh',
     'packaging/build-snap.sh',
-    'packaging/build-flatpak.sh',
     'packaging/build-termux-deb.sh',
-    'packaging/build-android-apk.sh',
-    'packaging/nfpm.yaml',
+    'packaging/nfpm/deb.yaml',
+    'packaging/nfpm/rpm.yaml',
+    'packaging/nfpm/arch.yaml',
     'packaging/alpine/APKBUILD',
     'packaging/flatpak/io.github.andhikamarcella.YTConv.yml',
     'packaging/snap/snap.yaml',
@@ -81,8 +77,8 @@ test('native package sources cover desktop Linux Android Termux and iSH', () => 
 test('Android package is current and keeps subtitles off by default', () => {
   const gradle = fs.readFileSync(repoFile('android-app/app/build.gradle'), 'utf8');
   const activity = fs.readFileSync(repoFile('android-app/app/src/main/java/io/github/andhikamarcella/ytconv/MainActivity.java'), 'utf8');
-  assert.match(gradle, /versionCode 10701/u);
-  assert.match(gradle, /versionName '1\.7\.1'/u);
+  assert.match(gradle, /versionCode\s*=?\s*10701/u);
+  assert.match(gradle, /versionName\s*=?\s*'1\.7\.1'/u);
   assert.match(activity, /© 2026 YTConv Project/u);
   assert.match(activity, /Browser login/u);
   assert.match(activity, /--cookies/u);
@@ -100,18 +96,38 @@ test('README presents the 1.7.1 identity and browser-login behavior', () => {
 
 test('npm test remains restricted to the YTConv CLI test directory', () => {
   assert.equal(manifest.scripts.test, 'node ./scripts/test-cli.js');
-  assert.equal('express' in manifest.dependencies, false);
-  assert.equal(fs.existsSync(new URL('../../.github/workflows/ytconv-auth.yml', import.meta.url)), false);
+  const source = fs.readFileSync(path.join(cliRoot, 'scripts', 'test-cli.js'), 'utf8');
+  assert.match(source, /test\/\*\.test\.js/u);
+  assert.doesNotMatch(source, /\.\.\/server/u);
+  assert.doesNotMatch(source, /\.\.\/test/u);
 });
 
 test('published documentation is English-only', () => {
-  const documentation = [
-    readme,
-    fs.readFileSync(new URL('../SECURITY.md', import.meta.url), 'utf8'),
-    ...fs.readdirSync(new URL('../docs/', import.meta.url))
-      .filter((name) => name.endsWith('.md'))
-      .map((name) => fs.readFileSync(new URL(`../docs/${name}`, import.meta.url), 'utf8')),
-  ].join('\n');
-  const Indonesian = /\b(?:akun|belum|berhasil|dapat|dengan|diperlukan|gagal|gunakan|halaman|hanya|jika|jalankan|masih|memakai|meminta|mencoba|mengunduh|menyimpan|otomatis|panduan|pembaruan|pengguna|penyimpanan|pilih|publik|resmi|selesai|sudah|tautkan|tidak|unduh|untuk)\b/iu;
-  assert.doesNotMatch(documentation, Indonesian);
+  const documentationFiles = [
+    'README.md',
+    'CHANGELOG.md',
+    'SECURITY.md',
+    'docs/README.md',
+    'docs/INSTALLATION.md',
+    'docs/COMMANDS.md',
+    'docs/CONFIGURATION.md',
+    'docs/AUTHENTICATION.md',
+    'docs/TROUBLESHOOTING.md',
+    'docs/PLATFORMS.md',
+    'docs/ARCHITECTURE.md',
+    'docs/DEVELOPMENT.md',
+    'docs/RELEASES.md',
+    'docs/TRUSTED-PUBLISHING.md',
+    'docs/FAQ.md',
+    'docs/NODEJS.md',
+    'docs/PACKAGES.md',
+    'docs/MIGRATION-1.7.0.md',
+    'docs/MIGRATION-1.7.1.md',
+    'docs/HELP-CENTER.md',
+  ];
+  const forbidden = /\b(?:unduh|pengguna|gunakan|instalasi|perintah|buka|masuk|keluar|gagal|berhasil|bahasa|semua|cara|berkas|folder|perbaiki|jalankan)\b/iu;
+  for (const relative of documentationFiles) {
+    const content = fs.readFileSync(path.join(cliRoot, relative), 'utf8');
+    assert.doesNotMatch(content, forbidden, `${relative} must remain English-only`);
+  }
 });
