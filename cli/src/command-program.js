@@ -24,6 +24,10 @@ Examples:
   ytconv "https://www.instagram.com/reel/..." --platform instagram
   ytconv login instagram
   ytconv social help
+  ytconv docs --list
+  ytconv docs troubleshooting
+  ytconv about
+  ytconv shortcuts
 
 Privacy:
   Public access is attempted first. Browser login is requested only when a provider

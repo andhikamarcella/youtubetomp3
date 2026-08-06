@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.1 - 2026-08-06
+
+- Restored stable `blob/HEAD/cli/docs/...` compatibility links on the repository default branch.
+- Added `ytconv docs`, `ytconv docs --list`, topic aliases, and responsive documentation panels.
+- Added `ytconv about` and `ytconv shortcuts` for clearer project discovery and interactive guidance.
+- Added dedicated help-center documentation and migration guidance.
+- Added automated help-center tests and expanded documentation validation.
+- Refreshed CLI and native package identities to 1.7.1 without removing established commands.
+
 ## 1.7.0 — 2026-08-05
 
 ### Repository and release integrity

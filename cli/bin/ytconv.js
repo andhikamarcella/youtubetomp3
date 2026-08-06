@@ -13,6 +13,7 @@ import { runDirectCommand } from '../src/direct.js';
 import { explainError } from '../src/error-help.js';
 import { EXIT_CODES, exitCodeForError } from '../src/exit-codes.js';
 import { collectUrls, runHeadlessDownloads } from '../src/headless.js';
+import { handleHelpCenterCommand } from '../src/help-center.js';
 import { desktopDownloadsDirectory, isTermux, termuxSharedDownloadsDirectory } from '../src/platform.js';
 import { presetText } from '../src/presets.js';
 import { socialPlatformLabel } from '../src/social-platforms.js';
@@ -153,6 +154,9 @@ function fullHelpText() {
 
 async function main() {
   const rawArgs = process.argv.slice(2);
+  const helpCenter = handleHelpCenterCommand(rawArgs);
+  if (helpCenter.handled) return helpCenter.exitCode;
+
   try {
     const admin = await handleUserDataCommand(rawArgs);
     if (admin.handled) return admin.exitCode;

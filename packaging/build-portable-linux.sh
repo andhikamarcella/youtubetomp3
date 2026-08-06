@@ -14,7 +14,7 @@ case "$MACHINE" in
 esac
 
 VERSION=$(node -p "require('$CLI/package.json').version")
-[ "$VERSION" = "1.7.0" ] || { printf 'Expected YTConv 1.7.0, got %s\n' "$VERSION" >&2; exit 3; }
+[ "$VERSION" = "1.7.1" ] || { printf 'Expected YTConv 1.7.1, got %s\n' "$VERSION" >&2; exit 3; }
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

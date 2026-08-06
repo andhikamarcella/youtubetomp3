@@ -1,6 +1,6 @@
 # Maintainer: Andhika Marcella Fernanda <andhikamarcella546@gmail.com>
 pkgname=ytconv
-pkgver=1.7.0
+pkgver=1.7.1
 pkgrel=0
 pkgdesc="Secure social-media downloader and converter CLI"
 url="https://github.com/andhikamarcella/YTConv"
