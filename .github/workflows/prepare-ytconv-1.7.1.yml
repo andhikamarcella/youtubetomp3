@@ -37,7 +37,9 @@ jobs:
           path: controller
 
       - name: Prepare source, documentation, and interactive help center
-        run: python3 controller/.github/scripts/prepare-ytconv-1.7.1.py target
+        run: |
+          python3 controller/.github/scripts/prepare-ytconv-1.7.1.py target
+          python3 controller/.github/scripts/fix-ytconv-1.7.1-contracts.py target
 
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
