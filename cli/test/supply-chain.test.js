@@ -21,8 +21,8 @@ function javascriptFiles(directory) {
   return values;
 }
 
-test('1.7.0 publishes recognized license types and no lifecycle install hooks', () => {
-  assert.equal(manifest.version, '1.7.0');
+test('1.7.1 publishes recognized license types and no lifecycle install hooks', () => {
+  assert.equal(manifest.version, '1.7.1');
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.scripts.preinstall, undefined);
   assert.equal(manifest.scripts.install, undefined);
@@ -44,8 +44,8 @@ test('identity dependencies are exact and represented by the committed lock grap
     assert.equal(lock.packages[`node_modules/${name}`].version, version);
     assert.match(lock.packages[`node_modules/${name}`].integrity, /^sha512-/u);
   }
-  assert.equal(lock.version, '1.7.0');
-  assert.equal(lock.packages[''].version, '1.7.0');
+  assert.equal(lock.version, '1.7.1');
+  assert.equal(lock.packages[''].version, '1.7.1');
 });
 
 test('TypeScript badge is backed by declarations exports and type checking', () => {
@@ -106,7 +106,7 @@ test('ordinary public YouTube MP4 args contain no cookie source and no subtitles
 });
 
 test('README exposes versioned Socket TypeScript ISC and security documentation', () => {
-  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.7\.0/u);
+  assert.match(readme, /badge\.socket\.dev\/npm\/package\/ytconv\/1\.7\.1/u);
   assert.match(readme, /types-TypeScript/u);
   assert.match(readme, /License-ISC/u);
   assert.match(readme, /no `preinstall`, `install`, (?:or|and) `postinstall` hooks/iu);

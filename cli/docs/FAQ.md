@@ -31,3 +31,12 @@ Compare SHA-256 checksums and inspect npm/GitHub provenance as described in [Rel
 ## Where should bugs be reported?
 
 Use the issue tracker in the canonical repository and include sanitized diagnostic information. Never include cookies, tokens, passwords, or private URLs.
+
+## Why did a `blob/HEAD/cli/docs/...` link return 404?
+
+The repository default branch hosts the web application, while the maintained CLI lives on versioned release branches. YTConv 1.7.1 restores a compatibility docs path on the default branch and prints release-pinned documentation URLs through `ytconv docs`.
+
+## How do I find documentation from the terminal?
+
+Run `ytconv docs --list`, then open a topic such as `ytconv docs troubleshooting`, `ytconv docs authentication`, or `ytconv docs packages`. Run `ytconv about` for project links and `ytconv shortcuts` for interactive keys.
+

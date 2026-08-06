@@ -336,7 +336,7 @@ async function handleHistory(args, options) {
 }
 
 function completionScript(shell) {
-  const commands = 'download playlist batch info formats subtitles login logout social doctor repair clean update config profile history completion quickstart';
+  const commands = 'download playlist batch info formats subtitles login logout social doctor repair clean update config profile history completion quickstart docs about shortcuts';
   if (shell === 'bash') return `# Add to ~/.bashrc\ncomplete -W "${commands}" ytconv`;
   if (shell === 'zsh') return `# Add to ~/.zshrc\ncompdef '_arguments "1:command:(${commands})"' ytconv`;
   if (shell === 'fish') return commands.split(' ').map((name) => `complete -c ytconv -f -a ${name}`).join('\n');

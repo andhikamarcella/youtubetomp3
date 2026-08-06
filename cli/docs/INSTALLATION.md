@@ -12,10 +12,10 @@ ytconv --version
 ytconv --diagnose
 ```
 
-Install the exact 1.7.0 release with:
+Install the exact 1.7.1 release with:
 
 ```bash
-npm install -g ytconv@1.7.0
+npm install -g ytconv@1.7.1
 ```
 
 ## Upgrade
