@@ -5,6 +5,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 PROJECT="$ROOT/android-app"
 OUT=${1:-"$ROOT/dist/android"}
 VERSION=1.7.1
+VERSION_CODE=10701
 GRADLE_VERSION=8.13
 GRADLE_SHA256=20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78
 GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
@@ -44,8 +45,8 @@ AAPT="$SDK_ROOT/build-tools/35.0.0/aapt"
 APKSIGNER="$SDK_ROOT/build-tools/35.0.0/apksigner"
 [ -x "$AAPT" ] || { printf 'aapt was not found.\n' >&2; exit 3; }
 [ -x "$APKSIGNER" ] || { printf 'apksigner was not found.\n' >&2; exit 3; }
-"$AAPT" dump badging "$DEBUG_APK" | grep -F "package: name='io.github.andhikamarcella.ytconv.debug' versionCode='10700' versionName='1.7.1-debug'"
-"$AAPT" dump badging "$RELEASE_APK" | grep -F "package: name='io.github.andhikamarcella.ytconv' versionCode='10700' versionName='1.7.1'"
+"$AAPT" dump badging "$DEBUG_APK" | grep -F "package: name='io.github.andhikamarcella.ytconv.debug' versionCode='${VERSION_CODE}' versionName='${VERSION}-debug'"
+"$AAPT" dump badging "$RELEASE_APK" | grep -F "package: name='io.github.andhikamarcella.ytconv' versionCode='${VERSION_CODE}' versionName='${VERSION}'"
 "$APKSIGNER" verify --verbose "$DEBUG_APK"
 
 for abi in arm64-v8a armeabi-v7a x86_64 x86; do
