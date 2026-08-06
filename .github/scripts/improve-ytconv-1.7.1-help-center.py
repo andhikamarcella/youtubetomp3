@@ -88,11 +88,14 @@ needle = """  assert.match(docsListText(90), /installation/u);
   assert.ok(documentationTopics().length >= 15);
 """
 replacement = """  assert.match(docsListText(90), /installation/u);
+  let migrationText = '';
   const migrationOutput = handleHelpCenterCommand(['docs', 'migration'], {
-    write: (value) => value,
+    write: (value) => { migrationText = value; },
     columns: 50,
   });
   assert.equal(migrationOutput.topic, 'migration');
+  assert.match(migrationText, /https:\/\/github\.com\/andhikamarcella\/YTConv\/blob\/release\/ytconv-1\.7\.1\/cli\/docs\/MIGRATION-1\.7\.1\.md/u);
+  assert.doesNotMatch(migrationText, /…/u);
   assert.ok(documentationTopics().length >= 15);
 """
 if needle in test_text:
