@@ -1,0 +1,67 @@
+name: Prepare YTConv 1.7.1
+
+on:
+  push:
+    branches:
+      - release/ytconv-web
+    paths:
+      - ".github/release-markers/prepare-ytconv-1.7.1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-ytconv-1.7.1
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout YTConv 1.7.1 source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-1.7.1
+          fetch-depth: 0
+          path: target
+
+      - name: Checkout release controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/ytconv-web
+          path: controller
+
+      - name: Prepare source, documentation, and interactive help center
+        run: python3 controller/.github/scripts/prepare-ytconv-1.7.1.py target
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: target/cli/package-lock.json
+
+      - name: Validate complete npm candidate
+        working-directory: target/cli
+        run: |
+          npm ci --ignore-scripts
+          npm run prepack
+          test "$(node -p "require('./package.json').version")" = "1.7.1"
+          test "$(node ./bin/ytconv.js --version)" = "1.7.1"
+          node ./bin/ytconv.js docs --list | grep -F "Documentation Topics"
+          node ./bin/ytconv.js docs migration | grep -F "MIGRATION-1.7.1.md"
+          node ./bin/ytconv.js about | grep -F "YTConv 1.7.1"
+          node ./bin/ytconv.js shortcuts | grep -F "Ctrl+M"
+
+      - name: Commit validated YTConv 1.7.1 source
+        working-directory: target
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "YTConv 1.7.1 source is already prepared."
+          else
+            git commit -m "release: prepare YTConv 1.7.1"
+            git push origin HEAD:release/ytconv-1.7.1
+          fi
