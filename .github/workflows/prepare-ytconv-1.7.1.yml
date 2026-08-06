@@ -41,6 +41,7 @@ jobs:
           python3 controller/.github/scripts/prepare-ytconv-1.7.1.py target
           python3 controller/.github/scripts/fix-ytconv-1.7.1-contracts.py target
           python3 controller/.github/scripts/fix-ytconv-1.7.1-release-notes.py target
+          python3 controller/.github/scripts/improve-ytconv-1.7.1-help-center.py target
 
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
@@ -60,6 +61,7 @@ jobs:
           node ./bin/ytconv.js docs migration | grep -F "MIGRATION-1.7.1.md"
           node ./bin/ytconv.js about | grep -F "YTConv 1.7.1"
           node ./bin/ytconv.js shortcuts | grep -F "Ctrl+M"
+          node ./bin/ytconv.js completion bash | grep -F "docs about shortcuts"
 
       - name: Commit validated YTConv 1.7.1 source
         working-directory: target
