@@ -6,7 +6,6 @@
 
     <application
         android:allowBackup="false"
-        android:extractNativeLibs="true"
         android:icon="@drawable/ic_launcher"
         android:label="YTConv"
         android:requestLegacyExternalStorage="true"
