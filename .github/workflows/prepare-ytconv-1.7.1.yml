@@ -6,6 +6,11 @@ on:
       - release/ytconv-web
     paths:
       - ".github/release-markers/prepare-ytconv-1.7.1"
+  pull_request:
+    branches:
+      - release/ytconv-web
+    paths:
+      - ".github/release-markers/prepare-ytconv-1.7.1-pr"
 
 permissions:
   contents: write
