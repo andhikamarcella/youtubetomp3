@@ -21,7 +21,10 @@ permissions:
 
 concurrency:
   group: publish-ytconv-1.7.2
-  cancel-in-progress: false
+  # A newer release-source commit supersedes an older run for the same version.
+  # This prevents stale or oversized artifacts from being published while a fix
+  # is already available on the release branch.
+  cancel-in-progress: true
 
 jobs:
   publish:
