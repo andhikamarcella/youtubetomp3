@@ -61,8 +61,8 @@ function verifyStream(ffmpegPath, outputPath, type) {
   );
 }
 
-async function verifyCandidate({ url, index, ffmpegPath }) {
-  const outputDirectory = path.join(rootDirectory, `candidate-${index + 1}`);
+async function verifyCandidate({ url, index, pass, ffmpegPath }) {
+  const outputDirectory = path.join(rootDirectory, `candidate-${index + 1}-pass-${pass}`);
   await fs.mkdir(outputDirectory, { recursive: true });
 
   const result = await downloadMedia({
@@ -89,7 +89,7 @@ async function verifyCandidate({ url, index, ffmpegPath }) {
       archivePath: '',
       galleryArchivePath: '',
       clipStart: '0',
-      clipEnd: '10',
+      clipEnd: '5',
       resume: true,
       overwrite: true,
       retries: '5',
@@ -100,7 +100,7 @@ async function verifyCandidate({ url, index, ffmpegPath }) {
     },
     onLog(line, isError) {
       const target = isError ? process.stderr : process.stdout;
-      target.write(`[candidate ${index + 1}] ${line}\n`);
+      target.write(`[candidate ${index + 1}, pass ${pass}] ${line}\n`);
     },
   });
 
@@ -134,9 +134,11 @@ try {
     const url = TEST_URLS[index];
     process.stdout.write(`Trying real YouTube candidate ${index + 1}/${TEST_URLS.length}: ${url}\n`);
     try {
-      verified = await verifyCandidate({ url, index, ffmpegPath: ffmpeg.path });
+      const first = await verifyCandidate({ url, index, pass: 1, ffmpegPath: ffmpeg.path });
+      const second = await verifyCandidate({ url, index, pass: 2, ffmpegPath: ffmpeg.path });
+      verified = second;
       process.stdout.write(
-        `Verified real YouTube MP4: ${verified.outputPath} (${verified.size} bytes; video + audio)\n`,
+        `Verified real YouTube MP4 twice: ${first.size} bytes then ${second.size} bytes; video + audio\n`,
       );
       break;
     } catch (error) {

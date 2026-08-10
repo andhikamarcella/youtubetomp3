@@ -1,16 +1,16 @@
 # YTConv – Social Media Downloader and Converter CLI
 
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
-[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.7.1)](https://badge.socket.dev/npm/package/ytconv/1.7.1)
+[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.7.2)](https://badge.socket.dev/npm/package/ytconv/1.7.2)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/NODEJS.md)
 
-**YTConv 1.7.1** restores the recognizable Figlet terminal identity, adds Commander-powered command help, animated download and conversion progress, verified `which`/`isexe` executable discovery, browser-login recovery for private or age-restricted media, and a refreshed 2026 Android application.
+**YTConv 1.7.2** is a terminal-first social downloader and converter with repeat-safe format selection, transcript/metadata extraction, optional FFmpeg upscaling through 4K, Deno-aware YouTube extraction, and browser-session recovery for media your account may access.
 
 The npm package is a CLI only. It contains no web application, no telemetry, and no `preinstall`, `install`, or `postinstall` hooks.
 
-## Highlights in 1.7.1
+## Highlights in 1.7.2
 
 - Responsive Figlet branding with compact fallbacks for narrow terminals.
 - Commander-based `ytconv --help` with clear examples and privacy guidance.
@@ -19,7 +19,12 @@ The npm package is a CLI only. It contains no web application, no telemetry, and
 - Shell-free executable discovery and child-process execution.
 - Public access first. Browser cookies are requested only after an authentication-related provider failure.
 - Subtitles are **off by default** in interactive, headless, and Android flows. Use `--subtitles` or Ctrl+S to enable them.
-- Android version 1.7.1 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
+- MP4, MKV, WebM, MP3, M4A, AAC, Opus, Vorbis, FLAC, ALAC, and WAV are exercised twice against a real local FFmpeg fixture in the release test matrix.
+- `ytconv extract URL` saves available subtitles and structured metadata; `ytconv transcript URL` requests a readable SRT transcript.
+- `--upscale 4k` creates a 3840×2160 derived copy using local FFmpeg Lanczos scaling. It is not falsely labeled AI detail recovery.
+- Supported Deno is preferred for current yt-dlp JavaScript challenges, with the existing Node.js runtime as fallback.
+- Terminal accents adapt to Windows, macOS, Termux, and major Linux distribution families.
+- Android version 1.7.2 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
 
 ## Supported sites
 
@@ -37,7 +42,7 @@ Provider support follows the installed media engines and may change when a websi
 ## Install from npm
 
 ```bash
-npm install --global ytconv@1.7.1
+npm install --global ytconv@1.7.2
 ytconv --version
 ```
 
@@ -146,9 +151,11 @@ ytconv "https://example.com/media" --cookies ./cookies.txt
 
 Keep cookie files private. Do not commit them to Git or upload them to support tickets.
 
+Beginner guide: [`docs/COOKIES.md`](docs/COOKIES.md).
+
 ## Android APK
 
-The Android application is version **1.7.1** with version code **10701** and 2026 UI metadata.
+The Android application is version **1.7.2** with version code **10702** and 2026 UI metadata.
 
 It provides:
 
@@ -239,6 +246,11 @@ ISC License. See [`LICENSE`](LICENSE).
 - [Commands](docs/COMMANDS.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Authentication](docs/AUTHENTICATION.md)
+- [cookies.txt guide](docs/COOKIES.md)
+- [Format guide](docs/FORMAT-GUIDE.md)
+- [Content extraction](docs/CONTENT-EXTRACTION.md)
+- [Video upscaling](docs/UPSCALING.md)
+- [Deno runtime](docs/DENO.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Platform support](docs/PLATFORMS.md)
 - [Architecture](docs/ARCHITECTURE.md)
@@ -246,11 +258,14 @@ ISC License. See [`LICENSE`](LICENSE).
 - [Release process](docs/RELEASES.md)
 - [npm Trusted Publishing](docs/TRUSTED-PUBLISHING.md)
 - [FAQ](docs/FAQ.md)
-- [Migration to 1.7.1](docs/MIGRATION-1.7.1.md)
+- [Migration to 1.7.2](docs/MIGRATION-1.7.2.md)
+- [Support](docs/SUPPORT.md)
 
 Canonical repository: <https://github.com/andhikamarcella/YTConv>
 
-## Interactive help center (1.7.1)
+Support: [help.ytconv@proton.me](mailto:help.ytconv@proton.me)
+
+## Interactive help center (1.7.2)
 
 ```bash
 ytconv docs --list
@@ -260,4 +275,3 @@ ytconv shortcuts
 ```
 
 These commands print responsive terminal panels and release-pinned documentation URLs. Stable `HEAD` compatibility documentation is also maintained on the repository default branch.
-

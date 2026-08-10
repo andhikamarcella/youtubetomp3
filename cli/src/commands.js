@@ -24,6 +24,10 @@ export function normalizeCommandArgs(argv = []) {
       : ['--list-formats', ...rest];
     case 'subtitles':
     case 'subs': return ['--list-subs', ...rest];
+    case 'extract':
+    case 'content': return ['--subtitle-only', '--metadata-files', ...rest];
+    case 'transcript':
+    case 'text': return ['--subtitle-only', ...rest];
     case 'doctor': return ['--doctor', ...rest];
     case 'repair':
     case 'setup': return ['--repair', ...rest];
@@ -43,6 +47,8 @@ export function commandSummaryText() {
     '  ytconv info URL --json      Print source metadata and output plan',
     '  ytconv formats URL          List source formats',
     '  ytconv subtitles URL        List available subtitles',
+    '  ytconv extract URL          Save transcript/subtitles and structured metadata',
+    '  ytconv transcript URL       Save a readable SRT transcript when available',
     '  ytconv login instagram      Official browser login; no cookies.txt required',
     '  ytconv social status        Show linked browser accounts',
     '  ytconv config list          Show persistent defaults',

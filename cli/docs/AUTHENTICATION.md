@@ -2,6 +2,8 @@
 
 Some authorized downloads require an authenticated browser session. YTConv supports browser-login recovery without storing account passwords.
 
+Public access is always tried first. For copy-paste examples, browser names, Netscape file format, and safe cleanup, read the [cookies.txt beginner guide](COOKIES.md).
+
 ## Safe workflow
 
 1. Sign in through the provider's official website in a supported browser.
@@ -20,3 +22,5 @@ Some authorized downloads require an authenticated browser session. YTConv suppo
 ## Recovery
 
 If authentication fails, update the relevant engine, sign in again through the official website, verify the selected browser profile, and run `ytconv --diagnose`. See [Troubleshooting](TROUBLESHOOTING.md) for additional steps.
+
+Sanitized support: [help.ytconv@proton.me](mailto:help.ytconv@proton.me). Never attach cookies or session data.

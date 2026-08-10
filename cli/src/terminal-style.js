@@ -75,3 +75,24 @@ export function monochromeChildEnvironment(env = process.env) {
 export function privateChildEnvironment(env = process.env) {
   return scrubChildEnvironment(env);
 }
+
+export function platformAccent({
+  platform = process.platform,
+  termux = false,
+  distro = {},
+} = {}) {
+  if (termux || platform === 'android') return 'yellow';
+  if (platform === 'win32') return 'blue';
+  if (platform === 'darwin') return 'magenta';
+  if (platform !== 'linux') return 'cyan';
+
+  const family = `${distro.id || ''} ${distro.idLike || ''} ${distro.manager || ''}`.toLowerCase();
+  if (/arch|manjaro|endeavour|cachyos|garuda|pacman/u.test(family)) return 'cyan';
+  if (/fedora|rhel|centos|rocky|alma|nobara|dnf/u.test(family)) return 'blue';
+  if (/debian|ubuntu|mint|pop|kali|neon|apt/u.test(family)) return 'green';
+  if (/alpine|apk/u.test(family)) return 'yellow';
+  if (/opensuse|suse|zypper/u.test(family)) return 'green';
+  if (/gentoo|emerge/u.test(family)) return 'magenta';
+  if (/nixos|\bnix\b/u.test(family)) return 'cyan';
+  return 'green';
+}

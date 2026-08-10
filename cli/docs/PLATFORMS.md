@@ -14,6 +14,8 @@ YTConv includes routing hints for YouTube, YouTube Music, Instagram, Facebook, T
 
 Other sites may work when yt-dlp or gallery-dl provides a suitable extractor.
 
+Installation shortcuts: [Node.js](NODEJS.md), [Linux distro families](LINUX.md), [Termux](TERMUX.md), and [iSH](ISH.md).
+
 ## YouTube Music
 
 - AUTO routing prefers audio.
@@ -32,3 +34,5 @@ A post can contain images, video, or both. AUTO selects an engine based on the U
 - Deleted posts and expired URLs cannot be restored.
 - Site API changes may require updated yt-dlp or gallery-dl releases.
 - Older iSH/Python environments may require a compatible engine version rather than the newest engine release.
+
+Use [help.ytconv@proton.me](mailto:help.ytconv@proton.me) for sanitized support; never send cookies or tokens.

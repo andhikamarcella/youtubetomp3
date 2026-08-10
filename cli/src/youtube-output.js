@@ -66,6 +66,12 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
   const separateAny = `bv${limit}+ba`;
   const broadSeparateAny = `bv*${limit}+ba`;
   const combinedAny = `b${limit}`;
+  // Some generic and social extractors expose a perfectly usable format but
+  // omit the height field. A bounded selector excludes those rows entirely.
+  // Keep the user's requested resolution as the priority, then fall back to an
+  // unbounded source instead of failing with "Requested format is not
+  // available" when height metadata is absent.
+  const metadataFreeFallbacks = limit ? ['bv+ba', 'bv*+ba', 'b'] : [];
 
   if (container === 'mp4' || container === 'auto') {
     return [
@@ -76,6 +82,7 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
       separateAny,
       broadSeparateAny,
       combinedAny,
+      ...metadataFreeFallbacks,
     ].join('/');
   }
 
@@ -86,10 +93,11 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
       separateAny,
       broadSeparateAny,
       combinedAny,
+      ...metadataFreeFallbacks,
     ].join('/');
   }
 
-  return [separateAny, broadSeparateAny, combinedAny].join('/');
+  return [separateAny, broadSeparateAny, combinedAny, ...metadataFreeFallbacks].join('/');
 }
 
 export function videoContainerArgs(container = 'auto') {

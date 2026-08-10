@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""YTConv 1.7.1 launcher for iSH, Alpine Linux, and Python-only shells."""
+"""YTConv 1.7.2 launcher for iSH, Alpine Linux, and Python-only shells."""
 
 import runpy
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.7.1"
-RELEASE_BRANCH = "release/ytconv-1.7.1"
+VERSION = "1.7.2"
+RELEASE_BRANCH = "release/ytconv-1.7.2"
 RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/%s/cli" % RELEASE_BRANCH
 CORE = Path(__file__).resolve().with_name("ytconv-core.py")
 

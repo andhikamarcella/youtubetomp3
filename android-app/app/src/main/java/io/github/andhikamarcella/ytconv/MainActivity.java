@@ -161,7 +161,8 @@ public final class MainActivity extends AppCompatActivity {
         content.addView(providers, matchWrap());
 
         TextView footer = new TextView(this);
-        footer.setText("© 2026 YTConv Project · Android " + BuildConfig.VERSION_NAME);
+        footer.setText("© 2026 YTConv Project · Android " + BuildConfig.VERSION_NAME
+                + " · help.ytconv@proton.me");
         footer.setTextSize(13);
         footer.setTextColor(0xFF666666);
         footer.setPadding(0, padding, 0, 0);

@@ -1,4 +1,4 @@
-# YTConv Android 1.7.1
+# YTConv Android 1.7.2
 
 Native Android application for social-media downloads and local conversion. It does not require Node.js, Termux, or a cookies file for ordinary public media.
 
@@ -40,9 +40,9 @@ The release workflow uses JDK 17, Android SDK 36, Android Gradle Plugin 8.13.2, 
 
 The workflow produces:
 
-- `YTConv-1.7.1-debug.apk` — debug-signed and installable for testing
-- `YTConv-1.7.1-release-unsigned.apk` — unsigned release build for downstream signing
-- `YTConv-Android-1.7.1-source.tar.gz` — corresponding source archive
+- `YTConv-1.7.2-debug.apk` — debug-signed and installable for testing
+- `YTConv-1.7.2-release-unsigned.apk` — unsigned release build for downstream signing
+- `YTConv-Android-1.7.2-source.tar.gz` — corresponding source archive
 
 A public production store release requires a private Android signing key. No signing key is stored in this repository.
 

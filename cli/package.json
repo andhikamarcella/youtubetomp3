@@ -1,7 +1,7 @@
 {
   "name": "ytconv",
-  "version": "1.7.1",
-  "description": "Secure cross-platform social-media downloader CLI with an interactive help center, stable documentation links, guided diagnostics, browser-login recovery, animated progress, native packages, and verified release provenance.",
+  "version": "1.7.2",
+  "description": "Secure cross-platform social-media downloader and converter with repeat-safe formats, extraction tools, optional 4K upscaling, browser recovery, diagnostics, and verified release provenance.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
@@ -39,6 +39,7 @@
     "check:ish": "python3 -m py_compile ./ish/ytconv.py ./ish/ytconv-core.py ./scripts/test-ish.py && sh -n ./scripts/install-ish.sh && sh -n ./scripts/install-termux.sh && sh -n ./scripts/install-unix.sh",
     "test": "node ./scripts/test-cli.js",
     "test:browser": "node ./scripts/test-managed-browser.js",
+    "test:formats": "node ./scripts/test-format-matrix.js",
     "test:ish": "python3 ./ish/ytconv.py --version && python3 ./scripts/test-ish.py",
     "security": "npm audit --omit=dev && node --test ./test/security.test.js ./test/supply-chain.test.js ./test/identity-ui.test.js",
     "prepack": "npm run docs:check && npm run check && npm run typecheck && npm test && npm run test:help-center && npm run check:ish && npm run security",
@@ -130,7 +131,10 @@
     "help-center",
     "interactive-docs",
     "documentation-command",
-    "terminal-dashboard"
+    "terminal-dashboard",
+    "deno",
+    "upscaling",
+    "transcript"
   ],
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
@@ -142,37 +146,40 @@
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/YTConv.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.1/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.2/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/YTConv/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.1/cli/docs",
-    "installation": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/INSTALLATION.md",
-    "commands": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/COMMANDS.md",
-    "configuration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/CONFIGURATION.md",
-    "authentication": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/AUTHENTICATION.md",
-    "troubleshooting": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/TROUBLESHOOTING.md",
-    "packages": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/PACKAGES.md",
-    "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/SECURITY.md",
-    "helpCenter": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/HELP-CENTER.md",
-    "migration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/docs/MIGRATION-1.7.1.md"
+    "url": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.2/cli/docs",
+    "installation": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/INSTALLATION.md",
+    "commands": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/COMMANDS.md",
+    "configuration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/CONFIGURATION.md",
+    "authentication": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/AUTHENTICATION.md",
+    "cookies": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/COOKIES.md",
+    "formats": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/FORMAT-GUIDE.md",
+    "upscaling": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/UPSCALING.md",
+    "troubleshooting": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/TROUBLESHOOTING.md",
+    "packages": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/SECURITY.md",
+    "helpCenter": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/HELP-CENTER.md",
+    "migration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/MIGRATION-1.7.2.md"
   },
-  "releaseDate": "2026-08-06",
-  "releaseNotes": "YTConv 1.7.1 preserves the recognizable Figlet terminal identity and Commander command UX, fixes stable HEAD documentation links, adds an interactive terminal help center with docs, about, and shortcuts commands, improves discoverability and responsive help output, keeps subtitles off by default, and refreshes every supported package identity while preserving the established secure download core.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.1/cli/CHANGELOG.md",
+  "releaseDate": "2026-08-10",
+  "releaseNotes": "YTConv 1.7.2 fixes metadata-free direct and social video fallbacks, adds repeat-tested audio/video conversion, optional 720p-to-4K FFmpeg upscaling, transcript and metadata extraction commands, supported Deno runtime selection, platform-aware terminal accents, safer auto-update relaunching, and beginner cookies, distro, iSH, format, and support guides.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
-    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.1.tgz",
-    "release": "https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.1",
-    "sha256Url": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.1/SHA256SUMS.txt",
-    "sbomUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.1/ytconv-1.7.1.cdx.json"
+    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.2.tgz",
+    "release": "https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.2",
+    "sha256Url": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.2/SHA256SUMS.txt",
+    "sbomUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.2/ytconv-1.7.2.cdx.json"
   },
   "securityCapabilities": {
     "network": "Only user-requested media/provider URLs, npm metadata checks, and allowlisted HTTPS engine release endpoints.",
@@ -185,7 +192,7 @@
     "node": ">=22.14.0",
     "npm": ">=10"
   },
-  "packageManager": "npm@11.18.0",
+  "packageManager": "npm@11.19.0",
   "preferGlobal": true,
   "sideEffects": false,
   "dependencies": {

@@ -71,7 +71,7 @@ export function applyStableDefaults(options = {}, toggles = {}, {
   options.retrySleep = normalizeRetrySleep(options.retrySleep);
 
   if (disabled.subtitles) options.subtitles = false;
-  else if (!explicit.subtitles) options.subtitles = true;
+  else if (!explicit.subtitles) options.subtitles = false;
 
   if (disabled.sponsorBlock) options.sponsorBlockMode = 'off';
   else if (!explicit.sponsorBlock) options.sponsorBlockMode = 'mark';
@@ -96,7 +96,7 @@ export function applyStableDefaults(options = {}, toggles = {}, {
 export function stableDefaultsHelpText() {
   return [
     'YTConv stable defaults:',
-    '  subtitles       ON for video; disable with --no-subtitles',
+    '  subtitles       OFF by default; enable with --subtitles',
     '  SponsorBlock    ON in mark mode; disable with --no-sponsorblock',
     '  download archive ON per output profile; disable with --no-archive',
     '  SponsorBlock mark adds chapters and does not cut the media.',

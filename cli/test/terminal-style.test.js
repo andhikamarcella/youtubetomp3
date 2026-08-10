@@ -3,6 +3,7 @@ import test from 'node:test';
 import { terminalLayout } from '../src/ui.js';
 import {
   monochromeChildEnvironment,
+  platformAccent,
   sanitizeTerminalText,
   styleError,
 } from '../src/terminal-style.js';
@@ -28,6 +29,15 @@ test('normal output is monochrome while terminal errors may be red', () => {
   assert.deepEqual(monochromeChildEnvironment({ PATH: '/bin' }), {
     PATH: '/bin', NO_COLOR: '1', FORCE_COLOR: '0',
   });
+});
+
+test('interactive UI accent follows the operating system and Linux family', () => {
+  assert.equal(platformAccent({ platform: 'win32' }), 'blue');
+  assert.equal(platformAccent({ platform: 'darwin' }), 'magenta');
+  assert.equal(platformAccent({ platform: 'linux', termux: true }), 'yellow');
+  assert.equal(platformAccent({ platform: 'linux', distro: { id: 'cachyos', idLike: 'arch' } }), 'cyan');
+  assert.equal(platformAccent({ platform: 'linux', distro: { id: 'ubuntu', idLike: 'debian' } }), 'green');
+  assert.equal(platformAccent({ platform: 'linux', distro: { id: 'fedora' } }), 'blue');
 });
 
 test('untrusted terminal text cannot inject ANSI or bidirectional controls', () => {

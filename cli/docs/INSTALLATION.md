@@ -2,20 +2,23 @@
 
 ## Requirements
 
-The Node.js distribution requires Node.js 22.14 or newer and npm 10 or newer. Downloads and conversions may also require FFmpeg, yt-dlp, or gallery-dl. Run `ytconv --diagnose` after installation to identify missing engines and path problems.
+The Node.js distribution requires Node.js 22.14 or newer and npm 10 or newer. A current Node.js LTS release is recommended. Downloads and conversions may also require FFmpeg, yt-dlp, gallery-dl, and a supported JavaScript runtime. Run `ytconv repair` and `ytconv --diagnose` after installation.
+
+Start with [Node.js setup](NODEJS.md), or copy the command for your [Linux distribution family](LINUX.md). iPhone/iPad users should use the [iSH Python guide](ISH.md).
 
 ## npm installation
 
 ```bash
 npm install -g ytconv@latest
 ytconv --version
+ytconv repair
 ytconv --diagnose
 ```
 
-Install the exact 1.7.1 release with:
+Install the exact 1.7.2 release with:
 
 ```bash
-npm install -g ytconv@1.7.1
+npm install -g ytconv@1.7.2
 ```
 
 ## Upgrade
@@ -42,6 +45,8 @@ ytconv --version
 ytconv --diagnose
 npm view ytconv@latest version
 ```
+
+Expected YTConv version: `1.7.2`.
 
 For native release files, verify `SHA256SUMS.txt` and inspect GitHub/npm provenance before running an installer.
 

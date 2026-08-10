@@ -12,7 +12,7 @@ import { commanderHelpText } from '../src/command-program.js';
 import { handleSocialAuthCommand } from '../src/social-auth.js';
 import { maybeAutoUpdate } from '../src/update.js';
 import { CLI_VERSION } from '../src/version.js';
-import { installConsoleErrorStyle } from '../src/terminal-style.js';
+import { installConsoleErrorStyle, privateChildEnvironment } from '../src/terminal-style.js';
 
 installConsoleErrorStyle();
 
@@ -44,7 +44,10 @@ async function boot() {
       const relaunched = spawnSync(process.execPath, [process.argv[1], ...argv], {
         stdio: 'inherit',
         windowsHide: true,
-        env: { ...process.env, YTCONV_SKIP_AUTO_UPDATE_ONCE: '1' },
+        env: {
+          ...privateChildEnvironment(process.env),
+          YTCONV_SKIP_AUTO_UPDATE_ONCE: '1',
+        },
       });
       process.exitCode = relaunched.status ?? (relaunched.error ? 1 : 0);
       return;

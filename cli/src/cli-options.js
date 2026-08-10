@@ -9,6 +9,7 @@ const AUDIO_FORMATS = new Set(['mp3', 'm4a', 'aac', 'opus', 'vorbis', 'flac', 'a
 const VIDEO_FORMATS = new Set(['auto', 'mp4', 'mkv', 'webm']);
 const AUDIO_QUALITIES = new Set(['best', '320', '256', '192', '128', '96']);
 const RESOLUTIONS = new Set(['best', '2160', '1440', '1080', '720', '480', '360', '240', '144']);
+const UPSCALE_HEIGHTS = new Set(['off', '720', '1080', '1440', '2160', '2k', '4k']);
 const SPONSORBLOCK_MODES = new Set(['off', 'mark', 'remove']);
 const BROWSERS = new Set(['chrome', 'chromium', 'edge', 'firefox', 'brave', 'opera', 'vivaldi', 'safari', 'whale']);
 const DEFAULT_SPONSORBLOCK_CATEGORIES = 'sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic';
@@ -132,6 +133,7 @@ function defaultOptions() {
     audioQuality: 'best',
     videoFormat: 'auto',
     resolution: 'best',
+    upscaleHeight: 0,
     subtitles: false,
     subtitleOnly: false,
     subtitleLanguages: 'all,-live_chat',
@@ -283,6 +285,11 @@ export function parseCliOptions(argv = []) {
       case '--resolution':
         options.resolution = validateChoice(String(takeValue(argv, index, argument)).replace(/p$/iu, ''), RESOLUTIONS, argument);
         options.initialMode = 'video'; options.forceVideo = true; index += 1; break;
+      case '--upscale': {
+        const value = validateChoice(String(takeValue(argv, index, argument)).toLowerCase().replace(/p$/u, ''), UPSCALE_HEIGHTS, argument);
+        options.upscaleHeight = value === 'off' ? 0 : Number(value === '4k' ? 2160 : value === '2k' ? 1440 : value);
+        options.initialMode = 'video'; options.forceVideo = true; index += 1; break;
+      }
       case '--subtitles': options.subtitles = true; options.initialMode = 'video'; options.forceVideo = true; break;
       case '--subtitle-only': options.subtitles = true; options.subtitleOnly = true; options.initialMode = 'video'; options.forceVideo = true; break;
       case '--subtitle-langs':
@@ -372,6 +379,7 @@ export function applyCliEnvironment(options = {}) {
   set('YTCONV_AUDIO_QUALITY', options.audioQuality);
   set('YTCONV_VIDEO_FORMAT', options.videoFormat);
   set('YTCONV_RESOLUTION', options.resolution);
+  set('YTCONV_UPSCALE_HEIGHT', options.upscaleHeight || '');
   set('YTCONV_SUBTITLE_LANGS', options.subtitleLanguages);
   set('YTCONV_CLIP_START', options.clipStart);
   set('YTCONV_CLIP_END', options.clipEnd);
@@ -419,6 +427,8 @@ export function helpText() {
     + '  ytconv batch links.txt [OPTIONS]\n'
     + '  ytconv info URL --json\n'
     + '  ytconv formats URL [--json]\n'
+    + '  ytconv extract URL          Transcript/subtitles plus structured metadata\n'
+    + '  ytconv transcript URL       Readable SRT transcript when available\n'
     + '  ytconv [URL] [OPTIONS]  (legacy-compatible)\n\n'
     + 'Playlist, batch, and reliability:\n'
     + '  --playlist / --playlist-items ITEMS / --max-downloads N\n'
@@ -433,6 +443,8 @@ export function helpText() {
     + '  --audio-quality RATE   best, 320, 256, 192, 128, 96\n'
     + '  --video-format FORMAT  auto, mp4, mkv, webm\n'
     + '  --resolution SIZE      best through 144p\n\n'
+    + '  --upscale 720|1080|1440|2160|2k|4k\n'
+    + '                         High-quality Lanczos output sizing (not AI detail recovery)\n\n'
     + 'Metadata, cover art, and subtitles:\n'
     + '  --metadata --thumbnail --metadata-files\n'
     + '  --artist/--title/--album/--track/--year/--genre VALUE\n'

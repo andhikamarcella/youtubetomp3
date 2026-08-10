@@ -1,27 +1,26 @@
 {
   "schemaVersion": 1,
   "package": "ytconv",
-  "version": "1.6.0",
+  "version": "1.7.2",
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
-  "license": "MIT",
-  "lastUpdated": "2026-08-03",
+  "license": "ISC",
+  "lastUpdated": "2026-08-10",
   "installer": {
-    "type": "Tarball",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.6.0.tgz",
-    "sha256": "297d564efe77ae41963b82cdca035b2b807c5c6a8d337f2edc69c0361ea01fe7",
-    "sha512Integrity": "sha512-DktmRoyCF/2xOqEydlDAjqpHS3mnV8O6/A8L7Pdb3kMMQFzbwe8/fiOFnjSHpsUSCD3pue3gqcf9KBodwtMvvw==",
-    "packedSize": 122701,
-    "unpackedSize": 452841
+    "type": "npm Trusted Publishing with GitHub release artifacts",
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.2.tgz",
+    "status": "pending verification by the release workflow"
   },
   "dependencies": {
+    "commander": "14.0.3",
     "figlet": "1.11.4",
     "ink": "7.1.1",
+    "isexe": "3.1.5",
     "react": "19.2.8",
     "which": "6.0.0",
     "ws": "8.21.1"
   },
   "optionalDependencies": {},
-  "releaseNotes": "YTConv 1.6.0 is the stable monochrome release with red-only errors, responsive terminal layouts, verified media-engine downloads, local token-free profiles, complete English documentation, and expanded dependency diagnostics.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.6.0-cli-only-final/cli/CHANGELOG.md"
+  "releaseNotes": "YTConv 1.7.2 adds repeat-safe format fallbacks, extraction commands, optional 4K upscaling, Deno runtime selection, platform-aware terminal accents, and refreshed documentation and packages.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/CHANGELOG.md"
 }

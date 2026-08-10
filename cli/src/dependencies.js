@@ -19,18 +19,29 @@ const FFMPEG_REPOSITORY = 'eugeneware/ffmpeg-static';
 const FFMPEG_RELEASE = 'b6.1.1';
 const MINIMUM_FFMPEG_BYTES = 10 * 1024 * 1024;
 const MINIMUM_NODE = [22, 14, 0];
+const MINIMUM_DENO = [2, 3, 0];
 
 function numericVersion(value = '') {
-  return String(value).replace(/^v/u, '').split(/[.-]/u).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+  const match = String(value).match(/(?:^|\s)v?(\d+)\.(\d+)(?:\.(\d+))?/u);
+  if (!match) return [0, 0, 0];
+  return [match[1], match[2], match[3] || '0'].map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function minimumVersionSatisfied(value, minimum) {
+  const actual = numericVersion(value);
+  for (let index = 0; index < minimum.length; index += 1) {
+    if (actual[index] > minimum[index]) return true;
+    if (actual[index] < minimum[index]) return false;
+  }
+  return true;
 }
 
 export function nodeRuntimeSupported(version = process.versions.node) {
-  const actual = numericVersion(version);
-  for (let index = 0; index < MINIMUM_NODE.length; index += 1) {
-    if (actual[index] > MINIMUM_NODE[index]) return true;
-    if (actual[index] < MINIMUM_NODE[index]) return false;
-  }
-  return true;
+  return minimumVersionSatisfied(version, MINIMUM_NODE);
+}
+
+export function denoRuntimeSupported(version = '') {
+  return minimumVersionSatisfied(version, MINIMUM_DENO);
 }
 
 async function fileExists(filePath) {
@@ -201,15 +212,22 @@ async function inspectJavaScriptRuntimes() {
   const runtimes = [];
   const deno = await resolveCommand(['deno', 'deno.exe']);
   const denoVersion = await readVersion(deno);
-  if (deno && denoVersion) runtimes.push({ name: 'deno', path: deno, version: denoVersion, recommended: true });
-  if (nodeRuntimeSupported()) runtimes.push({ name: 'node', path: process.execPath, version: process.version, recommended: true });
+  if (deno && denoVersion) {
+    runtimes.push({
+      name: 'deno', path: deno, version: denoVersion,
+      supported: denoRuntimeSupported(denoVersion), recommended: true, minimum: '2.3.0',
+    });
+  }
+  if (nodeRuntimeSupported()) {
+    runtimes.push({ name: 'node', path: process.execPath, version: process.version, supported: true, recommended: true, minimum: '22.0.0' });
+  }
   const quickJs = await resolveCommand(['qjs', 'quickjs']);
   const quickJsVersion = await readVersion(quickJs);
-  if (quickJs && quickJsVersion) runtimes.push({ name: 'quickjs', path: quickJs, version: quickJsVersion, recommended: false });
+  if (quickJs && quickJsVersion) runtimes.push({ name: 'quickjs', path: quickJs, version: quickJsVersion, supported: true, recommended: false });
   const bun = await resolveCommand(['bun', 'bun.exe']);
   const bunVersion = await readVersion(bun);
-  if (bun && bunVersion) runtimes.push({ name: 'bun', path: bun, version: bunVersion, recommended: false });
-  return runtimes;
+  if (bun && bunVersion) runtimes.push({ name: 'bun', path: bun, version: bunVersion, supported: true, recommended: false });
+  return runtimes.sort((left, right) => Number(right.supported) - Number(left.supported));
 }
 
 export async function prepareTermuxDependencies() {
@@ -314,7 +332,7 @@ export async function inspectDependencies({ repair = true } = {}) {
     !ffmpegPath ? 'FFmpeg' : '',
   ].filter(Boolean);
   const recommendedMissing = [
-    !javaScriptRuntimes.length ? 'JavaScript runtime (Deno or Node.js 22+)' : '',
+    !javaScriptRuntimes.some((runtime) => runtime.supported) ? 'JavaScript runtime (Deno 2.3+ or Node.js 22+)' : '',
     !ffprobeVersion ? 'ffprobe' : '',
     !termux && !browsers.length ? 'supported desktop browser for account-required media' : '',
   ].filter(Boolean);

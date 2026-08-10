@@ -8,26 +8,26 @@ const cliDirectory = fileURLToPath(new URL('../', import.meta.url));
 const repositoryDirectory = fileURLToPath(new URL('../../', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
-const releaseBranch = 'release/ytconv-1.7.1';
+const releaseBranch = 'release/ytconv-1.7.2';
 
 function repoFile(relative) {
   return path.join(repositoryDirectory, relative);
 }
 
-test('1.7.1 exposes complete pinned identity and security metadata', () => {
-  assert.equal(manifest.version, '1.7.1');
+test('1.7.2 exposes complete pinned identity and security metadata', () => {
+  assert.equal(manifest.version, '1.7.2');
   assert.equal(manifest.publisher, 'Andhika Marcella Fernanda');
   assert.equal(manifest.organization.name, 'YTConv Project');
   assert.equal(manifest.license, 'ISC');
-  assert.equal(manifest.releaseDate, '2026-08-06');
-  assert.match(manifest.releaseNotes, /Figlet/u);
-  assert.match(manifest.releaseNotes, /Commander/u);
-  assert.match(manifest.releaseNotes, /subtitles off by default/iu);
+  assert.equal(manifest.releaseDate, '2026-08-10');
+  assert.match(manifest.releaseNotes, /repeat-tested/iu);
+  assert.match(manifest.releaseNotes, /upscaling/iu);
+  assert.match(manifest.releaseNotes, /Deno/u);
   assert.equal(manifest.main, './src/index.js');
   assert.equal(manifest.types, './types/index.d.ts');
   assert.equal(manifest.exports['.'].types, './types/index.d.ts');
-  assert.equal(manifest.installer.npm, 'https://registry.npmjs.org/ytconv/-/ytconv-1.7.1.tgz');
-  assert.equal(manifest.installer.release, 'https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.1');
+  assert.equal(manifest.installer.npm, 'https://registry.npmjs.org/ytconv/-/ytconv-1.7.2.tgz');
+  assert.equal(manifest.installer.release, 'https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.2');
   assert.match(manifest.documentation.url, new RegExp(releaseBranch.replaceAll('.', '\\.'), 'u'));
   assert.deepEqual(manifest.dependencies, {
     commander: '14.0.3',
@@ -81,8 +81,8 @@ test('native package sources cover desktop Linux Android Termux and iSH', () => 
 test('Android package is current and keeps subtitles off by default', () => {
   const gradle = fs.readFileSync(repoFile('android-app/app/build.gradle'), 'utf8');
   const activity = fs.readFileSync(repoFile('android-app/app/src/main/java/io/github/andhikamarcella/ytconv/MainActivity.java'), 'utf8');
-  assert.match(gradle, /versionCode\s*=?\s*10701/u);
-  assert.match(gradle, /versionName\s*=?\s*'1\.7\.1'/u);
+  assert.match(gradle, /versionCode\s*=?\s*10702/u);
+  assert.match(gradle, /versionName\s*=?\s*'1\.7\.2'/u);
   assert.match(activity, /© 2026 YTConv Project/u);
   assert.match(activity, /Browser login/u);
   assert.match(activity, /--cookies/u);
@@ -91,9 +91,9 @@ test('Android package is current and keeps subtitles off by default', () => {
   assert.match(activity, /Converting/u);
 });
 
-test('README presents the 1.7.1 identity and browser-login behavior', () => {
-  assert.match(readme, /1\.7\.1/u);
-  assert.match(readme, /Figlet/u);
+test('README presents the 1.7.2 identity and browser-login behavior', () => {
+  assert.match(readme, /1\.7\.2/u);
+  assert.match(readme, /repeat-safe/u);
   assert.match(readme, /browser login/iu);
   assert.match(readme, /subtitles.*off/iu);
 });

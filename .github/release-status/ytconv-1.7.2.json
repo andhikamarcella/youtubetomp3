@@ -1,0 +1,9 @@
+{
+  "status": "pending",
+  "package": "ytconv",
+  "version": "1.7.2",
+  "distTag": "latest",
+  "branch": "release/ytconv-1.7.2",
+  "releaseDate": "2026-08-10",
+  "publication": "npm Trusted Publishing through GitHub Actions OIDC"
+}

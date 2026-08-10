@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.7.1 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.7.2 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.7.1"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.1/cli"
+VERSION = "1.7.2"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.2/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"
@@ -342,6 +342,9 @@ def video_selector(resolution, container):
             "b%s[ext=mp4]" % limit_value,
             separate_any,
             combined_any,
+            "bv+ba",
+            "bv*+ba",
+            "b",
         ])
     if container == "webm":
         return "/".join([
@@ -349,8 +352,11 @@ def video_selector(resolution, container):
             "b%s[ext=webm]" % limit_value,
             separate_any,
             combined_any,
+            "bv+ba",
+            "bv*+ba",
+            "b",
         ])
-    return "/".join([separate_any, combined_any])
+    return "/".join([separate_any, combined_any, "bv+ba", "bv*+ba", "b"])
 
 
 def video_container_args(container):
@@ -713,6 +719,10 @@ def normalize_commands(argv):
         return ["--list-formats"] + rest
     if command in ("subtitles", "subs"):
         return ["--list-subs"] + rest
+    if command in ("extract", "content"):
+        return ["--subtitle-only", "--metadata-files"] + rest
+    if command in ("transcript", "text"):
+        return ["--subtitle-only"] + rest
     return mapping.get(command, argv)
 
 
@@ -726,7 +736,7 @@ def selected_preset(argv):
 def parser(argv):
     preset = selected_preset(argv)
     defaults = dict(PRESETS.get(preset, {}))
-    value = argparse.ArgumentParser(prog="ytconv", description="YTConv 1.6.2 for iSH/Alpine.")
+    value = argparse.ArgumentParser(prog="ytconv", description="YTConv %s for iSH/Alpine." % VERSION)
     value.set_defaults(**defaults)
     value.add_argument("url", nargs="?")
     value.add_argument("--version", action="store_true")
@@ -746,7 +756,7 @@ def parser(argv):
     value.add_argument("--audio-quality", choices=["best", "320", "256", "192", "128", "96"], default=defaults.get("audio_quality", "best"))
     value.add_argument("--video-format", choices=["auto", "mp4", "mkv", "webm"], default=defaults.get("video_format", "auto"))
     value.add_argument("--resolution", choices=["best", "2160", "1440", "1080", "720", "480", "360", "240", "144"], default=defaults.get("resolution", "best"))
-    value.add_argument("--subtitles", dest="subtitles", action="store_true", default=True)
+    value.add_argument("--subtitles", dest="subtitles", action="store_true", default=False)
     value.add_argument("--no-subtitles", dest="subtitles", action="store_false")
     value.add_argument("--subtitle-only", action="store_true")
     value.add_argument("--subtitle-langs", default="all,-live_chat")

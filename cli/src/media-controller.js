@@ -300,6 +300,41 @@ async function convertImages({ files, format, ffmpegPath, onLog, onProgress }) {
   return files.map((file) => replacements.get(file) || file);
 }
 
+function upscaleDimensions(height) {
+  const normalized = Number(height);
+  const widths = new Map([[720, 1280], [1080, 1920], [1440, 2560], [2160, 3840]]);
+  return widths.has(normalized) ? { width: widths.get(normalized), height: normalized } : null;
+}
+
+async function upscaleVideos({ files, height, ffmpegPath, onLog, onProgress }) {
+  const dimensions = upscaleDimensions(height);
+  if (!dimensions) return files;
+  if (!ffmpegPath) throw new Error('FFmpeg is required for video upscaling. Run `ytconv repair`.');
+
+  const videoFiles = files.filter((file) => VIDEO_OUTPUT_EXTENSIONS.has(path.extname(file).toLowerCase()));
+  if (!videoFiles.length) throw new Error('No video file was available for upscaling.');
+  const converted = [];
+  for (let index = 0; index < videoFiles.length; index += 1) {
+    const source = videoFiles[index];
+    const parsed = path.parse(source);
+    const extension = parsed.ext.toLowerCase();
+    const target = path.join(parsed.dir, `${parsed.name}.upscaled-${dimensions.height}p${extension}`);
+    const webm = extension === '.webm';
+    const filter = `scale=${dimensions.width}:${dimensions.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${dimensions.width}:${dimensions.height}:(ow-iw)/2:(oh-ih)/2`;
+    const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', source, '-map', '0:v:0', '-map', '0:a?', '-vf', filter];
+    if (webm) args.push('-c:v', 'libvpx-vp9', '-crf', '28', '-b:v', '0', '-c:a', 'libopus');
+    else args.push('-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-c:a', 'aac', '-b:a', '192k');
+    if (['.mp4', '.m4v', '.mov'].includes(extension)) args.push('-movflags', '+faststart');
+    args.push(target);
+    onLog?.(`Upscaling video ${index + 1}/${videoFiles.length} to ${dimensions.height}p with Lanczos...`, false);
+    onProgress?.({ percent: `${Math.round((index / videoFiles.length) * 100)}%`, speed: 'FFmpeg', eta: '' });
+    await runFfmpeg(ffmpegPath, args);
+    converted.push(target);
+  }
+  onProgress?.({ percent: '100%', speed: 'FFmpeg', eta: '' });
+  return converted;
+}
+
 function accessHint({ url, cookieConfig, originalError }) {
   const platform = socialPlatformLabel(detectSocialPlatform(url));
   const officialLogin = socialLoginHint(url);
@@ -410,6 +445,16 @@ export async function downloadMedia({ options, ...rest }) {
     produced = await convertImages({
       files: produced,
       format: options.imageFormat,
+      ffmpegPath: options.ffmpegPath,
+      onLog: rest.onLog,
+      onProgress: rest.onProgress,
+    });
+  }
+
+  if (mode === 'video' && Number(options.upscaleHeight || process.env.YTCONV_UPSCALE_HEIGHT)) {
+    produced = await upscaleVideos({
+      files: produced,
+      height: Number(options.upscaleHeight || process.env.YTCONV_UPSCALE_HEIGHT),
       ffmpegPath: options.ffmpegPath,
       onLog: rest.onLog,
       onProgress: rest.onProgress,

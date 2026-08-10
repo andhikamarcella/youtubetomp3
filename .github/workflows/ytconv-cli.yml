@@ -1,9 +1,9 @@
-name: YTConv CLI 1.7.1 Core and Compatibility
+name: YTConv CLI 1.7.2 Core and Compatibility
 
 on:
   push:
     branches:
-      - release/ytconv-1.7.1
+      - release/ytconv-1.7.2
     paths:
       - "cli/**"
       - "AGENTS.md"
@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ytconv-cli-1.7.1-${{ github.ref }}
+  group: ytconv-cli-1.7.2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -54,19 +54,19 @@ jobs:
       - run: npm test
       - run: npm run test:help-center
       - run: npm run security
-      - name: Verify 1.7.1 identity, help center, repository, and AUTO policy
+      - name: Verify 1.7.2 identity, help center, repository, and AUTO policy
         run: |
-          test "$(node ./bin/ytconv.js --version)" = "1.7.1"
-          test "$(cat ish/VERSION)" = "1.7.1"
+          test "$(node ./bin/ytconv.js --version)" = "1.7.2"
+          test "$(cat ish/VERSION)" = "1.7.2"
           node ./bin/ytconv-auth.js --help | grep -F 'cookies-browser'
           node ./bin/ytconv.js docs --list | grep -F 'Documentation Topics'
-          node ./bin/ytconv.js docs migration | grep -F 'MIGRATION-1.7.1.md'
-          node ./bin/ytconv.js about | grep -F 'YTConv 1.7.1'
+          node ./bin/ytconv.js docs migration | grep -F 'MIGRATION-1.7.2.md'
+          node ./bin/ytconv.js about | grep -F 'YTConv 1.7.2'
           node ./bin/ytconv.js shortcuts | grep -F 'Ctrl+M'
           node ./bin/ytconv.js completion bash | grep -F 'docs about shortcuts'
           node --input-type=module - <<'NODE'
           const manifest = JSON.parse(await (await import('node:fs/promises')).readFile('./package.json', 'utf8'));
-          if (manifest.version !== '1.7.1') throw new Error(manifest.version);
+          if (manifest.version !== '1.7.2') throw new Error(manifest.version);
           if (manifest.license !== 'ISC') throw new Error(manifest.license);
           if (!manifest.repository.url.includes('andhikamarcella/YTConv')) throw new Error(manifest.repository.url);
           for (const dependency of ['commander', 'figlet', 'which', 'isexe']) {
@@ -121,7 +121,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          if ((node .\bin\ytconv.js --version) -ne '1.7.1') { throw 'wrong version' }
+          if ((node .\bin\ytconv.js --version) -ne '1.7.2') { throw 'wrong version' }
           node .\bin\ytconv-auth.js --help
           node .\bin\ytconv.js docs --list
           node .\bin\ytconv.js about
@@ -151,7 +151,7 @@ jobs:
           const forbidden = paths.filter(value => /\.(?:html|css|jsx|tsx)$/i.test(value)
             || /(?:^|\/)(?:next-app|public-ui|web|server|android-app|packaging)(?:\/|$)/i.test(value));
           if (forbidden.length) throw new Error(JSON.stringify(forbidden));
-          for (const required of ['LICENSE','SECURITY.md','types/index.d.ts','src/index.js','src/help-center.js','ish/SHA256SUMS','docs/PACKAGES.md','docs/README.md','docs/TRUSTED-PUBLISHING.md','docs/HELP-CENTER.md','docs/MIGRATION-1.7.1.md']) {
+          for (const required of ['LICENSE','SECURITY.md','types/index.d.ts','src/index.js','src/help-center.js','ish/SHA256SUMS','docs/PACKAGES.md','docs/README.md','docs/TRUSTED-PUBLISHING.md','docs/HELP-CENTER.md','docs/COOKIES.md','docs/FORMAT-GUIDE.md','docs/UPSCALING.md','docs/DENO.md','docs/SUPPORT.md','docs/MIGRATION-1.7.2.md']) {
             if (!paths.includes(required)) throw new Error(`missing ${required}`);
           }
           NODE
@@ -159,8 +159,8 @@ jobs:
           TARBALL=$(npm pack --ignore-scripts --silent)
           PREFIX="$RUNNER_TEMP/ytconv-npm-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           npm install --prefix "$PREFIX" "$PWD/$TARBALL" --ignore-scripts
-          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.7.1"
-          node "$PREFIX/node_modules/ytconv/bin/ytconv.js" docs migration | grep -F 'MIGRATION-1.7.1.md'
+          test "$(node "$PREFIX/node_modules/ytconv/bin/ytconv.js" --version)" = "1.7.2"
+          node "$PREFIX/node_modules/ytconv/bin/ytconv.js" docs migration | grep -F 'MIGRATION-1.7.2.md'
 
   alpine-ish:
     runs-on: ubuntu-latest
@@ -181,10 +181,10 @@ jobs:
           npm run test:help-center
           npm run check:ish
           PYTHONWARNINGS=error::ResourceWarning npm run test:ish
-          test "$(python3 ./ish/ytconv.py --version)" = "1.7.1"
-          test "$(node ./bin/ytconv.js --version)" = "1.7.1"
-          node ./bin/ytconv.js docs migration | grep -F 'MIGRATION-1.7.1.md'
-          grep -F 'release/ytconv-1.7.1' ish/ytconv.py scripts/install-ish.sh
+          test "$(python3 ./ish/ytconv.py --version)" = "1.7.2"
+          test "$(node ./bin/ytconv.js --version)" = "1.7.2"
+          node ./bin/ytconv.js docs migration | grep -F 'MIGRATION-1.7.2.md'
+          grep -F 'release/ytconv-1.7.2' ish/ytconv.py scripts/install-ish.sh
 
   public-youtube-mp4:
     runs-on: ubuntu-latest
@@ -200,6 +200,21 @@ jobs:
           package-manager-cache: false
       - run: python3 -m pip install --user --break-system-packages --upgrade 'yt-dlp[default]'
       - run: npm ci --ignore-scripts
+      - name: Convert every supported audio and video choice twice
+        run: npm run test:formats
+      - name: Resolve the requested public YouTube URL twice without downloading media
+        env:
+          REQUESTED_URL: https://youtu.be/1VqxWNwgf5Q?si=WDyJhXeYxXwOeK1Q
+        run: |
+          set +e
+          for pass in 1 2; do
+            python3 -m yt_dlp --simulate --no-playlist --no-warnings --print '%(id)s | %(title)s' "$REQUESTED_URL"
+            STATUS=$?
+            if [ "$STATUS" -ne 0 ]; then
+              echo "::warning::Requested URL metadata pass $pass was rejected by YouTube on the hosted runner."
+            fi
+          done
+          exit 0
       - name: Download and verify public YouTube MP4 without cookies
         env:
           NO_COLOR: "1"
