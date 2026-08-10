@@ -9,7 +9,13 @@
   "installer": {
     "type": "npm Trusted Publishing with GitHub release artifacts",
     "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.2.tgz",
-    "status": "pending verification by the release workflow"
+    "status": "published",
+    "sha256": "23eb41d75a7f99fc6f04ad006e9650de5c8d735d23d76a98d56e5bdf51741329",
+    "sha512Integrity": "sha512-0jRlxtYLvBo3cIUfRRzt+csIWcN1xtqOVQ6ANgak2gFBJMgEyWHzn8LDo4ix07puCvpPXx/XCJCn+xDTfIdcEA==",
+    "npmShasum": "f810de74bc5d9c51d67c5d2cd7154e52b4a30d7b",
+    "packedSize": 144290,
+    "unpackedSize": 517303,
+    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.2/SHA256SUMS.txt"
   },
   "dependencies": {
     "commander": "14.0.3",
