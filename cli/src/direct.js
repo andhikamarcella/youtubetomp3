@@ -141,7 +141,10 @@ export async function runDirectCommand({ options, outputDirectory }) {
           cookieConfig,
           playlist: options.initialPlaylist,
           kind: options.listFormats ? 'formats' : 'subs',
-          options,
+          options: {
+            ...options,
+            javascriptRuntime: dependencies.javaScriptRuntimes?.find((runtime) => runtime.supported),
+          },
         });
         return 0;
       }
@@ -153,7 +156,10 @@ export async function runDirectCommand({ options, outputDirectory }) {
         playlist: options.initialPlaylist,
         mode: options.initialMode,
         platformHint: options.initialPlatform,
-        options,
+        options: {
+          ...options,
+          javascriptRuntime: dependencies.javaScriptRuntimes?.find((runtime) => runtime.supported),
+        },
       });
       if (options.formatsJson) {
         console.log(JSON.stringify({ schemaVersion: 1, ytconvVersion: CLI_VERSION, url: options.initialUrl, formats: media.formats || [] }, null, 2));

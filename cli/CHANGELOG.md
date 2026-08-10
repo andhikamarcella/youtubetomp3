@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.2 - 2026-08-10
+
+- Fixed video selection for metadata-free direct and social formats while retaining bounded resolution preferences.
+- Added a real FFmpeg integration matrix that converts eleven audio/video choices twice and verifies the 2160p path twice.
+- Added `extract`/`content` and `transcript`/`text` commands for available subtitle and metadata output.
+- Added optional local 720p, 1080p, 1440p, and 2160p/4K Lanczos upscaling without misrepresenting it as AI detail recovery.
+- Preferred supported Deno runtimes for yt-dlp JavaScript execution with an explicit Node.js fallback.
+- Added Windows, macOS, Termux, and Linux-family terminal accents plus support/footer information.
+- Added cookies.txt, format, extraction, Deno, upscaling, distro, iSH, and support guides.
+- Hardened the auto-update relaunch so sensitive environment values are stripped before starting the child process.
+- Replaced the obsolete FFmpeg 6.1.1 fallback with the current SHA-256-verified `yt-dlp/FFmpeg-Builds` FFmpeg/ffprobe pair on supported Linux and Windows architectures.
+- Updated the pinned Termux gallery-dl wheel to 1.32.9 and retained the current yt-dlp 2026.07.04 wheel with exact PyPI hashes.
+- Fixed the Android build by using the current stable AppCompat 1.7.1 artifact; AppCompat 1.7.2 does not exist.
+- Expanded the release-pinned installation, cookies, safety, Linux-family, iSH, GitHub Pages, and Wiki source documentation.
+
 ## 1.7.1 - 2026-08-06
 
 - Restored stable `blob/HEAD/cli/docs/...` compatibility links on the repository default branch.

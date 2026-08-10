@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import process from 'node:process';
 import { execFile, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
-import { gunzip } from 'node:zlib';
 import { bundledYtDlpPath, ensureBundledYtDlp } from './binaries.js';
 import { detectSystemBrowsers } from './cookies.js';
 import { engineDirectory, engineFileStatus, enginePath } from './engine-storage.js';
@@ -14,23 +14,33 @@ import { downloadVerifiedGitHubAsset } from './verified-download.js';
 import { resolveCommandPath } from './command-path.js';
 
 const execFileAsync = promisify(execFile);
-const gunzipAsync = promisify(gunzip);
-const FFMPEG_REPOSITORY = 'eugeneware/ffmpeg-static';
-const FFMPEG_RELEASE = 'b6.1.1';
+const FFMPEG_REPOSITORY = 'yt-dlp/FFmpeg-Builds';
+const FFMPEG_RELEASE = 'latest';
 const MINIMUM_FFMPEG_BYTES = 10 * 1024 * 1024;
 const MINIMUM_NODE = [22, 14, 0];
+const MINIMUM_DENO = [2, 3, 0];
 
 function numericVersion(value = '') {
-  return String(value).replace(/^v/u, '').split(/[.-]/u).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+  const match = String(value).match(/(?:^|\s)v?(\d+)\.(\d+)(?:\.(\d+))?/u);
+  if (!match) return [0, 0, 0];
+  return [match[1], match[2], match[3] || '0'].map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function minimumVersionSatisfied(value, minimum) {
+  const actual = numericVersion(value);
+  for (let index = 0; index < minimum.length; index += 1) {
+    if (actual[index] > minimum[index]) return true;
+    if (actual[index] < minimum[index]) return false;
+  }
+  return true;
 }
 
 export function nodeRuntimeSupported(version = process.versions.node) {
-  const actual = numericVersion(version);
-  for (let index = 0; index < MINIMUM_NODE.length; index += 1) {
-    if (actual[index] > MINIMUM_NODE[index]) return true;
-    if (actual[index] < MINIMUM_NODE[index]) return false;
-  }
-  return true;
+  return minimumVersionSatisfied(version, MINIMUM_NODE);
+}
+
+export function denoRuntimeSupported(version = '') {
+  return minimumVersionSatisfied(version, MINIMUM_DENO);
 }
 
 async function fileExists(filePath) {
@@ -58,19 +68,59 @@ async function readVersion(command, args = ['--version']) {
 
 export function ffmpegReleaseAsset({ platform = process.platform, architecture = process.arch } = {}) {
   const assets = {
-    'darwin-arm64': 'ffmpeg-darwin-arm64.gz',
-    'darwin-x64': 'ffmpeg-darwin-x64.gz',
-    'linux-arm': 'ffmpeg-linux-arm.gz',
-    'linux-arm64': 'ffmpeg-linux-arm64.gz',
-    'linux-ia32': 'ffmpeg-linux-ia32.gz',
-    'linux-x64': 'ffmpeg-linux-x64.gz',
-    'win32-x64': 'ffmpeg-win32-x64.gz',
+    'linux-arm64': 'ffmpeg-master-latest-linuxarm64-gpl.tar.xz',
+    'linux-x64': 'ffmpeg-master-latest-linux64-gpl.tar.xz',
+    'win32-arm64': 'ffmpeg-master-latest-winarm64-gpl.zip',
+    'win32-ia32': 'ffmpeg-master-latest-win32-gpl.zip',
+    'win32-x64': 'ffmpeg-master-latest-win64-gpl.zip',
   };
   return assets[`${platform}-${architecture}`] ?? null;
 }
 
 export function bundledFfmpegPath(options = {}) {
-  return enginePath(process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg', options);
+  return enginePath(process.platform === 'win32' ? 'ffmpeg-yt-dlp.exe' : 'ffmpeg-yt-dlp', options);
+}
+
+export function bundledFfprobePath(options = {}) {
+  return enginePath(process.platform === 'win32' ? 'ffprobe-yt-dlp.exe' : 'ffprobe-yt-dlp', options);
+}
+
+function safeArchiveMember(value) {
+  const normalized = String(value || '').replaceAll('\\', '/');
+  if (!normalized || normalized.startsWith('/') || normalized.startsWith('-') || normalized.includes('\0')) return null;
+  const parts = normalized.split('/');
+  if (parts.some((part) => !part || part === '.' || part === '..')) return null;
+  return normalized;
+}
+
+export function ffmpegArchiveMembers(entries = [], { platform = process.platform } = {}) {
+  const extension = platform === 'win32' ? '.exe' : '';
+  const normalized = entries.map(safeArchiveMember).filter(Boolean);
+  const ffmpeg = normalized.filter((entry) => entry.endsWith(`/bin/ffmpeg${extension}`));
+  const ffprobe = normalized.filter((entry) => entry.endsWith(`/bin/ffprobe${extension}`));
+  if (ffmpeg.length !== 1 || ffprobe.length !== 1) {
+    throw new Error('the verified archive does not contain exactly one FFmpeg and one ffprobe executable');
+  }
+  return { ffmpeg: ffmpeg[0], ffprobe: ffprobe[0] };
+}
+
+async function resolveBundledFfprobe() {
+  const candidate = bundledFfprobePath();
+  const status = await engineFileStatus(candidate, { minimumBytes: MINIMUM_FFMPEG_BYTES });
+  if (!status.valid) return null;
+  return await readVersion(candidate, ['-version']) ? candidate : null;
+}
+
+async function replaceManagedExecutable(source, destination) {
+  const temporary = `${destination}.${process.pid}.${Date.now()}.install`;
+  try {
+    await fs.copyFile(source, temporary);
+    if (process.platform !== 'win32') await fs.chmod(temporary, 0o700);
+    await fs.rm(destination, { force: true });
+    await fs.rename(temporary, destination);
+  } finally {
+    await fs.rm(temporary, { force: true }).catch(() => {});
+  }
 }
 
 export async function resolveBundledFfmpeg() {
@@ -99,29 +149,59 @@ export async function repairBundledFfmpeg({
     };
   }
 
-  const destination = bundledFfmpegPath();
+  const ffmpegDestination = bundledFfmpegPath();
+  const ffprobeDestination = bundledFfprobePath();
+  const archiveExtension = assetName.endsWith('.tar.xz') ? '.tar.xz' : '.zip';
+  const archiveDestination = enginePath(`ffmpeg-bundle-${process.pid}-${Date.now()}${archiveExtension}`);
+  let stagingDirectory = '';
   try {
     await downloadVerifiedGitHubAsset({
       repository: FFMPEG_REPOSITORY,
       release: FFMPEG_RELEASE,
       assetName,
-      destination,
-      minimumBytes: 1024 * 1024,
-      maximumOutputBytes: 150 * 1024 * 1024,
-      transform: (data) => gunzipAsync(data),
+      destination: archiveDestination,
+      minimumBytes: 50 * 1024 * 1024,
+      maximumOutputBytes: 220 * 1024 * 1024,
+      executable: false,
       fetchImpl,
       silent,
     });
+    const tar = await resolveCommand(['tar', 'tar.exe']);
+    if (!tar) throw new Error('the system archive extractor `tar` is required for verified FFmpeg repair');
+    const listed = await execFileAsync(tar, ['-tf', archiveDestination], {
+      windowsHide: true,
+      timeout: 60_000,
+      maxBuffer: 4 * 1024 * 1024,
+      env: monochromeChildEnvironment(process.env),
+    });
+    const members = ffmpegArchiveMembers(String(listed.stdout || '').split(/\r?\n/u));
+    await fs.mkdir(engineDirectory(), { recursive: true, mode: 0o700 });
+    stagingDirectory = await fs.mkdtemp(path.join(engineDirectory(), 'ffmpeg-install-'));
+    const extractionSafety = process.platform === 'win32' ? [] : ['--no-same-owner', '--no-same-permissions'];
+    await execFileAsync(tar, [
+      '-xf', archiveDestination,
+      ...extractionSafety,
+      '-C', stagingDirectory,
+      '--', members.ffmpeg, members.ffprobe,
+    ], {
+      windowsHide: true,
+      timeout: 120_000,
+      maxBuffer: 4 * 1024 * 1024,
+      env: monochromeChildEnvironment(process.env),
+    });
+    const extractedFfmpeg = path.join(stagingDirectory, ...members.ffmpeg.split('/'));
+    const extractedFfprobe = path.join(stagingDirectory, ...members.ffprobe.split('/'));
+    if (process.platform !== 'win32') {
+      await fs.chmod(extractedFfmpeg, 0o700);
+      await fs.chmod(extractedFfprobe, 0o700);
+    }
+    if (!await readVersion(extractedFfmpeg, ['-version'])) throw new Error('the extracted FFmpeg executable failed its version check');
+    if (!await readVersion(extractedFfprobe, ['-version'])) throw new Error('the extracted ffprobe executable failed its version check');
+    await replaceManagedExecutable(extractedFfmpeg, ffmpegDestination);
+    await replaceManagedExecutable(extractedFfprobe, ffprobeDestination);
     const repaired = await resolveBundledFfmpeg();
-    if (!repaired) {
-      await fs.rm(destination, { force: true }).catch(() => {});
-      throw new Error('the verified FFmpeg executable did not pass `ffmpeg -version`');
-    }
-    const stats = await fs.stat(repaired);
-    if (stats.size < MINIMUM_FFMPEG_BYTES) {
-      await fs.rm(repaired, { force: true }).catch(() => {});
-      throw new Error('the verified FFmpeg executable is unexpectedly small');
-    }
+    const repairedFfprobe = await resolveBundledFfprobe();
+    if (!repaired || !repairedFfprobe) throw new Error('the installed FFmpeg bundle failed its final version check');
     if (!silent) console.log('YTConv: FFmpeg is ready.');
     return { installed: true, path: repaired, repaired: true, error: '' };
   } catch (error) {
@@ -131,6 +211,9 @@ export async function repairBundledFfmpeg({
       repaired: false,
       error: `FFmpeg automatic repair failed: ${error instanceof Error ? error.message : String(error)}`,
     };
+  } finally {
+    await fs.rm(archiveDestination, { force: true }).catch(() => {});
+    if (stagingDirectory) await fs.rm(stagingDirectory, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -201,15 +284,22 @@ async function inspectJavaScriptRuntimes() {
   const runtimes = [];
   const deno = await resolveCommand(['deno', 'deno.exe']);
   const denoVersion = await readVersion(deno);
-  if (deno && denoVersion) runtimes.push({ name: 'deno', path: deno, version: denoVersion, recommended: true });
-  if (nodeRuntimeSupported()) runtimes.push({ name: 'node', path: process.execPath, version: process.version, recommended: true });
+  if (deno && denoVersion) {
+    runtimes.push({
+      name: 'deno', path: deno, version: denoVersion,
+      supported: denoRuntimeSupported(denoVersion), recommended: true, minimum: '2.3.0',
+    });
+  }
+  if (nodeRuntimeSupported()) {
+    runtimes.push({ name: 'node', path: process.execPath, version: process.version, supported: true, recommended: true, minimum: '22.0.0' });
+  }
   const quickJs = await resolveCommand(['qjs', 'quickjs']);
   const quickJsVersion = await readVersion(quickJs);
-  if (quickJs && quickJsVersion) runtimes.push({ name: 'quickjs', path: quickJs, version: quickJsVersion, recommended: false });
+  if (quickJs && quickJsVersion) runtimes.push({ name: 'quickjs', path: quickJs, version: quickJsVersion, supported: true, recommended: false });
   const bun = await resolveCommand(['bun', 'bun.exe']);
   const bunVersion = await readVersion(bun);
-  if (bun && bunVersion) runtimes.push({ name: 'bun', path: bun, version: bunVersion, recommended: false });
-  return runtimes;
+  if (bun && bunVersion) runtimes.push({ name: 'bun', path: bun, version: bunVersion, supported: true, recommended: false });
+  return runtimes.sort((left, right) => Number(right.supported) - Number(left.supported));
 }
 
 export async function prepareTermuxDependencies() {
@@ -297,7 +387,10 @@ export async function inspectDependencies({ repair = true } = {}) {
   const bundledFfmpeg = termux || usableSystemFfmpeg ? null : await resolveBundledFfmpeg();
   const ffmpegPath = usableSystemFfmpeg || bundledFfmpeg;
   const ffmpegVersion = await readVersion(ffmpegPath, ['-version']);
-  const ffprobePath = await resolveCommand(['ffprobe', 'ffprobe.exe']);
+  const systemFfprobe = await resolveCommand(['ffprobe', 'ffprobe.exe']);
+  const usableSystemFfprobe = await readVersion(systemFfprobe, ['-version']) ? systemFfprobe : null;
+  const bundledFfprobe = bundledFfmpeg && !usableSystemFfprobe ? await resolveBundledFfprobe() : null;
+  const ffprobePath = usableSystemFfprobe || bundledFfprobe;
   const ffprobeVersion = await readVersion(ffprobePath, ['-version']);
   const pythonPath = await resolvePython();
   const pythonVersion = await readVersion(pythonPath, ['--version']);
@@ -314,7 +407,7 @@ export async function inspectDependencies({ repair = true } = {}) {
     !ffmpegPath ? 'FFmpeg' : '',
   ].filter(Boolean);
   const recommendedMissing = [
-    !javaScriptRuntimes.length ? 'JavaScript runtime (Deno or Node.js 22+)' : '',
+    !javaScriptRuntimes.some((runtime) => runtime.supported) ? 'JavaScript runtime (Deno 2.3+ or Node.js 22+)' : '',
     !ffprobeVersion ? 'ffprobe' : '',
     !termux && !browsers.length ? 'supported desktop browser for account-required media' : '',
   ].filter(Boolean);

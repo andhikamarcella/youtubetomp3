@@ -1,25 +1,34 @@
 name: Publish YTConv
 
 on:
+  push:
+    branches:
+      - release/ytconv-1.7.2
+    paths:
+      - ".github/release-triggers/ytconv-1.7.2"
   workflow_dispatch:
     inputs:
       confirm:
-        description: Confirm irreversible publication of ytconv@1.7.1
+        description: Confirm irreversible publication of ytconv@1.7.2
         required: true
         default: false
         type: boolean
 
 permissions:
+  actions: read
   contents: write
   id-token: write
 
 concurrency:
-  group: publish-ytconv-1.7.1
-  cancel-in-progress: false
+  group: publish-ytconv-1.7.2
+  # A newer release-source commit supersedes an older run for the same version.
+  # This prevents stale or oversized artifacts from being published while a fix
+  # is already available on the release branch.
+  cancel-in-progress: true
 
 jobs:
   publish:
-    if: ${{ inputs.confirm == true && github.ref_name == 'release/ytconv-1.7.1' }}
+    if: ${{ github.ref_name == 'release/ytconv-1.7.2' && (github.event_name == 'push' || inputs.confirm == true) }}
     runs-on: ubuntu-latest
     environment: npm
     steps:
@@ -35,7 +44,7 @@ jobs:
           cache-dependency-path: cli/package-lock.json
 
       - name: Use the pinned npm CLI
-        run: npm install --global npm@11.18.0
+        run: npm install --global npm@11.19.0
 
       - name: Validate exact release source
         working-directory: cli
@@ -43,20 +52,91 @@ jobs:
           npm ci --ignore-scripts
           npm run prepack
           test "$(node -p "require('./package.json').name")" = "ytconv"
-          test "$(node -p "require('./package.json').version")" = "1.7.1"
-          test "$(node ./bin/ytconv.js --version)" = "1.7.1"
-          test "$(cat ish/VERSION)" = "1.7.1"
+          test "$(node -p "require('./package.json').version")" = "1.7.2"
+          test "$(node ./bin/ytconv.js --version)" = "1.7.2"
+          test "$(cat ish/VERSION)" = "1.7.2"
           node ./bin/ytconv.js docs --list | grep -F "Documentation Topics"
-          node ./bin/ytconv.js docs migration | grep -F "MIGRATION-1.7.1.md"
-          node ./bin/ytconv.js about | grep -F "YTConv 1.7.1"
+          node ./bin/ytconv.js docs migration | grep -F "MIGRATION-1.7.2.md"
+          node ./bin/ytconv.js about | grep -F "YTConv 1.7.2"
           node ./bin/ytconv.js shortcuts | grep -F "Ctrl+M"
+
+      - name: Wait for the native package matrix on this commit
+        id: matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=""
+          STATUS=""
+          CONCLUSION=""
+          for attempt in $(seq 1 120); do
+            DATA=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ytconv-packages.yml/runs" \
+              -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" -f per_page=20)
+            RUN_ID=$(printf '%s' "$DATA" | jq -r '.workflow_runs[0].id // empty')
+            STATUS=$(printf '%s' "$DATA" | jq -r '.workflow_runs[0].status // empty')
+            CONCLUSION=$(printf '%s' "$DATA" | jq -r '.workflow_runs[0].conclusion // empty')
+            echo "Package matrix attempt $attempt: run=${RUN_ID:-missing} status=${STATUS:-missing} conclusion=${CONCLUSION:-pending}"
+            if [ "$STATUS" = "completed" ]; then
+              test "$CONCLUSION" = "success"
+              break
+            fi
+            sleep 15
+          done
+          test -n "$RUN_ID"
+          test "$STATUS" = "completed"
+          test "$CONCLUSION" = "success"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Download and verify native artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ steps.matrix.outputs.run_id }}
+        run: |
+          ROOT="$RUNNER_TEMP/native-artifacts"
+          RELEASE="$RUNNER_TEMP/release-assets"
+          mkdir -p "$ROOT" "$RELEASE"
+          gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --dir "$ROOT"
+          for required in \
+            'YTConv-1.7.2-Setup-x64.exe' \
+            'YTConv-1.7.2-portable-win-x64.zip' \
+            'YTConv-1.7.2-debug.apk' \
+            'YTConv-1.7.2-release-unsigned.apk' \
+            'YTConv-Android-1.7.2-source.tar.gz' \
+            'ytconv_1.7.2_amd64.deb' \
+            'ytconv_1.7.2_arm64.deb' \
+            'ytconv-1.7.2-1.x86_64.rpm' \
+            'ytconv-1.7.2-1.aarch64.rpm' \
+            'ytconv-1.7.2-1-x86_64.pkg.tar.zst' \
+            'ytconv-1.7.2-1-aarch64.pkg.tar.zst' \
+            'ytconv-1.7.2-r0.apk' \
+            'YTConv-1.7.2-x86_64.AppImage' \
+            'ytconv_1.7.2_amd64.snap' \
+            'YTConv-1.7.2.flatpak' \
+            'ytconv_1.7.2_all-termux.deb'; do
+            FILE=$(find "$ROOT" -type f -name "$required" -print -quit)
+            test -n "$FILE"
+            test -s "$FILE"
+          done
+          while IFS= read -r -d '' file; do
+            base=$(basename "$file")
+            case "$base" in SHA256SUMS*.txt) continue ;; esac
+            if [ -e "$RELEASE/$base" ]; then
+              test "$(sha256sum "$RELEASE/$base" | cut -d ' ' -f 1)" = "$(sha256sum "$file" | cut -d ' ' -f 1)"
+            else
+              cp "$file" "$RELEASE/$base"
+            fi
+          done < <(find "$ROOT" -type f -print0)
 
       - name: Pack exact npm candidate
         id: pack
         working-directory: cli
         run: |
+          RELEASE="$RUNNER_TEMP/release-assets"
+          mkdir -p "$RELEASE"
+          npm sbom --omit=dev --sbom-format cyclonedx > "$RELEASE/ytconv-1.7.2.cdx.json"
           npm pack --ignore-scripts --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/ytconv-pack.json"
-          TARBALL=$(node -e "const p=require(process.env.RUNNER_TEMP + '/ytconv-pack.json')[0];process.stdout.write(require('path').join(process.env.RUNNER_TEMP,p.filename))")
+          SOURCE=$(node -e "const p=require(process.env.RUNNER_TEMP + '/ytconv-pack.json')[0];process.stdout.write(require('path').join(process.env.RUNNER_TEMP,p.filename))")
+          TARBALL="$RELEASE/ytconv-1.7.2.tgz"
+          cp "$SOURCE" "$TARBALL"
           test -s "$TARBALL"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           echo "sha256=$(sha256sum "$TARBALL" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
@@ -64,9 +144,10 @@ jobs:
       - name: Publish through npm Trusted Publishing
         env:
           TARBALL: ${{ steps.pack.outputs.tarball }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if npm view ytconv@1.7.1 version --prefer-online >/dev/null 2>&1; then
-            echo "ytconv@1.7.1 already exists; publish skipped."
+          if npm view ytconv@1.7.2 version --prefer-online >/dev/null 2>&1; then
+            echo "ytconv@1.7.2 already exists; publish skipped."
           else
             npm publish "$TARBALL" --access public --tag latest --provenance
           fi
@@ -77,30 +158,38 @@ jobs:
         run: |
           PUBLISHED=""
           for attempt in $(seq 1 30); do
-            PUBLISHED=$(npm view ytconv@1.7.1 version --prefer-online 2>/dev/null || true)
-            [ "$PUBLISHED" = "1.7.1" ] && break
+            PUBLISHED=$(npm view ytconv@1.7.2 version --prefer-online 2>/dev/null || true)
+            [ "$PUBLISHED" = "1.7.2" ] && break
             sleep 4
           done
-          test "$PUBLISHED" = "1.7.1"
-          test "$(npm view ytconv@latest version --prefer-online)" = "1.7.1"
-          URL=$(npm view ytconv@1.7.1 dist.tarball --prefer-online)
+          test "$PUBLISHED" = "1.7.2"
+          test "$(npm view ytconv@latest version --prefer-online)" = "1.7.2"
+          URL=$(npm view ytconv@1.7.2 dist.tarball --prefer-online)
           curl --fail --silent --show-error --location "$URL" --output "$RUNNER_TEMP/registry.tgz"
           test "$(sha256sum "$RUNNER_TEMP/registry.tgz" | cut -d ' ' -f 1)" = "$EXPECTED_SHA"
+
+      - name: Create consolidated release checksums
+        run: |
+          cd "$RUNNER_TEMP/release-assets"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
 
       - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TARBALL: ${{ steps.pack.outputs.tarball }}
         run: |
-          TAG="ytconv-v1.7.1"
-          printf '%s  %s\n' "${{ steps.pack.outputs.sha256 }}" "$(basename "$TARBALL")" > SHA256SUMS.txt
+          TAG="ytconv-v1.7.2"
+          RELEASE="$RUNNER_TEMP/release-assets"
+          mapfile -d '' ASSETS < <(find "$RELEASE" -maxdepth 1 -type f -print0 | sort -z)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$TARBALL" SHA256SUMS.txt --clobber
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
           else
-            gh release create "$TAG" "$TARBALL" SHA256SUMS.txt \
+            gh release create "$TAG" "${ASSETS[@]}" \
               --target "$GITHUB_SHA" \
-              --title "YTConv 1.7.1" \
-              --generate-notes
+              --title "YTConv 1.7.2" \
+              --generate-notes \
+              --latest
           fi
 
       - name: Record successful publication
@@ -109,12 +198,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_SHA256: ${{ steps.pack.outputs.sha256 }}
         run: |
-          STATUS_PATH=".github/release-status/ytconv-1.7.1.json"
-          STATUS_FILE="$RUNNER_TEMP/ytconv-1.7.1-status.json"
+          STATUS_PATH=".github/release-status/ytconv-1.7.2.json"
+          STATUS_FILE="$RUNNER_TEMP/ytconv-1.7.2-status.json"
           jq -n \
             --arg status "published" \
             --arg package "ytconv" \
-            --arg version "1.7.1" \
+            --arg version "1.7.2" \
             --arg distTag "latest" \
             --arg sha256 "$PACKAGE_SHA256" \
             --arg repository "$GITHUB_REPOSITORY" \
@@ -126,18 +215,18 @@ jobs:
             '{status:$status,package:$package,version:$version,distTag:$distTag,sha256:$sha256,repository:$repository,branch:$branch,sourceCommit:$sourceCommit,runId:$runId,runUrl:$runUrl,publishedAt:$publishedAt}' \
             > "$STATUS_FILE"
           ENCODED=$(base64 -w0 "$STATUS_FILE")
-          CURRENT_SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH?ref=release/ytconv-1.7.1" --jq .sha 2>/dev/null || true)
+          CURRENT_SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH?ref=release/ytconv-1.7.2" --jq .sha 2>/dev/null || true)
           if [ -n "$CURRENT_SHA" ]; then
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
-              -f message="release: record successful ytconv 1.7.1 publication" \
+              -f message="release: record successful ytconv 1.7.2 publication" \
               -f content="$ENCODED" \
-              -f branch="release/ytconv-1.7.1" \
+              -f branch="release/ytconv-1.7.2" \
               -f sha="$CURRENT_SHA"
           else
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
-              -f message="release: record successful ytconv 1.7.1 publication" \
+              -f message="release: record successful ytconv 1.7.2 publication" \
               -f content="$ENCODED" \
-              -f branch="release/ytconv-1.7.1"
+              -f branch="release/ytconv-1.7.2"
           fi
 
       - name: Record failed publication
@@ -146,12 +235,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          STATUS_PATH=".github/release-status/ytconv-1.7.1.json"
-          STATUS_FILE="$RUNNER_TEMP/ytconv-1.7.1-status.json"
+          STATUS_PATH=".github/release-status/ytconv-1.7.2.json"
+          STATUS_FILE="$RUNNER_TEMP/ytconv-1.7.2-status.json"
           jq -n \
             --arg status "failed" \
             --arg package "ytconv" \
-            --arg version "1.7.1" \
+            --arg version "1.7.2" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg branch "$GITHUB_REF_NAME" \
             --arg sourceCommit "$GITHUB_SHA" \
@@ -161,16 +250,16 @@ jobs:
             '{status:$status,package:$package,version:$version,repository:$repository,branch:$branch,sourceCommit:$sourceCommit,runId:$runId,runUrl:$runUrl,failedAt:$failedAt}' \
             > "$STATUS_FILE"
           ENCODED=$(base64 -w0 "$STATUS_FILE")
-          CURRENT_SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH?ref=release/ytconv-1.7.1" --jq .sha 2>/dev/null || true)
+          CURRENT_SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH?ref=release/ytconv-1.7.2" --jq .sha 2>/dev/null || true)
           if [ -n "$CURRENT_SHA" ]; then
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
-              -f message="release: record failed ytconv 1.7.1 publication" \
+              -f message="release: record failed ytconv 1.7.2 publication" \
               -f content="$ENCODED" \
-              -f branch="release/ytconv-1.7.1" \
+              -f branch="release/ytconv-1.7.2" \
               -f sha="$CURRENT_SHA"
           else
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$STATUS_PATH" \
-              -f message="release: record failed ytconv 1.7.1 publication" \
+              -f message="release: record failed ytconv 1.7.2 publication" \
               -f content="$ENCODED" \
-              -f branch="release/ytconv-1.7.1"
+              -f branch="release/ytconv-1.7.2"
           fi

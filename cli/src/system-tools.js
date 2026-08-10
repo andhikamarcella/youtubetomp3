@@ -147,7 +147,7 @@ export async function selfTest({ outputDirectory = path.join(os.homedir(), 'Down
     ['Home directory is available', Boolean(os.homedir())],
     ['Output directory is writable', await writableDirectory(outputDirectory)],
     [`Updater uses the ${updateChannel} channel`, updater.args.some((value) => String(value).includes(`ytconv@${updateChannel}`))],
-    ['Subtitles are enabled by default', process.env.YTCONV_SUBTITLES === '1'],
+    ['Subtitles are disabled by default', process.env.YTCONV_SUBTITLES !== '1'],
     ['SponsorBlock default is non-destructive mark mode', process.env.YTCONV_SPONSORBLOCK_MODE === 'mark'],
     ['yt-dlp archive is enabled', Boolean(process.env.YTCONV_ARCHIVE)],
     ['gallery-dl archive is enabled', Boolean(process.env.YTCONV_GALLERY_ARCHIVE)],

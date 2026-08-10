@@ -2,15 +2,21 @@ import process from 'node:process';
 import { CLI_VERSION } from './version.js';
 
 const REPOSITORY = 'https://github.com/andhikamarcella/YTConv';
-const RELEASE_BRANCH = 'release/ytconv-1.7.1';
+const RELEASE_BRANCH = 'release/ytconv-1.7.2';
 const DOCS_ROOT = `${REPOSITORY}/tree/${RELEASE_BRANCH}/cli/docs`;
+const SUPPORT_EMAIL = 'help.ytconv@proton.me';
 
 const TOPICS = Object.freeze([
   ['index', 'Documentation hub', 'README.md', ['home', 'start', 'readme']],
   ['installation', 'Installation and upgrade', 'INSTALLATION.md', ['install', 'upgrade', 'setup']],
   ['commands', 'Commands and options', 'COMMANDS.md', ['command', 'cli', 'options']],
   ['configuration', 'Configuration and profiles', 'CONFIGURATION.md', ['config', 'profile', 'settings']],
-  ['authentication', 'Authentication and browser recovery', 'AUTHENTICATION.md', ['auth', 'login', 'cookies']],
+  ['authentication', 'Authentication and browser recovery', 'AUTHENTICATION.md', ['auth', 'login', 'browser-auth']],
+  ['cookies', 'cookies.txt beginner guide', 'COOKIES.md', ['cookie', 'netscape', 'browser-cookie']],
+  ['formats', 'Audio and video format guide', 'FORMAT-GUIDE.md', ['format', 'mp3', 'mp4', 'codec']],
+  ['extract', 'Transcript and content extraction', 'CONTENT-EXTRACTION.md', ['content', 'transcript', 'metadata']],
+  ['upscaling', 'Video upscaling guide', 'UPSCALING.md', ['upscale', '4k', '2160p']],
+  ['deno', 'Deno and JavaScript runtime guide', 'DENO.md', ['javascript', 'runtime', 'ejs']],
   ['troubleshooting', 'Troubleshooting and diagnostics', 'TROUBLESHOOTING.md', ['trouble', 'fix', 'doctor', 'diagnose']],
   ['platforms', 'Platform-specific guidance', 'PLATFORMS.md', ['platform', 'windows', 'linux', 'macos', 'termux', 'ish']],
   ['packages', 'Native packages and artifacts', 'PACKAGES.md', ['package', 'apk', 'exe', 'flatpak', 'nix']],
@@ -20,9 +26,10 @@ const TOPICS = Object.freeze([
   ['architecture', 'Architecture and process boundaries', 'ARCHITECTURE.md', ['internals', 'design']],
   ['nodejs', 'Node.js integration', 'NODEJS.md', ['node', 'api', 'library']],
   ['faq', 'Frequently asked questions', 'FAQ.md', ['questions', 'help']],
-  ['migration', 'Migration to YTConv 1.7.1', 'MIGRATION-1.7.1.md', ['migrate', '1.7.1', 'repository']],
+  ['migration', 'Migration to YTConv 1.7.2', 'MIGRATION-1.7.2.md', ['migrate', '1.7.2', 'repository']],
   ['trusted-publishing', 'npm Trusted Publishing', 'TRUSTED-PUBLISHING.md', ['oidc', 'npm', 'publish']],
   ['help-center', 'Interactive help center', 'HELP-CENTER.md', ['docs-command', 'about', 'shortcuts']],
+  ['support', 'Support and bug reports', 'SUPPORT.md', ['email', 'bug', 'contact']],
 ]);
 
 function normalized(value) {
@@ -80,12 +87,15 @@ export function aboutText(columns = process.stdout.columns) {
     `Repository  ${REPOSITORY}`,
     'npm         https://www.npmjs.com/package/ytconv',
     `Docs        ${DOCS_ROOT}`,
+    `Support     ${SUPPORT_EMAIL}`,
     '',
     'Start       ytconv',
     'Docs        ytconv docs --list',
     'Diagnose    ytconv --diagnose',
     'Shortcuts   ytconv shortcuts',
     'Update      npm install -g ytconv@latest',
+    '',
+    `Copyright © 2026 YTConv Project · ${SUPPORT_EMAIL}`,
   ], columns);
 }
 
@@ -97,9 +107,12 @@ export function shortcutsText(columns = process.stdout.columns) {
     'Ctrl+Q/F   cycle quality or image format',
     'Ctrl+G/B   cycle platform or access source',
     'Ctrl+S/P   toggle subtitles or playlist',
+    'Ctrl+U     cycle output upscaling height',
     'Ctrl+V     paste URL from clipboard',
     'H / D      help / diagnostics',
     'Q / Esc    exit safely',
+    '',
+    `Help       ${SUPPORT_EMAIL}`,
   ], columns);
 }
 

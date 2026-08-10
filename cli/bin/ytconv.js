@@ -283,6 +283,7 @@ async function main() {
       initialAudioQuality: options.audioQuality,
       initialVideoFormat: options.videoFormat,
       initialResolution: options.resolution,
+      initialUpscaleHeight: options.upscaleHeight,
       initialSubtitles: options.subtitles,
       initialWriteThumbnail: options.writeThumbnail,
     });

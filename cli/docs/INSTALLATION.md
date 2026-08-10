@@ -1,54 +1,81 @@
-# Installation
+# Install YTConv 1.7.2
 
-## Requirements
+This short guide helps you choose the correct setup path. If the terminal is new to you, run one block at a time and read its message before continuing.
 
-The Node.js distribution requires Node.js 22.14 or newer and npm 10 or newer. Downloads and conversions may also require FFmpeg, yt-dlp, or gallery-dl. Run `ytconv --diagnose` after installation to identify missing engines and path problems.
+## Choose your device
 
-## npm installation
+| Device | Guide |
+|---|---|
+| Windows 10/11 | [Node.js and `.cmd` commands](NODEJS.md#windows-1011) |
+| macOS | [Node.js on macOS](NODEJS.md#macos) |
+| Linux, WSL, or SSH | [Each distribution family](LINUX.md) |
+| Android with Termux | [Termux](TERMUX.md) |
+| iPhone/iPad with iSH | [iSH Python frontend](ISH.md) |
+| Android APK | [Native packages](PACKAGES.md) |
+
+The npm CLI needs Node.js 22.14.0+ and npm 10+. iSH uses the Python frontend and does not need Node.js.
+
+## Install from npm
 
 ```bash
-npm install -g ytconv@latest
+npm install --global ytconv@1.7.2
 ytconv --version
-ytconv --diagnose
+ytconv repair
+ytconv doctor
+ytconv self-test
 ```
 
-Install the exact 1.7.1 release with:
+The expected version is `1.7.2`. `repair` prepares missing media engines. `doctor` checks the installation and explains any remaining problem.
+
+## First examples
+
+MP4 video:
 
 ```bash
-npm install -g ytconv@1.7.1
+ytconv "URL" --mode video --video-format mp4
 ```
+
+MP3 audio:
+
+```bash
+ytconv "URL" --mode audio --audio-format mp3
+```
+
+Always quote the URL so `?`, `&`, and `=` are not interpreted by the shell.
 
 ## Upgrade
 
 ```bash
-npm install -g ytconv@latest
+npm install --global ytconv@latest
 ytconv --version
+ytconv repair
 ```
 
 ## Development installation
 
 ```bash
-git clone https://github.com/andhikamarcella/YTConv.git
+git clone --branch release/ytconv-1.7.2 https://github.com/andhikamarcella/YTConv.git
 cd YTConv/cli
-npm ci
+npm ci --ignore-scripts
 npm link
 ytconv --help
 ```
 
-## Verification
+This branch is the canonical source for the npm 1.7.2 documentation.
+
+## Inspect the package source
 
 ```bash
-ytconv --version
-ytconv --diagnose
-npm view ytconv@latest version
+npm view ytconv@1.7.2 version repository dist.integrity
+npm pack ytconv@1.7.2 --dry-run
 ```
 
-For native release files, verify `SHA256SUMS.txt` and inspect GitHub/npm provenance before running an installer.
+For native files, compare `SHA256SUMS.txt` and inspect the npm/GitHub provenance before running an installer.
 
 ## Uninstall
 
 ```bash
-npm uninstall -g ytconv
+npm uninstall --global ytconv
 ```
 
-Native packages should be removed through the package manager used to install them.
+Remove a native package through the same package manager that installed it. User configuration under `~/.ytconv` is preserved so settings and history are not erased without consent.

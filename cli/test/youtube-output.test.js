@@ -151,6 +151,7 @@ test('MP4 selector has AVC M4A preference and conversion-safe fallback', () => {
   const selector = formatVideoSelector('1080', 'mp4');
   assert.match(selector, /bv\[height<=1080\]\[ext=mp4\]\[vcodec\^=avc1\]\+ba\[ext=m4a\]/u);
   assert.match(selector, /bv\[height<=1080\]\+ba/u);
+  assert.match(selector, /\/b$/u);
   assert.deepEqual(videoContainerArgs('mp4'), [
     '--merge-output-format', 'mp4', '--recode-video', 'mp4',
   ]);

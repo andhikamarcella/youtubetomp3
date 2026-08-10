@@ -32,15 +32,17 @@ import {
 import { socialLoginHint } from './social-sessions.js';
 import { copyText, openOutputFile, openOutputLocation } from './system-actions.js';
 import { readClipboardText } from './terminal-input.js';
-import { sanitizeTerminalText } from './terminal-style.js';
+import { platformAccent, sanitizeTerminalText } from './terminal-style.js';
 import { CLI_VERSION } from './version.js';
 
 const h = React.createElement;
 const MODES = ['auto', 'video', 'audio', 'image'];
 const VIDEO_QUALITIES = ['best', '2160', '1440', '1080', '720', '480', '360'];
 const VIDEO_FORMATS = ['auto', 'mp4', 'mkv', 'webm'];
+const UPSCALE_HEIGHTS = [0, 720, 1080, 1440, 2160];
 const AUDIO_FORMATS = ['mp3', 'm4a', 'aac', 'opus', 'flac', 'wav'];
 const IMAGE_FORMATS = ['original', 'jpg', 'png', 'webp'];
+const SUPPORT_EMAIL = 'help.ytconv@proton.me';
 
 export function terminalLayout(columns = 80, rows = 24) {
   if (columns && typeof columns === 'object') {
@@ -132,7 +134,7 @@ async function appendSessionLog(message, kind = 'info') {
   await fs.appendFile(target, line, 'utf8').catch(() => {});
 }
 
-function Logo({ layout, account }) {
+function Logo({ layout, account, accentColor }) {
   const logo = renderBrand({
     compact: layout.compactLogo,
     tiny: layout.tinyLogo,
@@ -141,8 +143,8 @@ function Logo({ layout, account }) {
   return h(
     Box,
     { flexDirection: 'column', alignItems: 'center' },
-    h(Text, { bold: true }, logo),
-    h(Text, { bold: true }, 'paste a social link · download · convert · done'),
+    h(Text, { bold: true, color: accentColor }, logo),
+    h(Text, { bold: true, color: accentColor }, 'paste a social link · download · convert · done'),
     !layout.tinyLogo
       ? h(Text, { dimColor: true }, 'YouTube · Instagram · Facebook · TikTok · X · Pinterest · Reddit · 30+ platforms')
       : null,
@@ -177,6 +179,8 @@ function HomeScreen({
   subtitles,
   cookieSource,
   playlist,
+  accentColor,
+  upscaleHeight,
 }) {
   const { panelWidth, showDetails, showShortcuts } = layout;
   const platform = socialPlatformSummary({ selected: platformHint, url });
@@ -189,22 +193,22 @@ function HomeScreen({
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', alignItems: 'center', marginTop: 1 },
-    h(Text, { bold: true }, 'Paste a supported social-media URL'),
+    h(Text, { bold: true, color: accentColor }, 'Paste a supported social-media URL'),
     h(
       Box,
-      { width: panelWidth, borderStyle: 'double', paddingX: 1 },
+      { width: panelWidth, borderStyle: 'double', borderColor: accentColor, paddingX: 1 },
       h(Text, null, '▣ '),
       h(Text, { wrap: 'truncate-end' }, displayInput(url, panelWidth) || h(Text, { dimColor: true }, 'https://...')),
       h(Text, { inverse: true }, ' '),
     ),
     inputError ? h(Text, { color: 'red', bold: true, wrap: 'wrap' }, `! ${inputError}`) : null,
     actionMessage ? h(Text, { wrap: 'wrap' }, `✓ ${safeText(actionMessage)}`) : null,
-    showDetails ? h(Text, { dimColor: true }, `${platform} · mode:${mode} · format:${mediaSetting}`) : null,
+    showDetails ? h(Text, { dimColor: true }, `${platform} · mode:${mode} · format:${mediaSetting} · upscale:${upscaleHeight ? `${upscaleHeight}p` : 'off'}`) : null,
     showDetails ? h(Text, { dimColor: true },
       `subs:${subtitles ? 'on' : 'off'} · access:${cookieSourceLabel(cookieSource)} · playlist:${playlist ? 'on' : 'off'}`) : null,
     h(Box, { marginTop: 1, borderStyle: 'round', paddingX: 2 },
       h(Text, { inverse: true, bold: true }, ' ENTER  DOWNLOAD / CONVERT ')),
-    showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T video · Ctrl+Q quality · Ctrl+F image') : null,
+    showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T video · Ctrl+Q quality · Ctrl+U upscale · Ctrl+F image') : null,
     showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+G platform · Ctrl+B access · Ctrl+S subtitles · Ctrl+P playlist · Ctrl+V paste') : null,
     h(Text, { dimColor: true }, 'H help · D diagnostics · Q/Esc exit'),
   );
@@ -293,6 +297,7 @@ function HelpScreen({ panelWidth, termux }) {
     ['Ctrl+A', 'cycle audio format and switch to AUDIO'],
     ['Ctrl+T', 'cycle video container and switch to VIDEO'],
     ['Ctrl+Q', 'cycle video resolution'],
+    ['Ctrl+U', 'cycle output upscaling height'],
     ['Ctrl+F', 'cycle image format and switch to IMAGE'],
     ['Ctrl+G', 'cycle AUTO and supported social platforms'],
     ['Ctrl+B', 'cycle public/file/browser access'],
@@ -310,6 +315,7 @@ function HelpScreen({ panelWidth, termux }) {
     h(Text, { dimColor: true }, termux
       ? 'Termux downloads public URLs. Private Android browser sessions cannot be read directly.'
       : 'AUTO tries public access first and asks for official browser login only when necessary.'),
+    h(Text, { dimColor: true }, `Support: ${SUPPORT_EMAIL}`),
     h(Text, null, 'B back · Q exit'),
   );
 }
@@ -324,6 +330,7 @@ function DiagnosticsScreen({ dependencies, panelWidth, outputDirectory, cookieSo
     ['Subtitles', subtitles ? 'on' : 'off'],
     ['yt-dlp', dependencies.ytDlp.version || 'not found'],
     ['gallery-dl', dependencies.galleryDl?.version || 'not found'],
+    ['JS runtime', dependencies.javaScriptRuntimes?.find((runtime) => runtime.supported)?.version || 'not found'],
     ['FFmpeg', dependencies.ffmpeg.version || 'not found'],
     ['Output', outputDirectory],
     ['Access', cookieSourceLabel(cookieSource)],
@@ -361,6 +368,7 @@ function App({
   initialAudioQuality = 'best',
   initialVideoFormat = 'auto',
   initialResolution = 'best',
+  initialUpscaleHeight = 0,
   initialSubtitles = false,
   initialWriteThumbnail = false,
 }) {
@@ -368,6 +376,7 @@ function App({
   const controllerRef = useRef(null);
   const submittedRef = useRef(false);
   const termux = dependencies.platform?.termux ?? isTermux();
+  const accentColor = platformAccent({ platform: process.platform, termux, distro: dependencies.platform?.distro });
   const cookieOptions = cookieSourcesForPlatform(termux);
 
   const [layout, setLayout] = useState(() => terminalLayout(process.stdout.columns, process.stdout.rows));
@@ -377,6 +386,7 @@ function App({
   const [platformHint, setPlatformHint] = useState(SOCIAL_PLATFORM_KEYS.includes(initialPlatform) ? initialPlatform : 'auto');
   const [mode, setMode] = useState(MODES.includes(initialMode) ? initialMode : 'auto');
   const [resolution, setResolution] = useState(VIDEO_QUALITIES.includes(initialResolution) ? initialResolution : 'best');
+  const [upscaleHeight, setUpscaleHeight] = useState(UPSCALE_HEIGHTS.includes(Number(initialUpscaleHeight)) ? Number(initialUpscaleHeight) : 0);
   const [videoFormat, setVideoFormat] = useState(VIDEO_FORMATS.includes(initialVideoFormat) ? initialVideoFormat : 'auto');
   const [audioFormat, setAudioFormat] = useState(AUDIO_FORMATS.includes(initialAudioFormat) ? initialAudioFormat : 'mp3');
   const [audioQuality] = useState(initialAudioQuality || 'best');
@@ -494,6 +504,9 @@ function App({
             signal: controller.signal,
             mode,
             platformHint,
+            options: {
+              javascriptRuntime: dependencies.javaScriptRuntimes?.find((runtime) => runtime.supported),
+            },
           });
           setMedia(inspected);
           setStage('downloading');
@@ -518,6 +531,9 @@ function App({
               playlist,
               outputDirectory,
               ffmpegPath: dependencies.ffmpeg.path,
+              ffprobePath: dependencies.ffprobe?.path,
+              javascriptRuntime: dependencies.javaScriptRuntimes?.find((runtime) => runtime.supported),
+              upscaleHeight,
             },
             onProgress: setProgress,
             onLog: (line, isError) => {
@@ -663,6 +679,7 @@ function App({
       return;
     }
     if (key.ctrl && lower === 'q') return setResolution((current) => cycle(VIDEO_QUALITIES, current));
+    if (key.ctrl && lower === 'u') return setUpscaleHeight((current) => cycle(UPSCALE_HEIGHTS, current));
     if (key.ctrl && lower === 'f') {
       setImageFormat((current) => cycle(IMAGE_FORMATS, current));
       setMode('image');
@@ -693,6 +710,8 @@ function App({
     subtitles,
     cookieSource,
     playlist,
+    accentColor,
+    upscaleHeight,
   });
   else if (stage === 'probing' || stage === 'downloading') content = h(WorkingScreen, {
     stage, media, progress, statusText, panelWidth: layout.panelWidth,
@@ -720,8 +739,11 @@ function App({
   return h(
     Box,
     { width: '100%', minHeight: layout.minHeight, flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-    h(Logo, { layout, account: process.env.YTCONV_ACCOUNT_LABEL }),
+    h(Logo, { layout, account: process.env.YTCONV_ACCOUNT_LABEL, accentColor }),
     content,
+    !layout.tinyLogo
+      ? h(Text, { dimColor: true }, `Copyright © 2026 YTConv Project · ${SUPPORT_EMAIL}`)
+      : null,
   );
 }
 
@@ -749,6 +771,7 @@ export async function runApp({
   initialAudioQuality = 'best',
   initialVideoFormat = 'auto',
   initialResolution = 'best',
+  initialUpscaleHeight = 0,
   initialSubtitles = false,
   initialWriteThumbnail = false,
 } = {}) {
@@ -785,6 +808,7 @@ export async function runApp({
       initialAudioQuality,
       initialVideoFormat,
       initialResolution,
+      initialUpscaleHeight,
       initialSubtitles,
       initialWriteThumbnail,
     }), { exitOnCtrlC: false });

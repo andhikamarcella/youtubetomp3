@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 PROJECT="$ROOT/android-app"
 OUT=${1:-"$ROOT/dist/android"}
-VERSION=1.7.1
-VERSION_CODE=10701
+VERSION=1.7.2
+VERSION_CODE=10702
 GRADLE_VERSION=8.13
 GRADLE_SHA256=20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78
 GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
@@ -54,6 +54,22 @@ for abi in arm64-v8a armeabi-v7a x86_64 x86; do
 done
 
 SOURCE_ARCHIVE="$OUT/YTConv-Android-${VERSION}-source.tar.gz"
-tar -czf "$SOURCE_ARCHIVE" -C "$ROOT" android-app
+tar \
+  --exclude='android-app/.gradle' \
+  --exclude='android-app/build' \
+  --exclude='android-app/app/build' \
+  --exclude='android-app/local.properties' \
+  -czf "$SOURCE_ARCHIVE" \
+  -C "$ROOT" android-app
+
+# The source archive must contain source files only. A sudden size increase usually
+# means a generated Gradle directory slipped into the release artifact again.
+SOURCE_ARCHIVE_BYTES=$(wc -c < "$SOURCE_ARCHIVE")
+SOURCE_ARCHIVE_MAX_BYTES=$((5 * 1024 * 1024))
+if [ "$SOURCE_ARCHIVE_BYTES" -gt "$SOURCE_ARCHIVE_MAX_BYTES" ]; then
+  printf 'Android source archive is unexpectedly large: %s bytes (maximum %s).\n' \
+    "$SOURCE_ARCHIVE_BYTES" "$SOURCE_ARCHIVE_MAX_BYTES" >&2
+  exit 5
+fi
 sha256sum "$DEBUG_APK" "$RELEASE_APK" "$SOURCE_ARCHIVE" > "$OUT/SHA256SUMS-android.txt"
 printf '%s\n%s\n' "$DEBUG_APK" "$RELEASE_APK"

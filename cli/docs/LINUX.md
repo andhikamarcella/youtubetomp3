@@ -1,286 +1,174 @@
-# Installing YTConv 1.6.2 on Linux and macOS
+# Linux installation by distribution family
 
-This guide covers desktop Linux, macOS, WSL, servers, SSH sessions, and major package-manager families.
+This guide separates each Linux family on purpose. Do not copy another distribution's command only because its desktop looks similar.
 
-## Step 1: install Node.js first
+## 1. Identify the distribution first
 
-Read the [beginner Node.js guide](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.6.2-cli-only-final/cli/docs/NODEJS.md).
-
-YTConv requires:
-
-```text
-Node.js 22.14.0 or newer
-npm 10 or newer
+```bash
+cat /etc/os-release
+uname -m
 ```
 
-The recommended cross-distribution beginner method is a per-user Node.js installation with nvm:
+Read `ID` and `ID_LIKE`. Linux Mint usually reports an Ubuntu/Debian family, while Manjaro follows Arch. After installation, `ytconv shell-info` prints the detected family and package manager.
 
-```sh
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.6/install.sh | bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-nvm install --lts
-nvm use --lts
+The npm CLI needs Node.js **22.14.0 or newer**. After installing packages from the correct section, always check:
+
+```bash
 node --version
 npm --version
+ffmpeg -version
+ffprobe -version
 ```
 
-Close and reopen the terminal after installation when `nvm`, `node`, or `npm` is not immediately available.
+If Node is older than 22.14, follow the account-owned Node 24 LTS setup in [NODEJS.md](NODEJS.md). An old Node release is rejected rather than failing later with confusing syntax errors.
 
-## Step 2: install YTConv
+## 2. Arch Linux
 
-```sh
-npm install -g ytconv@latest --force
-ytconv --version
-ytconv --self-test
-ytconv repair
-ytconv doctor
+```bash
+sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg ca-certificates curl tar xz
 ```
 
-Expected version:
+References: [ArchWiki Node.js](https://wiki.archlinux.org/title/Node.js) and [Arch Linux packages](https://archlinux.org/packages/).
 
-```text
-1.6.2
+## 3. CachyOS, Manjaro, EndeavourOS, and Garuda
+
+These distributions follow the Arch package family, but their own repositories must remain in use:
+
+```bash
+sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg ca-certificates curl tar xz
 ```
 
-## Avoid `sudo npm install -g`
+Do not add raw Arch repositories to Manjaro or another derivative. Complete the normal system upgrade first so multimedia libraries remain compatible.
 
-Use a per-user npm prefix when global installation reports `EACCES`:
+## 4. Debian
 
-```sh
-mkdir -p "$HOME/.local/bin"
-npm config set prefix "$HOME/.local"
-printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$HOME/.profile"
-export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@latest --force
-```
+Debian stable can provide a Node release older than YTConv requires. Install the media tools first:
 
-For Zsh, put the PATH line in `~/.zshrc` or `~/.zprofile`. For Fish:
-
-```fish
-fish_add_path $HOME/.local/bin
-```
-
-## Universal repository installer
-
-From the YTConv `cli` directory:
-
-```sh
-sh ./scripts/install-unix.sh --print-plan
-sh ./scripts/install-unix.sh
-```
-
-The installer detects apt, dnf, pacman, zypper, apk, xbps, emerge, Nix, and Homebrew. It may use administrator privileges for operating-system packages, but installs the npm package with a user prefix.
-
-## Ubuntu, Debian, Linux Mint, Pop!_OS, Kali, KDE Neon
-
-Install system media tools:
-
-```sh
+```bash
 sudo apt update
-sudo apt install -y python3 python3-pip ffmpeg ca-certificates curl
-```
-
-Install Node.js with the nvm section above when the distribution package is older than 22.14.0.
-
-Optional Python fallback engines:
-
-```sh
-python3 -m pip install --user -U --no-cache-dir 'yt-dlp[default]' gallery-dl \
-  || python3 -m pip install --user -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
-```
-
-Then install YTConv:
-
-```sh
-npm install -g ytconv@latest --force
-ytconv doctor
-```
-
-## Fedora, RHEL, Rocky Linux, AlmaLinux, Nobara
-
-```sh
-sudo dnf install -y python3 python3-pip ffmpeg ca-certificates curl
-```
-
-Install Node.js LTS with nvm when the active `node --version` does not meet the requirement. Some Fedora-family systems require the multimedia repository recommended by the distribution before `ffmpeg` is available.
-
-## Arch Linux, CachyOS, Manjaro, EndeavourOS, Garuda
-
-```sh
-sudo pacman -Syu --needed python python-pip ffmpeg ca-certificates curl
-```
-
-The distribution Node.js package is normally recent, but verify before installation:
-
-```sh
+sudo apt install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl tar xz-utils
 node --version
-npm --version
 ```
 
-Use nvm when the installed version is too old or when a per-user Node.js installation is preferred.
+If Node is still below 22.14, use the verified Node 24 LTS steps in [NODEJS.md](NODEJS.md). Package reference: [Debian Packages](https://packages.debian.org/).
 
-## openSUSE Leap and Tumbleweed
+## 5. Ubuntu
 
-```sh
+For Ubuntu desktop, server, WSL, and minimal images:
+
+```bash
+sudo apt update
+sudo apt install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl tar xz-utils
+node --version
+```
+
+Node versions differ between Ubuntu releases. Use [NODEJS.md](NODEJS.md) when the repository version is too old. Package reference: [Ubuntu Packages](https://packages.ubuntu.com/).
+
+## 6. Linux Mint, Pop!_OS, KDE Neon, Zorin OS, and Kali Linux
+
+These use the Debian/Ubuntu package family for YTConv requirements:
+
+```bash
+sudo apt update
+sudo apt install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl tar xz-utils
+node --version
+```
+
+Keep the repositories maintained for the installed distribution. Do not replace the entire source list with Ubuntu or Debian sources just to obtain Node.
+
+## 7. Fedora
+
+```bash
+sudo dnf install -y nodejs npm python3 python3-pip ffmpeg-free ca-certificates curl tar xz
+node --version
+```
+
+If `ffmpeg-free` does not provide a codec you need, use the multimedia source approved by the Fedora documentation for that release. YTConv never changes system repositories silently. Fedora documents Node/npm installation through `dnf` in [Language Package Managers](https://docs.fedoraproject.org/en-US/quick-docs/language-package-managers/).
+
+## 8. RHEL, CentOS Stream, Rocky Linux, and AlmaLinux
+
+```bash
+sudo dnf install -y nodejs npm python3 python3-pip ca-certificates curl tar xz
+node --version
+```
+
+FFmpeg availability and the Node version depend on the release and organization repositories. Install FFmpeg from a source approved by the system administrator, then run `ffmpeg -version`. Do not enable a third-party repository without understanding the system policy.
+
+## 9. Nobara
+
+Nobara follows Fedora and normally includes multimedia support:
+
+```bash
+sudo dnf install -y nodejs npm python3 python3-pip ffmpeg ca-certificates curl tar xz
+node --version
+```
+
+Keep the Nobara repositories instead of replacing them with raw Fedora repositories.
+
+## 10. openSUSE Tumbleweed and Leap
+
+```bash
 sudo zypper refresh
-sudo zypper --non-interactive install python3 python3-pip ffmpeg ca-certificates curl
-```
-
-Install and verify Node.js before YTConv.
-
-## Alpine Linux and musl systems
-
-```sh
-apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl
+sudo zypper --non-interactive install nodejs npm python3 python3-pip ffmpeg ca-certificates curl tar xz
 node --version
-npm --version
-python3 -m pip install --break-system-packages -U --no-cache-dir 'yt-dlp[default]' gallery-dl
-npm install -g ytconv@latest --omit=optional --force
-ytconv doctor
 ```
 
-Use the system FFmpeg package. A glibc-only binary may not run on musl.
+Some codecs depend on the multimedia repository selected by the owner. Inspect package versions with `zypper search -s ffmpeg nodejs` before adding a source.
 
-## Void Linux
+## 11. Alpine Linux
 
 ```sh
-sudo xbps-install -Syu nodejs npm python3 python3-pip ffmpeg ca-certificates curl
+doas apk update
+doas apk add --no-cache nodejs npm python3 py3-pip ffmpeg ca-certificates curl tar xz
 node --version
-npm --version
-npm install -g ytconv@latest --force
 ```
 
-## Gentoo
+Replace `doas` with `sudo` on systems configured for sudo. Keep `main` and `community` on the same Alpine release. Reference: [Alpine Package Keeper](https://wiki.alpinelinux.org/wiki/Alpine_Package_Keeper).
 
-```sh
-sudo emerge --ask=n net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates
+## 12. iSH on iPhone/iPad
+
+iSH is Alpine-based, but uses YTConv's Python frontend because of iOS memory and compatibility limits. Do **not** follow the normal npm/Linux path. Open [ISH.md](ISH.md).
+
+## 13. Void Linux
+
+```bash
+sudo xbps-install -Syu nodejs npm python3 python3-pip ffmpeg ca-certificates curl tar xz
 node --version
-npm --version
-npm install -g ytconv@latest --force
 ```
 
-## NixOS and Nix
+Use the [Void Handbook](https://docs.voidlinux.org/xbps/index.html) for repository and upgrade details.
 
-Temporary environment:
+## 14. Gentoo
 
-```sh
+```bash
+sudo emerge --ask net-libs/nodejs dev-lang/python media-video/ffmpeg net-misc/curl app-misc/ca-certificates app-arch/xz-utils
+node --version
+```
+
+Available codecs follow the local USE flags. Review the Portage plan before approving the build.
+
+## 15. NixOS or Nix
+
+Test without changing the permanent configuration:
+
+```bash
 nix shell nixpkgs#nodejs_24 nixpkgs#python3 nixpkgs#ffmpeg nixpkgs#yt-dlp nixpkgs#gallery-dl
-npm config set prefix "$HOME/.local"
-export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@latest --force
-ytconv doctor
 ```
 
-For permanent use, add the packages to NixOS or Home Manager configuration.
+For permanent use, add the same packages to the owner's NixOS or home-manager configuration. Reference: [NixOS package search](https://search.nixos.org/packages).
 
-## macOS
+## 16. Install and verify YTConv
 
-Official Node.js installer method:
+Run this section only after `node --version` reports 22.14.0 or newer:
 
-1. Open <https://nodejs.org/en/download>.
-2. Choose the current LTS release.
-3. Install the matching Apple Silicon or Intel package.
-4. Reopen Terminal.
-
-Homebrew alternative:
-
-```sh
-brew update
-brew install node python ffmpeg
-node --version
-npm --version
-npm install -g ytconv@latest --force
-ytconv doctor
-```
-
-Use the per-user npm prefix shown above when needed.
-
-## WSL and SSH servers
-
-Follow the Linux Node.js steps, then use headless mode:
-
-```sh
-ytconv --headless download "URL"
-ytconv --headless --preset music download "URL"
-ytconv batch links.txt --jobs 2 --continue-on-error --result-json report.json
-```
-
-For cron, use absolute executable and output paths.
-
-## Verification
-
-```sh
-command -v node
-command -v npm
-command -v ytconv
-command -v ffmpeg
-node --version
-npm --version
+```bash
+npm install --global ytconv@1.7.2
 ytconv --version
-ytconv --self-test
-ytconv doctor
-ytconv --shell-info
-```
-
-Expected:
-
-- YTConv `1.6.2`;
-- Node.js 22.14.0 or newer;
-- npm 10 or newer;
-- yt-dlp, gallery-dl, and FFmpeg ready or repairable;
-- writable output directory;
-- stable update channel.
-
-## Common failures
-
-### `ytconv: command not found`
-
-```sh
-npm prefix -g
-export PATH="$HOME/.local/bin:$PATH"
-command -v ytconv
-```
-
-### `EACCES` during npm installation
-
-Use the per-user npm prefix. Do not blindly change ownership of system directories.
-
-### Node.js is too old
-
-```sh
-nvm install --lts
-nvm use --lts
-node --version
-npm install -g ytconv@latest --force
-```
-
-### Python is externally managed
-
-Use the distribution package, pipx, or the documented `--break-system-packages` fallback only when appropriate for that environment.
-
-### FFmpeg is missing
-
-Install the distribution FFmpeg package, then:
-
-```sh
 ytconv repair
 ytconv doctor
+ytconv self-test
 ```
 
-## Update
+`ytconv repair` prefers a working system package. When FFmpeg is missing on Linux x64/ARM64 or Windows, the current `yt-dlp/FFmpeg-Builds` FFmpeg/ffprobe pair is downloaded, checked against GitHub's SHA-256 digest, and extracted without shell evaluation. macOS, other architectures, Termux, and iSH use package-manager FFmpeg so the executable matches the device ABI.
 
-```sh
-npm cache verify
-npm install -g ytconv@latest --force
-ytconv --version
-ytconv --self-test
-```
-
-## Remove
-
-```sh
-npm uninstall -g ytconv
-```
-
-Downloaded media and archive files are not removed automatically.
+For npm `EACCES`, use the account-owned prefix in [NODEJS.md](NODEJS.md). Avoid blindly running a global npm installation as root.

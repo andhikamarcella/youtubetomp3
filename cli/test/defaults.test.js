@@ -11,9 +11,9 @@ function parseWithDefaults(argv, homeDirectory = '/tmp/ytconv-defaults-home') {
   return { options, toggles };
 }
 
-test('stable defaults enable subtitles SponsorBlock mark and per-profile archives', () => {
+test('stable defaults keep subtitles off while enabling SponsorBlock mark and per-profile archives', () => {
   const { options } = parseWithDefaults([]);
-  assert.equal(options.subtitles, true);
+  assert.equal(options.subtitles, false);
   assert.equal(options.sponsorBlockMode, 'mark');
   assert.match(options.archivePath, /yt-dlp-auto-balanced\.txt$/u);
   assert.match(options.galleryArchivePath, /gallery-dl-auto-balanced\.sqlite3$/u);
@@ -67,10 +67,10 @@ test('audio and video archives are separated by output profile', () => {
 
 test('stable help explains defaults and opt-out commands', () => {
   const text = stableDefaultsHelpText();
-  assert.match(text, /subtitles\s+ON/u);
+  assert.match(text, /subtitles\s+OFF/u);
   assert.match(text, /SponsorBlock\s+ON/u);
   assert.match(text, /archive ON/u);
-  assert.match(text, /--no-subtitles/u);
+  assert.match(text, /--subtitles/u);
   assert.match(text, /--no-sponsorblock/u);
   assert.match(text, /--no-archive/u);
 });

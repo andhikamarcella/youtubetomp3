@@ -1,10 +1,10 @@
 # Template file for 'ytconv'
 pkgname=ytconv
-version=1.6.6
+version=1.7.2
 revision=1
 archs="x86_64 aarch64"
 depends="ca-certificates python3 ffmpeg"
-short_desc="Secure YouTube MP4 and MP3 downloader CLI"
+short_desc="Secure social-media downloader and converter CLI"
 maintainer="Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
 license="ISC"
 homepage="https://github.com/andhikamarcella/YTConv"

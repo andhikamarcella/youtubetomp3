@@ -39,9 +39,18 @@ function optionFlag(options, key, envName, fallback = false) {
 }
 
 export function javascriptRuntimeArgs({
+  runtime = null,
   nodeVersion = process.versions.node,
   nodePath = process.execPath,
 } = {}) {
+  const runtimeName = String(runtime?.name || '').toLowerCase();
+  const runtimePath = String(runtime?.path || '').trim();
+  if (runtime?.supported !== false && runtimeName === 'deno' && runtimePath) {
+    return ['--js-runtimes', `deno:${runtimePath}`];
+  }
+  if (runtime?.supported !== false && runtimeName === 'node' && runtimePath) {
+    return ['--js-runtimes', `node:${runtimePath}`];
+  }
   const [major = 0, minor = 0] = String(nodeVersion).replace(/^v/u, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
   const supported = major > 22 || (major === 22 && minor >= 14);
   return supported && nodePath ? ['--js-runtimes', `node:${nodePath}`] : [];
@@ -53,7 +62,8 @@ function commonExtractorArgs(options = {}) {
   const fileAccessRetries = optionValue(options, 'fileAccessRetries', 'YTCONV_FILE_ACCESS_RETRIES', '3');
   const retrySleep = optionValue(options, 'retrySleep', 'YTCONV_RETRY_SLEEP', 'linear=1::2');
   const args = [
-    '--ignore-config', '--no-colors', '--no-remote-components', ...javascriptRuntimeArgs(),
+    '--ignore-config', '--no-colors', '--no-remote-components',
+    ...javascriptRuntimeArgs({ runtime: options.javascriptRuntime }),
     '--socket-timeout', '30', '--retries', retries, '--fragment-retries', fragmentRetries,
     '--file-access-retries', fileAccessRetries, '--extractor-retries', '5',
     '--retry-sleep', retrySleep, '--retry-sleep', `fragment:${retrySleep}`,

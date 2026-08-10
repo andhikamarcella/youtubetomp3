@@ -11,14 +11,25 @@ const required = [
   'docs/COMMANDS.md',
   'docs/CONFIGURATION.md',
   'docs/AUTHENTICATION.md',
+  'docs/COOKIES.md',
+  'docs/FORMAT-GUIDE.md',
+  'docs/CONTENT-EXTRACTION.md',
+  'docs/UPSCALING.md',
+  'docs/DENO.md',
+  'docs/SAFETY-LEGAL.md',
+  'docs/SUPPORT.md',
   'docs/TROUBLESHOOTING.md',
   'docs/PLATFORMS.md',
+  'docs/LINUX.md',
+  'docs/NODEJS.md',
+  'docs/ISH.md',
   'docs/ARCHITECTURE.md',
   'docs/DEVELOPMENT.md',
   'docs/RELEASES.md',
   'docs/TRUSTED-PUBLISHING.md',
   'docs/FAQ.md',
   'docs/MIGRATION-1.7.0.md',
+  'docs/MIGRATION-1.7.2.md',
   'docs/MIGRATION-1.7.1.md',
   'docs/HELP-CENTER.md'
 ];
@@ -33,7 +44,7 @@ for (const relative of required) {
 }
 
 const manifest = JSON.parse(await fs.readFile(path.join(cwd, 'package.json'), 'utf8'));
-if (manifest.version !== '1.7.1') errors.push(`package.json version is ${manifest.version}, expected 1.7.1`);
+if (manifest.version !== '1.7.2') errors.push(`package.json version is ${manifest.version}, expected 1.7.2`);
 if (!String(manifest.repository?.url ?? '').includes('andhikamarcella/YTConv')) {
   errors.push('package.json does not reference the canonical andhikamarcella/YTConv repository');
 }

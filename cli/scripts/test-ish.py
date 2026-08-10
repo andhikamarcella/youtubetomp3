@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH and Alpine 1.7.1 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.7.2 behavior checks."""
 
 import hashlib
 import importlib.util
@@ -75,10 +75,10 @@ def options(output, **overrides):
 
 class ReleaseIdentityTests(unittest.TestCase):
     def test_wrapper_version_branch_and_remote_version_are_synchronized(self):
-        self.assertEqual(WRAPPER.VERSION, "1.7.1")
-        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.7.1")
-        self.assertIn("release/ytconv-1.7.1", WRAPPER.RAW_BASE)
-        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.7.1")
+        self.assertEqual(WRAPPER.VERSION, "1.7.2")
+        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.7.2")
+        self.assertIn("release/ytconv-1.7.2", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.7.2")
 
     def test_wrapper_injects_release_identity_into_the_core_runtime(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
@@ -147,17 +147,30 @@ class RoutingAndPolicyTests(unittest.TestCase):
         selector = CORE.video_selector("1080", "mp4")
         self.assertIn("[vcodec^=avc1]+ba[ext=m4a]", selector)
         self.assertIn("bv[height<=1080]+ba", selector)
+        self.assertTrue(selector.endswith("/b"))
         self.assertEqual(
             CORE.video_container_args("mp4"),
             ["--merge-output-format", "mp4", "--recode-video", "mp4"],
         )
 
     def test_subtitles_are_off_by_default(self):
+        self.assertFalse(CORE.parser([]).parse_args([]).subtitles)
         with tempfile.TemporaryDirectory() as directory:
             args = CORE.common_args(options(directory), Path(directory), None)
         self.assertNotIn("--write-subs", args)
         self.assertNotIn("--write-auto-subs", args)
         self.assertNotIn("--sub-langs", args)
+
+    def test_content_extraction_aliases(self):
+        url = "https://example.com/media"
+        self.assertEqual(
+            CORE.normalize_commands(["extract", url]),
+            ["--subtitle-only", "--metadata-files", url],
+        )
+        self.assertEqual(
+            CORE.normalize_commands(["transcript", url]),
+            ["--subtitle-only", url],
+        )
 
     def test_retry_sleep_contains_general_fragment_and_file_access_types(self):
         with tempfile.TemporaryDirectory() as directory:
