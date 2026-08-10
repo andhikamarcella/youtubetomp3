@@ -1,6 +1,11 @@
 name: Publish YTConv
 
 on:
+  push:
+    branches:
+      - release/ytconv-1.7.2
+    paths:
+      - ".github/release-triggers/ytconv-1.7.2"
   workflow_dispatch:
     inputs:
       confirm:
@@ -20,7 +25,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ inputs.confirm == true && github.ref_name == 'release/ytconv-1.7.2' }}
+    if: ${{ github.ref_name == 'release/ytconv-1.7.2' && (github.event_name == 'push' || inputs.confirm == true) }}
     runs-on: ubuntu-latest
     environment: npm
     steps:
@@ -136,6 +141,7 @@ jobs:
       - name: Publish through npm Trusted Publishing
         env:
           TARBALL: ${{ steps.pack.outputs.tarball }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if npm view ytconv@1.7.2 version --prefer-online >/dev/null 2>&1; then
             echo "ytconv@1.7.2 already exists; publish skipped."

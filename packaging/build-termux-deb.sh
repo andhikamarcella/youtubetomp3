@@ -6,8 +6,8 @@ OUT=${1:-"$ROOT/dist/termux"}
 VERSION=1.7.2
 YT_DLP_VERSION=2026.7.4
 YT_DLP_SHA256=f11f2b11d5a8ac4059f9bdf29fa4407dc7c6bb00c5097e95ca22a7a9db518266
-GALLERY_DL_VERSION=1.32.7
-GALLERY_DL_SHA256=38fc64cbde62331806f06c23f20ad0f96961802d21a808c08027626f45ad947a
+GALLERY_DL_VERSION=1.32.9
+GALLERY_DL_SHA256=271d18fed61e0b9f006d4944be59341b9af136576382e237aa08ba6d060a0e9a
 PREFIX=/data/data/com.termux/files/usr
 
 command -v dpkg-deb >/dev/null 2>&1 || { printf 'dpkg-deb is required.\n' >&2; exit 2; }

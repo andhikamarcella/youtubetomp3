@@ -10,6 +10,17 @@
 
 The npm package is a CLI only. It contains no web application, no telemetry, and no `preinstall`, `install`, or `postinstall` hooks.
 
+## Quick start
+
+```bash
+npm install --global ytconv@1.7.2
+ytconv repair
+ytconv doctor
+ytconv "URL" --mode video --video-format mp4
+```
+
+Choose `--mode video` for a video result or `--mode audio` for an audio result. Exit code zero alone is not treated as proof of completion: YTConv verifies a real output file that matches the selected mode. Beginner guides cover [Windows/macOS/Node.js](docs/NODEJS.md), [each Linux family](docs/LINUX.md), [Termux](docs/TERMUX.md), [iSH on iPhone/iPad](docs/ISH.md), and [cookies.txt](docs/COOKIES.md).
+
 ## Highlights in 1.7.2
 
 - Responsive Figlet branding with compact fallbacks for narrow terminals.
@@ -251,6 +262,7 @@ ISC License. See [`LICENSE`](LICENSE).
 - [Content extraction](docs/CONTENT-EXTRACTION.md)
 - [Video upscaling](docs/UPSCALING.md)
 - [Deno runtime](docs/DENO.md)
+- [Safety and legal use](docs/SAFETY-LEGAL.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Platform support](docs/PLATFORMS.md)
 - [Architecture](docs/ARCHITECTURE.md)

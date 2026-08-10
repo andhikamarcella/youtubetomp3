@@ -14,6 +14,7 @@ This directory is the canonical documentation hub for YTConv 1.7.2. YTConv is a 
 - [Content extraction](CONTENT-EXTRACTION.md) — transcripts, subtitles, descriptions, and metadata.
 - [Video upscaling](UPSCALING.md) — optional 720p–4K FFmpeg upscaling and its limits.
 - [Deno runtime](DENO.md) — JavaScript runtime detection for current YouTube extraction.
+- [Safety and legal use](SAFETY-LEGAL.md) — local processing, official offline viewing, cookies, and honest feature limits.
 - [Troubleshooting](TROUBLESHOOTING.md) — diagnosis steps for common failures.
 - [Platforms](PLATFORMS.md) — Windows, Linux, macOS, Termux, iSH, Android, and packages.
 - [Architecture](ARCHITECTURE.md) — modules, engines, process boundaries, and security.

@@ -8,6 +8,7 @@ YTConv is a cross-platform terminal downloader and converter for media you own o
 - [Formats and repeat conversion](Formats-and-repeat-conversion)
 - [Cookies and browser sessions](Cookies-and-browser-sessions)
 - [Troubleshooting](Troubleshooting)
+- [Safety and legal use](Safety-and-legal-use)
 
 Quick verification:
 
@@ -19,3 +20,5 @@ ytconv doctor
 ```
 
 Support: [help.ytconv@proton.me](mailto:help.ytconv@proton.me). Never send cookies, tokens, passwords, or OTP codes.
+
+Tutorial web: [GitHub Pages YTConv](https://andhikamarcella.github.io/YTConv/). Halaman tersebut hanya berisi panduan dan tidak menerima URL/media.

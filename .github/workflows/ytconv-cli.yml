@@ -151,7 +151,7 @@ jobs:
           const forbidden = paths.filter(value => /\.(?:html|css|jsx|tsx)$/i.test(value)
             || /(?:^|\/)(?:next-app|public-ui|web|server|android-app|packaging)(?:\/|$)/i.test(value));
           if (forbidden.length) throw new Error(JSON.stringify(forbidden));
-          for (const required of ['LICENSE','SECURITY.md','types/index.d.ts','src/index.js','src/help-center.js','ish/SHA256SUMS','docs/PACKAGES.md','docs/README.md','docs/TRUSTED-PUBLISHING.md','docs/HELP-CENTER.md','docs/COOKIES.md','docs/FORMAT-GUIDE.md','docs/UPSCALING.md','docs/DENO.md','docs/SUPPORT.md','docs/MIGRATION-1.7.2.md']) {
+          for (const required of ['LICENSE','SECURITY.md','types/index.d.ts','src/index.js','src/help-center.js','ish/SHA256SUMS','docs/PACKAGES.md','docs/README.md','docs/TRUSTED-PUBLISHING.md','docs/HELP-CENTER.md','docs/COOKIES.md','docs/FORMAT-GUIDE.md','docs/UPSCALING.md','docs/DENO.md','docs/SAFETY-LEGAL.md','docs/SUPPORT.md','docs/MIGRATION-1.7.2.md']) {
             if (!paths.includes(required)) throw new Error(`missing ${required}`);
           }
           NODE
@@ -198,6 +198,10 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Install FFmpeg and ffprobe for the format matrix
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
       - run: python3 -m pip install --user --break-system-packages --upgrade 'yt-dlp[default]'
       - run: npm ci --ignore-scripts
       - name: Convert every supported audio and video choice twice

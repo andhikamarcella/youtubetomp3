@@ -12,7 +12,7 @@
   <header class="hero">
     <nav aria-label="Navigasi utama">
       <a class="brand" href="#top">YTConv <span>1.7.2</span></a>
-      <div><a href="#install">Instal</a><a href="#format">Format</a><a href="#cookies">Cookies</a><a href="#bantuan">Bantuan</a></div>
+      <div><a href="#install">Instal</a><a href="#format">Format</a><a href="#cookies">Cookies</a><a href="#aman">Aman</a><a href="#bantuan">Bantuan</a></div>
     </nav>
     <div class="hero-copy" id="top">
       <p class="eyebrow">CLI sosial lintas platform</p>
@@ -36,24 +36,31 @@
       <h2>Pilih perangkatmu</h2>
       <p class="intro">Node.js 22.14+ dan npm 10+ diperlukan, kecuali iSH yang memakai frontend Python.</p>
       <div class="grid">
-        <article><h3>Windows</h3><p>Pasang Node.js LTS resmi, buka CMD baru, lalu:</p><pre><code>npm.cmd install -g ytconv@1.7.2
+        <article class="os windows"><h3>Windows</h3><p>Pasang Node.js LTS resmi, buka CMD baru, lalu:</p><pre><code>npm.cmd install -g ytconv@1.7.2
 ytconv.cmd repair
 ytconv.cmd doctor</code></pre></article>
-        <article><h3>macOS</h3><pre><code>brew install node python ffmpeg
+        <article class="os macos"><h3>macOS</h3><pre><code>brew install node@24 python ffmpeg
 npm install -g ytconv@1.7.2
 ytconv repair &amp;&amp; ytconv doctor</code></pre></article>
-        <article><h3>Arch · CachyOS</h3><pre><code>sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg
+        <article class="os arch"><h3>Arch · CachyOS</h3><pre><code>sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg
 npm install -g ytconv@1.7.2
 ytconv doctor</code></pre></article>
-        <article><h3>Ubuntu · Debian</h3><pre><code>sudo apt update
+        <article class="os debian"><h3>Ubuntu · Debian</h3><pre><code>sudo apt update
 sudo apt install nodejs npm python3 python3-pip ffmpeg
+node --version  # harus 22.14+</code></pre><a href="https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/NODEJS.md">Jika Node terlalu lama →</a></article>
+        <article class="os fedora"><h3>Fedora</h3><pre><code>sudo dnf install nodejs npm python3 python3-pip ffmpeg-free
+node --version
 npm install -g ytconv@1.7.2</code></pre></article>
-        <article><h3>Android · Termux</h3><pre><code>pkg update
+        <article class="os suse"><h3>openSUSE</h3><pre><code>sudo zypper install nodejs npm python3 python3-pip ffmpeg
+node --version
+npm install -g ytconv@1.7.2</code></pre></article>
+        <article class="os termux"><h3>Android · Termux</h3><pre><code>pkg update
 pkg install nodejs python ffmpeg
 termux-setup-storage
 npm install -g ytconv@1.7.2</code></pre></article>
-        <article><h3>iPhone/iPad · iSH</h3><p>Gunakan frontend Python. Node.js tidak diperlukan.</p><a href="https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/ISH.md">Buka langkah iSH →</a></article>
+        <article class="os ish"><h3>iPhone/iPad · iSH</h3><p>Gunakan frontend Python. Node.js tidak diperlukan.</p><a href="https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/ISH.md">Buka langkah iSH →</a></article>
       </div>
+      <p class="full-guide"><a class="text-link" href="https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/LINUX.md">Buka panduan Debian, Ubuntu, Mint, Fedora, RHEL, Arch, openSUSE, Alpine, Void, Gentoo, dan NixOS →</a></p>
     </section>
     <section id="format" class="dark-section">
       <p class="eyebrow">02 · Penggunaan</p>
@@ -73,10 +80,22 @@ npm install -g ytconv@1.7.2</code></pre></article>
       <p class="intro">YTConv mencoba akses publik dulu. Untuk media yang memang boleh diakses akunmu, login di situs resmi lalu gunakan profil browser:</p>
       <pre class="wide"><code>ytconv download "URL" --cookies-browser chrome</code></pre>
       <div class="warning"><strong>Jangan pernah kirim cookies.txt.</strong><p>Jangan unggah ke GitHub, chat, email, screenshot, atau log. Cookies tidak melewati DRM, paywall, wilayah, atau izin akun.</p></div>
+      <p>Jika harus mengekspor berkas, gunakan <a href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc">Get cookies.txt LOCALLY</a> untuk browser Chromium atau <a href="https://addons.mozilla.org/firefox/addon/cookies-txt/">cookies.txt</a> untuk Firefox, pilih format Netscape, lalu hapus berkas setelah dipakai.</p>
       <a class="text-link" href="https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/COOKIES.md">Tutorial cookies.txt lengkap →</a>
     </section>
+    <section id="aman" class="safety">
+      <p class="eyebrow">04 · Aman &amp; legal</p>
+      <h2>Tutorial web, bukan web ripper</h2>
+      <p class="intro">Halaman ini tidak menerima URL dan tidak memproses media. Konversi berlangsung lokal agar URL, IP, dan sesi akun tidak diserahkan ke situs ripper pihak ketiga.</p>
+      <div class="grid safety-grid">
+        <article><h3>Gunakan dengan izin</h3><p>Simpan hanya media milikmu atau media yang memang diizinkan untuk diunduh. Jangan melewati DRM, paywall, wilayah, atau izin akun.</p></article>
+        <article><h3>Offline resmi YouTube</h3><p>Untuk fitur offline resmi, gunakan tombol Download yang disediakan YouTube/YouTube Premium bila tersedia.</p><a href="https://support.google.com/youtube/answer/11977233">Buka YouTube Help →</a></article>
+        <article><h3>Deno bukan login</h3><p>Deno membantu yt-dlp menjalankan tantangan JavaScript. Ia tidak menggantikan cookies, akun, PO Token, atau izin akses.</p></article>
+        <article><h3>AI yang jujur</h3><p>1.7.2 memakai upscale Lanczos teruji. Paket tidak mengklaim AI super-resolution karena model AI portabel belum divalidasi pada semua perangkat.</p></article>
+      </div>
+    </section>
     <section id="bantuan" class="support">
-      <div><p class="eyebrow">04 · Bantuan</p><h2>Masih tersangkut?</h2><p>Jalankan <code>ytconv --diagnose</code> dan kirim laporan yang sudah dibersihkan dari data pribadi.</p></div>
+      <div><p class="eyebrow">05 · Bantuan</p><h2>Masih tersangkut?</h2><p>Jalankan <code>ytconv --diagnose</code> dan kirim laporan yang sudah dibersihkan dari data pribadi.</p></div>
       <a href="mailto:help.ytconv@proton.me">help.ytconv@proton.me</a>
     </section>
   </main>

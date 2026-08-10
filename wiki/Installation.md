@@ -1,15 +1,20 @@
-# Installation
+# Instalasi YTConv 1.7.2
 
-The npm CLI needs Node.js 22.14+ and npm 10+. Install a current Node.js LTS release, then:
+Node.js 22.14+ dan npm 10+ diperlukan untuk CLI npm:
 
 ```bash
 npm install -g ytconv@1.7.2
 ytconv repair
 ytconv doctor
+ytconv self-test
 ```
 
-- Windows: use `npm.cmd` and `ytconv.cmd` if PowerShell blocks `.ps1` shims.
-- CachyOS/Arch: `sudo pacman -Syu --needed nodejs npm python python-pip ffmpeg`.
-- Ubuntu/Debian: `sudo apt install nodejs npm python3 python3-pip ffmpeg` and verify Node is new enough.
-- Termux: `pkg install nodejs python ffmpeg`.
-- iSH: use the Python frontend documented in the repository's `cli/docs/ISH.md`.
+Pilih panduan perangkat:
+
+- [Windows, macOS, dan Node.js](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/NODEJS.md)
+- [Debian, Ubuntu, Mint, Fedora, RHEL, Arch, CachyOS, openSUSE, Alpine, Void, Gentoo, dan NixOS](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/LINUX.md)
+- [Android Termux](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/TERMUX.md)
+- [iPhone/iPad dengan iSH](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/ISH.md)
+- [Android APK dan paket native](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/PACKAGES.md)
+
+Jalankan `cat /etc/os-release` sebelum memilih perintah Linux. Distro turunan harus mengikuti keluarga dan repository distro itu sendiri, bukan mencampur repository induk secara manual.

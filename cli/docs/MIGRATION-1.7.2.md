@@ -31,6 +31,9 @@ https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.2/cli/docs
 - prefers a supported Deno runtime and falls back to Node.js;
 - added platform-aware terminal accents and a compact support footer;
 - added beginner cookies, distro, runtime, format, and troubleshooting guides.
+- installs a current verified FFmpeg/ffprobe fallback on supported Linux and Windows devices instead of the old 6.1.1 binary;
+- updates the Termux gallery-dl bundle to 1.32.9;
+- adds a tutorial-only GitHub Pages site and maintained Wiki source without turning either one into a hosted ripper.
 
 ## Terminal help center
 

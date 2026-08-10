@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ffmpegReleaseAsset, nodeRuntimeSupported } from '../src/dependencies.js';
+import { ffmpegArchiveMembers, ffmpegReleaseAsset, nodeRuntimeSupported } from '../src/dependencies.js';
 import { extractSystemOptions, systemHelpText } from '../src/system-tools.js';
 import { explainError } from '../src/error-help.js';
 
@@ -17,10 +17,24 @@ test('extracts beginner and headless flags before normal CLI parsing', () => {
 });
 
 test('FFmpeg repair selects only explicitly supported verified release assets', () => {
-  assert.equal(ffmpegReleaseAsset({ platform: 'win32', architecture: 'x64' }), 'ffmpeg-win32-x64.gz');
-  assert.equal(ffmpegReleaseAsset({ platform: 'darwin', architecture: 'arm64' }), 'ffmpeg-darwin-arm64.gz');
-  assert.equal(ffmpegReleaseAsset({ platform: 'linux', architecture: 'x64' }), 'ffmpeg-linux-x64.gz');
-  assert.equal(ffmpegReleaseAsset({ platform: 'win32', architecture: 'arm64' }), null);
+  assert.equal(ffmpegReleaseAsset({ platform: 'win32', architecture: 'x64' }), 'ffmpeg-master-latest-win64-gpl.zip');
+  assert.equal(ffmpegReleaseAsset({ platform: 'win32', architecture: 'arm64' }), 'ffmpeg-master-latest-winarm64-gpl.zip');
+  assert.equal(ffmpegReleaseAsset({ platform: 'linux', architecture: 'x64' }), 'ffmpeg-master-latest-linux64-gpl.tar.xz');
+  assert.equal(ffmpegReleaseAsset({ platform: 'darwin', architecture: 'arm64' }), null);
+});
+
+test('FFmpeg repair accepts one safe binary pair and rejects archive traversal', () => {
+  assert.deepEqual(ffmpegArchiveMembers([
+    'ffmpeg-build/bin/ffmpeg',
+    'ffmpeg-build/bin/ffprobe',
+  ], { platform: 'linux' }), {
+    ffmpeg: 'ffmpeg-build/bin/ffmpeg',
+    ffprobe: 'ffmpeg-build/bin/ffprobe',
+  });
+  assert.throws(() => ffmpegArchiveMembers([
+    '../ffmpeg-build/bin/ffmpeg',
+    'ffmpeg-build/bin/ffprobe',
+  ], { platform: 'linux' }), /exactly one/u);
 });
 
 test('supported Node runtime starts at 22.14.0', () => {

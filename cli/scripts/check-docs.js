@@ -16,6 +16,7 @@ const required = [
   'docs/CONTENT-EXTRACTION.md',
   'docs/UPSCALING.md',
   'docs/DENO.md',
+  'docs/SAFETY-LEGAL.md',
   'docs/SUPPORT.md',
   'docs/TROUBLESHOOTING.md',
   'docs/PLATFORMS.md',
