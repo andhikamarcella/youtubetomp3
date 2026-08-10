@@ -10,6 +10,7 @@ on:
       - "packaging/**"
       - "android-app/**"
       - "flake.nix"
+      - ".github/release-triggers/ytconv-1.7.2"
       - ".github/workflows/ytconv-cli.yml"
       - ".github/workflows/ytconv-packages.yml"
   pull_request:
@@ -19,6 +20,7 @@ on:
       - "packaging/**"
       - "android-app/**"
       - "flake.nix"
+      - ".github/release-triggers/ytconv-1.7.2"
       - ".github/workflows/ytconv-cli.yml"
       - ".github/workflows/ytconv-packages.yml"
   workflow_dispatch:
