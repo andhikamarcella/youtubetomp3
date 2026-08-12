@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { ffmpegArchiveMembers, ffmpegReleaseAsset, nodeRuntimeSupported } from '../src/dependencies.js';
-import { extractSystemOptions, systemHelpText } from '../src/system-tools.js';
+import { clearCaches, extractSystemOptions, systemHelpText } from '../src/system-tools.js';
 import { explainError } from '../src/error-help.js';
 
 test('extracts beginner and headless flags before normal CLI parsing', () => {
@@ -66,4 +69,27 @@ test('error explanation gives actionable PowerShell social-login and stable-upda
     explainError(new Error('cookie database is locked'), { url: 'https://instagram.com/p/example/' }),
     /ytconv login instagram/u,
   );
+});
+
+test('clean removes managed archives while preserving downloads and custom archives', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-clean-test-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const homeDirectory = path.join(root, 'home');
+  const temporaryDirectory = path.join(root, 'tmp');
+  const managed = path.join(homeDirectory, '.ytconv', 'archives', 'yt-dlp-video-auto-1080.txt');
+  const custom = path.join(homeDirectory, 'custom-archive.txt');
+  const download = path.join(homeDirectory, 'Downloads', 'YTConv', 'video.mp4');
+  await fs.mkdir(path.dirname(managed), { recursive: true });
+  await fs.mkdir(path.dirname(download), { recursive: true });
+  await fs.mkdir(temporaryDirectory, { recursive: true });
+  await Promise.all([
+    fs.writeFile(managed, 'youtube example\n'),
+    fs.writeFile(custom, 'youtube custom\n'),
+    fs.writeFile(download, 'media'),
+  ]);
+
+  assert.equal(await clearCaches({ homeDirectory, temporaryDirectory, ytDlpRunner: null }), 0);
+  await assert.rejects(fs.access(managed));
+  await assert.doesNotReject(fs.access(custom));
+  await assert.doesNotReject(fs.access(download));
 });

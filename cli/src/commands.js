@@ -59,7 +59,7 @@ export function commandSummaryText() {
     '  ytconv donate               Choose Ko-fi (global) or Saweria (Indonesia)',
     '  ytconv doctor               Diagnose the installation',
     '  ytconv repair               Repair media dependencies',
-    '  ytconv clean                Clear YTConv caches',
+    '  ytconv clean                Clear caches and managed download archives',
     '',
   ].join('\n');
 }

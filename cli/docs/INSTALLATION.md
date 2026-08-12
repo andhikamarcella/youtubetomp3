@@ -1,4 +1,4 @@
-# Install YTConv 1.7.5
+# Install YTConv 1.7.6
 
 This short guide helps you choose the correct setup path. If the terminal is new to you, run one block at a time and read its message before continuing.
 
@@ -18,14 +18,14 @@ The npm CLI needs Node.js 22.14.0+ and npm 10+. iSH uses the Python frontend and
 ## Install from npm
 
 ```bash
-npm install --global ytconv@1.7.5
+npm install --global ytconv@1.7.6
 ytconv --version
 ytconv repair
 ytconv doctor
 ytconv self-test
 ```
 
-The expected version is `1.7.5`. `repair` prepares missing media engines. `doctor` checks the installation and explains any remaining problem.
+The expected version is `1.7.6`. `repair` prepares missing media engines. `doctor` checks the installation and explains any remaining problem.
 
 ## First examples
 
@@ -54,20 +54,20 @@ ytconv repair
 ## Development installation
 
 ```bash
-git clone --branch release/ytconv-1.7.5 https://github.com/andhikamarcella/YTConv.git
+git clone --branch release/ytconv-1.7.6 https://github.com/andhikamarcella/YTConv.git
 cd YTConv/cli
 npm ci --ignore-scripts
 npm link
 ytconv --help
 ```
 
-This branch is the canonical source for the npm 1.7.5 documentation.
+This branch is the canonical source for the npm 1.7.6 documentation.
 
 ## Inspect the package source
 
 ```bash
-npm view ytconv@1.7.5 version repository dist.integrity
-npm pack ytconv@1.7.5 --dry-run
+npm view ytconv@1.7.6 version repository dist.integrity
+npm pack ytconv@1.7.6 --dry-run
 ```
 
 For native files, compare `SHA256SUMS.txt` and inspect the npm/GitHub provenance before running an installer.

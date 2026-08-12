@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.7.5
+# Troubleshooting YTConv 1.7.6
 
 Start with this safe sequence:
 
@@ -16,7 +16,7 @@ Do not share cookies, tokens, private URLs, proxy credentials, or browser profil
 
 ## YouTube finishes but no file appears
 
-YTConv 1.7.5 no longer accepts exit code zero as proof of success. It verifies the output path against the filesystem. If yt-dlp exits without creating or resolving a real file, YTConv returns an error.
+YTConv 1.7.6 no longer accepts exit code zero as proof of success. It verifies the output path against the filesystem. If yt-dlp exits without creating or resolving a real file, YTConv returns an error.
 
 First update and repair:
 
@@ -50,7 +50,7 @@ Expected behavior:
 
 ## The URL was already recorded in the archive
 
-YTConv enables per-profile archives to avoid accidental duplicate playlist downloads. If the archive contains the URL but the previous output file was deleted, YTConv 1.7.5 automatically retries that item once without the archive.
+YTConv enables per-profile archives to avoid accidental duplicate playlist downloads. In 1.7.6, automatic archive and output identities include the current requested quality, so 1080p cannot block a later 2160p request. If the matching archive contains the URL but the previous output file was deleted, YTConv automatically retries that item once without the archive.
 
 The terminal prints:
 
@@ -64,11 +64,30 @@ To bypass archive behavior manually:
 ytconv download "URL" --no-archive
 ```
 
+To clear all YTConv-managed archives and the yt-dlp extractor cache safely:
+
+```sh
+ytconv clean
+```
+
+This does not delete downloaded media, configuration, profiles, history, or a custom archive supplied with `--archive FILE`.
+
 Do not delete archive files during a running parallel batch. Use `--no-archive` for a one-time recovery instead.
+
+## 2160p returns the previous 1080p file
+
+Update to 1.7.6 or newer, run `ytconv clean` once, and request native source quality without `--upscale`:
+
+```sh
+ytconv download "YOUTUBE_URL" --mode video --video-format mp4 --resolution 1080
+ytconv download "YOUTUBE_URL" --mode video --video-format mp4 --resolution 2160
+```
+
+The two outputs have distinct quality-aware names and automatic archives. For sources that publish a native 2160p VP9/AV1 stream, the exact 2160p stream now outranks the lower AVC fallback. Use `ytconv formats "YOUTUBE_URL"` if the provider does not expose 2160p for that particular source.
 
 ## YouTube Music downloads video instead of MP3
 
-Use version 1.7.5 or newer and keep mode on AUTO:
+Use version 1.7.6 or newer and keep mode on AUTO:
 
 ```sh
 ytconv download "https://music.youtube.com/watch?v=MUSIC_ID"
@@ -106,7 +125,7 @@ ytconv download "URL" --no-config --mode video --video-format mp4
 
 ## MP4 merge or codec error
 
-YTConv 1.7.5 first requests AVC/H.264 video and M4A audio because those streams are directly compatible with MP4. When YouTube does not offer that combination, YTConv uses a broader stream fallback and FFmpeg recoding.
+YTConv 1.7.6 first requests AVC/H.264 video and M4A audio because those streams are directly compatible with MP4. When YouTube does not offer that combination, YTConv uses a broader stream fallback and FFmpeg recoding.
 
 Repair FFmpeg:
 
@@ -189,7 +208,7 @@ ytconv doctor
 ytconv download "URL" --mode video --resolution 240 --concurrent-fragments 1
 ```
 
-If a command using `--start` or `--end` fails while a normal full download works, the network or proxy may be blocking FFmpeg's direct request for the selected stream. Retry without clipping, disable the proxy/VPN, or test from another network. YTConv 1.7.5 only recommends browser login when the provider returns an authentication-related response.
+If a command using `--start` or `--end` fails while a normal full download works, the network or proxy may be blocking FFmpeg's direct request for the selected stream. Retry without clipping, disable the proxy/VPN, or test from another network. YTConv 1.7.6 only recommends browser login when the provider returns an authentication-related response.
 
 ## `ytconv: command not found`
 

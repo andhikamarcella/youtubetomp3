@@ -1,4 +1,4 @@
-# YTConv 1.7.5 Command Reference
+# YTConv 1.7.6 Command Reference
 
 ## General syntax
 
@@ -23,7 +23,7 @@ formats URL                  List source formats
 subtitles URL                List available subtitle tracks
 doctor                       Diagnose the installation
 repair                       Repair yt-dlp, gallery-dl, and FFmpeg
-clean                        Clear update and old error caches
+clean                        Clear caches and YTConv-managed download archives
 update                       Update the active npm channel
 examples                     Show common examples
 quickstart                   Show a five-step beginner setup
@@ -203,7 +203,7 @@ For MP4, YTConv prefers AVC/H.264 video plus M4A audio. If those streams are una
 
 ## Verified output
 
-YTConv 1.7.5 verifies that the final path exists and matches the requested mode:
+YTConv 1.7.6 verifies that the final path exists and matches the requested mode:
 
 ```text
 video mode       a real video file such as MP4, MKV, or WebM
@@ -225,7 +225,7 @@ A thumbnail, metadata JSON file, archive text file, log, or partial file does no
 --list-subs
 ```
 
-YTConv 1.7.5 keeps subtitles disabled by default unless explicitly requested. Missing subtitles should not fail the main media download.
+YTConv 1.7.6 keeps subtitles disabled by default unless explicitly requested. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -238,7 +238,7 @@ YTConv 1.7.5 keeps subtitles disabled by default unless explicitly requested. Mi
 --sponsorblock-off
 ```
 
-YTConv 1.7.5 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.7.6 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -298,9 +298,9 @@ The `batch` command automatically enables continue-on-error. The final exit code
 --no-archive
 ```
 
-Resume is enabled by default. YTConv creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
+Resume is enabled by default. YTConv creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by mode, format, and requested quality. Changing 1080p to 2160p therefore uses a different automatic archive. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
-If an archived URL has no real output file, YTConv 1.7.5 retries that item once without the archive. A second zero-file result fails instead of reporting success.
+If an archived URL has no real output file, YTConv 1.7.6 retries that item once without the archive. A second zero-file result fails instead of reporting success.
 
 ## Network and performance
 
@@ -325,7 +325,7 @@ Proxy credentials can be visible in terminal history. Do not share them in logs 
 --open-output
 ```
 
-Output templates must be relative, must not contain `..`, and must include `%(ext)s`.
+Output templates must be relative, must not contain `..`, and must include `%(ext)s`. The default template includes a `ytconv-MODE-FORMAT-QUALITY` suffix so different requested qualities never resolve to the same filename. A custom template is used exactly as supplied.
 
 ## Official social-media login
 
@@ -381,7 +381,9 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.7.5 updates through:
+`ytconv clean` / `--clear-cache` removes update/error caches, YTConv-managed download archives, and the yt-dlp extractor cache. It preserves downloaded media, configuration, profiles, history, and custom files passed with `--archive FILE`.
+
+Stable 1.7.6 updates through:
 
 ```sh
 npm install -g ytconv@latest --force

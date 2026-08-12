@@ -1,4 +1,4 @@
-# YTConv 1.7.5 Wiki
+# YTConv 1.7.6 Wiki
 
 YTConv is a cross-platform terminal downloader and converter for media you own or are authorized to save.
 
@@ -14,7 +14,7 @@ YTConv is a cross-platform terminal downloader and converter for media you own o
 Quick verification:
 
 ```bash
-npm install -g ytconv@1.7.5
+npm install -g ytconv@1.7.6
 ytconv --version
 ytconv repair
 ytconv doctor

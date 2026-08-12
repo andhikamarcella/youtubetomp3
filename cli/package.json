@@ -1,6 +1,6 @@
 {
   "name": "ytconv",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "description": "Secure cross-platform social-media downloader and converter with repeat-safe formats, optional donations, browser recovery, diagnostics, and verified release provenance.",
   "type": "module",
   "main": "./src/index.js",
@@ -156,42 +156,42 @@
     }
   ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/YTConv.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.5/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.6/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/YTConv/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.5/cli/docs",
-    "installation": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/INSTALLATION.md",
-    "commands": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/COMMANDS.md",
-    "configuration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/CONFIGURATION.md",
-    "authentication": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/AUTHENTICATION.md",
-    "cookies": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/COOKIES.md",
-    "formats": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/FORMAT-GUIDE.md",
-    "upscaling": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/UPSCALING.md",
-    "safety": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/SAFETY-LEGAL.md",
-    "troubleshooting": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/TROUBLESHOOTING.md",
-    "packages": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/PACKAGES.md",
-    "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/SECURITY.md",
-    "helpCenter": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/HELP-CENTER.md",
-    "donate": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/DONATE.md",
-    "migration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/MIGRATION-1.7.5.md"
+    "url": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.6/cli/docs",
+    "installation": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/INSTALLATION.md",
+    "commands": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/COMMANDS.md",
+    "configuration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/CONFIGURATION.md",
+    "authentication": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/AUTHENTICATION.md",
+    "cookies": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/COOKIES.md",
+    "formats": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/FORMAT-GUIDE.md",
+    "upscaling": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/UPSCALING.md",
+    "safety": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/SAFETY-LEGAL.md",
+    "troubleshooting": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/TROUBLESHOOTING.md",
+    "packages": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/SECURITY.md",
+    "helpCenter": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/HELP-CENTER.md",
+    "donate": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/DONATE.md",
+    "migration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/MIGRATION-1.7.6.md"
   },
   "releaseDate": "2026-08-12",
-  "releaseNotes": "YTConv 1.7.5 refreshes the complete npm package manifest and synchronizes version-pinned documentation, installer, native package, iSH, security, and release metadata while preserving the tested 1.7.4 archive-recovery, authentication-classification, and Chromium-discovery fixes.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/CHANGELOG.md",
+  "releaseNotes": "YTConv 1.7.6 fixes native 2160p selection, separates automatic archives and output names by requested quality, makes clean remove managed archives and yt-dlp cache, restores operating-system-aware interactive colors, and adds repeated 1080p/2160p/720p source-height verification.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
-    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.5.tgz",
-    "release": "https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.5",
-    "sha256Url": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.5/SHA256SUMS.txt",
-    "sbomUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.5/ytconv-1.7.5.cdx.json"
+    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.6.tgz",
+    "release": "https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.6",
+    "sha256Url": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.6/SHA256SUMS.txt",
+    "sbomUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.6/ytconv-1.7.6.cdx.json"
   },
   "securityCapabilities": {
     "network": "Only user-requested media/provider URLs, npm metadata checks, allowlisted HTTPS engine release endpoints, and explicit browser handoff to the fixed Ko-fi or Saweria donation page.",

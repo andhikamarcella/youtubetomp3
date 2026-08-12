@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { terminalLayout } from '../src/ui.js';
 import {
+  enableInteractiveColors,
+  interactiveChildEnvironment,
   monochromeChildEnvironment,
   platformAccent,
   sanitizeTerminalText,
@@ -38,6 +40,23 @@ test('interactive UI accent follows the operating system and Linux family', () =
   assert.equal(platformAccent({ platform: 'linux', distro: { id: 'cachyos', idLike: 'arch' } }), 'cyan');
   assert.equal(platformAccent({ platform: 'linux', distro: { id: 'ubuntu', idLike: 'debian' } }), 'green');
   assert.equal(platformAccent({ platform: 'linux', distro: { id: 'fedora' } }), 'blue');
+});
+
+test('interactive launches preserve adaptive color unless the user opts out', () => {
+  const colored = interactiveChildEnvironment({ PATH: '/bin', TERM: 'xterm-256color', GH_TOKEN: 'secret' });
+  assert.equal(colored.PATH, '/bin');
+  assert.equal(colored.GH_TOKEN, undefined);
+  assert.equal(colored.NO_COLOR, undefined);
+  assert.equal(colored.FORCE_COLOR, '1');
+
+  const plain = interactiveChildEnvironment({ PATH: '/bin', TERM: 'xterm-256color' }, { noColor: true });
+  assert.equal(plain.NO_COLOR, '1');
+  assert.equal(plain.FORCE_COLOR, '0');
+
+  const env = {};
+  assert.equal(enableInteractiveColors({ env, stream: { isTTY: true } }), true);
+  assert.equal(env.FORCE_COLOR, '1');
+  assert.equal(enableInteractiveColors({ env: { NO_COLOR: '' }, stream: { isTTY: true } }), false);
 });
 
 test('untrusted terminal text cannot inject ANSI or bidirectional controls', () => {

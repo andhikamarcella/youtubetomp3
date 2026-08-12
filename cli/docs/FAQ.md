@@ -34,7 +34,7 @@ Use the issue tracker in the canonical repository and include sanitized diagnost
 
 ## Why did a `blob/HEAD/cli/docs/...` link return 404?
 
-The repository default branch hosts the web application, while the maintained CLI lives on versioned release branches. YTConv 1.7.5 restores a compatibility docs path on the default branch and prints release-pinned documentation URLs through `ytconv docs`.
+The repository default branch hosts the web application, while the maintained CLI lives on versioned release branches. YTConv 1.7.6 restores a compatibility docs path on the default branch and prints release-pinned documentation URLs through `ytconv docs`.
 
 ## How do I find documentation from the terminal?
 

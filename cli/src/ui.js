@@ -9,10 +9,11 @@ import {
   cookieSourcesForPlatform,
   resolveCookieConfigs,
 } from './cookies.js';
+import { managedArchivePaths } from './defaults.js';
 import { inspectDependencies, prepareTermuxDependencies } from './dependencies.js';
 import { DONATION_PROVIDERS, openDonationPage } from './donations.js';
 import { disposePreparedCookieConfig, prepareManagedCookieConfig } from './managed-browser.js';
-import { downloadMedia, inspectMedia } from './media-controller.js';
+import { downloadMedia, effectiveMediaMode, inspectMedia } from './media-controller.js';
 import { progressPhase, progressSummary, spinnerFrame } from './progress-ui.js';
 import {
   beginSocialLoginHandoff,
@@ -153,14 +154,14 @@ function Logo({ layout, account, accentColor }) {
   );
 }
 
-function MediaCard({ media, panelWidth }) {
+function MediaCard({ media, panelWidth, accentColor }) {
   if (!media) return null;
   const details = [media.platform, media.uploader, durationText(media.duration), media.engine]
     .filter(Boolean).join(' · ');
   return h(
     Box,
-    { width: panelWidth, borderStyle: 'round', paddingX: 1, flexDirection: 'column' },
-    h(Text, { bold: true, wrap: 'truncate-end' }, safeText(media.title || 'Media')),
+    { width: panelWidth, borderStyle: 'round', borderColor: accentColor, paddingX: 1, flexDirection: 'column' },
+    h(Text, { bold: true, color: accentColor, wrap: 'truncate-end' }, safeText(media.title || 'Media')),
     details ? h(Text, { dimColor: true, wrap: 'truncate-end' }, safeText(details)) : null,
   );
 }
@@ -234,7 +235,7 @@ function DonationScreen({ panelWidth, result, message }) {
   );
 }
 
-function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
+function WorkingScreen({ stage, media, progress, statusText, panelWidth, accentColor }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setTick((current) => current + 1), 90);
@@ -248,12 +249,12 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', alignItems: 'center', marginTop: 1 },
-    h(MediaCard, { media, panelWidth }),
+    h(MediaCard, { media, panelWidth, accentColor }),
     h(
       Box,
-      { width: panelWidth, marginTop: 1, borderStyle: 'round', paddingX: 1, flexDirection: 'column', alignItems: 'center' },
-      h(Text, { bold: true }, `${spinnerFrame(tick)} ${phase}`),
-      h(Text, { bold: true }, progressBar(percent, width)),
+      { width: panelWidth, marginTop: 1, borderStyle: 'round', borderColor: accentColor, paddingX: 1, flexDirection: 'column', alignItems: 'center' },
+      h(Text, { bold: true, color: accentColor }, `${spinnerFrame(tick)} ${phase}`),
+      h(Text, { bold: true, color: accentColor }, progressBar(percent, width)),
       h(Text, { dimColor: true }, progressSummary(progress)),
       h(Text, { wrap: 'truncate-end' }, safeText(statusText || (
         stage === 'probing'
@@ -268,13 +269,13 @@ function WorkingScreen({ stage, media, progress, statusText, panelWidth }) {
   );
 }
 
-function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMessage }) {
+function DoneScreen({ media, panelWidth, outputDirectory, outputPath, actionMessage, accentColor }) {
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', alignItems: 'center', marginTop: 1 },
-    h(MediaCard, { media, panelWidth }),
-    h(Box, { width: panelWidth, marginTop: 1, borderStyle: 'double', paddingX: 1, flexDirection: 'column' },
-      h(Text, { bold: true }, '✓ download and conversion complete'),
+    h(MediaCard, { media, panelWidth, accentColor }),
+    h(Box, { width: panelWidth, marginTop: 1, borderStyle: 'double', borderColor: accentColor, paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true, color: accentColor }, '✓ download and conversion complete'),
       h(Text, { dimColor: true, wrap: 'truncate-end' }, safeText(outputPath || outputDirectory))),
     actionMessage ? h(Text, null, safeText(actionMessage)) : null,
     h(Text, { dimColor: true }, 'O open folder · F open file · C copy path · R another URL · Q exit'),
@@ -285,7 +286,7 @@ function ErrorScreen({ error, media, panelWidth, cookieSource, actionMessage, ur
   return h(
     Box,
     { width: panelWidth, flexDirection: 'column', alignItems: 'center', marginTop: 1 },
-    h(MediaCard, { media, panelWidth }),
+    h(MediaCard, { media, panelWidth, accentColor: 'red' }),
     h(Box, { width: panelWidth, marginTop: 1, borderStyle: 'double', borderColor: 'red', paddingX: 1, flexDirection: 'column' },
       h(Text, { bold: true, color: 'red' }, '× download failed'),
       h(Text, { color: 'red', wrap: 'wrap' }, safeText(error)),
@@ -392,6 +393,9 @@ function App({
   initialUpscaleHeight = 0,
   initialSubtitles = false,
   initialWriteThumbnail = false,
+  archiveMode = 'off',
+  initialArchivePath = '',
+  initialGalleryArchivePath = '',
 }) {
   const { exit } = useApp();
   const controllerRef = useRef(null);
@@ -498,8 +502,26 @@ function App({
     await appendSessionLog(`START ${value} mode=${mode}`);
 
     let cookieConfigs;
+    let archives;
     try {
       await fs.mkdir(outputDirectory, { recursive: true });
+      if (archiveMode === 'managed') {
+        archives = managedArchivePaths({
+          mode: effectiveMediaMode({ url: value, mode, platformHint }),
+          preset: 'balanced',
+          videoFormat,
+          resolution,
+          audioFormat,
+          audioQuality,
+          imageFormat,
+        });
+        await fs.mkdir(archives.archiveDirectory, { recursive: true });
+      } else {
+        archives = {
+          archivePath: archiveMode === 'custom' ? initialArchivePath : '',
+          galleryArchivePath: archiveMode === 'custom' ? initialGalleryArchivePath : '',
+        };
+      }
       cookieConfigs = cookieConfigsOverride
         || await resolveCookieConfigs({ source: cookieSource, outputDirectory, url: value });
     } catch (caught) {
@@ -560,6 +582,8 @@ function App({
               ffprobePath: dependencies.ffprobe?.path,
               javascriptRuntime: dependencies.javaScriptRuntimes?.find((runtime) => runtime.supported),
               upscaleHeight,
+              archivePath: archives.archivePath,
+              galleryArchivePath: archives.galleryArchivePath,
             },
             onProgress: setProgress,
             onLog: (line, isError) => {
@@ -788,10 +812,10 @@ function App({
     upscaleHeight,
   });
   else if (stage === 'probing' || stage === 'downloading') content = h(WorkingScreen, {
-    stage, media, progress, statusText, panelWidth: layout.panelWidth,
+    stage, media, progress, statusText, panelWidth: layout.panelWidth, accentColor,
   });
   else if (stage === 'done') content = h(DoneScreen, {
-    media, panelWidth: layout.panelWidth, outputDirectory, outputPath, actionMessage,
+    media, panelWidth: layout.panelWidth, outputDirectory, outputPath, actionMessage, accentColor,
   });
   else if (stage === 'login' && loginHandoff) content = h(LoginScreen, {
     handoff: loginHandoff, panelWidth: layout.panelWidth, actionMessage,
@@ -848,6 +872,9 @@ export async function runApp({
   initialUpscaleHeight = 0,
   initialSubtitles = false,
   initialWriteThumbnail = false,
+  archiveMode = 'off',
+  initialArchivePath = '',
+  initialGalleryArchivePath = '',
 } = {}) {
   process.title = `YTConv ${CLI_VERSION}`;
   process.stdout.write('Preparing YTConv...\r');
@@ -885,6 +912,9 @@ export async function runApp({
       initialUpscaleHeight,
       initialSubtitles,
       initialWriteThumbnail,
+      archiveMode,
+      initialArchivePath,
+      initialGalleryArchivePath,
     }), { exitOnCtrlC: false });
     await instance.waitUntilExit();
   } finally {

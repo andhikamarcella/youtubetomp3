@@ -69,7 +69,7 @@ test('CLI wrapper no longer blocks public commands behind the cloud account serv
     env: { ...process.env, HOME: homeDirectory, USERPROFILE: homeDirectory, YTCONV_NO_UPDATE_CHECK: '1' },
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), '1.7.5');
+  assert.equal(result.stdout.trim(), '1.7.6');
 });
 
 test('local fallback profile validates without a cloud request', async (t) => {
@@ -78,7 +78,7 @@ test('local fallback profile validates without a cloud request', async (t) => {
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async () => { throw new Error('cloud request must not run'); };
   const result = await loginLocally({
-    version: '1.7.5',
+    version: '1.7.6',
     homeDirectory,
     localName: 'Local Tester',
   });
@@ -95,7 +95,7 @@ test('login falls back locally when the cloud endpoint is not deployed', async (
   t.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async () => new Response('Not Found', { status: 404 });
   const result = await login({
-    version: '1.7.5',
+    version: '1.7.6',
     homeDirectory,
     localName: 'Fallback Tester',
   });

@@ -61,8 +61,13 @@ function heightFilter(resolution) {
   return resolution === 'best' ? '' : `[height<=${resolution}]`;
 }
 
+function exactHeightFilter(resolution) {
+  return resolution === 'best' ? '' : `[height=${resolution}]`;
+}
+
 export function formatVideoSelector(resolution = 'best', container = 'auto') {
   const limit = heightFilter(resolution);
+  const exact = exactHeightFilter(resolution);
   const separateAny = `bv${limit}+ba`;
   const broadSeparateAny = `bv*${limit}+ba`;
   const combinedAny = `b${limit}`;
@@ -72,9 +77,17 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
   // unbounded source instead of failing with "Requested format is not
   // available" when height metadata is absent.
   const metadataFreeFallbacks = limit ? ['bv+ba', 'bv*+ba', 'b'] : [];
+  const exactAny = exact ? [`bv${exact}+ba`, `bv*${exact}+ba`, `b${exact}`] : [];
 
   if (container === 'mp4' || container === 'auto') {
     return [
+      ...(exact ? [
+        `bv${exact}[ext=mp4][vcodec^=avc1]+ba[ext=m4a]`,
+        `b${exact}[ext=mp4][vcodec^=avc1]`,
+        `bv${exact}[ext=mp4]+ba[ext=m4a]`,
+        `b${exact}[ext=mp4]`,
+      ] : []),
+      ...exactAny,
       `bv${limit}[ext=mp4][vcodec^=avc1]+ba[ext=m4a]`,
       `b${limit}[ext=mp4][vcodec^=avc1]`,
       `bv${limit}[ext=mp4]+ba[ext=m4a]`,
@@ -88,6 +101,11 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
 
   if (container === 'webm') {
     return [
+      ...(exact ? [
+        `bv${exact}[ext=webm]+ba[ext=webm]`,
+        `b${exact}[ext=webm]`,
+      ] : []),
+      ...exactAny,
       `bv${limit}[ext=webm]+ba[ext=webm]`,
       `b${limit}[ext=webm]`,
       separateAny,
@@ -97,7 +115,7 @@ export function formatVideoSelector(resolution = 'best', container = 'auto') {
     ].join('/');
   }
 
-  return [separateAny, broadSeparateAny, combinedAny, ...metadataFreeFallbacks].join('/');
+  return [...exactAny, separateAny, broadSeparateAny, combinedAny, ...metadataFreeFallbacks].join('/');
 }
 
 export function videoContainerArgs(container = 'auto') {

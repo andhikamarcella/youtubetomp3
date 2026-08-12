@@ -292,6 +292,9 @@ async function main() {
       initialUpscaleHeight: options.upscaleHeight,
       initialSubtitles: options.subtitles,
       initialWriteThumbnail: options.writeThumbnail,
+      archiveMode: options.archiveManaged ? 'managed' : options.archivePath ? 'custom' : 'off',
+      initialArchivePath: options.archivePath,
+      initialGalleryArchivePath: options.galleryArchivePath,
     });
     return EXIT_CODES.SUCCESS;
   } catch (error) {
