@@ -10,6 +10,7 @@ import { downloadMedia } from '../src/media-controller.js';
 const VIDEO_FORMATS = ['mp4', 'mkv', 'webm'];
 const AUDIO_FORMATS = ['mp3', 'm4a', 'aac', 'opus', 'vorbis', 'flac', 'alac', 'wav'];
 const EXPECTED_EXTENSIONS = Object.freeze({ aac: ['aac', 'm4a'], vorbis: ['ogg', 'oga'], alac: ['m4a'] });
+const REPEAT_COUNT = Math.max(2, Math.min(10, Number.parseInt(process.env.YTCONV_REPEAT_COUNT || '2', 10) || 2));
 
 async function requireExecutable(names) {
   const value = await resolveCommandPath(names);
@@ -52,7 +53,7 @@ async function serveFile(file) {
   };
 }
 
-async function verifyTwice({ runner, ffmpeg, url, root, mode, format, upscaleHeight = 0 }) {
+async function verifyRepeated({ runner, ffmpeg, url, root, mode, format, upscaleHeight = 0 }) {
   const outputDirectory = path.join(root, `${mode}-${format}${upscaleHeight ? `-upscale-${upscaleHeight}` : ''}`);
   await fs.mkdir(outputDirectory, { recursive: true });
   const options = {
@@ -81,7 +82,7 @@ async function verifyTwice({ runner, ffmpeg, url, root, mode, format, upscaleHei
   };
 
   let outputPath = '';
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  for (let attempt = 1; attempt <= REPEAT_COUNT; attempt += 1) {
     const result = await downloadMedia({ ytDlp: runner, options });
     if (result.fileCount < 1 || !result.outputPath) throw new Error(`${mode}/${format} attempt ${attempt} produced no file.`);
     const stats = await fs.stat(result.outputPath);
@@ -93,7 +94,7 @@ async function verifyTwice({ runner, ffmpeg, url, root, mode, format, upscaleHei
     }
     outputPath = result.outputPath;
   }
-  console.log(`OK ${mode.padEnd(5)} ${format.padEnd(7)} first + repeat conversion${upscaleHeight ? ` + ${upscaleHeight}p` : ''}`);
+  console.log(`OK ${mode.padEnd(5)} ${format.padEnd(7)} ${REPEAT_COUNT} repeat conversions${upscaleHeight ? ` + ${upscaleHeight}p` : ''}`);
   return outputPath;
 }
 
@@ -101,22 +102,27 @@ const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-format-matrix-'));
 const fixture = path.join(root, 'sample.mp4');
 const ffmpeg = await requireExecutable(process.platform === 'win32' ? ['ffmpeg.exe', 'ffmpeg'] : ['ffmpeg']);
 const ffprobe = await requireExecutable(process.platform === 'win32' ? ['ffprobe.exe', 'ffprobe'] : ['ffprobe']);
-const python = await requireExecutable(process.platform === 'win32' ? ['python.exe', 'python3.exe'] : ['python3', 'python']);
+const ytDlpOverride = String(process.env.YTCONV_TEST_YTDLP || '').trim();
+const python = ytDlpOverride
+  ? ''
+  : await requireExecutable(process.platform === 'win32' ? ['python.exe', 'python3.exe'] : ['python3', 'python']);
 createFixture(ffmpeg, fixture);
 const server = await serveFile(fixture);
-const runner = { command: python, prefixArgs: ['-m', 'yt_dlp'], displayPath: `${python} -m yt_dlp` };
+const runner = ytDlpOverride
+  ? { command: ytDlpOverride, prefixArgs: [], displayPath: ytDlpOverride }
+  : { command: python, prefixArgs: ['-m', 'yt_dlp'], displayPath: `${python} -m yt_dlp` };
 
 try {
-  for (const format of VIDEO_FORMATS) await verifyTwice({ runner, ffmpeg, url: server.url, root, mode: 'video', format });
-  for (const format of AUDIO_FORMATS) await verifyTwice({ runner, ffmpeg, url: server.url, root, mode: 'audio', format });
-  const upscaled = await verifyTwice({ runner, ffmpeg, url: server.url, root, mode: 'video', format: 'mp4', upscaleHeight: 2160 });
+  for (const format of VIDEO_FORMATS) await verifyRepeated({ runner, ffmpeg, url: server.url, root, mode: 'video', format });
+  for (const format of AUDIO_FORMATS) await verifyRepeated({ runner, ffmpeg, url: server.url, root, mode: 'audio', format });
+  const upscaled = await verifyRepeated({ runner, ffmpeg, url: server.url, root, mode: 'video', format: 'mp4', upscaleHeight: 2160 });
   const probe = spawnSync(ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', upscaled], {
     encoding: 'utf8', windowsHide: true,
   });
   if (probe.status !== 0) throw new Error(probe.stderr || 'ffprobe could not validate the 4K output.');
   const dimensions = JSON.parse(probe.stdout).streams?.[0];
   if (dimensions?.width !== 3840 || dimensions?.height !== 2160) throw new Error(`Unexpected 4K dimensions: ${JSON.stringify(dimensions)}`);
-  console.log(`Verified ${VIDEO_FORMATS.length + AUDIO_FORMATS.length} formats twice.`);
+  console.log(`Verified ${VIDEO_FORMATS.length + AUDIO_FORMATS.length} formats ${REPEAT_COUNT} times each.`);
 } finally {
   await server.close();
   await fs.rm(root, { recursive: true, force: true });

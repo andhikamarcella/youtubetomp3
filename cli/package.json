@@ -1,7 +1,7 @@
 {
   "name": "ytconv",
-  "version": "1.7.2",
-  "description": "Secure cross-platform social-media downloader and converter with repeat-safe formats, extraction tools, optional 4K upscaling, browser recovery, diagnostics, and verified release provenance.",
+  "version": "1.7.3",
+  "description": "Secure cross-platform social-media downloader and converter with repeat-safe formats, optional donations, browser recovery, diagnostics, and verified release provenance.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./types/index.d.ts",
@@ -145,45 +145,56 @@
   "maintainers": [
     "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>"
   ],
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://ko-fi.com/cellauu"
+    },
+    {
+      "type": "individual",
+      "url": "https://saweria.co/dhikamarcella"
+    }
+  ],
   "license": "ISC",
-  "licenseUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/LICENSE",
+  "licenseUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/LICENSE",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andhikamarcella/YTConv.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.2/cli#readme",
+  "homepage": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.3/cli#readme",
   "bugs": {
     "url": "https://github.com/andhikamarcella/YTConv/issues"
   },
   "documentation": {
-    "url": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.2/cli/docs",
-    "installation": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/INSTALLATION.md",
-    "commands": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/COMMANDS.md",
-    "configuration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/CONFIGURATION.md",
-    "authentication": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/AUTHENTICATION.md",
-    "cookies": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/COOKIES.md",
-    "formats": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/FORMAT-GUIDE.md",
-    "upscaling": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/UPSCALING.md",
-    "safety": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/SAFETY-LEGAL.md",
-    "troubleshooting": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/TROUBLESHOOTING.md",
-    "packages": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/PACKAGES.md",
-    "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/SECURITY.md",
-    "helpCenter": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/HELP-CENTER.md",
-    "migration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/MIGRATION-1.7.2.md"
+    "url": "https://github.com/andhikamarcella/YTConv/tree/release/ytconv-1.7.3/cli/docs",
+    "installation": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/INSTALLATION.md",
+    "commands": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/COMMANDS.md",
+    "configuration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/CONFIGURATION.md",
+    "authentication": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/AUTHENTICATION.md",
+    "cookies": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/COOKIES.md",
+    "formats": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/FORMAT-GUIDE.md",
+    "upscaling": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/UPSCALING.md",
+    "safety": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/SAFETY-LEGAL.md",
+    "troubleshooting": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/TROUBLESHOOTING.md",
+    "packages": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/PACKAGES.md",
+    "security": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/SECURITY.md",
+    "helpCenter": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/HELP-CENTER.md",
+    "donate": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/DONATE.md",
+    "migration": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/MIGRATION-1.7.3.md"
   },
-  "releaseDate": "2026-08-10",
-  "releaseNotes": "YTConv 1.7.2 fixes metadata-free direct and social video fallbacks, adds repeat-tested audio/video conversion, optional 720p-to-4K FFmpeg upscaling, transcript and metadata extraction commands, supported Deno runtime selection, platform-aware terminal accents, safer auto-update relaunching, and beginner cookies, distro, iSH, format, and support guides.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/CHANGELOG.md",
+  "releaseDate": "2026-08-12",
+  "releaseNotes": "YTConv 1.7.3 adds an optional Donate — just pay what you can flow for Ko-fi and Saweria, five-second return to the CLI home screen, browser and clipboard fallback, npm funding metadata, matching npm/GitHub/Pages/Wiki documentation, and ten-repeat public no-cookie plus deterministic audio/video release checks.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/CHANGELOG.md",
   "installer": {
     "type": "Multi-format release",
-    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.2.tgz",
-    "release": "https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.2",
-    "sha256Url": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.2/SHA256SUMS.txt",
-    "sbomUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.2/ytconv-1.7.2.cdx.json"
+    "npm": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.3.tgz",
+    "release": "https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.3",
+    "sha256Url": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.3/SHA256SUMS.txt",
+    "sbomUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.3/ytconv-1.7.3.cdx.json"
   },
   "securityCapabilities": {
-    "network": "Only user-requested media/provider URLs, npm metadata checks, and allowlisted HTTPS engine release endpoints.",
+    "network": "Only user-requested media/provider URLs, npm metadata checks, allowlisted HTTPS engine release endpoints, and explicit browser handoff to the fixed Ko-fi or Saweria donation page.",
     "childProcesses": "Executable plus argument arrays only; shell execution is disabled.",
     "filesystem": "User-selected output, YTConv configuration/cache, verified engine storage, and short-lived private cookie exports.",
     "environment": "Allowlisted configuration reads; secrets are stripped before child processes.",

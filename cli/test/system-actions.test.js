@@ -4,6 +4,7 @@ import {
   androidDirectoryUri,
   fileOpenAttempts,
   outputOpenAttempts,
+  webOpenAttempts,
 } from '../src/system-actions.js';
 
 test('Windows output action selects the downloaded file before folder fallback', () => {
@@ -49,4 +50,14 @@ test('file open actions use platform default application', () => {
     fileOpenAttempts({ filePath: '/sdcard/Download/video.mp4', platform: 'android', termux: true })[0].command,
     'termux-open',
   );
+});
+
+test('donation browser actions stay shell-free and platform specific', () => {
+  const url = 'https://ko-fi.com/cellauu';
+  assert.deepEqual(
+    webOpenAttempts({ url, platform: 'win32', termux: false })[0],
+    { command: 'rundll32.exe', args: ['url.dll,FileProtocolHandler', url], label: 'Windows browser' },
+  );
+  assert.deepEqual(webOpenAttempts({ url, platform: 'linux', termux: false })[0].args, [url]);
+  assert.equal(webOpenAttempts({ url, platform: 'android', termux: true })[0].command, 'termux-open-url');
 });

@@ -18,7 +18,13 @@ const TEST_URLS = (process.env.YTCONV_TEST_YOUTUBE_URLS
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+const REPEAT_COUNT = Math.max(2, Math.min(10, Number.parseInt(process.env.YTCONV_REPEAT_COUNT || '2', 10) || 2));
 const rootDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-real-youtube-'));
+const ytDlpOverride = String(process.env.YTCONV_TEST_YTDLP || '').trim();
+const ytDlpCommand = ytDlpOverride || process.env.PYTHON || 'python3';
+const ytDlpPrefixArgs = ytDlpOverride
+  ? (process.env.YTCONV_TEST_SYSTEM_CERTS === '1' ? ['--compat-options', 'no-certifi'] : [])
+  : ['-m', 'yt_dlp'];
 
 function executable(name) {
   const command = process.platform === 'win32' ? 'where' : 'which';
@@ -61,19 +67,19 @@ function verifyStream(ffmpegPath, outputPath, type) {
   );
 }
 
-async function verifyCandidate({ url, index, pass, ffmpegPath }) {
-  const outputDirectory = path.join(rootDirectory, `candidate-${index + 1}-pass-${pass}`);
+async function verifyCandidate({ url, index, pass, mode, ffmpegPath }) {
+  const outputDirectory = path.join(rootDirectory, `candidate-${index + 1}-${mode}-pass-${pass}`);
   await fs.mkdir(outputDirectory, { recursive: true });
 
   const result = await downloadMedia({
     ytDlp: {
-      command: process.env.PYTHON || 'python3',
-      prefixArgs: ['-m', 'yt_dlp'],
-      displayPath: 'python3 -m yt_dlp',
+      command: ytDlpCommand,
+      prefixArgs: ytDlpPrefixArgs,
+      displayPath: [ytDlpCommand, ...ytDlpPrefixArgs].join(' '),
     },
     options: {
       url,
-      mode: 'video',
+      mode,
       platformHint: 'auto',
       resolution: '240',
       videoFormat: 'auto',
@@ -106,13 +112,13 @@ async function verifyCandidate({ url, index, pass, ffmpegPath }) {
 
   assert.equal(result.fileCount >= 1, true, 'YTConv did not verify a real output file.');
   assert.ok(result.outputPath, 'YTConv did not return an output path.');
-  assert.equal(path.extname(result.outputPath).toLowerCase(), '.mp4');
+  assert.equal(path.extname(result.outputPath).toLowerCase(), mode === 'video' ? '.mp4' : '.mp3');
 
   const stats = await fs.stat(result.outputPath);
   assert.equal(stats.isFile(), true);
   assert.ok(stats.size > 1024, `The MP4 output is unexpectedly small: ${stats.size} bytes.`);
 
-  verifyStream(ffmpegPath, result.outputPath, 'video');
+  if (mode === 'video') verifyStream(ffmpegPath, result.outputPath, 'video');
   verifyStream(ffmpegPath, result.outputPath, 'audio');
 
   return { outputPath: result.outputPath, size: stats.size };
@@ -134,12 +140,14 @@ try {
     const url = TEST_URLS[index];
     process.stdout.write(`Trying real YouTube candidate ${index + 1}/${TEST_URLS.length}: ${url}\n`);
     try {
-      const first = await verifyCandidate({ url, index, pass: 1, ffmpegPath: ffmpeg.path });
-      const second = await verifyCandidate({ url, index, pass: 2, ffmpegPath: ffmpeg.path });
-      verified = second;
-      process.stdout.write(
-        `Verified real YouTube MP4 twice: ${first.size} bytes then ${second.size} bytes; video + audio\n`,
-      );
+      const results = [];
+      for (const mode of ['video', 'audio']) {
+        for (let pass = 1; pass <= REPEAT_COUNT; pass += 1) {
+          results.push(await verifyCandidate({ url, index, pass, mode, ffmpegPath: ffmpeg.path }));
+        }
+      }
+      verified = results.at(-1);
+      process.stdout.write(`Verified real public YouTube MP4 and MP3 ${REPEAT_COUNT} times each without cookies.\n`);
       break;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

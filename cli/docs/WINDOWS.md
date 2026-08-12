@@ -6,7 +6,7 @@
 
     node.exe --version
     npm.cmd --version
-    npm.cmd install -g ytconv@1.7.2
+    npm.cmd install -g ytconv@1.7.3
     ytconv.cmd repair
     ytconv.cmd doctor
 
@@ -18,4 +18,4 @@ Basic use:
     ytconv.cmd transcript "URL"
     ytconv.cmd "URL" --mode video --video-format mp4 --resolution 1080
 
-The release may also provide an EXE installer and portable ZIP. Verify SHA256SUMS-windows.txt from the matching ytconv-v1.7.2 release before running downloaded binaries.
+The release may also provide an EXE installer and portable ZIP. Verify SHA256SUMS-windows.txt from the matching ytconv-v1.7.3 release before running downloaded binaries.

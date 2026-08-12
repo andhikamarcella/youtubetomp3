@@ -56,6 +56,7 @@ export function commandSummaryText() {
     '  ytconv history              Show recent headless/batch runs',
     '  ytconv completion SHELL     Generate shell completion',
     '  ytconv quickstart           Show a beginner setup',
+    '  ytconv donate               Choose Ko-fi (global) or Saweria (Indonesia)',
     '  ytconv doctor               Diagnose the installation',
     '  ytconv repair               Repair media dependencies',
     '  ytconv clean                Clear YTConv caches',

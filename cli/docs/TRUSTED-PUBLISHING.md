@@ -1,6 +1,6 @@
 # npm Trusted Publishing
 
-YTConv 1.7.2 uses GitHub Actions OpenID Connect instead of a long-lived npm publication token.
+YTConv 1.7.3 uses GitHub Actions OpenID Connect instead of a long-lived npm publication token.
 
 ## npm connection values
 
@@ -25,7 +25,7 @@ The publication job uses:
 
 ## Safety controls
 
-Publication is manual and requires confirmation. Before publishing, the workflow checks the exact package and CLI versions and runs the full prepack suite. After publishing, it verifies `ytconv@1.7.2`, checks the `latest` dist-tag, compares the registry tarball SHA-256, and creates the corresponding GitHub Release.
+Publication is manual and requires confirmation. Before publishing, the workflow checks the exact package and CLI versions and runs the full prepack suite. After publishing, it verifies `ytconv@1.7.3`, checks the `latest` dist-tag, compares the registry tarball SHA-256, and creates the corresponding GitHub Release.
 
 ## Troubleshooting
 

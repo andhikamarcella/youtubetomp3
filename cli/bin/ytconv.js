@@ -9,6 +9,7 @@ import { applyStableDefaults, extractDefaultToggles, stableDefaultsHelpText } fr
 import { applyCliEnvironment, helpText, isDirectCommand, parseCliOptions } from '../src/cli-options.js';
 import { commandSummaryText, normalizeCommandArgs } from '../src/commands.js';
 import { inspectDependencies } from '../src/dependencies.js';
+import { handleDonationCommand } from '../src/donations.js';
 import { runDirectCommand } from '../src/direct.js';
 import { explainError } from '../src/error-help.js';
 import { EXIT_CODES, exitCodeForError } from '../src/exit-codes.js';
@@ -153,7 +154,12 @@ function fullHelpText() {
 }
 
 async function main() {
-  const rawArgs = process.argv.slice(2);
+  let rawArgs = process.argv.slice(2);
+  const donation = await handleDonationCommand(rawArgs);
+  if (donation.handled) {
+    if (!donation.returnHome) return donation.exitCode;
+    rawArgs = [];
+  }
   const helpCenter = handleHelpCenterCommand(rawArgs);
   if (helpCenter.handled) return helpCenter.exitCode;
 

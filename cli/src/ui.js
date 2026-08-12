@@ -10,6 +10,7 @@ import {
   resolveCookieConfigs,
 } from './cookies.js';
 import { inspectDependencies, prepareTermuxDependencies } from './dependencies.js';
+import { DONATION_PROVIDERS, openDonationPage } from './donations.js';
 import { disposePreparedCookieConfig, prepareManagedCookieConfig } from './managed-browser.js';
 import { downloadMedia, inspectMedia } from './media-controller.js';
 import { progressPhase, progressSummary, spinnerFrame } from './progress-ui.js';
@@ -210,7 +211,26 @@ function HomeScreen({
       h(Text, { inverse: true, bold: true }, ' ENTER  DOWNLOAD / CONVERT ')),
     showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+M mode · Ctrl+A audio · Ctrl+T video · Ctrl+Q quality · Ctrl+U upscale · Ctrl+F image') : null,
     showShortcuts ? h(Text, { dimColor: true }, 'Ctrl+G platform · Ctrl+B access · Ctrl+S subtitles · Ctrl+P playlist · Ctrl+V paste') : null,
-    h(Text, { dimColor: true }, 'H help · D diagnostics · Q/Esc exit'),
+    h(Text, { dimColor: true }, 'N donate · H help · D diagnostics · Q/Esc exit'),
+  );
+}
+
+function DonationScreen({ panelWidth, result, message }) {
+  const selectedUrl = result?.url || '';
+  return h(
+    Box,
+    { width: panelWidth, flexDirection: 'column', alignItems: 'center', marginTop: 1 },
+    h(Box, { width: panelWidth, borderStyle: 'double', paddingX: 1, flexDirection: 'column' },
+      h(Text, { bold: true }, 'Donate — just pay what you can'),
+      h(Text, null, '1  Ko-fi   · Global'),
+      h(Text, null, '2  Saweria · Indonesia only'),
+      h(Text, { dimColor: true }, 'Donations are optional. Every YTConv feature stays available without paying.')),
+    message ? h(Text, { wrap: 'wrap' }, safeText(message)) : null,
+    selectedUrl ? h(Text, { dimColor: true, wrap: 'wrap' }, safeText(selectedUrl)) : null,
+    result
+      ? h(Text, { bold: true }, 'Returning to YTConv in 5 seconds...')
+      : h(Text, { bold: true }, 'Press 1 or 2 · B back · Q exit'),
+    result && !result.opened ? h(Text, { dimColor: true }, 'C copy the link again · B return now') : null,
   );
 }
 
@@ -304,6 +324,7 @@ function HelpScreen({ panelWidth, termux }) {
     ['Ctrl+S', 'toggle subtitles; default is OFF'],
     ['Ctrl+P', 'toggle playlists'],
     ['Ctrl+V', 'paste a URL from clipboard'],
+    ['N', 'open donation options (Ko-fi / Saweria)'],
   ];
   return h(
     Box,
@@ -375,6 +396,7 @@ function App({
   const { exit } = useApp();
   const controllerRef = useRef(null);
   const submittedRef = useRef(false);
+  const donationTimerRef = useRef(null);
   const termux = dependencies.platform?.termux ?? isTermux();
   const accentColor = platformAccent({ platform: process.platform, termux, distro: dependencies.platform?.distro });
   const cookieOptions = cookieSourcesForPlatform(termux);
@@ -403,6 +425,7 @@ function App({
   const [error, setError] = useState('');
   const [outputPath, setOutputPath] = useState('');
   const [loginHandoff, setLoginHandoff] = useState(null);
+  const [donationResult, setDonationResult] = useState(null);
 
   const outputDirectory = process.env.YTCONV_OUTPUT
     ? path.resolve(process.env.YTCONV_OUTPUT)
@@ -414,6 +437,8 @@ function App({
     process.stdout.on?.('resize', resize);
     return () => process.stdout.off?.('resize', resize);
   }, []);
+
+  useEffect(() => () => clearTimeout(donationTimerRef.current), []);
 
   const quit = () => {
     controllerRef.current?.abort();
@@ -432,6 +457,7 @@ function App({
     setError('');
     setOutputPath('');
     setLoginHandoff(null);
+    setDonationResult(null);
   };
 
   const showOverlay = (next) => {
@@ -623,6 +649,27 @@ function App({
     }
   };
 
+  const chooseDonation = async (provider) => {
+    clearTimeout(donationTimerRef.current);
+    try {
+      const result = await openDonationPage(provider, { termux });
+      setDonationResult(result);
+      if (result.opened) {
+        setActionMessage(`${result.provider.label} opened in your browser. Thank you for supporting YTConv.`);
+      } else if (result.copied) {
+        setActionMessage(`Browser unavailable. The ${result.provider.label} link was copied.`);
+      } else {
+        setActionMessage(`Browser and clipboard unavailable. Copy the ${result.provider.label} link shown below.`);
+      }
+      donationTimerRef.current = setTimeout(() => {
+        setStage('home');
+        setDonationResult(null);
+      }, 5_000);
+    } catch (caught) {
+      setActionMessage(caught instanceof Error ? caught.message : String(caught));
+    }
+  };
+
   useEffect(() => {
     if (!initialUrl || submittedRef.current || !ready) return;
     submittedRef.current = true;
@@ -641,6 +688,28 @@ function App({
 
     if (lower === 'h' && stage !== 'probing' && stage !== 'downloading') return showOverlay('help');
     if (lower === 'd' && stage !== 'probing' && stage !== 'downloading') return showOverlay('diagnostics');
+
+    if (stage === 'donation') {
+      if (!donationResult && (lower === '1' || lower === 'k')) void chooseDonation(DONATION_PROVIDERS.kofi);
+      else if (!donationResult && (lower === '2' || lower === 's')) void chooseDonation(DONATION_PROVIDERS.saweria);
+      else if (donationResult && lower === 'c') {
+        setActionMessage(copyText(donationResult.url, { termux })
+          ? 'donation link copied'
+          : `Copy manually: ${donationResult.url}`);
+      } else if (lower === 'b' || key.backspace) {
+        clearTimeout(donationTimerRef.current);
+        setDonationResult(null);
+        setStage('home');
+      }
+      return;
+    }
+
+    if (stage === 'home' && lower === 'n') {
+      setActionMessage('');
+      setDonationResult(null);
+      setStage('donation');
+      return;
+    }
     if (!ready) return;
 
     if (stage === 'login') {
@@ -694,7 +763,12 @@ function App({
   });
 
   let content;
-  if (!ready) content = h(MissingDependencies, { dependencies, panelWidth: layout.panelWidth });
+  if (stage === 'donation') content = h(DonationScreen, {
+    panelWidth: layout.panelWidth,
+    result: donationResult,
+    message: actionMessage,
+  });
+  else if (!ready) content = h(MissingDependencies, { dependencies, panelWidth: layout.panelWidth });
   else if (stage === 'home') content = h(HomeScreen, {
     layout,
     url,

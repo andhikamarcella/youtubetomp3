@@ -114,6 +114,35 @@ export function fileOpenAttempts({
   ];
 }
 
+export function webOpenAttempts({
+  url,
+  platform = process.platform,
+  termux = isTermux(),
+} = {}) {
+  if (!url) return [];
+  if (termux) {
+    return [
+      { command: 'termux-open-url', args: [url], label: 'Termux browser' },
+      {
+        command: 'am',
+        args: ['start', '-a', 'android.intent.action.VIEW', '-d', url],
+        label: 'Android browser',
+      },
+    ];
+  }
+  if (platform === 'win32') {
+    return [
+      { command: 'rundll32.exe', args: ['url.dll,FileProtocolHandler', url], label: 'Windows browser' },
+      { command: 'explorer.exe', args: [url], label: 'Windows Explorer browser fallback' },
+    ];
+  }
+  if (platform === 'darwin') return [{ command: 'open', args: [url], label: 'macOS browser' }];
+  return [
+    { command: 'xdg-open', args: [url], label: 'xdg-open browser' },
+    { command: 'gio', args: ['open', url], label: 'GIO browser' },
+  ];
+}
+
 function runDetached({ command, args, label }) {
   return new Promise((resolve) => {
     let settled = false;
@@ -174,6 +203,26 @@ export async function openOutputFile(filePath) {
     return { ok: false, error: new Error('The output file has not been found yet.') };
   }
   return runAttempts(fileOpenAttempts({ filePath }));
+}
+
+export async function openExternalUrl(url, {
+  platform = process.platform,
+  termux = isTermux(),
+  allowedHosts = [],
+} = {}) {
+  let parsed;
+  try {
+    parsed = new URL(String(url));
+  } catch {
+    return { ok: false, error: new Error('The browser link is invalid.') };
+  }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+    return { ok: false, error: new Error('Only credential-free HTTPS browser links are allowed.') };
+  }
+  if (allowedHosts.length && !allowedHosts.includes(parsed.hostname.toLowerCase())) {
+    return { ok: false, error: new Error('The browser link host is not allowlisted.') };
+  }
+  return runAttempts(webOpenAttempts({ url: parsed.href, platform, termux }));
 }
 
 function runClipboard(command, args, input) {
