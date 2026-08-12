@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.6 - 2026-08-12
+
+- Fixed native 2160p selection so an exact 4K VP9/AV1 stream is preferred before a lower-resolution AVC compatibility fallback; this is source-quality selection, not upscaling.
+- Added requested-quality identity to default output filenames so 1080p, 2160p, and other choices cannot silently reuse one path.
+- Made interactive automatic archives follow the current mode, container, format, and resolution instead of remaining stuck on the TUI's startup profile.
+- Changed `ytconv clean` to remove YTConv-managed download archives and the yt-dlp extractor cache while preserving downloaded media, configuration, history, and explicitly supplied custom archive files.
+- Restored operating-system and Linux-family accents across the interactive logo, media card, progress panel, and completion panel, including color-safe auto-update relaunches. `--no-color` and `NO_COLOR` remain authoritative.
+- Added deterministic 1080p → 2160p → repeated 2160p regression coverage with archives enabled for both Node.js and iSH.
+- Added a release smoke test for the reported YouTube URL that requests 1080p, 2160p, and 720p twice each in one output directory and verifies exact source heights with ffprobe.
+- Kept zero-output rejection, archive-free recovery, public-first no-cookie access, browser-login safety, exact dependencies, and CLI-only package boundaries.
+
 ## 1.7.5 - 2026-08-12
 
 - Refreshed the complete npm package manifest for the 1.7.5 release while preserving the CLI-only package boundary.

@@ -8,14 +8,14 @@ const cliDirectory = fileURLToPath(new URL('../', import.meta.url));
 const repositoryDirectory = fileURLToPath(new URL('../../', import.meta.url));
 const manifest = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
-const releaseBranch = 'release/ytconv-1.7.5';
+const releaseBranch = 'release/ytconv-1.7.6';
 
 function repoFile(relative) {
   return path.join(repositoryDirectory, relative);
 }
 
-test('1.7.5 exposes complete pinned identity and security metadata', () => {
-  assert.equal(manifest.version, '1.7.5');
+test('1.7.6 exposes complete pinned identity and security metadata', () => {
+  assert.equal(manifest.version, '1.7.6');
   assert.equal(manifest.description, 'Secure cross-platform social-media downloader and converter with repeat-safe formats, optional donations, browser recovery, diagnostics, and verified release provenance.');
   assert.equal(manifest.publisher, 'Andhika Marcella Fernanda');
   assert.equal(manifest.author, 'Andhika Marcella Fernanda <andhikamarcella546@gmail.com>');
@@ -26,9 +26,9 @@ test('1.7.5 exposes complete pinned identity and security metadata', () => {
   assert.deepEqual(manifest.maintainers, ['Andhika Marcella Fernanda <andhikamarcella546@gmail.com>']);
   assert.equal(manifest.license, 'ISC');
   assert.equal(manifest.releaseDate, '2026-08-12');
-  assert.match(manifest.releaseNotes, /complete npm package manifest/iu);
-  assert.match(manifest.releaseNotes, /version-pinned documentation/iu);
-  assert.match(manifest.releaseNotes, /preserving the tested 1\.7\.4/iu);
+  assert.match(manifest.releaseNotes, /native 2160p selection/iu);
+  assert.match(manifest.releaseNotes, /requested quality/iu);
+  assert.match(manifest.releaseNotes, /operating-system-aware interactive colors/iu);
   assert.equal(manifest.main, './src/index.js');
   assert.equal(manifest.types, './types/index.d.ts');
   assert.equal(manifest.exports['.'].types, './types/index.d.ts');
@@ -37,8 +37,8 @@ test('1.7.5 exposes complete pinned identity and security metadata', () => {
   assert.equal(manifest.repository.directory, 'cli');
   assert.equal(manifest.homepage, `https://github.com/andhikamarcella/YTConv/tree/${releaseBranch}/cli#readme`);
   assert.equal(manifest.licenseUrl, `https://github.com/andhikamarcella/YTConv/blob/${releaseBranch}/cli/LICENSE`);
-  assert.equal(manifest.installer.npm, 'https://registry.npmjs.org/ytconv/-/ytconv-1.7.5.tgz');
-  assert.equal(manifest.installer.release, 'https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.5');
+  assert.equal(manifest.installer.npm, 'https://registry.npmjs.org/ytconv/-/ytconv-1.7.6.tgz');
+  assert.equal(manifest.installer.release, 'https://github.com/andhikamarcella/YTConv/releases/tag/ytconv-v1.7.6');
   assert.match(manifest.documentation.url, new RegExp(releaseBranch.replaceAll('.', '\\.'), 'u'));
   assert.deepEqual(manifest.dependencies, {
     commander: '14.0.3',
@@ -65,6 +65,7 @@ test('1.7.5 exposes complete pinned identity and security metadata', () => {
   ]);
   assert.equal(manifest.funding.every(({ url }) => /^https:\/\//u.test(url) && !/[\[\]()]/u.test(url)), true);
   assert.match(manifest.documentation.donate, /docs\/DONATE\.md$/u);
+  assert.match(manifest.documentation.migration, /docs\/MIGRATION-1\.7\.6\.md$/u);
 });
 
 test('published npm allowlist remains CLI only', () => {
@@ -102,8 +103,8 @@ test('native package sources cover desktop Linux Android Termux and iSH', () => 
 test('Android package is current and keeps subtitles off by default', () => {
   const gradle = fs.readFileSync(repoFile('android-app/app/build.gradle'), 'utf8');
   const activity = fs.readFileSync(repoFile('android-app/app/src/main/java/io/github/andhikamarcella/ytconv/MainActivity.java'), 'utf8');
-  assert.match(gradle, /versionCode\s*=?\s*10705/u);
-  assert.match(gradle, /versionName\s*=?\s*'1\.7\.5'/u);
+  assert.match(gradle, /versionCode\s*=?\s*10706/u);
+  assert.match(gradle, /versionName\s*=?\s*'1\.7\.6'/u);
   assert.match(activity, /© 2026 YTConv Project/u);
   assert.match(activity, /Browser login/u);
   assert.match(activity, /--cookies/u);
@@ -112,12 +113,14 @@ test('Android package is current and keeps subtitles off by default', () => {
   assert.match(activity, /Converting/u);
 });
 
-test('README presents the 1.7.5 identity and browser-login behavior', () => {
-  assert.match(readme, /1\.7\.5/u);
+test('README presents the 1.7.6 identity and browser-login behavior', () => {
+  assert.match(readme, /1\.7\.6/u);
   assert.match(readme, /Donate — just pay what you can/u);
   assert.match(readme, /ko-fi\.com\/cellauu/u);
   assert.match(readme, /saweria\.co\/dhikamarcella/u);
   assert.match(readme, /repeat-safe/u);
+  assert.match(readme, /2160p/iu);
+  assert.match(readme, /quality/iu);
   assert.match(readme, /browser login/iu);
   assert.match(readme, /subtitles.*off/iu);
 });

@@ -1,6 +1,6 @@
 # Audio and video formats
 
-YTConv 1.7.5 verifies that a real output file exists before reporting success. Repeating the same command is supported: the second run overwrites only when requested or returns the already valid output according to the selected archive/overwrite policy.
+YTConv 1.7.6 verifies that a real output file exists before reporting success. Automatic archives and default filenames include the requested mode, format, and quality, so changing 1080p to 2160p creates a distinct result. Repeating the same command remains governed by the selected archive/overwrite policy.
 
 ## Video
 

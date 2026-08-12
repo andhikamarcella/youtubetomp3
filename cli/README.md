@@ -1,12 +1,12 @@
 # YTConv – Social Media Downloader and Converter CLI
 
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
-[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.7.5)](https://badge.socket.dev/npm/package/ytconv/1.7.5)
+[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.7.6)](https://badge.socket.dev/npm/package/ytconv/1.7.6)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.6/cli/docs/NODEJS.md)
 
-**YTConv 1.7.5** is a terminal-first social downloader and converter with repeat-safe format selection, transcript/metadata extraction, optional FFmpeg upscaling through 4K, Deno-aware YouTube extraction, and browser-session recovery for media your account may access.
+**YTConv 1.7.6** is a terminal-first social downloader and converter with repeat-safe format selection, transcript/metadata extraction, optional FFmpeg upscaling through 4K, Deno-aware YouTube extraction, and browser-session recovery for media your account may access.
 
 The npm package is a CLI only. It contains no web application, no telemetry, and no `preinstall`, `install`, or `postinstall` hooks.
 
@@ -26,7 +26,7 @@ Choose a provider in the CLI and YTConv will ask the operating system to open it
 ## Quick start
 
 ```bash
-npm install --global ytconv@1.7.5
+npm install --global ytconv@1.7.6
 ytconv repair
 ytconv doctor
 ytconv "URL" --mode video --video-format mp4
@@ -34,12 +34,12 @@ ytconv "URL" --mode video --video-format mp4
 
 Choose `--mode video` for a video result or `--mode audio` for an audio result. Exit code zero alone is not treated as proof of completion: YTConv verifies a real output file that matches the selected mode. Beginner guides cover [Windows/macOS/Node.js](docs/NODEJS.md), [each Linux family](docs/LINUX.md), [Termux](docs/TERMUX.md), [iSH on iPhone/iPad](docs/ISH.md), and [cookies.txt](docs/COOKIES.md).
 
-## Highlights in 1.7.5
+## Highlights in 1.7.6
 
-- Complete npm manifest synchronized across package identity, typed exports, funding, documentation, installers, security capabilities, and release provenance.
-- Plain HTTPS Ko-fi and Saweria funding metadata without Markdown or escaped email artifacts in `package.json`.
-- Version-pinned npm, iSH, Android, Windows, Linux, Alpine, Nix, Snap, Flatpak, Termux, checksum, and SBOM metadata.
-- No intentional runtime behavior change from the tested 1.7.4 download and authentication fixes.
+- Native 2160p source streams outrank lower AVC compatibility fallbacks when 2160p is requested; this is separate from optional upscaling.
+- Automatic archives and default output names include the current mode, format, and requested quality, preventing a prior 1080p result from satisfying a later 2160p request.
+- `ytconv clean` removes managed download archives plus update, error, and yt-dlp extractor caches while preserving media, settings, history, and custom archive files.
+- Adaptive Windows, macOS, Termux, and Linux-family colors cover the logo, media card, progress, and completion panels and survive a safe auto-update relaunch.
 - Interactive downloads recover a missing archived file even when yt-dlp exits `0` without printing an archive-skip message.
 - The recovery attempt explicitly disables the archive, including when the normal archive path came from UI defaults or environment configuration.
 - Zero-output, FFmpeg, codec, and other non-authentication failures no longer open an unrelated Google/browser login flow.
@@ -52,13 +52,13 @@ Choose `--mode video` for a video result or `--mode audio` for an audio result. 
 - Public access first. Browser cookies are requested only after an authentication-related provider failure.
 - Subtitles are **off by default** in interactive, headless, and Android flows. Use `--subtitles` or Ctrl+S to enable them.
 - MP4, MKV, WebM, MP3, M4A, AAC, Opus, Vorbis, FLAC, ALAC, WAV, and the 4K path are exercised ten times each against a real local FFmpeg fixture in release CI.
-- The user-requested public YouTube URL is resolved ten times without cookies, and openly licensed short clips are downloaded as verified MP4 and MP3 outputs ten times each.
+- The user-requested public YouTube URL is resolved ten times without cookies and exercised as 1080p, native 2160p, and 720p twice each in one directory; ffprobe verifies exact source heights.
 - `ytconv donate` and the `N` shortcut offer optional Ko-fi/global and Saweria/Indonesia browser handoffs with a five-second return and copy/manual fallback.
 - `ytconv extract URL` saves available subtitles and structured metadata; `ytconv transcript URL` requests a readable SRT transcript.
 - `--upscale 4k` creates a 3840×2160 derived copy using local FFmpeg Lanczos scaling. It is not falsely labeled AI detail recovery.
 - Supported Deno is preferred for current yt-dlp JavaScript challenges, with the existing Node.js runtime as fallback.
 - Terminal accents adapt to Windows, macOS, Termux, and major Linux distribution families.
-- Android version 1.7.5 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
+- Android version 1.7.6 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
 
 ## Supported sites
 
@@ -76,7 +76,7 @@ Provider support follows the installed media engines and may change when a websi
 ## Install from npm
 
 ```bash
-npm install --global ytconv@1.7.5
+npm install --global ytconv@1.7.6
 ytconv --version
 ```
 
@@ -190,7 +190,7 @@ Beginner guide: [`docs/COOKIES.md`](docs/COOKIES.md).
 
 ## Android APK
 
-The Android application is version **1.7.5** with version code **10705** and 2026 UI metadata.
+The Android application is version **1.7.6** with version code **10706** and 2026 UI metadata.
 
 It provides:
 
@@ -294,6 +294,7 @@ ISC License. See [`LICENSE`](LICENSE).
 - [Release process](docs/RELEASES.md)
 - [npm Trusted Publishing](docs/TRUSTED-PUBLISHING.md)
 - [FAQ](docs/FAQ.md)
+- [Migration to 1.7.6](docs/MIGRATION-1.7.6.md)
 - [Migration to 1.7.5](docs/MIGRATION-1.7.5.md)
 - [Migration to 1.7.4](docs/MIGRATION-1.7.4.md)
 - [Support](docs/SUPPORT.md)
@@ -303,7 +304,7 @@ Canonical repository: <https://github.com/andhikamarcella/YTConv>
 
 Support: [help.ytconv@proton.me](mailto:help.ytconv@proton.me)
 
-## Interactive help center (1.7.5)
+## Interactive help center (1.7.6)
 
 ```bash
 ytconv docs --list

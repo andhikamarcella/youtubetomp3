@@ -1,0 +1,9 @@
+{
+  "status": "pending",
+  "package": "ytconv",
+  "version": "1.7.6",
+  "distTag": "latest",
+  "repository": "andhikamarcella/YTConv",
+  "branch": "release/ytconv-1.7.6",
+  "reason": "Waiting for exact-commit core, requested native-quality smoke, and native package matrices before publication."
+}

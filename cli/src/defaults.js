@@ -24,15 +24,28 @@ function safeProfilePart(value, fallback = 'default') {
   return normalized || fallback;
 }
 
-function profileName(options = {}) {
-  if (options.initialMode === 'audio') {
+export function outputProfileName(options = {}) {
+  const mode = options.mode || options.initialMode;
+  if (mode === 'audio') {
     return `audio-${safeProfilePart(options.audioFormat, 'mp3')}-${safeProfilePart(options.audioQuality, 'best')}`;
   }
-  if (options.initialMode === 'video') {
+  if (mode === 'video') {
     return `video-${safeProfilePart(options.videoFormat, 'auto')}-${safeProfilePart(options.resolution, 'best')}`;
   }
-  if (options.initialMode === 'image') return `image-${safeProfilePart(options.initialImageFormat, 'original')}`;
+  if (mode === 'image') return `image-${safeProfilePart(options.imageFormat || options.initialImageFormat, 'original')}`;
   return `auto-${safeProfilePart(options.preset, 'balanced')}`;
+}
+
+export function managedArchivePaths(options = {}, {
+  homeDirectory = os.homedir(),
+} = {}) {
+  const archiveDirectory = path.join(homeDirectory, '.ytconv', 'archives');
+  const profile = outputProfileName(options);
+  return {
+    archiveDirectory,
+    archivePath: path.join(archiveDirectory, `yt-dlp-${profile}.txt`),
+    galleryArchivePath: path.join(archiveDirectory, `gallery-dl-${profile}.sqlite3`),
+  };
 }
 
 export function normalizeRetrySleep(value, fallback = 'linear=1::2') {
@@ -79,17 +92,19 @@ export function applyStableDefaults(options = {}, toggles = {}, {
   if (disabled.archive) {
     options.archivePath = '';
     options.galleryArchivePath = '';
+    options.archiveManaged = false;
     return options;
   }
 
-  const archiveDirectory = path.join(homeDirectory, '.ytconv', 'archives');
+  const managed = managedArchivePaths(options, { homeDirectory });
+  const { archiveDirectory } = managed;
   mkdirSync(archiveDirectory, { recursive: true });
-  const profile = profileName(options);
 
-  if (!options.archivePath) options.archivePath = path.join(archiveDirectory, `yt-dlp-${profile}.txt`);
+  if (!options.archivePath) options.archivePath = managed.archivePath;
   options.galleryArchivePath = explicit.archive
     ? `${options.archivePath}.gallery.sqlite3`
-    : path.join(archiveDirectory, `gallery-dl-${profile}.sqlite3`);
+    : managed.galleryArchivePath;
+  options.archiveManaged = !explicit.archive;
   return options;
 }
 

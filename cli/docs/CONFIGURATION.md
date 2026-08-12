@@ -1,6 +1,6 @@
 # YTConv Configuration, Profiles, History, and Completion
 
-This document applies to YTConv `1.7.5`.
+This document applies to YTConv `1.7.6`.
 
 ## Storage locations
 

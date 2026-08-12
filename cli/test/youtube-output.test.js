@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { buildDownloadArgs } from '../src/downloader.js';
+import { buildDownloadArgs, downloadOutputTemplate } from '../src/downloader.js';
+import { managedArchivePaths } from '../src/defaults.js';
 import { downloadMedia, effectiveMediaMode } from '../src/media-controller.js';
 import {
   effectiveVideoContainer,
@@ -67,6 +68,24 @@ if (process.env.YTCONV_TEST_BEHAVIOR === 'quiet-archive-recovery') {
 }
 if (process.env.YTCONV_TEST_BEHAVIOR === 'existing-output') {
   console.log('ytconv-file:' + process.env.YTCONV_TEST_EXISTING_FILE);
+  process.exit(0);
+}
+if (process.env.YTCONV_TEST_BEHAVIOR === 'quality-switch') {
+  const selector = args[args.indexOf('-f') + 1] || '';
+  const resolution = selector.split('height=')[1]?.match(/^[0-9]+/)?.[0] || 'best';
+  const archiveIndex = args.indexOf('--download-archive');
+  const archive = archiveIndex >= 0 ? args[archiveIndex + 1] : '';
+  if (archive && fs.existsSync(archive) && fs.readFileSync(archive, 'utf8').includes('youtube BaW_jenozKc')) {
+    console.log('[download] BaW_jenozKc has already been recorded in the archive');
+    process.exit(0);
+  }
+  if (archive) {
+    fs.mkdirSync(path.dirname(archive), { recursive: true });
+    fs.appendFileSync(archive, 'youtube BaW_jenozKc\\n');
+  }
+  const target = path.join(process.cwd(), 'quality-' + resolution + '.mp4');
+  fs.writeFileSync(target, 'verified ' + resolution + 'p output');
+  console.log('ytconv-file:' + target);
   process.exit(0);
 }
 if (process.env.YTCONV_TEST_BEHAVIOR === 'thumbnail-only') {
@@ -164,6 +183,20 @@ test('MP4 selector has AVC M4A preference and conversion-safe fallback', () => {
   ]);
 });
 
+test('2160p source formats outrank lower AVC fallbacks and output names are quality-specific', () => {
+  const selector = formatVideoSelector('2160', 'mp4');
+  const exactAny = selector.indexOf('bv[height=2160]+ba');
+  const boundedAvc = selector.indexOf('bv[height<=2160][ext=mp4][vcodec^=avc1]+ba[ext=m4a]');
+  assert.ok(exactAny >= 0);
+  assert.ok(boundedAvc > exactAny, selector);
+
+  const hd = downloadOutputTemplate(baseOptions({ resolution: '1080', outputDirectory: '/downloads' }));
+  const fourK = downloadOutputTemplate(baseOptions({ resolution: '2160', outputDirectory: '/downloads' }));
+  assert.notEqual(hd, fourK);
+  assert.match(hd, /ytconv-video-auto-1080/u);
+  assert.match(fourK, /ytconv-video-auto-2160/u);
+});
+
 test('archive skip with a missing file is restored once without the archive', async (t) => {
   const { directory, marker, runner } = await fakeRunner(t, 'archive-recovery');
   const result = await downloadMedia({
@@ -181,6 +214,40 @@ test('archive skip with a missing file is restored once without the archive', as
   assert.equal(calls.length, 2);
   assert.equal(calls[0].includes('--download-archive'), true);
   assert.equal(calls[1].includes('--download-archive'), false);
+});
+
+test('1080p then 2160p then repeated 2160p stay distinct with managed archives enabled', async (t) => {
+  const { directory, marker, runner } = await fakeRunner(t, 'quality-switch');
+  const homeDirectory = path.dirname(directory);
+  const results = [];
+  for (const resolution of ['1080', '2160', '2160']) {
+    const archives = managedArchivePaths(
+      { mode: 'video', videoFormat: 'auto', resolution },
+      { homeDirectory },
+    );
+    results.push(await downloadMedia({
+      ytDlp: runner,
+      options: baseOptions({
+        outputDirectory: directory,
+        resolution,
+        archivePath: archives.archivePath,
+        galleryArchivePath: archives.galleryArchivePath,
+      }),
+    }));
+  }
+
+  assert.notEqual(results[0].outputPath, results[1].outputPath);
+  assert.equal(await fs.readFile(results[0].outputPath, 'utf8'), 'verified 1080p output');
+  assert.equal(await fs.readFile(results[1].outputPath, 'utf8'), 'verified 2160p output');
+  assert.equal(await fs.readFile(results[2].outputPath, 'utf8'), 'verified 2160p output');
+  const calls = (await fs.readFile(marker, 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(calls.length, 4);
+  assert.notEqual(
+    calls[0][calls[0].indexOf('--download-archive') + 1],
+    calls[1][calls[1].indexOf('--download-archive') + 1],
+  );
+  assert.equal(calls[2].includes('--download-archive'), true);
+  assert.equal(calls[3].includes('--download-archive'), false);
 });
 
 test('interactive environment archive is recovered even when yt-dlp quietly exits zero', async (t) => {

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { repairBundledFfmpeg } from '../src/dependencies.js';
+import { managedArchivePaths } from '../src/defaults.js';
 import { downloadMedia } from '../src/media-controller.js';
 
 const DEFAULT_TEST_URLS = [
@@ -19,6 +20,7 @@ const TEST_URLS = (process.env.YTCONV_TEST_YOUTUBE_URLS
   .map((value) => value.trim())
   .filter(Boolean);
 const REPEAT_COUNT = Math.max(2, Math.min(10, Number.parseInt(process.env.YTCONV_REPEAT_COUNT || '2', 10) || 2));
+const QUALITY_SWITCH_URL = String(process.env.YTCONV_QUALITY_SWITCH_URL || '').trim();
 const rootDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'ytconv-real-youtube-'));
 const ytDlpOverride = String(process.env.YTCONV_TEST_YTDLP || '').trim();
 const ytDlpCommand = ytDlpOverride || process.env.PYTHON || 'python3';
@@ -65,6 +67,79 @@ function verifyStream(ffmpegPath, outputPath, type) {
     0,
     `The MP4 has no decodable ${type} stream. ${result.stderr || result.error?.message || ''}`,
   );
+}
+
+function videoHeight(ffprobePath, outputPath) {
+  const result = spawnSync(ffprobePath, [
+    '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=height',
+    '-of', 'default=noprint_wrappers=1:nokey=1', outputPath,
+  ], { encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  const height = Number.parseInt(result.stdout.trim(), 10);
+  assert.ok(Number.isInteger(height) && height > 0, `Could not verify video height: ${result.stdout}`);
+  return height;
+}
+
+async function verifyQualitySwitch({ url, ffmpegPath, ffprobePath }) {
+  const outputDirectory = path.join(rootDirectory, 'quality-switch-output');
+  const homeDirectory = path.join(rootDirectory, 'quality-switch-home');
+  await fs.mkdir(outputDirectory, { recursive: true });
+  const paths = new Map();
+
+  for (const resolution of ['1080', '2160', '720']) {
+    const archives = managedArchivePaths(
+      { mode: 'video', videoFormat: 'auto', resolution },
+      { homeDirectory },
+    );
+    for (let pass = 1; pass <= 2; pass += 1) {
+      const result = await downloadMedia({
+        ytDlp: {
+          command: ytDlpCommand,
+          prefixArgs: ytDlpPrefixArgs,
+          displayPath: [ytDlpCommand, ...ytDlpPrefixArgs].join(' '),
+        },
+        options: {
+          url,
+          mode: 'video',
+          platformHint: 'auto',
+          resolution,
+          videoFormat: 'auto',
+          audioFormat: 'mp3',
+          audioQuality: 'best',
+          cookieConfig: { kind: 'none' },
+          playlist: false,
+          outputDirectory,
+          ffmpegPath,
+          subtitles: false,
+          subtitleOnly: false,
+          sponsorBlockMode: 'off',
+          archivePath: archives.archivePath,
+          galleryArchivePath: archives.galleryArchivePath,
+          clipStart: '0',
+          clipEnd: '3',
+          resume: true,
+          overwrite: false,
+          retries: '5',
+          fragmentRetries: '5',
+          fileAccessRetries: '3',
+          retrySleep: 'linear=1::2',
+          concurrentFragments: '1',
+        },
+        onLog(line, isError) {
+          const target = isError ? process.stderr : process.stdout;
+          target.write(`[quality ${resolution}p, pass ${pass}] ${line}\n`);
+        },
+      });
+      assert.ok(result.outputPath, `${resolution}p pass ${pass} returned no output path.`);
+      assert.match(path.basename(result.outputPath), new RegExp(`ytconv-video-auto-${resolution}`));
+      assert.equal(videoHeight(ffprobePath, result.outputPath), Number(resolution));
+      if (paths.has(resolution)) assert.equal(result.outputPath, paths.get(resolution));
+      else paths.set(resolution, result.outputPath);
+    }
+  }
+
+  assert.equal(new Set(paths.values()).size, 3, '1080p, 2160p, and 720p reused the same output path.');
+  process.stdout.write('Verified 1080p → 2160p → 720p twice each with distinct managed archives and exact source heights.\n');
 }
 
 async function verifyCandidate({ url, index, pass, mode, ffmpegPath }) {
@@ -160,6 +235,11 @@ try {
     verified,
     `No real public YouTube candidate produced a verified MP4 with video and audio. ${failures.join(' | ')}`,
   );
+  if (QUALITY_SWITCH_URL) {
+    const ffprobe = executable('ffprobe');
+    assert.ok(ffprobe, 'ffprobe is required for the real 1080p/2160p quality-switch test.');
+    await verifyQualitySwitch({ url: QUALITY_SWITCH_URL, ffmpegPath: ffmpeg.path, ffprobePath: ffprobe });
+  }
 } finally {
   await fs.rm(rootDirectory, { recursive: true, force: true });
 }

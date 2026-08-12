@@ -68,6 +68,32 @@ export function scrubChildEnvironment(env = process.env) {
   return child;
 }
 
+export function interactiveChildEnvironment(env = process.env, { noColor = false } = {}) {
+  const child = {};
+  for (const [name, value] of Object.entries(env ?? {})) {
+    if (value === undefined || isSensitiveEnvironmentName(name)) continue;
+    child[name] = value;
+  }
+  if (noColor || Object.hasOwn(env ?? {}, 'NO_COLOR') || env?.TERM === 'dumb') {
+    child.NO_COLOR = '1';
+    child.FORCE_COLOR = '0';
+  } else {
+    delete child.NO_COLOR;
+    child.FORCE_COLOR = '1';
+  }
+  return child;
+}
+
+export function enableInteractiveColors({
+  env = process.env,
+  stream = process.stdout,
+  noColor = false,
+} = {}) {
+  if (noColor || Object.hasOwn(env, 'NO_COLOR') || env.TERM === 'dumb' || !stream?.isTTY) return false;
+  if (env.FORCE_COLOR === undefined) env.FORCE_COLOR = '1';
+  return env.FORCE_COLOR !== '0';
+}
+
 export function monochromeChildEnvironment(env = process.env) {
   return scrubChildEnvironment(env);
 }

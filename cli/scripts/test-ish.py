@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH and Alpine 1.7.5 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.7.6 behavior checks."""
 
 import hashlib
 import importlib.util
@@ -75,10 +75,10 @@ def options(output, **overrides):
 
 class ReleaseIdentityTests(unittest.TestCase):
     def test_wrapper_version_branch_and_remote_version_are_synchronized(self):
-        self.assertEqual(WRAPPER.VERSION, "1.7.5")
-        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.7.5")
-        self.assertIn("release/ytconv-1.7.5", WRAPPER.RAW_BASE)
-        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.7.5")
+        self.assertEqual(WRAPPER.VERSION, "1.7.6")
+        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.7.6")
+        self.assertIn("release/ytconv-1.7.6", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.7.6")
 
     def test_wrapper_injects_release_identity_into_the_core_runtime(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
@@ -156,12 +156,28 @@ class RoutingAndPolicyTests(unittest.TestCase):
     def test_mp4_selector_and_container(self):
         selector = CORE.video_selector("1080", "mp4")
         self.assertIn("[vcodec^=avc1]+ba[ext=m4a]", selector)
+        self.assertLess(
+            selector.index("bv[height=1080]+ba"),
+            selector.index("bv[height<=1080][ext=mp4][vcodec^=avc1]+ba[ext=m4a]"),
+        )
         self.assertIn("bv[height<=1080]+ba", selector)
         self.assertTrue(selector.endswith("/b"))
         self.assertEqual(
             CORE.video_container_args("mp4"),
             ["--merge-output-format", "mp4", "--recode-video", "mp4"],
         )
+
+    def test_output_template_is_quality_specific(self):
+        with tempfile.TemporaryDirectory() as directory:
+            hd = options(directory)
+            hd.resolution = "1080"
+            four_k = options(directory)
+            four_k.resolution = "2160"
+            hd_template = CORE.output_template(hd, Path(directory))
+            four_k_template = CORE.output_template(four_k, Path(directory))
+        self.assertNotEqual(hd_template, four_k_template)
+        self.assertIn("ytconv-video-mp4-1080", hd_template)
+        self.assertIn("ytconv-video-mp4-2160", four_k_template)
 
     def test_subtitles_are_off_by_default(self):
         self.assertFalse(CORE.parser([]).parse_args([]).subtitles)
@@ -231,6 +247,12 @@ if behavior == "archive":
     target.write_bytes(b"verified mp4")
     print("ytconv-file:" + str(target))
     raise SystemExit(0)
+if behavior == "quiet-archive":
+    if "--download-archive" in args:
+        raise SystemExit(0)
+    target.write_bytes(b"verified quiet archive recovery")
+    print("ytconv-file:" + str(target))
+    raise SystemExit(0)
 if behavior == "zero":
     raise SystemExit(0)
 raise SystemExit(2)
@@ -281,6 +303,21 @@ raise SystemExit(2)
         opts = options(self.output)
         with self.assertRaisesRegex(RuntimeError, "produced no verified video file"):
             CORE.run_verified_yt_dlp(opts, self.available, self.output, None, "video")
+
+    def test_quiet_archive_skip_is_restored_once(self):
+        os.environ["YTCONV_TEST_BEHAVIOR"] = "quiet-archive"
+        opts = options(self.output)
+        archive = self.root / "quiet-archive.txt"
+        result = CORE.run_verified_yt_dlp(opts, self.available, self.output, archive, "video")
+        self.assertEqual(len(result["files"]), 1)
+        calls = [
+            json.loads(row)
+            for row in self.marker.read_text(encoding="utf-8").splitlines()
+            if row.strip()
+        ]
+        self.assertEqual(len(calls), 2)
+        self.assertIn("--download-archive", calls[0])
+        self.assertNotIn("--download-archive", calls[1])
 
 
 if __name__ == "__main__":

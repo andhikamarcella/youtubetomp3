@@ -2,12 +2,14 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { spawn } from 'node:child_process';
 import { inspectDependencies, prepareDesktopDependencies, prepareTermuxDependencies } from './dependencies.js';
 import { detectLinuxDistro } from './linux-distro.js';
 import { isTermux } from './platform.js';
 import { clearUpdateCache, selfUpdateInvocation } from './update.js';
 import { CLI_VERSION } from './version.js';
 import { resolveCommandPath } from './command-path.js';
+import { monochromeChildEnvironment } from './terminal-style.js';
 
 function takeValue(argv, index, flag) {
   const value = argv[index + 1];
@@ -117,11 +119,60 @@ export async function repairInstallation() {
   return result?.prepared === false && !after.ready ? 3 : 0;
 }
 
-export async function clearCaches() {
-  const updateCache = await clearUpdateCache();
-  const tempFiles = [path.join(os.tmpdir(), 'ytconv-update.json'), path.join(os.homedir(), '.ytconv', 'last-error.txt')];
+async function countFiles(directory) {
+  let count = 0;
+  let entries = [];
+  try { entries = await fs.readdir(directory, { withFileTypes: true }); } catch { return 0; }
+  for (const entry of entries) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) count += await countFiles(target);
+    else if (entry.isFile()) count += 1;
+  }
+  return count;
+}
+
+async function clearYtDlpCache(runner) {
+  if (!runner?.command) return false;
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(runner.command, [...(runner.prefixArgs || []), '--rm-cache-dir'], {
+        windowsHide: true,
+        stdio: 'ignore',
+        env: monochromeChildEnvironment(process.env),
+      });
+    } catch { resolve(false); return; }
+    child.once('error', () => resolve(false));
+    child.once('close', (code) => resolve(code === 0));
+  });
+}
+
+export async function clearCaches({
+  homeDirectory = os.homedir(),
+  temporaryDirectory = os.tmpdir(),
+  ytDlpRunner,
+} = {}) {
+  const updateCache = await clearUpdateCache('', { homeDirectory });
+  const appDirectory = path.resolve(homeDirectory, '.ytconv');
+  const archiveDirectory = path.join(appDirectory, 'archives');
+  const tempFiles = [path.join(temporaryDirectory, 'ytconv-update.json'), path.join(appDirectory, 'last-error.txt')];
+  const archiveCount = await countFiles(archiveDirectory);
+  let runner = ytDlpRunner;
+  if (runner === undefined) {
+    const dependencies = await inspectDependencies({ repair: false }).catch(() => null);
+    runner = dependencies?.ytDlp?.installed
+      ? { command: dependencies.ytDlp.command, prefixArgs: dependencies.ytDlp.prefixArgs }
+      : null;
+  }
+  const ytDlpCacheCleared = await clearYtDlpCache(runner);
   await Promise.all(tempFiles.map((target) => fs.rm(target, { force: true }).catch(() => {})));
-  console.log(`YTConv caches cleared.\n- ${updateCache}\n- old temporary/error files\nConfiguration, profiles, history, and download archives were preserved.`);
+  await fs.rm(archiveDirectory, { recursive: true, force: true }).catch(() => {});
+  console.log(
+    `YTConv clean completed.\n- ${updateCache}\n- old temporary/error files\n`
+    + `- ${archiveCount} managed download archive/cache file(s)\n`
+    + `- yt-dlp extractor cache ${ytDlpCacheCleared ? 'cleared' : 'not present or engine unavailable'}\n`
+    + 'Configuration, profiles, history, custom archive files, and downloaded media were preserved.',
+  );
   return 0;
 }
 
@@ -171,7 +222,7 @@ export function systemHelpText() {
     '  --repair, --setup       Repair or install yt-dlp, gallery-dl, and FFmpeg',
     '  --shell-info, --where   Show distribution, package manager, PATH, Node.js, and npm',
     '  --self-test             Test dependencies, CLI defaults, and the output directory',
-    '  --clear-cache           Clear update and old error caches without deleting user data',
+    '  --clear-cache           Clear update/error caches and managed download archives',
     '  --headless              Run without the TUI for SSH, CI, cron, or scripts',
     '  --stdin                 Read URLs from standard input',
     '  --batch-file FILE       Read one URL per line from a UTF-8 text file',

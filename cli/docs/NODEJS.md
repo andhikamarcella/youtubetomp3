@@ -1,6 +1,6 @@
 # Install Node.js before YTConv
 
-The npm CLI needs Node.js 22.14.0+ and npm 10+. Node 24 LTS is recommended for YTConv 1.7.5. Official downloads are available from [nodejs.org](https://nodejs.org/en/download).
+The npm CLI needs Node.js 22.14.0+ and npm 10+. Node 24 LTS is recommended for YTConv 1.7.6. Official downloads are available from [nodejs.org](https://nodejs.org/en/download).
 
 ## Check an existing installation
 
@@ -21,7 +21,7 @@ If Node is already 22.14 or newer, do not install a second copy.
 ```powershell
 node.exe --version
 npm.cmd --version
-npm.cmd install -g ytconv@1.7.5
+npm.cmd install -g ytconv@1.7.6
 ytconv.cmd doctor
 ```
 
@@ -35,7 +35,7 @@ Use the official LTS `.pkg`, or Homebrew:
 brew install node@24 python ffmpeg
 brew link --overwrite --force node@24
 node --version
-npm install -g ytconv@1.7.5
+npm install -g ytconv@1.7.6
 ytconv doctor
 ```
 
@@ -83,7 +83,7 @@ Use a maintained Termux build:
 pkg update && pkg upgrade
 pkg install -y nodejs python ffmpeg curl ca-certificates
 termux-setup-storage
-npm install -g ytconv@1.7.5 --omit=optional
+npm install -g ytconv@1.7.6 --omit=optional
 ytconv repair
 ytconv doctor
 ```
@@ -100,7 +100,7 @@ Use an account-owned prefix:
 mkdir -p "$HOME/.local/bin"
 npm config set prefix "$HOME/.local"
 export PATH="$HOME/.local/bin:$PATH"
-npm install -g ytconv@1.7.5
+npm install -g ytconv@1.7.6
 ```
 
 Save the PATH line in the shell configuration, open a new terminal, and run `ytconv doctor`.

@@ -12,7 +12,11 @@ import { commanderHelpText } from '../src/command-program.js';
 import { handleSocialAuthCommand } from '../src/social-auth.js';
 import { maybeAutoUpdate } from '../src/update.js';
 import { CLI_VERSION } from '../src/version.js';
-import { installConsoleErrorStyle, privateChildEnvironment } from '../src/terminal-style.js';
+import {
+  enableInteractiveColors,
+  installConsoleErrorStyle,
+  interactiveChildEnvironment,
+} from '../src/terminal-style.js';
 
 installConsoleErrorStyle();
 
@@ -31,6 +35,7 @@ async function launchCli(session) {
 
 async function boot() {
   const argv = process.argv.slice(2);
+  enableInteractiveColors({ noColor: argv.includes('--no-color') });
   try {
     if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) {
       console.log(commanderHelpText(CLI_VERSION));
@@ -45,7 +50,7 @@ async function boot() {
         stdio: 'inherit',
         windowsHide: true,
         env: {
-          ...privateChildEnvironment(process.env),
+          ...interactiveChildEnvironment(process.env, { noColor: argv.includes('--no-color') }),
           YTCONV_SKIP_AUTO_UPDATE_ONCE: '1',
         },
       });

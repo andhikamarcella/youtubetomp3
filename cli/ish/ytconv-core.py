@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.7.5 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.7.6 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.7.5"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.5/cli"
+VERSION = "1.7.6"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.6/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"
@@ -324,7 +324,17 @@ def output_template(options, output):
         if Path(template).is_absolute() or ".." in Path(template).parts or "%(ext)s" not in template:
             raise RuntimeError("--output-template must be relative, must not contain '..', and must include %(ext)s")
         return str(output / template)
-    filename = "%(title).180B [%(id)s].%(ext)s"
+    mode = effective_mode(options.url, options.mode)
+    if mode == "audio":
+        profile = "audio-%s-%s" % (safe_part(options.audio_format), safe_part(options.audio_quality))
+    elif mode == "video":
+        container = effective_video_container(options.url, mode, options.video_format)
+        profile = "video-%s-%s" % (safe_part(container), safe_part(options.resolution))
+    elif mode == "image":
+        profile = "image-original"
+    else:
+        profile = "auto-%s" % safe_part(options.preset, "balanced")
+    filename = "%(title).180B [%(id)s] [ytconv-" + profile + "].%(ext)s"
     if options.playlist:
         return str(output / "%(playlist_title).120B" / ("%(playlist_index)03d - " + filename))
     return str(output / filename)
@@ -332,31 +342,49 @@ def output_template(options, output):
 
 def video_selector(resolution, container):
     limit_value = "" if resolution == "best" else "[height<=%s]" % resolution
+    exact_value = "" if resolution == "best" else "[height=%s]" % resolution
     separate_any = "bv%s+ba" % limit_value
+    broad_separate_any = "bv*%s+ba" % limit_value
     combined_any = "b%s" % limit_value
+    exact_any = [] if not exact_value else [
+        "bv%s+ba" % exact_value,
+        "bv*%s+ba" % exact_value,
+        "b%s" % exact_value,
+    ]
+    metadata_fallbacks = [] if not limit_value else ["bv+ba", "bv*+ba", "b"]
     if container == "mp4":
         return "/".join([
+            *([] if not exact_value else [
+                "bv%s[ext=mp4][vcodec^=avc1]+ba[ext=m4a]" % exact_value,
+                "b%s[ext=mp4][vcodec^=avc1]" % exact_value,
+                "bv%s[ext=mp4]+ba[ext=m4a]" % exact_value,
+                "b%s[ext=mp4]" % exact_value,
+            ]),
+            *exact_any,
             "bv%s[ext=mp4][vcodec^=avc1]+ba[ext=m4a]" % limit_value,
             "b%s[ext=mp4][vcodec^=avc1]" % limit_value,
             "bv%s[ext=mp4]+ba[ext=m4a]" % limit_value,
             "b%s[ext=mp4]" % limit_value,
             separate_any,
+            broad_separate_any,
             combined_any,
-            "bv+ba",
-            "bv*+ba",
-            "b",
+            *metadata_fallbacks,
         ])
     if container == "webm":
         return "/".join([
+            *([] if not exact_value else [
+                "bv%s[ext=webm]+ba[ext=webm]" % exact_value,
+                "b%s[ext=webm]" % exact_value,
+            ]),
+            *exact_any,
             "bv%s[ext=webm]+ba[ext=webm]" % limit_value,
             "b%s[ext=webm]" % limit_value,
             separate_any,
+            broad_separate_any,
             combined_any,
-            "bv+ba",
-            "bv*+ba",
-            "b",
+            *metadata_fallbacks,
         ])
-    return "/".join([separate_any, combined_any, "bv+ba", "bv*+ba", "b"])
+    return "/".join(exact_any + [separate_any, broad_separate_any, combined_any] + metadata_fallbacks)
 
 
 def video_container_args(container):
@@ -594,8 +622,12 @@ def run_verified_yt_dlp(options, available, output, yt_archive, mode):
     after = output_files(output)
     files = verified_outputs(before, after, result["reported"], mode, options.subtitle_only)
 
-    if not files and result["archive_skipped"] and yt_archive:
-        print("The archive entry exists but its output file is missing. Restoring once without the archive...")
+    if not files and yt_archive:
+        print(
+            "The archive entry exists but its output file is missing. Restoring once without the archive..."
+            if result["archive_skipped"]
+            else "No output file was reported while the download archive was active. Retrying once without the archive..."
+        )
         retry = run_tool("yt-dlp", available["yt-dlp"], yt_dlp_args(options, output, None, mode))
         after = output_files(output)
         files = verified_outputs(before, after, retry["reported"], mode, options.subtitle_only)
@@ -701,6 +733,43 @@ def diagnostics():
     return 0
 
 
+def clean_managed_state():
+    app_directory = Path.home() / ".ytconv"
+    archive_directory = app_directory / "archives"
+    count = 0
+    if archive_directory.is_dir():
+        count = sum(1 for item in archive_directory.rglob("*") if item.is_file())
+    shutil.rmtree(str(archive_directory), ignore_errors=True)
+    for target in (
+        app_directory / "update-check.json",
+        app_directory / "update-check-latest.json",
+        app_directory / "update-check-beta.json",
+        app_directory / "last-error.txt",
+    ):
+        try:
+            target.unlink()
+        except OSError:
+            pass
+    available = tools().get("yt-dlp")
+    cache_cleared = False
+    if available:
+        try:
+            cache_cleared = subprocess.run(
+                list(available) + ["--rm-cache-dir"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=child_environment(),
+                check=False,
+            ).returncode == 0
+        except OSError:
+            cache_cleared = False
+    print("YTConv clean completed. Removed %s managed download archive/cache file(s)." % count)
+    print("yt-dlp extractor cache: %s." % ("cleared" if cache_cleared else "not present or engine unavailable"))
+    print("Configuration, history, custom archives, and downloaded media were preserved.")
+    return 0
+
+
 def normalize_commands(argv):
     if not argv or argv[0].startswith("-") or valid_url(argv[0]):
         return argv
@@ -710,6 +779,7 @@ def normalize_commands(argv):
         "playlist": ["--playlist"] + rest, "pl": ["--playlist"] + rest,
         "doctor": ["--doctor"] + rest, "repair": ["--repair"] + rest,
         "setup": ["--repair"] + rest, "update": ["--update"] + rest,
+        "clean": ["--clean"] + rest,
     }
     if command == "batch":
         return (["--batch-file", rest[0], "--continue-on-error"] + rest[1:]) if rest else ["--batch-file"]
@@ -742,6 +812,7 @@ def parser(argv):
     value.add_argument("--version", action="store_true")
     value.add_argument("--diagnose", "--doctor", action="store_true")
     value.add_argument("--repair", "--setup", action="store_true")
+    value.add_argument("--clean", action="store_true")
     value.add_argument("--check-update", action="store_true")
     value.add_argument("--update", action="store_true")
     value.add_argument("--preset", choices=sorted(PRESETS), default=preset)
@@ -836,6 +907,8 @@ def main(argv=None):
         return diagnostics()
     if options.repair:
         return repair()
+    if options.clean:
+        return clean_managed_state()
     if options.check_update:
         latest = remote_version()
         print("%s available" % latest if latest and version_tuple(latest) > version_tuple(VERSION) else "up to date (%s)" % VERSION)

@@ -5,7 +5,7 @@ import { commanderHelpText } from '../src/command-program.js';
 import { parseCliOptions } from '../src/cli-options.js';
 import { progressPhase, spinnerFrame } from '../src/progress-ui.js';
 
-test('1.7.5 restores a recognizable Figlet terminal identity', () => {
+test('1.7.6 restores a recognizable Figlet terminal identity', () => {
   const brand = renderBrand({ width: 120 });
   assert.ok(brand.split('\n').length >= 2);
   assert.match(brand, /[█╗╔╝╚]/u);
@@ -14,7 +14,7 @@ test('1.7.5 restores a recognizable Figlet terminal identity', () => {
 });
 
 test('Commander help documents social downloads and browser login', () => {
-  const help = commanderHelpText('1.7.5');
+  const help = commanderHelpText('1.7.6');
   assert.match(help, /ytconv/u);
   assert.match(help, /social platforms/u);
   assert.match(help, /cookies-browser/u);

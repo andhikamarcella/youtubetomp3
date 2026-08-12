@@ -8,7 +8,7 @@ Use a maintained Termux build and update it first:
     termux-setup-storage
     node --version
     npm --version
-    npm install -g ytconv@1.7.5 --omit=optional
+    npm install -g ytconv@1.7.6 --omit=optional
     ytconv repair
     ytconv doctor
 

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { cookieArgs } from './cookies.js';
+import { outputProfileName } from './defaults.js';
 import { downloadGallery, inspectGallery, isGalleryPreferredUrl } from './gallery-routing.js';
 import { monochromeChildEnvironment, sanitizeTerminalText } from './terminal-style.js';
 import {
@@ -142,12 +143,17 @@ function platformFromInfo(info, url) {
   return platforms.find(([needle]) => value.includes(needle))?.[1] ?? info?.extractor_key ?? info?.extractor ?? 'Media site';
 }
 
-function outputTemplate(options) {
+export function downloadOutputTemplate(options) {
   const custom = optionValue(options, 'outputTemplate', 'YTCONV_OUTPUT_TEMPLATE');
   if (custom) return path.join(options.outputDirectory, custom);
-  const fileName = '%(title).180B [%(id)s].%(ext)s';
+  const profile = outputProfileName(options);
+  const fileName = `%(title).180B [%(id)s] [ytconv-${profile}].%(ext)s`;
   if (!options.playlist) return path.join(options.outputDirectory, fileName);
-  return path.join(options.outputDirectory, '%(playlist_title).120B', '%(playlist_index)03d - %(title).160B [%(id)s].%(ext)s');
+  return path.join(
+    options.outputDirectory,
+    '%(playlist_title).120B',
+    `%(playlist_index)03d - %(title).160B [%(id)s] [ytconv-${profile}].%(ext)s`,
+  );
 }
 
 function cookieFailureMessage(stderr) {
@@ -353,7 +359,7 @@ export function buildDownloadArgs(options) {
     overwrite ? '--force-overwrites' : '--no-overwrites', resume ? '--continue' : '--no-continue',
     '--no-keep-fragments', '--check-formats', '--concurrent-fragments', concurrentFragments,
     '--progress-template', 'download:ytconv-progress:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(progress._total_bytes_str)s',
-    '--print', 'after_move:ytconv-file:%(filepath)s', '--output', outputTemplate(options), ...cookieArgs(options.cookieConfig),
+    '--print', 'after_move:ytconv-file:%(filepath)s', '--output', downloadOutputTemplate(options), ...cookieArgs(options.cookieConfig),
   ];
   if (options.ffmpegPath) args.push('--ffmpeg-location', options.ffmpegPath);
   if (options.playlist) args.push('--yes-playlist', '--no-abort-on-error'); else args.push('--no-playlist');

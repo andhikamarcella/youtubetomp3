@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { applyStableDefaults, extractDefaultToggles, normalizeRetrySleep, stableDefaultsHelpText } from '../src/defaults.js';
+import {
+  applyStableDefaults,
+  extractDefaultToggles,
+  managedArchivePaths,
+  normalizeRetrySleep,
+  outputProfileName,
+  stableDefaultsHelpText,
+} from '../src/defaults.js';
 import { parseCliOptions } from '../src/cli-options.js';
 
 function parseWithDefaults(argv, homeDirectory = '/tmp/ytconv-defaults-home') {
@@ -17,6 +24,7 @@ test('stable defaults keep subtitles off while enabling SponsorBlock mark and pe
   assert.equal(options.sponsorBlockMode, 'mark');
   assert.match(options.archivePath, /yt-dlp-auto-balanced\.txt$/u);
   assert.match(options.galleryArchivePath, /gallery-dl-auto-balanced\.sqlite3$/u);
+  assert.equal(options.archiveManaged, true);
 });
 
 test('retry sleep removes current legacy and nested type prefixes', () => {
@@ -44,6 +52,7 @@ test('explicit values remain authoritative over stable defaults', () => {
   assert.equal(options.sponsorBlockMode, 'remove');
   assert.equal(options.archivePath, path.resolve('./custom.txt'));
   assert.equal(options.galleryArchivePath, `${path.resolve('./custom.txt')}.gallery.sqlite3`);
+  assert.equal(options.archiveManaged, false);
 });
 
 test('negative flags disable every stable default before normal parsing', () => {
@@ -55,6 +64,7 @@ test('negative flags disable every stable default before normal parsing', () => 
   assert.equal(options.sponsorBlockMode, 'off');
   assert.equal(options.archivePath, '');
   assert.equal(options.galleryArchivePath, '');
+  assert.equal(options.archiveManaged, false);
 });
 
 test('audio and video archives are separated by output profile', () => {
@@ -63,6 +73,17 @@ test('audio and video archives are separated by output profile', () => {
   assert.match(audio.archivePath, /audio-mp3-320/u);
   assert.match(video.archivePath, /video-mp4-1080/u);
   assert.notEqual(audio.archivePath, video.archivePath);
+});
+
+test('interactive quality changes receive distinct archive identities', () => {
+  const common = { mode: 'video', videoFormat: 'auto' };
+  const hd = managedArchivePaths({ ...common, resolution: '1080' }, { homeDirectory: '/home/test' });
+  const fourK = managedArchivePaths({ ...common, resolution: '2160' }, { homeDirectory: '/home/test' });
+  assert.equal(outputProfileName({ ...common, resolution: '1080' }), 'video-auto-1080');
+  assert.equal(outputProfileName({ ...common, resolution: '2160' }), 'video-auto-2160');
+  assert.notEqual(hd.archivePath, fourK.archivePath);
+  assert.notEqual(hd.galleryArchivePath, fourK.galleryArchivePath);
+  assert.match(fourK.archivePath, /yt-dlp-video-auto-2160\.txt$/u);
 });
 
 test('stable help explains defaults and opt-out commands', () => {
