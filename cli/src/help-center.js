@@ -2,7 +2,7 @@ import process from 'node:process';
 import { CLI_VERSION } from './version.js';
 
 const REPOSITORY = 'https://github.com/andhikamarcella/YTConv';
-const RELEASE_BRANCH = 'release/ytconv-1.7.4';
+const RELEASE_BRANCH = 'release/ytconv-1.7.5';
 const DOCS_ROOT = `${REPOSITORY}/tree/${RELEASE_BRANCH}/cli/docs`;
 const SUPPORT_EMAIL = 'help.ytconv@proton.me';
 
@@ -26,7 +26,7 @@ const TOPICS = Object.freeze([
   ['architecture', 'Architecture and process boundaries', 'ARCHITECTURE.md', ['internals', 'design']],
   ['nodejs', 'Node.js integration', 'NODEJS.md', ['node', 'api', 'library']],
   ['faq', 'Frequently asked questions', 'FAQ.md', ['questions', 'help']],
-  ['migration', 'Migration to YTConv 1.7.4', 'MIGRATION-1.7.4.md', ['migrate', '1.7.4', 'repository']],
+  ['migration', 'Migration to YTConv 1.7.5', 'MIGRATION-1.7.5.md', ['migrate', '1.7.5', 'repository']],
   ['trusted-publishing', 'npm Trusted Publishing', 'TRUSTED-PUBLISHING.md', ['oidc', 'npm', 'publish']],
   ['help-center', 'Interactive help center', 'HELP-CENTER.md', ['docs-command', 'about', 'shortcuts']],
   ['support', 'Support and bug reports', 'SUPPORT.md', ['email', 'bug', 'contact']],
