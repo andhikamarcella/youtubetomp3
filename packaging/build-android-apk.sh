@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 PROJECT="$ROOT/android-app"
 OUT=${1:-"$ROOT/dist/android"}
-VERSION=1.7.3
-VERSION_CODE=10703
+VERSION=1.7.4
+VERSION_CODE=10704
 GRADLE_VERSION=8.13
 GRADLE_SHA256=20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78
 GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"

@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
   "package": "ytconv",
-  "version": "1.7.3",
+  "version": "1.7.4",
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
   "license": "ISC",
   "lastUpdated": "2026-08-12",
   "installer": {
     "type": "npm Trusted Publishing with GitHub release artifacts",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.3.tgz",
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.4.tgz",
     "status": "published",
-    "sha256": "77f5b11c00a8a80e44702ccd057dfb48fd9b675dea819e9574be73655c113d1f",
-    "sha512Integrity": "sha512-LGPAa7N2kjbfKXaFpYQoFq0/G00GQx1MzofuqVt1DSm/CUqm3evat3wnjVotI4Yqu6jghtzk2OcefJA0k3olnw==",
-    "npmShasum": "69bff161a1a6a6323f2f13a5ff4d674718e529cd",
-    "packedSize": 150239,
-    "unpackedSize": 537308,
-    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.3/SHA256SUMS.txt"
+    "sha256": "1a1d9ff3ec3e6a99a86bf0ea31c8af0e2b95589b231d5a49746c87b583c9dd00",
+    "sha512Integrity": "sha512-VKSYdJdJwQcV2CuZz1b2s9zFqm+QeZvWAZZPrNol+YJrsQIH4kJFuBVL7ILr7CMtGa9ukBXEfz2Sq8Pgfma7Ow==",
+    "npmShasum": "1884db863a22aaabd68fcb27dff667cd7a5ddbad",
+    "packedSize": 151812,
+    "unpackedSize": 542551,
+    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.4/SHA256SUMS.txt"
   },
   "dependencies": {
     "commander": "14.0.3",
@@ -27,6 +27,6 @@
     "ws": "8.21.1"
   },
   "optionalDependencies": {},
-  "releaseNotes": "YTConv 1.7.3 adds an optional Donate — just pay what you can flow for Ko-fi and Saweria, five-second return to the CLI home screen, browser and clipboard fallback, npm funding metadata, matching npm/GitHub/Pages/Wiki documentation, and ten-repeat public no-cookie plus deterministic audio/video release checks.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/CHANGELOG.md"
+  "releaseNotes": "YTConv 1.7.4 fixes interactive download-archive recovery when yt-dlp exits successfully without producing a file, prevents archive settings from being re-enabled during the retry, tightens authentication-error classification, and discovers installed Chromium browsers even before a profile directory exists.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.4/cli/CHANGELOG.md"
 }

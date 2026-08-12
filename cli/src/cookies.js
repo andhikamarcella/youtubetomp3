@@ -7,6 +7,7 @@ import {
   isTermux,
   termuxSharedDownloadsDirectory,
 } from './platform.js';
+import { resolveManagedBrowserExecutable, supportsManagedBrowser } from './managed-browser.js';
 import { socialSessionForUrl } from './social-sessions.js';
 
 const DESKTOP_BROWSERS = [
@@ -131,20 +132,36 @@ function browserDataCandidates() {
   };
 }
 
-export async function detectSystemBrowsers() {
-  if (isTermux()) return [];
-  const candidates = browserDataCandidates();
-  const preferred = process.env.YTCONV_BROWSER?.trim().toLowerCase();
+export async function detectSystemBrowsers({
+  browserRoots = browserDataCandidates(),
+  resolveBrowserExecutableImpl = resolveManagedBrowserExecutable,
+  platform = process.platform,
+  env = process.env,
+  termux = isTermux(),
+} = {}) {
+  if (termux) return [];
+  const candidates = browserRoots;
+  const preferred = env.YTCONV_BROWSER?.trim().toLowerCase();
   const order = unique([preferred, ...DESKTOP_BROWSERS]);
   const detected = [];
 
   for (const browser of order) {
     const directories = candidates[browser] || [];
+    let found = false;
     for (const directory of directories) {
       if (await directoryExists(directory)) {
         detected.push(browser);
+        found = true;
         break;
       }
+    }
+    if (found || !supportsManagedBrowser(browser)) continue;
+    try {
+      if (await resolveBrowserExecutableImpl({ browserSpec: browser, platform, env })) {
+        detected.push(browser);
+      }
+    } catch {
+      // An installed profile or another browser can still be selected.
     }
   }
 
@@ -207,7 +224,7 @@ export async function detectBrowserProfileSpecs({ browsers, browserRoots } = {})
   for (const browser of detected) {
     const root = await firstExistingDirectory(candidates[browser]);
     if (!root || browser === 'safari') {
-      if (browser === 'safari') specs.push('safari');
+      specs.push(browser);
       continue;
     }
 

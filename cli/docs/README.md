@@ -1,6 +1,6 @@
 # YTConv Documentation
 
-This directory is the canonical documentation hub for YTConv 1.7.3. YTConv is a cross-platform command-line downloader and media conversion tool. Use it only for media you own or are authorized to download.
+This directory is the canonical documentation hub for YTConv 1.7.4. YTConv is a cross-platform command-line downloader and media conversion tool. Use it only for media you own or are authorized to download.
 
 ## Start here
 
@@ -22,7 +22,8 @@ This directory is the canonical documentation hub for YTConv 1.7.3. YTConv is a 
 - [Releases](RELEASES.md) — artifacts, checksums, SBOM, provenance, and versioning.
 - [Trusted Publishing](TRUSTED-PUBLISHING.md) — npm OIDC configuration for maintainers.
 - [FAQ](FAQ.md) — concise answers to recurring questions.
-- [Migration to 1.7.3](MIGRATION-1.7.3.md) — stable docs links and new terminal commands.
+- [Migration to 1.7.4](MIGRATION-1.7.4.md) — interactive archive recovery and accurate login detection.
+- [Migration to 1.7.3](MIGRATION-1.7.3.md) — donation flow and ten-repeat release validation.
 - [Migration to 1.7.2](MIGRATION-1.7.2.md) — previous repeat-safe conversion release.
 - [Migration from 1.7.1](MIGRATION-1.7.1.md) — previous release notes.
 - [Migration to 1.7.0](MIGRATION-1.7.0.md) — canonical repository migration.

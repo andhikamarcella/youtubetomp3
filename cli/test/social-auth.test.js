@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { detectBrowserProfileSpecs, resolveCookieConfigs } from '../src/cookies.js';
+import { detectBrowserProfileSpecs, detectSystemBrowsers, resolveCookieConfigs } from '../src/cookies.js';
 import {
   beginSocialLoginHandoff,
   confirmSocialLoginHandoff,
@@ -197,8 +197,28 @@ test('authentication failures include Instagram no-format responses but not netw
   assert.equal(isSocialAuthenticationFailure(new Error('Login required; cookies expired')), true);
   assert.equal(isSocialAuthenticationFailure(new Error('DNS lookup timed out')), false);
   assert.equal(isSocialAuthenticationFailure(new Error('Network timeout. Official Instagram login: ytconv login instagram')), false);
+  assert.equal(isSocialAuthenticationFailure(new Error(
+    'yt-dlp exited successfully but produced no video file. Public access was attempted without cookies. '
+    + 'This failure does not indicate that an account or cookies are required.',
+  )), false);
+  assert.equal(isSocialAuthenticationFailure(new Error('Cookies are required to access this private video')), true);
   assert.equal(supportsAutomaticSocialLogin({ platform: 'win32', termux: false }), true);
   assert.equal(supportsAutomaticSocialLogin({ platform: 'linux', termux: true }), false);
+});
+
+test('browser discovery accepts an installed Chromium executable before a profile exists', async () => {
+  const detected = await detectSystemBrowsers({
+    browserRoots: {},
+    platform: 'linux',
+    env: { PATH: '/usr/bin' },
+    termux: false,
+    resolveBrowserExecutableImpl: async ({ browserSpec }) => {
+      if (browserSpec === 'chrome') return '/usr/bin/google-chrome';
+      throw new Error('not installed');
+    },
+  });
+  assert.deepEqual(detected, ['chrome']);
+  assert.deepEqual(await detectBrowserProfileSpecs({ browsers: detected, browserRoots: {} }), ['chrome']);
 });
 
 test('terminal recovery opens official login, retries with that profile, then persists it', async (t) => {
