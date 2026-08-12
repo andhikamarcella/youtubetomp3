@@ -1,4 +1,4 @@
-# Troubleshooting YTConv 1.7.3
+# Troubleshooting YTConv 1.7.4
 
 Start with this safe sequence:
 
@@ -16,7 +16,7 @@ Do not share cookies, tokens, private URLs, proxy credentials, or browser profil
 
 ## YouTube finishes but no file appears
 
-YTConv 1.7.3 no longer accepts exit code zero as proof of success. It verifies the output path against the filesystem. If yt-dlp exits without creating or resolving a real file, YTConv returns an error.
+YTConv 1.7.4 no longer accepts exit code zero as proof of success. It verifies the output path against the filesystem. If yt-dlp exits without creating or resolving a real file, YTConv returns an error.
 
 First update and repair:
 
@@ -50,7 +50,7 @@ Expected behavior:
 
 ## The URL was already recorded in the archive
 
-YTConv enables per-profile archives to avoid accidental duplicate playlist downloads. If the archive contains the URL but the previous output file was deleted, YTConv 1.7.3 automatically retries that item once without the archive.
+YTConv enables per-profile archives to avoid accidental duplicate playlist downloads. If the archive contains the URL but the previous output file was deleted, YTConv 1.7.4 automatically retries that item once without the archive.
 
 The terminal prints:
 
@@ -68,7 +68,7 @@ Do not delete archive files during a running parallel batch. Use `--no-archive` 
 
 ## YouTube Music downloads video instead of MP3
 
-Use version 1.7.3 or newer and keep mode on AUTO:
+Use version 1.7.4 or newer and keep mode on AUTO:
 
 ```sh
 ytconv download "https://music.youtube.com/watch?v=MUSIC_ID"
@@ -106,7 +106,7 @@ ytconv download "URL" --no-config --mode video --video-format mp4
 
 ## MP4 merge or codec error
 
-YTConv 1.7.3 first requests AVC/H.264 video and M4A audio because those streams are directly compatible with MP4. When YouTube does not offer that combination, YTConv uses a broader stream fallback and FFmpeg recoding.
+YTConv 1.7.4 first requests AVC/H.264 video and M4A audio because those streams are directly compatible with MP4. When YouTube does not offer that combination, YTConv uses a broader stream fallback and FFmpeg recoding.
 
 Repair FFmpeg:
 
@@ -189,7 +189,7 @@ ytconv doctor
 ytconv download "URL" --mode video --resolution 240 --concurrent-fragments 1
 ```
 
-If a command using `--start` or `--end` fails while a normal full download works, the network or proxy may be blocking FFmpeg's direct request for the selected stream. Retry without clipping, disable the proxy/VPN, or test from another network. YTConv 1.7.3 only recommends browser login when the provider returns an authentication-related response.
+If a command using `--start` or `--end` fails while a normal full download works, the network or proxy may be blocking FFmpeg's direct request for the selected stream. Retry without clipping, disable the proxy/VPN, or test from another network. YTConv 1.7.4 only recommends browser login when the provider returns an authentication-related response.
 
 ## `ytconv: command not found`
 

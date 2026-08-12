@@ -282,10 +282,13 @@ async function completeSocialLogin({
 
 export function isSocialAuthenticationFailure(error) {
   const value = error instanceof Error ? error.message : String(error || '');
+  if (/(?:does not|doesn't|did not|didn't) indicate that (?:an )?account or cookies? (?:are|is) required|(?:account|cookies?) (?:are|is) not required/iu.test(value)) {
+    return false;
+  }
   if (/(?:dns|enotfound|econnreset|network|timed? out|timeout|certificate|proxy|429|too many requests|requested format is not available)/iu.test(value)) {
     return false;
   }
-  return /(?:login|log in|sign in|authentication|cookies?|private|not authorized|members[ -]?only|age[ -]?restricted|no video formats found|empty media|returned no file)/iu.test(value);
+  return /(?:(?:login|log in|sign in)(?:\s+is)?\s+(?:required|needed)|authentication(?:\s+is)?\s+(?:required|needed|failed)|cookies?\s+(?:are|is|were|was)?\s*(?:required|needed|expired|invalid)|(?:required|valid)\s+cookies?|(?:cookie database|browser session).*(?:decrypt|locked|unavailable)|could not .*cookies?|private (?:video|media|post)|not authorized|members[ -]?only|age[ -]?restricted|no video formats found|empty media|returned no file)/iu.test(value);
 }
 
 export function supportsAutomaticSocialLogin({

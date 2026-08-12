@@ -12,7 +12,7 @@ apk upgrade
 apk add --no-cache python3 py3-pip ffmpeg curl ca-certificates
 update-ca-certificates
 python3 -m pip install -U --no-cache-dir --break-system-packages 'yt-dlp[default]' gallery-dl
-curl -fsSL https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.3/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
+curl -fsSL https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.4/cli/scripts/install-ish.sh -o /tmp/ytconv-ish.sh
 sh /tmp/ytconv-ish.sh
 ytconv --version
 ytconv --diagnose

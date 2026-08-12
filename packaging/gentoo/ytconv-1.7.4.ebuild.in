@@ -3,8 +3,8 @@ EAPI=8
 DESCRIPTION="Secure social-media downloader and converter CLI"
 HOMEPAGE="https://github.com/andhikamarcella/YTConv"
 SRC_URI="
-  amd64? ( https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.3/YTConv-1.7.3-linux-x86_64.tar.zst )
-  arm64? ( https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.3/YTConv-1.7.3-linux-aarch64.tar.zst )
+  amd64? ( https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.4/YTConv-1.7.4-linux-x86_64.tar.zst )
+  arm64? ( https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.4/YTConv-1.7.4-linux-aarch64.tar.zst )
 "
 S="${WORKDIR}"
 LICENSE="ISC"

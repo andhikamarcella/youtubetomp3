@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.4 - 2026-08-12
+
+- Fixed the interactive terminal path so a default archive configured through the CLI environment participates in missing-file recovery.
+- Fixed the archive recovery retry so an explicit empty archive setting overrides the environment instead of silently re-enabling the same archive.
+- Added recovery when yt-dlp exits successfully with no matching file while an archive is active, even if quiet output hides the archive-skip message.
+- Prevented the non-authentication explanation “cookies are not required” from being classified as a reason to open Google or provider login.
+- Tightened authentication classification to require a positive login, cookie, private-media, or access-restriction signal.
+- Added browser discovery through installed Chromium executables when a regular profile directory does not exist yet.
+- Added deterministic regression coverage for the exact interactive failure: first pass exits `0` with no file, second pass runs without `--download-archive`, and a real MP4 is verified.
+- Preserved public-first, no-cookie behavior for public media and kept login recovery for genuine account-only responses.
+
 ## 1.7.3 - 2026-08-12
 
 - Added `ytconv donate` and the `N` interactive shortcut under the title **Donate — just pay what you can**.

@@ -7,7 +7,7 @@ ytconv URL --mode video --video-format mp4 --resolution 1080
 ytconv URL --mode audio --audio-format mp3 --audio-quality 320
 ```
 
-YTConv verifies a real matching output before reporting success. The 1.7.3 release matrix converts every listed choice ten times. A final metadata-free video fallback prevents direct/social media from failing only because it did not publish height metadata.
+YTConv verifies a real matching output before reporting success. The 1.7.4 release matrix converts every listed choice ten times. A final metadata-free video fallback prevents direct/social media from failing only because it did not publish height metadata.
 
 Optional upscaling:
 
