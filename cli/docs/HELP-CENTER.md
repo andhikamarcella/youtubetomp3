@@ -1,6 +1,6 @@
 # Interactive Help Center
 
-YTConv 1.7.2 adds terminal-first documentation discovery. The commands print responsive, copyable panels and canonical URLs without requiring a browser integration or shell execution.
+YTConv 1.7.3 adds terminal-first documentation discovery. The commands print responsive, copyable panels and canonical URLs without requiring a browser integration or shell execution.
 
 ## Commands
 

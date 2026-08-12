@@ -18,6 +18,7 @@ const required = [
   'docs/DENO.md',
   'docs/SAFETY-LEGAL.md',
   'docs/SUPPORT.md',
+  'docs/DONATE.md',
   'docs/TROUBLESHOOTING.md',
   'docs/PLATFORMS.md',
   'docs/LINUX.md',
@@ -30,6 +31,7 @@ const required = [
   'docs/FAQ.md',
   'docs/MIGRATION-1.7.0.md',
   'docs/MIGRATION-1.7.2.md',
+  'docs/MIGRATION-1.7.3.md',
   'docs/MIGRATION-1.7.1.md',
   'docs/HELP-CENTER.md'
 ];
@@ -44,7 +46,7 @@ for (const relative of required) {
 }
 
 const manifest = JSON.parse(await fs.readFile(path.join(cwd, 'package.json'), 'utf8'));
-if (manifest.version !== '1.7.2') errors.push(`package.json version is ${manifest.version}, expected 1.7.2`);
+if (manifest.version !== '1.7.3') errors.push(`package.json version is ${manifest.version}, expected 1.7.3`);
 if (!String(manifest.repository?.url ?? '').includes('andhikamarcella/YTConv')) {
   errors.push('package.json does not reference the canonical andhikamarcella/YTConv repository');
 }

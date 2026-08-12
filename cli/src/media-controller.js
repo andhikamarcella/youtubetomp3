@@ -335,14 +335,21 @@ async function upscaleVideos({ files, height, ffmpegPath, onLog, onProgress }) {
   return converted;
 }
 
-function accessHint({ url, cookieConfig, originalError }) {
+function authenticationRelated(message) {
+  return /(?:sign in|login required|authentication|cookies?.*(?:required|expired|invalid)|private (?:video|media)|members[ -]?only|age[ -]?restricted|confirm.*not a bot|account is required)/iu
+    .test(String(message ?? ''));
+}
+
+export function accessHint({ url, cookieConfig, originalError }) {
   const platform = socialPlatformLabel(detectSocialPlatform(url));
   const officialLogin = socialLoginHint(url);
   const browserHint = cookieConfig?.managedBrowser
     ? `The private YTConv browser session was read, but this URL still was not accessible.${officialLogin ? ` Reopen the official login: ${officialLogin}` : ''}`
     : cookieConfig?.kind === 'browser'
       ? `A regular browser session was detected but could not be decrypted. Use the private YTConv login window instead.${officialLogin ? ` Open it with: ${officialLogin}` : ''}`
-    : `Public access was attempted.${officialLogin ? ` ${officialLogin}` : ' Run ytconv social help for official login instructions.'}`;
+      : authenticationRelated(originalError)
+        ? `Public access was attempted.${officialLogin ? ` ${officialLogin}` : ' Run ytconv social help for official login instructions.'}`
+        : 'Public access was attempted without cookies. This failure does not indicate that an account or cookies are required.';
   return `${originalError} ${platform}: ${browserHint}`;
 }
 

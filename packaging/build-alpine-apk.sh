@@ -4,7 +4,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 OUT=${1:-"$ROOT/dist/alpine"}
 BUILD="$ROOT/dist/alpine-build"
-VERSION=1.7.2
+VERSION=1.7.3
 
 rm -rf "$OUT" "$BUILD"
 mkdir -p "$OUT" "$BUILD"

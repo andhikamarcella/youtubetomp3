@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic YTConv iSH and Alpine 1.7.2 behavior checks."""
+"""Deterministic YTConv iSH and Alpine 1.7.3 behavior checks."""
 
 import hashlib
 import importlib.util
@@ -75,10 +75,10 @@ def options(output, **overrides):
 
 class ReleaseIdentityTests(unittest.TestCase):
     def test_wrapper_version_branch_and_remote_version_are_synchronized(self):
-        self.assertEqual(WRAPPER.VERSION, "1.7.2")
-        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.7.2")
-        self.assertIn("release/ytconv-1.7.2", WRAPPER.RAW_BASE)
-        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.7.2")
+        self.assertEqual(WRAPPER.VERSION, "1.7.3")
+        self.assertEqual(WRAPPER.RELEASE_BRANCH, "release/ytconv-1.7.3")
+        self.assertIn("release/ytconv-1.7.3", WRAPPER.RAW_BASE)
+        self.assertEqual((ROOT / "ish" / "VERSION").read_text(encoding="utf-8").strip(), "1.7.3")
 
     def test_wrapper_injects_release_identity_into_the_core_runtime(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
@@ -99,6 +99,16 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual(social, ["https://www.instagram.com/reel/example"])
         self.assertEqual(explicit.count("--audio"), 1)
         self.assertNotIn("--video", explicit)
+
+    def test_donation_provider_and_browser_fallback_are_fixed(self):
+        self.assertEqual(WRAPPER.DONATIONS["kofi"][2], "https://ko-fi.com/cellauu")
+        self.assertEqual(WRAPPER.DONATIONS["saweria"][2], "https://saweria.co/dhikamarcella")
+        self.assertEqual(WRAPPER.DONATION_ALIASES["global"], "kofi")
+        self.assertEqual(WRAPPER.DONATION_ALIASES["indonesia"], "saweria")
+        source = inspect.getsource(WRAPPER.handle_donation)
+        self.assertIn("open_browser(url, new=2)", source)
+        self.assertIn("Copy this link", source)
+        self.assertIn("sleep_fn(5)", source)
 
     def test_frontend_checksums_match_published_files(self):
         rows = (ROOT / "ish" / "SHA256SUMS").read_text(encoding="utf-8").splitlines()

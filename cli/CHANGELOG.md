@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.3 - 2026-08-12
+
+- Added `ytconv donate` and the `N` interactive shortcut under the title **Donate — just pay what you can**.
+- Added Ko-fi for global users and Saweria for users in Indonesia using two fixed, credential-free HTTPS URLs.
+- Added a shell-free default-browser handoff for Windows, macOS, Linux, and Termux, followed by an automatic return to the YTConv home screen after five seconds.
+- Added clipboard and complete-link fallbacks for terminals, iSH, headless sessions, and devices without a supported browser opener.
+- Added npm `funding` metadata, a README section, a full donation guide, GitHub Pages instructions, and matching Wiki source.
+- Expanded deterministic MP4, MKV, WebM, MP3, M4A, AAC, Opus, Vorbis, FLAC, ALAC, WAV, and 4K checks to ten repetitions in release CI.
+- Added ten no-cookie metadata resolutions for the requested public YouTube URL and ten real public MP4 plus MP3 short-clip downloads for the release smoke test.
+- Fixed misleading login advice after FFmpeg, codec, or network failures; account guidance now appears only for authentication-related responses.
+- Preserved public-first access and safe browser-session recovery. Public media is not forced to use cookies, and account restrictions are not bypassed.
+
 ## 1.7.2 - 2026-08-10
 
 - Fixed video selection for metadata-free direct and social formats while retaining bounded resolution preferences.

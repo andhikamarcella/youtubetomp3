@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  accessHint,
   automaticFallbackMode,
   cleanMediaUrl,
   effectiveMediaMode,
@@ -18,6 +19,23 @@ test('cleans social tracking parameters without changing the post path', () => {
     cleanMediaUrl('https://www.instagram.com/p/C9RnMtaxKoT/?utm_source=ig_web_copy_link&igsh=abc'),
     'https://www.instagram.com/p/C9RnMtaxKoT/',
   );
+});
+
+test('non-authentication failures do not falsely request a YouTube account', () => {
+  const ffmpeg = accessHint({
+    url: 'https://youtu.be/example',
+    cookieConfig: { kind: 'none' },
+    originalError: 'ffmpeg exited with code 183',
+  });
+  assert.doesNotMatch(ffmpeg, /Official YouTube login/iu);
+  assert.match(ffmpeg, /does not indicate.*account or cookies/iu);
+
+  const authentication = accessHint({
+    url: 'https://youtu.be/example',
+    cookieConfig: { kind: 'none' },
+    originalError: 'Sign in to confirm you are not a bot',
+  });
+  assert.match(authentication, /Official YouTube login/iu);
 });
 
 test('routes Instagram post to gallery and Reel to yt-dlp video', () => {

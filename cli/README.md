@@ -1,19 +1,32 @@
 # YTConv – Social Media Downloader and Converter CLI
 
 [![npm version](https://img.shields.io/npm/v/ytconv.svg)](https://www.npmjs.com/package/ytconv)
-[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.7.2)](https://badge.socket.dev/npm/package/ytconv/1.7.2)
+[![Socket Badge](https://badge.socket.dev/npm/package/ytconv/1.7.3)](https://badge.socket.dev/npm/package/ytconv/1.7.3)
 [![TypeScript declarations](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.npmjs.com/package/ytconv)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/LICENSE)
-[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/docs/NODEJS.md)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/Node.js-22.14%2B-339933?logo=node.js&logoColor=white)](https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/docs/NODEJS.md)
 
-**YTConv 1.7.2** is a terminal-first social downloader and converter with repeat-safe format selection, transcript/metadata extraction, optional FFmpeg upscaling through 4K, Deno-aware YouTube extraction, and browser-session recovery for media your account may access.
+**YTConv 1.7.3** is a terminal-first social downloader and converter with repeat-safe format selection, transcript/metadata extraction, optional FFmpeg upscaling through 4K, Deno-aware YouTube extraction, and browser-session recovery for media your account may access.
 
 The npm package is a CLI only. It contains no web application, no telemetry, and no `preinstall`, `install`, or `postinstall` hooks.
+
+## Donate — just pay what you can
+
+Donations are optional. Every YTConv feature remains available without paying.
+
+```bash
+ytconv donate
+```
+
+- [Ko-fi](https://ko-fi.com/cellauu) — global users
+- [Saweria](https://saweria.co/dhikamarcella) — users in Indonesia
+
+Choose a provider in the CLI and YTConv will ask the operating system to open its exact HTTPS page. The interactive screen returns home after five seconds. If automatic browser opening is unavailable, the CLI copies the link when possible and always shows the complete link for manual use. See the [donation guide](docs/DONATE.md).
 
 ## Quick start
 
 ```bash
-npm install --global ytconv@1.7.2
+npm install --global ytconv@1.7.3
 ytconv repair
 ytconv doctor
 ytconv "URL" --mode video --video-format mp4
@@ -21,7 +34,7 @@ ytconv "URL" --mode video --video-format mp4
 
 Choose `--mode video` for a video result or `--mode audio` for an audio result. Exit code zero alone is not treated as proof of completion: YTConv verifies a real output file that matches the selected mode. Beginner guides cover [Windows/macOS/Node.js](docs/NODEJS.md), [each Linux family](docs/LINUX.md), [Termux](docs/TERMUX.md), [iSH on iPhone/iPad](docs/ISH.md), and [cookies.txt](docs/COOKIES.md).
 
-## Highlights in 1.7.2
+## Highlights in 1.7.3
 
 - Responsive Figlet branding with compact fallbacks for narrow terminals.
 - Commander-based `ytconv --help` with clear examples and privacy guidance.
@@ -30,12 +43,14 @@ Choose `--mode video` for a video result or `--mode audio` for an audio result. 
 - Shell-free executable discovery and child-process execution.
 - Public access first. Browser cookies are requested only after an authentication-related provider failure.
 - Subtitles are **off by default** in interactive, headless, and Android flows. Use `--subtitles` or Ctrl+S to enable them.
-- MP4, MKV, WebM, MP3, M4A, AAC, Opus, Vorbis, FLAC, ALAC, and WAV are exercised twice against a real local FFmpeg fixture in the release test matrix.
+- MP4, MKV, WebM, MP3, M4A, AAC, Opus, Vorbis, FLAC, ALAC, WAV, and the 4K path are exercised ten times each against a real local FFmpeg fixture in release CI.
+- The user-requested public YouTube URL is resolved ten times without cookies, and openly licensed short clips are downloaded as verified MP4 and MP3 outputs ten times each.
+- `ytconv donate` and the `N` shortcut offer optional Ko-fi/global and Saweria/Indonesia browser handoffs with a five-second return and copy/manual fallback.
 - `ytconv extract URL` saves available subtitles and structured metadata; `ytconv transcript URL` requests a readable SRT transcript.
 - `--upscale 4k` creates a 3840×2160 derived copy using local FFmpeg Lanczos scaling. It is not falsely labeled AI detail recovery.
 - Supported Deno is preferred for current yt-dlp JavaScript challenges, with the existing Node.js runtime as fallback.
 - Terminal accents adapt to Windows, macOS, Termux, and major Linux distribution families.
-- Android version 1.7.2 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
+- Android version 1.7.3 uses current 2026 metadata, visible download/conversion progress, and a local browser-login window for providers that require a session.
 
 ## Supported sites
 
@@ -53,7 +68,7 @@ Provider support follows the installed media engines and may change when a websi
 ## Install from npm
 
 ```bash
-npm install --global ytconv@1.7.2
+npm install --global ytconv@1.7.3
 ytconv --version
 ```
 
@@ -118,6 +133,7 @@ ytconv "https://www.youtube.com/watch?v=..." --subtitles
 | Ctrl+T | Cycle video containers and switch to VIDEO |
 | Ctrl+Q | Cycle video resolution |
 | Ctrl+F | Cycle image formats and switch to IMAGE |
+| N | Open Ko-fi and Saweria donation options |
 | Ctrl+G | Cycle AUTO and supported social platforms |
 | Ctrl+B | Cycle automatic, public, file, and browser access |
 | Ctrl+S | Toggle subtitles; default is off |
@@ -166,7 +182,7 @@ Beginner guide: [`docs/COOKIES.md`](docs/COOKIES.md).
 
 ## Android APK
 
-The Android application is version **1.7.2** with version code **10702** and 2026 UI metadata.
+The Android application is version **1.7.3** with version code **10703** and 2026 UI metadata.
 
 It provides:
 
@@ -270,20 +286,22 @@ ISC License. See [`LICENSE`](LICENSE).
 - [Release process](docs/RELEASES.md)
 - [npm Trusted Publishing](docs/TRUSTED-PUBLISHING.md)
 - [FAQ](docs/FAQ.md)
-- [Migration to 1.7.2](docs/MIGRATION-1.7.2.md)
+- [Migration to 1.7.3](docs/MIGRATION-1.7.3.md)
 - [Support](docs/SUPPORT.md)
+- [Donate](docs/DONATE.md)
 
 Canonical repository: <https://github.com/andhikamarcella/YTConv>
 
 Support: [help.ytconv@proton.me](mailto:help.ytconv@proton.me)
 
-## Interactive help center (1.7.2)
+## Interactive help center (1.7.3)
 
 ```bash
 ytconv docs --list
 ytconv docs troubleshooting
 ytconv about
 ytconv shortcuts
+ytconv donate
 ```
 
 These commands print responsive terminal panels and release-pinned documentation URLs. Stable `HEAD` compatibility documentation is also maintained on the repository default branch.

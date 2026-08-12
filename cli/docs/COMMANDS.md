@@ -1,4 +1,4 @@
-# YTConv 1.7.2 Command Reference
+# YTConv 1.7.3 Command Reference
 
 ## General syntax
 
@@ -27,9 +27,20 @@ clean                        Clear update and old error caches
 update                       Update the active npm channel
 examples                     Show common examples
 quickstart                   Show a five-step beginner setup
+donate                       Choose Ko-fi (global) or Saweria (Indonesia)
 ```
 
 Aliases include `dl`, `get`, `pl`, `subs`, `inspect`, and `setup`.
+
+Donation shortcuts:
+
+```text
+ytconv donate
+ytconv donate kofi
+ytconv donate saweria
+```
+
+The browser handoff is optional, restricted to the two documented HTTPS pages, and returns an interactive session to the YTConv home screen after five seconds. When a browser cannot be opened, YTConv copies or prints the link. See [Donate](DONATE.md).
 
 ## YouTube AUTO policy
 
@@ -192,7 +203,7 @@ For MP4, YTConv prefers AVC/H.264 video plus M4A audio. If those streams are una
 
 ## Verified output
 
-YTConv 1.7.2 verifies that the final path exists and matches the requested mode:
+YTConv 1.7.3 verifies that the final path exists and matches the requested mode:
 
 ```text
 video mode       a real video file such as MP4, MKV, or WebM
@@ -214,7 +225,7 @@ A thumbnail, metadata JSON file, archive text file, log, or partial file does no
 --list-subs
 ```
 
-YTConv 1.7.2 keeps subtitles disabled by default unless explicitly requested. Missing subtitles should not fail the main media download.
+YTConv 1.7.3 keeps subtitles disabled by default unless explicitly requested. Missing subtitles should not fail the main media download.
 
 ## SponsorBlock
 
@@ -227,7 +238,7 @@ YTConv 1.7.2 keeps subtitles disabled by default unless explicitly requested. Mi
 --sponsorblock-off
 ```
 
-YTConv 1.7.2 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
+YTConv 1.7.3 defaults to `mark`, which adds chapters without cutting media. `remove` cuts matching segments and must be requested explicitly.
 
 ## Metadata and thumbnails
 
@@ -289,7 +300,7 @@ The `batch` command automatically enables continue-on-error. The final exit code
 
 Resume is enabled by default. YTConv creates separate automatic yt-dlp text archives and gallery-dl SQLite archives under `~/.ytconv/archives`, separated by output profile. `--archive FILE` overrides the yt-dlp archive path for the current execution.
 
-If an archived URL has no real output file, YTConv 1.7.2 retries that item once without the archive. A second zero-file result fails instead of reporting success.
+If an archived URL has no real output file, YTConv 1.7.3 retries that item once without the archive. A second zero-file result fails instead of reporting success.
 
 ## Network and performance
 
@@ -370,7 +381,7 @@ JSON output is intended for scripts, bots, websites, and other programs.
 --help
 ```
 
-Stable 1.7.2 updates through:
+Stable 1.7.3 updates through:
 
 ```sh
 npm install -g ytconv@latest --force
@@ -410,4 +421,3 @@ ytconv shortcuts
 ```
 
 `ytconv docs` prints canonical, release-pinned documentation URLs. Topic aliases are accepted, panels adapt to terminal width, and unknown topics return exit code `2` with suggestions.
-

@@ -28,6 +28,7 @@ Examples:
   ytconv docs troubleshooting
   ytconv about
   ytconv shortcuts
+  ytconv donate
   ytconv extract "https://youtu.be/..."
 
 Privacy:
@@ -41,5 +42,5 @@ Support: help.ytconv@proton.me
 
 export function commanderHelpText(version) {
   const program = buildProgram(version);
-  return `${program.helpInformation().trimEnd()}\n\nExamples:\n  ytconv\n  ytconv "https://youtu.be/..." --video\n  ytconv "https://www.instagram.com/reel/..." --platform instagram\n  ytconv login instagram\n\nPrivacy:\n  Public access is attempted first. Browser login is requested only when required.\n\nSupport: help.ytconv@proton.me`;
+  return `${program.helpInformation().trimEnd()}\n\nExamples:\n  ytconv\n  ytconv "https://youtu.be/..." --video\n  ytconv "https://www.instagram.com/reel/..." --platform instagram\n  ytconv login instagram\n  ytconv donate\n\nPrivacy:\n  Public access is attempted first. Browser login is requested only when required.\n\nSupport: help.ytconv@proton.me`;
 }

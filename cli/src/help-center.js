@@ -2,7 +2,7 @@ import process from 'node:process';
 import { CLI_VERSION } from './version.js';
 
 const REPOSITORY = 'https://github.com/andhikamarcella/YTConv';
-const RELEASE_BRANCH = 'release/ytconv-1.7.2';
+const RELEASE_BRANCH = 'release/ytconv-1.7.3';
 const DOCS_ROOT = `${REPOSITORY}/tree/${RELEASE_BRANCH}/cli/docs`;
 const SUPPORT_EMAIL = 'help.ytconv@proton.me';
 
@@ -26,10 +26,11 @@ const TOPICS = Object.freeze([
   ['architecture', 'Architecture and process boundaries', 'ARCHITECTURE.md', ['internals', 'design']],
   ['nodejs', 'Node.js integration', 'NODEJS.md', ['node', 'api', 'library']],
   ['faq', 'Frequently asked questions', 'FAQ.md', ['questions', 'help']],
-  ['migration', 'Migration to YTConv 1.7.2', 'MIGRATION-1.7.2.md', ['migrate', '1.7.2', 'repository']],
+  ['migration', 'Migration to YTConv 1.7.3', 'MIGRATION-1.7.3.md', ['migrate', '1.7.3', 'repository']],
   ['trusted-publishing', 'npm Trusted Publishing', 'TRUSTED-PUBLISHING.md', ['oidc', 'npm', 'publish']],
   ['help-center', 'Interactive help center', 'HELP-CENTER.md', ['docs-command', 'about', 'shortcuts']],
   ['support', 'Support and bug reports', 'SUPPORT.md', ['email', 'bug', 'contact']],
+  ['donate', 'Donate — just pay what you can', 'DONATE.md', ['donation', 'kofi', 'ko-fi', 'saweria', 'funding']],
 ]);
 
 function normalized(value) {
@@ -88,6 +89,7 @@ export function aboutText(columns = process.stdout.columns) {
     'npm         https://www.npmjs.com/package/ytconv',
     `Docs        ${DOCS_ROOT}`,
     `Support     ${SUPPORT_EMAIL}`,
+    'Donate      ytconv donate',
     '',
     'Start       ytconv',
     'Docs        ytconv docs --list',
@@ -110,6 +112,7 @@ export function shortcutsText(columns = process.stdout.columns) {
     'Ctrl+U     cycle output upscaling height',
     'Ctrl+V     paste URL from clipboard',
     'H / D      help / diagnostics',
+    'N          donation options',
     'Q / Esc    exit safely',
     '',
     `Help       ${SUPPORT_EMAIL}`,

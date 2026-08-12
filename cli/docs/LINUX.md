@@ -162,7 +162,7 @@ For permanent use, add the same packages to the owner's NixOS or home-manager co
 Run this section only after `node --version` reports 22.14.0 or newer:
 
 ```bash
-npm install --global ytconv@1.7.2
+npm install --global ytconv@1.7.3
 ytconv --version
 ytconv repair
 ytconv doctor

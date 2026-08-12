@@ -1,0 +1,13 @@
+{
+  "status": "published",
+  "package": "ytconv",
+  "version": "1.7.3",
+  "distTag": "latest",
+  "sha256": "77f5b11c00a8a80e44702ccd057dfb48fd9b675dea819e9574be73655c113d1f",
+  "repository": "andhikamarcella/YTConv",
+  "branch": "release/ytconv-1.7.3",
+  "sourceCommit": "f4f9b4d52c4c67112214c9c37428ebc20913e7ea",
+  "runId": "31563022477",
+  "runUrl": "https://github.com/andhikamarcella/YTConv/actions/runs/31563022477",
+  "publishedAt": "2026-08-12T04:33:40Z"
+}

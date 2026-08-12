@@ -65,13 +65,13 @@ Users should keep browser profiles and cookie files private. Cookie files must n
 
 ## Android WebView model
 
-The Android 1.7.2 login window enables JavaScript and DOM storage because modern provider login pages require them. It loads only the provider login URL derived from the user's media URL. Cookies are exported to the application cache, passed to yt-dlp for the requested operation, and removed when the activity closes.
+The Android 1.7.3 login window enables JavaScript and DOM storage because modern provider login pages require them. It loads only the provider login URL derived from the user's media URL. Cookies are exported to the application cache, passed to yt-dlp for the requested operation, and removed when the activity closes.
 
 ## Subtitles
 
 Subtitles are disabled by default in interactive, headless, iSH, Termux, and Android flows. They are enabled only by an explicit user option such as `--subtitles` or Ctrl+S.
 
-## Runtime dependencies in 1.7.2
+## Runtime dependencies in 1.7.3
 
 All runtime dependencies use exact versions in both `package.json` and `package-lock.json`:
 
