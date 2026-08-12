@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-VERSION="1.7.3"
-RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.3/cli"
+VERSION="1.7.4"
+RAW_BASE="https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.4/cli"
 APP_DIR="/usr/local/lib/ytconv-ish"
 APP_FILE="$APP_DIR/ytconv.py"
 CORE_FILE="$APP_DIR/ytconv-core.py"

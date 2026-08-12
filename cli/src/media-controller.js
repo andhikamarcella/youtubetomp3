@@ -340,6 +340,13 @@ function authenticationRelated(message) {
     .test(String(message ?? ''));
 }
 
+function configuredArchivePath(options = {}) {
+  if (Object.hasOwn(options, 'archivePath')) {
+    return String(options.archivePath ?? '').trim();
+  }
+  return String(process.env.YTCONV_ARCHIVE ?? '').trim();
+}
+
 export function accessHint({ url, cookieConfig, originalError }) {
   const platform = socialPlatformLabel(detectSocialPlatform(url));
   const officialLogin = socialLoginHint(url);
@@ -415,9 +422,12 @@ export async function downloadMedia({ options, ...rest }) {
   let after = await listFiles(outputDirectory);
   let produced = await producedFiles({ before, after, result, outputDirectory, kind });
 
-  if (!produced.length && result.engine === 'yt-dlp' && result.archiveSkipped && options.archivePath) {
+  const archivePath = configuredArchivePath(options);
+  if (!produced.length && result.engine === 'yt-dlp' && archivePath) {
     rest.onLog?.(
-      'The URL was recorded in the archive, but no output file exists. Restoring it once without the archive...',
+      result.archiveSkipped
+        ? 'The URL was recorded in the archive, but no output file exists. Restoring it once without the archive...'
+        : 'No output file was reported while the download archive was active. Retrying once without the archive...',
       false,
     );
     const retryOptions = { ...options, archivePath: '', galleryArchivePath: '' };
