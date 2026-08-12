@@ -33,6 +33,7 @@ const required = [
   'docs/MIGRATION-1.7.2.md',
   'docs/MIGRATION-1.7.3.md',
   'docs/MIGRATION-1.7.4.md',
+  'docs/MIGRATION-1.7.5.md',
   'docs/MIGRATION-1.7.1.md',
   'docs/HELP-CENTER.md'
 ];
@@ -47,7 +48,7 @@ for (const relative of required) {
 }
 
 const manifest = JSON.parse(await fs.readFile(path.join(cwd, 'package.json'), 'utf8'));
-if (manifest.version !== '1.7.4') errors.push(`package.json version is ${manifest.version}, expected 1.7.4`);
+if (manifest.version !== '1.7.5') errors.push(`package.json version is ${manifest.version}, expected 1.7.5`);
 if (!String(manifest.repository?.url ?? '').includes('andhikamarcella/YTConv')) {
   errors.push('package.json does not reference the canonical andhikamarcella/YTConv repository');
 }

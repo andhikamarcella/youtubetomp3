@@ -3,7 +3,7 @@ name: YTConv Tutorial Pages
 on:
   push:
     branches:
-      - release/ytconv-1.7.4
+      - release/ytconv-1.7.5
     paths:
       - "pages/**"
       - ".github/workflows/pages.yml"

@@ -1,6 +1,6 @@
 # Audio and video formats
 
-YTConv 1.7.4 verifies that a real output file exists before reporting success. Repeating the same command is supported: the second run overwrites only when requested or returns the already valid output according to the selected archive/overwrite policy.
+YTConv 1.7.5 verifies that a real output file exists before reporting success. Repeating the same command is supported: the second run overwrites only when requested or returns the already valid output according to the selected archive/overwrite policy.
 
 ## Video
 
