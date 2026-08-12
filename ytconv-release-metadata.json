@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
   "package": "ytconv",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
   "license": "ISC",
-  "lastUpdated": "2026-08-10",
+  "lastUpdated": "2026-08-12",
   "installer": {
     "type": "npm Trusted Publishing with GitHub release artifacts",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.2.tgz",
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.3.tgz",
     "status": "published",
-    "sha256": "23eb41d75a7f99fc6f04ad006e9650de5c8d735d23d76a98d56e5bdf51741329",
-    "sha512Integrity": "sha512-0jRlxtYLvBo3cIUfRRzt+csIWcN1xtqOVQ6ANgak2gFBJMgEyWHzn8LDo4ix07puCvpPXx/XCJCn+xDTfIdcEA==",
-    "npmShasum": "f810de74bc5d9c51d67c5d2cd7154e52b4a30d7b",
-    "packedSize": 144290,
-    "unpackedSize": 517303,
-    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.2/SHA256SUMS.txt"
+    "sha256": "77f5b11c00a8a80e44702ccd057dfb48fd9b675dea819e9574be73655c113d1f",
+    "sha512Integrity": "sha512-LGPAa7N2kjbfKXaFpYQoFq0/G00GQx1MzofuqVt1DSm/CUqm3evat3wnjVotI4Yqu6jghtzk2OcefJA0k3olnw==",
+    "npmShasum": "69bff161a1a6a6323f2f13a5ff4d674718e529cd",
+    "packedSize": 150239,
+    "unpackedSize": 537308,
+    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.3/SHA256SUMS.txt"
   },
   "dependencies": {
     "commander": "14.0.3",
@@ -27,6 +27,6 @@
     "ws": "8.21.1"
   },
   "optionalDependencies": {},
-  "releaseNotes": "YTConv 1.7.2 adds repeat-safe format fallbacks, extraction commands, optional 4K upscaling, Deno runtime selection, platform-aware terminal accents, and refreshed documentation and packages.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.2/cli/CHANGELOG.md"
+  "releaseNotes": "YTConv 1.7.3 adds an optional Donate — just pay what you can flow for Ko-fi and Saweria, five-second return to the CLI home screen, browser and clipboard fallback, npm funding metadata, matching npm/GitHub/Pages/Wiki documentation, and ten-repeat public no-cookie plus deterministic audio/video release checks.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.3/cli/CHANGELOG.md"
 }
