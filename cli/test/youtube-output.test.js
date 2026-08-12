@@ -58,6 +58,13 @@ if (process.env.YTCONV_TEST_BEHAVIOR === 'archive-recovery') {
   console.log('ytconv-file:' + target);
   process.exit(0);
 }
+if (process.env.YTCONV_TEST_BEHAVIOR === 'quiet-archive-recovery') {
+  if (args.includes('--download-archive')) process.exit(0);
+  const target = path.join(process.cwd(), 'quietly-restored.mp4');
+  fs.writeFileSync(target, 'verified quiet archive recovery');
+  console.log('ytconv-file:' + target);
+  process.exit(0);
+}
 if (process.env.YTCONV_TEST_BEHAVIOR === 'existing-output') {
   console.log('ytconv-file:' + process.env.YTCONV_TEST_EXISTING_FILE);
   process.exit(0);
@@ -170,6 +177,26 @@ test('archive skip with a missing file is restored once without the archive', as
   assert.equal(result.fileCount, 1);
   assert.equal(path.extname(result.outputPath), '.mp4');
   assert.equal(await fs.readFile(result.outputPath, 'utf8'), 'verified mp4 output');
+  const calls = (await fs.readFile(marker, 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].includes('--download-archive'), true);
+  assert.equal(calls[1].includes('--download-archive'), false);
+});
+
+test('interactive environment archive is recovered even when yt-dlp quietly exits zero', async (t) => {
+  const { directory, marker, runner } = await fakeRunner(t, 'quiet-archive-recovery');
+  const previousArchive = process.env.YTCONV_ARCHIVE;
+  process.env.YTCONV_ARCHIVE = path.join(directory, 'ui-default-archive.txt');
+  t.after(() => {
+    if (previousArchive === undefined) delete process.env.YTCONV_ARCHIVE;
+    else process.env.YTCONV_ARCHIVE = previousArchive;
+  });
+
+  const options = baseOptions({ outputDirectory: directory });
+  delete options.archivePath;
+  const result = await downloadMedia({ ytDlp: runner, options });
+
+  assert.equal(await fs.readFile(result.outputPath, 'utf8'), 'verified quiet archive recovery');
   const calls = (await fs.readFile(marker, 'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(calls.length, 2);
   assert.equal(calls[0].includes('--download-archive'), true);

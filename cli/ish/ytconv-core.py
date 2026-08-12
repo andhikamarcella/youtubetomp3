@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YTConv 1.7.3 native frontend for iSH/Alpine and Python-only shells."""
+"""YTConv 1.7.4 native frontend for iSH/Alpine and Python-only shells."""
 
 import argparse
 import importlib.util
@@ -15,8 +15,8 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-VERSION = "1.7.3"
-RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.3/cli"
+VERSION = "1.7.4"
+RAW_BASE = "https://raw.githubusercontent.com/andhikamarcella/YTConv/release/ytconv-1.7.4/cli"
 REMOTE_VERSION_URL = RAW_BASE + "/ish/VERSION"
 INSTALLER_URL = RAW_BASE + "/scripts/install-ish.sh"
 DEFAULT_CATEGORIES = "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic"

@@ -11,7 +11,7 @@ YTConv is a local command-line tool. It is not a promise that every URL may lega
 
 ## Why YTConv does not offer a hosted web ripper
 
-A third-party conversion website receives the URL, IP address, browser metadata, and potentially account data. Some sites also use intrusive ads, tracking, fake download buttons, or unsafe executables. YTConv 1.7.3 therefore keeps conversion local and publishes GitHub Pages only as a tutorial—never as a server-side ripper.
+A third-party conversion website receives the URL, IP address, browser metadata, and potentially account data. Some sites also use intrusive ads, tracking, fake download buttons, or unsafe executables. YTConv 1.7.4 therefore keeps conversion local and publishes GitHub Pages only as a tutorial—never as a server-side ripper.
 
 ## Account media
 
@@ -21,7 +21,7 @@ Cookies are credentials. YTConv first tries public access and requests a local b
 
 `ytconv transcript URL` and `ytconv extract URL` save provider-available captions, text, and structured metadata. They do not invent missing transcripts or defeat access controls.
 
-`--upscale 4k` performs deterministic FFmpeg Lanczos scaling. It creates a real 3840×2160 file but does not claim AI super-resolution or recovered detail. A portable, tested AI model is not bundled in 1.7.3 because that would be misleading on unsupported devices.
+`--upscale 4k` performs deterministic FFmpeg Lanczos scaling. It creates a real 3840×2160 file but does not claim AI super-resolution or recovered detail. A portable, tested AI model is not bundled in 1.7.4 because that would be misleading on unsupported devices.
 
 ## Reporting a problem
 

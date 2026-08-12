@@ -302,8 +302,15 @@ function appendMetadataOverrides(args, options) {
   }
 }
 
+function configuredArchivePath(options = {}) {
+  if (Object.hasOwn(options, 'archivePath')) {
+    return String(options.archivePath ?? '').trim();
+  }
+  return envValue('YTCONV_ARCHIVE');
+}
+
 function appendAdvancedArgs(args, options) {
-  const archivePath = optionValue(options, 'archivePath', 'YTCONV_ARCHIVE');
+  const archivePath = configuredArchivePath(options);
   const clipStart = optionValue(options, 'clipStart', 'YTCONV_CLIP_START');
   const clipEnd = optionValue(options, 'clipEnd', 'YTCONV_CLIP_END');
   const rateLimit = optionValue(options, 'rateLimit', 'YTCONV_RATE_LIMIT');
