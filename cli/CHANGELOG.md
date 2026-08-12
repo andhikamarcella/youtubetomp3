@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.5 - 2026-08-12
+
+- Refreshed the complete npm package manifest for the 1.7.5 release while preserving the CLI-only package boundary.
+- Synchronized version-pinned repository, documentation, installer, checksum, SBOM, iSH, Android, and native-package metadata.
+- Preserved exact production dependency pins, TypeScript declarations, npm Trusted Publishing provenance, and the ISC license.
+- Preserved the optional Ko-fi and Saweria funding links as plain allowlisted HTTPS URLs.
+- Added 1.7.5 migration guidance and release checks for the normalized author, maintainer, funding, documentation, and security metadata.
+- Kept the 1.7.4 archive-recovery, authentication-classification, and Chromium-discovery fixes without changing runtime behavior.
+
 ## 1.7.4 - 2026-08-12
 
 - Fixed the interactive terminal path so a default archive configured through the CLI environment participates in missing-file recovery.

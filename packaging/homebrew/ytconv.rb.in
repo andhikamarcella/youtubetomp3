@@ -1,7 +1,7 @@
 class Ytconv < Formula
   desc "Secure social-media downloader and converter CLI"
   homepage "https://github.com/andhikamarcella/YTConv"
-  url "https://registry.npmjs.org/ytconv/-/ytconv-1.7.4.tgz"
+  url "https://registry.npmjs.org/ytconv/-/ytconv-1.7.5.tgz"
   sha256 "@NPM_SHA256@"
   license "ISC"
 
@@ -18,6 +18,6 @@ class Ytconv < Formula
   end
 
   test do
-    assert_equal "1.7.4", shell_output("#{bin}/ytconv --version").strip
+    assert_equal "1.7.5", shell_output("#{bin}/ytconv --version").strip
   end
 end

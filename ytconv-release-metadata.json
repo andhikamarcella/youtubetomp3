@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
   "package": "ytconv",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "publisher": "Andhika Marcella Fernanda",
   "author": "Andhika Marcella Fernanda <andhikamarcella546@gmail.com>",
   "license": "ISC",
   "lastUpdated": "2026-08-12",
   "installer": {
     "type": "npm Trusted Publishing with GitHub release artifacts",
-    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.4.tgz",
+    "url": "https://registry.npmjs.org/ytconv/-/ytconv-1.7.5.tgz",
     "status": "published",
-    "sha256": "1a1d9ff3ec3e6a99a86bf0ea31c8af0e2b95589b231d5a49746c87b583c9dd00",
-    "sha512Integrity": "sha512-VKSYdJdJwQcV2CuZz1b2s9zFqm+QeZvWAZZPrNol+YJrsQIH4kJFuBVL7ILr7CMtGa9ukBXEfz2Sq8Pgfma7Ow==",
-    "npmShasum": "1884db863a22aaabd68fcb27dff667cd7a5ddbad",
-    "packedSize": 151812,
-    "unpackedSize": 542551,
-    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.4/SHA256SUMS.txt"
+    "sha256": "0db43304d886cb0415a19eda5214f15eef3ca65f7fc6853047cec641efe64e63",
+    "sha512Integrity": "sha512-5gScsawd2jsJEz8UiEp10FbyU5BClcpu7bv4wMeIzKfdJpakvT+IaQrwY0rtIqyOJnyear1vhnVucgRfngTb4g==",
+    "npmShasum": "17c7beaafd5782675df58607d93ae9aa13d34289",
+    "packedSize": 152526,
+    "unpackedSize": 545560,
+    "checksumsUrl": "https://github.com/andhikamarcella/YTConv/releases/download/ytconv-v1.7.5/SHA256SUMS.txt"
   },
   "dependencies": {
     "commander": "14.0.3",
@@ -27,6 +27,6 @@
     "ws": "8.21.1"
   },
   "optionalDependencies": {},
-  "releaseNotes": "YTConv 1.7.4 fixes interactive download-archive recovery when yt-dlp exits successfully without producing a file, prevents archive settings from being re-enabled during the retry, tightens authentication-error classification, and discovers installed Chromium browsers even before a profile directory exists.",
-  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.4/cli/CHANGELOG.md"
+  "releaseNotes": "YTConv 1.7.5 refreshes the complete npm package manifest and synchronizes version-pinned documentation, installer, native package, iSH, security, and release metadata while preserving the tested 1.7.4 archive-recovery, authentication-classification, and Chromium-discovery fixes.",
+  "releaseNotesUrl": "https://github.com/andhikamarcella/YTConv/blob/release/ytconv-1.7.5/cli/CHANGELOG.md"
 }

@@ -18,14 +18,14 @@ test('documentation topics resolve canonical names and aliases', () => {
   assert.equal(resolveDocumentationTopic('missing-topic'), null);
 });
 
-test('documentation URLs use the canonical 1.7.4 release branch', () => {
-  assert.match(documentationUrl('faq'), /andhikamarcella\/YTConv\/blob\/release\/ytconv-1\.7\.4\/cli\/docs\/FAQ\.md$/u);
-  assert.match(documentationUrl('index'), /andhikamarcella\/YTConv\/tree\/release\/ytconv-1\.7\.4\/cli\/docs$/u);
+test('documentation URLs use the canonical 1.7.5 release branch', () => {
+  assert.match(documentationUrl('faq'), /andhikamarcella\/YTConv\/blob\/release\/ytconv-1\.7\.5\/cli\/docs\/FAQ\.md$/u);
+  assert.match(documentationUrl('index'), /andhikamarcella\/YTConv\/tree\/release\/ytconv-1\.7\.5\/cli\/docs$/u);
   assert.match(documentationUrl('donate'), /cli\/docs\/DONATE\.md$/u);
 });
 
 test('help-center panels are responsive and discoverable', () => {
-  assert.match(aboutText(50), /YTConv 1\.7\.4/u);
+  assert.match(aboutText(50), /YTConv 1\.7\.5/u);
   assert.match(aboutText(90), /help\.ytconv@proton\.me/u);
   assert.match(shortcutsText(50), /Ctrl\+M/u);
   assert.match(docsListText(90), /installation/u);
@@ -35,7 +35,7 @@ test('help-center panels are responsive and discoverable', () => {
     columns: 50,
   });
   assert.equal(migrationOutput.topic, 'migration');
-  assert.match(migrationText, /https:\/\/github\.com\/andhikamarcella\/YTConv\/blob\/release\/ytconv-1\.7\.4\/cli\/docs\/MIGRATION-1\.7\.4\.md/u);
+  assert.match(migrationText, /https:\/\/github\.com\/andhikamarcella\/YTConv\/blob\/release\/ytconv-1\.7\.5\/cli\/docs\/MIGRATION-1\.7\.5\.md/u);
   assert.doesNotMatch(migrationText, /…/u);
   assert.ok(documentationTopics().length >= 24);
 });
